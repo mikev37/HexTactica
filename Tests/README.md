@@ -207,7 +207,7 @@ Without the `.meta` files Unity regenerates GUIDs and every reference to `Supply
 `AIPlayer` breaks. `Unit.cs` and `HexTile.cs` are edits to your code; diff-merge if you've
 changed them since.
 
-### New files (27)
+### New files (28)
 `Assets/AI/` · `Assets/Buildings/` · `Assets/Supply/` · `Assets/Harness/` · `Assets/UI/`
 · `Assets/Editor/` · `Assets/Units/{CombatMath,Locomotion,LocomotionInference,Transporting}.cs`
 
