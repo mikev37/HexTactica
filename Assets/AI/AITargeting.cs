@@ -60,7 +60,7 @@ namespace HexTactica.AI {
 
             // An HQ is priced by what attacking it achieves: the win, or nothing lasting.
             if (IsHQ(defender)) {
-                value = HQValue(attacker, defender, o, map, profile, imminent);
+                value = HQValue(attacker, defender, from, o, map, profile, imminent);
             }
 
             // So is any unit that does not fight. A supply hub at two strength supplies
@@ -118,6 +118,14 @@ namespace HexTactica.AI {
                 if (o.defenderDies && o.damageToAttacker == 0) value += targetWorth * 1.5f;
             }
 
+            // Removing a threat to our HQ, in proportion to the strength taken off it: damage
+            // to a unit scales its damage down with it.
+            float threat = map.HQThreat(defender);
+            if (threat > 0f && defender.Strength > 0) {
+                float removed = o.defenderDies ? 1f : o.damageToDefender / (float)defender.Strength;
+                value += threat * removed * profile.hqDefenseWeight;
+            }
+
             // Delivered next turn rather than this one.
             if (!imminent) value *= profile.imminentDiscount;
 
@@ -172,14 +180,21 @@ namespace HexTactica.AI {
         ///     turn is worth nearly as much — that is a coordinated assault.
         ///   - Anything else is chip damage that will heal: worth a small fraction.
         /// </summary>
-        static float HQValue(Unit attacker, Unit hq, CombatOutcome o, AIMap map, AIProfile profile, bool imminent) {
+        static float HQValue(Unit attacker, Unit hq, HexTile from, CombatOutcome o, AIMap map, AIProfile profile, bool imminent) {
             float win = map.BoardStake;
             if (o.defenderDies) return win;
             if (imminent) {
                 int remaining = hq.Strength - o.damageToDefender;
                 if (remaining > 0 && map.FollowUpDamage(hq, attacker) >= remaining) return win * 0.8f;
             }
-            return o.damageToDefender * Mathf.Max(1, hq.value()) * profile.hqChipFactor;
+            // Not finished this turn, so it heals a strength before we can strike again. The hit
+            // is worth the win only as far as it sets up a kill next turn that the units now
+            // close enough could deliver; otherwise it is chip on a 100,000-gold unit that heals.
+            // Pricing that chip at the HQ's own value made three points on it worth more than a
+            // tank, and tanks dived the HQ alone and died next to it.
+            int left = hq.Strength - o.damageToDefender + 1;
+            if (left > 0 && !o.attackerDies && map.NextTurnDamage(hq, attacker, from) >= left) return win * profile.hqSetupFactor;
+            return o.damageToDefender * AIScore.Worth(attacker) * profile.hqChipFactor;
         }
 
         /// <summary>
@@ -194,6 +209,7 @@ namespace HexTactica.AI {
             float cost = loss * AIScore.Worth(attacker) * profile.riskWeight * AIScore.PostureRisk(profile, posture);
             cost -= AIScore.CoverPreference(attacker, at, map, profile);
             cost += AIScore.OutOfSupplyCost(attacker, at, map);
+            cost += map.CohesionCost(attacker, at);
             return cost;
         }
 

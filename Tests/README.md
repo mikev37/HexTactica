@@ -50,42 +50,80 @@ Predicted vs actual losses per enemy turn: 6.8/9, 8.0/6, 10.5/13, 5.1/6, 2.8/2.
 
 ---
 
-## Measured results (real prefabs vs. a passive "greedy" baseline)
+## Measured results (real prefabs, round-robin)
 
-**Read this first.** The opponent in every game below is `BaselineAIPlayer` (greedy): each
-unit takes the best attack available *this turn*, and a line unit with nothing in reach
-**does nothing**. It is **not** a faithful port of the original `AttackMove`, which had a
-three-move approach fallback and an objective fallback; those were left out. Greedy
-therefore never advances. "Never loses" is measured against an opponent that barely fights
-back, and every draw is the AI failing to press a passive enemy — not careful defence.
+Three opponents, all deterministic:
 
-| | Supply-aware AI | Greedy baseline |
-|---|---|---|
-| Equal armies, 6 games (3 widths × 2 seats) | **2 wins, 0 losses**, 4 draws | 0 wins |
-| Games ending behind on material | **0** | — |
-| +20% advantage, 4 games | **0 losses, 0 behind**, 1 win | — |
-| Fixture corridor, 4 games (invented units) | 2 wins, 0 losses | 0 wins |
-| Units lost to attrition (corridor) | **0** | 6 |
-| Unit-turns out of supply (corridor) | 52 | 70 |
-| Transport delivery | Boards, rides, unloads on turn 2 (walking: turn 3), stays connected, army 4/4 supplied | — |
+- **Legacy** (`Assets/Harness/LegacyAI.cs`): a faithful port of the original `AIPlayer` /
+  `AttackMove`, including the three-move approach fallback, the GoTo-to-(0,0,0) objective
+  fallback, and `Retreat` being a no-op. This is the opponent that attacks.
+- **Greedy**: a reactive turtle. Each unit strikes whatever it can reach this turn and
+  otherwise does nothing. It never advances, but it does strike anything that comes within
+  reach, so it is not free to approach.
+- **Full**: this AI, against itself, for seat bias.
 
-**A parameter sweep (16 profiles × 10 games = 160 games) found zero losses and zero
-games behind on material in every configuration.** That is the robust result.
+Every cell is 20 games: widths 7/8/9/10/11 × two mirror-symmetric forest layouts × both
+seats. "+20%" gives one side an extra Tank and Grunt. 60-round limit; a draw is a timeout.
 
-### What is not as good as I'd like
+| Full AI vs | Equal | +20% for Full | +20% for opponent |
+|---|---|---|---|
+| Legacy | **19W 1L** 0D | **20W** 0L 0D | **18W 2L** 0D |
+| Greedy | 12W **0L** 8D | 10W **0L** 10D | 3W **0L** 17D |
 
-- **Draws on wide maps are a failure to attack.** The opponent sits at home, so the burden
-  is entirely on this AI, and it declines. Supply reach (HQ 8 + one hub's 4 ≈ 12 tiles)
-  ends ~6 tiles short of the enemy HQ on the 9- and 11-wide maps, which is part of why, but
-  a 20% advantage converting 1–2 times in 4 against a passive opponent is a weak result.
-- **Untested against an opponent that attacks.** The only AI-vs-AI mirror match uses
-  invented fixture units and only checks the game completes. Next steps: port the original
-  `AttackMove` faithfully as a baseline, add real-prefab mirror matches, and re-measure.
-- **I lowered one test bar.** "Advantage converts in 3 of 4" became "never loses, never ends
-  behind; conversion reported". No profile in the sweep exceeded 2 of 4, so the old bar
-  would only have been met by tuning to these four games.
-- **Supply-cutting** ("aggressive: go deeper into enemy supply range", from your doc) is
-  implemented and changed no game in the sweep. Reported as inert on these maps.
+For comparison, Legacy vs Greedy: 0W 1L 19D equal. Mirror matches: Full vs Full 7–3 for
+seat A (0 draws); Legacy vs Legacy 3–5–2; Greedy vs Greedy all draws.
+
+Reproduce: `PROBE=matchups WIDE=1 bash Tests/run.sh Assets` (≈4 min). Quick iteration on
+one opponent: `PROBE=cells THEM=Greedy WIDE=1 VERBOSE=1`. Any profile field can be
+overridden: `SET=cohesionWeight=0.4,assaultReadiness=0.7`. One game, turn by turn:
+`PROBE=trace GAME=9,Full,Greedy,0,40 FRONTS=1 [VARIANT=1] [EXPLAIN=Tank SIDE=A FROM=10]`.
+
+### What changed to get here
+
+Each of these was found in a trace of a lost or drawn game, not by reading the code.
+
+- **Force ratio by reach, not radius.** Fronts counted units within a fixed radius, so the
+  enemy army sitting at home outnumbered our forward units and equal armies read as 0.2–0.9.
+  Fronts now count what can arrive within `frontReachTurns`.
+- **Staging.** An attack beyond our supply waits on the edge of our supply nearest the
+  objective until `assaultReadiness` of the attacking force is healthy and gathered there,
+  and once in, keeps going until it falls below `assaultBreakoff`, then regroups. Before
+  this, units went in the order they arrived — tank, then grunts, then guns — and wounded
+  units pressed on. Readiness is judged per objective, across every front aimed at it.
+- **Cohesion.** In an assault, ending the turn ahead of the rest of the assault costs
+  `cohesionWeight` of the unit's worth per hex. The tank (move 6) no longer parks beside the
+  enemy HQ while the grunts (move 3) are three hexes back.
+- **HQ chip damage was priced at the HQ's 100,000 cost.** Three points on an HQ that heals
+  were worth more than a tank, so tanks dived the HQ alone. A hit that does not kill is now
+  worth `hqSetupFactor` of the win only if the units that will survive tonight can finish it
+  next turn; otherwise it is chip.
+- **Defending the HQ.** Nothing said that losing the HQ loses everything: two Legacy tanks
+  drove at it while our tank went on an advance. Each enemy that could strike our HQ in one
+  or two turns now carries a share of the HQ's stake, and hitting it is worth
+  `hqDefenseWeight` of that.
+- **Siege.** Three grunts sat in supply for fifty turns, thirteen hexes from an undefended
+  HQ they could kill in one volley. When a front's healthy units can destroy the HQ in one
+  volley and outmatch what defends it, the objective pull is multiplied by `siegePull`.
+- **Hub advances toward where the army is going** (intents), but only to connected positions.
+
+### What is still not good enough
+
+- **Against the turtle, 8 of 20 equal games are draws, and an extra Tank and Grunt does not
+  improve that.** The reactive defender gets the first strike on anything entering its reach,
+  heals in its own supply, and on the wider maps sits 6+ hexes beyond the end of ours. Our
+  wins come from its units lunging out and being counter-punched; when they don't, nothing
+  breaks the position. Draws are no-contact standoffs or an assault that trades evenly and
+  runs out of army.
+- **Outnumbered by the turtle, it mostly declines to attack** (17 draws, 0 losses). That is
+  defensible but not clever: it does not try to bait.
+- **Mirror seat bias**: Full vs Full is 7–3 for seat A over 10 games — moving first is worth
+  something, and there may be an asymmetry left to find.
+- **Tried and rejected** (measured on the 20-game set, no improvement or worse): sharper
+  focus-fire prediction (`focusExponent` 2 and 3), relaxing the out-of-supply posture ratio
+  to 0.85, and gating staging on enemy position instead of the front centre. The knobs are
+  left in the profile at their neutral values.
+- **Results are deterministic but chaotic.** On the old 6-game set, one change looked like
+  5 wins of 6; on 20 games it was 12 of 20. Don't trust a tuning result on fewer games.
 
 ---
 

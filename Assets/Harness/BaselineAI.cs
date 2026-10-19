@@ -42,6 +42,7 @@ namespace HexTactica.Harness {
 
         public void PlayWholeTurn() {
             if (player == null || player.eliminated) return;
+            if (kind == AIKind.Legacy) { LegacyAI.PlayWholeTurn(player); return; }
 
             List<Unit> roster = new List<Unit>(player.units);
             AIMap.SortStable(roster);

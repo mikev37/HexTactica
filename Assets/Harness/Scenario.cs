@@ -7,8 +7,9 @@ namespace HexTactica.Harness {
 
     public enum AIKind {
         Full,        // the supply-aware role-dispatching AI
-        Greedy,      // the pre-existing AttackMove behaviour, kept as a fixed baseline
-        Random       // legal moves at random: the floor
+        Greedy,      // reactive turtle: strikes what it can reach this turn, otherwise holds
+        Random,      // legal moves at random: the floor
+        Legacy       // the original AIPlayer (AttackMove), ported faithfully; see LegacyAI
     }
 
     [System.Serializable]

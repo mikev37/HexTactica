@@ -25,6 +25,67 @@ public static class Tests {
     public static int Main(string[] args) {
         if (args.Length > 0) PrefabLoader.AssetsRoot = args[0];
         if (Environment.GetEnvironmentVariable("PROBE") == "1") { Probe.Run(); return 0; }
+        if (Environment.GetEnvironmentVariable("PROBE") == "matchups") {
+            if (Environment.GetEnvironmentVariable("ASSAULT") != null) { float v = float.Parse(Environment.GetEnvironmentVariable("ASSAULT")); Matchups.Tweak = p => p.assaultRatio = v; }
+            if (Environment.GetEnvironmentVariable("WIDE") != null) { Matchups.Widths = new[] { 7, 8, 9, 10, 11 }; Matchups.Variants = new[] { 0, 1 }; }
+            Matchups.Run(); return 0;
+        }
+        if (Environment.GetEnvironmentVariable("PROBE") == "trace") {
+            string[] t = Environment.GetEnvironmentVariable("GAME").Split(',');   // width,aKind,bKind,extraFor,rounds
+            if (Environment.GetEnvironmentVariable("VARIANT") != null) Matchups.variant = int.Parse(Environment.GetEnvironmentVariable("VARIANT"));
+            if (Environment.GetEnvironmentVariable("ASSAULT") != null) { float v = float.Parse(Environment.GetEnvironmentVariable("ASSAULT")); Matchups.Tweak = p => p.assaultRatio = v; }
+            Matchups.Trace(int.Parse(t[0]), (Matchups.Kind)Enum.Parse(typeof(Matchups.Kind), t[1]), (Matchups.Kind)Enum.Parse(typeof(Matchups.Kind), t[2]), int.Parse(t[3]), int.Parse(t[4]));
+            return 0;
+        }
+        if (Environment.GetEnvironmentVariable("PROBE") == "cells") {
+            // PROBE=cells THEM=Greedy|Legacy VERBOSE=1: just the Full-vs-X cells, for quick iteration.
+            if (Environment.GetEnvironmentVariable("SET") != null) {
+                // SET=field=value[,field=value]: any public float/int AIProfile field, by reflection.
+                string[] pairs = Environment.GetEnvironmentVariable("SET").Split(',');
+                Matchups.Tweak = p => {
+                    foreach (string pair in pairs) {
+                        string[] kv = pair.Split('=');
+                        var fi = typeof(HexTactica.AI.AIProfile).GetField(kv[0]);
+                        if (fi.FieldType == typeof(int)) fi.SetValue(p, int.Parse(kv[1])); else fi.SetValue(p, float.Parse(kv[1]));
+                    }
+                };
+            }
+            if (Environment.GetEnvironmentVariable("WIDE") != null) { Matchups.Widths = new[] { 7, 8, 9, 10, 11 }; Matchups.Variants = new[] { 0, 1 }; }
+            Matchups.Kind them = (Matchups.Kind)Enum.Parse(typeof(Matchups.Kind), Environment.GetEnvironmentVariable("THEM") ?? "Greedy");
+            foreach (int adv in new[] { 0, 1, -1 }) Console.WriteLine("Full vs " + them + " adv " + adv + ": " + Matchups.Cell(Matchups.Kind.Full, them, adv));
+            return 0;
+        }
+        if (Environment.GetEnvironmentVariable("PROBE") == "dmg") {
+            Player a, b;
+            Matchups.Setup(7, Matchups.Kind.Greedy, Matchups.Kind.Greedy, out a, out b, 0);
+            foreach (Unit x in a.units) foreach (Unit y in b.units)
+                Console.WriteLine(x.name + " -> " + y.name + ": " + Unit.calculateDamage(x, y, y.tile, 0));
+            return 0;
+        }
+        if (Environment.GetEnvironmentVariable("PROBE") == "order") {
+            // Same cell, with and without other games played first in the process.
+            Console.WriteLine("cold:  " + Matchups.Cell(Matchups.Kind.Full, Matchups.Kind.Greedy, 0));
+            Matchups.Cell(Matchups.Kind.Legacy, Matchups.Kind.Legacy, 0);
+            Console.WriteLine("after: " + Matchups.Cell(Matchups.Kind.Full, Matchups.Kind.Greedy, 0));
+            return 0;
+        }
+        if (Environment.GetEnvironmentVariable("PROBE") == "determinism") {
+            for (int i = 0; i < 3; i++) {
+                string line = "";
+                foreach (int w in Matchups.Widths) foreach (bool fa in new[] { true, false }) {
+                    Player a, b;
+                    Matchups.Setup(w, fa ? Matchups.Kind.Full : Matchups.Kind.Greedy, fa ? Matchups.Kind.Greedy : Matchups.Kind.Full, out a, out b, 0);
+                    Matchups.Play();
+                    line += " w" + w + (fa ? "A" : "B") + ":" + (Rig.gc.winner != null ? Rig.gc.winner.personal_name : "-") + Rig.gc.days + "/" + Matchups.Material(a) + "v" + Matchups.Material(b);
+                }
+                Console.WriteLine("run " + i + line);
+            }
+            return 0;
+        }
+        if (Environment.GetEnvironmentVariable("PROBE") == "assault") {
+            Matchups.Sweep("assaultRatio", new[] { 1e9f, 1.0f }, (p, v) => p.assaultRatio = v);
+            return 0;
+        }
         if (Environment.GetEnvironmentVariable("PROBE") == "transport") { Trace.Transport(); return 0; }
         if (Environment.GetEnvironmentVariable("PROBE") == "game") { Trace.Game(); return 0; }
         if (Environment.GetEnvironmentVariable("PROBE") == "decisive") { Trace.Decisive(); return 0; }

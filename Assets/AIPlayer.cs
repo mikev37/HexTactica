@@ -40,6 +40,10 @@ public class AIPlayer : MonoBehaviour {
 
     /// <summary>Each unit's destination from its last decision. Persists across turns.</summary>
     readonly Dictionary<Unit, HexTile> intents = new Dictionary<Unit, HexTile>();
+
+    /// <summary>Last posture of each objective's front. Persists across turns for hysteresis.</summary>
+    readonly Dictionary<HexTile, Posture> postureMemory = new Dictionary<HexTile, Posture>();
+    readonly HashSet<HexTile> assaultMemory = new HashSet<HexTile>();
     bool turnPrepared;
 
     public HexTactica.AI.AIProfile Profile {
@@ -127,7 +131,10 @@ public class AIPlayer : MonoBehaviour {
             if (kv.Key == null || kv.Key.Strength <= 0 || kv.Key.tile == null) stale.Add(kv.Key);
         }
         for (int i = 0; i < stale.Count; i++) intents.Remove(stale[i]);
-        fronts = AIStrategic.BuildFronts(map, Profile);
+        fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
+        map.SetCommitted(AIStrategic.AssaultUnits(fronts));
+        map.SetAssaultObjectives(AIStrategic.AssaultObjectives(fronts));
+        map.intents = intents;
         transportAssignments.Clear();
         reservedTransports.Clear();
 

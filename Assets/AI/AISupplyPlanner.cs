@@ -51,6 +51,32 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
+        /// Value of bringing the network closer to where friendly units are heading, in gold
+        /// per turn: for each unit with a destination outside supply, a strength's worth per
+        /// tile the gap closes, scaled by intentSupplyWeight and capped at the gap.
+        ///
+        /// Without this a hub only valued units already stranded and contested ground. With the
+        /// armies apart there is little of either, so the hub stayed home, the supply edge stayed
+        /// put, and every unit that advanced had to turn back before it starved.
+        /// </summary>
+        static float IntentCoverage(AIMap map, AIProfile profile, Unit hubUnit, System.Func<HexTile, int> depthAfter) {
+            if (map.intents == null) return 0f;
+            const int cap = 12;
+            float total = 0f;
+            foreach (KeyValuePair<Unit, HexTile> kv in map.intents) {
+                Unit u = kv.Key;
+                HexTile dest = kv.Value;
+                if (u == null || dest == null || u == hubUnit || u.Strength <= 0 || u.owner != map.player) continue;
+                if (u.GetComponent<SupplyPoint>() != null) continue;
+                int before = AIMap.GapToSupply(dest, map.SupplyDepth, cap);
+                if (before == 0) continue;
+                int after = AIMap.GapToSupply(dest, depthAfter, cap);
+                total += (before - after) / (float)before * AIScore.Worth(u) * profile.intentSupplyWeight;
+            }
+            return total;
+        }
+
+        /// <summary>
         /// Cheap estimate of how useful a hub would be at <paramref name="at"/>:
         /// how many needy friendly units fall inside its radius, weighted by need.
         /// Used only to shortlist candidates for the expensive exact evaluation.
@@ -88,6 +114,10 @@ namespace HexTactica.AI {
             int range = hub.range;
             score += ForwardCoverage(map, map.profile, hub.myUnit,
                                      t => Mathf.Max(without.DepthAt(t), range - at.Distance(t)));
+            if (connected) {
+                score += IntentCoverage(map, map.profile, hub.myUnit,
+                                        t => Mathf.Max(without.DepthAt(t), range - at.Distance(t)));
+            }
 
             score -= AIScore.Risk(hub.myUnit, at, map, map.profile);
             return score;
@@ -146,6 +176,12 @@ namespace HexTactica.AI {
             }
 
             total += ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+            // Following the army is worth something only from positions that keep the hub
+            // connected. Crediting it from anywhere sent the hub out of the network to burn
+            // through its six-turn fuse in front of the enemy.
+            if (hypothetical.connectedHubs.Contains(hub)) {
+                total += IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+            }
 
             // Connection, priced as what it actually saves: a stranded hub pays a strength
             // per turn, and that hurts more as it nears burning out.

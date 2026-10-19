@@ -42,3 +42,4 @@ Harness/ScenarioLoader.cs
 UI/UnitStatusIcon.cs
 AI/AIScore.cs
 Units/LocomotionInference.cs
+Harness/LegacyAI.cs

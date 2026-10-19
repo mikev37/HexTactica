@@ -7,6 +7,23 @@ namespace HexTactica.AI {
     public class Front {
         public HexTile center;
         public Posture posture = Posture.Defensive;
+        /// <summary>The front's units go in together this turn (see AIMap.SetCommitted).</summary>
+        public bool assault;
+        /// <summary>
+        /// The front wants to attack but its force is not gathered and healthy: it holds at
+        /// <see cref="stagingTile"/> (the supplied ground nearest the objective) until it is.
+        /// </summary>
+        public bool staging;
+        public HexTile stagingTile;
+        /// <summary>Fraction of the front's full combat power that is healthy and gathered.</summary>
+        public float readiness;
+        /// <summary>An attack beyond our supply that passed the readiness gate this turn.</summary>
+        public bool gatedAssault;
+        /// <summary>
+        /// The objective is an HQ this front's healthy units could destroy in one volley, and
+        /// what defends it is outmatched: go and take the game. See DecidePosture.
+        /// </summary>
+        public bool siege;
         public float priority;
         public float ownStrength;
         public float enemyStrength;
@@ -54,6 +71,20 @@ namespace HexTactica.AI {
         const int MAX_FRONTS = 8;
 
         public static List<Front> BuildFronts(AIMap map, AIProfile profile) {
+            return BuildFronts(map, profile, null);
+        }
+
+        /// <param name="memory">Posture each objective's front had last turn, owned by the
+        /// caller so it persists. Updated in place.</param>
+        public static List<Front> BuildFronts(AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory) {
+            return BuildFronts(map, profile, memory, null);
+        }
+
+        /// <param name="assaulting">Objectives whose fronts were assaulting last turn, owned by
+        /// the caller. An assault keeps going until its force falls below the break-off level,
+        /// rather than stopping the moment it is no longer fully ready.</param>
+        public static List<Front> BuildFronts(AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory,
+                                              HashSet<HexTile> assaulting) {
             List<Front> fronts = new List<Front>();
             if (HexGenerator.hg == null) return fronts;
 
@@ -104,7 +135,16 @@ namespace HexTactica.AI {
 
             foreach (Front f in fronts) Appraise(f, map, profile);
             AssignUnits(fronts, map);
-            foreach (Front f in fronts) DecidePosture(f, map, profile);
+            foreach (Front f in fronts) DecidePosture(f, map, profile, memory);
+            DecideStaging(fronts, map, profile, assaulting);
+            if (memory != null) {
+                // Staging is a pause in an attack, not a change of mind: remember it as aggressive.
+                foreach (Front f in fronts) if (f.objectiveTile != null) memory[f.objectiveTile] = f.staging ? Posture.Aggressive : f.posture;
+            }
+            if (assaulting != null) {
+                assaulting.Clear();
+                foreach (Front f in fronts) if (f.gatedAssault && f.objectiveTile != null) assaulting.Add(f.objectiveTile);
+            }
 
             return fronts;
         }
@@ -122,19 +162,20 @@ namespace HexTactica.AI {
         /// <summary>Tally local strength either side of the front, and find its objective.</summary>
         static void Appraise(Front f, AIMap map, AIProfile profile) {
             if (f.center == null) return;
-            const int reach = SUPPRESSION_RADIUS + 3;
 
+            // Strength that can be brought to bear here within a couple of turns, full weight,
+            // for both sides. A fixed radius around the centre compared the enemy's whole army,
+            // sitting at home beside a contact point, against only the few of ours that happened
+            // to be forward: equal armies read as 0.2-0.9 and every contact front was declared
+            // defensive.
+            int turns = Mathf.Max(1, profile.frontReachTurns);
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
-                if (u.tile == null) continue;
-                int d = u.tile.Distance(f.center);
-                if (d <= reach) f.ownStrength += CombatPower(u) * (reach - d + 1) / (float)reach;
+                if (u.tile != null && CanArrive(u, f.center, turns)) f.ownStrength += CombatPower(u);
             }
             for (int i = 0; i < map.enemyUnits.Count; i++) {
                 Unit u = map.enemyUnits[i];
-                if (u.tile == null) continue;
-                int d = u.tile.Distance(f.center);
-                if (d <= reach) f.enemyStrength += CombatPower(u) * (reach - d + 1) / (float)reach;
+                if (u.tile != null && CanArrive(u, f.center, turns)) f.enemyStrength += CombatPower(u);
             }
 
             f.objective = NearestEnemyBuildingTo(f.center, map);
@@ -171,6 +212,13 @@ namespace HexTactica.AI {
                 int d = f.center.Distance(f.objectiveTile);
                 f.priority += (f.objectiveIsHQ ? 500f : 80f) / (1 + d);
             }
+        }
+
+        /// <summary>Can this unit bring its weapon to bear on <paramref name="at"/> within <paramref name="turns"/> turns (by hex distance)?</summary>
+        static bool CanArrive(Unit u, HexTile at, int turns) {
+            int d = u.tile.Distance(at);
+            int reach = u.moveRange * turns + u.AttackRange;
+            return d <= reach;
         }
 
         /// <summary>
@@ -226,22 +274,160 @@ namespace HexTactica.AI {
             }
         }
 
-        static void DecidePosture(Front f, AIMap map, AIProfile profile) {
+        static void DecidePosture(Front f, AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory) {
             float ratio = f.ForceRatio;
+
+            // Hysteresis: between the two thresholds a front keeps last turn's posture for the
+            // same objective. Rebuilding fronts from scratch every turn with a single cut-off
+            // flipped the posture whenever the ratio sat near it, and units drove six hexes
+            // forward and six back for twenty turns.
+            Posture previous = Posture.Defensive;
+            bool remembered = memory != null && f.objectiveTile != null && memory.TryGetValue(f.objectiveTile, out previous);
+            if (!remembered) previous = Posture.Defensive;
 
             if (ratio >= profile.aggressionThreshold) f.posture = Posture.Aggressive;
             else if (ratio <= profile.defensiveThreshold) f.posture = Posture.Defensive;
-            else f.posture = Posture.Defensive;
+            else f.posture = previous;
 
             // An enemy HQ within reach overrides caution: the game ends when it falls.
             if (f.objectiveIsHQ && ratio > 0.8f) {
                 f.posture = Posture.Aggressive;
             }
 
-            // Never press an attack out of a front whose own supply is collapsing.
-            if (f.center != null && map.SupplyDepth(f.center) <= 0 && ratio < 2f) {
+            // Do not press out of supply without the strength to win there. (This used to demand
+            // a 2:1 ratio. The contact point with an opponent who holds near home is always
+            // beyond our supply, so it made every such front defensive; units already price the
+            // supply they would give up.)
+            if (f.center != null && map.SupplyDepth(f.center) <= 0 && ratio < profile.outOfSupplyRatio) {
                 f.posture = Posture.Defensive;
             }
+
+            // Strong enough to go in together.
+            f.assault = f.posture == Posture.Aggressive && ratio >= profile.assaultRatio;
+
+            // An HQ we can kill in one volley, with nothing able to stop us, is the game. Its
+            // pull is a fraction of the board spread over the distance, and the supply cost of
+            // the march outweighed it: three grunts sat in supply for fifty turns, thirteen hexes
+            // from an empty HQ they could have destroyed in one turn.
+            if (f.posture == Posture.Aggressive && f.objectiveIsHQ && f.objectiveTile != null && f.objectiveTile.occupier != null) {
+                Unit hq = f.objectiveTile.occupier;
+                float volley = 0f;
+                for (int i = 0; i < f.assigned.Count; i++) {
+                    Unit u = f.assigned[i];
+                    if (u == null || u.tile == null || u.Firepower <= 0 || u.Strength <= profile.withdrawStrength) continue;
+                    volley += Mathf.Min(hq.Strength, Unit.calculateDamage(u, hq, hq.tile, 0));
+                }
+                float defence = 0f;
+                int turns = Mathf.Max(1, profile.frontReachTurns);
+                for (int i = 0; i < map.enemyUnits.Count; i++) {
+                    Unit e = map.enemyUnits[i];
+                    if (e != null && e.tile != null && CanArrive(e, f.objectiveTile, turns)) defence += CombatPower(e);
+                }
+                float own = 0f;
+                for (int i = 0; i < f.assigned.Count; i++) own += CombatPower(f.assigned[i]);
+                f.siege = volley >= hq.Strength + 1 && own >= defence * profile.aggressionThreshold;
+            }
+        }
+
+        const int MAX_STRENGTH = 6;
+
+        /// <summary>
+        /// Gate an attack beyond our supply on the force being gathered and healthy.
+        ///
+        /// Against an opponent who holds, the contact point is beyond our supply and theirs
+        /// heals. Units that went the moment the front turned aggressive arrived one at a time
+        /// in order of speed — the tank alone, then the grunts, then the guns — and each was
+        /// destroyed in turn by a defender that was whole again the next morning. Wounded units
+        /// pressed on, because the HQ was worth the board and nothing said "not yet". The
+        /// front now waits on the edge of its own supply, where the wounded heal, until enough
+        /// of its power is there to go in together; and once in, keeps going until that power
+        /// is spent below the break-off level, then falls back and does it again.
+        /// </summary>
+        static void DecideStaging(List<Front> fronts, AIMap map, AIProfile profile, HashSet<HexTile> assaulting) {
+            // Every attacking front aimed at the same objective is one attack: a lone tank on a
+            // flanking front is not "ready" because it is all of its own front.
+            Dictionary<HexTile, List<Front>> byObjective = new Dictionary<HexTile, List<Front>>();
+            List<HexTile> order = new List<HexTile>();
+            for (int i = 0; i < fronts.Count; i++) {
+                Front f = fronts[i];
+                if (f.posture != Posture.Aggressive || f.objectiveTile == null || f.center == null) continue;
+                // A fight already inside our supply is not an attack to stage: it is a defence.
+                if (map.SupplyDepth(f.center) > 0) continue;
+                List<Front> group;
+                if (!byObjective.TryGetValue(f.objectiveTile, out group)) {
+                    group = new List<Front>();
+                    byObjective[f.objectiveTile] = group;
+                    order.Add(f.objectiveTile);
+                }
+                group.Add(f);
+            }
+
+            int turns = Mathf.Max(1, profile.frontReachTurns);
+            int healthy = Mathf.CeilToInt(MAX_STRENGTH * profile.readyStrength);
+            foreach (HexTile objective in order) {
+                List<Front> group = byObjective[objective];
+                HexTile staging = StagingTile(map, objective);
+                if (staging == null) continue;
+
+                float full = 0f, gathered = 0f, committedPower = 0f;
+                foreach (Front f in group) {
+                    for (int i = 0; i < f.assigned.Count; i++) {
+                        Unit u = f.assigned[i];
+                        if (u == null || u.tile == null || u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) continue;
+                        float w = AIScore.Worth(u);
+                        full += w * MAX_STRENGTH;
+                        if (u.Strength >= healthy && u.tile.Distance(staging) <= profile.stagingRadius) gathered += w * u.Strength;
+                        if (u.Strength > profile.withdrawStrength) committedPower += w * u.Strength;
+                    }
+                }
+                if (full <= 0f) continue;
+
+                bool wasAssaulting = assaulting != null && assaulting.Contains(objective);
+                float readiness = wasAssaulting ? committedPower / full : gathered / full;
+                bool go = wasAssaulting ? readiness >= profile.assaultBreakoff : readiness >= profile.assaultReadiness;
+                foreach (Front f in group) {
+                    f.stagingTile = staging;
+                    f.readiness = readiness;
+                    if (go) { f.gatedAssault = f.assault; continue; }
+                    f.staging = true;
+                    f.assault = false;
+                    f.posture = Posture.Defensive;
+                }
+            }
+        }
+
+        /// <summary>The tile inside our own supply nearest the objective.</summary>
+        static HexTile StagingTile(AIMap map, HexTile objective) {
+            HexTile best = null;
+            int bestD = int.MaxValue;
+            foreach (HexTile t in HexGenerator.hg.tiles) {
+                if (t == null || map.SupplyDepth(t) <= 0) continue;
+                int d = t.Distance(objective);
+                if (d < bestD || (d == bestD && CombatMath.Precedes(t, best))) { best = t; bestD = d; }
+            }
+            return best;
+        }
+
+        /// <summary>Each combat unit on an assaulting front and that front's objective, for AIMap.CohesionCost.</summary>
+        public static Dictionary<Unit, HexTile> AssaultObjectives(List<Front> fronts) {
+            Dictionary<Unit, HexTile> result = new Dictionary<Unit, HexTile>();
+            for (int i = 0; i < fronts.Count; i++) {
+                Front f = fronts[i];
+                if (!f.assault || f.objectiveTile == null) continue;
+                for (int j = 0; j < f.assigned.Count; j++) {
+                    Unit u = f.assigned[j];
+                    if (u == null || u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) continue;
+                    result[u] = f.objectiveTile;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Every unit on an assaulting front, for AIMap.SetCommitted.</summary>
+        public static List<Unit> AssaultUnits(List<Front> fronts) {
+            List<Unit> units = new List<Unit>();
+            for (int i = 0; i < fronts.Count; i++) if (fronts[i].assault) units.AddRange(fronts[i].assigned);
+            return units;
         }
 
         /// <summary>Which front a unit belongs to, for posture lookup.</summary>
