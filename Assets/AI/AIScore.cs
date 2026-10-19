@@ -102,7 +102,7 @@ namespace HexTactica.AI {
 
         /// <summary>Appetite for risk on a front of this posture (see AIProfile).</summary>
         public static float PostureRisk(AIProfile p, Posture posture) {
-            return posture == Posture.Aggressive ? p.aggressiveRisk : p.defensiveRisk;
+            return (posture == Posture.Aggressive ? p.aggressiveRisk : p.defensiveRisk) * p.Aggro(1.6f, 0.5f);
         }
 
         /// <summary>Contestedness as a 0..1 signal. Conflict is a product of two fields, so it is unbounded.</summary>

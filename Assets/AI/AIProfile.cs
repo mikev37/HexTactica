@@ -17,6 +17,21 @@ namespace HexTactica.AI {
         [Header("Identity")]
         public string profileName = "Default";
 
+        [Header("Temperament")]
+        [Tooltip("0 = fight only on clearly favourable terms; 1 = trade everything in a furball. At 0.5 every other weight applies exactly as written. It scales risk appetite, how ready an attack must be, the force ratio needed to attack or take on an objective, how far it trusts its counterattack, when an attack breaks off, and when damaged units rotate out. Default 0: across 240 measured games the most cautious setting won the most (177 vs 121 at 1) and drew the least, because furballs end in mutual annihilation, which is a draw.")]
+        [Range(0f, 1f)]
+        public float aggression = 0f;
+
+        /// <summary>
+        /// A multiplier set by <see cref="aggression"/>: <paramref name="atZero"/> at 0, exactly
+        /// 1 at 0.5, <paramref name="atOne"/> at 1, linear in between. Every knob the temperament
+        /// moves goes through here, so the default profile is unchanged by it.
+        /// </summary>
+        public float Aggro(float atZero, float atOne) {
+            float a = Mathf.Clamp01(aggression);
+            return a < 0.5f ? Mathf.Lerp(atZero, 1f, a / 0.5f) : Mathf.Lerp(1f, atOne, (a - 0.5f) / 0.5f);
+        }
+
         [Header("Supply")]
         [Tooltip("Supply depth treated as fully sustained; the depth signals saturate here.")]
         [Range(1, 10)]
@@ -71,6 +86,22 @@ namespace HexTactica.AI {
         [Tooltip("How sharply enemy fire is predicted to focus on the most attractive target in reach: 1 shares it in proportion to attraction, higher concentrates it on the best target, as a greedy opponent does.")]
         [Range(1f, 6f)]
         public float focusExponent = 1f;
+
+        [Tooltip("Worth of the counterattack an enemy invites by striking a unit: if it comes forward to hit us, it ends its turn where our others hit it first. Fraction of that expected damage's worth. This is what lets a concentrated force step forward into reach.")]
+        [Range(0f, 2f)]
+        public float counterWeight = 0.5f;
+
+        [Tooltip("Worth of drawing enemy fire away from more valuable friends (screening), as a fraction of the expected loss it spares them.")]
+        [Range(0f, 2f)]
+        public float screenWeight = 1f;
+
+        [Tooltip("Extra worth of a next-turn attack from a tile no enemy can strike tonight (we strike first), as a fraction of that attack's worth.")]
+        [Range(0f, 3f)]
+        public float standoffWeight = 0f;
+
+        [Tooltip("A line unit at or below this strength, inside or next to supply, pulls back to heal when a healthier unit is close enough to take its place.")]
+        [Range(0, 6)]
+        public int rotateStrength = 3;
 
         [Tooltip("Tiebreak preference for cover, beyond the protection already priced into expected losses.")]
         public float coverWeight = 1f;
@@ -127,6 +158,9 @@ namespace HexTactica.AI {
         [Range(0f, 2f)]
         public float defensiveRisk = 1f;
 
+        [Tooltip("A front's force ratio is never below the whole armies' ratio (see Front.ForceRatio).")]
+        public bool useArmyRatio = false;
+
         [Tooltip("Front is treated as aggressive above this local force ratio (own value / enemy value).")]
         public float aggressionThreshold = 1.15f;
 
@@ -150,6 +184,21 @@ namespace HexTactica.AI {
 
         [Tooltip("Worth of standing on fully contested ground, as a fraction of the unit's own worth.")]
         public float holdWeight = 0.4f;
+
+        [Header("Objectives")]
+        [Tooltip("Assign units to objectives (AIObjectives). Off: every unit follows its front.")]
+        public bool useObjectives = true;
+
+        [Tooltip("Force ratio (assigned combat power / what can defend it) an attack objective needs before units are committed to it. Below this the objective is not attempted, so no unit goes in alone.")]
+        public float objectiveRatio = 2.5f;
+
+        [Tooltip("Pull toward a unit's assigned objective, as a fraction of the unit's own worth at distance zero, falling off as 1/(1+d).")]
+        [Range(0f, 3f)]
+        public float assignmentPull = 1f;
+
+        [Tooltip("Turns of travel beyond which a unit is not considered for an objective.")]
+        [Range(1, 10)]
+        public int objectiveReachTurns = 3;
 
         [Header("Planning")]
         [Tooltip("How many turns ahead approach routes are planned.")]
