@@ -136,14 +136,9 @@ public class AIPlayer : MonoBehaviour {
         fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
         objectives = AIObjectives.Build(map, Profile);
         assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
-        List<Unit> committed = AIStrategic.AssaultUnits(fronts);
-        Dictionary<Unit, HexTile> goingFor = AIStrategic.AssaultObjectives(fronts);
-        foreach (KeyValuePair<Unit, Objective> kv in assignments) {
-            if (!committed.Contains(kv.Key)) committed.Add(kv.Key);
-            goingFor[kv.Key] = kv.Value.tile;
-        }
-        map.SetCommitted(committed);
-        map.SetAssaultObjectives(goingFor);
+        // Objectives are structure: they add a pull to units out of contact and nothing else.
+        map.SetCommitted(AIStrategic.AssaultUnits(fronts));
+        map.SetAssaultObjectives(AIStrategic.AssaultObjectives(fronts));
         map.intents = intents;
         transportAssignments.Clear();
         reservedTransports.Clear();
@@ -172,10 +167,7 @@ public class AIPlayer : MonoBehaviour {
 
         Front front = AIStrategic.FrontFor(unit, fronts);
         Posture posture = front != null ? front.posture : Posture.Defensive;
-        // A unit with an objective is going to take it: aggressive, whatever its front says,
-        // and not held back by the front's staging (the objective was only assigned because
-        // enough force is assigned with it).
-        if (assignments.ContainsKey(unit)) posture = Posture.Aggressive;
+
 
         // Mission objectives narrow the possibility space rather than commanding units,
         // which is what lets them compose with tactics instead of overriding them.

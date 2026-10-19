@@ -168,6 +168,8 @@ namespace HexTactica.AI {
                 // The other side of tonight's risk: the counterattack it invites and the fire it
                 // draws off friends (AIMap.FirstStrikeCredit).
                 score += map.FirstStrikeCredit(unit, stop);
+                // And the space it makes for the armour still to move (AISpace).
+                score += map.SpaceDenial(unit, stop);
 
                 // And the destination's exposure, since standing there is the point of going.
                 // Charging only tonight's stop made deep plans look free until the turn they
@@ -259,11 +261,11 @@ namespace HexTactica.AI {
                 bonus += context.objective.TileBonus(unit, tile, context.map) * worth;
             }
 
-            // An assigned objective replaces the front's pull: this unit has a job.
+            // The strategic objective, if this unit has one (only units out of contact do): a
+            // tie-breaker on top of everything else, evaluated last.
             Objective job;
             if (Assignments != null && Assignments.TryGetValue(unit, out job) && job.tile != null) {
-                bonus += worth * unit.Strength * context.profile.assignmentPull / (1 + tile.Distance(job.tile));
-                return bonus;
+                bonus += worth * context.profile.assignmentPull / (1 + tile.Distance(job.tile));
             }
 
             Front front = context.front;
@@ -319,7 +321,7 @@ namespace HexTactica.AI {
                 if (fut > 0f && map.FirersAt(t) == 0) fut *= 1f + profile.standoffWeight;
                 float hold = AIScore.Hold(map.Conflict(t)) * worth * profile.holdWeight;
                 float relief = AIScore.Relief(map.Distress(t)) * worth * 0.5f;
-                float strat = StrategicBonus(unit, t, posture);
+                float strat = StrategicBonus(unit, t, posture) + map.GuardValue(unit, t);
                 float depth = posture == Posture.Defensive ? AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.3f : 0f;
                 // "Aggressive: attempt to go deeper into enemy supply range." An enemy unit in a
                 // corridor severs supply through it, and so do ours: standing in their network
@@ -355,6 +357,7 @@ namespace HexTactica.AI {
                 v += AIScore.Hold(map.Conflict(t)) * worth * 0.15f;
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.2f;
                 v += StrategicBonus(unit, t, posture) * 0.25f;
+                v += map.GuardValue(unit, t);
                 // Support: guns belong within range of the line they cover. Without this the
                 // artillery had no reason to leave home, and sat at the HQ all game while the
                 // army advanced without it.

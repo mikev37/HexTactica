@@ -126,6 +126,12 @@ namespace HexTactica.AI {
                 value += threat * removed * profile.hqDefenseWeight;
             }
 
+            // Exploit a breakthrough: a supply hub hit from ground none of their fighting units can
+            // reach tonight. We are past their line, and the hub is what keeps it standing.
+            if (defender.GetComponent<SupplyPoint>() != null && !IsHQ(defender) && map.CombatFirersAt(from, defender) == 0) {
+                value += map.SupplyImportance(defender) * profile.breakthroughWeight;
+            }
+
             // Delivered next turn rather than this one.
             if (!imminent) value *= profile.imminentDiscount;
 
@@ -211,6 +217,7 @@ namespace HexTactica.AI {
             cost += AIScore.OutOfSupplyCost(attacker, at, map);
             cost += map.CohesionCost(attacker, at);
             cost -= map.FirstStrikeCredit(attacker, at);
+            cost -= map.SpaceDenial(attacker, at);
             return cost;
         }
 

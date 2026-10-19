@@ -73,6 +73,14 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float hqDefenseWeight = 0.5f;
 
+        [Tooltip("Extra worth of attacking an enemy supply hub from ground none of their fighting units can reach (a breakthrough), as a multiple of the hub's supply importance.")]
+        [Range(0f, 4f)]
+        public float breakthroughWeight = 1f;
+
+        [Tooltip("Worth of standing within striking distance of our HQ's surroundings while it is in danger, as a fraction of the HQ-defence stake times this unit's share of the force needed.")]
+        [Range(0f, 2f)]
+        public float guardWeight = 0f;
+
         [Tooltip("Penalty per point of damage wasted beyond what was needed to kill.")]
         public float overkillPenalty = 0.35f;
 
@@ -91,7 +99,7 @@ namespace HexTactica.AI {
         [Range(0f, 2f)]
         public float counterWeight = 0.5f;
 
-        [Tooltip("Worth of drawing enemy fire away from more valuable friends (screening), as a fraction of the expected loss it spares them.")]
+        [Tooltip("Worth of the space a unit creates for more valuable friends still to act, by constraining where the enemy can move and strike (AISpace), as a fraction of the threat it spares their best positions.")]
         [Range(0f, 2f)]
         public float screenWeight = 1f;
 
@@ -192,9 +200,13 @@ namespace HexTactica.AI {
         [Tooltip("Force ratio (assigned combat power / what can defend it) an attack objective needs before units are committed to it. Below this the objective is not attempted, so no unit goes in alone.")]
         public float objectiveRatio = 2.5f;
 
-        [Tooltip("Pull toward a unit's assigned objective, as a fraction of the unit's own worth at distance zero, falling off as 1/(1+d).")]
+        [Tooltip("Pull toward a unit's strategic objective, as a fraction of the unit's own worth at distance zero, falling off as 1/(1+d). A tie-breaker.")]
         [Range(0f, 3f)]
-        public float assignmentPull = 1f;
+        public float assignmentPull = 0.5f;
+
+        [Tooltip("A unit that could exchange fire with an enemy within this many turns ignores its strategic objective.")]
+        [Range(0, 6)]
+        public int objectiveContactTurns = 3;
 
         [Tooltip("Turns of travel beyond which a unit is not considered for an objective.")]
         [Range(1, 10)]
