@@ -2,44 +2,48 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SupplyPoint : MonoBehaviour
-{
+/// <summary>
+/// Marks a unit as a supply hub. The propagation itself lives in SupplyNetwork,
+/// which solves the whole player's field at once — a hub cannot know on its own
+/// whether it is connected to HQ, and connection is what decides whether it pays
+/// health to keep supplying.
+/// </summary>
+public class SupplyPoint : MonoBehaviour {
+
     public Unit myUnit;
-    public int range;
-    public bool producer; //whether this makes new supplies or just redistributes them
-    public bool supplying; //whether this unit is supplying this turn
-    public SupplyPoint parent; //
-    public LineRenderer line; // for showing where the supplies come from
 
-    public List<SupplyPoint> children;
-    // Start is called before the first frame update
-    void Start()
-    {
-        myUnit = GetComponent<Unit>();
+    [Tooltip("How far supply reaches from this hub, in movement points")]
+    public int range = 4;
+
+    [Tooltip("Whether this hub originates supply rather than only relaying it")]
+    public bool producer;
+
+    [Tooltip("Set each turn by SupplyNetwork: is there an unbroken chain back to HQ?")]
+    public bool connected;
+
+    [Tooltip("Set each turn by AISupplyPlanner: how many friendly units this hub keeps alive")]
+    public int dependents;
+
+    public LineRenderer line;
+
+    void Awake() {
+        if (myUnit == null) myUnit = GetComponent<Unit>();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+    void Start() {
+        if (myUnit == null) myUnit = GetComponent<Unit>();
     }
 
+    /// <summary>
+    /// Turns of autonomy left before the hub burns itself out, if it stays cut off.
+    /// This is the number the AI watches: a disconnected hub is a countdown.
+    /// </summary>
+    public int TurnsOfAutonomy {
+        get { return myUnit != null ? Mathf.Max(0, myUnit.Strength) : 0; }
+    }
+
+    /// <summary>Kept so older scenes and scripts still compile; the solver drives supply now.</summary>
     internal void SupplyZone(SupplyPoint start) {
-        parent = start;
-        children.Clear();
-        supplying = true;
-        List<HexTile> supplied = myUnit.tile.CheckMovementRange(myUnit,range);
-        supplied.ForEach(x => {
-            int supl = Mathf.Max(x.supply[myUnit.owner], range - (int)x.G);
-            x.supply[myUnit.owner] = supl;
-            x.textField.text = "" + (range);
-            
-            if(x.isSupplied(myUnit.owner) && x.occupier != null && x.occupier.owner == myUnit.owner && x.occupier.GetComponent<SupplyPoint>()) {
-                SupplyPoint sup = x.occupier.GetComponent<SupplyPoint>();
-                if (!sup.supplying)
-                    children.Add(sup);
-            }
-        });
-        children.ForEach(sup => { sup.SupplyZone(this); });
+        if (myUnit != null && myUnit.owner != null) SupplyNetwork.Solve(myUnit.owner, false);
     }
 }
