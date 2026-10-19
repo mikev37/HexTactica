@@ -187,6 +187,8 @@ public static class Matchups {
                 if (Environment.GetEnvironmentVariable("FRONTS") != null && fr != null)
                     foreach (var f in fr) Console.WriteLine("    front " + f + " assault=" + f.assault + " objective=" + D(f.objectiveTile)
                         + " staging=" + f.staging + " ready=" + f.readiness.ToString("0.00") + " own=" + f.ownStrength.ToString("0") + " enemy=" + f.enemyStrength.ToString("0") + " units=" + f.assigned.Count);
+                if (Environment.GetEnvironmentVariable("FRONTS") != null && full.CurrentObjectives != null)
+                    foreach (var o in full.CurrentObjectives) if (o.committed || Environment.GetEnvironmentVariable("ALLOBJ") != null) Console.WriteLine("    objective " + o);
             } else if (baseline != null) baseline.PlayWholeTurn(); else gc.EndTurn();
             if (active == b) {
                 foreach (Player p in new[] { a, b }) {

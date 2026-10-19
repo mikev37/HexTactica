@@ -44,6 +44,8 @@ public class AIPlayer : MonoBehaviour {
     /// <summary>Last posture of each objective's front. Persists across turns for hysteresis.</summary>
     readonly Dictionary<HexTile, Posture> postureMemory = new Dictionary<HexTile, Posture>();
     readonly HashSet<HexTile> assaultMemory = new HashSet<HexTile>();
+    List<Objective> objectives = new List<Objective>();
+    Dictionary<Unit, Objective> assignments = new Dictionary<Unit, Objective>();
     bool turnPrepared;
 
     public HexTactica.AI.AIProfile Profile {
@@ -132,8 +134,16 @@ public class AIPlayer : MonoBehaviour {
         }
         for (int i = 0; i < stale.Count; i++) intents.Remove(stale[i]);
         fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
-        map.SetCommitted(AIStrategic.AssaultUnits(fronts));
-        map.SetAssaultObjectives(AIStrategic.AssaultObjectives(fronts));
+        objectives = AIObjectives.Build(map, Profile);
+        assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
+        List<Unit> committed = AIStrategic.AssaultUnits(fronts);
+        Dictionary<Unit, HexTile> goingFor = AIStrategic.AssaultObjectives(fronts);
+        foreach (KeyValuePair<Unit, Objective> kv in assignments) {
+            if (!committed.Contains(kv.Key)) committed.Add(kv.Key);
+            goingFor[kv.Key] = kv.Value.tile;
+        }
+        map.SetCommitted(committed);
+        map.SetAssaultObjectives(goingFor);
         map.intents = intents;
         transportAssignments.Clear();
         reservedTransports.Clear();
@@ -158,9 +168,14 @@ public class AIPlayer : MonoBehaviour {
     public AIAction DecideFor(Unit unit) {
         if (unit == null) return AIAction.Wait(null, "null");
         AITactical.Intents = intents;
+        AITactical.Assignments = assignments;
 
         Front front = AIStrategic.FrontFor(unit, fronts);
         Posture posture = front != null ? front.posture : Posture.Defensive;
+        // A unit with an objective is going to take it: aggressive, whatever its front says,
+        // and not held back by the front's staging (the objective was only assigned because
+        // enough force is assigned with it).
+        if (assignments.ContainsKey(unit)) posture = Posture.Aggressive;
 
         // Mission objectives narrow the possibility space rather than commanding units,
         // which is what lets them compose with tactics instead of overriding them.
@@ -236,4 +251,5 @@ public class AIPlayer : MonoBehaviour {
     /// <summary>Exposed for tests and the harness: the AI's current read of the board.</summary>
     public AIMap CurrentMap { get { return map; } }
     public List<Front> CurrentFronts { get { return fronts; } }
+    public List<Objective> CurrentObjectives { get { return objectives; } }
 }

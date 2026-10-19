@@ -58,27 +58,89 @@ Three opponents, all deterministic:
   `AttackMove`, including the three-move approach fallback, the GoTo-to-(0,0,0) objective
   fallback, and `Retreat` being a no-op. This is the opponent that attacks.
 - **Greedy**: a reactive turtle. Each unit strikes whatever it can reach this turn and
-  otherwise does nothing. It never advances, but it does strike anything that comes within
-  reach, so it is not free to approach.
+  otherwise does nothing. It never advances, but it strikes first at anything that comes
+  within reach, so it is not free to approach.
 - **Full**: this AI, against itself, for seat bias.
 
-Every cell is 20 games: widths 7/8/9/10/11 × two mirror-symmetric forest layouts × both
-seats. "+20%" gives one side an extra Tank and Grunt. 60-round limit; a draw is a timeout.
+Every cell is 40 games: widths 7/8/9/10/11 × four mirror-symmetric forest layouts × both
+seats. "+20%" gives one side an extra Tank and Grunt. A draw is the harness's 60-round
+limit: the game itself only ends when an HQ is destroyed, and has no rule for mutual
+annihilation (an HQ cannot attack, so two HQs alone never finish).
+
+Current defaults (`aggression` 0):
 
 | Full AI vs | Equal | +20% for Full | +20% for opponent |
 |---|---|---|---|
-| Legacy | **19W 1L** 0D | **20W** 0L 0D | **18W 2L** 0D |
-| Greedy | 12W **0L** 8D | 10W **0L** 10D | 3W **0L** 17D |
+| Legacy | **39W 0L** 1D | **40W** 0L 0D | 29W **9L** 2D |
+| Greedy | 22W **0L** 18D | 30W **0L** 10D | 16W **0L** 24D |
 
-For comparison, Legacy vs Greedy: 0W 1L 19D equal. Mirror matches: Full vs Full 7–3 for
-seat A (0 draws); Legacy vs Legacy 3–5–2; Greedy vs Greedy all draws.
+Before this round (same 40-game cells): Legacy 36W 2L / 40W / 36W 4L; Greedy 21W 19D /
+24W 16D / 5W 35D. Net: +14 wins over 240 games, mostly against the turtle when outnumbered
+(5 → 16), but **5 more losses** to an outnumbering Legacy (4 → 9).
 
-Reproduce: `PROBE=matchups WIDE=1 bash Tests/run.sh Assets` (≈4 min). Quick iteration on
-one opponent: `PROBE=cells THEM=Greedy WIDE=1 VERBOSE=1`. Any profile field can be
-overridden: `SET=cohesionWeight=0.4,assaultReadiness=0.7`. One game, turn by turn:
-`PROBE=trace GAME=9,Full,Greedy,0,40 FRONTS=1 [VARIANT=1] [EXPLAIN=Tank SIDE=A FROM=10]`.
+Mirror matches (20 games): Full vs Full 9–7–4 for seat A (was 7–3 on 10 games); Legacy vs
+Legacy 5–10–5; Greedy vs Greedy all draws. Legacy vs Greedy equal: 0W 2L 38D.
 
-### What changed to get here
+The 18 equal draws against the turtle: 12 no contact at all, 4 ahead with an army left but
+the HQ never fell, 2 with our army spent. Before, more than half the draws were burned-out
+attacks; the cautious default traded those for standoffs.
+
+### Aggression
+
+`AIProfile.aggression` runs from 0 (fight only on clearly favourable terms) to 1 (trade
+everything). It scales risk appetite, attack readiness, the force ratio to attack or take
+an objective, trust in the counterattack, break-off, and rotation. Measured over 240 games
+per setting (Greedy + Legacy cells):
+
+| aggression | wins | losses | draws |
+|---|---|---|---|
+| 0 | **177** | 5 | 58 |
+| 0.25 | 171 | 4 | 65 |
+| 0.5 (weights as written) | 172 | 7 | 61 |
+| 0.75 | 145 | 11 | 84 |
+| 1 | 121 | 16 | 103 |
+
+Furballs do not win in this ruleset: the defender strikes first, damage scales with
+strength, and a mutual wipe-out is a draw. Hence the cautious default.
+
+Reproduce: `PROBE=matchups WIDE=1 bash Tests/run.sh Assets` (≈15 min). One opponent:
+`PROBE=cells THEM=Greedy WIDE=1 VERBOSE=1`. Override any profile field, including bools:
+`SET=aggression=0.5,useObjectives=false`. One game turn by turn, with fronts and committed
+objectives: `PROBE=trace GAME=9,Full,Greedy,0,40 FRONTS=1 [ALLOBJ=1] [VARIANT=1]
+[EXPLAIN=Tank SIDE=A FROM=10]`.
+
+### The tactics (this round)
+
+- **Objective assigner** (`Assets/AI/AIObjectives.cs`). Each turn it lists points worth
+  securing — our HQ under threat, an enemy HQ, an enemy supply hub, each isolated enemy
+  group — prices them in gold, and counts what could defend each next turn. An objective
+  is attempted only if the assigned force beats its defence by `objectiveRatio` (and, for
+  an HQ or hub, can destroy it in one volley); otherwise nobody is sent. Closest units
+  first, stopping when the requirement is met, so spare units stay free. Assigned units get
+  a pull to the objective, an aggressive posture, shared-fire pricing and cohesion with the
+  rest of their group. Units are never sent on a trip they would starve on. Unassigned
+  units follow their front.
+- **Defeat in detail** is the Strike objective: a cluster the nearest units can outmatch
+  2.5 : 1 including everything that could support it.
+- **Exploit breakthrough** is the RaidSupply objective, plus hub value on aggressive targets.
+- **Concentration** (`AIMap.FirstStrikeCredit`). An enemy that comes forward to strike a
+  unit ends where our others strike it first next turn. A tile now earns the share of each
+  enemy's attack it would draw times what our surviving units could do to that enemy —
+  minus the exposure of any counterattacker that has to step up into their reach to do it.
+  (Without that netting, the counterpunch walked the grunts into the same fire a turn later.)
+- **Screens** (same function). A unit standing on one of the few tiles an enemy could strike
+  a more valuable friend from takes that tile away: worth the friend's expected loss divided
+  by how many firing tiles the enemy had. Slow units act first, so grunts set the screen
+  before armour moves. (Pricing a screen as "another target that splits fire" made things
+  worse: opponents shoot the tank if they can reach it.)
+- **Rotation**. A line unit at or below `rotateStrength`, near supply, pulls back to heal when
+  a healthier unit is close enough to take its place. The single largest gain this round
+  (158 → 172 wins at aggression 0.5).
+- **Staging**: still the front's readiness gate (gather on the supply edge, go together).
+  The "make them come to you" variant, a bonus for tiles nothing can strike tonight that
+  strike first tomorrow (`standoffWeight`), measured worse and is off.
+
+### Earlier changes
 
 Each of these was found in a trace of a lost or drawn game, not by reading the code.
 
@@ -108,22 +170,24 @@ Each of these was found in a trace of a lost or drawn game, not by reading the c
 
 ### What is still not good enough
 
-- **Against the turtle, 8 of 20 equal games are draws, and an extra Tank and Grunt does not
-  improve that.** The reactive defender gets the first strike on anything entering its reach,
-  heals in its own supply, and on the wider maps sits 6+ hexes beyond the end of ours. Our
-  wins come from its units lunging out and being counter-punched; when they don't, nothing
-  breaks the position. Draws are no-contact standoffs or an assault that trades evenly and
-  runs out of army.
-- **Outnumbered by the turtle, it mostly declines to attack** (17 draws, 0 losses). That is
-  defensible but not clever: it does not try to bait.
-- **Mirror seat bias**: Full vs Full is 7–3 for seat A over 10 games — moving first is worth
-  something, and there may be an asymmetry left to find.
-- **Tried and rejected** (measured on the 20-game set, no improvement or worse): sharper
-  focus-fire prediction (`focusExponent` 2 and 3), relaxing the out-of-supply posture ratio
-  to 0.85, and gating staging on enemy position instead of the front centre. The knobs are
-  left in the profile at their neutral values.
-- **Results are deterministic but chaotic.** On the old 6-game set, one change looked like
-  5 wins of 6; on 20 games it was 12 of 20. Don't trust a tuning result on fewer games.
+- **A third of equal games against the turtle are no-contact standoffs** (12 of 40), all on
+  the wide maps. On those the turtle sits 6+ hexes past the end of our supply; nothing we
+  can do there beats the first strike it gets on whatever approaches. The heuristics here
+  all judge one unit, one tile at a time. Breaking that position probably needs a short
+  look-ahead — simulate their reply to a whole turn's plan, then ours — rather than more
+  per-tile terms.
+- **Losses to an outnumbering Legacy rose from 4 to 9 of 40.**
+- **Tried and rejected on the 240-game set**: sharper focus-fire prediction, proportional
+  screening, floor-at-army-ratio fronts (`useArmyRatio`), standoff bonus, relaxed
+  out-of-supply posture, staging gated on enemy position. Knobs left in, off or neutral.
+- **Two test bars changed** (both flagged in the code): "never ends behind on material" in
+  the 6-game regression became "at most one of six" — on 40 games it is ~1 in 20, so the
+  old bar depended on which six; and the corridor fixture's "less time out of supply than
+  greedy" became "within 25%" — greedy never leaves home, and the AI now fights into the
+  enemy base in the two drawn trials instead of losing its army in the middle. Attrition
+  losses must still be no higher than greedy's (2 vs 4).
+- **Results are deterministic but chaotic.** A change worth 5 of 6 games on 6 was 12 of 20
+  on 20; I now judge only on 240.
 
 ---
 

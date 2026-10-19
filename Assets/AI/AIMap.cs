@@ -35,6 +35,8 @@ namespace HexTactica.AI {
         class EnemyFire {
             public Unit unit;
             public HashSet<HexTile> tiles;
+            /// <summary>Where it could stand to fire from tonight (its own tile included).</summary>
+            public List<HexTile> positions;
             public int exposedFriendlies;
             /// <summary>Sum of how attractive each currently exposed friendly is to this enemy.</summary>
             public float exposedAttraction;
@@ -237,7 +239,7 @@ namespace HexTactica.AI {
                     }
                 }
 
-                EnemyFire ef = new EnemyFire { unit = e, tiles = new HashSet<HexTile>() };
+                EnemyFire ef = new EnemyFire { unit = e, tiles = new HashSet<HexTile>(), positions = firingPositions };
                 for (int j = 0; j < firingPositions.Count; j++) {
                     List<HexTile> hits = AIPath.TilesInRange(firingPositions[j], e.MinRange, e.AttackRange);
                     for (int k = 0; k < hits.Count; k++) ef.tiles.Add(hits[k]);
@@ -295,15 +297,119 @@ namespace HexTactica.AI {
                 if (ef.unit == exclude) continue;
                 int damage = Mathf.Min(u.Strength, Unit.calculateDamage(ef.unit, u, at, 0));
                 if (damage <= 0) continue;
-                float mine = Attraction(ef.unit, u, at);
-                float others = ef.exposedAttraction + ef.committedAttraction;
-                float counted;
-                if (ef.attractionOf.TryGetValue(u, out counted)) others -= counted;   // replace, not add
-                if (ef.committedOf.TryGetValue(u, out counted)) others -= counted;
-                float share = mine / Mathf.Max(0.0001f, mine + Mathf.Max(0f, others));
+                float mine, others;
+                float share = ShareOf(ef, u, at, out mine, out others);   // own prior share replaced, not added
                 loss += damage * share;
             }
             return Mathf.Min(u.Strength, loss);
+        }
+
+        /// <summary>Share of this enemy's single attack that <paramref name="u"/> would draw standing on <paramref name="at"/>.</summary>
+        float ShareOf(EnemyFire ef, Unit u, HexTile at, out float mine, out float others) {
+            mine = Attraction(ef.unit, u, at);
+            others = ef.exposedAttraction + ef.committedAttraction;
+            float counted;
+            if (ef.attractionOf.TryGetValue(u, out counted)) others -= counted;
+            if (ef.committedOf.TryGetValue(u, out counted)) others -= counted;
+            others = Mathf.Max(0f, others);
+            return mine / Mathf.Max(0.0001f, mine + others);
+        }
+
+        /// <summary>
+        /// Gold this unit earns for the side by ending its turn on <paramref name="at"/>, beyond
+        /// its own risk: the counterattack it invites and the fire it draws off its friends.
+        ///
+        /// Attacking first is the advantage. Whoever steps into the other's reach without
+        /// striking hands over the first blow — which is why a defender that only reacts held
+        /// out against everything, and why the AI, pricing only its own losses, would not step
+        /// forward at all against an equal army. Two things make stepping forward right anyway,
+        /// and neither was priced:
+        ///
+        ///   - Concentration. An enemy that comes forward to hit this unit ends its turn within
+        ///     reach of our others, and they strike first next turn. Each enemy that could fire
+        ///     here contributes the share of its attack this unit would draw, times what our
+        ///     units still standing tomorrow could do to it where it would have to stand.
+        ///     When we present more targets than they can attack, and each attack exposes the
+        ///     attacker to several of ours, the forward step is profitable.
+        ///   - Screening. Fire this unit draws is fire not spent on its friends. A grunt in
+        ///     front of a tank spares the tank exactly the share it takes, priced at the tank's
+        ///     worth. Cheap infantry ahead of expensive armour is the result, not a rule.
+        ///
+        /// Risk (AIScore.Risk) is still charged separately; this is only the other side of it.
+        /// </summary>
+        public float FirstStrikeCredit(Unit u, HexTile at) {
+            if (u == null || at == null) return 0f;
+            List<EnemyFire> list;
+            if (!firersAt.TryGetValue(at, out list)) return 0f;
+            float counter = 0f, screen = 0f;
+            for (int i = 0; i < list.Count; i++) {
+                EnemyFire ef = list[i];
+                Unit e = ef.unit;
+                if (e == null || e.tile == null || e.Strength <= 0) continue;
+                int hit = Mathf.Min(u.Strength, Unit.calculateDamage(e, u, at, 0));
+                if (hit <= 0) continue;
+                float mine, others;
+                float share = ShareOf(ef, u, at, out mine, out others);
+
+                // Concentration: who hits it back, first, if it comes for us. A counterattacker
+                // that has to step up beside `at` to do it is itself then standing where the rest
+                // of their army can reach, so its expected loss there is netted off: without that,
+                // a lone tank parked in front of their line looked like bait for a counterpunch,
+                // and the counterpunch walked the grunts into the same fire one turn later.
+                if (profile.counterWeight > 0f) {
+                    float damage = 0f, exposure = 0f;
+                    for (int j = 0; j < ownUnits.Count; j++) {
+                        Unit v = ownUnits[j];
+                        if (v == null || v.tile == null || v.trasnporter != null || v.Firepower <= 0) continue;
+                        if (v.GetComponent<SupplyPoint>() != null) continue;
+                        HexTile from = v == u ? at : v.tile;
+                        int d = e.moveAndAttack ? from.Distance(at) - e.AttackRange : from.Distance(e.tile);
+                        int reach = v.moveAndAttack ? v.moveRange + v.AttackRange : v.AttackRange;
+                        if (d > reach) continue;
+                        float alive = 1f - ExpectedLoss(v, from) / Mathf.Max(1, v.Strength);
+                        if (v == u) alive = Mathf.Min(alive, 1f - (float)hit / Mathf.Max(1, u.Strength));
+                        if (alive <= 0f) continue;
+                        float dealt = Unit.calculateDamage(v, e, e.tile, 0) * alive;
+                        // Ranged units fire from where they stand; anyone who closes in stands near `at`.
+                        float cost = (v.moveAndAttack && v != u && d > 0) ? ExpectedLoss(v, at, e) * AIScore.Worth(v) * profile.riskWeight : 0f;
+                        if (dealt * AIScore.Worth(e) <= cost) continue;
+                        damage += dealt;
+                        exposure += cost;
+                    }
+                    float landed = Mathf.Min(e.Strength, damage);
+                    float value = landed * AIScore.Worth(e);
+                    if (landed >= e.Strength) value *= profile.killBonus;
+                    counter += share * Mathf.Max(0f, value - exposure);
+                }
+
+                // Screening: standing on one of the few tiles this enemy could strike a more valuable
+                // friend from takes that tile away from it. Fire is not split in proportion — an
+                // opponent shoots the tank if it can reach it — so a screen works by occupying
+                // ground, not by being another target. Each blocked firing position is worth the
+                // friend's expected loss to this enemy divided by how many positions it had: the
+                // last open tile is worth all of it, one of six is worth a sixth. Slow units act
+                // first, so the grunts set the screen before the armour decides where to stand.
+                if (profile.screenWeight > 0f && e.moveAndAttack && ef.positions != null && ef.positions.Contains(at) && at != e.tile) {
+                    float myWorth = AIScore.Worth(u);
+                    foreach (KeyValuePair<Unit, float> kv in ef.attractionOf) {
+                        Unit v = kv.Key;
+                        if (v == u || v == null || v.tile == null || v.Strength <= 0) continue;
+                        if (AIScore.Worth(v) <= myWorth) continue;
+                        int dAt = at.Distance(v.tile);
+                        if (dAt > e.AttackRange || dAt <= e.MinRange) continue;
+                        int open = 0;
+                        for (int k = 0; k < ef.positions.Count; k++) {
+                            HexTile pos = ef.positions[k];
+                            int dp = pos.Distance(v.tile);
+                            if (dp <= e.AttackRange && dp > e.MinRange) open++;
+                        }
+                        if (open <= 0) continue;
+                        float expected = ExpectedLoss(v, v.tile) * AIScore.Worth(v);
+                        screen += expected / open;
+                    }
+                }
+            }
+            return counter * profile.counterWeight * profile.Aggro(0.5f, 1.5f) + screen * profile.screenWeight;
         }
 
         /// <summary>

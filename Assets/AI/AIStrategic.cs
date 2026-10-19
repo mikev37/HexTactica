@@ -40,8 +40,20 @@ namespace HexTactica.AI {
         public float objectiveValue;
         public readonly List<Unit> assigned = new List<Unit>();
 
+        /// <summary>Whole-army combat power ratio, own over enemy (set by BuildFronts).</summary>
+        public float armyRatio = 1f;
+
+        /// <summary>
+        /// Local balance of force, but never worse than the balance of the whole armies. The local
+        /// count is lopsided whenever the front's centre is nearer one side's lines: equal armies
+        /// read 0.79-0.89 on every wide map with this AI in the first seat, every front was
+        /// defensive, and the armies never met.
+        /// </summary>
         public float ForceRatio {
-            get { return enemyStrength <= 0.01f ? 99f : ownStrength / enemyStrength; }
+            get {
+                float local = enemyStrength <= 0.01f ? 99f : ownStrength / enemyStrength;
+                return Mathf.Max(local, armyRatio);
+            }
         }
 
         public override string ToString() {
@@ -133,7 +145,11 @@ namespace HexTactica.AI {
                 if (!covered) fronts.Add(new Front { center = home, priority = 1f });
             }
 
-            foreach (Front f in fronts) Appraise(f, map, profile);
+            float ownArmy = 0f, enemyArmy = 0f;
+            for (int i = 0; i < map.ownUnits.Count; i++) ownArmy += CombatPower(map.ownUnits[i]);
+            for (int i = 0; i < map.enemyUnits.Count; i++) enemyArmy += CombatPower(map.enemyUnits[i]);
+            float army = enemyArmy <= 0.01f ? 99f : ownArmy / enemyArmy;
+            foreach (Front f in fronts) { f.armyRatio = profile.useArmyRatio ? army : 0f; Appraise(f, map, profile); }
             AssignUnits(fronts, map);
             foreach (Front f in fronts) DecidePosture(f, map, profile, memory);
             DecideStaging(fronts, map, profile, assaulting);
@@ -276,6 +292,8 @@ namespace HexTactica.AI {
 
         static void DecidePosture(Front f, AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory) {
             float ratio = f.ForceRatio;
+            // Temperament: a cautious AI needs a bigger edge to call a front aggressive.
+            float need = profile.Aggro(1.3f, 0.75f);
 
             // Hysteresis: between the two thresholds a front keeps last turn's posture for the
             // same objective. Rebuilding fronts from scratch every turn with a single cut-off
@@ -285,12 +303,12 @@ namespace HexTactica.AI {
             bool remembered = memory != null && f.objectiveTile != null && memory.TryGetValue(f.objectiveTile, out previous);
             if (!remembered) previous = Posture.Defensive;
 
-            if (ratio >= profile.aggressionThreshold) f.posture = Posture.Aggressive;
-            else if (ratio <= profile.defensiveThreshold) f.posture = Posture.Defensive;
+            if (ratio >= profile.aggressionThreshold * need) f.posture = Posture.Aggressive;
+            else if (ratio <= profile.defensiveThreshold * need) f.posture = Posture.Defensive;
             else f.posture = previous;
 
             // An enemy HQ within reach overrides caution: the game ends when it falls.
-            if (f.objectiveIsHQ && ratio > 0.8f) {
+            if (f.objectiveIsHQ && ratio > 0.8f * need) {
                 f.posture = Posture.Aggressive;
             }
 
@@ -298,12 +316,12 @@ namespace HexTactica.AI {
             // a 2:1 ratio. The contact point with an opponent who holds near home is always
             // beyond our supply, so it made every such front defensive; units already price the
             // supply they would give up.)
-            if (f.center != null && map.SupplyDepth(f.center) <= 0 && ratio < profile.outOfSupplyRatio) {
+            if (f.center != null && map.SupplyDepth(f.center) <= 0 && ratio < profile.outOfSupplyRatio * need) {
                 f.posture = Posture.Defensive;
             }
 
             // Strong enough to go in together.
-            f.assault = f.posture == Posture.Aggressive && ratio >= profile.assaultRatio;
+            f.assault = f.posture == Posture.Aggressive && ratio >= profile.assaultRatio * need;
 
             // An HQ we can kill in one volley, with nothing able to stop us, is the game. Its
             // pull is a fraction of the board spread over the distance, and the supply cost of
@@ -325,7 +343,7 @@ namespace HexTactica.AI {
                 }
                 float own = 0f;
                 for (int i = 0; i < f.assigned.Count; i++) own += CombatPower(f.assigned[i]);
-                f.siege = volley >= hq.Strength + 1 && own >= defence * profile.aggressionThreshold;
+                f.siege = volley >= hq.Strength + 1 && own >= defence * profile.aggressionThreshold * need;
             }
         }
 
@@ -384,7 +402,8 @@ namespace HexTactica.AI {
 
                 bool wasAssaulting = assaulting != null && assaulting.Contains(objective);
                 float readiness = wasAssaulting ? committedPower / full : gathered / full;
-                bool go = wasAssaulting ? readiness >= profile.assaultBreakoff : readiness >= profile.assaultReadiness;
+                bool go = wasAssaulting ? readiness >= profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
+                                         : readiness >= Mathf.Min(0.95f, profile.assaultReadiness * profile.Aggro(1.25f, 0.7f));
                 foreach (Front f in group) {
                     f.stagingTile = staging;
                     f.readiness = readiness;

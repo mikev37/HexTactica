@@ -45,6 +45,7 @@ namespace HexTactica.AI {
             context.posture = posture;
 
             AIRole role = AIRoles.Classify(unit, profile);
+            if (role == AIRole.Line && ShouldRotate(unit, map, profile)) role = AIRole.Wounded;
 
             switch (role) {
                 case AIRole.Artillery: return DecideArtillery(unit, map, profile, posture);
@@ -53,6 +54,28 @@ namespace HexTactica.AI {
                 case AIRole.AntiAir:   return DecideAntiAir(unit, map, profile, posture);
                 default:               return DecideLine(unit, map, profile, posture);
             }
+        }
+
+        /// <summary>
+        /// Rotation: a damaged line unit near supply pulls back to heal when a healthier unit is
+        /// close enough to take its place, instead of fighting on at half strength until it is
+        /// wounded or dead. Damage scales with strength, so a four-strength grunt hits for two
+        /// where a fresh one hits for three, and draws the same fire. A kill in hand is still
+        /// taken first (DecideWithdraw does that). The threshold falls as aggression rises.
+        /// </summary>
+        static bool ShouldRotate(Unit unit, AIMap map, AIProfile profile) {
+            int threshold = Mathf.RoundToInt(profile.rotateStrength * profile.Aggro(1.25f, 0.5f));
+            if (unit.Strength > threshold || unit.Strength <= profile.withdrawStrength) return false;
+            if (map.TurnsToSupply(unit, unit.tile) > 1) return false;
+            int healthy = Mathf.CeilToInt(6 * profile.readyStrength);
+            for (int i = 0; i < map.ownUnits.Count; i++) {
+                Unit v = map.ownUnits[i];
+                if (v == null || v == unit || v.tile == null || v.trasnporter != null) continue;
+                if (v.Firepower <= 0 || v.GetComponent<SupplyPoint>() != null || v.Strength < healthy) continue;
+                if (v.AttackRange >= 2 && !v.moveAndAttack) continue;      // guns do not hold a line
+                if (v.tile.Distance(unit.tile) <= v.moveRange + 1) return true;
+            }
+            return false;
         }
 
         /// <summary>Per-decision context, so the scorers do not need six extra parameters.</summary>
@@ -79,6 +102,9 @@ namespace HexTactica.AI {
         /// Where each unit was heading last turn, owned by the caller (AIPlayer) so it
         /// persists across turns. Optional: without it there is simply no commitment.
         /// </summary>
+        /// <summary>Each unit's objective this turn (AIObjectives), owned by the caller. Optional.</summary>
+        public static Dictionary<Unit, Objective> Assignments;
+
         public static Dictionary<Unit, HexTile> Intents {
             get { return context.intents; }
             set { context.intents = value; }
@@ -139,6 +165,9 @@ namespace HexTactica.AI {
                 float appetite = riskFactor * PostureRisk(profile);
                 score -= AIScore.Risk(unit, stop, map, profile) * appetite;
                 score -= map.CohesionCost(unit, stop);
+                // The other side of tonight's risk: the counterattack it invites and the fire it
+                // draws off friends (AIMap.FirstStrikeCredit).
+                score += map.FirstStrikeCredit(unit, stop);
 
                 // And the destination's exposure, since standing there is the point of going.
                 // Charging only tonight's stop made deep plans look free until the turn they
@@ -230,6 +259,13 @@ namespace HexTactica.AI {
                 bonus += context.objective.TileBonus(unit, tile, context.map) * worth;
             }
 
+            // An assigned objective replaces the front's pull: this unit has a job.
+            Objective job;
+            if (Assignments != null && Assignments.TryGetValue(unit, out job) && job.tile != null) {
+                bonus += worth * unit.Strength * context.profile.assignmentPull / (1 + tile.Distance(job.tile));
+                return bonus;
+            }
+
             Front front = context.front;
             if (front != null && front.objectiveTile != null) {
                 int d = tile.Distance(front.objectiveTile);
@@ -240,7 +276,16 @@ namespace HexTactica.AI {
                 // unit's worth made capture nearly worthless to cheap infantry, which are
                 // the only units that can capture.
                 float pull = front.objectiveValue * context.profile.objectivePull;
-                if (building && !canTake) pull *= 0.35f;      // escort rather than seize
+                if (building && !canTake) {
+                    // Escort rather than seize — if anyone is left who can seize it. A tank with no
+                    // infantry left parked on the enemy HQ it could not take until it starved.
+                    bool anyCapturer = false;
+                    for (int i = 0; i < context.map.ownUnits.Count && !anyCapturer; i++) {
+                        Unit v = context.map.ownUnits[i];
+                        if (v != null && v.tile != null && Building.CanCapture(v)) anyCapturer = true;
+                    }
+                    pull *= anyCapturer ? 0.35f : 0f;
+                }
                 if (posture == Posture.Defensive) pull *= 0.45f;
                 if (front.siege && posture == Posture.Aggressive) pull *= context.profile.siegePull;
                 bonus += pull / (1 + d);
@@ -268,6 +313,10 @@ namespace HexTactica.AI {
                 float v = 0f;
                 AttackAppraisal future = AITargeting.BestNextTurn(unit, t, map, profile, posture);
                 float fut = future.valid ? future.value : 0f;
+                // Standoff: nothing can strike this tile tonight, yet from it we strike first next
+                // turn. Only possible where our reach is longer than theirs; there the enemy must
+                // either give ground or step into our reach and take the first blow.
+                if (fut > 0f && map.FirersAt(t) == 0) fut *= 1f + profile.standoffWeight;
                 float hold = AIScore.Hold(map.Conflict(t)) * worth * profile.holdWeight;
                 float relief = AIScore.Relief(map.Distress(t)) * worth * 0.5f;
                 float strat = StrategicBonus(unit, t, posture);

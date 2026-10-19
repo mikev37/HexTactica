@@ -210,6 +210,7 @@ namespace HexTactica.AI {
             cost -= AIScore.CoverPreference(attacker, at, map, profile);
             cost += AIScore.OutOfSupplyCost(attacker, at, map);
             cost += map.CohesionCost(attacker, at);
+            cost -= map.FirstStrikeCredit(attacker, at);
             return cost;
         }
 
