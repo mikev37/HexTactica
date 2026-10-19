@@ -138,6 +138,7 @@ namespace HexTactica.AI {
                 // other's reach as pure loss, and every game on the shipped roster was a standoff.
                 float appetite = riskFactor * PostureRisk(profile);
                 score -= AIScore.Risk(unit, stop, map, profile) * appetite;
+                score -= map.CohesionCost(unit, stop);
 
                 // And the destination's exposure, since standing there is the point of going.
                 // Charging only tonight's stop made deep plans look free until the turn they
@@ -241,9 +242,14 @@ namespace HexTactica.AI {
                 float pull = front.objectiveValue * context.profile.objectivePull;
                 if (building && !canTake) pull *= 0.35f;      // escort rather than seize
                 if (posture == Posture.Defensive) pull *= 0.45f;
+                if (front.siege && posture == Posture.Aggressive) pull *= context.profile.siegePull;
                 bonus += pull / (1 + d);
 
                 if (canTake && tile == front.objectiveTile) bonus += front.objectiveValue * 0.5f;
+            }
+            // Regrouping for an attack: gather on the edge of our supply nearest the objective.
+            if (front != null && front.staging && front.stagingTile != null) {
+                bonus += worth * context.profile.stagingPull / (1 + tile.Distance(front.stagingTile));
             }
             return bonus;
         }

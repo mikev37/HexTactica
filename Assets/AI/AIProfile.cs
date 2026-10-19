@@ -27,6 +27,10 @@ namespace HexTactica.AI {
         [Range(0f, 3f)]
         public float forwardSupplyWeight = 0.5f;
 
+        [Tooltip("Hubs: worth of closing the gap between the network and where a friendly unit is heading, as strength points of that unit per turn (full gap closed = 1 x weight).")]
+        [Range(0f, 6f)]
+        public float intentSupplyWeight = 2f;
+
         [Tooltip("Multiplier on a hub's target worth for the units it sustains (base: a quarter of their combined value).")]
         public float enemySupplyTargetWeight = 1f;
 
@@ -46,6 +50,14 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float hqChipFactor = 0.1f;
 
+        [Tooltip("Worth of a hit on an enemy HQ that is not finished this turn but leaves it killable next turn by the units now in reach, as a fraction of the win.")]
+        [Range(0f, 1f)]
+        public float hqSetupFactor = 0.1f;
+
+        [Tooltip("Worth of removing a threat to our own HQ, as a fraction of what the HQ's loss would cost, scaled by how much of the threat the attack removes and how close the HQ is to falling.")]
+        [Range(0f, 1f)]
+        public float hqDefenseWeight = 0.5f;
+
         [Tooltip("Penalty per point of damage wasted beyond what was needed to kill.")]
         public float overkillPenalty = 0.35f;
 
@@ -55,6 +67,10 @@ namespace HexTactica.AI {
 
         [Tooltip("Multiplier on expected gold lost by ending a turn somewhere. 1 = take expected losses at face value; above 1 is cautious, below 1 reckless.")]
         public float riskWeight = 1f;
+
+        [Tooltip("How sharply enemy fire is predicted to focus on the most attractive target in reach: 1 shares it in proportion to attraction, higher concentrates it on the best target, as a greedy opponent does.")]
+        [Range(1f, 6f)]
+        public float focusExponent = 1f;
 
         [Tooltip("Tiebreak preference for cover, beyond the protection already priced into expected losses.")]
         public float coverWeight = 1f;
@@ -68,6 +84,41 @@ namespace HexTactica.AI {
         public float supportWeight = 0.1f;
 
         [Header("Posture")]
+        [Tooltip("A front counts the units of both sides that could reach it within this many turns when judging the balance of force.")]
+        [Range(1, 5)]
+        public int frontReachTurns = 2;
+
+        [Tooltip("Local force ratio (own combat power / enemy) at which an aggressive front's units commit to going in together, pricing risk as a group.")]
+        public float assaultRatio = 1.0f;
+
+        [Tooltip("An attack beyond our supply waits until this fraction of the front's full combat power is healthy and gathered at the staging tile.")]
+        [Range(0f, 1f)]
+        public float assaultReadiness = 0.6f;
+
+        [Tooltip("An attack under way breaks off and regroups when the power still able to reach the objective falls below this fraction of the front's full combat power.")]
+        [Range(0f, 1f)]
+        public float assaultBreakoff = 0.35f;
+
+        [Tooltip("Fraction of full strength at which a unit counts as healthy for readiness.")]
+        [Range(0f, 1f)]
+        public float readyStrength = 0.8f;
+
+        [Tooltip("How close to the staging tile a unit must be to count as gathered.")]
+        [Range(1, 6)]
+        public int stagingRadius = 3;
+
+        [Tooltip("Pull toward a staging front's staging tile, as a fraction of the unit's worth at distance zero, falling off as 1/(1+d).")]
+        [Range(0f, 3f)]
+        public float stagingPull = 1f;
+
+        [Tooltip("In an assault, cost per hex a unit ends ahead of the rest of the assault, as a fraction of the unit's whole worth.")]
+        [Range(0f, 1f)]
+        public float cohesionWeight = 0.15f;
+
+        [Tooltip("Hexes a unit may end ahead of the rest of its assault without cost.")]
+        [Range(0, 6)]
+        public int cohesionSlack = 1;
+
         [Tooltip("Multiplier on risk for units on an aggressive front. Below 1 = willing to take losses to close.")]
         [Range(0f, 2f)]
         public float aggressiveRisk = 0.5f;
@@ -79,6 +130,9 @@ namespace HexTactica.AI {
         [Tooltip("Front is treated as aggressive above this local force ratio (own value / enemy value).")]
         public float aggressionThreshold = 1.15f;
 
+        [Tooltip("A front whose centre is outside our supply is defensive below this force ratio, whatever else says.")]
+        public float outOfSupplyRatio = 1f;
+
         [Tooltip("Front is treated as defensive below this local force ratio.")]
         public float defensiveThreshold = 0.85f;
 
@@ -89,6 +143,10 @@ namespace HexTactica.AI {
         [Tooltip("Pull toward a front's objective, as a fraction of the objective's value at distance zero, falling off as 1/(1+d).")]
         [Range(0f, 0.5f)]
         public float objectivePull = 0.01f;
+
+        [Tooltip("Multiplier on the objective pull when the front can destroy an outmatched enemy HQ in one volley.")]
+        [Range(1f, 30f)]
+        public float siegePull = 8f;
 
         [Tooltip("Worth of standing on fully contested ground, as a fraction of the unit's own worth.")]
         public float holdWeight = 0.4f;

@@ -39,6 +39,86 @@ namespace HexTactica.AI {
             /// <summary>Sum of how attractive each currently exposed friendly is to this enemy.</summary>
             public float exposedAttraction;
             public readonly Dictionary<Unit, float> attractionOf = new Dictionary<Unit, float>();
+            /// <summary>Same, for committed assault units still to act that can step into its reach.</summary>
+            public float committedAttraction;
+            public readonly Dictionary<Unit, float> committedOf = new Dictionary<Unit, float>();
+        }
+
+        /// <summary>
+        /// Units committed to a coordinated assault this turn (see SetCommitted). Kept across
+        /// mid-turn refreshes; only those still to act count.
+        /// </summary>
+        readonly HashSet<Unit> committed = new HashSet<Unit>();
+
+        /// <summary>
+        /// Declare which units are going in together this turn. Each enemy fires once, so when
+        /// several units step into its reach in the same turn its fire is split among them.
+        /// Judged one unit at a time, stepping into a defended position never pays — which is
+        /// why the AI could not break an opponent that simply waited at home. With the group
+        /// declared, every member prices its risk as part of the group.
+        /// </summary>
+        public void SetCommitted(IEnumerable<Unit> units) {
+            committed.Clear();
+            if (units != null) foreach (Unit u in units) if (u != null) committed.Add(u);
+            ComputeEnemyFire();
+        }
+
+        public bool IsCommitted(Unit u) { return u != null && committed.Contains(u); }
+
+        readonly Dictionary<Unit, HexTile> assaultObjective = new Dictionary<Unit, HexTile>();
+
+        /// <summary>The objective each assaulting unit is going for, for <see cref="CohesionCost"/>.</summary>
+        public void SetAssaultObjectives(Dictionary<Unit, HexTile> objectives) {
+            assaultObjective.Clear();
+            if (objectives != null) foreach (KeyValuePair<Unit, HexTile> kv in objectives) assaultObjective[kv.Key] = kv.Value;
+        }
+
+        /// <summary>
+        /// Gold cost of ending the turn on <paramref name="at"/> ahead of the rest of the assault.
+        ///
+        /// Sharing the enemy's fire only works if the group arrives together. Slow units act
+        /// first; a tank moving six hexes then stopped beside the enemy HQ while the grunts it
+        /// was assaulting with were still three hexes back, and it was the only thing the
+        /// defenders could shoot. The lead is the closest any other unit of the same assault
+        /// is to the objective (after its move, or as close as its move could take it if it
+        /// has yet to act); every hex beyond that, less a hex of slack, costs a share of the
+        /// unit's whole worth.
+        /// </summary>
+        public float CohesionCost(Unit u, HexTile at) {
+            HexTile objective;
+            if (u == null || at == null || !assaultObjective.TryGetValue(u, out objective) || objective == null) return 0f;
+            int lead = int.MaxValue;
+            foreach (KeyValuePair<Unit, HexTile> kv in assaultObjective) {
+                Unit v = kv.Key;
+                if (v == u || kv.Value != objective || v == null || v.tile == null || v.Strength <= profile.withdrawStrength) continue;
+                int d = v.tile.Distance(objective) - (v.active ? v.moveRange : 0);
+                if (d < lead) lead = d;
+            }
+            if (lead == int.MaxValue) return 0f;
+            int ahead = Mathf.Max(0, lead - profile.cohesionSlack) - at.Distance(objective);
+            if (ahead <= 0) return 0f;
+            return ahead * AIScore.Worth(u) * u.Strength * profile.cohesionWeight;
+        }
+
+        /// <summary>
+        /// Where each friendly unit is heading (its last chosen destination). Shared with the
+        /// caller, so it stays current through the turn. Supply hubs read it to move the
+        /// network toward where the army is going, not only where it already is.
+        /// </summary>
+        public Dictionary<Unit, HexTile> intents;
+
+        /// <summary>
+        /// Distance from <paramref name="t"/> to the nearest tile where <paramref name="depthAt"/>
+        /// is positive, capped at <paramref name="cap"/>.
+        /// </summary>
+        public static int GapToSupply(HexTile t, System.Func<HexTile, int> depthAt, int cap) {
+            if (t == null) return cap;
+            if (depthAt(t) > 0) return 0;
+            for (int r = 1; r < cap; r++) {
+                List<HexTile> ring = AIPath.TilesInRange(t, r - 1, r);
+                for (int i = 0; i < ring.Count; i++) if (depthAt(ring[i]) > 0) return r;
+            }
+            return cap;
         }
 
         /// <summary>
@@ -46,12 +126,15 @@ namespace HexTactica.AI {
         /// do there, times what that damage is worth, doubled if it kills. This is how any
         /// sensible opponent picks targets — greedy, this AI, or a person.
         /// </summary>
-        static float Attraction(Unit enemy, Unit target, HexTile at) {
+        float Attraction(Unit enemy, Unit target, HexTile at) {
             int damage = Mathf.Min(target.Strength, Unit.calculateDamage(enemy, target, at, 0));
             if (damage <= 0) return 0f;
             float a = damage * AIScore.Worth(target);
             if (damage >= target.Strength) a *= 2f;
-            return a;
+            // Opponents pick their best target rather than spreading fire in proportion; the
+            // exponent sharpens the share toward that. 1 = proportional; large = argmax.
+            float k = profile.focusExponent;
+            return k == 1f ? a : Mathf.Pow(a / 1000f, k);
         }
         readonly List<EnemyFire> enemyFire = new List<EnemyFire>();
         readonly Dictionary<HexTile, List<EnemyFire>> firersAt = new Dictionary<HexTile, List<EnemyFire>>();
@@ -120,6 +203,7 @@ namespace HexTactica.AI {
             ComputeConflict();
             ComputeDistress();
             ScoreSupplyImportance();
+            ComputeHQDanger();
             ComputeEnemyFire();
         }
 
@@ -167,6 +251,17 @@ namespace HexTactica.AI {
                         ef.exposedAttraction += at;
                     }
                 }
+                // Committed assault units that have yet to act and could step into this
+                // enemy's fire this turn share its attention too.
+                int reach = e.moveAndAttack ? e.moveRange + e.AttackRange : e.AttackRange;
+                foreach (Unit c in committed) {
+                    if (c == null || !c.active || c.tile == null || c.trasnporter != null || c.Strength <= 0) continue;
+                    if (ef.attractionOf.ContainsKey(c)) continue;
+                    if (c.tile.Distance(e.tile) > c.moveRange + reach) continue;
+                    float at = Attraction(e, c, c.tile);
+                    ef.committedOf[c] = at;
+                    ef.committedAttraction += at;
+                }
                 enemyFire.Add(ef);
                 foreach (HexTile t in ef.tiles) {
                     List<EnemyFire> list;
@@ -201,9 +296,10 @@ namespace HexTactica.AI {
                 int damage = Mathf.Min(u.Strength, Unit.calculateDamage(ef.unit, u, at, 0));
                 if (damage <= 0) continue;
                 float mine = Attraction(ef.unit, u, at);
-                float others = ef.exposedAttraction;
+                float others = ef.exposedAttraction + ef.committedAttraction;
                 float counted;
                 if (ef.attractionOf.TryGetValue(u, out counted)) others -= counted;   // replace, not add
+                if (ef.committedOf.TryGetValue(u, out counted)) others -= counted;
                 float share = mine / Mathf.Max(0.0001f, mine + Mathf.Max(0f, others));
                 loss += damage * share;
             }
@@ -330,6 +426,88 @@ namespace HexTactica.AI {
                 if (canReach) total += Mathf.Min(target.Strength, Unit.calculateDamage(u, target, target.tile, 0));
             }
             return total;
+        }
+
+        /// <summary>
+        /// Damage this player's healthy combat units could put on <paramref name="target"/> next
+        /// turn, by hex distance from where they stand now (move plus range). The attacker
+        /// counts too, from where it fires. Each unit's damage is weighted by the fraction of it
+        /// expected to survive tonight: a unit standing in the enemy's whole army will not be
+        /// there to finish anything.
+        /// </summary>
+        public float NextTurnDamage(Unit target, Unit attacker, HexTile attackerAt) {
+            if (target == null || target.tile == null) return 0f;
+            float total = 0f;
+            for (int i = 0; i < ownUnits.Count; i++) {
+                Unit u = ownUnits[i];
+                if (u == null || u.tile == null || u.trasnporter != null || u.Firepower <= 0) continue;
+                if (u.Strength <= profile.withdrawStrength) continue;
+                HexTile at = u == attacker && attackerAt != null ? attackerAt : u.tile;
+                int d = at.Distance(target.tile);
+                int reach = u.moveAndAttack ? u.moveRange + u.AttackRange : u.AttackRange;
+                if (d > reach) continue;
+                // Only what survives tonight shoots tomorrow.
+                float survives = 1f - ExpectedLoss(u, at) / Mathf.Max(1, u.Strength);
+                if (survives <= 0f) continue;
+                total += Mathf.Min(target.Strength, Unit.calculateDamage(u, target, target.tile, 0)) * survives;
+            }
+            return total;
+        }
+
+        readonly Dictionary<Unit, float> hqThreat = new Dictionary<Unit, float>();
+        /// <summary>0..1 per own HQ: how close the enemy is to being able to destroy it next turn.</summary>
+        public readonly Dictionary<Unit, float> hqDanger = new Dictionary<Unit, float>();
+
+        /// <summary>
+        /// How much of the game each enemy unit puts at risk by threatening one of our HQs.
+        ///
+        /// Losing the HQ loses everything, and nothing in the evaluator said so: two enemy
+        /// tanks drove at the HQ while our own tank, the only unit that could hurt them, went
+        /// off on an advance, and the game ended in four turns. For every own HQ, each enemy
+        /// that could strike it next turn (full weight) or the turn after (half) contributes
+        /// its damage; danger is that total against the HQ's strength plus a turn of healing.
+        /// An enemy's threat is its share of the HQ's strength, times the danger, times what
+        /// the HQ is worth. AITargeting adds it to the value of hitting that enemy, so units
+        /// both shoot the attackers and — through next-turn targeting — move to where they can.
+        /// </summary>
+        void ComputeHQDanger() {
+            hqThreat.Clear();
+            hqDanger.Clear();
+            float stake = BoardStake;
+            for (int h = 0; h < ownHubs.Count; h++) {
+                SupplyPoint sp = ownHubs[h];
+                if (sp == null || !sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;
+                Unit hq = sp.myUnit;
+                Dictionary<Unit, float> contribution = new Dictionary<Unit, float>();
+                float potential = 0f;
+                for (int i = 0; i < enemyUnits.Count; i++) {
+                    Unit e = enemyUnits[i];
+                    if (e == null || e.tile == null || e.Firepower <= 0) continue;
+                    int d = e.tile.Distance(hq.tile);
+                    int reach = e.moveAndAttack ? e.moveRange + e.AttackRange : e.AttackRange;
+                    float weight = d <= reach ? 1f : d <= reach + e.moveRange ? 0.5f : 0f;
+                    if (weight <= 0f) continue;
+                    float dmg = Mathf.Min(hq.Strength, Unit.calculateDamage(e, hq, hq.tile, 0)) * weight;
+                    if (dmg <= 0f) continue;
+                    contribution[e] = dmg;
+                    potential += dmg;
+                }
+                float danger = Mathf.Clamp01(potential / (hq.Strength + 1f));
+                hqDanger[hq] = danger;
+                if (danger <= 0f) continue;
+                foreach (KeyValuePair<Unit, float> kv in contribution) {
+                    float share = kv.Value / Mathf.Max(1f, potential);
+                    float v = share * danger * stake;
+                    float prior;
+                    hqThreat[kv.Key] = hqThreat.TryGetValue(kv.Key, out prior) ? prior + v : v;
+                }
+            }
+        }
+
+        /// <summary>Gold at stake in this enemy unit's threat to our HQs (see ComputeHQDanger).</summary>
+        public float HQThreat(Unit enemy) {
+            float v;
+            return enemy != null && hqThreat.TryGetValue(enemy, out v) ? v : 0f;
         }
 
         /// <summary>How many enemy units could fire on a tile tonight.</summary>
