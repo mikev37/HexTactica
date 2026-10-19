@@ -11,38 +11,143 @@ public class Player : MonoBehaviour
     public bool mainPlayer;
     public List<Unit> units;
 
+    [Header("Economy")]
+    public int money;
+
+    [Header("State")]
+    public bool eliminated;
+
+    [Header("Turn telemetry (read by the harness)")]
+    public int unitTurnsOutOfSupply;
+    public int unitsLostToAttrition;
+    public int hubsStranded;
+
     public void StartTurn() {
-        Resupply();
-        units.ForEach(x => {
-            if(x.tile.isSupplied(this))
-                x.Strength = (int)Mathf.Min(6, x.Strength + 1); 
-        
-        } );
+        CollectIncome();
+
+        SupplyNetwork.Result supply = SupplyNetwork.Solve(this, true);
+        hubsStranded = supply.strandedHubs.Count;
+
+        // A stranded hub stands inside its own supply bubble, so a naive resupply
+        // pass heals it by exactly the 1 point the drain just took — and it sustains
+        // itself forever, which defeats the doc's six turns of autonomy entirely.
+        // A hub cannot resupply itself out of its own stock; it must be reconnected.
+        HashSet<Unit> selfSupplying = new HashSet<Unit>();
+        for (int i = 0; i < supply.strandedHubs.Count; i++) {
+            SupplyPoint sp = supply.strandedHubs[i];
+            if (sp != null && sp.myUnit != null) selfSupplying.Add(sp.myUnit);
+        }
+
+        // Snapshot the list: attrition can remove units mid-iteration.
+        List<Unit> roster = new List<Unit>(units);
+        for (int i = 0; i < roster.Count; i++) {
+            Unit u = roster[i];
+            if (u == null || u.tile == null) continue;
+
+            if (u.tile.isSupplied(this)) {
+                Resupplied(u, !selfSupplying.Contains(u));
+            } else {
+                Starve(u);
+            }
+        }
+
+        for (int i = 0; i < Building.all.Count; i++) {
+            Building b = Building.all[i];
+            if (b != null && b.owner == this) b.TickCapture();
+        }
     }
 
-    public void Resupply() {
-        HexGenerator.forAllTiles(x => { x.supply[this] = 0; return 0; });
-        List<SupplyPoint> suppliers = new List<SupplyPoint>();
-        units.ForEach(x => {
-            SupplyPoint sp = x.GetComponent<SupplyPoint>();
-            if (sp) {
-                if (sp.producer && !sp.supplying) {
-                    sp.SupplyZone(null);
+    /// <summary>
+    /// "Heal 1 point, fully re-arm all ammo, full refuel."
+    ///
+    /// <paramref name="mayHeal"/> is false for a cut-off hub standing in its own
+    /// bubble: it can still hand out ammo and fuel from what it is carrying, but its
+    /// health IS the supply it is spending, so it cannot top itself back up.
+    /// </summary>
+    void Resupplied(Unit u, bool mayHeal) {
+        if (mayHeal) u.Strength = Mathf.Min(6, u.Strength + 1);
+        u.ammo = u.ammoMax;
+        u.fuel = u.fuelMax;
+        u.supplies = u.suppliesMax;
+    }
+
+    /// <summary>
+    /// Out of supply, a unit degrades along three axes at different rates, which is
+    /// what makes stranding legible rather than a silent HP tick: it stops moving,
+    /// then stops shooting, then gives up.
+    /// </summary>
+    void Starve(Unit u) {
+        unitTurnsOutOfSupply++;
+
+        if (u.suppliesMax > 0) {
+            u.supplies = Mathf.Max(0, u.supplies - 1);
+            if (u.supplies <= 0) {
+                // "once out of supplies, the unit will give up"
+                u.Strength = Mathf.Max(0, u.Strength - 1);
+                if (u.Strength <= 0) {
+                    unitsLostToAttrition++;
+                    u.Delete();
+                    return;
                 }
-                suppliers.Add(sp);
             }
-        });
-        suppliers.ForEach(x => x.supplying = false);
+        }
+
+        if (u.fuelMax > 0 && LocomotionRules.BurnsFullFuelPerTurn(u.locomotion)) {
+            u.fuel = Mathf.Max(0, u.fuel - Mathf.Max(1, u.minFuelPerTurn));
+        } else if (u.fuelMax > 0) {
+            u.fuel = Mathf.Max(0, u.fuel - u.minFuelPerTurn);
+        }
+    }
+
+    void CollectIncome() {
+        for (int i = 0; i < Building.all.Count; i++) {
+            Building b = Building.all[i];
+            if (b != null && b.owner == this) money += b.income;
+        }
+    }
+
+    /// <summary>Recompute the supply field without charging anyone for it.</summary>
+    public void Resupply() {
+        SupplyNetwork.Solve(this, false);
     }
 
     public void EndTurn() {
         units.ForEach(x => {
+            if (x == null) return;
             x.active = true;
-            SupplyPoint sp = x.GetComponent<SupplyPoint>();
-            if (sp) {
-                sp.supplying = false;
-            }
         });
+    }
+
+    /// <summary>
+    /// True while this player owns an HQ building or a living producer supply unit.
+    /// The shipped game's HQ is the latter — TempHQ is a Unit, not a Building — so a
+    /// Building-only check meant the HQ could be destroyed without ending anything.
+    /// </summary>
+    public bool HasHQ {
+        get {
+            for (int i = 0; i < Building.all.Count; i++) {
+                Building b = Building.all[i];
+                if (b != null && b.owner == this && b.IsHQ) return true;
+            }
+            for (int i = 0; i < units.Count; i++) {
+                Unit u = units[i];
+                if (u == null || u.Strength <= 0) continue;
+                SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                if (sp != null && sp.producer) return true;
+            }
+            return false;
+        }
+    }
+
+    /// <summary>Set once this player has been seen holding an HQ. Losing it afterwards eliminates them.</summary>
+    [HideInInspector] public bool hadHQ;
+
+    public int ArmyValue {
+        get {
+            int v = 0;
+            for (int i = 0; i < units.Count; i++) if (units[i] != null) v += units[i].value();
+            return v;
+        }
     }
 }
 
@@ -53,12 +158,16 @@ public struct PlayerData {
     public Color displayColor;
     public Faction faction;
     public bool AI;
+    public int money;
+    public bool eliminated;
     public PlayerData(Player t) {
         personal_name = t.personal_name;
         id = t.id;
         displayColor = t.displayColor;
         faction = t.faction;
         AI = t.GetComponent<AIPlayer>();
+        money = t.money;
+        eliminated = t.eliminated;
     }
 
     public Player load() {
@@ -76,6 +185,8 @@ public struct PlayerData {
         output.personal_name = that.personal_name;
         output.displayColor = that.displayColor;
         output.faction = that.faction;
+        output.money = that.money;
+        output.eliminated = that.eliminated;
         if (AI && output.GetComponent<AIPlayer>() == null) {
             output.gameObject.AddComponent<AIPlayer>();
         }
