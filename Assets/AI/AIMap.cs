@@ -164,6 +164,7 @@ namespace HexTactica.AI {
         public void RefreshAfterAction() { Rebuild(false); }
 
         void Rebuild(bool recalculateThreat) {
+            space = null;
             thisTurnFields.Clear();
             horizonFields.Clear();
             approaches.Clear();
@@ -304,6 +305,22 @@ namespace HexTactica.AI {
             return Mathf.Min(u.Strength, loss);
         }
 
+        AISpace.Board space;
+
+        /// <summary>
+        /// Gold the more valuable units gain from <paramref name="u"/> (a screener) ending on
+        /// <paramref name="at"/>, with the rest of the screen where the plan puts it (AISpace).
+        /// The plan is built once per board state and rebuilt after every action.
+        /// </summary>
+        public float SpaceDenial(Unit u, HexTile at) {
+            if (u == null || at == null || u.tile == null || profile.screenWeight <= 0f) return 0f;
+            if (space == null) space = AISpace.Prepare(this);
+            return AISpace.Credit(space, u, at) * profile.screenWeight;
+        }
+
+        /// <summary>The current screen plan, for diagnostics (null until a screener asks).</summary>
+        public AISpace.Board SpacePlan { get { return space; } }
+
         /// <summary>Share of this enemy's single attack that <paramref name="u"/> would draw standing on <paramref name="at"/>.</summary>
         float ShareOf(EnemyFire ef, Unit u, HexTile at, out float mine, out float others) {
             mine = Attraction(ef.unit, u, at);
@@ -341,7 +358,7 @@ namespace HexTactica.AI {
             if (u == null || at == null) return 0f;
             List<EnemyFire> list;
             if (!firersAt.TryGetValue(at, out list)) return 0f;
-            float counter = 0f, screen = 0f;
+            float counter = 0f;
             for (int i = 0; i < list.Count; i++) {
                 EnemyFire ef = list[i];
                 Unit e = ef.unit;
@@ -382,34 +399,8 @@ namespace HexTactica.AI {
                     counter += share * Mathf.Max(0f, value - exposure);
                 }
 
-                // Screening: standing on one of the few tiles this enemy could strike a more valuable
-                // friend from takes that tile away from it. Fire is not split in proportion — an
-                // opponent shoots the tank if it can reach it — so a screen works by occupying
-                // ground, not by being another target. Each blocked firing position is worth the
-                // friend's expected loss to this enemy divided by how many positions it had: the
-                // last open tile is worth all of it, one of six is worth a sixth. Slow units act
-                // first, so the grunts set the screen before the armour decides where to stand.
-                if (profile.screenWeight > 0f && e.moveAndAttack && ef.positions != null && ef.positions.Contains(at) && at != e.tile) {
-                    float myWorth = AIScore.Worth(u);
-                    foreach (KeyValuePair<Unit, float> kv in ef.attractionOf) {
-                        Unit v = kv.Key;
-                        if (v == u || v == null || v.tile == null || v.Strength <= 0) continue;
-                        if (AIScore.Worth(v) <= myWorth) continue;
-                        int dAt = at.Distance(v.tile);
-                        if (dAt > e.AttackRange || dAt <= e.MinRange) continue;
-                        int open = 0;
-                        for (int k = 0; k < ef.positions.Count; k++) {
-                            HexTile pos = ef.positions[k];
-                            int dp = pos.Distance(v.tile);
-                            if (dp <= e.AttackRange && dp > e.MinRange) open++;
-                        }
-                        if (open <= 0) continue;
-                        float expected = ExpectedLoss(v, v.tile) * AIScore.Worth(v);
-                        screen += expected / open;
-                    }
-                }
             }
-            return counter * profile.counterWeight * profile.Aggro(0.5f, 1.5f) + screen * profile.screenWeight;
+            return counter * profile.counterWeight * profile.Aggro(0.5f, 1.5f);
         }
 
         /// <summary>
@@ -563,6 +554,32 @@ namespace HexTactica.AI {
         readonly Dictionary<Unit, float> hqThreat = new Dictionary<Unit, float>();
         /// <summary>0..1 per own HQ: how close the enemy is to being able to destroy it next turn.</summary>
         public readonly Dictionary<Unit, float> hqDanger = new Dictionary<Unit, float>();
+        readonly Dictionary<Unit, float> hqAttackPower = new Dictionary<Unit, float>();
+
+        /// <summary>
+        /// Gold for standing where this unit could strike, next turn, anything that comes to
+        /// attack our HQ: within its reach of the HQ's surrounding tiles.
+        ///
+        /// Threat to the HQ was only priced in target values, which needs the attacker to be in
+        /// reach already. Against a fast push that is too late: a stronger Legacy army drove at the
+        /// HQ while our tank went raiding a gun in the far corner, and the HQ fell on turn four.
+        /// The guard value is the HQ's danger times what it is worth, times this unit's share of
+        /// the force needed to answer the attackers.
+        /// </summary>
+        public float GuardValue(Unit u, HexTile at) {
+            if (u == null || at == null || u.Firepower <= 0) return 0f;
+            float total = 0f;
+            foreach (KeyValuePair<Unit, float> kv in hqDanger) {
+                if (kv.Value <= 0f || kv.Key == null || kv.Key.tile == null) continue;
+                int reach = u.moveAndAttack ? u.moveRange + u.AttackRange : u.AttackRange;
+                if (at.Distance(kv.Key.tile) > reach + 1) continue;
+                float attackers;
+                if (!hqAttackPower.TryGetValue(kv.Key, out attackers) || attackers <= 0f) continue;
+                float share = Mathf.Min(1f, AIObjectives.Power(u) / attackers);
+                total += kv.Value * BoardStake * profile.hqDefenseWeight * share * profile.guardWeight;
+            }
+            return total;
+        }
 
         /// <summary>
         /// How much of the game each enemy unit puts at risk by threatening one of our HQs.
@@ -579,6 +596,7 @@ namespace HexTactica.AI {
         void ComputeHQDanger() {
             hqThreat.Clear();
             hqDanger.Clear();
+            hqAttackPower.Clear();
             float stake = BoardStake;
             for (int h = 0; h < ownHubs.Count; h++) {
                 SupplyPoint sp = ownHubs[h];
@@ -600,6 +618,9 @@ namespace HexTactica.AI {
                 }
                 float danger = Mathf.Clamp01(potential / (hq.Strength + 1f));
                 hqDanger[hq] = danger;
+                float attackers = 0f;
+                foreach (KeyValuePair<Unit, float> kv in contribution) attackers += AIObjectives.Power(kv.Key);
+                hqAttackPower[hq] = attackers;
                 if (danger <= 0f) continue;
                 foreach (KeyValuePair<Unit, float> kv in contribution) {
                     float share = kv.Value / Mathf.Max(1f, potential);
@@ -614,6 +635,43 @@ namespace HexTactica.AI {
         public float HQThreat(Unit enemy) {
             float v;
             return enemy != null && hqThreat.TryGetValue(enemy, out v) ? v : 0f;
+        }
+
+        /// <summary>
+        /// Turns before this unit and an enemy combat unit could first exchange fire, either way,
+        /// by hex distance and movement (0 = in reach now). 99 when there is no enemy.
+        /// </summary>
+        public int TurnsToContact(Unit u) {
+            if (u == null || u.tile == null) return 99;
+            int best = 99;
+            for (int i = 0; i < enemyUnits.Count; i++) {
+                Unit e = enemyUnits[i];
+                if (e == null || e.tile == null || e.Firepower <= 0 || e.GetComponent<SupplyPoint>() != null) continue;
+                int d = u.tile.Distance(e.tile);
+                int mine = Turns(d - u.AttackRange, u.moveRange);
+                int theirs = Turns(d - e.AttackRange, e.moveRange);
+                best = Mathf.Min(best, Mathf.Min(mine, theirs));
+            }
+            return best;
+        }
+
+        static int Turns(int gap, int move) {
+            if (gap <= 0) return 0;
+            if (move <= 0) return 99;
+            return Mathf.CeilToInt(gap / (float)move);
+        }
+
+        /// <summary>Enemy combat units (not hubs, not <paramref name="except"/>) that could fire on a tile tonight.</summary>
+        public int CombatFirersAt(HexTile at, Unit except) {
+            List<EnemyFire> list;
+            if (at == null || !firersAt.TryGetValue(at, out list)) return 0;
+            int n = 0;
+            for (int i = 0; i < list.Count; i++) {
+                Unit e = list[i].unit;
+                if (e == null || e == except || e.GetComponent<SupplyPoint>() != null) continue;
+                n++;
+            }
+            return n;
         }
 
         /// <summary>How many enemy units could fire on a tile tonight.</summary>

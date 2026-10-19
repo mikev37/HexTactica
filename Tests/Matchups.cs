@@ -166,6 +166,7 @@ public static class Matchups {
                     + (act.target != null ? "->" + act.target.name + D(act.target.tile) : "") + " (" + act.reason + ")");
             };
         }
+        if (Environment.GetEnvironmentVariable("SPACE") != null) HexTactica.AI.AISpace.DebugLog = m => Console.WriteLine("      S " + m);
         string explain = Environment.GetEnvironmentVariable("EXPLAIN");
         int explainFrom = Environment.GetEnvironmentVariable("FROM") != null ? int.Parse(Environment.GetEnvironmentVariable("FROM")) : 0;
         GameController gc = Rig.gc;

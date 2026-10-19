@@ -7,8 +7,7 @@ namespace HexTactica.AI {
     public enum ObjectiveKind {
         DefendHQ,     // kill or drive off what threatens our HQ
         KillHQ,       // destroy an enemy HQ: the game
-        RaidSupply,   // destroy an enemy supply hub: exploit a breakthrough
-        Strike        // destroy an isolated enemy group: defeat in detail
+        Mass          // gather where an enemy group is outmatched: defeat in detail, strategically
     }
 
     /// <summary>A point worth securing, what it is worth, and what it takes.</summary>
@@ -42,28 +41,25 @@ namespace HexTactica.AI {
     }
 
     /// <summary>
-    /// The objective assigner and evaluator: the layer the original AttackMove implied and
-    /// never had. AttackMove asked every unit "what is the best thing you can hit?"; nothing
-    /// asked "what is worth taking this turn, and who should take it?". Without that, every
-    /// unit pursued its own best shot, which is how a tank ended up beside the enemy HQ alone.
+    /// The objective assigner and evaluator: the strategic layer the original AttackMove implied
+    /// and never had — "we should attack the enemy capital now", "mass up in the south".
     ///
-    /// Each turn it lists the points worth securing — our HQ under threat, an enemy HQ, an
-    /// enemy supply hub, an enemy group isolated from support — prices each in gold, and
-    /// works out what can defend it: every enemy that could fight there next turn. An
-    /// objective is only attempted if enough combat power is assigned to beat that defence
-    /// by <see cref="AIProfile.objectiveRatio"/> (and, for an HQ or hub, to destroy it in one
-    /// volley). Otherwise nobody is sent: that is the whole rule against piecemeal attacks.
+    /// Objectives are structure and tie-breakers, never tactics. They are evaluated last, as a
+    /// small pull added to a unit's positional score, and a unit with enemy contact within three
+    /// turns ignores its objective altogether: once units are near the enemy, the tactical layer
+    /// (risk, counterattack, screens, rotation, targeting) decides everything. An earlier version
+    /// used objectives for fine work — defeat in detail, supply raids — and let them set posture
+    /// and override staging; that fought the tactical layer exactly where it matters.
     ///
-    /// Assignment is greedy and deterministic: objectives in order of value per unit of force
-    /// they need, closest units first, stopping as soon as the requirement is met so the
-    /// rest stay free for the next objective. That is defeat in detail — a weak enemy group
-    /// cut off from the rest is a cheap objective, and the mobile units nearest it take it —
-    /// and it is exploitation: an enemy hub left undefended once its line has been passed is
-    /// cheap too. Units with no objective follow their front as before.
-    ///
-    /// Assigned units are told where to go, not how: the tactical layer still prices every
-    /// tile, and the assignment adds a pull toward the objective, an aggressive posture, and
-    /// membership in a group that prices its risk together and arrives together.
+    /// Each turn it lists:
+    ///   - DefendHQ: our HQ is in danger; reserves out of contact come home.
+    ///   - KillHQ: an enemy HQ the whole army could take now (assigned force beats everything
+    ///     that could defend it by objectiveRatio, and could destroy it in one volley).
+    ///   - Mass: an enemy group our nearby forces outmatch by objectiveRatio, counting everything
+    ///     that could support it — where reserves should gather. Defeat in detail at the scale
+    ///     of the map; the fighting itself is tactical.
+    /// An objective is only adopted if enough force is assigned to it; closest units first,
+    /// stopping when the requirement is met so the rest stay free for the next one.
     /// </summary>
     public static class AIObjectives {
 
@@ -95,7 +91,7 @@ namespace HexTactica.AI {
                     if (t > worstThreat || (t == worstThreat && worst != null && AIMap.CompareUnits(e, worst) < 0)) { worst = e; worstThreat = t; }
                 }
                 if (worst == null) continue;
-                o.tile = worst.tile;
+                o.tile = hq.tile;
                 o.value = kv.Value * map.BoardStake * profile.hqDefenseWeight;
                 o.required = o.defence;
                 list.Add(o);
@@ -103,13 +99,12 @@ namespace HexTactica.AI {
 
             for (int i = 0; i < map.enemyHubs.Count; i++) {
                 SupplyPoint sp = map.enemyHubs[i];
-                if (sp == null || sp.myUnit == null || sp.myUnit.tile == null) continue;
+                if (sp == null || !sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;
                 Unit hub = sp.myUnit;
-                Objective o = new Objective { kind = sp.producer ? ObjectiveKind.KillHQ : ObjectiveKind.RaidSupply, tile = hub.tile };
+                Objective o = new Objective { kind = ObjectiveKind.KillHQ, tile = hub.tile };
                 o.targets.Add(hub);
                 o.defence = DefenceAt(map, hub.tile, null);
-                o.value = sp.producer ? map.BoardStake
-                                      : map.SupplyImportance(hub) + AIScore.Worth(hub) * hub.Strength * profile.killBonus;
+                o.value = map.BoardStake;
                 o.required = o.defence * ratio;
                 // It heals a strength a turn and must be destroyed outright to count.
                 o.volleyNeeded = hub.Strength + 1;
@@ -122,7 +117,7 @@ namespace HexTactica.AI {
             List<List<Unit>> clusters = Clusters(map);
             for (int c = 0; c < clusters.Count; c++) {
                 List<Unit> group = clusters[c];
-                Objective o = new Objective { kind = ObjectiveKind.Strike };
+                Objective o = new Objective { kind = ObjectiveKind.Mass };
                 float material = 0f;
                 for (int i = 0; i < group.Count; i++) {
                     o.targets.Add(group[i]);
@@ -196,7 +191,12 @@ namespace HexTactica.AI {
 
                 o.committed = Satisfied(o) || (o.kind == ObjectiveKind.DefendHQ && o.units.Count > 0);
                 if (!o.committed) { o.units.Clear(); o.assignedPower = 0f; o.assignedVolley = 0f; continue; }
-                foreach (Unit u in o.units) { used.Add(u); result[u] = o; }
+                foreach (Unit u in o.units) {
+                    used.Add(u);
+                    // Structure, not tactics: a unit near the enemy keeps its place in the count
+                    // but takes no pull from the objective.
+                    if (map.TurnsToContact(u) > profile.objectiveContactTurns) result[u] = o;
+                }
             }
             return result;
         }
