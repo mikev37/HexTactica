@@ -32,6 +32,27 @@ namespace HexTactica.AI {
             return a < 0.5f ? Mathf.Lerp(atZero, 1f, a / 0.5f) : Mathf.Lerp(1f, atOne, (a - 0.5f) / 0.5f);
         }
 
+        [Header("Tile choice")]
+        [Tooltip("Choose tiles in tiers, as the original AttackMove did: damage dealt, then damage received, then enemy movement and supply denied plus everything positional. Off: everything is added in gold.")]
+        public bool tieredChoice = true;
+
+        [Tooltip("Tier 1: keep every option whose attack value is at least this fraction of the best. 1 = only the best shot; 0.5 = anything doing half as much, which leaves room for the later tiers.")]
+        [Range(0f, 1f)]
+        public float attackTie = 0.5f;
+
+        [Tooltip("Tier 2: keep every option whose expected damage received is within this many of the acting unit's strength points of the least.")]
+        [Range(0f, 6f)]
+        public float receivedTie = 1f;
+
+        [Tooltip("Tier 3: worth of each enemy-reachable tile (two turns, summed over enemy units) taken away, as a fraction of the acting unit's worth.")]
+        public float denialTileWeight = 0.05f;
+
+        [Tooltip("Tier 3: worth of each tile taken out of enemy supply, as a fraction of the acting unit's worth.")]
+        public float supplyTileWeight = 0.05f;
+
+        [Tooltip("Tier 3: worth of cutting an enemy unit off from supply, as a fraction of that unit's worth.")]
+        public float supplyCutWeight = 1f;
+
         [Header("Supply")]
         [Tooltip("Supply depth treated as fully sustained; the depth signals saturate here.")]
         [Range(1, 10)]
@@ -101,7 +122,7 @@ namespace HexTactica.AI {
 
         [Tooltip("Worth of the space a unit creates for more valuable friends still to act, by constraining where the enemy can move and strike (AISpace), as a fraction of the threat it spares their best positions.")]
         [Range(0f, 2f)]
-        public float screenWeight = 1f;
+        public float screenWeight = 0f;
 
         [Tooltip("Extra worth of a next-turn attack from a tile no enemy can strike tonight (we strike first), as a fraction of that attack's worth.")]
         [Range(0f, 3f)]

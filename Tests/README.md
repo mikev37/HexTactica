@@ -50,6 +50,38 @@ Predicted vs actual losses per enemy turn: 6.8/9, 8.0/6, 10.5/13, 5.1/6, 2.8/2.
 
 ---
 
+## Terrain maps, tiered choice, and the reasoning log (current)
+
+**Maps** (`Tests/TerrainMaps.cs`, `PROBE=mapshow`): radius 5–6, seeded. Mountains, water and
+forest are planted at random by percentage, then two open-land paths are cut from HQ to HQ,
+one through each half. Water stops every land unit; mountains stop vehicles (grunts climb).
+Terrain stats come from the real assets. Six maps: `std` (10/10/30% at r5 and r6), `open`
+(5/5/15), `rough` (15/15/30–35, r5 and r6), `choke` (20/20/20).
+
+**Scenario set** (`PROBE=maps`, 42 games, ~10 s): each map, both seats, against Legacy and
+Greedy, the outnumbered case against Legacy (+1 tank +1 grunt, about +47% fighting strength),
+and a mirror. Current: 26 W 8 L 2 D excluding mirrors. Most losses are the outnumbered case;
+on radius-5 maps the HQs are 8 hexes apart and a tank reaches 7, so HQ rushes land on turn 1–2.
+
+**One game narrated** (`PROBE=mapgame MAP=n SEAT=A|B THEM=Legacy|Greedy|Full [EXTRA=1|2]
+[ROUNDS=r] [SIDE=A|B]`): the board after every player's turn, and for every Full-AI unit its
+tiers — how many stops, what tier 0/1/2 kept, the top tier-3 options with attack, damage
+received, enemy movement/supply denied, positional score and destination, the best option
+a tier threw out, any HQ threat, and any shot rejected as not worth its cost.
+
+**Tiered tile choice** (`AITactical.Tiered`, `tieredChoice`), for line units, artillery,
+anti-air and recon (hubs, transports and withdrawing units still use the gold sum):
+0. HQ: drop options that would leave our HQ destroyable next enemy turn, if any would not.
+1. Damage dealt: keep options whose attack is ≥ `attackTie` (0.5) of the best. An attack only
+   counts if the material it takes is worth more than the material it costs tonight, unless
+   it hits something threatening our HQ.
+2. Damage received: keep options within `receivedTie` (1 strength) of the least.
+3. Highest of: enemy movement and supply denied (`AIDenial`: the unit is moved on the board
+   and enemy reach and supply recomputed) + positional score + attack.
+
+The earlier joint screen planner (`AISpace`, `screenWeight`) is off; tier 3's measured denial
+replaces it. The old "+20%" label in the tables below means +1 tank +1 grunt.
+
 ## Measured results (real prefabs, round-robin)
 
 Three opponents, all deterministic:

@@ -22,6 +22,20 @@ public static class Tests {
 
     public static void Section(string s) { Console.WriteLine("\n== " + s + " =="); }
 
+    static void ApplySet() {
+        if (Environment.GetEnvironmentVariable("SET") != null) {
+            // SET=field=value[,field=value]: any public float/int AIProfile field, by reflection.
+            string[] pairs = Environment.GetEnvironmentVariable("SET").Split(',');
+            Matchups.Tweak = p => {
+                foreach (string pair in pairs) {
+                string[] kv = pair.Split('=');
+                var fi = typeof(HexTactica.AI.AIProfile).GetField(kv[0]);
+                if (fi.FieldType == typeof(int)) fi.SetValue(p, int.Parse(kv[1])); else if (fi.FieldType == typeof(bool)) fi.SetValue(p, bool.Parse(kv[1])); else fi.SetValue(p, float.Parse(kv[1]));
+                }
+            };
+        }
+    }
+
     public static int Main(string[] args) {
         if (args.Length > 0) PrefabLoader.AssetsRoot = args[0];
         if (Environment.GetEnvironmentVariable("PROBE") == "1") { Probe.Run(); return 0; }
@@ -39,17 +53,7 @@ public static class Tests {
         }
         if (Environment.GetEnvironmentVariable("PROBE") == "cells") {
             // PROBE=cells THEM=Greedy|Legacy VERBOSE=1: just the Full-vs-X cells, for quick iteration.
-            if (Environment.GetEnvironmentVariable("SET") != null) {
-                // SET=field=value[,field=value]: any public float/int AIProfile field, by reflection.
-                string[] pairs = Environment.GetEnvironmentVariable("SET").Split(',');
-                Matchups.Tweak = p => {
-                    foreach (string pair in pairs) {
-                        string[] kv = pair.Split('=');
-                        var fi = typeof(HexTactica.AI.AIProfile).GetField(kv[0]);
-                        if (fi.FieldType == typeof(int)) fi.SetValue(p, int.Parse(kv[1])); else if (fi.FieldType == typeof(bool)) fi.SetValue(p, bool.Parse(kv[1])); else fi.SetValue(p, float.Parse(kv[1]));
-                    }
-                };
-            }
+            ApplySet();
             if (Environment.GetEnvironmentVariable("WIDE") != null) { Matchups.Widths = new[] { 7, 8, 9, 10, 11 }; Matchups.Variants = new[] { 0, 1, 2, 3 }; }
             if (Environment.GetEnvironmentVariable("VARIANTS") != null) { int n = int.Parse(Environment.GetEnvironmentVariable("VARIANTS")); Matchups.Variants = new int[n]; for (int i = 0; i < n; i++) Matchups.Variants[i] = i; }
             Matchups.Kind them = (Matchups.Kind)Enum.Parse(typeof(Matchups.Kind), Environment.GetEnvironmentVariable("THEM") ?? "Greedy");
@@ -79,6 +83,18 @@ public static class Tests {
                     line += " " + p.personal_name + u.name.Substring(0, 2) + "(" + u.tile.x + "," + u.tile.y + ")s" + u.Strength + "d" + u.supplies;
                 Console.WriteLine(line);
             }
+            return 0;
+        }
+        if (Environment.GetEnvironmentVariable("PROBE") == "mapshow") { TerrainMaps.Show(); return 0; }
+        if (Environment.GetEnvironmentVariable("PROBE") == "maps") { ApplySet(); TerrainMaps.RunSet(); return 0; }
+        if (Environment.GetEnvironmentVariable("PROBE") == "mapgame") {
+            ApplySet();
+            int idx = int.Parse(Environment.GetEnvironmentVariable("MAP") ?? "0");
+            bool meA = (Environment.GetEnvironmentVariable("SEAT") ?? "A") == "A";
+            Matchups.Kind them = (Matchups.Kind)Enum.Parse(typeof(Matchups.Kind), Environment.GetEnvironmentVariable("THEM") ?? "Legacy");
+            int extra = int.Parse(Environment.GetEnvironmentVariable("EXTRA") ?? "0");
+            int rounds = int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30");
+            TerrainMaps.Narrate(idx, them, meA, extra, rounds);
             return 0;
         }
         if (Environment.GetEnvironmentVariable("PROBE") == "order") {
