@@ -41,7 +41,7 @@ namespace HexTactica.AI {
             /// <summary>Strength value given back for damage that will heal (ours, theirs).</summary>
             public float healOwn, healEnemy;
             /// <summary>Space: move+strike tiles (ours, theirs), enemy supply tiles cut, and the gold it adds.</summary>
-            public int ourSpace, theirSpace, supplyCut;
+            public int ourSpace, theirSpace, supplyCut, enemyUnsupplied;
             public float space;
             public readonly List<string> replies = new List<string>();
             /// <summary>Strength each of our units loses in the reply.</summary>
@@ -52,7 +52,7 @@ namespace HexTactica.AI {
                 if (ourHQFalls) sb.Append(" OUR HQ FALLS");
                 if (assist) sb.Append(" assist");
                 if (hubs != 0f) sb.Append(" hubs ").Append(hubs.ToString("+0;-0"));
-                if (space != 0f) sb.Append(" space ").Append(space.ToString("+0;-0")).Append(" (").Append(ourSpace).Append('/').Append(theirSpace).Append(supplyCut > 0 ? " cut " + supplyCut : "").Append(')');
+                if (space != 0f) sb.Append(" space ").Append(space.ToString("+0;-0")).Append(" (").Append(ourSpace).Append('/').Append(theirSpace).Append(supplyCut > 0 ? " cut " + supplyCut : "").Append(enemyUnsupplied > 0 ? " unsupplied " + enemyUnsupplied : "").Append(')');
                 if (healOwn != 0f || healEnemy != 0f) sb.Append(" heals +").Append(healOwn.ToString("0")).Append("/-").Append(healEnemy.ToString("0"));
                 if (ownStrike != 0f || enemyStrike != 0f) sb.Append(" strike +").Append(ownStrike.ToString("0")).Append("/-").Append(enemyStrike.ToString("0"));
                 if (replies.Count > 0) sb.Append(" [").Append(string.Join("; ", replies.ToArray())).Append(']');
@@ -158,15 +158,17 @@ namespace HexTactica.AI {
 
             // What is left.
             float stake = map.BoardStake;
-            float healF = map.profile.healingDamageFactor;
+            float healN = map.profile.healedPerTurn;
             foreach (KeyValuePair<Unit, float> kv in hp) {
                 float left = Mathf.Max(0f, kv.Value);
-                // Damage that will heal counts at healingDamageFactor; kills, and damage to units
-                // that won't heal (out of supply, or a cut-off supply unit), count in full.
+                // The strength a supplied unit heals back by its next turn (one, by the game's rule)
+                // doesn't count; kills, damage beyond that, and damage to units that won't heal
+                // (out of supply, or a cut-off supply unit) count in full. (It was half of all the
+                // damage, which made a 5-point hit on our HQ look like 2.5 when only 1 comes back.)
                 if (left > 0f && left < kv.Key.Strength) {
                     HexTile at = kv.Key == u ? uAt : (endsAt.ContainsKey(kv.Key) ? endsAt[kv.Key] : kv.Key.tile);
                     if (map.Heals(kv.Key, at)) {
-                        float healed = (kv.Key.Strength - left) * (1f - healF);
+                        float healed = Mathf.Min(kv.Key.Strength - left, healN);
                         left += healed;
                         if (kv.Key.owner == u.owner) w.healOwn += healed * Value(kv.Key); else w.healEnemy += healed * Value(kv.Key);
                     }
@@ -250,7 +252,7 @@ namespace HexTactica.AI {
                 w.score += w.ownStrike - w.enemyStrike;
             }
 
-            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
+            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
             return w;
         }
 
@@ -285,17 +287,27 @@ namespace HexTactica.AI {
             w.ourSpace = ourMove.Count + ourStrike.Count;
             w.theirSpace = theirMove.Count + theirStrike.Count;
 
-            // Enemy supply our unit cuts, only where it could matter: in or beside their supply.
-            if (prof.spaceSupplyValue > 0f && moving && map.DistanceToTheirSupply(uAt) <= 1) {
+            // Enemy supply with our unit on its new tile — re-solved only where it could change
+            // anything: in or beside their supply. Supply is checked at the start of their turn,
+            // before they move, so their units count where they stand now.
+            SupplyNetwork.Result after = map.theirSupply;
+            if ((prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f) && moving && map.DistanceToTheirSupply(uAt) <= 1) {
                 Unit was = uAt.occupier;
                 from.occupier = null; uAt.occupier = u;
                 try {
-                    int after = 0;
-                    foreach (Player o in map.enemyPlayers) after += SupplyNetwork.SolveMoved(o, new Dictionary<SupplyPoint, HexTile>()).depth.Count;
-                    w.supplyCut = Mathf.Max(0, map.theirSupply.depth.Count - after);
+                    after = new SupplyNetwork.Result();
+                    foreach (Player o in map.enemyPlayers)
+                        foreach (KeyValuePair<HexTile, int> kv in SupplyNetwork.SolveMoved(o, new Dictionary<SupplyPoint, HexTile>()).depth)
+                            if (kv.Value > after.DepthAt(kv.Key)) after.depth[kv.Key] = kv.Value;
+                    w.supplyCut = Mathf.Max(0, map.theirSupply.depth.Count - after.depth.Count);
                 } finally { uAt.occupier = was; from.occupier = u; }
             }
-            w.space = (w.ourSpace - w.theirSpace) * prof.spaceTileValue + w.supplyCut * prof.spaceSupplyValue;
+            foreach (Unit e in map.enemyUnits) {
+                if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f || IsHQ(e)) continue;
+                if (after.DepthAt(e.tile) <= 0) w.enemyUnsupplied++;
+            }
+            w.space = (w.ourSpace - w.theirSpace) * prof.spaceTileValue + w.supplyCut * prof.spaceSupplyValue
+                    + w.enemyUnsupplied * prof.enemyUnsuppliedValue;
             w.score += w.space;
         }
 
