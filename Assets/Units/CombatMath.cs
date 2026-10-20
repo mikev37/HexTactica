@@ -99,6 +99,38 @@ public static class CombatMath {
         return o;
     }
 
+    /// <summary>
+    /// Damage both ways for a hypothetical exchange: attacker at <paramref name="attackerStrength"/>
+    /// on <paramref name="attackerTile"/>, defender at <paramref name="defenderStrength"/> on
+    /// <paramref name="defenderTile"/>. The same rules as Resolve — defender's cover counts against
+    /// the shot, retaliation ignores cover, a dug-in veteran fires first, damage taken first
+    /// weakens the answer — without needing either unit to actually stand there. For the AI's
+    /// simulations. Returns (damage to defender, damage to attacker).
+    /// </summary>
+    public static void Exchange(Unit attacker, int attackerStrength, HexTile attackerTile,
+                                Unit defender, int defenderStrength, HexTile defenderTile,
+                                out int toDefender, out int toAttacker) {
+        toDefender = 0; toAttacker = 0;
+        if (attacker == null || defender == null || defenderTile == null || attackerTile == null) return;
+        attackerStrength = Mathf.Clamp(attackerStrength, 0, attacker.Strength);
+        defenderStrength = Mathf.Clamp(defenderStrength, 0, defender.Strength);
+        if (attackerStrength <= 0 || defenderStrength <= 0) return;
+        int attackerDown = attacker.Strength - attackerStrength, defenderDown = defender.Strength - defenderStrength;
+
+        bool adjacent = defenderTile.neighbors.Contains(attackerTile);
+        bool retaliation = adjacent && defender.MinRange < 1 && defender.AttackRange >= 1
+                        && defender.retaliates && defender.CanAttack(attackerTile);
+        bool defenderFirst = retaliation && defender.Veterancy + CoverFor(defender, defenderTile) > attacker.Veterancy;
+        if (defenderFirst) {
+            toAttacker = Cap(Unit.calculateDamage(defender, attacker, null, defenderDown), attackerStrength);
+            toDefender = Cap(Unit.calculateDamage(attacker, defender, defenderTile, attackerDown + toAttacker), defenderStrength);
+        } else {
+            toDefender = Cap(Unit.calculateDamage(attacker, defender, defenderTile, attackerDown), defenderStrength);
+            if (retaliation && toDefender < defenderStrength)
+                toAttacker = Cap(Unit.calculateDamage(defender, attacker, null, defenderDown + toDefender), attackerStrength);
+        }
+    }
+
     static int Cap(int damage, int strength) {
         return Mathf.Clamp(damage, 0, Mathf.Max(0, strength));
     }

@@ -166,7 +166,7 @@ namespace HexTactica.AI {
                     int t = Eta(u, o.tile);
                     if (t > profile.objectiveReachTurns) continue;
                     // Not a trip it would starve on: out there and back must fit in what it carries.
-                    if (u.suppliesMax > 0 && map.SupplyDepth(o.tile) <= 0 &&
+                    if (profile.objectivesNeedForce && u.suppliesMax > 0 && map.SupplyDepth(o.tile) <= 0 &&
                         t + map.TurnsToSupply(u, o.tile) > u.supplies + 1) continue;
                     if (Damage(u, o) <= 0f) continue;
                     eta[u] = t;
@@ -190,7 +190,12 @@ namespace HexTactica.AI {
                 }
 
                 o.committed = Satisfied(o) || (o.kind == ObjectiveKind.DefendHQ && o.units.Count > 0);
-                if (!o.committed) { o.units.Clear(); o.assignedPower = 0f; o.assignedVolley = 0f; continue; }
+                // An objective is a small pull on units out of contact, not an order to attack: the
+                // tactical layer decides everything within objectiveContactTurns of the enemy. So by
+                // default it gives direction to the army even without the force to take it. (Requiring
+                // 2.5x the defenders, and no trip a unit couldn't get back into supply from, meant
+                // objectives never applied in an even game.)
+                if (!o.committed && (profile.objectivesNeedForce || o.units.Count == 0)) { o.units.Clear(); o.assignedPower = 0f; o.assignedVolley = 0f; continue; }
                 foreach (Unit u in o.units) {
                     used.Add(u);
                     // Structure, not tactics: a unit near the enemy keeps its place in the count

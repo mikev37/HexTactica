@@ -23,8 +23,11 @@ public static class ScenarioFile {
 
     public const long AI_ID = 112;
     public const long OTHER_ID = 0;
-    /// <summary>SampleScene's board covers cube coordinates −7..7.</summary>
-    public const int BOARD = 7;
+    /// <summary>
+    /// Radius of the board being written or read. SampleScene's board is radius 15 (HexGenerator
+    /// width 31); a file records its own width, and tiles outside it load as Water.
+    /// </summary>
+    public static int Board = 7;
 
     public class Meta {
         public readonly Dictionary<string, string> fields = new Dictionary<string, string>();
@@ -78,7 +81,7 @@ public static class ScenarioFile {
     /// </summary>
     public static void Save(string path, Dictionary<string, string> test, Player ai, Player other, Player first) {
         StringBuilder sb = new StringBuilder();
-        sb.Append("{\n\"width\":15,\n\"active\":").Append(first == ai ? AI_ID : OTHER_ID).Append(",\n\"test\":{");
+        sb.Append("{\n\"width\":").Append(2 * Board + 1).Append(",\n\"active\":").Append(first == ai ? AI_ID : OTHER_ID).Append(",\n\"test\":{");
         bool f = true;
         foreach (KeyValuePair<string, string> kv in test) {
             if (!f) sb.Append(',');
@@ -87,9 +90,9 @@ public static class ScenarioFile {
         }
         sb.Append("},\n\"tiles\":[");
         f = true;
-        for (int x = -BOARD; x <= BOARD; x++) for (int y = -BOARD; y <= BOARD; y++) {
+        for (int x = -Board; x <= Board; x++) for (int y = -Board; y <= Board; y++) {
             int z = -x - y;
-            if (Math.Abs(z) > BOARD) continue;
+            if (Math.Abs(z) > Board) continue;
             HexTile t = Rig.At(x, y);
             string name = t != null && t.terrain != null ? t.terrain.name : "Water";
             if (!f) sb.Append(',');
@@ -159,7 +162,9 @@ public static class ScenarioFile {
     public static Loaded Load(string path, string opponentOverride, Action<AIProfile> tweak) {
         string json = File.ReadAllText(path);
         Loaded l = new Loaded { path = path, meta = ReadMeta(path) };
-        Rig.NewGame(BOARD);
+        Match w = Regex.Match(json, "\"width\"\\s*:\\s*(\\d+)");
+        Board = w.Success ? int.Parse(w.Groups[1].Value) / 2 : 7;
+        Rig.NewGame(Board);
         foreach (Dictionary<string, string> t in Array(json, "tiles")) {
             HexTile tile = Rig.hg.get(int.Parse(t["x"]), int.Parse(t["y"]), int.Parse(t["z"]));
             if (tile != null) tile.terrain = Terrain(t["terrain"]);

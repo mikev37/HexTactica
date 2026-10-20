@@ -117,36 +117,31 @@ namespace HexTactica.AI {
             foreach (Unit e in enemies) {
                 HashSet<HexTile> pos;
                 if (!positions.TryGetValue(e, out pos) || hp[e] <= 0f) continue;
-                float scale = hp[e] / Mathf.Max(1f, e.Strength);
-                Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f, bestDamage = 0f;
+                Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f; int bestDamage = 0, bestBack = 0;
                 foreach (Unit d in map.ownUnits) {
                     if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f) continue;
                     HexTile dAt = d == u ? uAt : d.tile;
-                    float dmg = Mathf.Min(hp[d], Unit.calculateDamage(e, d, dAt, 0) * scale);
-                    if (dmg <= 0f) continue;
                     HexTile fire = FiringTile(e, dAt, pos, taken);
                     if (fire == null) continue;
-                    float value = dmg * Value(d) * (dmg >= hp[d] ? 2f : 1f);
+                    // The game's own exchange: cover on the defender's tile, retaliation without
+                    // cover, a dug-in veteran firing first, damaged units hitting for less.
+                    int dmg, back;
+                    CombatMath.Exchange(e, Hp(hp[e]), fire, d, Hp(hp[d]), dAt, out dmg, out back);
+                    if (dmg <= 0) continue;
+                    float value = (dmg * Value(d) - back * Value(e)) * (dmg >= hp[d] ? 2f : 1f);
                     if (value > bestValue || (value == bestValue && bestTarget != null && AIMap.CompareUnits(d, bestTarget) < 0)) {
-                        bestValue = value; bestTarget = d; bestTile = fire; bestDamage = dmg;
+                        bestValue = value; bestTarget = d; bestTile = fire; bestDamage = dmg; bestBack = back;
                     }
                 }
                 if (bestTarget == null) continue;
                 if (bestTile != e.tile) { taken.Remove(e.tile); taken.Add(bestTile); }
                 endsAt[e] = bestTile;
-                hp[bestTarget] -= bestDamage;
+                float dealt = Mathf.Min(hp[bestTarget], bestDamage);
+                hp[bestTarget] -= dealt;
                 float sofar;
-                w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + bestDamage;
-                // Retaliation, if the defender survives and can answer at that range.
-                if (hp[bestTarget] > 0f && bestTarget.retaliates && bestTarget.Firepower > 0) {
-                    HexTile dAt = bestTarget == u ? uAt : bestTarget.tile;
-                    int range = dAt.Distance(bestTile);
-                    if (range <= bestTarget.AttackRange && range > bestTarget.MinRange) {
-                        float back = Unit.calculateDamage(bestTarget, e, bestTile, 0) * hp[bestTarget] / Mathf.Max(1f, bestTarget.Strength);
-                        hp[e] = Mathf.Max(0f, hp[e] - back);
-                    }
-                }
-                if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + bestDamage.ToString("0.#"));
+                w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
+                hp[e] = Mathf.Max(0f, hp[e] - bestBack);
+                if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + dealt.ToString("0.#") + (bestBack > 0 ? "/" + bestBack : ""));
             }
 
             // What is left.
@@ -178,24 +173,49 @@ namespace HexTactica.AI {
             }
 
             // Each unit's point of view: what it can hit next. Ours strike first.
+            //
+            // HQs are not targets here: a blow on an HQ is already in the reply above, and in the
+            // HQ danger terms. Counting the enemy's *second* blow on our HQ (worth 16,667 a point)
+            // made any option that drew the enemy's reply away from the HQ look good — a tank
+            // charged into a 1-for-4 exchange because the enemy then fired from tiles too far from
+            // our HQ to hit it the turn after.
+            //
+            // And the enemy's next blow comes after our next turn: whatever we can destroy first
+            // never lands, so each enemy's blow is discounted by the share of it our units can kill.
             if (prof.ownStrikeWeight > 0f || prof.enemyStrikeWeight > 0f) {
+                Dictionary<Unit, float> ourFire = new Dictionary<Unit, float>();
                 foreach (Unit x in hp.Keys) {
-                    if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x)) continue;
-                    bool ours = x.owner == u.owner;
-                    float weight = ours ? prof.ownStrikeWeight : prof.enemyStrikeWeight;
-                    if (weight <= 0f) continue;
-                    HexTile xAt = x == u ? uAt : (endsAt.ContainsKey(x) ? endsAt[x] : x.tile);
-                    float scale = hp[x] / Mathf.Max(1f, x.Strength);
-                    int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
+                    if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner != u.owner) continue;
+                    HexTile xAt = x == u ? uAt : x.tile;
                     float best = 0f;
                     foreach (Unit d in hp.Keys) {
-                        if (hp[d] <= 0f || (d.owner == u.owner) == ours) continue;
-                        HexTile dAt = d == u ? uAt : (endsAt.ContainsKey(d) ? endsAt[d] : d.tile);
-                        if (xAt.Distance(dAt) > reach) continue;
-                        float dmg = Mathf.Min(hp[d], Unit.calculateDamage(x, d, dAt, 0) * scale);
-                        best = Mathf.Max(best, dmg * Value(d));
+                        if (hp[d] <= 0f || d.owner == u.owner || IsHQ(d)) continue;
+                        HexTile dAt = endsAt.ContainsKey(d) ? endsAt[d] : d.tile;
+                        int dmg, back;
+                        if (!InReach(x, xAt, dAt, out dmg, out back, Hp(hp[x]), d, Hp(hp[d]))) continue;
+                        float f; ourFire[d] = (ourFire.TryGetValue(d, out f) ? f : 0f) + dmg;
+                        best = Mathf.Max(best, dmg * Value(d) - back * Value(x));
                     }
-                    if (ours) w.ownStrike += best * weight; else w.enemyStrike += best * weight;
+                    w.ownStrike += best * prof.ownStrikeWeight;
+                }
+                if (prof.enemyStrikeWeight > 0f) {
+                    foreach (Unit x in hp.Keys) {
+                        if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner == u.owner) continue;
+                        HexTile xAt = endsAt.ContainsKey(x) ? endsAt[x] : x.tile;
+                        float survives = 1f;
+                        float ours;
+                        if (ourFire.TryGetValue(x, out ours)) survives = Mathf.Clamp01(1f - ours / hp[x]);
+                        if (survives <= 0f) continue;
+                        float best = 0f;
+                        foreach (Unit d in hp.Keys) {
+                            if (hp[d] <= 0f || d.owner != u.owner || IsHQ(d)) continue;
+                            HexTile dAt = d == u ? uAt : d.tile;
+                            int dmg, back;
+                            if (!InReach(x, xAt, dAt, out dmg, out back, Hp(hp[x]), d, Hp(hp[d]))) continue;
+                            best = Mathf.Max(best, dmg * Value(d) - back * Value(x));
+                        }
+                        w.enemyStrike += best * survives * prof.enemyStrikeWeight;
+                    }
                 }
                 w.score += w.ownStrike - w.enemyStrike;
             }
@@ -235,6 +255,29 @@ namespace HexTactica.AI {
         static float Value(Unit x) {
             return AIScore.Worth(x);
         }
+
+        /// <summary>
+        /// Could <paramref name="x"/> standing on <paramref name="xAt"/> strike <paramref name="d"/> on
+        /// <paramref name="dAt"/> next turn (hex reach: move + range), and for how much each way.
+        /// The firing tile is approximated by the defender's neighbour nearest the attacker.
+        /// </summary>
+        static bool InReach(Unit x, HexTile xAt, HexTile dAt, out int dmg, out int back, int xHp, Unit d, int dHp) {
+            dmg = 0; back = 0;
+            int dist = xAt.Distance(dAt);
+            int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
+            if (dist > reach || (!x.moveAndAttack && dist <= x.MinRange)) return false;
+            HexTile fire = xAt;
+            if (x.moveAndAttack && dist > x.AttackRange) {
+                fire = null;
+                foreach (HexTile n in dAt.neighbors) if (n != null && (fire == null || n.Distance(xAt) < fire.Distance(xAt))) fire = n;
+                if (x.AttackRange > 1 || fire == null) fire = xAt;   // ranged: shot from range, no retaliation
+            }
+            CombatMath.Exchange(x, xHp, fire, d, dHp, dAt, out dmg, out back);
+            return dmg > 0;
+        }
+
+        /// <summary>Simulated strength as the whole number the game's damage rules use.</summary>
+        static int Hp(float h) { return h <= 0f ? 0 : Mathf.Max(1, Mathf.RoundToInt(h)); }
 
         static bool IsHQ(Unit x) {
             SupplyPoint sp = x != null ? x.GetComponent<SupplyPoint>() : null;
