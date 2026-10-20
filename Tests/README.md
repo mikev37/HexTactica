@@ -157,7 +157,11 @@ on each other's tiles), a unit of ours destroyed during the reply stops blocking
 to go takes the pinned point — an HQ always. A destroyed unit costs `deathPremium` (1) more of
 its strength points' worth than the points themselves, both sides. An assist needs a real
 attack: a finisher with a free firing tile it can reach this turn. Options within `worldTie`
-(0.25) of a strength point of the best world survive to the positional tie-break.
+(0.25) of a strength point of the best world — never less than `worldTieMin` (250) — survive
+to the positional tie-break. Only enemy units that fire in place (artillery) or cannot move keep
+their tiles in the reply; supply units and the rest step aside. Immobile units (the HQ) are never
+driven back, so never pinned. Artillery is paid `artilleryCoverValue` (25) per tile the enemy
+could move to next turn that its guns cover from where it ends its turn.
 
 Each tile a unit could stop on is simulated once without firing and once for every shot it
 could take from there; the simulation, not the attack score, picks. The simulated enemy picks targets net of the retaliation it takes.

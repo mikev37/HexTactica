@@ -324,7 +324,11 @@ namespace HexTactica.AI {
                 }
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
-            List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - profile.worldTie * worth);
+            // The tie margin: a fraction of a strength point, but never less than worldTieMin —
+            // a quarter of a grunt's point (83) treated real differences as noise in reverse:
+            // tiny ones decided everything.
+            float tie = Mathf.Max(profile.worldTieMin, profile.worldTie * worth);
+            List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - tie);
             Option best = null;
             Dictionary<HexTile, AIDenial.Result> denial = new Dictionary<HexTile, AIDenial.Result>();
             foreach (Option o in kept) {
@@ -343,7 +347,7 @@ namespace HexTactica.AI {
                 System.Text.StringBuilder sb = new System.Text.StringBuilder();
                 sb.Append(unit.owner.personal_name).Append(' ').Append(unit.name).Append(D(unit.tile)).Append(" s").Append(unit.Strength)
                   .Append(" [").Append(tag).Append(", world] ").Append(options.Count).Append(" options | best world ").Append(bestWorld.ToString("0"))
-                  .Append(", within ").Append((profile.worldTie * worth).ToString("0")).Append(": ").Append(kept.Count);
+                  .Append(", within ").Append(tie.ToString("0")).Append(": ").Append(kept.Count);
                 List<Option> shown = new List<Option>(options);
                 shown.Sort((a, b) => b.world.score.CompareTo(a.world.score));
                 for (int i = 0; i < Mathf.Min(5, shown.Count); i++) {
