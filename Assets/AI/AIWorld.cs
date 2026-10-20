@@ -493,7 +493,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Material per strength point; HQs at their (deliberately enormous) cost.</summary>
-        static float Value(Unit x) {
+        internal static float Value(Unit x) {
             return AIScore.Worth(x);
         }
 
@@ -518,14 +518,14 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Simulated strength as the whole number the game's damage rules use.</summary>
-        static int Hp(float h) { return h <= 0f ? 0 : Mathf.Max(1, Mathf.RoundToInt(h)); }
+        internal static int Hp(float h) { return h <= 0f ? 0 : Mathf.Max(1, Mathf.RoundToInt(h)); }
 
-        static bool IsHQ(Unit x) {
+        internal static bool IsHQ(Unit x) {
             SupplyPoint sp = x != null ? x.GetComponent<SupplyPoint>() : null;
             return sp != null && sp.producer;
         }
 
-        static HexTile FiringTile(Unit e, HexTile target, HashSet<HexTile> pos, HashSet<HexTile> taken) {
+        internal static HexTile FiringTile(Unit e, HexTile target, HashSet<HexTile> pos, HashSet<HexTile> taken) {
             if (!e.moveAndAttack) {
                 int d = e.tile.Distance(target);
                 return d <= e.AttackRange && d > e.MinRange ? e.tile : null;
@@ -572,7 +572,7 @@ namespace HexTactica.AI {
         /// back to a free neighbour no closer to the attacker (CombatMath.FindRetreatTile's rule)?
         /// Immobile units (an HQ) never can.
         /// </summary>
-        static bool CanFallBack(Unit d, HexTile dAt, HexTile fire, Unit u, HexTile uAt, Dictionary<Unit, float> hp, HashSet<HexTile> taken) {
+        internal static bool CanFallBack(Unit d, HexTile dAt, HexTile fire, Unit u, HexTile uAt, Dictionary<Unit, float> hp, HashSet<HexTile> taken) {
             if (d.moveRange <= 0) return true;   // immobile (an HQ): never driven back, never pinned
             int now = dAt.Distance(fire);
             foreach (HexTile n in dAt.neighbors) {
@@ -584,7 +584,7 @@ namespace HexTactica.AI {
             return false;
         }
 
-        static HashSet<HexTile> Positions(Unit e, bool ownSideBlocks = false) {
+        internal static HashSet<HexTile> Positions(Unit e, bool ownSideBlocks = false) {
             HashSet<HexTile> positions = new HashSet<HexTile>();
             positions.Add(e.tile);
             if (e.moveAndAttack) {

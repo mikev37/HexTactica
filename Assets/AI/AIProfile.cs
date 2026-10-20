@@ -305,6 +305,16 @@ namespace HexTactica.AI {
         [Tooltip("An assist needs a finisher with a free firing tile it can reach this turn by real movement. Off: the old check, hex distance only.")]
         public bool assistNeedsReach = true;
 
+        [Header("Coordination")]
+        [Tooltip("Before units act one at a time, give each group in contact a whole-group plan (strike / withdraw / stay), forecast with all of its moves at once (AIPlan).")]
+        public bool coordination = false;
+
+        [Tooltip("A group plan must beat 'stay' by this much (gold) in the forecast to be adopted.")]
+        public float coordinationMargin = 500f;
+
+        [Tooltip("Model retreats in the group-plan forecast: a defender driven back moves, and the tile it held opens.")]
+        public bool coordinationRetreats = true;
+
         [Tooltip("Self-preservation: the acting unit counts every enemy blow that could reach its tile (biggest first, weights 1, 1/2, 1/4 ...), beyond what the forecast reply already takes from it, at this weight. 0 = off.")]
         [Range(0f, 2f)]
         public float selfPreservationWeight = 0f;
