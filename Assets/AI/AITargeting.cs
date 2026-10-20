@@ -56,7 +56,9 @@ namespace HexTactica.AI {
             // Pricing it as permanent let a tank trade itself for two points on a supply hub
             // that was whole again two turns later. Damage that sticks — or kills — is worth
             // all of it.
-            if (!o.defenderDies && defender.Firepower > 0 && map.TheirSupplyDepth(defender) > 0) value *= profile.healingDamageFactor;
+            // (Supply units heal too, unless cut off — the 25,000 hub healed its 3 points back while the
+            // tank that hit it was lost for good. It used to be exempt here.)
+            if (!o.defenderDies && map.Heals(defender, defender.tile)) value *= profile.healingDamageFactor;
 
             // An HQ is priced by what attacking it achieves: the win, or nothing lasting.
             if (IsHQ(defender)) {
@@ -170,6 +172,22 @@ namespace HexTactica.AI {
                 }
             }
             return best;
+        }
+
+        /// <summary>Every valid shot from <paramref name="from"/>, one per enemy in range, in board order.</summary>
+        public static List<AttackAppraisal> AllFrom(Unit attacker, HexTile from, AIMap map,
+                                                    AIProfile profile, Posture posture, bool imminent) {
+            List<AttackAppraisal> all = new List<AttackAppraisal>();
+            if (attacker == null || from == null || !attacker.CanAttack(from)) return all;
+            List<HexTile> inRange = AIPath.TilesInRange(from, attacker.MinRange, attacker.AttackRange);
+            inRange.Sort(CombatMath.CompareTiles);
+            for (int i = 0; i < inRange.Count; i++) {
+                HexTile t = inRange[i];
+                if (t.occupier == null || t.occupier.owner == attacker.owner) continue;
+                AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
+                if (a.valid) all.Add(a);
+            }
+            return all;
         }
 
         public static bool IsHQUnit(Unit u) { return IsHQ(u); }

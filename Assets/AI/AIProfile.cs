@@ -298,6 +298,15 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float assistWeight = 0.75f;
 
+        [Tooltip("Space: gold per tile one side's units could move to next turn, and again per tile they could strike. Ours count for us, theirs against us — so taking space from them is a gain, and doing it with a cheap unit is a cheap gain.")]
+        public float spaceTileValue = 25f;
+
+        [Tooltip("Count our space only on contested ground: tiles the enemy could strike within enemyReachTurns. Off: every tile, including the empty rear.")]
+        public bool spaceContestedOnly = true;
+
+        [Tooltip("Space: gold per tile of enemy supply our unit's position cuts off.")]
+        public float spaceSupplyValue = 50f;
+
         [Header("Supply unit pricing")]
         [Tooltip("0 = coverage pricing (forward/intent/need); 1 = value added: heals 1/6 of each wounded unit, supplies 1/10 of each unit, attrition it prevents, minus its own simulated loss.")]
         [Range(0, 1)]

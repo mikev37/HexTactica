@@ -269,10 +269,9 @@ public class HexTile : MonoBehaviour
                 HexTile move_confirm = parent;
                 Unit attacker = GameController.gc.activeUnit;
                 Unit defender = occupier;
-                int damage = defender.displayAttackOdds(attacker);
-                if(neighbors.Contains(parent) && defender.retaliates) {
-                    attacker.displayAttackOdds(defender, null, damage);
-                }
+                // The exact resolution OrderAttack will run, firing from the tile the attacker will
+                // stand on (parent when moving and firing): ambush order, retaliation, pinned retreat.
+                defender.PreviewAttack(attacker, move_confirm != null ? move_confirm : attacker.tile);
             } else if (state == UIState.ATTACK_CONFIRM) {
                 HexTile move_confirm = parent;
                 Unit attacker = GameController.gc.activeUnit;

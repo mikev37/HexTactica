@@ -164,7 +164,8 @@ public class Unit : MonoBehaviour
 
             }
 
-            if (attacking) {
+            // An ambusher waits for its attacker to finish moving in before it fires.
+            if (attacking && (target == null || target.path.Count == 0)) {
                 Fire(target,true);
             } else if (pendingRetreat != null && !shooter && !AnimatorIsPlaying()) {
                 // Deferred post-combat fallback. Driven from here rather than from
@@ -336,12 +337,26 @@ public class Unit : MonoBehaviour
             defender.ammo = Mathf.Max(0, defender.ammo - Mathf.Max(1, defender.ammoPerShot));
         }
 
+        // (A pinned defender's extra point is already in damageToDefender.)
         defender.Strength = Mathf.Max(0, defender.Strength - o.damageToDefender);
         Strength = Mathf.Max(0, Strength - o.damageToAttacker);
 
+        // The animations play the exchange in the order it was resolved: in an ambush the
+        // defender fires first and the attacker answers if it survived; otherwise the attacker
+        // fires and the defender answers if it retaliates and survived.
+        if (o.defenderFiresFirst) {
+            attacking = false;
+            defender.target = this;
+            defender.attacking = true;
+            defender.answeredBy = Strength > 0 && o.damageToDefender > 0 ? this : null;
+            answeredBy = null;
+        } else {
+            answeredBy = o.retaliationHappens && o.damageToAttacker > 0 && defender.Strength > 0 ? defender : null;
+        }
+
         if (o.defenderRetreats && !o.defenderDies) {
             if (o.defenderPinned) {
-                defender.Strength = Mathf.Max(0, defender.Strength - 1);
+                // nowhere to go; the extra strength is already taken
             } else if (o.retreatTile != null) {
                 // Damage resolves immediately, but the *movement* has to wait for the
                 // firing animation. Update() only calls Fire() once path is empty, and
@@ -461,13 +476,18 @@ public class Unit : MonoBehaviour
         
     }
 
+    /// <summary>Who fires back once this unit's shot lands (decided when the attack resolved). Animation only.</summary>
+    [HideInInspector] public Unit answeredBy;
+
     internal void AttackResolve(Unit defender, bool retaliate) {
         if (!defender) return;
         GameObject.Instantiate(weaponImpact, defender.transform.position, defender.transform.rotation);
         defender.StrengthDisplay = defender.Strength;
+        Unit answer = answeredBy;
+        answeredBy = null;
         if (defender.Strength <= 0) {
             defender.Die();
-        } else if (retaliate && (tile == null || (defender.CanAttack(tile) && defender.tile.neighbors.Contains(tile))) && defender.retaliates) {
+        } else if (retaliate && answer == defender) {
             defender.Fire(this, false);
         }
         shooter = false;
@@ -507,6 +527,20 @@ public class Unit : MonoBehaviour
         damage = Mathf.Min(defender.Strength, damage);
         textArea.text = "-" + damage;
         return damage;
+    }
+
+    /// <summary>
+    /// Attack preview: the exact outcome OrderAttack will produce if <paramref name="attacker"/>
+    /// fires on this unit from <paramref name="from"/> — CombatMath.Resolve, the same function
+    /// the attack and the AI use. Shows damage on both units; an ambush (this unit fires first)
+    /// is marked "!", a pinned retreat is included in the number.
+    /// </summary>
+    internal CombatOutcome PreviewAttack(Unit attacker, HexTile from) {
+        CombatOutcome o = CombatMath.Resolve(attacker, this, from);
+        textArea.text = "-" + o.damageToDefender + (o.defenderDies ? " X" : o.defenderRetreats ? (o.defenderPinned ? " pin" : " ret") : "");
+        if (o.retaliationHappens || o.damageToAttacker > 0)
+            attacker.textArea.text = (o.defenderFiresFirst ? "!" : "") + "-" + o.damageToAttacker + (o.attackerDies ? " X" : "");
+        return o;
     }
 
     internal bool validTarget(HexTile position) {
