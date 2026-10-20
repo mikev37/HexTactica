@@ -46,6 +46,11 @@ public static class Tests {
                 int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"), tweak);
             return 0;
         }
+        if (probe == "versus") {
+            Scenarios.Versus(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
+                             Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
+            return 0;
+        }
         if (probe == "duel") {
             Scenarios.Duel(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "40"),
                            Tweak(Environment.GetEnvironmentVariable("SET_BLUE")), Tweak(Environment.GetEnvironmentVariable("SET_RED")),
