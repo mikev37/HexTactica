@@ -300,6 +300,16 @@ namespace HexTactica.AI {
             float bestWorld = float.NegativeInfinity;
             foreach (Option o in options) {
                 o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null);
+                // Buildings are not units, so the material count never sees a capture under way.
+                // Standing on an enemy building with a unit that can take it is worth what taking it
+                // is worth (the same values TryCapture uses), as long as the unit survives the reply.
+                Building b = o.stop.building;
+                if (b != null && b.owner != unit.owner && Building.CanCapture(unit)) {
+                    float lostThere;
+                    o.world.lost.TryGetValue(unit, out lostThere);
+                    if (lostThere < unit.Strength)
+                        o.world.score += b.IsHQ ? map.BoardStake * 0.5f : worth * 3f + b.income * 10f;
+                }
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
             List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - profile.worldTie * worth);
@@ -567,6 +577,9 @@ namespace HexTactica.AI {
                 bonus += pull / (1 + d);
 
                 if (canTake && tile == front.objectiveTile) bonus += front.objectiveValue * 0.5f;
+                // A unit that cannot capture must not stand on the building: it blocks the one that can.
+                // (A tank parked on the enemy HQ for four turns while three rifles walked around it.)
+                if (building && !canTake && tile == front.objectiveTile) bonus -= worth * unit.Strength;
             }
             // Regrouping for an attack: gather on the edge of our supply nearest the objective.
             if (front != null && front.staging && front.stagingTile != null) {

@@ -120,10 +120,15 @@ namespace HexTactica.AI {
 
             // Removing a threat to our HQ, in proportion to the strength taken off it: damage
             // to a unit scales its damage down with it.
-            float threat = map.HQThreat(defender);
+            // And any threat to anything else: an enemy is worth what it can do to us next turn —
+            // its best blow, in full — in proportion to how much of it this attack takes away
+            // (damage scales with strength). The HQ term is kept separately because it also weighs
+            // how close the HQ is to falling.
+            float threat = Mathf.Max(map.HQThreat(defender) * profile.hqDefenseWeight,
+                                     map.ThreatBonus(defender) * profile.threatTargetWeight);
             if (threat > 0f && defender.Strength > 0) {
                 float removed = o.defenderDies ? 1f : o.damageToDefender / (float)defender.Strength;
-                value += threat * removed * profile.hqDefenseWeight;
+                value += threat * removed;
             }
 
             // Exploit a breakthrough: a supply hub hit from ground none of their fighting units can

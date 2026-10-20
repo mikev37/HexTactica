@@ -38,7 +38,7 @@ namespace HexTactica.AI {
 
         [Tooltip("How tiered choice orders its tiers. 0: damage dealt, then damage received, then denial. 1: damage received first, then damage dealt. 2: simulate each option against the enemy's reply and keep the best resulting worlds (AIWorld), then denial and position.")]
         [Range(0, 2)]
-        public int choiceMode = 0;
+        public int choiceMode = 2;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
@@ -139,6 +139,14 @@ namespace HexTactica.AI {
         [Tooltip("A line unit at or below this strength, inside or next to supply, pulls back to heal when a healthier unit is close enough to take its place.")]
         [Range(0, 6)]
         public int rotateStrength = 3;
+
+        [Tooltip("How expected loss on a tile is estimated. 0: each enemy's one attack is shared among everything of ours it could hit, in proportion to how attractive each is. 1: every enemy that can reach the tile counts in full. 2: each enemy fires its whole attack at the most valuable thing it can reach.")]
+        [Range(0, 2)]
+        public int dangerModel = 2;
+
+        [Tooltip("Worth of taking away an enemy's next-turn threat: its best possible blow on anything of ours, in material, times this, times the fraction of its strength the attack removes.")]
+        [Range(0f, 2f)]
+        public float threatTargetWeight = 1f;
 
         [Tooltip("Tiebreak preference for cover, beyond the protection already priced into expected losses.")]
         public float coverWeight = 1f;

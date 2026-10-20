@@ -37,6 +37,8 @@ namespace HexTactica.AI {
             public HashSet<HexTile> tiles;
             /// <summary>Where it could stand to fire from tonight (its own tile included).</summary>
             public List<HexTile> positions;
+            /// <summary>Material value of the best attack it can make on us next turn.</summary>
+            public float bestBlow;
             public int exposedFriendlies;
             /// <summary>Sum of how attractive each currently exposed friendly is to this enemy.</summary>
             public float exposedAttraction;
@@ -255,6 +257,16 @@ namespace HexTactica.AI {
                         ef.exposedAttraction += at;
                     }
                 }
+                // What this enemy could do with its one attack next turn: the most valuable blow it
+                // can land on anything of ours, in material (kills counted with the kill bonus).
+                for (int j = 0; j < ownUnits.Count; j++) {
+                    Unit u = ownUnits[j];
+                    if (u == null || u.tile == null || u.trasnporter != null || !ef.tiles.Contains(u.tile)) continue;
+                    int dmg = Mathf.Min(u.Strength, Unit.calculateDamage(e, u, u.tile, 0));
+                    if (dmg <= 0) continue;
+                    float v = dmg * AIScore.Worth(u) * (dmg >= u.Strength ? profile.killBonus : 1f);
+                    if (v > ef.bestBlow) ef.bestBlow = v;
+                }
                 // Committed assault units that have yet to act and could step into this
                 // enemy's fire this turn share its attention too.
                 int reach = e.moveAndAttack ? e.moveRange + e.AttackRange : e.AttackRange;
@@ -301,6 +313,16 @@ namespace HexTactica.AI {
                 if (damage <= 0) continue;
                 float mine, others;
                 float share = ShareOf(ef, u, at, out mine, out others);   // own prior share replaced, not added
+                // dangerModel 1: every enemy that can reach the tile is assumed to fire on it, in full.
+                if (profile.dangerModel == 1) share = 1f;
+                // dangerModel 2: each enemy puts its whole attack into the most valuable target it can
+                // reach — the same rule the simulated reply (AIWorld) and the original AI use.
+                else if (profile.dangerModel == 2) {
+                    float bestOther = 0f;
+                    foreach (KeyValuePair<Unit, float> kv in ef.attractionOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
+                    foreach (KeyValuePair<Unit, float> kv in ef.committedOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
+                    share = mine >= bestOther ? 1f : 0f;
+                }
                 loss += damage * share;
             }
             return Mathf.Min(u.Strength, loss);
@@ -681,6 +703,15 @@ namespace HexTactica.AI {
                 n++;
             }
             return n;
+        }
+
+        /// <summary>
+        /// Material value of the most valuable attack this enemy could make on us on its next
+        /// turn — a tank within reach of our supply hub carries the hub's damage, in full.
+        /// </summary>
+        public float ThreatBonus(Unit enemy) {
+            for (int i = 0; i < enemyFire.Count; i++) if (enemyFire[i].unit == enemy) return enemyFire[i].bestBlow;
+            return 0f;
         }
 
         /// <summary>How many enemy units could fire on a tile tonight.</summary>
