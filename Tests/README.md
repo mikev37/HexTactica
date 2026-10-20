@@ -60,8 +60,12 @@ board on start and pans/zooms (`CameraRig`, self-installing): arrow keys or righ
 to pan, wheel or +/- to zoom, Home to re-frame.
 
 **In Unity:** enter play mode in SampleScene, **HexTactica → Load Scenario File…**, pick a
-file. The test block attaches Red's AI (`Legacy` = the original AttackMove AI, ported
-faithfully; `Greedy` = defend-only) and sets who moves first, then it plays itself.
+file. **Blue is always this AI** (the scene's `AIPlayer` — the new AI replaced the old one;
+loading a scenario also clears Blue's GoTo mission objective so it plays exactly as the
+headless harness does). Red is whatever the file's test block says (`Legacy` = the original
+AttackMove AI, ported faithfully; `Greedy` = defend-only), unless you pick otherwise under
+**HexTactica → Red Opponent**: As the File Says, This AI (mirror match), Legacy AI, Greedy,
+or Human (you play Red). The choice is remembered and applies on the next load.
 
 **Headless:** `bash Tests/run.sh <Assets>` plays every file and reports:
 

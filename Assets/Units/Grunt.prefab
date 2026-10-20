@@ -613,7 +613,7 @@ MonoBehaviour:
   ammoMax: 6
   transportSlots: 0
   maxWeight: 0
-  weight: 0
+  weight: 1
   transported: []
   trasnporter: {fileID: 0}
   attacking: 0

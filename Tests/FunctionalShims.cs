@@ -42,6 +42,7 @@ namespace UnityEngine {
         public static Vector3 zero { get { return new Vector3(0, 0, 0); } }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z); }
+        public static Vector3 operator *(Vector3 a, float k) { return new Vector3(a.x * k, a.y * k, a.z * k); }
         public static implicit operator Vector2(Vector3 v) { return new Vector2(v.x, v.y); }
     }
 
@@ -62,7 +63,23 @@ namespace UnityEngine {
         public static Color gray { get { return new Color(.5f, .5f, .5f, 1); } }
         public static Color clear { get { return new Color(0, 0, 0, 0); } }
     }
-    public struct Bounds { public Vector3 extents; }
+    public struct Bounds {
+        public Vector3 center, extents;
+        public Bounds(Vector3 c, Vector3 size) { center = c; extents = new Vector3(size.x / 2, size.y / 2, size.z / 2); }
+        public void Encapsulate(Vector3 p) { }
+        public void Expand(float a) { }
+    }
+    public class Camera : Component {
+        public static Camera main;
+        public bool orthographic;
+        public float orthographicSize, aspect;
+        public Vector3 ScreenToWorldPoint(Vector3 p) { return p; }
+    }
+    public enum RuntimeInitializeLoadType { AfterSceneLoad, BeforeSceneLoad }
+    [AttributeUsage(AttributeTargets.Method)] public class RuntimeInitializeOnLoadMethodAttribute : Attribute {
+        public RuntimeInitializeOnLoadMethodAttribute() { }
+        public RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType t) { }
+    }
 
     public static class Mathf {
         public const float Infinity = float.PositiveInfinity;
@@ -216,13 +233,18 @@ namespace UnityEngine {
         public static float deltaTime { get { return 0.016f; } }
         public static float fixedDeltaTime { get { return 0.02f; } }
         public static float time { get { return 0; } }
+        public static float unscaledDeltaTime { get { return 0.016f; } }
     }
     public static class Input {
         public static bool GetKeyDown(string s) { return false; }
         public static bool GetKeyDown(KeyCode k) { return false; }
         public static bool GetMouseButtonDown(int i) { return false; }
+        public static bool GetKey(KeyCode k) { return false; }
+        public static bool GetMouseButton(int i) { return false; }
+        public static Vector3 mousePosition { get { return new Vector3(); } }
+        public static Vector2 mouseScrollDelta { get { return new Vector2(); } }
     }
-    public enum KeyCode { None, Space, Escape, Return, Tab, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
+    public enum KeyCode { None, Space, Escape, Return, Tab, Home, LeftArrow, RightArrow, UpArrow, DownArrow, Equals, Minus, KeypadPlus, KeypadMinus, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
     public static class Application {
         public static string persistentDataPath { get { return "/tmp/hextactica"; } }
         public static string dataPath { get { return "/tmp/hextactica"; } }
