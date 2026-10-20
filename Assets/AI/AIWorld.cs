@@ -206,20 +206,26 @@ namespace HexTactica.AI {
             //
             // And the enemy's next blow comes after our next turn: whatever we can destroy first
             // never lands, so each enemy's blow is discounted by the share of it our units can kill.
+            Dictionary<Unit, float> ourFire = new Dictionary<Unit, float>();
             if (prof.ownStrikeWeight > 0f || prof.enemyStrikeWeight > 0f) {
-                Dictionary<Unit, float> ourFire = new Dictionary<Unit, float>();
                 foreach (Unit x in hp.Keys) {
                     if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner != u.owner) continue;
                     HexTile xAt = x == u ? uAt : x.tile;
                     float best = 0f;
+                    Unit bestD = null; int bestDmg = 0;
                     foreach (Unit d in hp.Keys) {
                         if (hp[d] <= 0f || d.owner == u.owner || IsHQ(d)) continue;
                         HexTile dAt = endsAt.ContainsKey(d) ? endsAt[d] : d.tile;
                         int dmg, back;
                         if (!InReach(x, xAt, dAt, out dmg, out back, Hp(hp[x]), d, Hp(hp[d]))) continue;
-                        float f; ourFire[d] = (ourFire.TryGetValue(d, out f) ? f : 0f) + dmg;
-                        best = Mathf.Max(best, dmg * Value(d) - back * Value(x));
+                        float v = dmg * Value(d) - back * Value(x);
+                        if (bestD == null || v > best) { best = v; bestD = d; bestDmg = dmg; }
                     }
+                    // Each of our units fires once: it counts against the one enemy it would pick.
+                    // (Summing every unit's reach on every enemy declared most enemies dead before
+                    // they could fire, and hid the threat to our HQ.)
+                    if (bestD != null) { float f; ourFire[bestD] = (ourFire.TryGetValue(bestD, out f) ? f : 0f) + bestDmg; }
+                    best = Mathf.Max(0f, best);
                     w.ownStrike += best * prof.ownStrikeWeight;
                 }
                 if (prof.enemyStrikeWeight > 0f) {
@@ -243,6 +249,7 @@ namespace HexTactica.AI {
                 }
                 w.score += w.ownStrike - w.enemyStrike;
             }
+
             if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
             return w;
         }
