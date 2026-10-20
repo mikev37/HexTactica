@@ -14,6 +14,7 @@ public class LevelEditor : MonoBehaviour
 
     public List<TerrainData> allTerrain;
     public List<Unit> allUnit;
+    public List<Building> allBuilding;
 
 	// Start is called before the first frame update
 	void Start()
@@ -54,6 +55,16 @@ public class LevelEditor : MonoBehaviour
 
             json += "\n\"active\":" + GameController.gc.activePlayer.id;
         }
+        if (BuildingController.bc != null && BuildingController.bc.buildings.Count > 0) {
+            json += ",\n";
+            json += "\n\"buildings\":[";
+            BuildingController.bc.buildings.ForEach(b => {
+                if (b == null) return;
+                BuildingData bd = new BuildingData(b);
+                json += JsonUtility.ToJson(bd) + ",";
+            });
+            json = json.Substring(0, json.Length - 1) + "\n]";
+        }
         if (UnitController.uc.units.Count > 0) {
             json += ",\n";
             json += "\n\"units\":[";
@@ -87,6 +98,7 @@ public class LevelEditor : MonoBehaviour
         //HexGenerator.hg.load()
         JSONObject obj = new JSONObject(json);
         Debug.Log(obj.GetField("tiles"));
+        HexTactica.Harness.ScenarioLoader.FloodWater();   // a save for a smaller board: the rest is water
         JSONObjectEnumerator numobj =
             obj.GetField("tiles").GetEnumerator();
         while (numobj.MoveNext()) {
@@ -105,6 +117,15 @@ public class LevelEditor : MonoBehaviour
             long active_player = obj.GetField("active").longValue;
             GameController.gc.players.ForEach(pl => { if (pl.id == active_player) GameController.gc.activePlayer = pl; });
         }
+        if (BuildingController.bc != null) BuildingController.bc.Clear();
+        if (obj.GetField("buildings")) {
+            JSONObjectEnumerator numbuilding =
+                obj.GetField("buildings").GetEnumerator();
+            while (numbuilding.MoveNext()) {
+                BuildingData bd = JsonUtility.FromJson<BuildingData>(numbuilding.Current.Print());
+                bd.load();
+            }
+        }
         if (obj.GetField("units")) {
             JSONObjectEnumerator numunit =
                 obj.GetField("units").GetEnumerator();
@@ -121,6 +142,15 @@ public class LevelEditor : MonoBehaviour
             if (t.name.Equals(name)) {
                 return t;
             }
+        }
+        return null;
+    }
+
+    public static Building loadBuilding(string name) {
+        name = name.Replace("(Clone)", "");
+        if (singleton.allBuilding == null) return null;
+        foreach (Building b in singleton.allBuilding) {
+            if (b != null && b.name.Equals(name)) return b;
         }
         return null;
     }
