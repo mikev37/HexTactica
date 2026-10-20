@@ -86,6 +86,19 @@ public static class Tests {
             return 0;
         }
         if (Environment.GetEnvironmentVariable("PROBE") == "mapshow") { TerrainMaps.Show(); return 0; }
+        if (Environment.GetEnvironmentVariable("PROBE") == "decisivelog") {
+            SetupDecisive();
+            AITactical.DecisionLog = m => Console.WriteLine("    " + m);
+            for (int r = 0; r < 12 && !Rig.gc.gameOver; r++) {
+                Player act = Rig.gc.activePlayer;
+                AIPlayer f = act.gameObject.GetComponent<AIPlayer>();
+                if (f != null) f.PlayWholeTurn(); else act.gameObject.GetComponent<BaselineAIPlayer>().PlayWholeTurn();
+                string line = "  r" + r + ":";
+                foreach (Player p in Rig.gc.players) foreach (Unit u in p.units) line += " " + p.personal_name + u.name.Substring(0, 2) + "(" + u.tile.x + "," + u.tile.y + ")s" + u.Strength;
+                Console.WriteLine(line);
+            }
+            return 0;
+        }
         if (Environment.GetEnvironmentVariable("PROBE") == "chokes") {
             ApplySet();
             TerrainMaps.Chokes(int.Parse(Environment.GetEnvironmentVariable("MAP") ?? "5"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "0"));
