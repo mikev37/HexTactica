@@ -36,17 +36,20 @@ public static class UnitMigration {
         else UnityEngine.Debug.LogWarning("Unit validation found " + issues + " issue(s):\n" + report);
     }
 
-    [MenuItem("HexTactica/Prefabs/Migrate Units (infer locomotion)")]
+    [MenuItem("HexTactica/Prefabs/Migrate Units (locomotion, weight)")]
     public static void Migrate() {
         int changed = 0;
         foreach (Unit prefab in AllUnitPrefabs()) {
             Locomotion inferred = Infer(prefab);
-            if (prefab.locomotion == inferred) continue;
-            Undo.RecordObject(prefab, "Infer locomotion");
-            prefab.locomotion = inferred;
+            bool fixLoco = prefab.locomotion != inferred;
+            // Weight 0 is already treated as 1 when transported; write the 1 so it is explicit.
+            bool fixWeight = prefab.weight <= 0;
+            if (!fixLoco && !fixWeight) continue;
+            Undo.RecordObject(prefab, "Migrate unit");
+            if (fixLoco) { prefab.locomotion = inferred; UnityEngine.Debug.Log(prefab.name + ": locomotion -> " + inferred); }
+            if (fixWeight) { prefab.weight = 1; UnityEngine.Debug.Log(prefab.name + ": weight 0 -> 1 (what it was already treated as)"); }
             EditorUtility.SetDirty(prefab);
             changed++;
-            UnityEngine.Debug.Log(prefab.name + ": locomotion -> " + inferred);
         }
         AssetDatabase.SaveAssets();
         UnityEngine.Debug.Log("Migration complete: " + changed + " prefab(s) updated. Re-run Validate.");

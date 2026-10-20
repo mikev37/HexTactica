@@ -60,8 +60,12 @@ board on start and pans/zooms (`CameraRig`, self-installing): arrow keys or righ
 to pan, wheel or +/- to zoom, Home to re-frame.
 
 **In Unity:** enter play mode in SampleScene, **HexTactica → Load Scenario File…**, pick a
-file. The test block attaches Red's AI (`Legacy` = the original AttackMove AI, ported
-faithfully; `Greedy` = defend-only) and sets who moves first, then it plays itself.
+file. **Blue is always this AI** (the scene's `AIPlayer` — the new AI replaced the old one;
+loading a scenario also clears Blue's GoTo mission objective so it plays exactly as the
+headless harness does). Red is whatever the file's test block says (`Legacy` = the original
+AttackMove AI, ported faithfully; `Greedy` = defend-only), unless you pick otherwise under
+**HexTactica → Red Opponent**: As the File Says, This AI (mirror match), Legacy AI, Greedy,
+or Human (you play Red). The choice is remembered and applies on the next load.
 
 **Headless:** `bash Tests/run.sh <Assets>` plays every file and reports:
 
@@ -171,6 +175,24 @@ Your current roster needs **no migration**: Grunt, Supplies and TempHQ are corre
    defaults are the sweep's best.
 3. To watch a test: play mode, **HexTactica → Load Scenario File…**. For batch runs: add a
    **`BatchRunner`** and a **`ScenarioLoader`** listing save files, **HexTactica → Run Batch**.
+
+### Game logs — send me a game
+
+Every game you start with **Load Scenario File…** is recorded (turn it off under
+**HexTactica → Game Log → Record Loaded Scenarios**; **Start Recording Now** records whatever
+is on the board). Each game gets a folder under `<persistentDataPath>/game-logs/` — **Game Log
+→ Open Logs Folder** shows it — containing:
+
+- `game.log`: the board at the start of every turn, every move and attack by anyone (you,
+  Legacy, this AI) with the damage both ways, and for this AI its board read (supply split,
+  enemy reach, objectives, turn order) and every decision with the options it weighed and the
+  simulated enemy reply.
+- `turn-NNN-<side>.dat`: the board at the start of every turn as a scenario file, so any
+  moment can be reloaded — in Unity or headless — and replayed.
+
+Zip the folder and attach it. It is written as the game goes, so stopping play mode mid-game
+keeps everything up to that point. Headless, `PROBE=record FILE=<name> [ROUNDS=r] [OUT=dir]`
+records the same way and checks that the last snapshot reloads to the same board.
 
 ### Debugging the AI in the editor
 - `AIPlayer.onDecision` — callback with every unit's action, score and reason.
