@@ -120,6 +120,16 @@ public class AIPlayer : MonoBehaviour {
         return false;
     }
 
+    /// <summary>Forget the turn in progress and everything remembered between turns: a new board was loaded.</summary>
+    public void ResetTurn() {
+        turnPrepared = false;
+        queue.Clear();
+        intents.Clear();
+        postureMemory.Clear();
+        assaultMemory.Clear();
+        timer = actionInterval;
+    }
+
     /// <summary>Run the whole turn without pacing. Used by the harness.</summary>
     public void PlayWholeTurn() {
         int guard = 0;

@@ -67,8 +67,36 @@ public static class HarnessMenu {
         string start = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Tests", "Scenarios");
         string path = EditorUtility.OpenFilePanel("Load scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
         if (string.IsNullOrEmpty(path)) return;
+        ScenarioLoader.RedOverride = RedChoice();
         if (ScenarioLoader.LoadBoardFromPath(path)) UnityEngine.Debug.Log("Loaded scenario " + path);
     }
+
+    // ---- Who plays Red when a scenario loads. Blue (id 112) is always this AI.
+
+    const string RedKey = "HexTactica.RedOpponent";
+    const string RedMenu = "HexTactica/Red Opponent/";
+
+    static string RedChoice() {
+        string v = EditorPrefs.GetString(RedKey, "");
+        return string.IsNullOrEmpty(v) ? null : v;
+    }
+
+    static void SetRed(string v) {
+        EditorPrefs.SetString(RedKey, v ?? "");
+        UnityEngine.Debug.Log("Red opponent for loaded scenarios: " + (v == null ? "as the file says" : v == "Full" ? "this AI" : v)
+                              + ". Applies the next time you load a scenario file.");
+    }
+
+    [MenuItem(RedMenu + "As the File Says", false, 0)] static void RedFile() { SetRed(null); }
+    [MenuItem(RedMenu + "As the File Says", true)] static bool RedFileCheck() { Menu.SetChecked(RedMenu + "As the File Says", RedChoice() == null); return true; }
+    [MenuItem(RedMenu + "This AI (mirror match)", false, 1)] static void RedFull() { SetRed("Full"); }
+    [MenuItem(RedMenu + "This AI (mirror match)", true)] static bool RedFullCheck() { Menu.SetChecked(RedMenu + "This AI (mirror match)", RedChoice() == "Full"); return true; }
+    [MenuItem(RedMenu + "Legacy AI", false, 2)] static void RedLegacy() { SetRed("Legacy"); }
+    [MenuItem(RedMenu + "Legacy AI", true)] static bool RedLegacyCheck() { Menu.SetChecked(RedMenu + "Legacy AI", RedChoice() == "Legacy"); return true; }
+    [MenuItem(RedMenu + "Greedy (defend-only)", false, 3)] static void RedGreedy() { SetRed("Greedy"); }
+    [MenuItem(RedMenu + "Greedy (defend-only)", true)] static bool RedGreedyCheck() { Menu.SetChecked(RedMenu + "Greedy (defend-only)", RedChoice() == "Greedy"); return true; }
+    [MenuItem(RedMenu + "Human (you play Red)", false, 4)] static void RedHuman() { SetRed("Human"); }
+    [MenuItem(RedMenu + "Human (you play Red)", true)] static bool RedHumanCheck() { Menu.SetChecked(RedMenu + "Human (you play Red)", RedChoice() == "Human"); return true; }
 
     [MenuItem("HexTactica/Open Results Folder")]
     public static void OpenResults() {
