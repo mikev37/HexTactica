@@ -1,0 +1,48 @@
+using System;
+using HexTactica.AI;
+using HexTactica.Testing;
+
+/// <summary>
+/// Entry point. Every test is a scenario file Unity can load (see Scenarios, ScenarioFile).
+///
+///   bash Tests/run.sh Assets                                run every scenario
+///   PROBE=export bash Tests/run.sh Assets                   regenerate Tests/Scenarios/*.dat
+///   PROBE=game FILE=<name> [ROUNDS=r] [SIDE=AI|Red|both]    narrate one scenario
+///   PROBE=chokes FILE=<name>                                where blocking cuts enemy movement
+///   SET=field=value[,field=value]                           override any AIProfile field
+/// </summary>
+public static class Tests {
+
+    static Action<AIProfile> tweak;
+
+    static void ApplySet() {
+        string set = Environment.GetEnvironmentVariable("SET");
+        if (set == null) return;
+        string[] pairs = set.Split(',');
+        tweak = p => {
+            foreach (string pair in pairs) {
+                string[] kv = pair.Split('=');
+                var fi = typeof(AIProfile).GetField(kv[0]);
+                if (fi == null) throw new Exception("No AIProfile field " + kv[0]);
+                if (fi.FieldType == typeof(int)) fi.SetValue(p, int.Parse(kv[1]));
+                else if (fi.FieldType == typeof(bool)) fi.SetValue(p, bool.Parse(kv[1]));
+                else fi.SetValue(p, float.Parse(kv[1]));
+            }
+        };
+    }
+
+    public static int Main(string[] args) {
+        if (args.Length > 0) PrefabLoader.AssetsRoot = args[0];
+        if (args.Length > 1) Scenarios.Dir = args[1];
+        ApplySet();
+        string probe = Environment.GetEnvironmentVariable("PROBE");
+        if (probe == "export") { Scenarios.Export(); return 0; }
+        if (probe == "game") {
+            Scenarios.Narrate(Environment.GetEnvironmentVariable("FILE"),
+                int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"), tweak);
+            return 0;
+        }
+        if (probe == "chokes") { Scenarios.Chokes(Environment.GetEnvironmentVariable("FILE")); return 0; }
+        return Scenarios.RunAll(tweak) == 0 ? 0 : 1;
+    }
+}

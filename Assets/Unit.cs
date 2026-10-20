@@ -52,6 +52,9 @@ public class Unit : MonoBehaviour
     public int Piercing;
     [Range(0, 6)]
     public int Concealment;
+    [Range(1, 6)]
+    [Tooltip("Ammo consumed per shot")]
+    public int ammoPerShot = 1;
     [Tooltip("If False unit has to move OR attack")]
     public bool moveAndAttack;
     [Range(0, 10)]
@@ -63,6 +66,8 @@ public class Unit : MonoBehaviour
 
     [Header("Movement Variables")]
     public Sprite move_display;
+    [Tooltip("Locomotive category: drives road bonuses, fuel burn, airfield needs, and AI role inference")]
+    public Locomotion locomotion = Locomotion.Boots;
     [Range(0, 10)]
     [Tooltip("How far to move under ideal circumstances")]
     public int moveRange;
@@ -161,6 +166,13 @@ public class Unit : MonoBehaviour
 
             if (attacking) {
                 Fire(target,true);
+            } else if (pendingRetreat != null && !shooter && !AnimatorIsPlaying()) {
+                // Deferred post-combat fallback. Driven from here rather than from
+                // AttackResolve because the resolve chain has branches that never
+                // reach the end — notably when the retaliating unit dies — and a
+                // retreat that silently fails to happen is worse than one that lags
+                // a frame.
+                ApplyPendingRetreat();
             }
         }
     }
@@ -176,22 +188,74 @@ public class Unit : MonoBehaviour
     internal void CompleteMove(HexTile hexTile) {
         tile.parent = null;
         List<HexTile> path = hexTile.buildpath();
+
+        // Fuel is charged per tile entered. Aircraft burn their whole per-turn
+        // allowance regardless of distance flown, per the design doc.
+        int tilesEntered = Mathf.Max(0, path.Count - 1);
+        if (fuelMax > 0) {
+            if (LocomotionRules.BurnsFullFuelPerTurn(locomotion)) {
+                if (tilesEntered > 0) fuel = Mathf.Max(0, fuel - Mathf.Max(minFuelPerTurn, minFuelPerTile));
+            } else {
+                fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
+            }
+        }
+
         tile.occupier = null;
         tile = hexTile;
         tile.occupier = this;
         this.path = path;
+
+        // Carried units ride along rather than being left behind on the old tile.
+        for (int i = 0; i < transported.Count; i++) {
+            if (transported[i] != null) transported[i].tile = hexTile;
+        }
+
         animator.SetBool("Moving", true);
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
     }
 
+    /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
+    internal void TeleportTo(HexTile hexTile, int tilesEntered) {
+        if (fuelMax > 0) {
+            if (LocomotionRules.BurnsFullFuelPerTurn(locomotion)) {
+                if (tilesEntered > 0) fuel = Mathf.Max(0, fuel - Mathf.Max(minFuelPerTurn, minFuelPerTile));
+            } else {
+                fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
+            }
+        }
+        if (tile != null && tile.occupier == this) tile.occupier = null;
+        tile = hexTile;
+        if (hexTile != null) hexTile.occupier = this;
+        for (int i = 0; i < transported.Count; i++) {
+            if (transported[i] != null) transported[i].tile = hexTile;
+        }
+    }
+
+    /// <summary>
+    /// Whether this unit is capable of firing at all right now.
+    ///
+    /// Note this was previously the sole reader of <c>ammo</c> in the entire
+    /// codebase, and nothing ever refilled it — so a prefab authored with ammo 0
+    /// could silently never attack, with nothing surfacing why. Ammo is now spent
+    /// in AttackActual and restored by Resupply, so the check means what it says.
+    /// </summary>
     internal bool CanAttack(HexTile position) {
-
-        return ammo > 0;
+        if (Strength <= 0) return false;
+        if (ammoMax > 0 && ammo <= 0) return false;
+        if (Firepower <= 0) return false;
+        return true;
     }
+
     internal bool CanAttack(Unit opposition) {
-
-        return calculateDamage(this,opposition,opposition.tile,0) > 0;
+        if (opposition == null || opposition.tile == null) return false;
+        if (!CanAttack(opposition.tile)) return false;
+        return calculateDamage(this, opposition, opposition.tile, 0) > 0;
     }
+
+    /// <summary>True once the unit has nothing left to fight with.</summary>
+    public bool OutOfAmmo { get { return ammoMax > 0 && ammo <= 0; } }
+    public bool OutOfFuel { get { return fuelMax > 0 && fuel <= 0; } }
+    public bool OutOfSupplies { get { return suppliesMax > 0 && supplies <= 0; } }
 
 
 
@@ -247,43 +311,125 @@ public class Unit : MonoBehaviour
 
 
 
-    internal void OrderAttack(Unit defender) {
+    /// <summary>
+    /// Resolve an attack. All arithmetic lives in CombatMath so that the AI's
+    /// prediction and this resolution cannot drift apart.
+    /// </summary>
+    internal CombatOutcome OrderAttack(Unit defender) {
         attacking = true;
         target = defender;
-        AttackActual(defender,true);
-        if ((tile == null ||defender.CanAttack(tile))
-            && (defender.tile == null || defender.tile.neighbors.Contains(tile))
-            && defender.retaliates) {
-            defender.AttackActual(this,false);
+
+        // Capture before resolving: a kill nulls defender.tile and a retreat moves it,
+        // and either way destruction belongs to the ground that was fought over.
+        HexTile fought = defender.tile;
+        CombatOutcome o = CombatMath.Resolve(this, defender, tile);
+
+        if (ammoMax > 0) ammo = Mathf.Max(0, ammo - Mathf.Max(1, ammoPerShot));
+        if (o.retaliationHappens && defender.ammoMax > 0) {
+            defender.ammo = Mathf.Max(0, defender.ammo - Mathf.Max(1, defender.ammoPerShot));
         }
+
+        defender.Strength = Mathf.Max(0, defender.Strength - o.damageToDefender);
+        Strength = Mathf.Max(0, Strength - o.damageToAttacker);
+
+        if (o.defenderRetreats && !o.defenderDies) {
+            if (o.defenderPinned) {
+                defender.Strength = Mathf.Max(0, defender.Strength - 1);
+            } else if (o.retreatTile != null) {
+                // Damage resolves immediately, but the *movement* has to wait for the
+                // firing animation. Update() only calls Fire() once path is empty, and
+                // AttackResolve arrives later still from an animation event — so moving
+                // the defender here would slide it off its tile before the attacker has
+                // visibly shot at it, and spawn the impact effect on empty ground.
+                defender.pendingRetreat = o.retreatTile;
+                if (GameController.gc == null || GameController.gc.headless) {
+                    defender.ApplyPendingRetreat();
+                }
+            }
+        }
+
+        if (defender.Strength <= 0) defender.DieActual();
+        if (Strength <= 0) DieActual();
+
+        // Combat degrades the ground it is fought over.
+        if (fought != null) fought.RegisterCombat();
+
+        return o;
     }
 
+    /// <summary>
+    /// Tile this unit has been driven back to, held until the firing animation has
+    /// played. Null when there is no retreat pending.
+    /// </summary>
+    [HideInInspector] public HexTile pendingRetreat;
+
+    /// <summary>
+    /// Perform a deferred post-combat retreat. Safe to call repeatedly; safe if the
+    /// destination got taken in the meantime, in which case the unit simply holds
+    /// (it has already paid for the retreat in damage terms).
+    /// </summary>
+    public void ApplyPendingRetreat() {
+        HexTile to = pendingRetreat;
+        pendingRetreat = null;
+        if (to == null || Strength <= 0) return;
+        if (to.occupier != null) return;
+        if (!CanEnter(to)) return;
+
+        if (tile != null && tile.occupier == this) tile.occupier = null;
+        tile = to;
+        to.occupier = this;
+        for (int i = 0; i < transported.Count; i++) {
+            if (transported[i] != null) transported[i].tile = to;
+        }
+        // Empty path: Update() glides the sprite to the new tile at moveSpeed.
+        path.Clear();
+    }
+
+    /// <summary>Direct damage application, used by scripted events and the harness.</summary>
     internal void AttackActual(Unit defender, bool useCover) {
-        HexTile coverTile = defender.tile;
-        if (!useCover)
-            coverTile = null;
-        int damage = Unit.calculateDamage(this,defender,coverTile,0);
+        HexTile coverTile = useCover ? defender.tile : null;
+        int damage = Mathf.Min(defender.Strength,
+                               Unit.calculateDamage(this, defender, coverTile, 0));
         defender.Strength -= damage;
         if (defender.Strength <= 0) {
             defender.DieActual();
         }
     }
 
+    private bool dead;
     private void DieActual() {
+        if (dead) return;
+        dead = true;
+        SupplyPoint ownHub = GetComponent<SupplyPoint>();
+        if (ownHub != null && ownHub.producer && owner != null) owner.hadHQ = true;
         Strength = 0;
-        owner.units.Remove(this);
-        UnitController.uc.units.Remove(this);
-        tile.occupier = null;
+        if (owner != null) owner.units.Remove(this);
+        if (UnitController.uc != null) UnitController.uc.units.Remove(this);
+        // Anything being carried goes down with the transport.
+        for (int i = transported.Count - 1; i >= 0; i--) {
+            if (transported[i] != null) transported[i].DieActual();
+        }
+        transported.Clear();
+        if (trasnporter != null) { trasnporter.transported.Remove(this); trasnporter = null; }
+        if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = null;
+        // Losing an HQ unit ends the game for its owner immediately, not at end of turn.
+        if (GameController.gc != null) GameController.gc.CheckVictory();
         if (GetComponent<SupplyPoint>()) {
             owner.Resupply();
         }
     }
 
+    /// <summary>
+    /// What this unit is worth as a target: build cost, a veterancy premium, and a
+    /// share of the damage it currently threatens. Positional value, not just material —
+    /// a gun that dominates a crossing is worth more than its price tag. Supply value is
+    /// added by the AI's own map (AIMap.SupplyImportance), not stored on the unit.
+    /// </summary>
     internal int value() {
-
-
-        return (int)(cost + Veterancy * cost * .2f)*1/6 + threatValue * 1/10;
+        float material = cost + Veterancy * cost * 0.2f;
+        float positional = threatValue * 0.1f;
+        return (int)(material / 6f + positional);
     }
 
     public bool shooter;
@@ -340,8 +486,8 @@ public class Unit : MonoBehaviour
         float penetration = Mathf.Max(1, defender.Armor - attacker.Piercing);
         float aquire = Mathf.Max(1, defender.Evasion - attacker.Targeting);
         float toughness = 6;
-        if (tile != null)
-            cover = Math.Min(defender.Concealment, tile.terrain.cover);
+        if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion))
+            cover = Math.Min(defender.Concealment, tile.EffectiveCover);
         return (int)Mathf.Max(1,Mathf.Floor(
             (destructin / penetration / aquire - cover)
             * (attacker.Strength - firstStrike) / toughness ));// (defender.Strength));
@@ -371,7 +517,17 @@ public struct UnitData {
     public int fuel;
     public int ammo;
     public string gameobject_name;
+    /// <summary>
+    /// Index of the carrying unit, PLUS ONE. Zero means "not being transported".
+    ///
+    /// The offset is not decoration: JsonUtility cannot tell a missing field from a
+    /// zero one, so a save written before this field existed deserialises as 0. With
+    /// a raw index that reads as "carried by units[0]", and every unit in an old save
+    /// would be loaded into the first unit on the roster.
+    /// </summary>
+    public int transporterIndexPlusOne;
     public UnitData(Unit t) {
+        transporterIndexPlusOne = 0;
         x = t.tile.x;
         y = t.tile.y;
         z = t.tile.z;
@@ -384,6 +540,10 @@ public struct UnitData {
         supplies = t.supplies;
         ammo = t.ammo;
         fuel = t.fuel;
+        if (t.trasnporter != null && UnitController.uc != null) {
+            int idx = UnitController.uc.units.IndexOf(t.trasnporter);
+            if (idx >= 0) transporterIndexPlusOne = idx + 1;
+        }
     }
 
     public Unit load() {

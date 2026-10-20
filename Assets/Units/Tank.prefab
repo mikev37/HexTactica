@@ -171,6 +171,7 @@ MonoBehaviour:
   retaliates: 1
   move_display: {fileID: 0}
   moveRange: 6
+  locomotion: 2
   terrainScramble: 1
   minFuelPerTurn: 0
   minFuelPerTile: 1

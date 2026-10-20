@@ -70,6 +70,8 @@ public class HexTile : MonoBehaviour
 
     [Header("Movement Variables")]
     public Unit occupier;// unit reference
+    [Tooltip("Reference to the building in the tile, if any")]
+    public Building building;
     public int G;
     public HexTile parent;
     public Transform unitPlacement;
@@ -181,6 +183,46 @@ public class HexTile : MonoBehaviour
     }
     public bool CanEndTurnHere(Unit unit) {
         return occupier == null;
+    }
+
+    [Tooltip("Fights resolved on this tile; every 10 raises destruction one tier, to a max of 3")]
+    public int combatCount;
+
+    /// <summary>
+    /// "Destruction increases the more a zone is bombarded or attacked in. For every
+    /// 10 times combat is had in a zone, the sprite changes up to level 3 - maximum
+    /// devastation. It affects movability and defense."
+    /// </summary>
+    public void RegisterCombat() {
+        combatCount++;
+        int tier = Mathf.Min(3, combatCount / 10);
+        if (tier != damageLevel) {
+            damageLevel = tier;
+            RefreshDamageSprite();
+        }
+    }
+
+    public void RefreshDamageSprite() {
+        if (terrain == null || upper == null) return;
+        if (damageLevel >= 3 && terrain.upper_destroyed != null) upper.sprite = terrain.upper_destroyed;
+        else if (damageLevel >= 1 && terrain.upper_damaged != null) upper.sprite = terrain.upper_damaged;
+        else upper.sprite = terrain.upper_normal;
+    }
+
+    /// <summary>Cover after destruction. Bombarded ground stops protecting anyone.</summary>
+    public int EffectiveCover {
+        get {
+            if (terrain == null) return 0;
+            return Mathf.Max(0, terrain.cover - damageLevel);
+        }
+    }
+
+    /// <summary>Movement resistance after destruction. Cratered ground is harder to cross.</summary>
+    public int EffectiveMoveability {
+        get {
+            if (terrain == null) return 0;
+            return Mathf.Max(0, terrain.moveability + (damageLevel > 0 ? 1 : 0));
+        }
     }
 
 
@@ -299,64 +341,37 @@ public class HexTile : MonoBehaviour
     }
 
     int slow() {
-       return terrain.moveability;
+       return EffectiveMoveability;
     }
 
-    int moveFormula(HexTile n, Unit mover) {
+    // moveFormula removed: movement cost now lives in AIPath.StepCost, the single model.
 
-
-        return 1 + Mathf.Max(0, n.slow() - mover.terrainScramble);
-
-        //return Mathf.Pow(n.slow(), mover.terrainImpact);
-    }
 
     public List<HexTile> CheckMovementRange(Unit mover) {
-        return CheckMovementRange(mover, mover.moveRange);
+        return CheckMovementRange(mover, HexTactica.AI.AIPath.RangeThisTurn(mover));
     }
 
+    /// <summary>
+    /// Tiles the mover can reach this turn from here, leaving G (movement spent) and
+    /// parent (previous step) on each tile for the click-to-move flow and buildpath().
+    ///
+    /// Delegates to AIPath so there is exactly one movement model in the game. When the
+    /// AI and the player each had their own search, the AI could choose a destination
+    /// (along a road, say) that this search could not reach — and CompleteMove would then
+    /// follow a stale parent chain and glide the unit straight through whatever was in
+    /// the way.
+    /// </summary>
     public List<HexTile> CheckMovementRange(Unit mover, int distance) {
-
-        //SortedSet<HexTile> open = new SortedSet<HexTile>() ;
-        PriorityQueue<HexTile> open = new PriorityQueue<HexTile>();
+        HexTactica.AI.MoveField field = HexTactica.AI.AIPath.ThisTurnFrom(mover, this, distance);
         List<HexTile> closed = new List<HexTile>();
-
-        ////add start
-        //ds_priority_add(open, start, start.id);
-        open.Enqueue(this, 999);
+        foreach (HexTile t in field.Tiles) {
+            if (!field.ReachableThisTurn(t)) continue;
+            t.G = field.Get(t).used;
+            t.parent = field.ParentOf(t);
+            closed.Add(t);
+        }
         this.G = 0;
         this.parent = null;
-        while (open.Count() > 0) {
-            HexTile current = open.Dequeue();
-
-            closed.Add(current);
-
-            current.neighbors.ForEach(n => {
-                
-                bool not_in_closed = !closed.Contains(n);
-
-                bool passable = mover.CanEnter(n) && mover.CanEnter(current); // (can_go(neighbor, mover) or neighbor.occupant != noone) and can_go(current, mover) and can_move_treaty(mover, neighbor);
-
-                bool not_occupied = n.occupier == null || n.occupier.owner == mover.owner;//neighbor.occupant == noone or neighbor.occupant.owner == mover.owner or neighbor.occupant.owner == noone;
-
-                bool in_range = moveFormula(n, mover) + current.G <= distance;
-                if (not_in_closed && passable && not_occupied && in_range) {
-                    // if(ds_priority_find_priority(open,neighbor) == 0 or ds_priority_find_priority(open,neighbor) == undefined)
-                    if (!open.Contains(n)) {
-                        n.parent = current;
-                        n.G = current.G + moveFormula(n, mover);
-                        open.Enqueue(n, n.G);
-                    } else {
-                        int tempG = current.G + moveFormula(n, mover);
-
-                        if (tempG < n.G) {
-                            n.parent = current;
-                            n.G = tempG;
-                            open.AlterPriority(n, tempG);
-                        }
-                    }
-                }
-            });
-        }
         return closed;
     }
 
@@ -368,27 +383,11 @@ public class HexTile : MonoBehaviour
     }
 
    public List<HexTile> AllInAttackRange(Unit attacker) {
-        List<HexTile> inrange = new List<HexTile>();
-        int distance = attacker.AttackRange;
-        int minRange = attacker.MinRange;
-        for (int dx = -distance; dx <= distance; dx++) {
-            for (int dy = -distance; dy <= distance; dy++) {
-                for (int dz = -distance; dz <= distance; dz++) {
-                        HexTile position = HexGenerator.hg.get(dx + this.x, dy + this.y, dz + this.z);
-                        if (position != null) {
-
-                            bool min_distance = this.Distance(position) > minRange;
-
-                            bool attackable = attacker.CanAttack(position); // (can_go(neighbor, mover) or neighbor.occupant != noone) and can_go(current, mover) and can_move_treaty(mover, neighbor);
-                         
-                            if (attackable && min_distance) {
-                                 inrange.Add(position);// 
-                            }
-                        }
-                }
-            }
-        }
-        return inrange;
+        // Same set as the original triple loop over dx/dy/dz, without iterating the
+        // two-thirds of that cube where x+y+z != 0. CanAttack does not depend on the
+        // target tile, so it is checked once rather than per tile.
+        if (!attacker.CanAttack(this)) return new List<HexTile>();
+        return HexTactica.AI.AIPath.TilesInRange(this, attacker.MinRange, attacker.AttackRange);
     }
 }
 
@@ -397,30 +396,45 @@ public class Heat {
     public float antiarmor;
     public float antiair;
     public int closestUnit;
-    public int closestSupply;
-    public bool inSupply;
 }
 
+/// <summary>
+/// Per-tile AI annotation: the reasoning the AI wrote onto the board for its last
+/// decision here, shown in the tile's text field when the profile's annotateBoard is on.
+///
+/// The AI's working layers (conflict, distress, supply projection) used to live here and
+/// now live in AIMap. On shared tiles they were wiped by ResetTileData after every unit
+/// action, and two players' AIs would overwrite each other's values.
+/// </summary>
 public class AITileData {
-    public float attackValue;
+    public string debugTag;
+
+    public void Clear() {
+        debugTag = null;
+    }
 }
 
 public struct TileData {
     public int x, y, z;
     public int damage;
+    public int combatCount;
     public string terrain;
     public TileData(HexTile t) {
         x = t.x;
         y = t.y;
         z = t.z;
         damage = t.damageLevel;
+        combatCount = t.combatCount;
         terrain = t.terrain.name;
     }
 
     public HexTile load() {
         HexTile t = HexGenerator.hg.get(x, y, z);
+        if (t == null) return null;   // a save written for a bigger board: skip what this one lacks
         t.damageLevel = damage;
+        t.combatCount = combatCount;
         t.loadData(LevelEditor.loadTerrain(terrain));
+        t.RefreshDamageSprite();
         t.changeState(UIState.FREE);
         return t;
     }
