@@ -48,6 +48,9 @@ public class AIPlayer : MonoBehaviour {
     Dictionary<Unit, Objective> assignments = new Dictionary<Unit, Objective>();
     bool turnPrepared;
 
+    /// <summary>Unit-turns that got a strategic-objective pull, and turns played. For the harness.</summary>
+    public int objectivePulls, turnsPlayed;
+
     public HexTactica.AI.AIProfile Profile {
         get { return profile != null ? profile : HexTactica.AI.AIProfile.Default; }
     }
@@ -136,6 +139,8 @@ public class AIPlayer : MonoBehaviour {
         fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
         objectives = AIObjectives.Build(map, Profile);
         assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
+        objectivePulls += assignments.Count;
+        turnsPlayed++;
         // Objectives are structure: they add a pull to units out of contact and nothing else.
         map.SetCommitted(AIStrategic.AssaultUnits(fronts));
         map.SetAssaultObjectives(AIStrategic.AssaultObjectives(fronts));
@@ -154,7 +159,42 @@ public class AIPlayer : MonoBehaviour {
 
         queue = AIRoles.Order(actionable, map, Profile);
         map.ClearAnnotations();
+        if (Profile.ghostSupply) PlanGhosts();
     }
+
+    /// <summary>
+    /// Supply goes first in thought and last in deed: each supply unit plans its move now,
+    /// before the line, and the board read treats it as made, so the line can attack into
+    /// supply that is coming. The supply unit still acts last, re-planning on the real board,
+    /// so it can follow whatever the line actually did.
+    /// </summary>
+    void PlanGhosts() {
+        for (int i = 0; i < map.ownHubs.Count; i++) {
+            SupplyPoint hub = map.ownHubs[i];
+            if (hub == null || hub.producer || hub.myUnit == null || !hub.myUnit.active) continue;
+            AISupplyPlanner.Ghost = true;
+            TransportPlan plan;
+            try { plan = AISupplyPlanner.PlanHub(hub, map, Profile, new HashSet<Unit>(reservedTransports)); }
+            finally { AISupplyPlanner.Ghost = false; }
+            HexTile at = GhostTile(plan);
+            if (at != null) map.SetGhost(hub, at);
+            if (AISupplyPlanner.DebugLog != null) AISupplyPlanner.DebugLog("   ghost plan: " + (plan != null ? plan.ToString() : "none"));
+            if (onGhost != null) onGhost(hub.myUnit, at);
+        }
+    }
+
+    /// <summary>Where a plan would leave the supply unit at the end of this turn, if it can tell.</summary>
+    HexTile GhostTile(TransportPlan plan) {
+        if (plan == null || plan.cargo == null || plan.destination == null) return null;
+        Unit cargo = plan.cargo;
+        if (plan.usesTransport) return plan.eta <= 1 ? plan.destination : null;
+        if (cargo.trasnporter != null) return null;
+        HexTile step = map.ReachHorizon(cargo).StepToward(plan.destination);
+        return step != null && step != cargo.tile ? step : null;
+    }
+
+    /// <summary>Called with each supply unit's planned (ghost) tile at the start of a turn; null = stays.</summary>
+    public System.Action<Unit, HexTile> onGhost;
 
     /// <summary>
     /// Pick an action for one unit. Supply hubs and transports get the joint planner;
@@ -179,6 +219,8 @@ public class AIPlayer : MonoBehaviour {
         SupplyPoint hub = unit.GetComponent<SupplyPoint>();
         if (hub != null) {
             if (hub.producer) return AIAction.Wait(unit, "HQ holds");
+            // The real move is planned on the real board: the ghost has served its purpose.
+            map.ClearGhost(hub);
 
             TransportPlan plan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
             if (plan == null && unit.trasnporter != null) plan = UnloadHere(unit);
@@ -244,4 +286,5 @@ public class AIPlayer : MonoBehaviour {
     public AIMap CurrentMap { get { return map; } }
     public List<Front> CurrentFronts { get { return fronts; } }
     public List<Objective> CurrentObjectives { get { return objectives; } }
+    public Dictionary<Unit, Objective> CurrentAssignments { get { return assignments; } }
 }

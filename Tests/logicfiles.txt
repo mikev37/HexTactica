@@ -27,6 +27,7 @@ AI/AIHeap.cs
 AI/AIPath.cs
 AI/AIProfile.cs
 AI/AIMap.cs
+AI/AIMapRead.cs
 AI/AIAction.cs
 AI/AITransportPlanner.cs
 AI/AISupplyPlanner.cs

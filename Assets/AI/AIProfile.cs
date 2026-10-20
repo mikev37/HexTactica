@@ -247,7 +247,7 @@ namespace HexTactica.AI {
 
         [Tooltip("Turns of travel beyond which a unit is not considered for an objective.")]
         [Range(1, 10)]
-        public int objectiveReachTurns = 3;
+        public int objectiveReachTurns = 8;
 
         [Header("Planning")]
         [Tooltip("How many turns ahead approach routes are planned.")]
@@ -268,6 +268,43 @@ namespace HexTactica.AI {
         [Tooltip("Turns of hub autonomy below which the AI treats reconnection as urgent.")]
         [Range(0, 6)]
         public int hubPanicThreshold = 3;
+
+        [Header("Board read")]
+        [Tooltip("Worth of a tile a supply unit could cover after one move, as a fraction of real supply (0 = unsupplied, 1 = supplied).")]
+        [Range(0f, 1f)]
+        public float potentialSupplyValue = 0.25f;
+
+        [Tooltip("How many enemy turns ahead the strike map looks (1 disables the extra turns; the coming turn is the world simulation's).")]
+        [Range(1, 5)]
+        public int enemyReachTurns = 3;
+
+        [Header("World score")]
+        [Tooltip("Our units' best blow on our next turn, counted in the world score at this fraction. We attack first, so this is a near-certain gain.")]
+        [Range(0f, 1f)]
+        public float ownStrikeWeight = 0.1f;
+
+        [Tooltip("Enemy units' best blow on their turn after that, counted against us at this fraction.")]
+        [Range(0f, 1f)]
+        public float enemyStrikeWeight = 0f;
+
+        [Tooltip("A supply unit's death costs, in the world score, one strength of every unit it alone keeps supplied, times this.")]
+        [Range(0f, 3f)]
+        public float hubDependentsWeight = 1f;
+
+        [Tooltip("A hit our units still to act this turn could finish counts as this fraction of a kill (its reply removed, its material gone).")]
+        [Range(0f, 1f)]
+        public float assistWeight = 0.75f;
+
+        [Header("Supply unit pricing")]
+        [Tooltip("0 = coverage pricing (forward/intent/need); 1 = value added: heals 1/6 of each wounded unit, supplies 1/10 of each unit, attrition it prevents, minus its own simulated loss.")]
+        [Range(0, 1)]
+        public int hubPricing = 1;
+
+        [Tooltip("With value-added pricing, still credit coverage of contested ground and of where units are heading.")]
+        public bool hubPricingForward = true;
+
+        [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
+        public bool ghostSupply = true;
 
         [Header("Transport")]
         [Tooltip("Turns saved that justify the two-turn overhead of loading and unloading.")]

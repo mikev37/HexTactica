@@ -33,7 +33,11 @@ namespace HexTactica.AI {
         public class Outcome {
             public float score;
             public float own, enemy;
-            public bool ourHQFalls, theirHQFalls;
+            public bool ourHQFalls, theirHQFalls, assist;
+            /// <summary>Supply-unit deaths priced at their dependents (+ theirs, - ours).</summary>
+            public float hubs;
+            /// <summary>Best next blows: ours (we act first), theirs after.</summary>
+            public float ownStrike, enemyStrike;
             public readonly List<string> replies = new List<string>();
             /// <summary>Strength each of our units loses in the reply.</summary>
             public readonly Dictionary<Unit, float> lost = new Dictionary<Unit, float>();
@@ -41,6 +45,9 @@ namespace HexTactica.AI {
                 StringBuilder sb = new StringBuilder();
                 sb.Append(score.ToString("0"));
                 if (ourHQFalls) sb.Append(" OUR HQ FALLS");
+                if (assist) sb.Append(" assist");
+                if (hubs != 0f) sb.Append(" hubs ").Append(hubs.ToString("+0;-0"));
+                if (ownStrike != 0f || enemyStrike != 0f) sb.Append(" strike +").Append(ownStrike.ToString("0")).Append("/-").Append(enemyStrike.ToString("0"));
                 if (replies.Count > 0) sb.Append(" [").Append(string.Join("; ", replies.ToArray())).Append(']');
                 return sb.ToString();
             }
@@ -61,6 +68,17 @@ namespace HexTactica.AI {
             if (shot.valid && shot.target != null && hp.ContainsKey(shot.target)) {
                 hp[shot.target] = Mathf.Max(0f, hp[shot.target] - shot.outcome.damageToDefender);
                 hp[u] = Mathf.Max(0f, hp[u] - shot.outcome.damageToAttacker);
+                // An assist: the target survives, but units of ours still to act this turn can
+                // finish it. Counted as assistWeight of a kill — its reply and its material go
+                // in that proportion — so a hit that sets up a kill beats a hit that does not.
+                if (hp[shot.target] > 0f && map.profile.assistWeight > 0f) {
+                    string by;
+                    if (CanFinish(shot.target, hp[shot.target], u, map, out by)) {
+                        w.assist = true;
+                        hp[shot.target] *= 1f - map.profile.assistWeight;
+                        if (narrate) w.replies.Add("assist: " + by + " can finish " + shot.target.name);
+                    }
+                }
             }
 
             // Their reply, on the board with our unit moved.
@@ -90,6 +108,7 @@ namespace HexTactica.AI {
             }
 
             HexTile uAt = stop ?? from;
+            Dictionary<Unit, HexTile> endsAt = new Dictionary<Unit, HexTile>();
             HashSet<HexTile> taken = new HashSet<HexTile>();
             foreach (Unit x in map.ownUnits) if (x != null && x.tile != null && x != u) taken.Add(x.tile);
             taken.Add(uAt);
@@ -114,6 +133,7 @@ namespace HexTactica.AI {
                 }
                 if (bestTarget == null) continue;
                 if (bestTile != e.tile) { taken.Remove(e.tile); taken.Add(bestTile); }
+                endsAt[e] = bestTile;
                 hp[bestTarget] -= bestDamage;
                 float sofar;
                 w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + bestDamage;
@@ -145,7 +165,70 @@ namespace HexTactica.AI {
             w.score = w.own - w.enemy;
             if (w.ourHQFalls) w.score -= stake;
             if (w.theirHQFalls) w.score += stake;
+
+            // A supply unit's death also costs a strength of everyone only it kept supplied.
+            AIProfile prof = map.profile;
+            if (prof.hubDependentsWeight > 0f) {
+                foreach (KeyValuePair<Unit, float> kv in hp) {
+                    if (kv.Value > 0f || IsHQ(kv.Key) || kv.Key.GetComponent<SupplyPoint>() == null) continue;
+                    float dep = map.HubStake(kv.Key) * prof.hubDependentsWeight;
+                    if (kv.Key.owner == u.owner) w.hubs -= dep; else w.hubs += dep;
+                }
+                w.score += w.hubs;
+            }
+
+            // Each unit's point of view: what it can hit next. Ours strike first.
+            if (prof.ownStrikeWeight > 0f || prof.enemyStrikeWeight > 0f) {
+                foreach (Unit x in hp.Keys) {
+                    if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x)) continue;
+                    bool ours = x.owner == u.owner;
+                    float weight = ours ? prof.ownStrikeWeight : prof.enemyStrikeWeight;
+                    if (weight <= 0f) continue;
+                    HexTile xAt = x == u ? uAt : (endsAt.ContainsKey(x) ? endsAt[x] : x.tile);
+                    float scale = hp[x] / Mathf.Max(1f, x.Strength);
+                    int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
+                    float best = 0f;
+                    foreach (Unit d in hp.Keys) {
+                        if (hp[d] <= 0f || (d.owner == u.owner) == ours) continue;
+                        HexTile dAt = d == u ? uAt : (endsAt.ContainsKey(d) ? endsAt[d] : d.tile);
+                        if (xAt.Distance(dAt) > reach) continue;
+                        float dmg = Mathf.Min(hp[d], Unit.calculateDamage(x, d, dAt, 0) * scale);
+                        best = Mathf.Max(best, dmg * Value(d));
+                    }
+                    if (ours) w.ownStrike += best * weight; else w.enemyStrike += best * weight;
+                }
+                w.score += w.ownStrike - w.enemyStrike;
+            }
             return w;
+        }
+
+        /// <summary>
+        /// Can our units that have not acted yet this turn finish <paramref name="target"/> at
+        /// <paramref name="left"/> strength? Hex reach (move + range), strongest first.
+        /// </summary>
+        public static bool CanFinish(Unit target, float left, Unit except, AIMap map, out string by) {
+            by = "";
+            List<float> blows = new List<float>();
+            List<string> names = new List<string>();
+            foreach (Unit x in map.ownUnits) {
+                if (x == null || x == except || x.tile == null || !x.active || x.Firepower <= 0) continue;
+                if (x.GetComponent<SupplyPoint>() != null || x.trasnporter != null) continue;
+                int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
+                if (x.tile.Distance(target.tile) > reach) continue;
+                if (!x.moveAndAttack && x.tile.Distance(target.tile) <= x.MinRange) continue;
+                float dmg = Unit.calculateDamage(x, target, target.tile, 0);
+                if (dmg <= 0f) continue;
+                int at = 0;
+                while (at < blows.Count && blows[at] >= dmg) at++;
+                blows.Insert(at, dmg); names.Insert(at, x.name);
+            }
+            float sum = 0f;
+            for (int i = 0; i < blows.Count; i++) {
+                sum += blows[i];
+                by += (i > 0 ? "+" : "") + names[i];
+                if (sum >= left) return true;
+            }
+            return false;
         }
 
         /// <summary>Material per strength point; HQs at their (deliberately enormous) cost.</summary>

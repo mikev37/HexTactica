@@ -14,7 +14,7 @@ namespace HexTactica.AI {
     /// nothing here mutates HexTile.G or HexTile.parent, so evaluating a hypothetical
     /// never disturbs what the human player is looking at.
     /// </summary>
-    public class AIMap {
+    public partial class AIMap {
 
         public readonly Player player;
         public readonly AIProfile profile;
@@ -65,6 +65,7 @@ namespace HexTactica.AI {
             committed.Clear();
             if (units != null) foreach (Unit u in units) if (u != null) committed.Add(u);
             ComputeEnemyFire();
+            ComputeStrikeTurns();
         }
 
         public bool IsCommitted(Unit u) { return u != null && committed.Contains(u); }
@@ -183,13 +184,10 @@ namespace HexTactica.AI {
             enemyHubs.Clear();
 
             if (recalculateThreat) GameController.RecalculateThreat();
-            supply = SupplyNetwork.Solve(player, false);
-
-            // Publish connection state. Solve(applyDrain:false) deliberately does not
-            // write it, but the planner reads hub.connected to decide how urgent
-            // reconnection is — leaving it stale made every hub look disconnected.
-            for (int i = 0; i < supply.connectedHubs.Count; i++) supply.connectedHubs[i].connected = true;
-            for (int i = 0; i < supply.strandedHubs.Count; i++) supply.strandedHubs[i].connected = false;
+            // Our field (with any planned supply-unit ghosts applied), its static/mobile/potential
+            // split, the enemy's field and the distance maps: AIMapRead.
+            // Connection state is published there too — the planner reads hub.connected.
+            SolveOurSupply();
 
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : new List<Unit>();
             for (int i = 0; i < all.Count; i++) {
@@ -674,16 +672,21 @@ namespace HexTactica.AI {
         /// </summary>
         public int TurnsToContact(Unit u) {
             if (u == null || u.tile == null) return 99;
-            int best = 99;
+            int mineBest = 99, theirsBest = 99;
             for (int i = 0; i < enemyUnits.Count; i++) {
                 Unit e = enemyUnits[i];
                 if (e == null || e.tile == null || e.Firepower <= 0 || e.GetComponent<SupplyPoint>() != null) continue;
                 int d = u.tile.Distance(e.tile);
-                int mine = Turns(d - u.AttackRange, u.moveRange);
-                int theirs = Turns(d - e.AttackRange, e.moveRange);
-                best = Mathf.Min(best, Mathf.Min(mine, theirs));
+                mineBest = Mathf.Min(mineBest, Turns(d - u.AttackRange, u.moveRange));
+                theirsBest = Mathf.Min(theirsBest, Turns(d - e.AttackRange, e.moveRange));
             }
-            return best;
+            // Their side by real movement, terrain and blocking, where the strike map reaches:
+            // water and mountains make the hex-distance estimate optimistic.
+            if (strikeTurns.Count > 0) {
+                int s = EnemyStrikeTurns(u.tile);
+                theirsBest = s < 99 ? Mathf.Min(theirsBest, s) : Mathf.Max(theirsBest, profile.enemyReachTurns + 1);
+            }
+            return Mathf.Min(mineBest, theirsBest);
         }
 
         static int Turns(int gap, int move) {
@@ -902,11 +905,7 @@ namespace HexTactica.AI {
         /// in a corridor). Cheap relative to a full Rebuild and keeps every supply-weighted
         /// decision for the rest of the turn honest.
         /// </summary>
-        public void RefreshSupply() {
-            supply = SupplyNetwork.Solve(player, false);
-            for (int i = 0; i < supply.connectedHubs.Count; i++) supply.connectedHubs[i].connected = true;
-            for (int i = 0; i < supply.strandedHubs.Count; i++) supply.strandedHubs[i].connected = false;
-        }
+        public void RefreshSupply() { SolveOurSupply(); }
 
         /// <summary>Nearest enemy building of any kind, or null.</summary>
         public Building NearestEnemyBuilding(HexTile from) {
