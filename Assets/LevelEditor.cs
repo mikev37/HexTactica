@@ -20,6 +20,7 @@ public class LevelEditor : MonoBehaviour
 	void Start()
     {
         singleton = this;
+        Debug.Log(Application.persistentDataPath);
     }
 
     // Update is called once per frame
