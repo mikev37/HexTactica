@@ -102,6 +102,11 @@ Diagnostics:
 - `PROBE=chokes FILE=<name>` — how much enemy movement a grunt would cut on each tile.
 - `PROBE=export` — regenerate the files from the builders in `Tests/Scenarios.cs`.
 - `SET=field=value,…` — override any `AIProfile` field for a run.
+- `PROBE=duel FILE=<name> [SET_BLUE=…] [SET_RED=…] [ROUNDS=r] [OUT=dir]` — this AI against
+  itself with different settings, one game, a line per round (and a game log with OUT). The
+  forecast fixes are switches: `forecastPins`, `forecastOwnSideBlocks`, `forecastDeadBlock`,
+  `assistNeedsReach` (plus `deathPremium`, `worldTie`); the old behaviour is
+  `forecastPins=false,forecastOwnSideBlocks=true,forecastDeadBlock=true,assistNeedsReach=false,deathPremium=0,worldTie=1`.
 
 ### How this AI chooses a move (defaults)
 

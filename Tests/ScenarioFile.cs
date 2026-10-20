@@ -160,6 +160,11 @@ public static class ScenarioFile {
     /// the test block names (or <paramref name="opponentOverride"/>) to Red.
     /// </summary>
     public static Loaded Load(string path, string opponentOverride, Action<AIProfile> tweak) {
+        return Load(path, opponentOverride, tweak, tweak);
+    }
+
+    /// <param name="tweakRed">Profile tweak for Red when it is played by this AI ("Full").</param>
+    public static Loaded Load(string path, string opponentOverride, Action<AIProfile> tweak, Action<AIProfile> tweakRed) {
         string json = File.ReadAllText(path);
         Loaded l = new Loaded { path = path, meta = ReadMeta(path) };
         Match w = Regex.Match(json, "\"width\"\\s*:\\s*(\\d+)");
@@ -192,7 +197,7 @@ public static class ScenarioFile {
         if (opponent == "Full") {
             AIProfile p2 = ScriptableObject.CreateInstance<AIProfile>();
             p2.annotateBoard = false;
-            if (tweak != null) tweak(p2);
+            if (tweakRed != null) tweakRed(p2);
             Rig.AttachAI(l.other, p2);
         } else if (opponent == "Greedy") Rig.AttachBaseline(l.other, AIKind.Greedy);
         else if (opponent == "Legacy") Rig.AttachBaseline(l.other, AIKind.Legacy);

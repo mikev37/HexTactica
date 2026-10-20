@@ -94,7 +94,9 @@ namespace HexTactica.AI {
                 // proportion — so a hit that sets up a kill beats a hit that does not.
                 if (hp[shot.target] > 0f && map.profile.assistWeight > 0f) {
                     string by;
-                    if (CanFinish(shot.target, hp[shot.target], u, uAt, map, out by)) {
+                    bool can = map.profile.assistNeedsReach ? CanFinish(shot.target, hp[shot.target], u, uAt, map, out by)
+                                                            : CanFinishByDistance(shot.target, hp[shot.target], u, map, out by);
+                    if (can) {
                         w.assist = true;
                         hp[shot.target] *= 1f - map.profile.assistWeight;
                         if (narrate) w.replies.Add("assist: " + by + " can finish " + shot.target.name);
@@ -126,7 +128,7 @@ namespace HexTactica.AI {
                 bool near = e.moveAndAttack && (e.tile.Distance(uAt) <= e.moveRange + 1 || e.tile.Distance(from) <= e.moveRange + 1 || NearAny(e, gone, uAt));
                 HashSet<HexTile> p;
                 if (!near && cache.positions.TryGetValue(e, out p)) { positions[e] = p; continue; }
-                p = PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone);
+                p = PositionsOnBoard(e, u, from, uAt, moving, stopWas, map.profile.forecastDeadBlock ? new HashSet<Unit>() : gone, ownSideBlocks: map.profile.forecastOwnSideBlocks);
                 positions[e] = p;
                 if (!near) cache.positions[e] = p;
             }
@@ -136,7 +138,8 @@ namespace HexTactica.AI {
             foreach (Unit x in map.ownUnits) if (x != null && x.tile != null && x != u && hp.ContainsKey(x) && hp[x] > 0f) taken.Add(x.tile);
             if (hp[u] > 0f) taken.Add(uAt);
             // Units that fire where they stand keep their tiles; the rest may move off theirs.
-            foreach (Unit e in enemies) if (e != null && e.tile != null && (!e.moveAndAttack || e.moveRange <= 0)) taken.Add(e.tile);
+            bool ownSideBlocks = map.profile.forecastOwnSideBlocks;
+            foreach (Unit e in enemies) if (e != null && e.tile != null && (ownSideBlocks || !e.moveAndAttack || e.moveRange <= 0)) taken.Add(e.tile);
 
             foreach (Unit e in enemies) {
                 HashSet<HexTile> pos;
@@ -154,7 +157,7 @@ namespace HexTactica.AI {
                     CombatMath.Exchange(e, Hp(hp[e]), fire, d, Hp(hp[d]), dAt, out dmg, out back);
                     if (dmg <= 0) continue;
                     bool pinned = false;
-                    if (dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !CanFallBack(d, dAt, fire, u, uAt, hp, taken)) {
+                    if (map.profile.forecastPins && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !CanFallBack(d, dAt, fire, u, uAt, hp, taken)) {
                         dmg += 1;
                         pinned = true;
                     }
@@ -164,6 +167,7 @@ namespace HexTactica.AI {
                     }
                 }
                 if (bestTarget == null) continue;
+                if (ownSideBlocks && bestTile != e.tile) taken.Remove(e.tile);
                 taken.Add(bestTile);
                 endsAt[e] = bestTile;
                 float dealt = Mathf.Min(hp[bestTarget], bestDamage);
@@ -172,7 +176,7 @@ namespace HexTactica.AI {
                 w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
                 hp[e] = Mathf.Max(0f, hp[e] - bestBack);
                 if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + dealt.ToString("0.#") + (bestPinned ? " pinned" : "") + (bestBack > 0 ? "/" + bestBack : ""));
-                if (hp[bestTarget] <= 0f) {
+                if (hp[bestTarget] <= 0f && !map.profile.forecastDeadBlock) {
                     // Destroyed: it no longer holds its tile or blocks anyone still to act.
                     HexTile freed = bestTarget == u ? uAt : bestTarget.tile;
                     taken.Remove(freed);
@@ -180,7 +184,7 @@ namespace HexTactica.AI {
                     foreach (Unit later in enemies) {
                         if (later == e || !positions.ContainsKey(later) || hp[later] <= 0f || !later.moveAndAttack) continue;
                         if (later.tile.Distance(freed) > later.moveRange + 1) continue;
-                        positions[later] = PositionsOnBoard(later, u, from, uAt, moving, stopWas, gone);
+                        positions[later] = PositionsOnBoard(later, u, from, uAt, moving, stopWas, gone, ownSideBlocks: map.profile.forecastOwnSideBlocks);
                     }
                 }
             }
@@ -354,6 +358,32 @@ namespace HexTactica.AI {
             return CanFinish(target, left, except, except != null ? except.tile : null, map, out by);
         }
 
+        /// <summary>The old assist check: hex distance (move + range), no paths, no free firing tile.</summary>
+        static bool CanFinishByDistance(Unit target, float left, Unit except, AIMap map, out string by) {
+            by = "";
+            List<float> blows = new List<float>();
+            List<string> names = new List<string>();
+            foreach (Unit x in map.ownUnits) {
+                if (x == null || x == except || x.tile == null || !x.active || x.Firepower <= 0) continue;
+                if (x.GetComponent<SupplyPoint>() != null || x.trasnporter != null) continue;
+                int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
+                if (x.tile.Distance(target.tile) > reach) continue;
+                if (!x.moveAndAttack && x.tile.Distance(target.tile) <= x.MinRange) continue;
+                float dmg = Unit.calculateDamage(x, target, target.tile, 0);
+                if (dmg <= 0f) continue;
+                int at = 0;
+                while (at < blows.Count && blows[at] >= dmg) at++;
+                blows.Insert(at, dmg); names.Insert(at, x.name);
+            }
+            float sum = 0f;
+            for (int i = 0; i < blows.Count; i++) {
+                sum += blows[i];
+                by += (i > 0 ? "+" : "") + names[i];
+                if (sum >= left) return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Can our units still to act this turn finish <paramref name="target"/> at <paramref name="left"/>?
         /// Each needs a real attack: a firing tile it can reach this turn by its own movement, free
@@ -445,7 +475,7 @@ namespace HexTactica.AI {
             }
             List<HexTile> ring = AIPath.TilesInRange(target, e.MinRange, e.AttackRange);
             ring.Sort(CombatMath.CompareTiles);
-            if (ring.Contains(e.tile) && !taken.Contains(e.tile)) return e.tile;
+            if (ring.Contains(e.tile) && (!taken.Contains(e.tile) || e.tile.occupier == e)) return e.tile;
             foreach (HexTile r in ring) if (pos.Contains(r) && !taken.Contains(r)) return r;
             return null;
         }
@@ -463,7 +493,7 @@ namespace HexTactica.AI {
         /// <paramref name="uAt"/> and our units in <paramref name="gone"/> off the board. Tiles held by
         /// its own side count: they pass through each other and can make room.
         /// </summary>
-        static HashSet<HexTile> PositionsOnBoard(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone) {
+        static HashSet<HexTile> PositionsOnBoard(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, bool ownSideBlocks = false) {
             Dictionary<HexTile, Unit> restore = new Dictionary<HexTile, Unit>();
             try {
                 if (moving) { restore[from] = from.occupier; restore[uAt] = uAt.occupier; from.occupier = null; uAt.occupier = u; }
@@ -473,7 +503,7 @@ namespace HexTactica.AI {
                     if (!restore.ContainsKey(t)) restore[t] = t.occupier;
                     t.occupier = null;
                 }
-                return Positions(e);
+                return Positions(e, ownSideBlocks);
             } finally {
                 foreach (KeyValuePair<HexTile, Unit> kv in restore) kv.Key.occupier = kv.Value;
                 if (moving) { uAt.occupier = stopWas; from.occupier = u; }
@@ -497,7 +527,7 @@ namespace HexTactica.AI {
             return false;
         }
 
-        static HashSet<HexTile> Positions(Unit e) {
+        static HashSet<HexTile> Positions(Unit e, bool ownSideBlocks = false) {
             HashSet<HexTile> positions = new HashSet<HexTile>();
             positions.Add(e.tile);
             if (e.moveAndAttack) {
@@ -505,7 +535,7 @@ namespace HexTactica.AI {
                 foreach (HexTile p in f.Tiles) {
                     if (p == e.tile || !f.ReachableThisTurn(p) || !e.CanEnter(p)) continue;
                     // Free, or held by its own side (which can move off).
-                    if (p.occupier == null || p.occupier.owner == e.owner) positions.Add(p);
+                    if (p.occupier == null || (!ownSideBlocks && p.occupier.owner == e.owner)) positions.Add(p);
                 }
             }
             return positions;
