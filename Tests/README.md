@@ -4,11 +4,9 @@ This package replaces the previous one. It is the result of an adversarial revie
 that work, run against **your real prefabs** rather than invented fixtures, which found
 that several things I told you worked did not.
 
-- **132 headless tests, all passing**, reproducible from a fresh clone of your repo with
-  the shipped runner (`bash Tests/run.sh <your Assets folder>`).
-- **Whole-project compile check:** your original repo and this package produce identical
-  compiler output (same shim gaps in the same 11 untouched rendering scripts). These
-  changes introduce no compile errors anywhere.
+- **Every test is a scenario file Unity can load** (`Tests/Scenarios/*.dat`): 7 behaviour
+  scenarios with one check each and 36 matchups on generated terrain maps. The headless
+  runner (`bash Tests/run.sh <your Assets folder>`) plays the same files, about 8 seconds.
 - The two Editor scripts compile with `UNITY_EDITOR` defined, as Unity will build them.
 
 ---
@@ -50,208 +48,54 @@ Predicted vs actual losses per enemy turn: 6.8/9, 8.0/6, 10.5/13, 5.1/6, 2.8/2.
 
 ---
 
-## Terrain maps, tiered choice, and the reasoning log (current)
+## Tests are scenarios
 
-**Maps** (`Tests/TerrainMaps.cs`, `PROBE=mapshow`): radius 5–6, seeded. Mountains, water and
-forest are planted at random by percentage, then two open-land paths are cut from HQ to HQ,
-one through each half. Water stops every land unit; mountains stop vehicles (grunts climb).
-Terrain stats come from the real assets. Six maps: `std` (10/10/30% at r5 and r6), `open`
-(5/5/15), `rough` (15/15/30–35, r5 and r6), `choke` (20/20/20).
+Every test is a level-editor save with a `test` block (name, question, opponent, rounds,
+check) that both the game and the harness read; the game ignores the fields it doesn't know.
+Units belong to SampleScene's players: **Blue, id 112** (has the `AIPlayer` — this AI) and
+**Red, id 0** (the opponent: a baseline AI or you). Tiles outside a scenario's map are Water.
 
-**Scenario set** (`PROBE=maps`, 42 games, ~10 s): each map, both seats, against Legacy and
-Greedy, the outnumbered case against Legacy (+1 tank +1 grunt, about +47% fighting strength),
-and a mirror. Current: 26 W 8 L 2 D excluding mirrors. Most losses are the outnumbered case;
-on radius-5 maps the HQs are 8 hexes apart and a tank reaches 7, so HQ rushes land on turn 1–2.
+**In Unity:** enter play mode in SampleScene, **HexTactica → Load Scenario File…**, pick a
+file. The test block attaches Red's AI (`Legacy` = the original AttackMove AI, ported
+faithfully; `Greedy` = defend-only) and sets who moves first, then it plays itself.
 
-**One game narrated** (`PROBE=mapgame MAP=n SEAT=A|B THEM=Legacy|Greedy|Full [EXTRA=1|2]
-[ROUNDS=r] [SIDE=A|B]`): the board after every player's turn, and for every Full-AI unit its
-tiers — how many stops, what tier 0/1/2 kept, the top tier-3 options with attack, damage
-received, enemy movement/supply denied, positional score and destination, the best option
-a tier threw out, any HQ threat, and any shot rejected as not worth its cost.
+**Headless:** `bash Tests/run.sh <Assets>` plays every file and reports:
 
-**Watching a map in Unity** (`Tests/Scenarios/*.dat`, regenerate with `PROBE=export
-OUT=Tests/Scenarios`): each map as a level-editor save, the AI's army on the left
-(`-ai-left`) or right (`-ai-right`). Units belong to SampleScene's own players — Blue (id 112,
-the one with the AIPlayer) and Red (id 0, you) — and every tile outside the map is Water.
-Copy one to `Application.persistentDataPath/save.dat`, play SampleScene, press **L**. Written
-in the exact format LevelEditor.Save produces, with prefab and terrain names checked against
-the scene's lists; not yet loaded in the engine itself.
+| Behaviour scenario | Check |
+|---|---|
+| `hub-stays-out-of-reach` | the supply unit never ends our turn where an enemy can hit it (4 rounds) |
+| `no-suicide-attack` | a lone tank does not take a shot that leaves it where the reply destroys it |
+| `hit-the-supply-unit` | a tank beside the enemy supply unit and a grunt hits the supply unit |
+| `defend-the-hq` | our HQ survives an enemy tank and two grunts arriving (4 rounds) |
+| `rotate-the-wounded` | a 3-strength grunt with fresh grunts behind it pulls back |
+| `hold-the-gap` | a unit takes the single gap in a water line before the enemy arrives — **fails** |
+| `finish-the-game` | an army destroys an enemy HQ left alone (5 rounds) |
 
-**Tiered tile choice** (`AITactical.Tiered`, `tieredChoice`), for line units, artillery,
-anti-air and recon (hubs, transports and withdrawing units still use the gold sum):
-0. HQ: drop options that would leave our HQ destroyable next enemy turn, if any would not.
-1. Damage dealt: keep options whose attack is ≥ `attackTie` (0.5) of the best. An attack only
-   counts if the material it takes is worth more than the material it costs tonight, unless
-   it hits something threatening our HQ.
-2. Damage received: keep options within `receivedTie` (1 strength) of the least.
-3. Highest of: enemy movement and supply denied (`AIDenial`: the unit is moved on the board
-   and enemy reach and supply recomputed) + positional score + attack.
+Matchups: six generated maps (radius 5–6; mountains, water and forest planted at random,
+then two open paths cut between the HQs), AI on either side, against Legacy, Greedy, and
+Legacy with an extra tank and grunt. Current: **31 W 5 L 0 D**; the five losses are all
+the outnumbered line-up.
 
-The earlier joint screen planner (`AISpace`, `screenWeight`) is off; tier 3's measured denial
-replaces it. The old "+20%" label in the tables below means +1 tank +1 grunt.
+Diagnostics:
+- `PROBE=game FILE=<name> [ROUNDS=r] [SIDE=AI|Red|both]` — the board after every turn and,
+  for each of our units, every option it weighed with the simulated enemy reply.
+- `PROBE=chokes FILE=<name>` — how much enemy movement a grunt would cut on each tile.
+- `PROBE=export` — regenerate the files from the builders in `Tests/Scenarios.cs`.
+- `SET=field=value,…` — override any `AIProfile` field for a run.
 
-## Measured results (real prefabs, round-robin)
+### How this AI chooses a move (defaults)
 
-Three opponents, all deterministic:
-
-- **Legacy** (`Assets/Harness/LegacyAI.cs`): a faithful port of the original `AIPlayer` /
-  `AttackMove`, including the three-move approach fallback, the GoTo-to-(0,0,0) objective
-  fallback, and `Retreat` being a no-op. This is the opponent that attacks.
-- **Greedy**: a reactive turtle. Each unit strikes whatever it can reach this turn and
-  otherwise does nothing. It never advances, but it strikes first at anything that comes
-  within reach, so it is not free to approach.
-- **Full**: this AI, against itself, for seat bias.
-
-Every cell is 40 games: widths 7/8/9/10/11 × four mirror-symmetric forest layouts × both
-seats. "+20%" gives one side an extra Tank and Grunt. A draw is the harness's 60-round
-limit: the game itself only ends when an HQ is destroyed, and has no rule for mutual
-annihilation (an HQ cannot attack, so two HQs alone never finish).
-
-Current defaults (`aggression` 0):
-
-| Full AI vs | Equal | +20% for Full | +20% for opponent |
-|---|---|---|---|
-| Legacy | **39W 0L** 1D | **40W** 0L 0D | 29W **9L** 2D |
-| Greedy | 22W **0L** 18D | 30W **0L** 10D | 16W **0L** 24D |
-
-Before this round (same 40-game cells): Legacy 36W 2L / 40W / 36W 4L; Greedy 21W 19D /
-24W 16D / 5W 35D. Net: +14 wins over 240 games, mostly against the turtle when outnumbered
-(5 → 16), but **5 more losses** to an outnumbering Legacy (4 → 9).
-
-Mirror matches (20 games): Full vs Full 9–7–4 for seat A (was 7–3 on 10 games); Legacy vs
-Legacy 5–10–5; Greedy vs Greedy all draws. Legacy vs Greedy equal: 0W 2L 38D.
-
-The 18 equal draws against the turtle: 12 no contact at all, 4 ahead with an army left but
-the HQ never fell, 2 with our army spent. Before, more than half the draws were burned-out
-attacks; the cautious default traded those for standoffs.
-
-### Aggression
-
-`AIProfile.aggression` runs from 0 (fight only on clearly favourable terms) to 1 (trade
-everything). It scales risk appetite, attack readiness, the force ratio to attack or take
-an objective, trust in the counterattack, break-off, and rotation. Measured over 240 games
-per setting (Greedy + Legacy cells):
-
-| aggression | wins | losses | draws |
-|---|---|---|---|
-| 0 | **177** | 5 | 58 |
-| 0.25 | 171 | 4 | 65 |
-| 0.5 (weights as written) | 172 | 7 | 61 |
-| 0.75 | 145 | 11 | 84 |
-| 1 | 121 | 16 | 103 |
-
-Furballs do not win in this ruleset: the defender strikes first, damage scales with
-strength, and a mutual wipe-out is a draw. Hence the cautious default.
-
-Reproduce: `PROBE=matchups WIDE=1 bash Tests/run.sh Assets` (≈15 min). One opponent:
-`PROBE=cells THEM=Greedy WIDE=1 VERBOSE=1`. Override any profile field, including bools:
-`SET=aggression=0.5,useObjectives=false`. One game turn by turn, with fronts and committed
-objectives: `PROBE=trace GAME=9,Full,Greedy,0,40 FRONTS=1 [ALLOBJ=1] [VARIANT=1]
-[EXPLAIN=Tank SIDE=A FROM=10]`.
-
-### Where each tactic lives
-
-Two layers, following how the original design separated them:
-
-**Strategic objectives** (`Assets/AI/AIObjectives.cs`) — structure and tie-breakers only:
-"attack the enemy capital now" (KillHQ: the assigned force beats everything that could
-defend it by `objectiveRatio` and can destroy it in one volley), "mass up where they are
-weak" (Mass: an enemy group our nearby forces outmatch, counting its support), and "bring
-the reserves home" (DefendHQ). An objective adds a small pull (`assignmentPull`, a fraction
-of the unit's worth) evaluated last, and a unit that could exchange fire with an enemy
-within `objectiveContactTurns` (3) ignores it. It sets no posture and commits nobody. On the
-test maps (7–11 hexes from HQ to HQ) every unit is always within three turns of contact, so
-objectives never fire there and change nothing — as intended; they are for larger maps, and
-there is no larger test map yet.
-
-**Tactics** — all in the per-unit, per-tile evaluation:
-- **Screens as space** (`Assets/AI/AISpace.cs`). Units block enemy movement and every
-  attacker needs its own tile to fire from. Once per board state the cheap line units still
-  to act (grunts) are planned as a screen for the valuable units (tanks, guns — acted or not):
-  each candidate placement is scored by re-running every affected enemy's real movement,
-  terrain included, and letting each valuable unit take its best reachable tile — what it
-  could strike next turn at the strength it would keep, less tonight's threat, where threat
-  is the best assignment of attackers to distinct open firing tiles. The screen's own
-  exposure and supply are subtracted; placements improve one grunt at a time (coordinate
-  ascent). A grunt's credit for a tile is the valuable units' gain from it standing there with
-  the rest of the screen where the plan puts it, so the grunts coordinate. The plan is rebuilt
-  after every action; the armour, moving later, sees the enemy fire field recomputed with the
-  grunts in place and takes the protected tiles because they are cheaper.
-- **Concentration** (`AIMap.FirstStrikeCredit`): the counterattack an enemy invites by coming
-  forward to strike a unit, net of our counterattackers' own exposure.
-- **Rotation** (`AITactical.ShouldRotate`): a role switch made in every decision, engaged or
-  not. A line unit at or below `rotateStrength` (scaled by aggression), within a turn of
-  supply, withdraws to heal when a healthier line unit is within its move of it; a kill in
-  hand is still taken first.
-- **Exploit breakthrough**: an enemy hub attacked from ground none of their fighting units can
-  reach tonight is worth `breakthroughWeight` × its supply importance more, in any posture.
-- **Staging**: the front readiness gate (gather on the supply edge, go together).
-- **Defeat in detail** at tactical range is what concentration and target values already do;
-  at map scale it is the Mass objective.
-
-### Measured (current defaults, 240 games)
-
-| Full AI vs | Equal | +20% for Full | +20% for opponent |
-|---|---|---|---|
-| Legacy | **40W 0L** | **39W 0L** 1D | 35W **4L** 1D |
-| Greedy | 19W **0L** 21D | 28W **0L** 12D | 15W **0L** 25D |
-
-Total 176 W, 4 L, 60 D. On 720 games, screening on vs off: 525 W 18 L vs 530 W 18 L —
-**no measurable effect on these maps yet.** Rotation: +14 wins. Breakthrough: no change.
-A positional "guard the HQ" term (`guardWeight`) cost 5 losses and is off.
-
-### Earlier changes
-
-Each of these was found in a trace of a lost or drawn game, not by reading the code.
-
-- **Force ratio by reach, not radius.** Fronts counted units within a fixed radius, so the
-  enemy army sitting at home outnumbered our forward units and equal armies read as 0.2–0.9.
-  Fronts now count what can arrive within `frontReachTurns`.
-- **Staging.** An attack beyond our supply waits on the edge of our supply nearest the
-  objective until `assaultReadiness` of the attacking force is healthy and gathered there,
-  and once in, keeps going until it falls below `assaultBreakoff`, then regroups. Before
-  this, units went in the order they arrived — tank, then grunts, then guns — and wounded
-  units pressed on. Readiness is judged per objective, across every front aimed at it.
-- **Cohesion.** In an assault, ending the turn ahead of the rest of the assault costs
-  `cohesionWeight` of the unit's worth per hex. The tank (move 6) no longer parks beside the
-  enemy HQ while the grunts (move 3) are three hexes back.
-- **HQ chip damage was priced at the HQ's 100,000 cost.** Three points on an HQ that heals
-  were worth more than a tank, so tanks dived the HQ alone. A hit that does not kill is now
-  worth `hqSetupFactor` of the win only if the units that will survive tonight can finish it
-  next turn; otherwise it is chip.
-- **Defending the HQ.** Nothing said that losing the HQ loses everything: two Legacy tanks
-  drove at it while our tank went on an advance. Each enemy that could strike our HQ in one
-  or two turns now carries a share of the HQ's stake, and hitting it is worth
-  `hqDefenseWeight` of that.
-- **Siege.** Three grunts sat in supply for fifty turns, thirteen hexes from an undefended
-  HQ they could kill in one volley. When a front's healthy units can destroy the HQ in one
-  volley and outmatch what defends it, the objective pull is multiplied by `siegePull`.
-- **Hub advances toward where the army is going** (intents), but only to connected positions.
-
-### What is still not good enough
-
-- **A third of equal games against the turtle are no-contact standoffs** (12 of 40), all on
-  the wide maps. On those the turtle sits 6+ hexes past the end of our supply; nothing we
-  can do there beats the first strike it gets on whatever approaches. The heuristics here
-  all judge one unit, one tile at a time. Breaking that position probably needs a short
-  look-ahead — simulate their reply to a whole turn's plan, then ours — rather than more
-  per-tile terms.
-- **Losses to an outnumbering Legacy rose from 4 to 9 of 40.**
-- **Tried and rejected on the 240-game set**: sharper focus-fire prediction, proportional
-  screening, floor-at-army-ratio fronts (`useArmyRatio`), standoff bonus, relaxed
-  out-of-supply posture, staging gated on enemy position. Knobs left in, off or neutral.
-- **Test bars changed** (each flagged in the code): the corridor's time-out-of-supply check is
-  now reported, not checked (attrition losses are still checked); the 4-game advantage test
-  allows one game behind. And earlier: "never ends behind on material" in
-  the 6-game regression became "at most one of six" — on 40 games it is ~1 in 20, so the
-  old bar depended on which six; and the corridor fixture's "less time out of supply than
-  greedy" became "within 25%" — greedy never leaves home, and the AI now fights into the
-  enemy base in the two drawn trials instead of losing its army in the middle. Attrition
-  losses must still be no higher than greedy's (2 vs 4).
-- **Results are deterministic but chaotic.** A change worth 5 of 6 games on 6 was 12 of 20
-  on 20; I now judge only on 240.
-
----
+For line units, artillery, anti-air and recon (`choiceMode` 2): every tile it can stop on,
+with the best attack from it, is played out against the enemy's reply (`AIWorld`): each
+enemy, strongest first, fires its whole attack at the most valuable thing it can reach from
+a tile it can actually get to, damaged units hit for less, retaliation applies. Each option
+is scored by the material left on both sides (HQs at their 100,000 cost, a fallen HQ worth
+the game, a capture under way counted). Options within one strength point of the best survive;
+the winner among them is the one cutting the most enemy movement and supply (`AIDenial`) plus
+the positional score (approach, supply, strategy). Supply units place themselves by
+coverage minus the simulated hit where they will stand, and where they stop on the way.
+Enemies are valued by the best blow they could land on us next turn (`threatTargetWeight`).
+Retired along with the fixture tests: the 240/720-game batches and their tables.
 
 ## Integration
 
@@ -282,9 +126,8 @@ Your current roster needs **no migration**: Grunt, Supplies and TempHQ are corre
 1. Add a **`BuildingController`** (mirrors `UnitController`) if you use building HQs/cities.
 2. Optionally create an **`AIProfile`** (`Create → HexTactica → AI Profile`) per `AIPlayer`;
    defaults are the sweep's best.
-3. For batch runs: add a **`BatchRunner`** and a **`ScenarioLoader`** listing your save
-   files (e.g. `save.dat`), enter play mode, **HexTactica → Run Batch**. Results go to
-   `persistentDataPath/harness_results.csv`.
+3. To watch a test: play mode, **HexTactica → Load Scenario File…**. For batch runs: add a
+   **`BatchRunner`** and a **`ScenarioLoader`** listing save files, **HexTactica → Run Batch**.
 
 ### Debugging the AI in the editor
 - `AIPlayer.onDecision` — callback with every unit's action, score and reason.
@@ -300,11 +143,9 @@ Your current roster needs **no migration**: Grunt, Supplies and TempHQ are corre
 bash Tests/run.sh /path/to/HexTactica/Assets      # after copying this package in
 ```
 
-Needs Mono (`apt install mono-mcs`, or `brew install mono`). The tests read your real unit
-prefabs, so point it at your project, not at this package.
-
-`PROBE=game|wide|decisive|transport|sweep bash Tests/run.sh <Assets>` runs diagnostics
-instead (traces and the parameter sweep). Nothing in `Tests/` belongs in `Assets/`.
+Needs Mono (`apt install mono-mcs`, or `brew install mono`). The scenarios use your real
+unit prefabs and terrain assets, so point it at your project. Nothing in `Tests/` belongs
+in `Assets/`; the Unity menu finds `Tests/Scenarios` next to your `Assets` folder.
 
 ---
 

@@ -53,6 +53,23 @@ public static class HarnessMenu {
         UnityEngine.Debug.Log("Harness: wrote " + runner.Results.Count + " results to " + path);
     }
 
+    /// <summary>
+    /// Load a scenario file (Tests/Scenarios/*.dat, or any level-editor save) into the running
+    /// scene. The file's test block sets Red's opponent AI and who moves first; Blue keeps the
+    /// scene's AIPlayer. Watch it play, or play Red yourself if the opponent is "Human".
+    /// </summary>
+    [MenuItem("HexTactica/Load Scenario File...")]
+    public static void LoadScenarioFile() {
+        if (!Application.isPlaying) {
+            UnityEngine.Debug.LogError("Enter play mode first: scenarios load onto the running board.");
+            return;
+        }
+        string start = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Tests", "Scenarios");
+        string path = EditorUtility.OpenFilePanel("Load scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
+        if (string.IsNullOrEmpty(path)) return;
+        if (ScenarioLoader.LoadBoardFromPath(path)) UnityEngine.Debug.Log("Loaded scenario " + path);
+    }
+
     [MenuItem("HexTactica/Open Results Folder")]
     public static void OpenResults() {
         EditorUtility.RevealInFinder(Application.persistentDataPath);

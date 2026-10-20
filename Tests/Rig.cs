@@ -53,7 +53,7 @@ namespace HexTactica.Testing {
                     t.aiData = new AITileData();
                     t.threat = new Dictionary<Player, Heat>();
                     t.supply = new Dictionary<Player, int>();
-                    t.terrain = Terrain.plains;
+                    t.terrain = ScenarioFile.Terrain("Grassland");
                     hg.Grid[x + hg.width / 2, y + hg.width / 2, z + hg.width / 2] = t;
                     hg.tiles.Add(t);
                 }
@@ -173,114 +173,6 @@ namespace HexTactica.Testing {
             FieldInfo f = t.GetField(name, BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic);
             if (f == null) throw new Exception("no static " + name + " on " + t.Name);
             f.SetValue(null, value);
-        }
-    }
-
-    /// <summary>Terrain fixtures.</summary>
-    public static class Terrain {
-        public static TerrainData plains = Make("Plains", 0, 0, 0, false);
-        public static TerrainData forest = Make("Forest", 2, 3, 0, false);
-        public static TerrainData hill = Make("Hill", 2, 2, 1, false);
-        public static TerrainData mountain = Make("Mountain", 4, 3, 2, false);
-        public static TerrainData swamp = Make("Swamp", 3, 1, 0, false);
-        public static TerrainData road = Make("Road", 0, 0, 0, true);
-        public static TerrainData water = Make("Water", 0, 0, -1, false);
-
-        static TerrainData Make(string name, int moveability, int cover, int elevation, bool isRoad) {
-            TerrainData td = new TerrainData();
-            td.name = name;
-            td.moveability = moveability;
-            td.cover = cover;
-            td.elevation = elevation;
-            td.road = isRoad;
-            return td;
-        }
-    }
-
-    /// <summary>Unit archetypes roughly matching the design doc's roster.</summary>
-    public static class Archetypes {
-
-        public static Unit Rifle() {
-            Unit u = Base("Grunt");
-            u.Firepower = 4; u.Armor = 1; u.Piercing = 1; u.Concealment = 3;
-            u.AttackRange = 1; u.moveAndAttack = true; u.retaliates = true;
-            u.moveRange = 3; u.terrainScramble = 3; u.locomotion = Locomotion.Boots;
-            u.cost = 100;
-            return u;
-        }
-
-        public static Unit Tank() {
-            Unit u = Base("MainTank");
-            u.Firepower = 6; u.Armor = 5; u.Piercing = 4; u.Concealment = 1;
-            u.AttackRange = 1; u.moveAndAttack = true; u.retaliates = true;
-            u.moveRange = 5; u.terrainScramble = 2; u.locomotion = Locomotion.Treads;
-            u.cost = 300;
-            return u;
-        }
-
-        public static Unit Artillery() {
-            Unit u = Base("Artillery");
-            u.Firepower = 7; u.Armor = 1; u.Piercing = 2; u.Concealment = 1;
-            u.AttackRange = 3; u.MinRange = 1; u.moveAndAttack = false; u.retaliates = false;
-            u.moveRange = 3; u.terrainScramble = 1; u.locomotion = Locomotion.Wheels;
-            u.cost = 250;
-            return u;
-        }
-
-        public static Unit Recon() {
-            Unit u = Base("Recon");
-            u.Firepower = 2; u.Armor = 2; u.Piercing = 0; u.Concealment = 1;
-            u.AttackRange = 1; u.moveAndAttack = true; u.retaliates = true;
-            u.moveRange = 7; u.terrainScramble = 0; u.locomotion = Locomotion.Wheels;
-            u.cost = 80;
-            return u;
-        }
-
-        /// <summary>Supply hub: no firepower, so it must never be sent to fight.</summary>
-        public static Unit Truck() {
-            Unit u = Base("Truck");
-            u.Firepower = 0; u.Armor = 1; u.Concealment = 0;
-            u.AttackRange = 0; u.moveAndAttack = false; u.retaliates = false;
-            u.moveRange = 6; u.terrainScramble = 0; u.locomotion = Locomotion.Wheels;
-            u.weight = 2; u.cost = 120;
-            return u;
-        }
-
-        /// <summary>Carries two weight of cargo. Fast on roads.</summary>
-        public static Unit APC() {
-            Unit u = Base("APC");
-            u.Firepower = 1; u.Armor = 3; u.Concealment = 1;
-            u.AttackRange = 1; u.moveAndAttack = true; u.retaliates = true;
-            u.moveRange = 8; u.terrainScramble = 1; u.locomotion = Locomotion.Wheels;
-            u.transportSlots = 2; u.maxWeight = 4; u.weight = 3; u.cost = 150;
-            return u;
-        }
-
-        /// <summary>Ignores terrain entirely — the interesting transport for supply.</summary>
-        public static Unit Helicopter() {
-            Unit u = Base("TransportHeli");
-            u.Firepower = 0; u.Armor = 1; u.Evasion = 3; u.Concealment = 0;
-            u.AttackRange = 0; u.moveAndAttack = false; u.retaliates = false;
-            u.moveRange = 10; u.terrainScramble = 5; u.locomotion = Locomotion.Rotor;
-            u.elevationMax = 3; u.elevationMin = -1;
-            u.transportSlots = 1; u.maxWeight = 2; u.weight = 4; u.cost = 400;
-            return u;
-        }
-
-        static Unit Base(string name) {
-            Unit u = Rig.New<Unit>();
-            u.name = name;
-            u.personal_name = name;
-            u.Strength = 6;
-            u.Veterancy = 0;
-            u.ammo = 6; u.ammoMax = 6; u.ammoPerShot = 1;
-            u.fuel = 40; u.fuelMax = 40; u.minFuelPerTile = 1; u.minFuelPerTurn = 1;
-            u.supplies = 5; u.suppliesMax = 5;
-            u.elevationMin = 0; u.elevationMax = 2;
-            u.path = new List<HexTile>();
-            u.transported = new List<Unit>();
-            u.weight = 1;
-            return u;
         }
     }
 }
