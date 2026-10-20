@@ -63,6 +63,7 @@ namespace HexTactica.Harness {
             Line("HexTactica game log, " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
             Line("source: " + (source.Length > 0 ? source : "board as it was"));
             Line("Blue (upper case) = this AI; Red (lower case) = " + (redKind == "Full" ? "this AI" : redKind));
+            if (GameController.gc != null) Line("rules: " + GameController.gc.rules + (GameController.gc.rules == RuleSet.Attrition ? " (HQs cannot be attacked; after " + GameController.gc.roundLimit + " rounds the most strength x cost left wins)" : ""));
             Line("glyphs: H HQ, S supply unit, G grunt, T tank, A artillery; . grass, f forest, ^ mountain, ~ water");
             OnTurnStarted(GameController.gc != null ? GameController.gc.activePlayer : null);
         }
@@ -245,7 +246,7 @@ namespace HexTactica.Harness {
             int r = Radius;
             sb.Append("{\n\"width\":").Append(2 * r + 1).Append(",\n\"active\":").Append(active != null ? active.id : 112);
             sb.Append(",\n\"test\":{\"name\":").Append(Q("snapshot")).Append(",\"kind\":\"snapshot\",\"opponent\":").Append(Q(redKind == "?" ? "Human" : redKind))
-              .Append(",\"rounds\":\"30\",\"check\":\"report\",\"question\":").Append(Q(question)).Append('}');
+              .Append(",\"rules\":").Append(Q(GameController.gc != null && GameController.gc.rules == RuleSet.Attrition ? "attrition" : "standard")).Append(",\"rounds\":\"30\",\"check\":\"report\",\"question\":").Append(Q(question)).Append('}');
             sb.Append(",\n\"tiles\":[");
             bool first = true;
             foreach (HexTile t in HexGenerator.hg.tiles) {

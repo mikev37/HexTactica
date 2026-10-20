@@ -203,6 +203,8 @@ public static class ScenarioFile {
         else if (opponent == "Legacy") Rig.AttachBaseline(l.other, AIKind.Legacy);
         // "Human": nobody acts for Red; the harness ends its turns.
 
+        string rules = Environment.GetEnvironmentVariable("RULES") ?? l.meta.Get("rules", "standard");
+        Rig.gc.rules = rules.ToLowerInvariant() == "attrition" ? RuleSet.Attrition : RuleSet.Standard;
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
         return l;

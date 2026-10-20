@@ -3,8 +3,56 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Standard: destroy or capture the enemy HQ.
+/// Attrition (a test variant): HQs cannot be attacked; a side is out when it has no units but its
+/// HQ; after roundLimit rounds the side with the most strength x cost left (HQs not counted) wins.
+/// </summary>
+public enum RuleSet { Standard, Attrition }
+
 public class GameController : MonoBehaviour
 {
+    [Header("Rules")]
+    public RuleSet rules = RuleSet.Standard;
+    [Tooltip("Attrition: rounds before the game is decided on what is left.")]
+    public int roundLimit = 30;
+
+    /// <summary>Can this unit be attacked under the current rules? (Attrition: HQs cannot.)</summary>
+    public static bool Targetable(Unit u) {
+        if (u == null) return false;
+        if (gc != null && gc.rules == RuleSet.Attrition) {
+            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            if (sp != null && sp.producer) return false;
+        }
+        return true;
+    }
+
+    /// <summary>Strength x cost of a player's units, HQs excluded: the attrition score.</summary>
+    public static float Remaining(Player p) {
+        float m = 0f;
+        if (p == null) return m;
+        for (int i = 0; i < p.units.Count; i++) {
+            Unit u = p.units[i];
+            if (u == null || u.Strength <= 0) continue;
+            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            if (sp != null && sp.producer) continue;
+            m += u.Strength * (float)u.cost;
+        }
+        return m;
+    }
+
+    static int CombatUnits(Player p) {
+        int n = 0;
+        for (int i = 0; i < p.units.Count; i++) {
+            Unit u = p.units[i];
+            if (u == null || u.Strength <= 0) continue;
+            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            if (sp != null && sp.producer) continue;
+            n++;
+        }
+        return n;
+    }
+
     [Tooltip("Players in the Current Game")]
     public List<Player> players;
 
@@ -89,6 +137,18 @@ public class GameController : MonoBehaviour
 
         activePlayer.StartTurn();
         CheckVictory();
+        // Attrition: after roundLimit full rounds, the most left standing wins (equal: a draw).
+        if (!gameOver && rules == RuleSet.Attrition && days >= roundLimit) {
+            Player best = null; float bestM = -1f; bool tie = false;
+            for (int i = 0; i < players.Count; i++) {
+                Player p = players[i];
+                if (p == null || p.eliminated) continue;
+                float m = Remaining(p);
+                if (m > bestM) { best = p; bestM = m; tie = false; } else if (m == bestM) tie = true;
+            }
+            gameOver = true;
+            winner = tie ? null : best;
+        }
         if (TurnStarted != null) TurnStarted(activePlayer);
     }
 
@@ -124,6 +184,11 @@ public class GameController : MonoBehaviour
             // "Capturing HQ ends the game for that player" — and destroying an HQ unit
             // likewise. A player who never had an HQ (an old save) is out only when they
             // have nothing left.
+            if (rules == RuleSet.Attrition) {
+                // HQs are out of play: a side is out when it has nothing else left.
+                if (CombatUnits(p) == 0 && (p.hadHQ || hasHQ || p.units.Count == 0)) Eliminate(p);
+                continue;
+            }
             if ((p.hadHQ && !hasHQ) || (!hasHQ && p.units.Count == 0)) Eliminate(p);
         }
 

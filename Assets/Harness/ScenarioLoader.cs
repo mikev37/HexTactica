@@ -147,6 +147,9 @@ namespace HexTactica.Harness {
         /// </summary>
         public static string RedOverride;
 
+        /// <summary>"standard", "attrition", or null to use the file. Set from HexTactica ▸ Rules.</summary>
+        public static string RulesOverride;
+
         /// <summary>
         /// Red's opponent and who moves first, from a scenario file's test block. Blue (id 112) is
         /// always this AI (AIPlayer), set up exactly as the headless harness runs it: no mission
@@ -166,6 +169,11 @@ namespace HexTactica.Harness {
                 kind = opponent != null ? opponent.stringValue : null;
             }
             if (string.IsNullOrEmpty(kind)) kind = "Human";
+
+            // Rules: the menu's choice, else the file's ("rules":"attrition"), else standard.
+            string rules = RulesOverride;
+            if (string.IsNullOrEmpty(rules) && test != null && test.GetField("rules") != null) rules = test.GetField("rules").stringValue;
+            GameController.gc.rules = rules != null && rules.ToLowerInvariant() == "attrition" ? RuleSet.Attrition : RuleSet.Standard;
 
             Player red = null, blue = null;
             GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; if (pl != null && pl.id == 112) blue = pl; });
@@ -202,7 +210,7 @@ namespace HexTactica.Harness {
             }
             string q = "";
             if (test != null && test.GetField("question") != null) q = test.GetField("question").stringValue + " ";
-            UnityEngine.Debug.Log("Scenario: " + q + "(Blue: this AI; Red: " + (kind == "Full" ? "this AI" : kind) + ")");
+            UnityEngine.Debug.Log("Scenario: " + q + "(Blue: this AI; Red: " + (kind == "Full" ? "this AI" : kind) + "; rules: " + GameController.gc.rules + ")");
             return kind;
         }
 

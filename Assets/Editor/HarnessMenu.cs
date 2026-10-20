@@ -68,8 +68,24 @@ public static class HarnessMenu {
         string path = EditorUtility.OpenFilePanel("Load scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
         if (string.IsNullOrEmpty(path)) return;
         ScenarioLoader.RedOverride = RedChoice();
+        string rules = EditorPrefs.GetString(RulesKey, "");
+        ScenarioLoader.RulesOverride = string.IsNullOrEmpty(rules) ? null : rules;
         if (ScenarioLoader.LoadBoardFromPath(path)) UnityEngine.Debug.Log("Loaded scenario " + path);
     }
+
+    // ---- Rules for loaded scenarios: as the file says, standard, or attrition (HQs out of play,
+    // win by elimination or by strength x cost left after the round limit).
+
+    const string RulesKey = "HexTactica.Rules";
+    const string RulesMenu = "HexTactica/Rules/";
+    static string RulesChoice() { return EditorPrefs.GetString(RulesKey, ""); }
+    static void SetRules(string v) { EditorPrefs.SetString(RulesKey, v ?? ""); UnityEngine.Debug.Log("Rules for loaded scenarios: " + (string.IsNullOrEmpty(v) ? "as the file says" : v) + ". Applies the next time you load a scenario file."); }
+    [MenuItem(RulesMenu + "As the File Says", false, 0)] static void RulesFile() { SetRules(null); }
+    [MenuItem(RulesMenu + "As the File Says", true)] static bool RulesFileCheck() { Menu.SetChecked(RulesMenu + "As the File Says", RulesChoice() == ""); return true; }
+    [MenuItem(RulesMenu + "Standard (HQ)", false, 1)] static void RulesStd() { SetRules("standard"); }
+    [MenuItem(RulesMenu + "Standard (HQ)", true)] static bool RulesStdCheck() { Menu.SetChecked(RulesMenu + "Standard (HQ)", RulesChoice() == "standard"); return true; }
+    [MenuItem(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", false, 2)] static void RulesAtt() { SetRules("attrition"); }
+    [MenuItem(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", true)] static bool RulesAttCheck() { Menu.SetChecked(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", RulesChoice() == "attrition"); return true; }
 
     // ---- Who plays Red when a scenario loads. Blue (id 112) is always this AI.
 

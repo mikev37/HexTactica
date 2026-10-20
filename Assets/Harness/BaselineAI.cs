@@ -109,7 +109,7 @@ namespace HexTactica.Harness {
                 List<HexTile> inRange = AIPath.TilesInRange(from, unit.MinRange, unit.AttackRange);
                 for (int j = 0; j < inRange.Count; j++) {
                     HexTile t = inRange[j];
-                    if (t.occupier == null || t.occupier.owner == unit.owner) continue;
+                    if (t.occupier == null || t.occupier.owner == unit.owner || !GameController.Targetable(t.occupier)) continue;
                     if (!unit.CanAttack(from)) continue;
 
                     int damage = CombatMath.PredictDamage(unit, t.occupier, from);
@@ -173,7 +173,7 @@ namespace HexTactica.Harness {
             List<HexTile> inRange = AIPath.TilesInRange(unit.tile, unit.MinRange, unit.AttackRange);
             List<Unit> targets = new List<Unit>();
             for (int i = 0; i < inRange.Count; i++) {
-                if (inRange[i].occupier != null && inRange[i].occupier.owner != unit.owner) {
+                if (inRange[i].occupier != null && inRange[i].occupier.owner != unit.owner && GameController.Targetable(inRange[i].occupier)) {
                     targets.Add(inRange[i].occupier);
                 }
             }

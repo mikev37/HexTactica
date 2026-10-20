@@ -164,7 +164,7 @@ namespace HexTactica.AI {
             List<HexTile> inRange = AIPath.TilesInRange(from, attacker.MinRange, attacker.AttackRange);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner) continue;
+                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
 
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (!a.valid) continue;
@@ -185,7 +185,7 @@ namespace HexTactica.AI {
             inRange.Sort(CombatMath.CompareTiles);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner) continue;
+                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (a.valid) all.Add(a);
             }

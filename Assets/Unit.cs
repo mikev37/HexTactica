@@ -553,7 +553,7 @@ public class Unit : MonoBehaviour
     }
 
     internal bool validTarget(HexTile position) {
-        return position.occupier != null && position.occupier.owner != owner;
+        return position.occupier != null && position.occupier.owner != owner && GameController.Targetable(position.occupier);
     }
 }
 
