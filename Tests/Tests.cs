@@ -16,10 +16,14 @@ public static class Tests {
     static Action<AIProfile> tweak;
 
     static void ApplySet() {
-        string set = Environment.GetEnvironmentVariable("SET");
-        if (set == null) return;
+        tweak = Tweak(Environment.GetEnvironmentVariable("SET"));
+    }
+
+    /// <summary>"field=value,field=value" as a profile tweak (null for none).</summary>
+    public static Action<AIProfile> Tweak(string set) {
+        if (string.IsNullOrEmpty(set)) return null;
         string[] pairs = set.Split(',');
-        tweak = p => {
+        return p => {
             foreach (string pair in pairs) {
                 string[] kv = pair.Split('=');
                 var fi = typeof(AIProfile).GetField(kv[0]);
@@ -40,6 +44,12 @@ public static class Tests {
         if (probe == "game") {
             Scenarios.Narrate(Environment.GetEnvironmentVariable("FILE"),
                 int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"), tweak);
+            return 0;
+        }
+        if (probe == "duel") {
+            Scenarios.Duel(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "40"),
+                           Tweak(Environment.GetEnvironmentVariable("SET_BLUE")), Tweak(Environment.GetEnvironmentVariable("SET_RED")),
+                           Environment.GetEnvironmentVariable("OUT"));
             return 0;
         }
         if (probe == "record") {

@@ -290,6 +290,18 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float enemyStrikeWeight = 0.25f;
 
+        [Tooltip("Reply forecast: a defender driven back with nowhere to go takes the pinned point (an HQ always). Off: the old forecast, which never counted it.")]
+        public bool forecastPins = true;
+
+        [Tooltip("Reply forecast: the enemy's own units block it — it cannot end on a tile another of its units holds. Off (the fix): they pass through and make room for each other.")]
+        public bool forecastOwnSideBlocks = false;
+
+        [Tooltip("Reply forecast: a unit of ours destroyed during the reply keeps blocking enemy movement. Off (the fix): its tile opens for every enemy still to act.")]
+        public bool forecastDeadBlock = false;
+
+        [Tooltip("An assist needs a finisher with a free firing tile it can reach this turn by real movement. Off: the old check, hex distance only.")]
+        public bool assistNeedsReach = true;
+
         [Tooltip("A unit destroyed costs this many more of its strength points' worth than the points themselves: alive, it would heal back, hold ground and fire again.")]
         [Range(0f, 6f)]
         public float deathPremium = 1f;

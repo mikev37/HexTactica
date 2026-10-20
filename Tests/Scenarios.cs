@@ -538,6 +538,33 @@ public static class Scenarios {
     }
 
     /// <summary>
+    /// This AI against itself with different profiles: Blue with <paramref name="blue"/>, Red with
+    /// <paramref name="red"/>. One game, recorded like a game in Unity (GameLog) when OUT is set,
+    /// with a line per round of material and losses.
+    /// </summary>
+    public static void Duel(string name, int rounds, Action<AIProfile> blue, Action<AIProfile> red, string root) {
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
+        if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
+        GameController gc = Rig.gc;
+        Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
+                          + " | Red " + (Environment.GetEnvironmentVariable("SET_RED") ?? "defaults"));
+        int startBlue = l.ai.units.Count, startRed = l.other.units.Count;
+        for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
+            ScenarioFile.PlayTurn();
+            if (gc.activePlayer == l.ai || gc.gameOver)
+                Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6}",
+                    gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other)));
+        }
+        string folder = HexTactica.Harness.GameLog.Folder;
+        if (root != null) HexTactica.Harness.GameLog.Stop();
+        Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")
+                          + string.Format("; units lost: Blue {0} of {1}, Red {2} of {3}", startBlue - Alive(l.ai), startBlue, startRed - Alive(l.other), startRed));
+        if (root != null) Console.WriteLine("log: " + folder);
+    }
+
+    static int Alive(Player p) { int n = 0; foreach (Unit u in p.units) if (u != null && u.Strength > 0 && u.tile != null) n++; return n; }
+
+    /// <summary>
     /// Record a scenario the way the game does (GameLog), then load the snapshot of the last
     /// turn recorded and check it reproduces the board — the round trip a log sent from Unity
     /// relies on.
