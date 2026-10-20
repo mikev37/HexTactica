@@ -132,6 +132,7 @@ namespace HexTactica.AI {
             public AIDenial.Result denial;
             public float rest;
             public float hqThreat;
+            public AIWorld.Outcome world;
         }
 
         /// <summary>
@@ -194,7 +195,7 @@ namespace HexTactica.AI {
                 }
                 // Exempt: anything threatening our HQ. Weakening it is worth what the HQ is worth,
                 // which tier 0 judges.
-                if (o.shot.valid && gain <= cost && map.HQThreat(o.shot.target) <= 0f) {
+                if (profile.choiceMode != 2 && o.shot.valid && gain <= cost && map.HQThreat(o.shot.target) <= 0f) {
                     if (DecisionLog != null && s == unit.tile)
                         DecisionLog(string.Format("{0} {1}{2}: shot at {3}{4} not worth it here: gain {5:0} <= cost {6:0} (recv {7:0.0})",
                             unit.owner.personal_name, unit.name, D(s), o.shot.target.name, D(o.shot.target.tile), gain, cost, o.received));
@@ -204,6 +205,8 @@ namespace HexTactica.AI {
                 }
                 options.Add(o);
             }
+
+            if (profile.choiceMode == 2) return ByWorld(unit, map, profile, posture, options, tag);
 
             // Tier 0: the HQ. If the enemy could destroy our HQ on its coming turn, nothing else
             // matters: keep only the options that leave it the least exposed — killing or crippling
@@ -230,17 +233,25 @@ namespace HexTactica.AI {
                 }
             }
 
-            // Tier 1.
-            float bestAttack = 0f;
-            foreach (Option o in t0) bestAttack = Mathf.Max(bestAttack, o.attack);
-            List<Option> t1 = bestAttack > 0f
-                ? t0.FindAll(o => o.attack >= bestAttack * profile.attackTie && o.attack > 0f)
-                : new List<Option>(t0);
+            float bestAttack = 0f, least = float.PositiveInfinity;
+            List<Option> t1, t2;
+            if (profile.choiceMode == 1) {
+                // Survival first: least damage received, then the best attack among those.
+                foreach (Option o in t0) least = Mathf.Min(least, o.received);
+                t1 = t0.FindAll(o => o.received <= least + profile.receivedTie);
+                foreach (Option o in t1) bestAttack = Mathf.Max(bestAttack, o.attack);
+                t2 = bestAttack > 0f ? t1.FindAll(o => o.attack >= bestAttack * profile.attackTie && o.attack > 0f) : new List<Option>(t1);
+            } else {
+                // Tier 1.
+                foreach (Option o in t0) bestAttack = Mathf.Max(bestAttack, o.attack);
+                t1 = bestAttack > 0f
+                    ? t0.FindAll(o => o.attack >= bestAttack * profile.attackTie && o.attack > 0f)
+                    : new List<Option>(t0);
 
-            // Tier 2.
-            float least = float.PositiveInfinity;
-            foreach (Option o in t1) least = Mathf.Min(least, o.received);
-            List<Option> t2 = t1.FindAll(o => o.received <= least + profile.receivedTie);
+                // Tier 2.
+                foreach (Option o in t1) least = Mathf.Min(least, o.received);
+                t2 = t1.FindAll(o => o.received <= least + profile.receivedTie);
+            }
 
             // Tier 3.
             Option best = null;
@@ -269,6 +280,62 @@ namespace HexTactica.AI {
 
             if (best == null) return AIAction.Wait(unit, tag + ": no option");
             string why = tag + string.Format(": tiers {0}/{1}/{2}", options.Count, t1.Count, t2.Count);
+            if (best.shot.valid) {
+                if (best.stop == unit.tile) return AIAction.Strike(unit, best.shot.target, best.rest, why + " strike");
+                return AIAction.MoveStrike(unit, best.stop, best.shot.target, best.rest, why + " move+strike");
+            }
+            if (best.stop == unit.tile) { AIAction hold = AIAction.Wait(unit, why + " hold"); hold.score = best.rest; return hold; }
+            return AIAction.Move(unit, best.stop, best.rest, why + " move");
+        }
+
+        /// <summary>
+        /// Choice by simulated outcome (choiceMode 2): every option is played out against the
+        /// enemy's reply (AIWorld) and scored by what is left on both sides. Options within
+        /// worldTie of this unit's strength points of the best world survive; among them the
+        /// highest denial + positional score wins (approach, supply, strategy, commitment).
+        /// </summary>
+        static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
+            float worth = AIScore.Worth(unit);
+            AIWorld.Cache cache = new AIWorld.Cache();
+            float bestWorld = float.NegativeInfinity;
+            foreach (Option o in options) {
+                o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null);
+                bestWorld = Mathf.Max(bestWorld, o.world.score);
+            }
+            List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - profile.worldTie * worth);
+            Option best = null;
+            foreach (Option o in kept) {
+                o.denial = map.Denial(unit, o.stop);
+                float positional = float.IsNegativeInfinity(o.positional) ? 0f : o.positional;
+                o.rest = o.denial.gold + positional;
+                if (best == null || o.rest > best.rest || (o.rest == best.rest && CombatMath.Precedes(o.stop, best.stop))) best = o;
+            }
+
+            if (DecisionLog != null) {
+                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                sb.Append(unit.owner.personal_name).Append(' ').Append(unit.name).Append(D(unit.tile)).Append(" s").Append(unit.Strength)
+                  .Append(" [").Append(tag).Append(", world] ").Append(options.Count).Append(" stops | best world ").Append(bestWorld.ToString("0"))
+                  .Append(", within ").Append((profile.worldTie * worth).ToString("0")).Append(": ").Append(kept.Count);
+                List<Option> shown = new List<Option>(options);
+                shown.Sort((a, b) => b.world.score.CompareTo(a.world.score));
+                for (int i = 0; i < Mathf.Min(5, shown.Count); i++) {
+                    Option o = shown[i];
+                    sb.Append("\n      ").Append(o == best ? "> " : kept.Contains(o) ? "  " : "x ").Append(D(o.stop))
+                      .Append(o.shot.valid ? " hit " + o.shot.target.name + D(o.shot.target.tile) + " " + o.shot.outcome.damageToDefender + "/" + o.shot.outcome.damageToAttacker : " no shot")
+                      .Append(" world ").Append(o.world.Summary());
+                    if (kept.Contains(o)) sb.Append(" | deny ").Append(o.denial.gold.ToString("0")).Append(" pos ").Append(float.IsNegativeInfinity(o.positional) ? "-" : o.positional.ToString("0"));
+                }
+                if (best != null && !shown.GetRange(0, Mathf.Min(5, shown.Count)).Contains(best))
+                    sb.Append("\n      > ").Append(D(best.stop)).Append(" world ").Append(best.world.Summary()).Append(" | pos ").Append(best.rest.ToString("0"));
+                DecisionLog(sb.ToString());
+            }
+
+            if (context.intents != null) {
+                if (best != null && best.destination != null && best.destination != unit.tile) context.intents[unit] = best.destination;
+                else context.intents.Remove(unit);
+            }
+            if (best == null) return AIAction.Wait(unit, tag + ": no option");
+            string why = tag + ": world " + best.world.score.ToString("0");
             if (best.shot.valid) {
                 if (best.stop == unit.tile) return AIAction.Strike(unit, best.shot.target, best.rest, why + " strike");
                 return AIAction.MoveStrike(unit, best.stop, best.shot.target, best.rest, why + " move+strike");
