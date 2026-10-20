@@ -131,6 +131,8 @@ namespace HexTactica.AI {
         /// </summary>
         /// <summary>Diagnostic: the shortlist's terms, best first, each time a hub plans.</summary>
         public static System.Action<string> DebugLog;
+        /// <summary>True while planning a ghost move (logged as such).</summary>
+        public static bool Ghost;
         static readonly Dictionary<HexTile, string> breakdown = new Dictionary<HexTile, string>();
 
         public static float ExactValue(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
@@ -149,6 +151,8 @@ namespace HexTactica.AI {
             // 0..1 desirability curve times the unit's *entire* value, and compared that
             // with a hub's drain of a sixth of its value per turn — two different units.
             // It sent hubs out of the network to die beside a few cheap squads.)
+            if (profile.hubPricing == 1) return ValueAdded(hub, at, map, profile, hypothetical);
+
             float total = 0;
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
@@ -234,6 +238,65 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
+        /// Value-added pricing. For every unit supplied only because the supply unit stands on
+        /// <paramref name="at"/> (in supply with it there, out of supply without it):
+        ///   a tenth of the unit's cost for the resupply (ammo, fuel, supplies);
+        ///   a sixth of its cost — one strength, exactly what the game heals — if it is wounded;
+        ///   the attrition it is spared: a strength if it is dry, a quarter of one if its own
+        ///   supplies are running down, and a strength if it is out of ammunition and so can't fight.
+        /// Relays it connects or strands count a strength each. Minus a strength of its own if it
+        /// would be stranded (that is what a stranded hub pays), and minus its own loss in the
+        /// simulated enemy reply, in full.
+        /// </summary>
+        static float ValueAdded(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile, SupplyNetwork.Result hypothetical) {
+            SupplyNetwork.Result without = SupplyNetwork.SolveWithout(map.player, hub);
+            float resupply = 0f, heal = 0f, spared = 0f, relays = 0f, forward = 0f, intent = 0f, stranded = 0f;
+            int supplied = 0;
+            for (int i = 0; i < map.ownUnits.Count; i++) {
+                Unit u = map.ownUnits[i];
+                if (u == null || u.tile == null || u == hub.myUnit) continue;
+                SupplyPoint other = u.GetComponent<SupplyPoint>();
+                if (other != null && other.producer) continue;
+                float worth = AIScore.Worth(u);           // one strength = a sixth of the unit
+                if (other != null) {
+                    bool was = without.connectedHubs.Contains(other), now = hypothetical.connectedHubs.Contains(other);
+                    if (was != now) relays += (now ? 1f : -1f) * worth;
+                    continue;
+                }
+                if (without.DepthAt(u.tile) > 0 || hypothetical.DepthAt(u.tile) <= 0) continue;
+                supplied++;
+                resupply += u.cost / 10f;
+                if (u.Strength < 6) heal += worth;
+                if (u.suppliesMax > 0) spared += u.supplies <= 1 ? worth : worth * 0.25f;
+                if (u.ammoMax > 0 && u.ammo <= 0) spared += worth;
+            }
+            float total = resupply + heal + spared + relays;
+            if (profile.hubPricingForward) {
+                forward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+                if (hypothetical.connectedHubs.Contains(hub))
+                    intent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+                total += forward + intent;
+            }
+            float hubWorth = AIScore.Worth(hub.myUnit);
+            if (!hypothetical.connectedHubs.Contains(hub)) {
+                stranded = hubWorth;
+                int autonomy = Mathf.Max(1, hub.TurnsOfAutonomy);
+                if (autonomy <= profile.hubPanicThreshold) stranded += hubWorth * (profile.hubPanicThreshold - autonomy + 1) * 0.5f;
+                total -= stranded;
+            }
+            float simulated = 0f;
+            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, new AIWorld.Cache(), false);
+            reply.lost.TryGetValue(hub.myUnit, out simulated);
+            float risk = simulated * hubWorth;
+            total -= risk;
+            if (DebugLog != null)
+                breakdown[at] = string.Format("({0},{1}) total {2:0} = resupply {3:0} + heal {4:0} + spared {5:0} ({6} units) + relays {7:0} + forward {8:0} + intent {9:0} - stranded {10:0} - hit {11:0} ({12:0.0} strength) [{13}]",
+                    at.x, at.y, total, resupply, heal, spared, supplied, relays, forward, intent, stranded, risk, simulated, map.TileRead(at));
+            SupplyNetwork.Solve(map.player, false);
+            return total;
+        }
+
+        /// <summary>
         /// Full plan for one hub: shortlist candidates cheaply, evaluate the best few
         /// exactly, and hand the winner to the transport planner so that riding a truck
         /// or a helicopter is considered alongside walking.
@@ -285,7 +348,7 @@ namespace HexTactica.AI {
             if (DebugLog != null) {
                 List<HexTile> order = new List<HexTile>(exact.Keys);
                 order.Sort((a, b) => exact[b].CompareTo(exact[a]));
-                DebugLog(unit.owner.personal_name + " " + unit.name + " at (" + unit.tile.x + "," + unit.tile.y + ") plans, top of " + shortlist.Count + ":");
+                DebugLog((Ghost ? "[ghost plan] " : "") + unit.owner.personal_name + " " + unit.name + " at (" + unit.tile.x + "," + unit.tile.y + ") plans, top of " + shortlist.Count + ":");
                 for (int i = 0; i < Mathf.Min(5, order.Count); i++) {
                     string b;
                     if (breakdown.TryGetValue(order[i], out b)) DebugLog("   " + b);

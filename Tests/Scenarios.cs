@@ -40,6 +40,18 @@ public static class Scenarios {
         new MapSpec("choke-r5", 5, 67, 0.20f, 0.20f, 0.20f),
     };
 
+    /// <summary>
+    /// Larger boards — radius 7, all of SampleScene — with doubled armies, so the sides start
+    /// more than three turns apart and the strategic layer (objectives, supply) has room to matter.
+    /// </summary>
+    static readonly MapSpec[] LargeMaps = {
+        new MapSpec("large-std-a",   7, 71, 0.10f, 0.10f, 0.30f),
+        new MapSpec("large-std-b",   7, 83, 0.10f, 0.10f, 0.30f),
+        new MapSpec("large-rough",   7, 97, 0.15f, 0.15f, 0.30f),
+    };
+
+    static int DeploymentSize(MapSpec s) { return s.radius >= 7 ? 18 : 9; }
+
     static TerrainData T(string n) { return ScenarioFile.Terrain(n); }
 
     static int rng;
@@ -68,7 +80,7 @@ public static class Scenarios {
         Cut(a, Rig.At(0, k), b);
         foreach (HexTile hq in new[] { a, b }) {
             hq.terrain = T("Grassland");
-            foreach (HexTile n in Deployment(hq, 9)) n.terrain = T("Grassland");
+            foreach (HexTile n in Deployment(hq, DeploymentSize(s))) n.terrain = T("Grassland");
         }
     }
 
@@ -139,6 +151,37 @@ public static class Scenarios {
                         Test(name, "match", lineup.StartsWith("legacy") ? "Legacy" : "Greedy", 30, "report",
                              "Generated map " + s.name + " (mountain " + s.mountain + ", water " + s.water + ", forest " + s.forest + ")"
                              + (lineup == "legacy-outnumbered" ? "; opponent has one extra tank and grunt" : "") + ". The left side moves first."),
+                        ai, other, aiLeft ? ai : other);
+                    n++;
+                }
+            }
+        }
+
+        // ---- large boards: doubled armies, three line-ups, AI on either side.
+        foreach (MapSpec s in LargeMaps) {
+            foreach (bool aiLeft in new[] { true, false }) {
+                foreach (string lineup in new[] { "legacy", "greedy", "legacy-outnumbered" }) {
+                    Generate(s);
+                    Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+                    HexTile left = Rig.At(-(s.radius - 1), 0), right = Rig.At(s.radius - 1, 0);
+                    foreach (Player p in new[] { ai, other }) {
+                        HexTile hq = (p == ai) == aiLeft ? left : right;
+                        List<HexTile> dep = Deployment(hq, DeploymentSize(s));
+                        Put("TempHQ", p, hq.x, hq.y);
+                        string[] roster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery",
+                                            "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery" };
+                        for (int i = 0; i < roster.Length; i++) Put(roster[i], p, dep[i].x, dep[i].y);
+                        if (lineup == "legacy-outnumbered" && p == other) {
+                            Put("Tank", p, dep[12].x, dep[12].y); Put("Grunt", p, dep[13].x, dep[13].y);
+                            Put("Tank", p, dep[14].x, dep[14].y); Put("Grunt", p, dep[15].x, dep[15].y);
+                        }
+                    }
+                    string name = "large-" + s.name.Substring(6) + "-" + lineup + (aiLeft ? "-ai-left" : "-ai-right");
+                    ScenarioFile.Save(Path.Combine(Dir, name + ".dat"),
+                        Test(name, "large", lineup.StartsWith("legacy") ? "Legacy" : "Greedy", 40, "report",
+                             "Radius-7 map " + s.name + " (mountain " + s.mountain + ", water " + s.water + ", forest " + s.forest
+                             + "), twelve units a side" + (lineup == "legacy-outnumbered" ? "; opponent has two extra tanks and grunts" : "")
+                             + ". The left side moves first."),
                         ai, other, aiLeft ? ai : other);
                     n++;
                 }
@@ -340,8 +383,9 @@ public static class Scenarios {
     /// <summary>Run every scenario. Returns the number of failed behaviour checks.</summary>
     public static int RunAll(Action<AIProfile> tweak) {
         int failed = 0, passed = 0;
+        string only = Environment.GetEnvironmentVariable("ONLY");
         Console.WriteLine("== Behaviour scenarios ==");
-        foreach (string f in Files("behaviour")) {
+        foreach (string f in Files(only == null || only == "behaviour" ? "behaviour" : "-")) {
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             bool ok = Judge(l, out detail);
@@ -351,7 +395,7 @@ public static class Scenarios {
         Console.WriteLine();
         Console.WriteLine("== Matchups (generated terrain maps) ==");
         int w = 0, lo = 0, d = 0;
-        foreach (string f in Files("match")) {
+        foreach (string f in Files(only == null || only == "match" ? "match" : "-")) {
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             Judge(l, out detail);
@@ -359,6 +403,22 @@ public static class Scenarios {
             Console.WriteLine(string.Format("  {0,-46} {1}", l.meta.Name, detail));
         }
         Console.WriteLine(string.Format("  matchups: {0}W {1}L {2}D", w, lo, d));
+        if (only == null || only == "large") {
+            Console.WriteLine();
+            Console.WriteLine("== Large boards (radius 7, twelve a side) ==");
+            int lw = 0, ll = 0, ld = 0;
+            foreach (string f in Files("large")) {
+                ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
+                string detail;
+                System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+                Judge(l, out detail);
+                AIPlayer me = l.ai.gameObject.GetComponent<AIPlayer>();
+                if (Rig.gc.winner == l.ai) lw++; else if (Rig.gc.winner == l.other) ll++; else ld++;
+                Console.WriteLine(string.Format("  {0,-46} {1}; objective pulls {2} over {3} turns; {4:0.0}s", l.meta.Name, detail,
+                    me.objectivePulls, me.turnsPlayed, sw.Elapsed.TotalSeconds));
+            }
+            Console.WriteLine(string.Format("  large: {0}W {1}L {2}D", lw, ll, ld));
+        }
         Console.WriteLine();
         Console.WriteLine(string.Format("behaviour checks: passed {0}, failed {1}", passed, failed));
         return failed;
@@ -427,7 +487,19 @@ public static class Scenarios {
             AIPlayer full = active.gameObject.GetComponent<AIPlayer>();
             Console.WriteLine("-- round " + gc.days + ": " + active.personal_name);
             if (full != null) {
+                bool first = true;
+                full.onGhost = (u, at) => { if (log) Console.WriteLine("    ghost: " + u.name + (at == null ? " stays" : " will move to " + D(at)) + "; the line plans with that supply"); };
                 full.onDecision = (u, act, did) => {
+                    if (log && first && full.CurrentMap != null) {
+                        first = false;
+                        AIMap m = full.CurrentMap;
+                        Console.WriteLine("    read: " + m.SupplyReport());
+                        string contact = "";
+                        foreach (Unit x in m.ownUnits) contact += " " + x.name.Substring(0, 2) + D(x.tile) + "=" + m.TurnsToContact(x);
+                        Console.WriteLine("    turns to contact:" + contact);
+                        foreach (Objective o in full.CurrentObjectives) Console.WriteLine("    objective " + o);
+                        Console.WriteLine("    objective pulls this turn: " + full.CurrentAssignments.Count);
+                    }
                     if (!log || (act.kind == AIActionKind.Wait && !did)) return;
                     if (u.GetComponent<SupplyPoint>() != null || act.reason == null || act.reason.IndexOf("world") < 0 && act.reason.IndexOf("tiers") < 0)
                         Console.WriteLine("    " + u.owner.personal_name + " " + u.name + " " + act.kind + " (" + act.reason + ")");

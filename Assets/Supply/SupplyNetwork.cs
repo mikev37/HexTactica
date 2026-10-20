@@ -28,6 +28,7 @@ public static class SupplyNetwork {
         /// <summary>Producers and every relay chained back to a producer or supply building.</summary>
         public readonly List<SupplyPoint> connectedHubs = new List<SupplyPoint>();
         public readonly List<SupplyPoint> strandedHubs = new List<SupplyPoint>();
+        public int mobileHubs;
 
         public int DepthAt(HexTile t) {
             int d;
@@ -63,7 +64,28 @@ public static class SupplyNetwork {
         return Solve(player, false, null, null, excluded);
     }
 
+    /// <summary>
+    /// Static supply only: buildings and producers (the HQ), no mobile hubs. What the army
+    /// keeps if every supply unit dies or walks away. Not published.
+    /// </summary>
+    public static Result SolveStatic(Player player) {
+        return Solve(player, false, null, null, null, true, null);
+    }
+
+    /// <summary>
+    /// The network with some hubs standing on other tiles (the AI's planned "ghost" hub
+    /// moves). Not published: the board keeps the real field.
+    /// </summary>
+    public static Result SolveMoved(Player player, Dictionary<SupplyPoint, HexTile> moved) {
+        return Solve(player, false, null, null, null, false, moved);
+    }
+
     static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded) {
+        return Solve(player, applyDrain, movedHub, hypotheticalTile, excluded, false, null);
+    }
+
+    static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded,
+                        bool staticOnly, Dictionary<SupplyPoint, HexTile> moved) {
 
         Result result = new Result();
         if (player == null || HexGenerator.hg == null) return result;
@@ -84,9 +106,11 @@ public static class SupplyNetwork {
             Unit u = player.units[i];
             if (u == null) continue;
             SupplyPoint sp = u.GetComponent<SupplyPoint>();
-            if (sp != null && sp != excluded) hubs.Add(sp);
+            if (sp != null && sp != excluded && (!staticOnly || sp.producer)) hubs.Add(sp);
         }
         hubs.Sort((a, b) => StableId(a).CompareTo(StableId(b)));
+        result.mobileHubs = 0;
+        for (int i = 0; i < hubs.Count; i++) if (!hubs[i].producer) result.mobileHubs++;
 
         // Producer hubs are roots, exactly like supply buildings. The shipped game's HQ
         // is a *unit* (TempHQ) carrying a producer SupplyPoint, not a Building. Treating
@@ -96,7 +120,7 @@ public static class SupplyNetwork {
         for (int i = 0; i < hubs.Count; i++) {
             SupplyPoint hub = hubs[i];
             if (!hub.producer) continue;
-            HexTile at = TileOf(hub, movedHub, hypotheticalTile);
+            HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
             if (at == null) continue;
             activated.Add(hub);
             result.connectedHubs.Add(hub);
@@ -112,7 +136,7 @@ public static class SupplyNetwork {
             for (int i = 0; i < hubs.Count; i++) {
                 SupplyPoint hub = hubs[i];
                 if (activated.Contains(hub)) continue;
-                HexTile at = TileOf(hub, movedHub, hypotheticalTile);
+                HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
                 if (at == null) continue;
                 if (!result.IsSupplied(at)) continue;
 
@@ -127,14 +151,14 @@ public static class SupplyNetwork {
         for (int i = 0; i < hubs.Count; i++) {
             SupplyPoint hub = hubs[i];
             if (activated.Contains(hub)) continue;
-            HexTile at = TileOf(hub, movedHub, hypotheticalTile);
+            HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
             if (at == null) continue;
             result.strandedHubs.Add(hub);
             FloodFromHub(hub, at, result);
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null) HexGenerator.forAllTiles(t => {
+        if (excluded == null && !staticOnly && moved == null) HexGenerator.forAllTiles(t => {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });
@@ -156,8 +180,10 @@ public static class SupplyNetwork {
         return result;
     }
 
-    static HexTile TileOf(SupplyPoint hub, SupplyPoint movedHub, HexTile hypotheticalTile) {
+    static HexTile TileOf(SupplyPoint hub, SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
         if (hub == movedHub && hypotheticalTile != null) return hypotheticalTile;
+        HexTile m;
+        if (moved != null && moved.TryGetValue(hub, out m) && m != null) return m;
         return hub.myUnit != null ? hub.myUnit.tile : null;
     }
 
@@ -193,6 +219,28 @@ public static class SupplyNetwork {
         }
 
         Flood(origin, range, scramble, u.owner, loco, result);
+    }
+
+    /// <summary>
+    /// The farthest this hub could push supply after one move of its own (or its
+    /// transport's): its supply range plus its movement, flooded with its own movement
+    /// rules from where it stands. An upper bound, for the AI's read of potential supply.
+    /// </summary>
+    public static Result Extent(SupplyPoint hub) {
+        Result r = new Result();
+        if (hub == null || hub.myUnit == null || hub.myUnit.tile == null) return r;
+        Unit u = hub.myUnit;
+        int range = hub.range + u.moveRange;
+        int scramble = u.terrainScramble;
+        Locomotion loco = u.locomotion;
+        if (u.trasnporter != null) {
+            range = hub.range + u.trasnporter.moveRange * 2;
+            scramble = Mathf.Max(scramble, u.trasnporter.terrainScramble);
+            loco = u.trasnporter.locomotion;
+        }
+        HexTile origin = u.trasnporter != null && u.trasnporter.tile != null ? u.trasnporter.tile : u.tile;
+        Flood(origin, range, scramble, u.owner, loco, r);
+        return r;
     }
 
     /// <summary>

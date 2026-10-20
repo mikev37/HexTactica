@@ -68,13 +68,20 @@ faithfully; `Greedy` = defend-only) and sets who moves first, then it plays itse
 | `hit-the-supply-unit` | a tank beside the enemy supply unit and a grunt hits the supply unit |
 | `defend-the-hq` | our HQ survives an enemy tank and two grunts arriving (4 rounds) |
 | `rotate-the-wounded` | a 3-strength grunt with fresh grunts behind it pulls back |
-| `hold-the-gap` | a unit takes the single gap in a water line before the enemy arrives — **fails** |
+| `hold-the-gap` | a unit takes the single gap in a water line before the enemy arrives |
 | `finish-the-game` | an army destroys an enemy HQ left alone (5 rounds) |
 
 Matchups: six generated maps (radius 5–6; mountains, water and forest planted at random,
 then two open paths cut between the HQs), AI on either side, against Legacy, Greedy, and
 Legacy with an extra tank and grunt. Current: **31 W 5 L 0 D**; the five losses are all
 the outnumbered line-up.
+
+Large boards (`large-*`): three radius-7 maps (all of SampleScene), twelve units a side
+(two supply units each), the same three line-ups, AI on either side — 18 games, each
+reporting how many unit-turns got a strategic-objective pull. Current: **15 W 3 L 0 D**,
+losses again all outnumbered. Objective pulls: **0** — see "Still open".
+
+`ONLY=behaviour|match|large` runs one group.
 
 Diagnostics:
 - `PROBE=game FILE=<name> [ROUNDS=r] [SIDE=AI|Red|both]` — the board after every turn and,
@@ -95,6 +102,26 @@ the winner among them is the one cutting the most enemy movement and supply (`AI
 the positional score (approach, supply, strategy). Supply units place themselves by
 coverage minus the simulated hit where they will stand, and where they stop on the way.
 Enemies are valued by the best blow they could land on us next turn (`threatTargetWeight`).
+
+The world score also carries: a supply unit's death costs one strength of every unit only
+it keeps supplied (`hubDependentsWeight`, both sides); a hit our not-yet-acted units can
+finish this turn is an **assist**, counted as `assistWeight` (0.75) of a kill — its reply
+and material removed in that proportion; and each surviving unit of ours adds its best
+next blow at `ownStrikeWeight` (0.1). The enemy-side equivalent (`enemyStrikeWeight`) is 0:
+at 0.25 it turned wins into draws.
+
+Board read (`AIMapRead`): supply split into static (buildings, HQ), mobile (only there
+because a supply unit stands where it does) and potential (what supply units could cover
+after one move, worth `potentialSupplyValue` = ¼ of real supply in out-of-supply costs);
+hop distance to our supply and the enemy's; and how many enemy turns until each tile can be
+struck (3 turns deep, real movement, ~2 ms per read at radius 7).
+
+Supply units plan first, as a ghost: the field is re-solved as if they had moved, so the line
+attacks into supply that is coming; they still move last, re-planned on the real board
+(`ghostSupply`). Their price (`hubPricing` 1): per unit supplied only by them, a tenth of its
+cost, plus a sixth (one strength — what the game heals) if wounded, plus the attrition spared;
+plus coverage of contested ground and of where units are heading; minus their own loss in the
+simulated reply.
 Retired along with the fixture tests: the 240/720-game batches and their tables.
 
 ## Integration
@@ -160,6 +187,13 @@ in `Assets/`; the Unity menu finds `Tests/Scenarios` next to your `Assets` folde
 
 ## Still open
 
+- **Strategic objectives never fire on SampleScene.** A unit ignores objectives with contact
+  within 3 turns; a tank moves 6 and artillery reaches 10, so on a 15-hex board every unit is
+  within 2 turns of contact from turn 0. Testing them needs a bigger board: SampleScene's
+  HexGenerator `width` (15) and the camera size would have to grow. Two more gates also block
+  them in an even fight — an objective needs 2.5× the defending force, and units won't take a
+  trip they can't get back into supply from. (A third gate, objective reach ≤ 3 turns, made
+  them impossible on any board; it is now 8.)
 - **Transport presentation**: cargo isn't hidden or parented, and the `LOAD_CONFIRM` /
   `UNLOAD_CONFIRM` click states have no handler. Transports work for the AI only.
 - **Placing buildings** in the level editor UI (they load from saves only).

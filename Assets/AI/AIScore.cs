@@ -67,7 +67,9 @@ namespace HexTactica.AI {
             // Dry: attrition takes a strength per turn. Still carrying supplies: a quarter of
             // that, for the turn of endurance spent and the healing forgone.
             float strength = Worth(unit);
-            return unit.suppliesMax > 0 && unit.supplies <= 1 ? strength : strength * 0.25f;
+            float cost = unit.suppliesMax > 0 && unit.supplies <= 1 ? strength : strength * 0.25f;
+            // Inside what a supply unit could cover after one move: partly covered.
+            return cost * (1f - map.SupplyCover(at));
         }
 
         /// <summary>
