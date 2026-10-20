@@ -165,6 +165,7 @@ namespace HexTactica.AI {
 
         void Rebuild(bool recalculateThreat) {
             space = null;
+            denialBaseline = null;
             thisTurnFields.Clear();
             horizonFields.Clear();
             approaches.Clear();
@@ -303,6 +304,14 @@ namespace HexTactica.AI {
                 loss += damage * share;
             }
             return Mathf.Min(u.Strength, loss);
+        }
+
+        AIDenial.Baseline denialBaseline;
+
+        /// <summary>Enemy movement and supply taken away by <paramref name="u"/> standing on <paramref name="at"/> (AIDenial).</summary>
+        public AIDenial.Result Denial(Unit u, HexTile at) {
+            if (denialBaseline == null) denialBaseline = new AIDenial.Baseline();
+            return AIDenial.Measure(u, at, this, denialBaseline);
         }
 
         AISpace.Board space;

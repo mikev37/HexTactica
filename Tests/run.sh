@@ -27,5 +27,5 @@ FILES=""
 while read -r f; do [ -n "$f" ] && FILES="$FILES $WORK/Assets/$f"; done < "$HERE/logicfiles.txt"
 mcs -target:exe -out:"$WORK/tests.exe" -nowarn:0108,0168,0219,0414,0067,0649,0162,0169 \
   $FILES "$HERE/FunctionalShims.cs" "$HERE/Rig.cs" "$HERE/PrefabLoader.cs" \
-  "$HERE/Tests.cs" "$HERE/Regression.cs" "$HERE/Probe.cs" "$HERE/Matchups.cs"
+  "$HERE/Tests.cs" "$HERE/Regression.cs" "$HERE/Probe.cs" "$HERE/Matchups.cs" "$HERE/TerrainMaps.cs"
 mono "$WORK/tests.exe" "$ASSETS"

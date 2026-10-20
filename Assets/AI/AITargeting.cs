@@ -167,6 +167,8 @@ namespace HexTactica.AI {
             return best;
         }
 
+        public static bool IsHQUnit(Unit u) { return IsHQ(u); }
+
         static bool IsHQ(Unit u) {
             SupplyPoint sp = u != null ? u.GetComponent<SupplyPoint>() : null;
             return sp != null && sp.producer;

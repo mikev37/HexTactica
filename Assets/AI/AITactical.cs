@@ -111,6 +111,206 @@ namespace HexTactica.AI {
         }
         static readonly Context context = new Context();
 
+        /// <summary>When set, Choose records the best score reachable through each of this turn's stops.</summary>
+        static Dictionary<HexTile, KeyValuePair<float, HexTile>> stopCapture;
+
+        /// <summary>
+        /// Per-decision reasoning, one block per unit: every tier's survivors with their numbers,
+        /// and the choice. Set by the harness; null in the game.
+        /// </summary>
+        public static Action<string> DecisionLog;
+
+        // ------------------------------------------------------------ tiered choice
+
+        class Option {
+            public HexTile stop;
+            public HexTile destination;
+            public AttackAppraisal shot;
+            public float attack;
+            public float received;
+            public float positional;
+            public AIDenial.Result denial;
+            public float rest;
+            public float hqThreat;
+        }
+
+        /// <summary>
+        /// Choose this turn's move in tiers, the way the original AttackMove did, instead of adding
+        /// every consideration into one number. Attacking first is the biggest advantage in this
+        /// ruleset, and in a single sum any positional term — footwork, screens, an objective's
+        /// pull — could outbid a shot. Here nothing can:
+        ///
+        ///   0. Our HQ: drop every option that would leave it destroyable on the enemy's coming turn,
+        ///      if any option would not; if none would not, keep those leaving it least exposed
+        ///      (AIDenial.HQThreat). Losing the HQ loses everything.
+        ///   1. Damage dealt: every stop and the best attack from it. Keep the options whose attack
+        ///      is at least attackTie of the best (if anything can attack at all). Fuzzy, so that a
+        ///      slightly smaller hit from a much safer tile survives to tier 2.
+        ///   2. Damage received: expected loss tonight at that tile, plus any retaliation, in the
+        ///      acting unit's strength points. Keep those within receivedTie of the least.
+        ///   3. Everything else, in gold: enemy movement and supply denied by standing there
+        ///      (AIDenial — measured by moving the unit on the board and recomputing), plus the
+        ///      positional score (approach toward the best multi-turn destination, supply, cover,
+        ///      strategy, counterattack, commitment). Highest wins; exact ties on board position.
+        ///
+        /// When nothing is in reach, tier 1 keeps everything, tier 2 keeps the safe tiles, and tier
+        /// 3 picks among them — which is what puts units on chokepoints while the enemy is still
+        /// out of range, and walks them forward when it is not.
+        /// </summary>
+        static AIAction Tiered(Unit unit, AIMap map, AIProfile profile, Posture posture,
+                               Dictionary<HexTile, KeyValuePair<float, HexTile>> stops,
+                               Func<HexTile, bool> canShootFrom, Func<AttackAppraisal, bool> shotAllowed,
+                               float shotRiskFactor, string tag) {
+            float worth = AIScore.Worth(unit);
+            List<Option> options = new List<Option>();
+            if (!stops.ContainsKey(unit.tile)) stops[unit.tile] = new KeyValuePair<float, HexTile>(float.NegativeInfinity, unit.tile);
+            foreach (KeyValuePair<HexTile, KeyValuePair<float, HexTile>> kv in stops) {
+                HexTile s = kv.Key;
+                if (s != unit.tile && !AIPath.CanFinishTurnOn(unit, s)) continue;
+                Option o = new Option { stop = s, destination = kv.Value.Value, positional = kv.Value.Key };
+                if (canShootFrom(s)) {
+                    AttackAppraisal a = AITargeting.BestFrom(unit, s, map, profile, posture, true);
+                    if (a.valid && a.value > 0f && shotAllowed(a)) { o.shot = a; o.attack = a.value; }
+                    else if (DecisionLog != null && s == unit.tile && a.valid)
+                        DecisionLog(string.Format("{0} {1}{2}: shot at {3}{4} rejected, value {5:0} (dealt {6}, taken {7})",
+                            unit.owner.personal_name, unit.name, D(s), a.target.name, D(a.target.tile), a.value, a.outcome.damageToDefender, a.outcome.damageToAttacker));
+                }
+                Unit killed = o.shot.valid && o.shot.outcome.defenderDies ? o.shot.target : null;
+                o.received = map.ExpectedLoss(unit, s, killed) * shotRiskFactor
+                           + (o.shot.valid ? o.shot.outcome.damageToAttacker : 0);
+                // An attack only counts as one if it is worth more than what standing there tonight
+                // will cost. Otherwise a lone tank's only shot — a grunt, from a tile the whole enemy
+                // army could reach — won tier 1 by default over every safe tile, and the tank was
+                // destroyed for it on turn one. (Losing the unit outright costs the kill bonus too.)
+                // Judged in material, both sides: attack values carry the target's threat premium
+                // (Unit.value), which near an HQ inflated a tank to six times its cost, and a tank
+                // drove to a tile where it was certain to die to scratch it.
+                bool dies = o.received >= unit.Strength;
+                float cost = Mathf.Min(unit.Strength, o.received) * worth * (dies ? profile.killBonus : 1f);
+                float gain = 0f;
+                if (o.shot.valid) {
+                    gain = o.shot.outcome.damageToDefender * AIScore.Worth(o.shot.target) * (o.shot.outcome.defenderDies ? profile.killBonus : 1f);
+                    if (AITargeting.IsHQUnit(o.shot.target)) gain = Mathf.Max(gain, o.attack);
+                }
+                // Exempt: anything threatening our HQ. Weakening it is worth what the HQ is worth,
+                // which tier 0 judges.
+                if (o.shot.valid && gain <= cost && map.HQThreat(o.shot.target) <= 0f) {
+                    if (DecisionLog != null && s == unit.tile)
+                        DecisionLog(string.Format("{0} {1}{2}: shot at {3}{4} not worth it here: gain {5:0} <= cost {6:0} (recv {7:0.0})",
+                            unit.owner.personal_name, unit.name, D(s), o.shot.target.name, D(o.shot.target.tile), gain, cost, o.received));
+                    o.shot = new AttackAppraisal();
+                    o.attack = 0f;
+                    o.received = map.ExpectedLoss(unit, s, null) * shotRiskFactor;
+                }
+                options.Add(o);
+            }
+
+            // Tier 0: the HQ. If the enemy could destroy our HQ on its coming turn, nothing else
+            // matters: keep only the options that leave it the least exposed — killing or crippling
+            // an attacker, or standing on (or in the way of) the tiles they would strike it from.
+            int hqStrength;
+            float hqNow = AIDenial.HQThreat(unit, unit.tile, null, 0, map, out hqStrength);
+            List<Option> t0 = options;
+            bool hqLethal = hqStrength > 0 && hqNow >= hqStrength;
+            if (hqStrength > 0 && hqNow > 0f) {
+                foreach (Option o in options) {
+                    int dmg = o.shot.valid ? o.shot.outcome.damageToDefender : 0;
+                    int ignore;
+                    o.hqThreat = AIDenial.HQThreat(unit, o.stop, o.shot.valid ? o.shot.target : null, dmg, map, out ignore);
+                }
+                // Never leave the HQ killable when something else would not — whether it is in
+                // danger already or this move would open the way (a grunt stepping off the one
+                // approach it was blocking).
+                List<Option> safe = options.FindAll(o => o.hqThreat < hqStrength);
+                if (safe.Count > 0 && safe.Count < options.Count) t0 = safe;
+                else if (safe.Count == 0) {
+                    float leastHq = float.PositiveInfinity;
+                    foreach (Option o in options) leastHq = Mathf.Min(leastHq, o.hqThreat);
+                    t0 = options.FindAll(o => o.hqThreat <= leastHq + 0.5f);
+                }
+            }
+
+            // Tier 1.
+            float bestAttack = 0f;
+            foreach (Option o in t0) bestAttack = Mathf.Max(bestAttack, o.attack);
+            List<Option> t1 = bestAttack > 0f
+                ? t0.FindAll(o => o.attack >= bestAttack * profile.attackTie && o.attack > 0f)
+                : new List<Option>(t0);
+
+            // Tier 2.
+            float least = float.PositiveInfinity;
+            foreach (Option o in t1) least = Mathf.Min(least, o.received);
+            List<Option> t2 = t1.FindAll(o => o.received <= least + profile.receivedTie);
+
+            // Tier 3.
+            Option best = null;
+            foreach (Option o in t2) {
+                o.denial = map.Denial(unit, o.stop);
+                float positional = float.IsNegativeInfinity(o.positional) ? 0f : o.positional;
+                // Within the tier the attack still counts in gold, so a better hit from an equally
+                // safe tile is preferred to a weaker one.
+                // Short of lethal, taking threat off the HQ is still worth its share of the game.
+                float hqRelief = hqStrength > 0 ? (hqNow - o.hqThreat) / (hqStrength + 1f) * map.BoardStake * profile.hqDefenseWeight * 0.25f : 0f;
+                o.rest = o.denial.gold + positional + o.attack + hqRelief;
+                if (best == null || o.rest > best.rest || (o.rest == best.rest && CombatMath.Precedes(o.stop, best.stop))) best = o;
+            }
+
+            if (DecisionLog != null) {
+                if (hqStrength > 0 && hqNow > 0f)
+                    DecisionLog(string.Format("{0} {1}{2}: HQ threat {3:0.0} vs strength {4}{5}", unit.owner.personal_name, unit.name, D(unit.tile), hqNow, hqStrength,
+                        (hqLethal ? " LETHAL" : "") + (t0.Count < options.Count ? " -> T0 keeps " + t0.Count + " of " + options.Count : "")));
+                LogTiers(unit, tag, posture, options, t1, t2, best, bestAttack, least, profile);
+            }
+
+            if (context.intents != null) {
+                if (best != null && best.destination != null && best.destination != unit.tile) context.intents[unit] = best.destination;
+                else context.intents.Remove(unit);
+            }
+
+            if (best == null) return AIAction.Wait(unit, tag + ": no option");
+            string why = tag + string.Format(": tiers {0}/{1}/{2}", options.Count, t1.Count, t2.Count);
+            if (best.shot.valid) {
+                if (best.stop == unit.tile) return AIAction.Strike(unit, best.shot.target, best.rest, why + " strike");
+                return AIAction.MoveStrike(unit, best.stop, best.shot.target, best.rest, why + " move+strike");
+            }
+            if (best.stop == unit.tile) { AIAction hold = AIAction.Wait(unit, why + " hold"); hold.score = best.rest; return hold; }
+            return AIAction.Move(unit, best.stop, best.rest, why + " move");
+        }
+
+        static string D(HexTile t) { return t == null ? "-" : "(" + t.x + "," + t.y + ")"; }
+
+        static void LogTiers(Unit unit, string tag, Posture posture, List<Option> all, List<Option> t1, List<Option> t2,
+                             Option best, float bestAttack, float least, AIProfile profile) {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.Append(unit.owner.personal_name).Append(' ').Append(unit.name).Append(D(unit.tile))
+              .Append(" s").Append(unit.Strength).Append(" [").Append(tag).Append(", ").Append(posture).Append("] ")
+              .Append(all.Count).Append(" stops");
+            sb.Append(bestAttack > 0f
+                ? string.Format(" | T1 attack>={0:0} ({1:0}% of {2:0}): {3}", bestAttack * profile.attackTie, profile.attackTie * 100, bestAttack, t1.Count)
+                : " | T1 nothing in reach: " + t1.Count);
+            sb.Append(string.Format(" | T2 received<={0:0.0}: {1}", least + profile.receivedTie, t2.Count));
+            List<Option> shown = new List<Option>(t2);
+            shown.Sort((a, b) => b.rest.CompareTo(a.rest));
+            for (int i = 0; i < Mathf.Min(4, shown.Count); i++) {
+                Option o = shown[i];
+                sb.Append("\n      ").Append(o == best ? "> " : "  ").Append(D(o.stop))
+                  .Append(o.shot.valid ? " hit " + o.shot.target.name + D(o.shot.target.tile) + " " + o.attack.ToString("0") : " no shot")
+                  .Append(" recv ").Append(o.received.ToString("0.0"))
+                  .Append(" deny ").Append(o.denial.tiles).Append("mv/").Append(o.denial.supplyTiles).Append("sup/").Append(o.denial.unitsCut).Append("cut=").Append(o.denial.gold.ToString("0"))
+                  .Append(" pos ").Append(float.IsNegativeInfinity(o.positional) ? "-" : o.positional.ToString("0"))
+                  .Append(o.hqThreat > 0f ? " hq " + o.hqThreat.ToString("0.0") : "")
+                  .Append(" toward ").Append(D(o.destination))
+                  .Append(" => ").Append(o.rest.ToString("0"));
+            }
+            // The best option that tier 1 or 2 threw out, so the cost of the filter is visible.
+            Option dropped = null;
+            foreach (Option o in all) if (!t2.Contains(o) && (dropped == null || o.positional > dropped.positional)) dropped = o;
+            if (dropped != null) sb.Append("\n      x ").Append(D(dropped.stop)).Append(" dropped at ")
+                .Append(t1.Contains(dropped) ? "T2 (recv " + dropped.received.ToString("0.0") + ")" : "T1 (attack " + dropped.attack.ToString("0") + ")")
+                .Append(" pos ").Append(float.IsNegativeInfinity(dropped.positional) ? "-" : dropped.positional.ToString("0"));
+            DecisionLog(sb.ToString());
+        }
+
         // -------------------------------------------------------------- shared loop
 
         /// <summary>
@@ -195,6 +395,13 @@ namespace HexTactica.AI {
                         AIScore.Risk(unit, stop, map, profile) * riskFactor * PostureRisk(profile)
                             + (stop != t ? AIScore.Risk(unit, t, map, profile) * riskFactor * PostureRisk(profile) : 0f),
                         applySupply ? AIScore.OutOfSupplyCost(unit, stop, map) + AIScore.StrandingCost(unit, t, eta.turns, map) : 0f, score)));
+                }
+
+                if (stopCapture != null) {
+                    KeyValuePair<float, HexTile> prior;
+                    if (!stopCapture.TryGetValue(stop, out prior) || score > prior.Key ||
+                        (score == prior.Key && CombatMath.Precedes(t, prior.Value)))
+                        stopCapture[stop] = new KeyValuePair<float, HexTile>(score, t);
                 }
 
                 if (score > bestScore ||
@@ -311,6 +518,7 @@ namespace HexTactica.AI {
             AttackAppraisal best = AITargeting.BestThisTurn(unit, map, profile, posture);
 
             float worth = AIScore.Worth(unit);
+            stopCapture = profile.tieredChoice ? new Dictionary<HexTile, KeyValuePair<float, HexTile>>() : null;
             AIAction positional = Choose(unit, map, profile, t => {
                 float v = 0f;
                 AttackAppraisal future = AITargeting.BestNextTurn(unit, t, map, profile, posture);
@@ -333,6 +541,11 @@ namespace HexTactica.AI {
                         t.x, t.y, fut, future.valid ? " on " + future.target.name : "", hold, relief, strat, depth));
                 return v;
             }, true, 1f, 0.02f, "line");
+            if (stopCapture != null) {
+                Dictionary<HexTile, KeyValuePair<float, HexTile>> stops = stopCapture;
+                stopCapture = null;
+                return Tiered(unit, map, profile, posture, stops, s2 => unit.moveAndAttack || s2 == unit.tile, a => true, 1f, "line");
+            }
             return Better(best, positional, unit, "engage in place", "close and engage");
         }
 
@@ -350,6 +563,7 @@ namespace HexTactica.AI {
             if (shot.valid) shot.value -= AIScore.Risk(unit, unit.tile, map, profile) * 1.5f * AIScore.PostureRisk(profile, posture);
 
             float worth = AIScore.Worth(unit);
+            stopCapture = profile.tieredChoice ? new Dictionary<HexTile, KeyValuePair<float, HexTile>>() : null;
             AIAction positional = Choose(unit, map, profile, t => {
                 float v = 0f;
                 AttackAppraisal future = AITargeting.BestNextTurn(unit, t, map, profile, posture);
@@ -370,6 +584,11 @@ namespace HexTactica.AI {
                 }
                 return v;
             }, true, 1.5f, 0.05f, "artillery");
+            if (stopCapture != null) {
+                Dictionary<HexTile, KeyValuePair<float, HexTile>> stops = stopCapture;
+                stopCapture = null;
+                return Tiered(unit, map, profile, posture, stops, s2 => s2 == unit.tile, a => true, 1f, "artillery");
+            }
             return Better(shot, positional, unit, "artillery fire", "artillery fire");
         }
 
@@ -380,6 +599,7 @@ namespace HexTactica.AI {
 
             float worth = AIScore.Worth(unit);
             int cover = Mathf.Max(1, unit.AttackRange);
+            stopCapture = profile.tieredChoice ? new Dictionary<HexTile, KeyValuePair<float, HexTile>>() : null;
             AIAction positional = Choose(unit, map, profile, t => {
                 float v = 0f;
                 for (int i = 0; i < map.ownUnits.Count; i++) {
@@ -390,6 +610,11 @@ namespace HexTactica.AI {
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.1f;
                 return v;
             }, true, 1f, 0.03f, "AA");
+            if (stopCapture != null) {
+                Dictionary<HexTile, KeyValuePair<float, HexTile>> stops = stopCapture;
+                stopCapture = null;
+                return Tiered(unit, map, profile, posture, stops, s2 => unit.moveAndAttack || s2 == unit.tile, a => true, 1f, "AA");
+            }
             return Better(shot, positional, unit, "AA fire", "AA reposition and fire");
         }
 
@@ -405,6 +630,7 @@ namespace HexTactica.AI {
 
             float worth = AIScore.Worth(unit);
             Building objective = map.NearestEnemyBuilding(unit.tile);
+            stopCapture = profile.tieredChoice ? new Dictionary<HexTile, KeyValuePair<float, HexTile>>() : null;
             AIAction positional = Choose(unit, map, profile, t => {
                 float v = 0f;
                 v += AIScore.Relief(map.Distress(t)) * worth;           // screen whoever is cut off
@@ -414,6 +640,11 @@ namespace HexTactica.AI {
                 v += StrategicBonus(unit, t, posture) * 0.6f;
                 return v;
             }, true, 1.5f, 0.01f, "recon");
+            if (stopCapture != null) {
+                Dictionary<HexTile, KeyValuePair<float, HexTile>> stops = stopCapture;
+                stopCapture = null;
+                return Tiered(unit, map, profile, posture, stops, s2 => unit.moveAndAttack || s2 == unit.tile, a => a.outcome.damageToAttacker == 0, 1f, "recon");
+            }
             return Better(shot, positional, unit, "recon: free shot", "recon: free shot");
         }
 

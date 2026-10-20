@@ -143,6 +143,8 @@ public static class Matchups {
         return (k >> 7) % 5 == 0;
     }
 
+    public static void AttachKind(Player p, Kind k) { Attach(p, k); }
+
     static void Attach(Player p, Kind k) {
         if (k == Kind.Full) {
             AIProfile profile = ScriptableObject.CreateInstance<AIProfile>();
