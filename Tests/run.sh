@@ -1,16 +1,12 @@
 #!/bin/bash
-# Headless behavioural test suite for HexTactica's gameplay and AI.
+# Headless scenario runner for HexTactica's AI. Every test is a scenario file in
+# Tests/Scenarios that Unity can load (HexTactica > Load Scenario File...).
 #
-#   bash run.sh /path/to/HexTactica/Assets
-#
-# Point it at your project's Assets folder AFTER copying the package's Assets in: the
-# regression tests read your real unit prefabs (TempHQ, Supplies, Grunt, Tank, Artillery),
-# and only the two prefabs this package changes are included in it.
+#   bash run.sh /path/to/HexTactica/Assets              run every scenario
+#   PROBE=export bash run.sh <Assets>                    regenerate the scenario files
+#   PROBE=game FILE=<name> bash run.sh <Assets>          narrate one scenario turn by turn
 #
 # Requires Mono's C# compiler:  sudo apt install mono-mcs   (macOS: brew install mono)
-#
-# Diagnostics (not tests): PROBE=game|wide|decisive|transport|sweep ./run.sh <Assets>
-# EXPLAIN=Tank with PROBE=real9b prints a unit's top candidate moves, term by term.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ASSETS="$(cd "${1:-$HERE/../Assets}" && pwd)"
@@ -27,5 +23,5 @@ FILES=""
 while read -r f; do [ -n "$f" ] && FILES="$FILES $WORK/Assets/$f"; done < "$HERE/logicfiles.txt"
 mcs -target:exe -out:"$WORK/tests.exe" -nowarn:0108,0168,0219,0414,0067,0649,0162,0169 \
   $FILES "$HERE/FunctionalShims.cs" "$HERE/Rig.cs" "$HERE/PrefabLoader.cs" \
-  "$HERE/Tests.cs" "$HERE/Regression.cs" "$HERE/Probe.cs" "$HERE/Matchups.cs" "$HERE/TerrainMaps.cs"
-mono "$WORK/tests.exe" "$ASSETS"
+  "$HERE/Tests.cs" "$HERE/ScenarioFile.cs" "$HERE/Scenarios.cs"
+mono "$WORK/tests.exe" "$ASSETS" "$HERE/Scenarios"

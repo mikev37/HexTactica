@@ -38,7 +38,16 @@ namespace HexTactica.Harness {
         /// depending on keyboard input, and clears buildings as well as units.
         /// </summary>
         public static bool LoadBoard(string fileName) {
-            string path = PathFor(fileName);
+            return LoadBoardFromPath(PathFor(fileName));
+        }
+
+        /// <summary>
+        /// Load a save (or a scenario file from Tests/Scenarios) from anywhere on disk. Scenario
+        /// files carry a "test" block naming Red's opponent AI (Legacy, Greedy, Full, or Human) and
+        /// an "active" player; both are applied here, so the scenario plays out as it does in the
+        /// headless harness. Blue (id 112) keeps the scene's AIPlayer.
+        /// </summary>
+        public static bool LoadBoardFromPath(string path) {
             if (!File.Exists(path)) {
                 UnityEngine.Debug.LogError("ScenarioLoader: no such save " + path);
                 return false;
@@ -107,6 +116,8 @@ namespace HexTactica.Harness {
                 }
             }
 
+            ApplyTestBlock(obj);
+
             // Second pass: re-establish transport links now that every unit exists.
             if (UnitController.uc != null) {
                 for (int i = 0; i < unitData.Count && i < UnitController.uc.units.Count; i++) {
@@ -119,6 +130,37 @@ namespace HexTactica.Harness {
             }
 
             return true;
+        }
+
+        /// <summary>Red's opponent and who moves first, from a scenario file's test block.</summary>
+        static void ApplyTestBlock(JSONObject obj) {
+            if (GameController.gc == null) return;
+            JSONObject active = obj.GetField("active");
+            if (active != null) {
+                long id = active.longValue;
+                GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == id) GameController.gc.activePlayer = pl; });
+            }
+            JSONObject test = obj.GetField("test");
+            if (test == null) return;
+            JSONObject opponent = test.GetField("opponent");
+            string kind = opponent != null ? opponent.stringValue : null;
+            if (string.IsNullOrEmpty(kind)) return;
+            Player red = null;
+            GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; });
+            if (red == null) return;
+
+            BaselineAIPlayer existing = red.GetComponent<BaselineAIPlayer>();
+            if (existing != null) Object.Destroy(existing);
+            if (kind == "Legacy" || kind == "Greedy") {
+                BaselineAIPlayer b = red.gameObject.AddComponent<BaselineAIPlayer>();
+                b.player = red;
+                b.kind = kind == "Legacy" ? AIKind.Legacy : AIKind.Greedy;
+            } else if (kind == "Full" && red.GetComponent<AIPlayer>() == null) {
+                AIPlayer ai = red.gameObject.AddComponent<AIPlayer>();
+                ai.player = red;
+            }
+            JSONObject question = test.GetField("question");
+            if (question != null) UnityEngine.Debug.Log("Scenario: " + question.stringValue + " (Red: " + kind + ")");
         }
 
         /// <summary>Build a Scenario descriptor for a save file, for reporting purposes.</summary>

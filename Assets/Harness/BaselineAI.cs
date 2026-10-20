@@ -29,9 +29,27 @@ namespace HexTactica.Harness {
 
         int rngState;
 
+        [Tooltip("Seconds between turns when playing live (not in the headless harness).")]
+        public float turnDelay = 1f;
+        float timer;
+
         void Start() {
             if (player == null) player = GetComponent<Player>();
             rngState = randomSeed;
+        }
+
+        /// <summary>
+        /// Live play: take the whole turn when it is ours, after a short pause, so a loaded
+        /// scenario can be watched AI against AI. The headless harness calls PlayWholeTurn itself.
+        /// </summary>
+        void Update() {
+            GameController gc = GameController.gc;
+            if (gc == null || gc.headless || gc.gameOver || player == null) return;
+            if (gc.activePlayer != player) { timer = turnDelay; return; }
+            timer -= Time.deltaTime;
+            if (timer > 0f) return;
+            timer = turnDelay;
+            PlayWholeTurn();
         }
 
         /// <summary>Deterministic LCG, so "random" baseline runs still replay exactly.</summary>
