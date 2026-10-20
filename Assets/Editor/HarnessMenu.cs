@@ -98,6 +98,34 @@ public static class HarnessMenu {
     [MenuItem(RedMenu + "Human (you play Red)", false, 4)] static void RedHuman() { SetRed("Human"); }
     [MenuItem(RedMenu + "Human (you play Red)", true)] static bool RedHumanCheck() { Menu.SetChecked(RedMenu + "Human (you play Red)", RedChoice() == "Human"); return true; }
 
+    // ---- Game logs: every game started from a scenario file is recorded (GameLog).
+
+    [MenuItem("HexTactica/Game Log/Start Recording Now")]
+    public static void StartRecording() {
+        if (!Application.isPlaying) { UnityEngine.Debug.LogError("Enter play mode first."); return; }
+        GameLog.Start("board as it was when recording started", null, null);
+        UnityEngine.Debug.Log("Recording to " + GameLog.Folder);
+    }
+
+    [MenuItem("HexTactica/Game Log/Stop Recording")]
+    public static void StopRecording() {
+        string folder = GameLog.Folder;
+        GameLog.Stop();
+        UnityEngine.Debug.Log("Recording stopped" + (folder != null ? ": " + folder : "."));
+    }
+
+    [MenuItem("HexTactica/Game Log/Record Loaded Scenarios")]
+    static void ToggleRecord() { ScenarioLoader.RecordGames = !ScenarioLoader.RecordGames; }
+    [MenuItem("HexTactica/Game Log/Record Loaded Scenarios", true)]
+    static bool ToggleRecordCheck() { Menu.SetChecked("HexTactica/Game Log/Record Loaded Scenarios", ScenarioLoader.RecordGames); return true; }
+
+    [MenuItem("HexTactica/Game Log/Open Logs Folder")]
+    public static void OpenLogs() {
+        string target = GameLog.Folder ?? GameLog.DefaultRoot;
+        Directory.CreateDirectory(target);
+        EditorUtility.RevealInFinder(target);
+    }
+
     [MenuItem("HexTactica/Open Results Folder")]
     public static void OpenResults() {
         EditorUtility.RevealInFinder(Application.persistentDataPath);

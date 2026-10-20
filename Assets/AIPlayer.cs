@@ -32,6 +32,9 @@ public class AIPlayer : MonoBehaviour {
     /// </summary>
     public System.Action<Unit, AIAction, bool> onDecision;
 
+    /// <summary>Text trace of every AI player's turn (board read, objectives, decisions). Set by GameLog.</summary>
+    public static System.Action<string> Trace;
+
     AIMap map;
     List<Front> fronts = new List<Front>();
     List<Unit> queue = new List<Unit>();
@@ -107,6 +110,8 @@ public class AIPlayer : MonoBehaviour {
 
             Annotate(unit, action);
             if (onDecision != null) onDecision(unit, action, did);
+            if (Trace != null && (did || action.kind != AIActionKind.Wait))
+                Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": " + action.kind + (did ? "" : " (not executed)") + " — " + action.reason);
 
             // A unit that waited changed nothing, so there is nothing to recalculate.
             unit.active = false;
@@ -170,6 +175,14 @@ public class AIPlayer : MonoBehaviour {
         queue = AIRoles.Order(actionable, map, Profile);
         map.ClearAnnotations();
         if (Profile.ghostSupply) PlanGhosts();
+        if (Trace != null) {
+            Trace("   " + player.personal_name + " (this AI) reads the board: " + map.SupplyReport());
+            string contact = "";
+            foreach (Unit u in map.ownUnits) contact += " " + u.name.Replace("(Clone)", "").Substring(0, 2) + "(" + u.tile.x + "," + u.tile.y + ")=" + map.TurnsToContact(u);
+            Trace("   turns to contact:" + contact);
+            foreach (Objective o in objectives) Trace("   objective " + o);
+            Trace("   objective pulls: " + assignments.Count + "; turn order: " + string.Join(", ", queue.Select(q => q.name.Replace("(Clone)", "")).ToArray()));
+        }
     }
 
     /// <summary>
@@ -190,6 +203,7 @@ public class AIPlayer : MonoBehaviour {
             if (at != null) map.SetGhost(hub, at);
             if (AISupplyPlanner.DebugLog != null) AISupplyPlanner.DebugLog("   ghost plan: " + (plan != null ? plan.ToString() : "none"));
             if (onGhost != null) onGhost(hub.myUnit, at);
+            if (Trace != null) Trace("   ghost: " + hub.myUnit.name.Replace("(Clone)", "") + (at == null ? " stays" : " will move to (" + at.x + "," + at.y + ")") + "; the line plans with that supply");
         }
     }
 

@@ -176,6 +176,24 @@ Your current roster needs **no migration**: Grunt, Supplies and TempHQ are corre
 3. To watch a test: play mode, **HexTactica → Load Scenario File…**. For batch runs: add a
    **`BatchRunner`** and a **`ScenarioLoader`** listing save files, **HexTactica → Run Batch**.
 
+### Game logs — send me a game
+
+Every game you start with **Load Scenario File…** is recorded (turn it off under
+**HexTactica → Game Log → Record Loaded Scenarios**; **Start Recording Now** records whatever
+is on the board). Each game gets a folder under `<persistentDataPath>/game-logs/` — **Game Log
+→ Open Logs Folder** shows it — containing:
+
+- `game.log`: the board at the start of every turn, every move and attack by anyone (you,
+  Legacy, this AI) with the damage both ways, and for this AI its board read (supply split,
+  enemy reach, objectives, turn order) and every decision with the options it weighed and the
+  simulated enemy reply.
+- `turn-NNN-<side>.dat`: the board at the start of every turn as a scenario file, so any
+  moment can be reloaded — in Unity or headless — and replayed.
+
+Zip the folder and attach it. It is written as the game goes, so stopping play mode mid-game
+keeps everything up to that point. Headless, `PROBE=record FILE=<name> [ROUNDS=r] [OUT=dir]`
+records the same way and checks that the last snapshot reloads to the same board.
+
 ### Debugging the AI in the editor
 - `AIPlayer.onDecision` — callback with every unit's action, score and reason.
 - `AITactical.DebugUnit` + `DebugLog` — explains one unit's top candidate moves term by

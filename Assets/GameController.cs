@@ -89,7 +89,11 @@ public class GameController : MonoBehaviour
 
         activePlayer.StartTurn();
         CheckVictory();
+        if (TurnStarted != null) TurnStarted(activePlayer);
     }
+
+    /// <summary>A player's turn has begun (after its upkeep), or the game just ended. For logs.</summary>
+    public static event System.Action<Player> TurnStarted;
 
     /// <summary>"Capturing HQ ends the game for that player."</summary>
     public void OnHQCaptured(Building hq, Player previousOwner) {

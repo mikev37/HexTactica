@@ -120,7 +120,7 @@ namespace HexTactica.Harness {
                 }
             }
 
-            ApplyTestBlock(obj);
+            string redKind = ApplyTestBlock(obj);
 
             // Second pass: re-establish transport links now that every unit exists.
             if (UnitController.uc != null) {
@@ -131,6 +131,11 @@ namespace HexTactica.Harness {
                     Unit transport = UnitController.uc.units[idx];
                     if (cargo != null && transport != null) Transporting.Load(transport, cargo);
                 }
+            }
+
+            if (RecordGames && GameController.gc != null && !GameController.gc.headless) {
+                GameLog.Start(path, redKind, null);
+                UnityEngine.Debug.Log("Recording this game to " + GameLog.Folder);
             }
 
             return true;
@@ -147,8 +152,8 @@ namespace HexTactica.Harness {
         /// always this AI (AIPlayer), set up exactly as the headless harness runs it: no mission
         /// objective (SampleScene's GoTo would otherwise pull every unit toward the centre).
         /// </summary>
-        static void ApplyTestBlock(JSONObject obj) {
-            if (GameController.gc == null) return;
+        static string ApplyTestBlock(JSONObject obj) {
+            if (GameController.gc == null) return null;
             JSONObject active = obj.GetField("active");
             if (active != null) {
                 long id = active.longValue;
@@ -198,7 +203,11 @@ namespace HexTactica.Harness {
             string q = "";
             if (test != null && test.GetField("question") != null) q = test.GetField("question").stringValue + " ";
             UnityEngine.Debug.Log("Scenario: " + q + "(Blue: this AI; Red: " + (kind == "Full" ? "this AI" : kind) + ")");
+            return kind;
         }
+
+        /// <summary>Record games started by loading a scenario file (GameLog). On by default.</summary>
+        public static bool RecordGames = true;
 
         /// <summary>Build a Scenario descriptor for a save file, for reporting purposes.</summary>
         public Scenario Describe(string fileName) {
