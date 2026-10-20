@@ -37,6 +37,8 @@ namespace HexTactica.AI {
             Result r = new Result();
             if (u == null || at == null || u.tile == null || at == u.tile) return r;
             if (at.occupier != null && at.occupier != u) return r;
+            // Aboard a transport (or otherwise not the tile's occupant): nothing to move.
+            if (u.tile.occupier != u) return r;
             AIProfile p = map.profile;
 
             List<Unit> affected = new List<Unit>();
@@ -137,7 +139,7 @@ namespace HexTactica.AI {
                 });
 
                 HexTile from = u.tile;
-                bool moving = at != null && at != from && (at.occupier == null || at.occupier == u);
+                bool moving = at != null && at != from && from.occupier == u && (at.occupier == null || at.occupier == u);
                 Dictionary<Unit, HashSet<HexTile>> positions = new Dictionary<Unit, HashSet<HexTile>>();
                 if (moving) { from.occupier = null; at.occupier = u; }
                 try {

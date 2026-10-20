@@ -202,6 +202,52 @@ public static class TerrainMaps {
         }
     }
 
+    /// <summary>
+    /// Where the chokepoints are: for every open tile, how many enemy-reachable tiles (two turns,
+    /// summed over the enemy's units, from where they stand) a grunt standing there would remove.
+    /// Printed as a map: 0-9 (tens of tiles, rounded), '.' none.
+    /// </summary>
+    public static void Chokes(int index, int afterRounds) {
+        Spec s = Maps[index];
+        Player a, b;
+        Setup(s, Matchups.Kind.Full, Matchups.Kind.Legacy, 0, out a, out b);
+        GameController gc = Rig.gc;
+        for (int t = 0; t < afterRounds * 2 && !gc.gameOver; t++) {
+            AIPlayer full = gc.activePlayer.gameObject.GetComponent<AIPlayer>();
+            BaselineAIPlayer baseline = gc.activePlayer.gameObject.GetComponent<BaselineAIPlayer>();
+            if (full != null) full.PlayWholeTurn(); else if (baseline != null) baseline.PlayWholeTurn(); else gc.EndTurn();
+        }
+        Unit probe = null;
+        foreach (Unit u in a.units) if (u.name.StartsWith("Grunt")) { probe = u; break; }
+        AIMap map = new AIMap(a, AIProfile.Default);
+        Dictionary<HexTile, int> denial = new Dictionary<HexTile, int>();
+        foreach (HexTile t in Rig.hg.tiles) {
+            if (t.occupier != null || !probe.CanEnter(t)) continue;
+            denial[t] = map.Denial(probe, t).tiles;
+        }
+        Console.WriteLine(s.name + " after " + afterRounds + " rounds: enemy reach removed by a grunt on each tile (tens of tiles; units shown as letters)");
+        StringBuilder sb = new StringBuilder();
+        for (int y = -s.radius; y <= s.radius; y++) {
+            char[] row = new string(' ', s.radius * 4 + 3).ToCharArray();
+            for (int x = -s.radius; x <= s.radius; x++) {
+                HexTile t = Rig.At(x, y);
+                if (t == null) continue;
+                int col = 2 * x + y + s.radius * 2;
+                int d;
+                char c = Glyph(t);
+                if (t.occupier == null && denial.TryGetValue(t, out d) && d > 0) c = (char)('0' + Math.Min(9, (d + 5) / 10));
+                row[col] = c;
+            }
+            sb.Append(string.Format("  {0,3} ", y)).Append(new string(row).TrimEnd()).Append('\n');
+        }
+        Console.Write(sb.ToString());
+        List<KeyValuePair<HexTile, int>> top = new List<KeyValuePair<HexTile, int>>(denial);
+        top.Sort((x, y) => y.Value.CompareTo(x.Value));
+        string list = "  best:";
+        for (int i = 0; i < Math.Min(6, top.Count); i++) list += " (" + top[i].Key.x + "," + top[i].Key.y + ")=" + top[i].Value;
+        Console.WriteLine(list);
+    }
+
     public static void Show() {
         foreach (Spec s in Maps) {
             Build(s);
@@ -263,6 +309,7 @@ public static class TerrainMaps {
             Player active = gc.activePlayer;
             bool log = side == "both" || side == active.personal_name;
             AITactical.DecisionLog = log ? (Action<string>)(m => Console.WriteLine("    " + m)) : null;
+            AISupplyPlanner.DebugLog = AITactical.DecisionLog;
             AIPlayer full = active.gameObject.GetComponent<AIPlayer>();
             BaselineAIPlayer baseline = active.gameObject.GetComponent<BaselineAIPlayer>();
             Console.WriteLine("-- round " + gc.days + " seat " + active.personal_name + (full != null ? " (Full)" : " (" + them + ")"));
@@ -290,6 +337,7 @@ public static class TerrainMaps {
             Console.WriteLine("   " + units);
         }
         AITactical.DecisionLog = null;
+        AISupplyPlanner.DebugLog = null;
         Console.WriteLine("winner " + (gc.winner != null ? gc.winner.personal_name : "none"));
     }
 }

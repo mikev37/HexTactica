@@ -129,8 +129,13 @@ namespace HexTactica.AI {
         /// the army-wide change in sustainment. Pure — applyDrain is false, so asking
         /// the question costs nobody any health.
         /// </summary>
+        /// <summary>Diagnostic: the shortlist's terms, best first, each time a hub plans.</summary>
+        public static System.Action<string> DebugLog;
+        static readonly Dictionary<HexTile, string> breakdown = new Dictionary<HexTile, string>();
+
         public static float ExactValue(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
             if (hub == null || hub.myUnit == null || at == null) return 0;
+            float dSupplied = 0f, dForward = 0f, dIntent = 0f, dConnect = 0f, dRisk = 0f;
 
             SupplyNetwork.Result hypothetical =
                 SupplyNetwork.Solve(map.player, false, hub, at);
@@ -175,13 +180,17 @@ namespace HexTactica.AI {
                 }
             }
 
-            total += ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+            dSupplied = total;
+            dForward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+            total += dForward;
             // Following the army is worth something only from positions that keep the hub
             // connected. Crediting it from anywhere sent the hub out of the network to burn
             // through its six-turn fuse in front of the enemy.
             if (hypothetical.connectedHubs.Contains(hub)) {
-                total += IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+                dIntent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+                total += dIntent;
             }
+            float beforeConnect = total;
 
             // Connection, priced as what it actually saves: a stranded hub pays a strength
             // per turn, and that hurts more as it nears burning out.
@@ -202,7 +211,21 @@ namespace HexTactica.AI {
             // And it gets shot at like anything else. This term was missing entirely: the
             // planner would park the most expensive mobile unit in the army anywhere that
             // improved coverage.
-            total -= AIScore.Risk(hub.myUnit, at, map, profile);
+            dConnect = total - beforeConnect;
+            // Risk where it will actually stand. The fire field was computed with the hub on its old
+            // tile — which, more than once, was the tile blocking the enemy tank's way to the new
+            // one: the planner saw no danger, the hub stepped forward, and the path it had been
+            // blocking opened onto itself. So the enemy's reply is simulated with the hub moved,
+            // and a real opponent's choice of target (the most valuable thing in reach, which a
+            // 25,000-gold truck usually is) replaces the share-of-fire average when it is worse.
+            float simulated = 0f;
+            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, new AIWorld.Cache(), false);
+            reply.lost.TryGetValue(hub.myUnit, out simulated);
+            dRisk = Mathf.Max(map.ExpectedLoss(hub.myUnit, at), simulated) * AIScore.Worth(hub.myUnit) * profile.riskWeight;
+            total -= dRisk;
+            if (DebugLog != null)
+                breakdown[at] = string.Format("({0},{1}) total {2:0} = supplied {3:0} + forward {4:0} + intent {5:0} + connection {6:0} - risk {7:0} (expected loss {8:0.0}, simulated {9:0.0})",
+                    at.x, at.y, total, dSupplied, dForward, dIntent, dConnect, dRisk, map.ExpectedLoss(hub.myUnit, at), simulated);
 
             // Restore the real field, since the solve above published onto the board.
             SupplyNetwork.Solve(map.player, false);
@@ -257,6 +280,44 @@ namespace HexTactica.AI {
             Dictionary<HexTile, float> exact = new Dictionary<HexTile, float>();
             for (int i = 0; i < shortlist.Count; i++) {
                 exact[shortlist[i]] = ExactValue(hub, shortlist[i], map, profile);
+            }
+
+            if (DebugLog != null) {
+                List<HexTile> order = new List<HexTile>(exact.Keys);
+                order.Sort((a, b) => exact[b].CompareTo(exact[a]));
+                DebugLog(unit.owner.personal_name + " " + unit.name + " at (" + unit.tile.x + "," + unit.tile.y + ") plans, top of " + shortlist.Count + ":");
+                for (int i = 0; i < Mathf.Min(5, order.Count); i++) {
+                    string b;
+                    if (breakdown.TryGetValue(order[i], out b)) DebugLog("   " + b);
+                }
+                breakdown.Clear();
+            }
+
+            // Tonight's stop, too. A destination two turns away was priced where it ends up, and the
+            // walk there stopped overnight wherever it got to — a truck heading for a safe tile in
+            // the rear stopped beside the enemy grunts on the way. (Line units had the same bug and
+            // the same fix in AITactical.Choose.)
+            // (Only when walking: with a transport free, the ride decides where it spends the night.)
+            bool rideAvailable = false;
+            for (int i = 0; i < map.ownUnits.Count; i++) {
+                Unit tr = map.ownUnits[i];
+                if (tr != null && tr != unit && Transporting.IsTransport(tr) && (reserved == null || !reserved.Contains(tr))) rideAvailable = true;
+            }
+            foreach (HexTile t in shortlist) {
+                if (rideAvailable) break;
+                if (unit.tile == null || t == unit.tile || !exact.ContainsKey(t)) continue;
+                Eta eta = reach.Get(t);
+                if (eta.ThisTurn) continue;
+                HexTile stop = reach.StepToward(t);
+                if (stop == null || stop == unit.tile) continue;
+                float lost = 0f;
+                AIWorld.Outcome reply = AIWorld.Evaluate(unit, stop, new AttackAppraisal(), map, new AIWorld.Cache(), false);
+                reply.lost.TryGetValue(unit, out lost);
+                lost = Mathf.Max(lost, map.ExpectedLoss(unit, stop));
+                if (lost > 0f) {
+                    exact[t] -= lost * AIScore.Worth(unit) * profile.riskWeight;
+                    if (DebugLog != null) DebugLog(string.Format("   ({0},{1}) stops tonight at ({2},{3}): -{4:0} for {5:0.0} strength there", t.x, t.y, stop.x, stop.y, lost * AIScore.Worth(unit), lost));
+                }
             }
 
             // Standing still has to beat moving by a margin, or hubs jitter.
