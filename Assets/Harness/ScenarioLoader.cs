@@ -120,7 +120,7 @@ namespace HexTactica.Harness {
                 }
             }
 
-            ApplyTestBlock(obj);
+            string redKind = ApplyTestBlock(obj);
 
             // Second pass: re-establish transport links now that every unit exists.
             if (UnitController.uc != null) {
@@ -133,39 +133,81 @@ namespace HexTactica.Harness {
                 }
             }
 
+            if (RecordGames && GameController.gc != null && !GameController.gc.headless) {
+                GameLog.Start(path, redKind, null);
+                UnityEngine.Debug.Log("Recording this game to " + GameLog.Folder);
+            }
+
             return true;
         }
 
-        /// <summary>Red's opponent and who moves first, from a scenario file's test block.</summary>
-        static void ApplyTestBlock(JSONObject obj) {
-            if (GameController.gc == null) return;
+        /// <summary>
+        /// Who plays Red, overriding the file's test block: "Legacy", "Greedy", "Full" (this AI),
+        /// "Human", or null to use the file. Set from HexTactica ▸ Red Opponent in the editor.
+        /// </summary>
+        public static string RedOverride;
+
+        /// <summary>
+        /// Red's opponent and who moves first, from a scenario file's test block. Blue (id 112) is
+        /// always this AI (AIPlayer), set up exactly as the headless harness runs it: no mission
+        /// objective (SampleScene's GoTo would otherwise pull every unit toward the centre).
+        /// </summary>
+        static string ApplyTestBlock(JSONObject obj) {
+            if (GameController.gc == null) return null;
             JSONObject active = obj.GetField("active");
             if (active != null) {
                 long id = active.longValue;
                 GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == id) GameController.gc.activePlayer = pl; });
             }
             JSONObject test = obj.GetField("test");
-            if (test == null) return;
-            JSONObject opponent = test.GetField("opponent");
-            string kind = opponent != null ? opponent.stringValue : null;
-            if (string.IsNullOrEmpty(kind)) return;
-            Player red = null;
-            GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; });
-            if (red == null) return;
-
-            BaselineAIPlayer existing = red.GetComponent<BaselineAIPlayer>();
-            if (existing != null) Object.Destroy(existing);
-            if (kind == "Legacy" || kind == "Greedy") {
-                BaselineAIPlayer b = red.gameObject.AddComponent<BaselineAIPlayer>();
-                b.player = red;
-                b.kind = kind == "Legacy" ? AIKind.Legacy : AIKind.Greedy;
-            } else if (kind == "Full" && red.GetComponent<AIPlayer>() == null) {
-                AIPlayer ai = red.gameObject.AddComponent<AIPlayer>();
-                ai.player = red;
+            string kind = RedOverride;
+            if (string.IsNullOrEmpty(kind) && test != null) {
+                JSONObject opponent = test.GetField("opponent");
+                kind = opponent != null ? opponent.stringValue : null;
             }
-            JSONObject question = test.GetField("question");
-            if (question != null) UnityEngine.Debug.Log("Scenario: " + question.stringValue + " (Red: " + kind + ")");
+            if (string.IsNullOrEmpty(kind)) kind = "Human";
+
+            Player red = null, blue = null;
+            GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; if (pl != null && pl.id == 112) blue = pl; });
+
+            if (blue != null) {
+                AIPlayer ai = blue.GetComponent<AIPlayer>();
+                if (ai == null) ai = blue.gameObject.AddComponent<AIPlayer>();
+                ai.player = blue;
+                ai.enabled = true;
+                ai.objective = null;
+                ai.ResetTurn();
+                BaselineAIPlayer stray = blue.GetComponent<BaselineAIPlayer>();
+                if (stray != null) Object.Destroy(stray);
+            }
+
+            if (red != null) {
+                BaselineAIPlayer existing = red.GetComponent<BaselineAIPlayer>();
+                if (existing != null) Object.Destroy(existing);
+                AIPlayer redAI = red.GetComponent<AIPlayer>();
+                if (kind == "Legacy" || kind == "Greedy") {
+                    if (redAI != null) Object.Destroy(redAI);
+                    BaselineAIPlayer b = red.gameObject.AddComponent<BaselineAIPlayer>();
+                    b.player = red;
+                    b.kind = kind == "Legacy" ? AIKind.Legacy : AIKind.Greedy;
+                } else if (kind == "Full") {
+                    if (redAI == null) redAI = red.gameObject.AddComponent<AIPlayer>();
+                    redAI.player = red;
+                    redAI.enabled = true;
+                    redAI.objective = null;
+                    redAI.ResetTurn();
+                } else if (redAI != null) {
+                    Object.Destroy(redAI);   // Human: nobody plays Red but you
+                }
+            }
+            string q = "";
+            if (test != null && test.GetField("question") != null) q = test.GetField("question").stringValue + " ";
+            UnityEngine.Debug.Log("Scenario: " + q + "(Blue: this AI; Red: " + (kind == "Full" ? "this AI" : kind) + ")");
+            return kind;
         }
+
+        /// <summary>Record games started by loading a scenario file (GameLog). On by default.</summary>
+        public static bool RecordGames = true;
 
         /// <summary>Build a Scenario descriptor for a save file, for reporting purposes.</summary>
         public Scenario Describe(string fileName) {

@@ -305,6 +305,7 @@ public class Unit : MonoBehaviour
         if (GetComponent<SupplyPoint>()) {
             owner.Resupply();
         }
+        if (Finished != null) Finished(this);
     }
 
 
@@ -315,9 +316,15 @@ public class Unit : MonoBehaviour
     /// Resolve an attack. All arithmetic lives in CombatMath so that the AI's
     /// prediction and this resolution cannot drift apart.
     /// </summary>
+    /// <summary>Every attack, by anyone, after it resolves: attacker, defender, attacker's tile, defender's tile, outcome. For logs.</summary>
+    public static event System.Action<Unit, Unit, HexTile, HexTile, CombatOutcome> Attacked;
+    /// <summary>A unit finished its action (moved, attacked, or both). For logs.</summary>
+    public static event System.Action<Unit> Finished;
+
     internal CombatOutcome OrderAttack(Unit defender) {
         attacking = true;
         target = defender;
+        HexTile firedFrom = tile;
 
         // Capture before resolving: a kill nulls defender.tile and a retreat moves it,
         // and either way destruction belongs to the ground that was fought over.
@@ -354,6 +361,7 @@ public class Unit : MonoBehaviour
         // Combat degrades the ground it is fought over.
         if (fought != null) fought.RegisterCombat();
 
+        if (Attacked != null) Attacked(this, defender, firedFrom, fought, o);
         return o;
     }
 
