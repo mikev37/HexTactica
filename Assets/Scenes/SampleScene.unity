@@ -3175,6 +3175,7 @@ MonoBehaviour:
   - {fileID: 9081080694409079478, guid: bef79f3571dc6a548ad283decf31b0d7, type: 3}
   - {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
   - {fileID: 9081080694409079478, guid: a47c71379b6168f4db517c910145dd5a, type: 3}
+  allBuilding: []
 --- !u!4 &561226231
 Transform:
   m_ObjectHideFlags: 0
@@ -3233,6 +3234,9 @@ MonoBehaviour:
   days: 1
   activePlayer: {fileID: 1811020726}
   activeUnit: {fileID: 0}
+  gameOver: 0
+  winner: {fileID: 0}
+  headless: 0
 --- !u!1 &601518211
 GameObject:
   m_ObjectHideFlags: 0
@@ -7945,6 +7949,12 @@ MonoBehaviour:
   faction: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
   mainPlayer: 0
   units: []
+  money: 0
+  eliminated: 0
+  unitTurnsOutOfSupply: 0
+  unitsLostToAttrition: 0
+  hubsStranded: 0
+  hadHQ: 0
 --- !u!4 &1811020727
 Transform:
   m_ObjectHideFlags: 0
@@ -7974,6 +7984,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 0}
   objective: {fileID: 1811020729}
+  profile: {fileID: 0}
+  actionInterval: 0.5
+  objectivePulls: 0
+  turnsPlayed: 0
 --- !u!114 &1811020729
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7986,6 +8000,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3538ba73bcc807c4882eb36d69a00c30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  weight: 1
   target: {fileID: 0}
 --- !u!1 &1863186469
 GameObject:
@@ -8114,6 +8129,12 @@ MonoBehaviour:
   faction: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
   mainPlayer: 1
   units: []
+  money: 0
+  eliminated: 0
+  unitTurnsOutOfSupply: 0
+  unitsLostToAttrition: 0
+  hubsStranded: 0
+  hadHQ: 0
 --- !u!4 &1909610620
 Transform:
   m_ObjectHideFlags: 0
