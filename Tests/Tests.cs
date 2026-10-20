@@ -86,6 +86,11 @@ public static class Tests {
             return 0;
         }
         if (Environment.GetEnvironmentVariable("PROBE") == "mapshow") { TerrainMaps.Show(); return 0; }
+        if (Environment.GetEnvironmentVariable("PROBE") == "chokes") {
+            ApplySet();
+            TerrainMaps.Chokes(int.Parse(Environment.GetEnvironmentVariable("MAP") ?? "5"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "0"));
+            return 0;
+        }
         if (Environment.GetEnvironmentVariable("PROBE") == "maps") { ApplySet(); TerrainMaps.RunSet(); return 0; }
         if (Environment.GetEnvironmentVariable("PROBE") == "mapgame") {
             ApplySet();

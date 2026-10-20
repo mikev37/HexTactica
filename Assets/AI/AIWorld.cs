@@ -35,6 +35,8 @@ namespace HexTactica.AI {
             public float own, enemy;
             public bool ourHQFalls, theirHQFalls;
             public readonly List<string> replies = new List<string>();
+            /// <summary>Strength each of our units loses in the reply.</summary>
+            public readonly Dictionary<Unit, float> lost = new Dictionary<Unit, float>();
             public string Summary() {
                 StringBuilder sb = new StringBuilder();
                 sb.Append(score.ToString("0"));
@@ -63,7 +65,8 @@ namespace HexTactica.AI {
 
             // Their reply, on the board with our unit moved.
             HexTile from = u.tile;
-            bool moving = stop != null && stop != from && (stop.occupier == null || stop.occupier == u);
+            bool moving = stop != null && stop != from && from.occupier == u && (stop.occupier == null || stop.occupier == u);
+            Unit stopWas = stop != null ? stop.occupier : null;
             List<Unit> enemies = new List<Unit>(map.enemyUnits);
             enemies.Sort((a, b) => {
                 int c = (b.Firepower * b.Strength).CompareTo(a.Firepower * a.Strength);
@@ -83,7 +86,7 @@ namespace HexTactica.AI {
                     if (!near) cache.positions[e] = p;
                 }
             } finally {
-                if (moving) { stop.occupier = null; from.occupier = u; }
+                if (moving) { stop.occupier = stopWas; from.occupier = u; }
             }
 
             HexTile uAt = stop ?? from;
@@ -112,6 +115,8 @@ namespace HexTactica.AI {
                 if (bestTarget == null) continue;
                 if (bestTile != e.tile) { taken.Remove(e.tile); taken.Add(bestTile); }
                 hp[bestTarget] -= bestDamage;
+                float sofar;
+                w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + bestDamage;
                 // Retaliation, if the defender survives and can answer at that range.
                 if (hp[bestTarget] > 0f && bestTarget.retaliates && bestTarget.Firepower > 0) {
                     HexTile dAt = bestTarget == u ? uAt : bestTarget.tile;
