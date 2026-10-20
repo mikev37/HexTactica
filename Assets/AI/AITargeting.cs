@@ -56,7 +56,9 @@ namespace HexTactica.AI {
             // Pricing it as permanent let a tank trade itself for two points on a supply hub
             // that was whole again two turns later. Damage that sticks — or kills — is worth
             // all of it.
-            if (!o.defenderDies && defender.Firepower > 0 && map.TheirSupplyDepth(defender) > 0) value *= profile.healingDamageFactor;
+            // (Supply units heal too, unless cut off — the 25,000 hub healed its 3 points back while the
+            // tank that hit it was lost for good. It used to be exempt here.)
+            if (!o.defenderDies && map.Heals(defender, defender.tile)) value *= profile.healingDamageFactor;
 
             // An HQ is priced by what attacking it achieves: the win, or nothing lasting.
             if (IsHQ(defender)) {

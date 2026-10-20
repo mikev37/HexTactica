@@ -126,6 +126,13 @@ enemy's blow is discounted by how much of it our units can destroy first, since 
 before it does. Without those two rules the enemy term rewarded baiting: a tank took a 1-for-4
 exchange because the enemy's reply then ended too far from our HQ to hit it the turn after.
 
+Damage that will heal (a unit ending in its own supply; a supply unit only if connected)
+counts at `healingDamageFactor` (0.5) in the world score; kills and damage that won't heal
+count in full. Space (`spaceTileValue` 25, `spaceSupplyValue` 50): each tile our units could
+move to next turn and each tile they could strike counts for us — only on contested ground,
+within the enemy's three-turn reach (`spaceContestedOnly`) — and the enemy's move and strike
+tiles count against us; each enemy supply tile our unit cuts counts for us.
+
 Every simulated exchange uses the game's rules (`CombatMath.Exchange`): the defender's cover
 counts against the shot, retaliation ignores cover, a dug-in veteran fires first, damage taken
 first weakens the answer. The simulated enemy picks targets net of the retaliation it takes.
