@@ -127,8 +127,10 @@ before it does. Without those two rules the enemy term rewarded baiting: a tank 
 exchange because the enemy's reply then ended too far from our HQ to hit it the turn after.
 
 Damage that will heal (a unit ending in its own supply; a supply unit only if connected)
-counts at `healingDamageFactor` (0.5) in the world score; kills and damage that won't heal
-count in full. Space (`spaceTileValue` 25, `spaceSupplyValue` 50): each tile our units could
+has the point it heals back by its next turn (`healedPerTurn`, 1 — the game's rule) taken off
+in the world score and in attack values; kills and damage that won't heal count in full.
+Each enemy unit out of supply in the world after our move is worth `enemyUnsuppliedValue`
+(100). Space (`spaceTileValue` 10, `spaceSupplyValue` 50): each tile our units could
 move to next turn and each tile they could strike counts for us — only on contested ground,
 within the enemy's three-turn reach (`spaceContestedOnly`) — and the enemy's move and strike
 tiles count against us; each enemy supply tile our unit cuts counts for us.
