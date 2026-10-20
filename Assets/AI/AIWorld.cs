@@ -38,6 +38,8 @@ namespace HexTactica.AI {
             public float hubs;
             /// <summary>Death premiums: + for theirs destroyed, - for ours.</summary>
             public float deaths;
+            /// <summary>Self-preservation: weighted exposure of the acting unit beyond what the reply took.</summary>
+            public float selfRisk;
             /// <summary>Best next blows: ours (we act first), theirs after.</summary>
             public float ownStrike, enemyStrike;
             /// <summary>Strength value given back for damage that will heal (ours, theirs).</summary>
@@ -56,6 +58,7 @@ namespace HexTactica.AI {
                 if (ourHQFalls) sb.Append(" OUR HQ FALLS");
                 if (assist) sb.Append(" assist");
                 if (deaths != 0f) sb.Append(" deaths ").Append(deaths.ToString("+0;-0"));
+                if (selfRisk != 0f) sb.Append(" self -").Append(selfRisk.ToString("0"));
                 if (hubs != 0f) sb.Append(" hubs ").Append(hubs.ToString("+0;-0"));
                 if (space != 0f) sb.Append(" space ").Append(space.ToString("+0;-0")).Append(" (").Append(ourSpace).Append('/').Append(theirSpace).Append(supplyCut > 0 ? " cut " + supplyCut : "").Append(enemyUnsupplied > 0 ? " unsupplied " + enemyUnsupplied : "").Append(')');
                 if (gunCover > 0) sb.Append(" covers ").Append(gunCover);
@@ -136,6 +139,37 @@ namespace HexTactica.AI {
                 if (!near) cache.positions[e] = p;
             }
 
+            // Self-preservation: what could land on the acting unit itself if the enemy chose to hit
+            // it, measured before the reply is played out. Every enemy blow that can reach its tile
+            // (real movement, a firing tile it can get to), biggest first, summed at falling weights
+            // 1, 1/2, 1/4 … — so standing where many guns reach is worse than where one does, even
+            // when the greedy reply would send them all elsewhere. Kills and assists this turn have
+            // already removed or weakened the enemies in hp.
+            float selfExposure = 0f;
+            AIProfile sp0 = map.profile;
+            if (sp0.selfPreservationWeight > 0f && hp[u] > 0f && GameController.Targetable(u)) {
+                List<float> blows = new List<float>();
+                foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in positions) {
+                    Unit e = kv.Key;
+                    if (hp[e] <= 0f) continue;
+                    HexTile fire = FiringTile(e, uAt, kv.Value, new HashSet<HexTile>());
+                    if (fire == null) continue;
+                    int dmg, back;
+                    CombatMath.Exchange(e, Hp(hp[e]), fire, u, Hp(hp[u]), uAt, out dmg, out back);
+                    if (dmg > 0) blows.Add(dmg);
+                }
+                blows.Sort((x, y) => y.CompareTo(x));
+                float sum = 0f, wgt = 1f;
+                foreach (float b in blows) { sum += b * wgt; wgt *= 0.5f; }
+                // Measured from the strength it starts the turn with, retaliation for its own shot
+                // included: otherwise taking damage in a bad attack shrank what it had left to lose,
+                // and a grunt trading 1 for 3 with a tank looked safer for it.
+                float start = u.Strength;
+                float total = (start - hp[u]) + sum;
+                selfExposure = Mathf.Min(total, start) * Value(u) + (total >= start ? sp0.deathPremium * Value(u) : 0f);
+            }
+            float hpBeforeReply = u.Strength;
+
             Dictionary<Unit, HexTile> endsAt = new Dictionary<Unit, HexTile>();
             HashSet<HexTile> taken = new HashSet<HexTile>();
             foreach (Unit x in map.ownUnits) if (x != null && x.tile != null && x != u && hp.ContainsKey(x) && hp[x] > 0f) taken.Add(x.tile);
@@ -198,6 +232,12 @@ namespace HexTactica.AI {
                 }
             }
 
+            // The self-preservation term, net of what the reply already took from this unit.
+            if (selfExposure > 0f) {
+                float already = (hpBeforeReply - Mathf.Max(0f, hp[u])) * Value(u) + (hp[u] <= 0f ? sp0.deathPremium * Value(u) : 0f);
+                w.selfRisk = Mathf.Max(0f, selfExposure - already) * sp0.selfPreservationWeight;
+            }
+
             // What is left.
             float stake = map.BoardStake;
             float healN = map.profile.healedPerTurn;
@@ -231,7 +271,7 @@ namespace HexTactica.AI {
                     if (hq && kv.Value <= 0f) w.theirHQFalls = true;
                 }
             }
-            w.score = w.own - w.enemy + w.deaths;
+            w.score = w.own - w.enemy + w.deaths - w.selfRisk;
             if (w.ourHQFalls) w.score -= stake;
             if (w.theirHQFalls) w.score += stake;
 

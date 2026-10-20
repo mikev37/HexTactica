@@ -305,6 +305,10 @@ namespace HexTactica.AI {
         [Tooltip("An assist needs a finisher with a free firing tile it can reach this turn by real movement. Off: the old check, hex distance only.")]
         public bool assistNeedsReach = true;
 
+        [Tooltip("Self-preservation: the acting unit counts every enemy blow that could reach its tile (biggest first, weights 1, 1/2, 1/4 ...), beyond what the forecast reply already takes from it, at this weight. 0 = off.")]
+        [Range(0f, 2f)]
+        public float selfPreservationWeight = 0f;
+
         [Tooltip("A unit destroyed costs this many more of its strength points' worth than the points themselves: alive, it would heal back, hold ground and fire again.")]
         [Range(0f, 6f)]
         public float deathPremium = 1f;

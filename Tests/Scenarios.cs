@@ -562,6 +562,31 @@ public static class Scenarios {
         if (root != null) Console.WriteLine("log: " + folder);
     }
 
+    /// <summary>
+    /// AI A (Blue) against AI B (Red) on every generated map with even armies, A on each side in
+    /// turn (the "-legacy-ai-left/right" files: equal line-ups; the left side moves first).
+    /// 22 games. Prints each result and A's record.
+    /// </summary>
+    public static void Versus(Action<AIProfile> a, Action<AIProfile> b, string aName, string bName) {
+        int w = 0, lo = 0, d = 0;
+        Console.WriteLine("A = " + aName + "\nB = " + bName + "\nrules: " + (Environment.GetEnvironmentVariable("RULES") ?? "as files say"));
+        foreach (string kind in new[] { "match", "large", "campaign" }) {
+            foreach (string f in Files(kind)) {
+                string n = Path.GetFileNameWithoutExtension(f);
+                if (n.IndexOf("-legacy-ai-") < 0) continue;
+                ScenarioFile.Loaded l = ScenarioFile.Load(f, "Full", a, b);
+                GameController gc = Rig.gc;
+                int rounds = l.meta.GetInt("rounds", 30);
+                for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
+                string r = gc.winner == l.ai ? "A wins" : gc.winner == l.other ? "B wins" : "draw";
+                if (gc.winner == l.ai) w++; else if (gc.winner == l.other) lo++; else d++;
+                Console.WriteLine(string.Format("  {0,-36} {1,-6} round {2,2}; left: A {3,6:0} v B {4,6:0}", n.Replace("-legacy", ""), r, gc.days,
+                    GameController.Remaining(l.ai), GameController.Remaining(l.other)));
+            }
+        }
+        Console.WriteLine(string.Format("  A: {0}W {1}L {2}D", w, lo, d));
+    }
+
     static int Alive(Player p) { int n = 0; foreach (Unit u in p.units) if (u != null && u.Strength > 0 && u.tile != null) n++; return n; }
 
     /// <summary>
