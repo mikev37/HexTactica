@@ -537,6 +537,30 @@ public static class Scenarios {
         Console.WriteLine("winner " + (gc.winner != null ? gc.winner.personal_name : "none"));
     }
 
+    /// <summary>
+    /// Record a scenario the way the game does (GameLog), then load the snapshot of the last
+    /// turn recorded and check it reproduces the board — the round trip a log sent from Unity
+    /// relies on.
+    /// </summary>
+    public static void Record(string name, int rounds, string root, Action<AIProfile> tweak) {
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), null, tweak);
+        HexTactica.Harness.GameLog.Start(l.path, l.meta.Get("opponent", "?"), root);
+        GameController gc = Rig.gc;
+        for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) ScenarioFile.PlayTurn();
+        string folder = HexTactica.Harness.GameLog.Folder;
+        string board = HexTactica.Harness.GameLog.Draw();
+        HexTactica.Harness.GameLog.Stop();
+        List<string> snaps = new List<string>(Directory.GetFiles(folder, "turn-*.dat"));
+        snaps.Sort(StringComparer.Ordinal);
+        Console.WriteLine("recorded to " + folder + ": game.log + " + snaps.Count + " snapshots");
+        if (snaps.Count == 0) return;
+        string last = snaps[snaps.Count - 1];
+        ScenarioFile.Load(last, null, tweak);
+        string again = HexTactica.Harness.GameLog.Draw();
+        Console.WriteLine("reloaded " + Path.GetFileName(last) + ": board " + (again == board ? "matches" : "DIFFERS") + " the recorded game's");
+        if (again != board) { Console.WriteLine(board); Console.WriteLine(again); }
+    }
+
     /// <summary>For every open tile, how much enemy movement a grunt standing there would remove.</summary>
     public static void Chokes(string name) {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), null, null);

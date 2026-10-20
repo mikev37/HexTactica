@@ -42,6 +42,11 @@ public static class Tests {
                 int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"), tweak);
             return 0;
         }
+        if (probe == "record") {
+            Scenarios.Record(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "3"),
+                             Environment.GetEnvironmentVariable("OUT") ?? "/tmp/hextactica-logs", tweak);
+            return 0;
+        }
         if (probe == "chokes") { Scenarios.Chokes(Environment.GetEnvironmentVariable("FILE")); return 0; }
         return Scenarios.RunAll(tweak) == 0 ? 0 : 1;
     }
