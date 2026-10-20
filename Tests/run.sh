@@ -24,4 +24,4 @@ while read -r f; do [ -n "$f" ] && FILES="$FILES $WORK/Assets/$f"; done < "$HERE
 mcs -target:exe -out:"$WORK/tests.exe" -nowarn:0108,0168,0219,0414,0067,0649,0162,0169 \
   $FILES "$HERE/FunctionalShims.cs" "$HERE/Rig.cs" "$HERE/PrefabLoader.cs" \
   "$HERE/Tests.cs" "$HERE/ScenarioFile.cs" "$HERE/Scenarios.cs"
-mono "$WORK/tests.exe" "$ASSETS" "$HERE/Scenarios"
+mono "$WORK/tests.exe" "$ASSETS" "${SCENARIOS:-$HERE/Scenarios}"
