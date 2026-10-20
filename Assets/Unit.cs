@@ -158,7 +158,13 @@ public class Unit : MonoBehaviour
             }
         } else {
             animator.SetBool("Moving", false);
-            if(tile)
+            // A retreating unit's sprite waits on its old tile until the shot that drove it
+            // back has landed (AttackResolve sets StrengthDisplay on impact), then slides.
+            if (retreatHold > 0f) {
+                if (StrengthDisplay == Strength && !AnimatorIsPlaying()) retreatHold = 0f;
+                else retreatHold -= Time.deltaTime;
+            }
+            if(tile && retreatHold <= 0f)
                 transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed);
             else {
 
@@ -167,13 +173,6 @@ public class Unit : MonoBehaviour
             // An ambusher waits for its attacker to finish moving in before it fires.
             if (attacking && (target == null || target.path.Count == 0)) {
                 Fire(target,true);
-            } else if (pendingRetreat != null && !shooter && !AnimatorIsPlaying()) {
-                // Deferred post-combat fallback. Driven from here rather than from
-                // AttackResolve because the resolve chain has branches that never
-                // reach the end — notably when the retaliating unit dies — and a
-                // retreat that silently fails to happen is worse than one that lags
-                // a frame.
-                ApplyPendingRetreat();
             }
         }
     }
@@ -358,15 +357,15 @@ public class Unit : MonoBehaviour
             if (o.defenderPinned) {
                 // nowhere to go; the extra strength is already taken
             } else if (o.retreatTile != null) {
-                // Damage resolves immediately, but the *movement* has to wait for the
-                // firing animation. Update() only calls Fire() once path is empty, and
-                // AttackResolve arrives later still from an animation event — so moving
-                // the defender here would slide it off its tile before the attacker has
-                // visibly shot at it, and spawn the impact effect on empty ground.
-                defender.pendingRetreat = o.retreatTile;
-                if (GameController.gc == null || GameController.gc.headless) {
-                    defender.ApplyPendingRetreat();
-                }
+                // The board changes now, like every other result of combat: the defender is on
+                // its retreat tile from this moment, for the rules, the AI and the next click.
+                // Only the sprite waits — it slides over once the shot has landed (see Update),
+                // so the impact is not drawn on empty ground. (The move used to wait for the
+                // animation too, which left the board wrong in between: the AI planned against
+                // units that had already gone, attacks could be ordered onto empty tiles, and a
+                // retreat that never got applied would fire later, from wherever the unit had
+                // moved to since, sending it across the map.)
+                defender.RetreatTo(o.retreatTile);
             }
         }
 
@@ -380,11 +379,21 @@ public class Unit : MonoBehaviour
         return o;
     }
 
-    /// <summary>
-    /// Tile this unit has been driven back to, held until the firing animation has
-    /// played. Null when there is no retreat pending.
-    /// </summary>
+    /// <summary>Kept for old callers: a retreat now happens at once (RetreatTo), so there is never one pending.</summary>
     [HideInInspector] public HexTile pendingRetreat;
+
+    /// <summary>Seconds the sprite may still wait before sliding to a retreat tile. Animation only.</summary>
+    float retreatHold;
+
+    /// <summary>
+    /// Post-combat retreat: the unit is on <paramref name="to"/> immediately. Only the sprite
+    /// waits for the incoming shot to land before sliding over (at most a few seconds).
+    /// </summary>
+    public void RetreatTo(HexTile to) {
+        pendingRetreat = to;
+        ApplyPendingRetreat();
+        if (tile == to) retreatHold = 3f;
+    }
 
     /// <summary>
     /// Perform a deferred post-combat retreat. Safe to call repeatedly; safe if the

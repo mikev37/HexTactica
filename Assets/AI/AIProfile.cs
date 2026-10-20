@@ -42,7 +42,7 @@ namespace HexTactica.AI {
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
-        public float worldTie = 1f;
+        public float worldTie = 0.25f;
 
         [Tooltip("Tier 1: keep every option whose attack value is at least this fraction of the best. 1 = only the best shot; 0.5 = anything doing half as much, which leaves room for the later tiers.")]
         [Range(0f, 1f)]
@@ -289,6 +289,10 @@ namespace HexTactica.AI {
         [Tooltip("Enemy units' best blow on their turn after that, counted against us at this fraction.")]
         [Range(0f, 1f)]
         public float enemyStrikeWeight = 0.25f;
+
+        [Tooltip("A unit destroyed costs this many more of its strength points' worth than the points themselves: alive, it would heal back, hold ground and fire again.")]
+        [Range(0f, 6f)]
+        public float deathPremium = 1f;
 
         [Tooltip("A supply unit's death costs, in the world score, one strength of every unit it alone keeps supplied, times this.")]
         [Range(0f, 3f)]
