@@ -271,6 +271,15 @@ public static class TerrainMaps {
                     if (!log || (act.kind == AIActionKind.Wait && !did)) return;
                     if (u.GetComponent<SupplyPoint>() != null || act.reason == null || !act.reason.Contains("tiers"))
                         Console.WriteLine("    " + u.owner.personal_name + " " + u.name + " " + act.kind + " (" + act.reason + ")");
+                    // For hubs: what its own planner expected to lose where it stopped, against what the
+                    // simulated enemy reply actually does to it there.
+                    if (u.GetComponent<SupplyPoint>() != null && !u.GetComponent<SupplyPoint>().producer && u.tile != null) {
+                        AIMap m = full.CurrentMap;
+                        float planned = m.ExpectedLoss(u, u.tile);
+                        AIWorld.Outcome w = AIWorld.Evaluate(u, u.tile, new AttackAppraisal(), m, new AIWorld.Cache(), true);
+                        Console.WriteLine("      hub at (" + u.tile.x + "," + u.tile.y + "): planner expected loss " + planned.ToString("0.0")
+                            + " strength; simulated reply " + w.Summary());
+                    }
                 };
                 full.PlayWholeTurn();
             } else if (baseline != null) baseline.PlayWholeTurn(); else gc.EndTurn();
