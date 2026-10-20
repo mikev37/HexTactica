@@ -95,6 +95,59 @@ namespace HexTactica.AI {
         }
 
         readonly Dictionary<SupplyPoint, float> hubStake = new Dictionary<SupplyPoint, float>();
+        readonly HashSet<SupplyPoint> theirConnected = new HashSet<SupplyPoint>();
+        public readonly List<Player> enemyPlayers = new List<Player>();
+
+        /// <summary>
+        /// Will this unit heal next turn if it ends on <paramref name="at"/>? The game heals a
+        /// strength at the start of its owner's turn on any supplied tile — except a supply unit
+        /// cut off from the network, which is spending its own health.
+        /// </summary>
+        public bool Heals(Unit x, HexTile at) {
+            if (x == null || at == null || x.owner == null) return false;
+            SupplyPoint sp = x.GetComponent<SupplyPoint>();
+            if (x.owner == player) {
+                if (supply == null || supply.DepthAt(at) <= 0) return false;
+                return sp == null || sp.producer || supply.connectedHubs.Contains(sp);
+            }
+            if (theirSupply.DepthAt(at) <= 0) return false;
+            return sp == null || sp.producer || theirConnected.Contains(sp);
+        }
+
+        // ---- space: tiles each of our units could move to, and could strike, next turn.
+        readonly Dictionary<Unit, HashSet<HexTile>[]> ourSpace = new Dictionary<Unit, HashSet<HexTile>[]>();
+
+        /// <summary>Movement tiles [0] and strike tiles [1] of one of our units from where it stands. Cached per board read.</summary>
+        public HashSet<HexTile>[] SpaceOf(Unit x) {
+            HashSet<HexTile>[] s;
+            if (ourSpace.TryGetValue(x, out s)) return s;
+            s = SpaceFrom(x, x.tile, null);
+            ourSpace[x] = s;
+            return s;
+        }
+
+        /// <summary>
+        /// Tiles <paramref name="x"/> could end its next move on, and tiles it could strike, from
+        /// <paramref name="origin"/>. <paramref name="positions"/> may supply the move tiles already.
+        /// Artillery strikes only from where it stands (it cannot move and fire).
+        /// </summary>
+        public static HashSet<HexTile>[] SpaceFrom(Unit x, HexTile origin, HashSet<HexTile> positions) {
+            HashSet<HexTile> move = positions;
+            if (move == null) {
+                move = new HashSet<HexTile>();
+                move.Add(origin);
+                if (x.moveRange > 0 && x.trasnporter == null) {
+                    MoveField f = AIPath.ThisTurnFrom(x, origin, x.moveRange);
+                    foreach (HexTile p in f.Tiles) if (p != origin && f.ReachableThisTurn(p) && AIPath.CanFinishTurnOn(x, p)) move.Add(p);
+                }
+            }
+            HashSet<HexTile> strike = new HashSet<HexTile>();
+            if (x.Firepower > 0 && x.AttackRange > 0) {
+                if (x.moveAndAttack) { foreach (HexTile p in move) foreach (HexTile r in AIPath.TilesInRange(p, x.MinRange, x.AttackRange)) strike.Add(r); }
+                else foreach (HexTile r in AIPath.TilesInRange(origin, x.MinRange, x.AttackRange)) strike.Add(r);
+            }
+            return new[] { move, strike };
+        }
 
         /// <summary>
         /// What a (mobile) supply unit's death costs its side: one strength of every unit
@@ -138,11 +191,16 @@ namespace HexTactica.AI {
 
             // Enemy supply: solve each enemy player (this publishes their real field, which is correct).
             theirSupply.depth.Clear();
+            theirConnected.Clear();
+            enemyPlayers.Clear();
+            ourSpace.Clear();
             HashSet<Player> enemies = new HashSet<Player>();
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
             if (all != null) for (int i = 0; i < all.Count; i++) if (all[i] != null && all[i].owner != null && all[i].owner != player) enemies.Add(all[i].owner);
             foreach (Player o in enemies) {
                 SupplyNetwork.Result r = SupplyNetwork.Solve(o, false);
+                enemyPlayers.Add(o);
+                foreach (SupplyPoint h in r.connectedHubs) theirConnected.Add(h);
                 foreach (KeyValuePair<HexTile, int> kv in r.depth)
                     if (kv.Value > theirSupply.DepthAt(kv.Key)) theirSupply.depth[kv.Key] = kv.Value;
             }

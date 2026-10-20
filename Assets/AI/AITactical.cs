@@ -168,6 +168,18 @@ namespace HexTactica.AI {
             foreach (KeyValuePair<HexTile, KeyValuePair<float, HexTile>> kv in stops) {
                 HexTile s = kv.Key;
                 if (s != unit.tile && !AIPath.CanFinishTurnOn(unit, s)) continue;
+                if (profile.choiceMode == 2) {
+                    // Every choice from this tile goes to the simulation: standing without firing,
+                    // and each shot it could take — not just the one the attack score likes best.
+                    options.Add(new Option { stop = s, destination = kv.Value.Value, positional = kv.Value.Key });
+                    if (canShootFrom(s)) {
+                        foreach (AttackAppraisal a in AITargeting.AllFrom(unit, s, map, profile, posture, true)) {
+                            if (!shotAllowed(a)) continue;
+                            options.Add(new Option { stop = s, destination = kv.Value.Value, positional = kv.Value.Key, shot = a, attack = a.value });
+                        }
+                    }
+                    continue;
+                }
                 Option o = new Option { stop = s, destination = kv.Value.Value, positional = kv.Value.Key };
                 if (canShootFrom(s)) {
                     AttackAppraisal a = AITargeting.BestFrom(unit, s, map, profile, posture, true);
@@ -299,7 +311,7 @@ namespace HexTactica.AI {
             AIWorld.Cache cache = new AIWorld.Cache();
             float bestWorld = float.NegativeInfinity;
             foreach (Option o in options) {
-                o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null);
+                o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
                 // Buildings are not units, so the material count never sees a capture under way.
                 // Standing on an enemy building with a unit that can take it is worth what taking it
                 // is worth (the same values TryCapture uses), as long as the unit survives the reply.
@@ -314,17 +326,23 @@ namespace HexTactica.AI {
             }
             List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - profile.worldTie * worth);
             Option best = null;
+            Dictionary<HexTile, AIDenial.Result> denial = new Dictionary<HexTile, AIDenial.Result>();
             foreach (Option o in kept) {
-                o.denial = map.Denial(unit, o.stop);
+                AIDenial.Result d;
+                if (!denial.TryGetValue(o.stop, out d)) { d = map.Denial(unit, o.stop); denial[o.stop] = d; }
+                o.denial = d;
                 float positional = float.IsNegativeInfinity(o.positional) ? 0f : o.positional;
                 o.rest = o.denial.gold + positional;
-                if (best == null || o.rest > best.rest || (o.rest == best.rest && CombatMath.Precedes(o.stop, best.stop))) best = o;
+                // Same tile, same position: the better simulated world (shoot or not, and at whom) decides.
+                if (best == null || o.rest > best.rest
+                    || (o.rest == best.rest && o.world.score > best.world.score)
+                    || (o.rest == best.rest && o.world.score == best.world.score && CombatMath.Precedes(o.stop, best.stop))) best = o;
             }
 
             if (DecisionLog != null) {
                 System.Text.StringBuilder sb = new System.Text.StringBuilder();
                 sb.Append(unit.owner.personal_name).Append(' ').Append(unit.name).Append(D(unit.tile)).Append(" s").Append(unit.Strength)
-                  .Append(" [").Append(tag).Append(", world] ").Append(options.Count).Append(" stops | best world ").Append(bestWorld.ToString("0"))
+                  .Append(" [").Append(tag).Append(", world] ").Append(options.Count).Append(" options | best world ").Append(bestWorld.ToString("0"))
                   .Append(", within ").Append((profile.worldTie * worth).ToString("0")).Append(": ").Append(kept.Count);
                 List<Option> shown = new List<Option>(options);
                 shown.Sort((a, b) => b.world.score.CompareTo(a.world.score));

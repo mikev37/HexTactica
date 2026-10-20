@@ -10,12 +10,13 @@ public struct CombatOutcome {
     public bool defenderDies;
     public bool attackerDies;
     public bool defenderRetreats;
-    public bool defenderPinned;        // wanted to retreat, had nowhere to go: takes +1
+    public bool defenderPinned;        // wanted to retreat, had nowhere to go: takes +1 (already in damageToDefender)
     public HexTile retreatTile;
     public bool defenderFiresFirst;
     public bool retaliationHappens;
 
-    public int NetDefenderLoss { get { return damageToDefender + (defenderPinned ? 1 : 0); } }
+    /// <summary>Strength the defender loses, the pinned point included. Same as damageToDefender.</summary>
+    public int NetDefenderLoss { get { return damageToDefender; } }
 }
 
 /// <summary>
@@ -51,11 +52,7 @@ public static class CombatMath {
                             && defender.CanAttack(attackerTile)
                             && defender.Strength > 0;
 
-        // "The first attacker is determined by the hex tile and unit veterancy."
-        // A dug-in veteran gets the drop on its attacker; open ground does not.
-        int defenderPoise = defender.Veterancy + CoverFor(defender, defender.tile);
-        int attackerPoise = attacker.Veterancy;
-        o.defenderFiresFirst = o.retaliationHappens && defenderPoise > attackerPoise;
+        o.defenderFiresFirst = o.retaliationHappens && Ambush(attacker, defender, defender.tile);
 
         if (o.defenderFiresFirst) {
             // Defender pre-empts: retaliation damage lands first and degrades the
@@ -90,8 +87,11 @@ public static class CombatMath {
                 o.defenderRetreats = true;
                 o.retreatTile = FindRetreatTile(defender, attackerTile);
                 o.defenderPinned = o.retreatTile == null;
-                if (o.defenderPinned && o.damageToDefender + 1 >= defender.Strength) {
-                    o.defenderDies = true;
+                if (o.defenderPinned) {
+                    // Nowhere to fall back to: one more strength, counted in the damage itself so
+                    // the preview, the AI and the resolution all read the same number.
+                    o.damageToDefender = Cap(o.damageToDefender + 1, defender.Strength);
+                    o.defenderDies = o.damageToDefender >= defender.Strength;
                 }
             }
         }
@@ -120,7 +120,7 @@ public static class CombatMath {
         bool adjacent = defenderTile.neighbors.Contains(attackerTile);
         bool retaliation = adjacent && defender.MinRange < 1 && defender.AttackRange >= 1
                         && defender.retaliates && defender.CanAttack(attackerTile);
-        bool defenderFirst = retaliation && defender.Veterancy + CoverFor(defender, defenderTile) > attacker.Veterancy;
+        bool defenderFirst = retaliation && Ambush(attacker, defender, defenderTile);
         if (defenderFirst) {
             toAttacker = Cap(Unit.calculateDamage(defender, attacker, null, defenderDown), attackerStrength);
             toDefender = Cap(Unit.calculateDamage(attacker, defender, defenderTile, attackerDown + toAttacker), defenderStrength);
@@ -131,6 +131,23 @@ public static class CombatMath {
         }
     }
 
+    /// <summary>
+    /// Ambush: the defender fires first. It needs concealment the ground lets it use, plus
+    /// veterancy, greater than the attacker's concealment plus veterancy:
+    ///     min(defender.Concealment, cover) + defender.Veterancy  >  attacker.Concealment + attacker.Veterancy
+    /// So open ground confers nothing: a grunt (concealment 3) on grassland (cover 1) has 1,
+    /// a tank has 1, no ambush. In forest, hills, mountains or a city it has 2-3 and ambushes a
+    /// tank; a tank (concealment 1) can never ambush one; grunts never ambush grunts.
+    /// (Before: cover plus veterancy against veterancy alone, so every defender on grassland
+    /// fired first.)
+    /// </summary>
+    public static bool Ambush(Unit attacker, Unit defender, HexTile defenderTile) {
+        if (attacker == null || defender == null) return false;
+        int hidden = CoverFor(defender, defenderTile) + defender.Veterancy;
+        int seen = (LocomotionRules.IsAirborne(attacker.locomotion) ? 0 : attacker.Concealment) + attacker.Veterancy;
+        return hidden > seen;
+    }
+
     static int Cap(int damage, int strength) {
         return Mathf.Clamp(damage, 0, Mathf.Max(0, strength));
     }
@@ -138,7 +155,8 @@ public static class CombatMath {
     static int CoverFor(Unit u, HexTile t) {
         if (u == null || t == null || t.terrain == null) return 0;
         if (LocomotionRules.IsAirborne(u.locomotion)) return 0;
-        return Mathf.Min(u.Concealment, t.terrain.cover);
+        // The same cover the damage formula uses (combat damage to the tile wears it down).
+        return Mathf.Max(0, Mathf.Min(u.Concealment, t.EffectiveCover));
     }
 
     /// <summary>
