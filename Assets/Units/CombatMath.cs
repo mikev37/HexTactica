@@ -83,7 +83,8 @@ public static class CombatMath {
             // the casualties and seeing who had more + the veterancy of each."
             int defenderPressure = o.damageToDefender - defender.Veterancy;
             int attackerPressure = o.damageToAttacker - attacker.Veterancy;
-            if (defenderPressure > attackerPressure) {
+            // An immobile unit (an HQ) is never driven back, so never pinned either.
+            if (defenderPressure > attackerPressure && defender.moveRange > 0) {
                 o.defenderRetreats = true;
                 o.retreatTile = FindRetreatTile(defender, attackerTile);
                 o.defenderPinned = o.retreatTile == null;

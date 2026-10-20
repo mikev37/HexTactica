@@ -44,6 +44,9 @@ namespace HexTactica.AI {
         [Range(0f, 6f)]
         public float worldTie = 0.25f;
 
+        [Tooltip("Floor on the tie margin, in gold, whatever the unit's worth.")]
+        public float worldTieMin = 250f;
+
         [Tooltip("Tier 1: keep every option whose attack value is at least this fraction of the best. 1 = only the best shot; 0.5 = anything doing half as much, which leaves room for the later tiers.")]
         [Range(0f, 1f)]
         public float attackTie = 0.5f;
@@ -313,6 +316,9 @@ namespace HexTactica.AI {
         [Tooltip("A hit our units still to act this turn could finish counts as this fraction of a kill (its reply removed, its material gone).")]
         [Range(0f, 1f)]
         public float assistWeight = 0.75f;
+
+        [Tooltip("Artillery: gold per tile the enemy could move to next turn that the gun covers from where it ends its turn (its zone of control).")]
+        public float artilleryCoverValue = 25f;
 
         [Tooltip("Space: gold per tile one side's units could move to next turn, and again per tile they could strike. Ours count for us, theirs against us — so taking space from them is a gain, and doing it with a cheap unit is a cheap gain.")]
         public float spaceTileValue = 10f;

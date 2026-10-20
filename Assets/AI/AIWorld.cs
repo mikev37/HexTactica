@@ -44,6 +44,8 @@ namespace HexTactica.AI {
             public float healOwn, healEnemy;
             /// <summary>Space: move+strike tiles (ours, theirs), enemy supply tiles cut, and the gold it adds.</summary>
             public int ourSpace, theirSpace, supplyCut, enemyUnsupplied;
+            /// <summary>Artillery only: enemy-reachable tiles under this gun next turn.</summary>
+            public int gunCover;
             public float space;
             public readonly List<string> replies = new List<string>();
             /// <summary>Strength each of our units loses in the reply.</summary>
@@ -56,6 +58,7 @@ namespace HexTactica.AI {
                 if (deaths != 0f) sb.Append(" deaths ").Append(deaths.ToString("+0;-0"));
                 if (hubs != 0f) sb.Append(" hubs ").Append(hubs.ToString("+0;-0"));
                 if (space != 0f) sb.Append(" space ").Append(space.ToString("+0;-0")).Append(" (").Append(ourSpace).Append('/').Append(theirSpace).Append(supplyCut > 0 ? " cut " + supplyCut : "").Append(enemyUnsupplied > 0 ? " unsupplied " + enemyUnsupplied : "").Append(')');
+                if (gunCover > 0) sb.Append(" covers ").Append(gunCover);
                 if (healOwn != 0f || healEnemy != 0f) sb.Append(" heals +").Append(healOwn.ToString("0")).Append("/-").Append(healEnemy.ToString("0"));
                 if (ownStrike != 0f || enemyStrike != 0f) sb.Append(" strike +").Append(ownStrike.ToString("0")).Append("/-").Append(enemyStrike.ToString("0"));
                 if (replies.Count > 0) sb.Append(" [").Append(string.Join("; ", replies.ToArray())).Append(']');
@@ -137,9 +140,15 @@ namespace HexTactica.AI {
             HashSet<HexTile> taken = new HashSet<HexTile>();
             foreach (Unit x in map.ownUnits) if (x != null && x.tile != null && x != u && hp.ContainsKey(x) && hp[x] > 0f) taken.Add(x.tile);
             if (hp[u] > 0f) taken.Add(uAt);
-            // Units that fire where they stand keep their tiles; the rest may move off theirs.
+            // Only units that fire from where they stand (artillery able to fire this turn) or
+            // cannot move at all keep their tiles. Everything else on their side — supply units,
+            // units with nothing to shoot — can step aside for a unit that wants the tile.
             bool ownSideBlocks = map.profile.forecastOwnSideBlocks;
-            foreach (Unit e in enemies) if (e != null && e.tile != null && (ownSideBlocks || !e.moveAndAttack || e.moveRange <= 0)) taken.Add(e.tile);
+            foreach (Unit e in enemies) {
+                if (e == null || e.tile == null) continue;
+                bool firesInPlace = !e.moveAndAttack && e.Firepower > 0 && positions.ContainsKey(e);
+                if (ownSideBlocks || firesInPlace || e.moveRange <= 0) taken.Add(e.tile);
+            }
 
             foreach (Unit e in enemies) {
                 HashSet<HexTile> pos;
@@ -291,7 +300,7 @@ namespace HexTactica.AI {
                 w.score += w.ownStrike - w.enemyStrike;
             }
 
-            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
+            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.artilleryCoverValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
             return w;
         }
 
@@ -318,6 +327,14 @@ namespace HexTactica.AI {
                 HashSet<HexTile>[] s = AIMap.SpaceFrom(e, e.tile, pos);
                 theirMove.UnionWith(s[0]);
                 theirStrike.UnionWith(s[1]);
+            }
+            // Artillery's zone of control: every tile the enemy could move to next turn that this
+            // gun will cover from where it ends up. It cannot move and fire, so where it stands now
+            // is where it shoots from next turn. Inside enemy guns' range is already priced by the
+            // reply; outside it, this pulls the battery as close as it can get — no man's land, held.
+            if (prof.artilleryCoverValue > 0f && !u.moveAndAttack && u.AttackRange >= 2 && u.Firepower > 0 && hp[u] > 0f) {
+                foreach (HexTile t in AIPath.TilesInRange(uAt, u.MinRange, u.AttackRange)) if (theirMove.Contains(t)) w.gunCover++;
+                w.score += w.gunCover * prof.artilleryCoverValue;
             }
             if (prof.spaceContestedOnly) {
                 ourMove.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
@@ -516,7 +533,7 @@ namespace HexTactica.AI {
         /// Immobile units (an HQ) never can.
         /// </summary>
         static bool CanFallBack(Unit d, HexTile dAt, HexTile fire, Unit u, HexTile uAt, Dictionary<Unit, float> hp, HashSet<HexTile> taken) {
-            if (d.moveRange <= 0) return false;
+            if (d.moveRange <= 0) return true;   // immobile (an HQ): never driven back, never pinned
             int now = dAt.Distance(fire);
             foreach (HexTile n in dAt.neighbors) {
                 if (n == null || n == fire || !d.CanEnter(n) || taken.Contains(n) || n == uAt) continue;
