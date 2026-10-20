@@ -822,7 +822,10 @@ namespace HexTactica.AI {
                     }
                 }
                 hub.dependents = dependents;
-                supplyImportance[hub.myUnit] = sustained * 0.25f * profile.enemySupplyTargetWeight;
+                // Losing the hub costs every unit it sustains a strength a turn once its own supplies run
+                // out: one turn of that, in full. (It was a quarter, which priced a hub sustaining five
+                // rifles below one rifle that could scratch our tank.)
+                supplyImportance[hub.myUnit] = sustained * profile.enemySupplyTargetWeight;
             }
         }
 
