@@ -146,6 +146,14 @@ the attack and the AI use — damage both ways, "!" on the attacker's number for
 resolved order (an ambusher fires first, after its attacker has moved in). A pinned defender's
 extra point of damage is part of the resolved damage (it used to be skipped when it was lethal).
 
+In the reply, the enemy's own units never block it (they pass through each other and may finish
+on each other's tiles), a unit of ours destroyed during the reply stops blocking immediately
+(reachability is re-run for every enemy still to act), and a defender driven back with nowhere
+to go takes the pinned point — an HQ always. A destroyed unit costs `deathPremium` (1) more of
+its strength points' worth than the points themselves, both sides. An assist needs a real
+attack: a finisher with a free firing tile it can reach this turn. Options within `worldTie`
+(0.25) of a strength point of the best world survive to the positional tie-break.
+
 Each tile a unit could stop on is simulated once without firing and once for every shot it
 could take from there; the simulation, not the attack score, picks. The simulated enemy picks targets net of the retaliation it takes.
 
