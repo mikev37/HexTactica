@@ -174,6 +174,22 @@ namespace HexTactica.AI {
             return best;
         }
 
+        /// <summary>Every valid shot from <paramref name="from"/>, one per enemy in range, in board order.</summary>
+        public static List<AttackAppraisal> AllFrom(Unit attacker, HexTile from, AIMap map,
+                                                    AIProfile profile, Posture posture, bool imminent) {
+            List<AttackAppraisal> all = new List<AttackAppraisal>();
+            if (attacker == null || from == null || !attacker.CanAttack(from)) return all;
+            List<HexTile> inRange = AIPath.TilesInRange(from, attacker.MinRange, attacker.AttackRange);
+            inRange.Sort(CombatMath.CompareTiles);
+            for (int i = 0; i < inRange.Count; i++) {
+                HexTile t = inRange[i];
+                if (t.occupier == null || t.occupier.owner == attacker.owner) continue;
+                AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
+                if (a.valid) all.Add(a);
+            }
+            return all;
+        }
+
         public static bool IsHQUnit(Unit u) { return IsHQ(u); }
 
         static bool IsHQ(Unit u) {

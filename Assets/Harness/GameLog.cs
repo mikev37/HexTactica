@@ -130,9 +130,9 @@ namespace HexTactica.Harness {
             StringBuilder sb = new StringBuilder();
             sb.Append("   ").Append(Who(attacker)).Append(' ').Append(D(from)).Append(" attacks ").Append(Who(defender)).Append(' ').Append(D(at))
               .Append(": deals ").Append(o.damageToDefender).Append(", takes ").Append(o.damageToAttacker);
-            if (o.defenderFiresFirst) sb.Append(" (defender fired first)");
+            if (o.defenderFiresFirst) sb.Append(" (ambush: defender fired first)");
             if (o.defenderDies) sb.Append(", ").Append(defender.name.Replace("(Clone)", "")).Append(" destroyed");
-            else if (o.defenderRetreats) sb.Append(o.defenderPinned ? ", pinned (-1 more)" : ", retreats");
+            else if (o.defenderRetreats) sb.Append(o.defenderPinned ? ", pinned (1 of that for having nowhere to retreat)" : ", retreats");
             if (o.attackerDies) sb.Append(", attacker destroyed");
             sb.Append(" -> ").Append(attacker.Strength).Append(" v ").Append(defender.Strength);
             Line(sb.ToString());

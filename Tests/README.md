@@ -134,8 +134,18 @@ within the enemy's three-turn reach (`spaceContestedOnly`) — and the enemy's m
 tiles count against us; each enemy supply tile our unit cuts counts for us.
 
 Every simulated exchange uses the game's rules (`CombatMath.Exchange`): the defender's cover
-counts against the shot, retaliation ignores cover, a dug-in veteran fires first, damage taken
-first weakens the answer. The simulated enemy picks targets net of the retaliation it takes.
+counts against the shot, retaliation ignores cover, damage taken first weakens the answer, and
+an **ambush** — the defender firing first — happens only when
+`min(defender concealment, tile cover) + defender veterancy > attacker concealment + attacker veterancy`.
+Open ground gives nothing; a grunt ambushes a tank in forest, hills, mountains or a city;
+tanks never ambush. The attack preview on hover is `CombatMath.Resolve` itself, the function
+the attack and the AI use — damage both ways, "!" on the attacker's number for an ambush,
+"pin"/"ret"/"X" for a pinned defender, a retreat, a kill — and the animations play in the
+resolved order (an ambusher fires first, after its attacker has moved in). A pinned defender's
+extra point of damage is part of the resolved damage (it used to be skipped when it was lethal).
+
+Each tile a unit could stop on is simulated once without firing and once for every shot it
+could take from there; the simulation, not the attack score, picks. The simulated enemy picks targets net of the retaliation it takes.
 
 Board read (`AIMapRead`): supply split into static (buildings, HQ), mobile (only there
 because a supply unit stands where it does) and potential (what supply units could cover
