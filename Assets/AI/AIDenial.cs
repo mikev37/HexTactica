@@ -120,6 +120,7 @@ namespace HexTactica.AI {
         public static float HQThreat(Unit u, HexTile at, Unit target, int damage, AIMap map, out int hqStrength) {
             hqStrength = 0;
             float worst = 0f;
+            if (GameController.gc != null && GameController.gc.rules == RuleSet.Attrition) return 0f;   // HQs out of play
             for (int h = 0; h < map.ownHubs.Count; h++) {
                 SupplyPoint sp = map.ownHubs[h];
                 if (sp == null || !sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;

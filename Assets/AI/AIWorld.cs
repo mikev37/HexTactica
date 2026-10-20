@@ -156,7 +156,7 @@ namespace HexTactica.AI {
                 Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f; int bestDamage = 0, bestBack = 0;
                 bool bestPinned = false;
                 foreach (Unit d in map.ownUnits) {
-                    if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f) continue;
+                    if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d)) continue;
                     HexTile dAt = d == u ? uAt : d.tile;
                     HexTile fire = FiringTile(e, dAt, pos, taken);
                     if (fire == null) continue;
