@@ -248,6 +248,55 @@ public static class TerrainMaps {
         Console.WriteLine(list);
     }
 
+    /// <summary>
+    /// Write each map as a level-editor save (the JSON LevelEditor.Save writes and Load / ScenarioLoader
+    /// read), so it can be loaded in the Unity scene and played or watched. SampleScene's board spans
+    /// cube coordinates to about ±7; every tile outside the map's radius is written as Water so the
+    /// playable area is exactly the generated map. Units are placed for the two scene players: Blue
+    /// (id 112, the one with the AIPlayer) and Red (id 0, the human). Two files per map: the AI on the
+    /// left (seat A) and on the right (seat B). No "players" block, so the scene's own players,
+    /// colours and factions are kept.
+    /// </summary>
+    public static void Export(string dir) {
+        Directory.CreateDirectory(dir);
+        foreach (Spec s in Maps) {
+            foreach (bool aiLeft in new[] { true, false }) {
+                Player a, b;
+                Setup(s, Matchups.Kind.Greedy, Matchups.Kind.Greedy, 0, out a, out b);
+                StringBuilder sb = new StringBuilder();
+                sb.Append("{\n\"width\":15,\n \"tiles\":[");
+                bool first = true;
+                for (int x = -7; x <= 7; x++) for (int y = -7; y <= 7; y++) {
+                    int z = -x - y;
+                    if (Math.Abs(z) > 7) continue;
+                    HexTile t = Rig.At(x, y);
+                    string terrain = t != null && t.terrain != null ? t.terrain.name : "Water";
+                    if (terrain == "Plains") terrain = "Grassland";
+                    if (!first) sb.Append(',');
+                    first = false;
+                    sb.Append(string.Format("{{\"x\":{0},\"y\":{1},\"z\":{2},\"damage\":0,\"combatCount\":0,\"terrain\":\"{3}\"}}", x, y, z, terrain));
+                }
+                sb.Append("\n],\n\n\"units\":[");
+                first = true;
+                foreach (Player p in new[] { a, b }) {
+                    bool isAI = (p == a) == aiLeft;
+                    long id = isAI ? 112 : 0;
+                    foreach (Unit u in p.units) {
+                        if (!first) sb.Append(',');
+                        first = false;
+                        string prefab = u.name.Replace("(Clone)", "");
+                        sb.Append(string.Format("{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":0,\"personalName\":\"{4}\",\"active\":true,\"owner_id\":{5},\"supplies\":{6},\"fuel\":{7},\"ammo\":{8},\"gameobject_name\":\"{9}\",\"transporterIndexPlusOne\":0}}",
+                            u.tile.x, u.tile.y, u.tile.z, u.Strength, prefab, id, u.supplies, u.fuel, u.ammo, prefab));
+                    }
+                }
+                sb.Append("\n]\n}");
+                string file = Path.Combine(dir, s.name + (aiLeft ? "-ai-left" : "-ai-right") + ".dat");
+                File.WriteAllText(file, sb.ToString());
+                Console.WriteLine("wrote " + file);
+            }
+        }
+    }
+
     public static void Show() {
         foreach (Spec s in Maps) {
             Build(s);

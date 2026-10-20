@@ -86,6 +86,27 @@ public static class Tests {
             return 0;
         }
         if (Environment.GetEnvironmentVariable("PROBE") == "mapshow") { TerrainMaps.Show(); return 0; }
+        if (Environment.GetEnvironmentVariable("PROBE") == "export") { TerrainMaps.Export(Environment.GetEnvironmentVariable("OUT") ?? "Scenarios"); return 0; }
+        if (Environment.GetEnvironmentVariable("PROBE") == "hubrifle") {
+            HexTactica.AI.AIProfile profile = Profile();
+            Rig.NewGame(10);
+            Player a = Rig.AddPlayer("A", 1), b = Rig.AddPlayer("B", 2);
+            Unit shooter = Rig.Spawn(Archetypes.Tank(), a, 0, 0);
+            Unit hubUnit = Rig.Spawn(Archetypes.Truck(), b, 1, 0);
+            Rig.MakeHub(hubUnit, 4);
+            Unit rifle = Rig.Spawn(Archetypes.Rifle(), b, 0, 1);
+            for (int i = 2; i <= 5; i++) Rig.Spawn(Archetypes.Rifle(), b, i, 0);
+            AIMap map = new AIMap(a, profile);
+            foreach (Unit t in new[] { hubUnit, rifle }) {
+                CombatOutcome o = CombatMath.Resolve(shooter, t, shooter.tile);
+                AttackAppraisal ap = AITargeting.Appraise(shooter, t, shooter.tile, map, profile, Posture.Aggressive, true);
+                Console.WriteLine(t.name + ": our tank deals " + o.damageToDefender + " (of " + t.Strength + "), takes back " + o.damageToAttacker
+                    + "; worth/strength " + AIScore.Worth(t).ToString("0") + "; supply importance " + map.SupplyImportance(t).ToString("0")
+                    + "; its best blow on us " + map.ThreatBonus(t).ToString("0") + "; appraised " + ap.value.ToString("0"));
+            }
+            Console.WriteLine("their rifle on our tank: " + Unit.calculateDamage(rifle, shooter, shooter.tile, 0) + "; our tank worth/strength " + AIScore.Worth(shooter).ToString("0"));
+            return 0;
+        }
         if (Environment.GetEnvironmentVariable("PROBE") == "decisivelog") {
             SetupDecisive();
             AITactical.DecisionLog = m => Console.WriteLine("    " + m);

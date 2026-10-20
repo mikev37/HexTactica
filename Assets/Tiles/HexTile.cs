@@ -430,6 +430,7 @@ public struct TileData {
 
     public HexTile load() {
         HexTile t = HexGenerator.hg.get(x, y, z);
+        if (t == null) return null;   // a save written for a bigger board: skip what this one lacks
         t.damageLevel = damage;
         t.combatCount = combatCount;
         t.loadData(LevelEditor.loadTerrain(terrain));

@@ -69,6 +69,14 @@ tiers — how many stops, what tier 0/1/2 kept, the top tier-3 options with atta
 received, enemy movement/supply denied, positional score and destination, the best option
 a tier threw out, any HQ threat, and any shot rejected as not worth its cost.
 
+**Watching a map in Unity** (`Tests/Scenarios/*.dat`, regenerate with `PROBE=export
+OUT=Tests/Scenarios`): each map as a level-editor save, the AI's army on the left
+(`-ai-left`) or right (`-ai-right`). Units belong to SampleScene's own players — Blue (id 112,
+the one with the AIPlayer) and Red (id 0, you) — and every tile outside the map is Water.
+Copy one to `Application.persistentDataPath/save.dat`, play SampleScene, press **L**. Written
+in the exact format LevelEditor.Save produces, with prefab and terrain names checked against
+the scene's lists; not yet loaded in the engine itself.
+
 **Tiered tile choice** (`AITactical.Tiered`, `tieredChoice`), for line units, artillery,
 anti-air and recon (hubs, transports and withdrawing units still use the gold sum):
 0. HQ: drop options that would leave our HQ destroyable next enemy turn, if any would not.
