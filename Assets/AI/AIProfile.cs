@@ -86,9 +86,9 @@ namespace HexTactica.AI {
         [Tooltip("Bonus multiplier when an attack finishes the target.")]
         public float killBonus = 1.35f;
 
-        [Tooltip("Worth of non-lethal damage on a target inside its own supply, which heals a strength per turn, as a fraction of face value.")]
-        [Range(0f, 1f)]
-        public float healingDamageFactor = 0.5f;
+        [Tooltip("Strength a unit in its own supply heals back by its next turn (the game's rule: 1). That much of the damage done to it doesn't count; kills, and damage beyond it, count in full.")]
+        [Range(0f, 6f)]
+        public float healedPerTurn = 1f;
 
         [Tooltip("Worth of damage that will not be finished on a unit that does not fight (an HQ, a supply hub), as a fraction of face value. It does not weaken them, and they heal.")]
         [Range(0f, 1f)]
@@ -299,10 +299,13 @@ namespace HexTactica.AI {
         public float assistWeight = 0.75f;
 
         [Tooltip("Space: gold per tile one side's units could move to next turn, and again per tile they could strike. Ours count for us, theirs against us — so taking space from them is a gain, and doing it with a cheap unit is a cheap gain.")]
-        public float spaceTileValue = 25f;
+        public float spaceTileValue = 10f;
 
         [Tooltip("Count our space only on contested ground: tiles the enemy could strike within enemyReachTurns. Off: every tile, including the empty rear.")]
         public bool spaceContestedOnly = true;
+
+        [Tooltip("Gold per enemy unit out of supply in the world after our move (counted at the start of their turn, where the game checks supply).")]
+        public float enemyUnsuppliedValue = 100f;
 
         [Tooltip("Space: gold per tile of enemy supply our unit's position cuts off.")]
         public float spaceSupplyValue = 50f;
