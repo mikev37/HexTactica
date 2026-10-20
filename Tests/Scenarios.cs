@@ -50,7 +50,44 @@ public static class Scenarios {
         new MapSpec("large-rough",   7, 97, 0.15f, 0.15f, 0.30f),
     };
 
-    static int DeploymentSize(MapSpec s) { return s.radius >= 7 ? 18 : 9; }
+    /// <summary>Radius 13 of SampleScene's 15: room for a march, a supply chain, and objectives.</summary>
+    static readonly MapSpec[] CampaignMaps = {
+        new MapSpec("campaign-std",   13, 101, 0.10f, 0.10f, 0.30f),
+        new MapSpec("campaign-rough", 13, 113, 0.15f, 0.15f, 0.30f),
+    };
+
+    static int DeploymentSize(MapSpec s) { return s.radius >= 13 ? 30 : s.radius >= 7 ? 18 : 9; }
+
+    /// <summary>One map spec list as matchups: AI on either side, three line-ups.</summary>
+    static int ExportMatches(MapSpec[] maps, string kind, int rounds, string[] roster, string[] extra, string what) {
+        int n = 0;
+        foreach (MapSpec s in maps) {
+            foreach (bool aiLeft in new[] { true, false }) {
+                foreach (string lineup in new[] { "legacy", "greedy", "legacy-outnumbered" }) {
+                    Generate(s);
+                    Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+                    HexTile left = Rig.At(-(s.radius - 1), 0), right = Rig.At(s.radius - 1, 0);
+                    foreach (Player p in new[] { ai, other }) {
+                        HexTile hq = (p == ai) == aiLeft ? left : right;
+                        List<HexTile> dep = Deployment(hq, DeploymentSize(s));
+                        Put("TempHQ", p, hq.x, hq.y);
+                        for (int i = 0; i < roster.Length; i++) Put(roster[i], p, dep[i].x, dep[i].y);
+                        if (lineup == "legacy-outnumbered" && p == other)
+                            for (int i = 0; i < extra.Length; i++) Put(extra[i], p, dep[roster.Length + i].x, dep[roster.Length + i].y);
+                    }
+                    string name = kind + "-" + s.name.Substring(s.name.IndexOf('-') + 1) + "-" + lineup + (aiLeft ? "-ai-left" : "-ai-right");
+                    ScenarioFile.Save(Path.Combine(Dir, name + ".dat"),
+                        Test(name, kind, lineup.StartsWith("legacy") ? "Legacy" : "Greedy", rounds, "report",
+                             "Radius-" + s.radius + " map " + s.name + " (mountain " + s.mountain + ", water " + s.water + ", forest " + s.forest
+                             + "), " + what + (lineup == "legacy-outnumbered" ? "; opponent has " + extra.Length + " extra units" : "")
+                             + ". The left side moves first."),
+                        ai, other, aiLeft ? ai : other);
+                    n++;
+                }
+            }
+        }
+        return n;
+    }
 
     static TerrainData T(string n) { return ScenarioFile.Terrain(n); }
 
@@ -61,6 +98,7 @@ public static class Scenarios {
     }
 
     static void Blank(int radius) {
+        ScenarioFile.Board = Math.Max(7, radius);
         Rig.NewGame(radius);
         foreach (HexTile t in Rig.hg.tiles) t.terrain = T("Grassland");
     }
@@ -158,35 +196,16 @@ public static class Scenarios {
         }
 
         // ---- large boards: doubled armies, three line-ups, AI on either side.
-        foreach (MapSpec s in LargeMaps) {
-            foreach (bool aiLeft in new[] { true, false }) {
-                foreach (string lineup in new[] { "legacy", "greedy", "legacy-outnumbered" }) {
-                    Generate(s);
-                    Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-                    HexTile left = Rig.At(-(s.radius - 1), 0), right = Rig.At(s.radius - 1, 0);
-                    foreach (Player p in new[] { ai, other }) {
-                        HexTile hq = (p == ai) == aiLeft ? left : right;
-                        List<HexTile> dep = Deployment(hq, DeploymentSize(s));
-                        Put("TempHQ", p, hq.x, hq.y);
-                        string[] roster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery",
-                                            "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery" };
-                        for (int i = 0; i < roster.Length; i++) Put(roster[i], p, dep[i].x, dep[i].y);
-                        if (lineup == "legacy-outnumbered" && p == other) {
-                            Put("Tank", p, dep[12].x, dep[12].y); Put("Grunt", p, dep[13].x, dep[13].y);
-                            Put("Tank", p, dep[14].x, dep[14].y); Put("Grunt", p, dep[15].x, dep[15].y);
-                        }
-                    }
-                    string name = "large-" + s.name.Substring(6) + "-" + lineup + (aiLeft ? "-ai-left" : "-ai-right");
-                    ScenarioFile.Save(Path.Combine(Dir, name + ".dat"),
-                        Test(name, "large", lineup.StartsWith("legacy") ? "Legacy" : "Greedy", 40, "report",
-                             "Radius-7 map " + s.name + " (mountain " + s.mountain + ", water " + s.water + ", forest " + s.forest
-                             + "), twelve units a side" + (lineup == "legacy-outnumbered" ? "; opponent has two extra tanks and grunts" : "")
-                             + ". The left side moves first."),
-                        ai, other, aiLeft ? ai : other);
-                    n++;
-                }
-            }
-        }
+        n += ExportMatches(LargeMaps, "large", 40,
+            new[] { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery" },
+            new[] { "Tank", "Grunt", "Tank", "Grunt" }, "twelve units a side");
+
+        // ---- campaign boards: radius 13, armies that start more than three turns apart and
+        // need a chain of supply units to stay supplied on the way.
+        n += ExportMatches(CampaignMaps, "campaign", 60,
+            new[] { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Grunt", "Grunt", "Tank", "Grunt", "Supplies",
+                    "Artillery", "Grunt", "Tank", "Supplies", "Grunt" },
+            new[] { "Tank", "Grunt", "Tank", "Grunt" }, "sixteen units a side, three supply units");
 
         // ---- behaviour scenarios: one question each.
         {   // The supply unit must not end its turn where the enemy can hit it.
@@ -403,11 +422,12 @@ public static class Scenarios {
             Console.WriteLine(string.Format("  {0,-46} {1}", l.meta.Name, detail));
         }
         Console.WriteLine(string.Format("  matchups: {0}W {1}L {2}D", w, lo, d));
-        if (only == null || only == "large") {
+        foreach (string kind in new[] { "large", "campaign" }) {
+            if (only != null && only != kind) continue;
             Console.WriteLine();
-            Console.WriteLine("== Large boards (radius 7, twelve a side) ==");
+            Console.WriteLine(kind == "large" ? "== Large boards (radius 7, twelve a side) ==" : "== Campaign boards (radius 13, sixteen a side) ==");
             int lw = 0, ll = 0, ld = 0;
-            foreach (string f in Files("large")) {
+            foreach (string f in Files(kind)) {
                 ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
                 string detail;
                 System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
@@ -417,7 +437,7 @@ public static class Scenarios {
                 Console.WriteLine(string.Format("  {0,-46} {1}; objective pulls {2} over {3} turns; {4:0.0}s", l.meta.Name, detail,
                     me.objectivePulls, me.turnsPlayed, sw.Elapsed.TotalSeconds));
             }
-            Console.WriteLine(string.Format("  large: {0}W {1}L {2}D", lw, ll, ld));
+            Console.WriteLine(string.Format("  {0}: {1}W {2}L {3}D", kind, lw, ll, ld));
         }
         Console.WriteLine();
         Console.WriteLine(string.Format("behaviour checks: passed {0}, failed {1}", passed, failed));
@@ -429,7 +449,7 @@ public static class Scenarios {
     /// <summary>The board as text: . grass, f forest, ^ mountain, ~ water; Blue (AI) upper case, Red lower.</summary>
     public static string Draw() {
         StringBuilder sb = new StringBuilder();
-        int r = ScenarioFile.BOARD;
+        int r = ScenarioFile.Board;
         for (int y = -r; y <= r; y++) {
             char[] row = new string(' ', r * 4 + 3).ToCharArray();
             bool any = false;
@@ -525,7 +545,7 @@ public static class Scenarios {
         Dictionary<HexTile, int> denial = new Dictionary<HexTile, int>();
         foreach (HexTile t in Rig.hg.tiles) if (t.occupier == null && probe.CanEnter(t)) denial[t] = map.Denial(probe, t).tiles;
         Console.WriteLine(l.meta.Name + ": enemy reach (two turns, all units) a grunt would remove on each tile, in tens");
-        int r = ScenarioFile.BOARD;
+        int r = ScenarioFile.Board;
         for (int y = -r; y <= r; y++) {
             char[] row = new string(' ', r * 4 + 3).ToCharArray();
             for (int x = -r; x <= r; x++) {

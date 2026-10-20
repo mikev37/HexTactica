@@ -241,6 +241,9 @@ namespace HexTactica.AI {
         [Range(0f, 3f)]
         public float assignmentPull = 0.5f;
 
+        [Tooltip("Old rule: only pull units to an objective once they have objectiveRatio times its defenders, and never on a trip they couldn't get back into supply from. Off: objectives give direction to units out of contact regardless.")]
+        public bool objectivesNeedForce = false;
+
         [Tooltip("A unit that could exchange fire with an enemy within this many turns ignores its strategic objective.")]
         [Range(0, 6)]
         public int objectiveContactTurns = 3;
@@ -285,7 +288,7 @@ namespace HexTactica.AI {
 
         [Tooltip("Enemy units' best blow on their turn after that, counted against us at this fraction.")]
         [Range(0f, 1f)]
-        public float enemyStrikeWeight = 0f;
+        public float enemyStrikeWeight = 0.25f;
 
         [Tooltip("A supply unit's death costs, in the world score, one strength of every unit it alone keeps supplied, times this.")]
         [Range(0f, 3f)]

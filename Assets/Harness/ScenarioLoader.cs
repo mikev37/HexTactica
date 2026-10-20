@@ -77,6 +77,10 @@ namespace HexTactica.Harness {
                 });
             }
 
+            // A file covers only its own map; the rest of the scene's board is water. Without this a
+            // radius-7 scenario on the radius-15 board would leave a ring of unedited land around it.
+            FloodWater();
+
             JSONObjectEnumerator tiles = obj.GetField("tiles").GetEnumerator();
             while (tiles.MoveNext()) {
                 TileData td = JsonUtility.FromJson<TileData>(tiles.Current.Print());
@@ -198,6 +202,14 @@ namespace HexTactica.Harness {
                 UnityEngine.Debug.Log(r.Summary());
             }
             return all;
+        }
+    
+        /// <summary>Every tile of the board to Water, before a file's tiles are applied.</summary>
+        public static void FloodWater() {
+            if (HexGenerator.hg == null || LevelEditor.singleton == null) return;
+            TerrainData water = LevelEditor.loadTerrain("Water");
+            if (water == null) return;
+            HexGenerator.forAllTiles(t => { t.loadData(water); return 0; });
         }
     }
 }

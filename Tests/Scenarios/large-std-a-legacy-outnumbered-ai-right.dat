@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":0,
-"test":{"name":"large-std-a-legacy-outnumbered-ai-right","kind":"large","opponent":"Legacy","rounds":"40","check":"report","question":"Radius-7 map large-std-a (mountain 0.1, water 0.1, forest 0.3), twelve units a side; opponent has two extra tanks and grunts. The left side moves first."},
+"test":{"name":"large-std-a-legacy-outnumbered-ai-right","kind":"large","opponent":"Legacy","rounds":"40","check":"report","question":"Radius-7 map large-std-a (mountain 0.1, water 0.1, forest 0.3), twelve units a side; opponent has 4 extra units. The left side moves first."},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},

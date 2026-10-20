@@ -53,7 +53,11 @@ Predicted vs actual losses per enemy turn: 6.8/9, 8.0/6, 10.5/13, 5.1/6, 2.8/2.
 Every test is a level-editor save with a `test` block (name, question, opponent, rounds,
 check) that both the game and the harness read; the game ignores the fields it doesn't know.
 Units belong to SampleScene's players: **Blue, id 112** (has the `AIPlayer` — this AI) and
-**Red, id 0** (the opponent: a baseline AI or you). Tiles outside a scenario's map are Water.
+**Red, id 0** (the opponent: a baseline AI or you). SampleScene's board is now radius 15
+(HexGenerator `width` 31, was 15); a file records its own width, and every tile it doesn't
+list loads as Water (the level editor's own Load does the same). The camera frames the whole
+board on start and pans/zooms (`CameraRig`, self-installing): arrow keys or right/middle drag
+to pan, wheel or +/- to zoom, Home to re-frame.
 
 **In Unity:** enter play mode in SampleScene, **HexTactica → Load Scenario File…**, pick a
 file. The test block attaches Red's AI (`Legacy` = the original AttackMove AI, ported
@@ -79,9 +83,14 @@ the outnumbered line-up.
 Large boards (`large-*`): three radius-7 maps (all of SampleScene), twelve units a side
 (two supply units each), the same three line-ups, AI on either side — 18 games, each
 reporting how many unit-turns got a strategic-objective pull. Current: **15 W 3 L 0 D**,
-losses again all outnumbered. Objective pulls: **0** — see "Still open".
+losses again all outnumbered.
 
-`ONLY=behaviour|match|large` runs one group.
+Campaign boards (`campaign-*`): two radius-13 maps, sixteen units a side with three supply
+units, same line-ups — 12 games, the sides start 3–4 turns apart. Current: **10 W 0 L 2 D**;
+both draws are against Greedy, which turtles: after 60 rounds we have tanks and grunts left,
+it has eight grunts packed round its HQ, and nobody attacks.
+
+`ONLY=behaviour|match|large|campaign` runs one group. The full 73 games take about 2 minutes.
 
 Diagnostics:
 - `PROBE=game FILE=<name> [ROUNDS=r] [SIDE=AI|Red|both]` — the board after every turn and,
@@ -106,9 +115,16 @@ Enemies are valued by the best blow they could land on us next turn (`threatTarg
 The world score also carries: a supply unit's death costs one strength of every unit only
 it keeps supplied (`hubDependentsWeight`, both sides); a hit our not-yet-acted units can
 finish this turn is an **assist**, counted as `assistWeight` (0.75) of a kill — its reply
-and material removed in that proportion; and each surviving unit of ours adds its best
-next blow at `ownStrikeWeight` (0.1). The enemy-side equivalent (`enemyStrikeWeight`) is 0:
-at 0.25 it turned wins into draws.
+and material removed in that proportion; and each surviving unit's best next blow counts,
+ours at `ownStrikeWeight` (0.1), theirs against us at `enemyStrikeWeight` (0.25). HQs are not
+targets in that term (blows on HQs are the reply's and the HQ-danger terms' job), and each
+enemy's blow is discounted by how much of it our units can destroy first, since we move
+before it does. Without those two rules the enemy term rewarded baiting: a tank took a 1-for-4
+exchange because the enemy's reply then ended too far from our HQ to hit it the turn after.
+
+Every simulated exchange uses the game's rules (`CombatMath.Exchange`): the defender's cover
+counts against the shot, retaliation ignores cover, a dug-in veteran fires first, damage taken
+first weakens the answer. The simulated enemy picks targets net of the retaliation it takes.
 
 Board read (`AIMapRead`): supply split into static (buildings, HQ), mobile (only there
 because a supply unit stands where it does) and potential (what supply units could cover
@@ -187,13 +203,11 @@ in `Assets/`; the Unity menu finds `Tests/Scenarios` next to your `Assets` folde
 
 ## Still open
 
-- **Strategic objectives never fire on SampleScene.** A unit ignores objectives with contact
-  within 3 turns; a tank moves 6 and artillery reaches 10, so on a 15-hex board every unit is
-  within 2 turns of contact from turn 0. Testing them needs a bigger board: SampleScene's
-  HexGenerator `width` (15) and the camera size would have to grow. Two more gates also block
-  them in an even fight — an objective needs 2.5× the defending force, and units won't take a
-  trip they can't get back into supply from. (A third gate, objective reach ≤ 3 turns, made
-  them impossible on any board; it is now 8.)
+- **Objectives are direction, not orders.** A unit more than 3 turns from contact is pulled
+  toward the best objective whether or not the army has the force to take it
+  (`objectivesNeedForce` restores the old 2.5×-the-defenders and no-starving-trip gates). On
+  radius ≤ 7 boards nothing is ever 3 turns from contact, so they only act on campaign boards.
+  Their effect there is small: same results, one draw turned into a win.
 - **Transport presentation**: cargo isn't hidden or parented, and the `LOAD_CONFIRM` /
   `UNLOAD_CONFIRM` click states have no handler. Transports work for the AI only.
 - **Placing buildings** in the level editor UI (they load from saves only).

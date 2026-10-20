@@ -98,6 +98,7 @@ public class LevelEditor : MonoBehaviour
         //HexGenerator.hg.load()
         JSONObject obj = new JSONObject(json);
         Debug.Log(obj.GetField("tiles"));
+        HexTactica.Harness.ScenarioLoader.FloodWater();   // a save for a smaller board: the rest is water
         JSONObjectEnumerator numobj =
             obj.GetField("tiles").GetEnumerator();
         while (numobj.MoveNext()) {
