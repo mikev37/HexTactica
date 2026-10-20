@@ -563,6 +563,50 @@ public static class Scenarios {
     }
 
     /// <summary>
+    /// The group-plan forecast (AIPlan.Evaluate) with one move and retreats off must score what the
+    /// single-move forecast (AIWorld.Evaluate) does with its extras off. Checks every option of every
+    /// unit of Blue's on the boards of each match file (or FILE), and prints the mismatches.
+    /// </summary>
+    public static void Equivalence(string name) {
+        List<string> files = name != null ? new List<string> { Find(name) } : new List<string>(Files("match"));
+        int checks = 0, bad = 0;
+        foreach (string f in files) {
+            ScenarioFile.Loaded l = ScenarioFile.Load(f, "Human", p => {
+                p.assistWeight = 0f; p.selfPreservationWeight = 0f; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
+            });
+            // Play a few rounds so units are in contact, then check Blue's options.
+            GameController gc = Rig.gc;
+            Rig.AttachBaseline(l.other, AIKind.Legacy);
+            for (int t = 0; t < 6 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
+            if (gc.gameOver || gc.activePlayer != l.ai) continue;
+            AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+            foreach (Unit u in new List<Unit>(map.ownUnits)) {
+                if (u == null || u.tile == null || u.Firepower <= 0) continue;
+                MoveField fld = AIPath.ThisTurn(u);
+                List<HexTile> stops = new List<HexTile> { u.tile };
+                foreach (HexTile t in fld.Tiles) if (t != u.tile && fld.ReachableThisTurn(t) && AIPath.CanFinishTurnOn(u, t)) stops.Add(t);
+                foreach (HexTile s in stops) {
+                    List<AttackAppraisal> shots = new List<AttackAppraisal> { new AttackAppraisal() };
+                    if (u.moveAndAttack || s == u.tile) shots.AddRange(AITargeting.AllFrom(u, s, map, map.profile, Posture.Defensive, true));
+                    foreach (AttackAppraisal a in shots) {
+                        AIWorld.Outcome one = AIWorld.Evaluate(u, s, a, map, new AIWorld.Cache(), false, false);
+                        PlanStep step = new PlanStep { unit = u, stop = s, target = a.valid ? a.target : null };
+                        if (a.valid) step.known = a.outcome;
+                        AIWorld.Outcome many = AIPlan.Evaluate(new List<PlanStep> { step }, map, false, false);
+                        checks++;
+                        if (Mathf.Abs(one.score - many.score) > 0.5f) {
+                            bad++;
+                            if (bad <= 10) Console.WriteLine(string.Format("  {0}: {1} at {2} {3}: single {4:0} vs plan {5:0}", Path.GetFileNameWithoutExtension(f), u.name, D(s),
+                                a.valid ? "hit " + a.target.name : "no shot", one.score, many.score));
+                        }
+                    }
+                }
+            }
+        }
+        Console.WriteLine(string.Format("equivalence: {0} options checked, {1} mismatches", checks, bad));
+    }
+
+    /// <summary>
     /// AI A (Blue) against AI B (Red) on every generated map with even armies, A on each side in
     /// turn (the "-legacy-ai-left/right" files: equal line-ups; the left side moves first).
     /// 22 games. Prints each result and A's record.

@@ -48,6 +48,8 @@ public class AIPlayer : MonoBehaviour {
     readonly Dictionary<HexTile, Posture> postureMemory = new Dictionary<HexTile, Posture>();
     readonly HashSet<HexTile> assaultMemory = new HashSet<HexTile>();
     List<Objective> objectives = new List<Objective>();
+    /// <summary>This turn's group-plan steps (AIPlan), by unit, consumed as each unit acts.</summary>
+    readonly Dictionary<Unit, PlanStep> planned = new Dictionary<Unit, PlanStep>();
     Dictionary<Unit, Objective> assignments = new Dictionary<Unit, Objective>();
     bool turnPrepared;
 
@@ -175,6 +177,15 @@ public class AIPlayer : MonoBehaviour {
         queue = AIRoles.Order(actionable, map, Profile);
         map.ClearAnnotations();
         if (Profile.ghostSupply) PlanGhosts();
+        planned.Clear();
+        if (Profile.coordination) {
+            List<PlanStep> steps = AIPlan.Choose(map, Profile, Trace);
+            // Planned units act first, in plan order; everyone else keeps the usual order after them.
+            List<Unit> first = new List<Unit>();
+            foreach (PlanStep s in steps) if (s.unit != null && queue.Contains(s.unit) && !planned.ContainsKey(s.unit)) { planned[s.unit] = s; first.Add(s.unit); }
+            foreach (Unit u in first) queue.Remove(u);
+            queue.InsertRange(0, first);
+        }
         if (Trace != null) {
             Trace("   " + player.personal_name + " (this AI) reads the board: " + map.SupplyReport());
             string contact = "";
@@ -259,6 +270,19 @@ public class AIPlayer : MonoBehaviour {
         }
 
         if (unit.trasnporter != null) return AIAction.Wait(unit, "aboard transport");
+
+        PlanStep step;
+        if (planned.TryGetValue(unit, out step)) {
+            planned.Remove(unit);
+            if (AIPlan.StillValid(step, map)) {
+                string why = "group " + step.kind + ": " + step;
+                if (step.target != null && (step.stop == null || step.stop == unit.tile)) return AIAction.Strike(unit, step.target, 0f, why);
+                if (step.target != null) return AIAction.MoveStrike(unit, step.stop, step.target, 0f, why);
+                if (step.stop != null && step.stop != unit.tile) return AIAction.Move(unit, step.stop, 0f, why);
+                return AIAction.Wait(unit, why + " (hold)");
+            }
+            if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + ": planned step no longer possible (" + step + "); deciding alone");
+        }
 
         if (Transporting.IsTransport(unit) && unit.Firepower <= 1) {
             TransportPlan assignment;
