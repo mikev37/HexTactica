@@ -299,7 +299,7 @@ namespace HexTactica.AI {
             AIWorld.Cache cache = new AIWorld.Cache();
             float bestWorld = float.NegativeInfinity;
             foreach (Option o in options) {
-                o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null);
+                o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
                 // Buildings are not units, so the material count never sees a capture under way.
                 // Standing on an enemy building with a unit that can take it is worth what taking it
                 // is worth (the same values TryCapture uses), as long as the unit survives the reply.
