@@ -36,6 +36,14 @@ namespace HexTactica.AI {
         [Tooltip("Choose tiles in tiers, as the original AttackMove did: damage dealt, then damage received, then enemy movement and supply denied plus everything positional. Off: everything is added in gold.")]
         public bool tieredChoice = true;
 
+        [Tooltip("How tiered choice orders its tiers. 0: damage dealt, then damage received, then denial. 1: damage received first, then damage dealt. 2: simulate each option against the enemy's reply and keep the best resulting worlds (AIWorld), then denial and position.")]
+        [Range(0, 2)]
+        public int choiceMode = 0;
+
+        [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
+        [Range(0f, 6f)]
+        public float worldTie = 1f;
+
         [Tooltip("Tier 1: keep every option whose attack value is at least this fraction of the best. 1 = only the best shot; 0.5 = anything doing half as much, which leaves room for the later tiers.")]
         [Range(0f, 1f)]
         public float attackTie = 0.5f;

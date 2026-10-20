@@ -36,6 +36,7 @@ AI/AIStrategic.cs
 AI/AIObjectives.cs
 AI/AISpace.cs
 AI/AIDenial.cs
+AI/AIWorld.cs
 AI/AIExecutor.cs
 AI/Objectives/SupplyObjectives.cs
 Harness/Scenario.cs

@@ -221,12 +221,14 @@ public static class TerrainMaps {
     /// </summary>
     public static void RunSet() {
         int w = 0, l = 0, d = 0;
+        string only = Environment.GetEnvironmentVariable("MAPSET");
         foreach (Spec s in Maps) {
+            if (only != null && !("," + only + ",").Contains("," + s.name + ",")) continue;
             foreach (Matchups.Kind them in new[] { Matchups.Kind.Legacy, Matchups.Kind.Greedy }) {
                 foreach (bool meA in new[] { true, false }) Tally(Game(s, them, meA, 0), ref w, ref l, ref d);
             }
             foreach (bool meA in new[] { true, false }) Tally(Game(s, Matchups.Kind.Legacy, meA, meA ? 2 : 1), ref w, ref l, ref d);
-            Game(s, Matchups.Kind.Full, true, 0);
+            if (Environment.GetEnvironmentVariable("MIRROR") != "0") Game(s, Matchups.Kind.Full, true, 0);
         }
         Console.WriteLine(string.Format("TOTAL (excluding mirrors): {0}W {1}L {2}D", w, l, d));
     }
