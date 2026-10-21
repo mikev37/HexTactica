@@ -45,6 +45,7 @@ namespace HexTactica.AI {
             context.posture = posture;
 
             AIRole role = AIRoles.Classify(unit, profile);
+            if (role == AIRole.Wounded && profile.woundedNeedsSafety) return DecideWounded(unit, map, profile, posture);
             if (role == AIRole.Line && ShouldRotate(unit, map, profile)) role = AIRole.Wounded;
 
             switch (role) {
@@ -760,6 +761,43 @@ namespace HexTactica.AI {
         /// Withdrawal is up the supply gradient, because that is where healing is. Sorting
         /// by threat alone walks a unit into a quiet corner outside supply where it starves.
         /// </summary>
+        /// <summary>
+        /// A unit at or below withdrawStrength (woundedNeedsSafety on). It falls back only when the
+        /// withdraw tile both heals it (friendly supply) and is out of the enemy's reach next turn,
+        /// and fighting on is not worth more than that (the forecast's world score of its best
+        /// fighting move against that of the withdraw tile). Otherwise it fights as its type does.
+        /// </summary>
+        static AIAction DecideWounded(Unit unit, AIMap map, AIProfile profile, Posture posture) {
+            AIRole baseRole = AIRole.Line;
+            if (unit.AttackRange >= 2 && !unit.moveAndAttack) baseRole = AIRole.Artillery;
+            else if (unit.moveRange >= 6 && unit.Firepower <= 2) baseRole = AIRole.Recon;
+            Func<AIAction> fight = () => baseRole == AIRole.Artillery ? DecideArtillery(unit, map, profile, posture)
+                                       : baseRole == AIRole.Recon ? DecideRecon(unit, map, profile, posture)
+                                       : DecideLine(unit, map, profile, posture);
+            AIAction back = DecideWithdraw(unit, map, profile);
+            if (back.kind == AIActionKind.Attack) return back;      // the free kill
+            HexTile dest = back.destination ?? unit.tile;
+            bool heals = map.Heals(unit, dest);
+            bool safe = map.EnemyStrikeTurns(dest) > 1;
+            LastChosen = null;
+            AIAction f = fight();
+            AIWorld.Outcome fw = LastChosen;
+            if (profile.woundedSafetyGate && (!heals || !safe)) {
+                f.reason = "wounded, no safe supplied tile (" + (heals ? "" : "no supply") + (heals || safe ? "" : ", ") + (safe ? "" : "enemy reach") + "): " + f.reason;
+                return f;
+            }
+            if (fw != null) {
+                AIWorld.Outcome rw = AIWorld.Evaluate(unit, dest, default(AttackAppraisal), map, new AIWorld.Cache(), false, true);
+                if (fw.score > rw.score) {
+                    f.reason = "wounded, fighting worth more (" + fw.score.ToString("0") + " v withdraw " + rw.score.ToString("0") + "): " + f.reason;
+                    return f;
+                }
+                LastChosen = rw;
+                back.reason = "wounded, withdraw to safe supply (" + rw.score.ToString("0") + " v fight " + fw.score.ToString("0") + "): " + back.reason;
+            }
+            return back;
+        }
+
         static AIAction DecideWithdraw(Unit unit, AIMap map, AIProfile profile) {
 
             // A free kill is still a free kill, even at one strength.
