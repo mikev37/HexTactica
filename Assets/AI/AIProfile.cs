@@ -362,6 +362,9 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float assistWeight = 0.75f;
 
+        [Tooltip("Supply forecast: strength points of each enemy unit our move or kill puts out of supply (re-solving their network with our unit moved and any supply unit we destroy removed). Replaces the dependents price of their supply units' deaths.")]
+        public float supplyForecastValue = 0f;
+
         [Tooltip("Mutual cover, gold per tile: each tile next to one of our units that the enemy could step onto next turn counts + this if another of our units could strike it next turn, - this if none could.")]
         public float coverTileValue = 25f;
 

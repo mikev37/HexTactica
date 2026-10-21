@@ -51,6 +51,8 @@ namespace HexTactica.AI {
             public int gunCover;
             /// <summary>Tiles next to our units the enemy could step onto: covered by another of ours, or not.</summary>
             public int covered, exposed;
+            /// <summary>Enemy units our action puts out of supply (supplyForecastValue).</summary>
+            public int forcedOut;
             public float space;
             public readonly List<string> replies = new List<string>();
             /// <summary>Strength each of our units loses in the reply.</summary>
@@ -65,6 +67,7 @@ namespace HexTactica.AI {
                 if (hubs != 0f) sb.Append(" hubs ").Append(hubs.ToString("+0;-0"));
                 if (space != 0f) sb.Append(" space ").Append(space.ToString("+0;-0")).Append(" (").Append(ourSpace).Append('/').Append(theirSpace).Append(supplyCut > 0 ? " cut " + supplyCut : "").Append(enemyUnsupplied > 0 ? " unsupplied " + enemyUnsupplied : "").Append(')');
                 if (gunCover > 0) sb.Append(" covers ").Append(gunCover);
+                if (forcedOut > 0) sb.Append(" forced out of supply ").Append(forcedOut);
                 if (covered > 0 || exposed > 0) sb.Append(" mutual ").Append(covered).Append('/').Append(exposed);
                 if (healOwn != 0f || healEnemy != 0f) sb.Append(" heals +").Append(healOwn.ToString("0")).Append("/-").Append(healEnemy.ToString("0"));
                 if (ownStrike != 0f || enemyStrike != 0f) sb.Append(" strike +").Append(ownStrike.ToString("0")).Append("/-").Append(enemyStrike.ToString("0"));
@@ -342,7 +345,7 @@ namespace HexTactica.AI {
                 w.score += w.ownStrike - w.enemyStrike;
             }
 
-            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.artilleryCoverValue > 0f || prof.coverTileValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
+            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.artilleryCoverValue > 0f || prof.coverTileValue > 0f || prof.supplyForecastValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
             return w;
         }
 
@@ -391,6 +394,8 @@ namespace HexTactica.AI {
             if (prof.hubDependentsWeight > 0f) {
                 foreach (KeyValuePair<Unit, float> kv in hp) {
                     if (kv.Value > 0f || IsHQ(kv.Key) || kv.Key.GetComponent<SupplyPoint>() == null) continue;
+                    // With supplyForecastValue the enemy's loss is the supply forecast's (Space).
+                    if (kv.Key.owner != u.owner && prof.supplyForecastValue > 0f) continue;
                     float dep = map.HubStake(kv.Key) * prof.hubDependentsWeight;
                     if (kv.Key.owner == u.owner) w.hubs -= dep; else w.hubs += dep;
                 }
@@ -487,16 +492,37 @@ namespace HexTactica.AI {
             // anything: in or beside their supply. Supply is checked at the start of their turn,
             // before they move, so their units count where they stand now.
             SupplyNetwork.Result after = map.theirSupply;
-            if ((prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f) && moving && map.DistanceToTheirSupply(uAt) <= 1) {
+            // supplyForecastValue: also re-solved without an enemy supply unit our shot destroys.
+            Unit deadHub = null;
+            if (prof.supplyForecastValue > 0f)
+                foreach (Unit e in map.enemyUnits)
+                    if (e != null && hp.ContainsKey(e) && hp[e] <= 0f && !IsHQ(e) && e.GetComponent<SupplyPoint>() != null) deadHub = e;
+            bool near = moving && map.DistanceToTheirSupply(uAt) <= 1;
+            if ((prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.supplyForecastValue > 0f) && (near || deadHub != null)) {
                 Unit was = uAt.occupier;
-                from.occupier = null; uAt.occupier = u;
+                if (moving) { from.occupier = null; uAt.occupier = u; }
                 try {
                     after = new SupplyNetwork.Result();
-                    foreach (Player o in map.enemyPlayers)
-                        foreach (KeyValuePair<HexTile, int> kv in SupplyNetwork.SolveMoved(o, new Dictionary<SupplyPoint, HexTile>()).depth)
+                    foreach (Player o in map.enemyPlayers) {
+                        SupplyNetwork.Result r = deadHub != null && deadHub.owner == o
+                            ? SupplyNetwork.SolveWithout(o, deadHub.GetComponent<SupplyPoint>())
+                            : SupplyNetwork.SolveMoved(o, new Dictionary<SupplyPoint, HexTile>());
+                        foreach (KeyValuePair<HexTile, int> kv in r.depth)
                             if (kv.Value > after.DepthAt(kv.Key)) after.depth[kv.Key] = kv.Value;
+                    }
                     w.supplyCut = Mathf.Max(0, map.theirSupply.depth.Count - after.depth.Count);
-                } finally { uAt.occupier = was; from.occupier = u; }
+                } finally { if (moving) { uAt.occupier = was; from.occupier = u; } }
+                // Enemy units in supply now and out of it at the start of their turn (when supply
+                // is checked, before they move): forced to leave the fight or wither.
+                if (prof.supplyForecastValue > 0f) {
+                    foreach (Unit e in map.enemyUnits) {
+                        if (e == null || e.tile == null || e == deadHub || !hp.ContainsKey(e) || hp[e] <= 0f || IsHQ(e)) continue;
+                        if (map.theirSupply.DepthAt(e.tile) > 0 && after.DepthAt(e.tile) <= 0) {
+                            w.forcedOut++;
+                            w.score += prof.supplyForecastValue * Value(e);
+                        }
+                    }
+                }
             }
             foreach (Unit e in map.enemyUnits) {
                 if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f || IsHQ(e)) continue;
