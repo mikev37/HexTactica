@@ -11,7 +11,7 @@ set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ASSETS="$(cd "${1:-$HERE/../Assets}" && pwd)"
 command -v mcs >/dev/null || { echo "mcs not found: install mono-mcs"; exit 2; }
-for p in TempHQ Supplies Grunt Tank Artillery; do
+for p in Supplies Grunt Tank Artillery; do
   [ -f "$ASSETS/Units/$p.prefab" ] || { echo "Missing $ASSETS/Units/$p.prefab — run against your project's Assets folder."; exit 2; }
 done
 WORK=$(mktemp -d)

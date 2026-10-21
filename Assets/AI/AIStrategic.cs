@@ -109,7 +109,7 @@ namespace HexTactica.AI {
             Dictionary<HexTile, float> weight = new Dictionary<HexTile, float>();
             for (int i = 0; i < ranked.Count; i++) {
                 HexTile t = ranked[i];
-                int d = home != null ? t.Distance(home) : 0;
+                int d = home != null ? map.Travel(null, t, home) : 0;
                 weight[t] = map.Conflict(t) / (1f + d);
             }
 
@@ -137,7 +137,7 @@ namespace HexTactica.AI {
             if (home != null) {
                 bool covered = false;
                 for (int i = 0; i < fronts.Count; i++) {
-                    if (fronts[i].center != null && fronts[i].center.Distance(home) <= SUPPRESSION_RADIUS) {
+                    if (fronts[i].center != null && map.Travel(null, fronts[i].center, home) <= SUPPRESSION_RADIUS) {
                         covered = true;
                         break;
                     }
@@ -187,11 +187,11 @@ namespace HexTactica.AI {
             int turns = Mathf.Max(1, profile.frontReachTurns);
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
-                if (u.tile != null && CanArrive(u, f.center, turns)) f.ownStrength += CombatPower(u);
+                if (u.tile != null && CanArrive(u, f.center, turns, map)) f.ownStrength += CombatPower(u);
             }
             for (int i = 0; i < map.enemyUnits.Count; i++) {
                 Unit u = map.enemyUnits[i];
-                if (u.tile != null && CanArrive(u, f.center, turns)) f.enemyStrength += CombatPower(u);
+                if (u.tile != null && CanArrive(u, f.center, turns, map)) f.enemyStrength += CombatPower(u);
             }
 
             f.objective = NearestEnemyBuildingTo(f.center, map);
@@ -204,7 +204,7 @@ namespace HexTactica.AI {
             // any building, it is this front's objective; it cannot be captured, only destroyed.
             Unit hqUnit = NearestEnemyHQUnit(f.center, map);
             if (hqUnit != null && (f.objectiveTile == null ||
-                f.center.Distance(hqUnit.tile) < f.center.Distance(f.objectiveTile))) {
+                map.Travel(null, f.center, hqUnit.tile) < map.Travel(null, f.center, f.objectiveTile))) {
                 f.objective = null;
                 f.objectiveTile = hqUnit.tile;
                 f.objectiveIsHQ = true;
@@ -225,14 +225,15 @@ namespace HexTactica.AI {
 
             // "more buildings or HQs in a front, the more priority it has"
             if (f.objectiveTile != null) {
-                int d = f.center.Distance(f.objectiveTile);
+                int d = map.Travel(null, f.center, f.objectiveTile);
                 f.priority += (f.objectiveIsHQ ? 500f : 80f) / (1 + d);
             }
         }
 
         /// <summary>Can this unit bring its weapon to bear on <paramref name="at"/> within <paramref name="turns"/> turns (by hex distance)?</summary>
-        static bool CanArrive(Unit u, HexTile at, int turns) {
-            int d = u.tile.Distance(at);
+        static bool CanArrive(Unit u, HexTile at, int turns, AIMap map) {
+            // Over land to within weapon range of it: travel to the tile, less the reach of the gun.
+            int d = map.Travel(u, u.tile, at);
             int reach = u.moveRange * turns + u.AttackRange;
             return d <= reach;
         }
@@ -253,7 +254,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < map.enemyHubs.Count; i++) {
                 SupplyPoint sp = map.enemyHubs[i];
                 if (sp == null || !sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;
-                int d = from.Distance(sp.myUnit.tile);
+                int d = map.Travel(null, from, sp.myUnit.tile);
                 if (d < bestDistance) { best = sp.myUnit; bestDistance = d; }
             }
             return best;
@@ -265,7 +266,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < Building.all.Count; i++) {
                 Building b = Building.all[i];
                 if (b == null || b.tile == null || b.owner == map.player) continue;
-                int d = from.Distance(b.tile);
+                int d = map.Travel(null, from, b.tile);
                 if (d < bestDistance) { best = b; bestDistance = d; }
             }
             return best;
@@ -283,7 +284,7 @@ namespace HexTactica.AI {
                 for (int j = 0; j < fronts.Count; j++) {
                     Front f = fronts[j];
                     if (f.center == null) continue;
-                    float score = f.priority / (1f + u.tile.Distance(f.center));
+                    float score = f.priority / (1f + map.Travel(u, u.tile, f.center));
                     if (score > bestScore) { bestScore = score; best = f; }
                 }
                 if (best != null) best.assigned.Add(u);
@@ -339,7 +340,7 @@ namespace HexTactica.AI {
                 int turns = Mathf.Max(1, profile.frontReachTurns);
                 for (int i = 0; i < map.enemyUnits.Count; i++) {
                     Unit e = map.enemyUnits[i];
-                    if (e != null && e.tile != null && CanArrive(e, f.objectiveTile, turns)) defence += CombatPower(e);
+                    if (e != null && e.tile != null && CanArrive(e, f.objectiveTile, turns, map)) defence += CombatPower(e);
                 }
                 float own = 0f;
                 for (int i = 0; i < f.assigned.Count; i++) own += CombatPower(f.assigned[i]);
@@ -394,7 +395,7 @@ namespace HexTactica.AI {
                         if (u == null || u.tile == null || u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) continue;
                         float w = AIScore.Worth(u);
                         full += w * MAX_STRENGTH;
-                        if (u.Strength >= healthy && u.tile.Distance(staging) <= profile.stagingRadius) gathered += w * u.Strength;
+                        if (u.Strength >= healthy && map.Travel(u, u.tile, staging) <= profile.stagingRadius) gathered += w * u.Strength;
                         if (u.Strength > profile.withdrawStrength) committedPower += w * u.Strength;
                     }
                 }
@@ -421,7 +422,7 @@ namespace HexTactica.AI {
             int bestD = int.MaxValue;
             foreach (HexTile t in HexGenerator.hg.tiles) {
                 if (t == null || map.SupplyDepth(t) <= 0) continue;
-                int d = t.Distance(objective);
+                int d = map.Travel(null, t, objective);
                 if (d < bestD || (d == bestD && CombatMath.Precedes(t, best))) { best = t; bestD = d; }
             }
             return best;

@@ -44,7 +44,9 @@ namespace HexTactica.AI {
             context.objective = objective;
             context.posture = posture;
 
+            if (unit.airTanker) return AIAir.DecideTanker(unit, map);
             AIRole role = AIRoles.Classify(unit, profile);
+            if (role == AIRole.Wounded && profile.woundedNeedsSafety) return DecideWounded(unit, map, profile, posture);
             if (role == AIRole.Line && ShouldRotate(unit, map, profile)) role = AIRole.Wounded;
 
             switch (role) {
@@ -165,6 +167,10 @@ namespace HexTactica.AI {
             float worth = AIScore.Worth(unit);
             List<Option> options = new List<Option>();
             if (!stops.ContainsKey(unit.tile)) stops[unit.tile] = new KeyValuePair<float, HexTile>(float.NegativeInfinity, unit.tile);
+            // Aircraft and ships: only stops they can still get home from (bingo fuel). Nobody ends on a
+            // tile reserved for an aircraft's landing this turn.
+            AIAir.FilterSafe(unit, map, stops);
+            AIAir.FilterReserved(unit, map, stops);
             foreach (KeyValuePair<HexTile, KeyValuePair<float, HexTile>> kv in stops) {
                 HexTile s = kv.Key;
                 if (s != unit.tile && !AIPath.CanFinishTurnOn(unit, s)) continue;
@@ -309,24 +315,21 @@ namespace HexTactica.AI {
         /// <summary>The forecast of the option most recently chosen by the world-score decider (for diagnostics).</summary>
         public static AIWorld.Outcome LastChosen;
 
+        /// <summary>When set, the world-score decider adds every option it scored here (AICoordinator's first pass).</summary>
+        public static List<AICoordinator.Candidate> Capture;
+
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = new AIWorld.Cache();
             float bestWorld = float.NegativeInfinity;
             foreach (Option o in options) {
                 o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
-                // Buildings are not units, so the material count never sees a capture under way.
-                // Standing on an enemy building with a unit that can take it is worth what taking it
-                // is worth (the same values TryCapture uses), as long as the unit survives the reply.
-                Building b = o.stop.building;
-                if (b != null && b.owner != unit.owner && Building.CanCapture(unit)) {
-                    float lostThere;
-                    o.world.lost.TryGetValue(unit, out lostThere);
-                    if (lostThere < unit.Strength)
-                        o.world.score += b.IsHQ ? map.BoardStake * 0.5f : worth * 3f + b.income * 10f;
-                }
+                // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
+                // Runways and docks are kept clear for the aircraft and ships that land there.
+                o.world.score -= AIAir.RunwayBlockCost(unit, o.stop, map);
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
+            if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });
             // The tie margin: a fraction of a strength point, but never less than worldTieMin —
             // a quarter of a grunt's point (83) treated real differences as noise in reverse:
             // tiny ones decided everything.
@@ -575,12 +578,12 @@ namespace HexTactica.AI {
             // tie-breaker on top of everything else, evaluated last.
             Objective job;
             if (Assignments != null && Assignments.TryGetValue(unit, out job) && job.tile != null) {
-                bonus += worth * context.profile.assignmentPull / (1 + tile.Distance(job.tile));
+                bonus += worth * context.profile.assignmentPull / (1 + context.map.Travel(unit, tile, job.tile));
             }
 
             Front front = context.front;
             if (front != null && front.objectiveTile != null) {
-                int d = tile.Distance(front.objectiveTile);
+                int d = context.map.Travel(unit, tile, front.objectiveTile);
                 bool building = front.objective != null;
                 bool canTake = building && Building.CanCapture(unit);
 
@@ -607,9 +610,17 @@ namespace HexTactica.AI {
                 // (A tank parked on the enemy HQ for four turns while three rifles walked around it.)
                 if (building && !canTake && tile == front.objectiveTile) bonus -= worth * unit.Strength;
             }
+            // March: out of contact, every step over land toward the objective is worth the same, so
+            // the army walks up a long road to the edge of its supply instead of feeling a pull that
+            // fades to nothing with distance.
+            if (context.profile.marchWeight > 0f && front != null && front.objectiveTile != null && unit.tile != null
+                && unit.GetComponent<SupplyPoint>() == null && context.map.TurnsToContact(unit) > context.profile.objectiveContactTurns) {
+                int gained = context.map.Travel(unit, unit.tile, front.objectiveTile) - context.map.Travel(unit, tile, front.objectiveTile);
+                bonus += worth * context.profile.marchWeight * gained;
+            }
             // Regrouping for an attack: gather on the edge of our supply nearest the objective.
             if (front != null && front.staging && front.stagingTile != null) {
-                bonus += worth * context.profile.stagingPull / (1 + tile.Distance(front.stagingTile));
+                bonus += worth * context.profile.stagingPull / (1 + context.map.Travel(unit, tile, front.stagingTile));
             }
             return bonus;
         }
@@ -617,9 +628,6 @@ namespace HexTactica.AI {
         // -------------------------------------------------------------------- line
 
         static AIAction DecideLine(Unit unit, AIMap map, AIProfile profile, Posture posture) {
-
-            AIAction capture = TryCapture(unit, map, profile);
-            if (!capture.IsNothing) return capture;
 
             AttackAppraisal best = AITargeting.BestThisTurn(unit, map, profile, posture);
 
@@ -728,9 +736,6 @@ namespace HexTactica.AI {
 
         static AIAction DecideRecon(Unit unit, AIMap map, AIProfile profile, Posture posture) {
 
-            AIAction capture = TryCapture(unit, map, profile);
-            if (!capture.IsNothing) return capture;
-
             AttackAppraisal shot = AITargeting.BestThisTurn(unit, map, profile, posture);
             if (shot.valid && shot.outcome.damageToAttacker != 0) shot.valid = false;   // recon only takes free shots
 
@@ -760,6 +765,43 @@ namespace HexTactica.AI {
         /// Withdrawal is up the supply gradient, because that is where healing is. Sorting
         /// by threat alone walks a unit into a quiet corner outside supply where it starves.
         /// </summary>
+        /// <summary>
+        /// A unit at or below withdrawStrength (woundedNeedsSafety on). It falls back only when the
+        /// withdraw tile both heals it (friendly supply) and is out of the enemy's reach next turn,
+        /// and fighting on is not worth more than that (the forecast's world score of its best
+        /// fighting move against that of the withdraw tile). Otherwise it fights as its type does.
+        /// </summary>
+        static AIAction DecideWounded(Unit unit, AIMap map, AIProfile profile, Posture posture) {
+            AIRole baseRole = AIRole.Line;
+            if (unit.AttackRange >= 2 && !unit.moveAndAttack) baseRole = AIRole.Artillery;
+            else if (unit.moveRange >= 6 && unit.Firepower <= 2) baseRole = AIRole.Recon;
+            Func<AIAction> fight = () => baseRole == AIRole.Artillery ? DecideArtillery(unit, map, profile, posture)
+                                       : baseRole == AIRole.Recon ? DecideRecon(unit, map, profile, posture)
+                                       : DecideLine(unit, map, profile, posture);
+            AIAction back = DecideWithdraw(unit, map, profile);
+            if (back.kind == AIActionKind.Attack) return back;      // the free kill
+            HexTile dest = back.destination ?? unit.tile;
+            bool heals = map.Heals(unit, dest);
+            bool safe = map.EnemyStrikeTurns(dest) > 1;
+            LastChosen = null;
+            AIAction f = fight();
+            AIWorld.Outcome fw = LastChosen;
+            if (profile.woundedSafetyGate && (!heals || !safe)) {
+                f.reason = "wounded, no safe supplied tile (" + (heals ? "" : "no supply") + (heals || safe ? "" : ", ") + (safe ? "" : "enemy reach") + "): " + f.reason;
+                return f;
+            }
+            if (fw != null) {
+                AIWorld.Outcome rw = AIWorld.Evaluate(unit, dest, default(AttackAppraisal), map, new AIWorld.Cache(), false, true);
+                if (fw.score > rw.score) {
+                    f.reason = "wounded, fighting worth more (" + fw.score.ToString("0") + " v withdraw " + rw.score.ToString("0") + "): " + f.reason;
+                    return f;
+                }
+                LastChosen = rw;
+                back.reason = "wounded, withdraw to safe supply (" + rw.score.ToString("0") + " v fight " + fw.score.ToString("0") + "): " + back.reason;
+            }
+            return back;
+        }
+
         static AIAction DecideWithdraw(Unit unit, AIMap map, AIProfile profile) {
 
             // A free kill is still a free kill, even at one strength.
@@ -806,16 +848,5 @@ namespace HexTactica.AI {
             }, true, 1.5f, 0.02f, "transport");
         }
 
-        // ------------------------------------------------------------------ capture
-
-        static AIAction TryCapture(Unit unit, AIMap map, AIProfile profile) {
-            if (!Building.CanCapture(unit)) return AIAction.Wait(unit, "");
-            if (unit.tile == null || unit.tile.building == null) return AIAction.Wait(unit, "");
-            Building b = unit.tile.building;
-            if (b.owner == unit.owner) return AIAction.Wait(unit, "");
-
-            float worth = b.IsHQ ? 1e6f : AIScore.Worth(unit) * 3f + b.income * 10f;
-            return AIAction.Seize(unit, b, worth, b.IsHQ ? "capture HQ" : "capture building");
-        }
     }
 }

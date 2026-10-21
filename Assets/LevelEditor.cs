@@ -9,8 +9,10 @@ public class LevelEditor : MonoBehaviour
 {
     public TerrainData td;
     public static LevelEditor singleton;
-	public bool editing,unit_placement;
+	public bool editing,unit_placement,building_placement;
     public Unit ut;
+    [Tooltip("Building placed by clicking a tile while building_placement is on (owned by the active player)")]
+    public Building bt;
 
     public List<TerrainData> allTerrain;
     public List<Unit> allUnit;
@@ -98,6 +100,7 @@ public class LevelEditor : MonoBehaviour
         Debug.Log(json);
         //HexGenerator.hg.load()
         JSONObject obj = new JSONObject(json);
+        if (BuildingController.bc != null) BuildingController.bc.Clear();
         Debug.Log(obj.GetField("tiles"));
         HexTactica.Harness.ScenarioLoader.FloodWater();   // a save for a smaller board: the rest is water
         JSONObjectEnumerator numobj =
@@ -118,7 +121,6 @@ public class LevelEditor : MonoBehaviour
             long active_player = obj.GetField("active").longValue;
             GameController.gc.players.ForEach(pl => { if (pl.id == active_player) GameController.gc.activePlayer = pl; });
         }
-        if (BuildingController.bc != null) BuildingController.bc.Clear();
         if (obj.GetField("buildings")) {
             JSONObjectEnumerator numbuilding =
                 obj.GetField("buildings").GetEnumerator();
@@ -173,6 +175,20 @@ public class LevelEditor : MonoBehaviour
 
     internal static Unit PlaceNewUnit(Player p, Unit unit, HexTile t) {
         return UnitController.uc.CreateUnit(p, unit, t);
+    }
+
+    public static void PlaceNewBuilding(HexTile t) {
+        if (singleton.bt == null || BuildingController.bc == null) return;
+        if (t.building != null) {
+            // Clicking a building again removes it.
+            Building old = t.building;
+            old.Release();
+            BuildingController.bc.buildings.Remove(old);
+            Building.all.Remove(old);
+            GameObject.Destroy(old.gameObject);
+            return;
+        }
+        BuildingController.bc.Place(GameController.gc.activePlayer, singleton.bt, t);
     }
 
     public static void PlaceNewUnit(HexTile t) {

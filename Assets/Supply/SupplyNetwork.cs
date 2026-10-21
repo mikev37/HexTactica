@@ -28,6 +28,9 @@ public static class SupplyNetwork {
         /// <summary>Producers and every relay chained back to a producer or supply building.</summary>
         public readonly List<SupplyPoint> connectedHubs = new List<SupplyPoint>();
         public readonly List<SupplyPoint> strandedHubs = new List<SupplyPoint>();
+        /// <summary>Supply buildings relaying the network, and cut-off ones living off their store.</summary>
+        public readonly List<Building> connectedBuildings = new List<Building>();
+        public readonly List<Building> strandedBuildings = new List<Building>();
         public int mobileHubs;
 
         public int DepthAt(HexTile t) {
@@ -80,12 +83,26 @@ public static class SupplyNetwork {
         return Solve(player, false, null, null, null, false, moved);
     }
 
+    /// <summary>
+    /// The network made by our supply buildings, producers and only the hubs in
+    /// <paramref name="planned"/>, each standing where it says. For planning a chain of supply
+    /// units a link at a time (AISupplyChain). Not published.
+    /// </summary>
+    public static Result SolvePlanned(Player player, Dictionary<SupplyPoint, HexTile> planned) {
+        return Solve(player, false, null, null, null, false, planned, true);
+    }
+
     static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded) {
         return Solve(player, applyDrain, movedHub, hypotheticalTile, excluded, false, null);
     }
 
     static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded,
                         bool staticOnly, Dictionary<SupplyPoint, HexTile> moved) {
+        return Solve(player, applyDrain, movedHub, hypotheticalTile, excluded, staticOnly, moved, false);
+    }
+
+    static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded,
+                        bool staticOnly, Dictionary<SupplyPoint, HexTile> moved, bool onlyMoved) {
 
         Result result = new Result();
         if (player == null || HexGenerator.hg == null) return result;
@@ -94,11 +111,16 @@ public static class SupplyNetwork {
         Queue<SupplyPoint> pending = new Queue<SupplyPoint>();
         HashSet<SupplyPoint> activated = new HashSet<SupplyPoint>();
 
+        // The HQ is the root. Other supply buildings relay, like supply units (below).
+        List<Building> relayBuildings = new List<Building>();
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
-            if (b == null || b.owner != player || !b.HasSupplyToGive) continue;
-            FloodFromBuilding(b, result);
+            if (b == null || b.owner != player || !b.producesSupply || b.tile == null) continue;
+            if (b.IsHQ) FloodFromBuilding(b, result);
+            else relayBuildings.Add(b);
         }
+        relayBuildings.Sort((a, b) => CompareBuildings(a, b));
+        HashSet<Building> buildingsOn = new HashSet<Building>();
 
         // Gather this player's hubs, in a deterministic order.
         List<SupplyPoint> hubs = new List<SupplyPoint>();
@@ -106,7 +128,7 @@ public static class SupplyNetwork {
             Unit u = player.units[i];
             if (u == null) continue;
             SupplyPoint sp = u.GetComponent<SupplyPoint>();
-            if (sp != null && sp != excluded && (!staticOnly || sp.producer)) hubs.Add(sp);
+            if (sp != null && sp != excluded && (!staticOnly || sp.producer) && (!onlyMoved || sp.producer || moved.ContainsKey(sp))) hubs.Add(sp);
         }
         hubs.Sort((a, b) => StableId(a).CompareTo(StableId(b)));
         result.mobileHubs = 0;
@@ -138,12 +160,37 @@ public static class SupplyNetwork {
                 if (activated.Contains(hub)) continue;
                 HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
                 if (at == null) continue;
-                if (!result.IsSupplied(at)) continue;
+                if (IsNavalHub(hub)) {
+                    // A supply boat links to a friendly dock in supply, or to a linked supply boat,
+                    // over water within its range; it supplies only the land it borders.
+                    if (!NavalLinked(hub, at, player, result, activated, movedHub, hypotheticalTile, moved)) continue;
+                } else if (!result.IsSupplied(at)) continue;
 
                 activated.Add(hub);
                 result.connectedHubs.Add(hub);
                 FloodFromHub(hub, at, result);
                 progress = true;
+            }
+            for (int i = 0; i < relayBuildings.Count; i++) {
+                Building b = relayBuildings[i];
+                if (buildingsOn.Contains(b)) continue;
+                bool reached = false;
+                foreach (HexTile t in b.Footprint) if (result.IsSupplied(t)) { reached = true; break; }
+                if (!reached) continue;
+                buildingsOn.Add(b);
+                result.connectedBuildings.Add(b);
+                FloodFromBuilding(b, result);
+                progress = true;
+            }
+        }
+
+        // Cut-off supply buildings give out of their store while it lasts.
+        if (!staticOnly) {
+            for (int i = 0; i < relayBuildings.Count; i++) {
+                Building b = relayBuildings[i];
+                if (buildingsOn.Contains(b) || b.supplies <= 0) continue;
+                result.strandedBuildings.Add(b);
+                FloodFromBuilding(b, result);
             }
         }
 
@@ -158,7 +205,7 @@ public static class SupplyNetwork {
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null && !staticOnly && moved == null) HexGenerator.forAllTiles(t => {
+        if (excluded == null && !staticOnly && moved == null && !onlyMoved) HexGenerator.forAllTiles(t => {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });
@@ -175,6 +222,9 @@ public static class SupplyNetwork {
             for (int i = 0; i < result.connectedHubs.Count; i++) {
                 result.connectedHubs[i].connected = true;
             }
+            // A connected supply building charges its store; a cut-off one spends a turn of it.
+            for (int i = 0; i < result.connectedBuildings.Count; i++) result.connectedBuildings[i].Replenish(result.connectedBuildings[i].chargePerTurn);
+            for (int i = 0; i < result.strandedBuildings.Count; i++) result.strandedBuildings[i].SpendSupply(1);
         }
 
         return result;
@@ -200,12 +250,66 @@ public static class SupplyNetwork {
     /// </summary>
     static void FloodFromBuilding(Building b, Result result) {
         if (b.tile == null) return;
-        Flood(b.tile, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
+        foreach (HexTile t in b.Footprint) Flood(t, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
+    }
+
+    static bool IsNavalHub(SupplyPoint hub) {
+        return hub != null && hub.myUnit != null && !hub.producer && hub.myUnit.trasnporter == null && LocomotionRules.IsNaval(hub.myUnit.locomotion);
+    }
+
+    /// <summary>
+    /// Is the supply boat on <paramref name="at"/> linked: within its range over water (one step a
+    /// tile) of a dock of one of our naval yards that is itself in supply, or of a supply boat already
+    /// linked?
+    /// </summary>
+    static bool NavalLinked(SupplyPoint hub, HexTile at, Player owner, Result result, HashSet<SupplyPoint> activated,
+                            SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
+        HashSet<HexTile> linkedBoats = new HashSet<HexTile>();
+        foreach (SupplyPoint other in activated) {
+            if (other == hub || !IsNavalHub(other)) continue;
+            HexTile t = TileOf(other, movedHub, hypotheticalTile, moved);
+            if (t != null) linkedBoats.Add(t);
+        }
+        Dictionary<HexTile, int> cost = new Dictionary<HexTile, int> { { at, 0 } };
+        Queue<HexTile> q = new Queue<HexTile>();
+        q.Enqueue(at);
+        while (q.Count > 0) {
+            HexTile t = q.Dequeue();
+            if (t != at && linkedBoats.Contains(t)) return true;
+            Building b = t.building;
+            if (b != null && b.owner == owner && b.IsServiceTile(t)) {
+                foreach (HexTile f in b.Footprint) if (result.IsSupplied(f)) return true;
+            }
+            if (cost[t] >= hub.range) continue;
+            foreach (HexTile n in t.neighbors) {
+                if (n == null || n.terrain == null || cost.ContainsKey(n)) continue;
+                if (n.terrain.elevation >= 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;   // water (and docks) only
+                if (n.occupier != null && n.occupier.owner != owner) continue;
+                cost[n] = cost[t] + 1;
+                q.Enqueue(n);
+            }
+        }
+        return false;
+    }
+
+    static int CompareBuildings(Building a, Building b) {
+        int ka = a.tile != null ? (a.tile.x + 512) * 2048 + (a.tile.y + 512) : int.MaxValue;
+        int kb = b.tile != null ? (b.tile.x + 512) * 2048 + (b.tile.y + 512) : int.MaxValue;
+        return ka.CompareTo(kb);
     }
 
     static void FloodFromHub(SupplyPoint hub, HexTile origin, Result result) {
         Unit u = hub.myUnit;
         if (u == null) return;
+        if (IsNavalHub(hub)) {
+            // Not across water: onto the land beside it, a step shorter.
+            foreach (HexTile n in origin.neighbors) {
+                if (n == null || n.terrain == null || n.terrain.elevation < 0) continue;
+                if (n.occupier != null && n.occupier.owner != u.owner) continue;
+                Flood(n, hub.range - 1, u.terrainScramble, u.owner, Locomotion.Wheels, result);
+            }
+            return;
+        }
 
         int range = hub.range;
         int scramble = u.terrainScramble;
@@ -271,6 +375,8 @@ public static class SupplyNetwork {
 
                 // An enemy unit standing in the corridor severs it.
                 if (n.occupier != null && n.occupier.owner != owner) continue;
+                // Supply does not cross water over land (supply boats carry it; see FloodFromHub).
+                if (n.terrain.elevation < 0 && !LocomotionRules.IgnoresTerrain(loco) && !LocomotionRules.IsNaval(loco)) continue;
 
                 int step;
                 if (LocomotionRules.IgnoresTerrain(loco)) step = 1;

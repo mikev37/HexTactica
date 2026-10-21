@@ -94,10 +94,22 @@ public static class ScenarioFile {
             int z = -x - y;
             if (Math.Abs(z) > Board) continue;
             HexTile t = Rig.At(x, y);
-            string name = t != null && t.terrain != null ? t.terrain.name : "Water";
+            TerrainData under = t != null ? (t.building != null ? t.building.Underlying(t) : t.terrain) : null;
+            string name = under != null ? under.name : "Water";
             if (!f) sb.Append(',');
             f = false;
             sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"damage\":0,\"combatCount\":0,\"terrain\":\"{3}\"}}", x, y, z, name));
+        }
+        sb.Append("\n],\n\"buildings\":[");
+        f = true;
+        foreach (Building b in Rig.bc.buildings) {
+            if (b == null || b.tile == null) continue;
+            if (!f) sb.Append(',');
+            f = false;
+            long oid = b.owner == ai ? AI_ID : b.owner == other ? OTHER_ID : -1;
+            long cid = b.capturingPlayer == ai ? AI_ID : b.capturingPlayer == other ? OTHER_ID : -1;
+            sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"gameobject_name\":\"{3}\",\"personal_name\":\"{4}\",\"type\":{5},\"owner_id\":{6},\"income\":{7},\"producesSupply\":{8},\"supplyRange\":{9},\"supplies\":{10},\"suppliesMax\":{11},\"damageLevel\":0,\"capturePoints\":{12},\"capturingPlayerId\":{13}}}",
+                b.tile.x, b.tile.y, b.tile.z, b.name.Replace("(Clone)", ""), b.personal_name, (int)b.type, oid, b.income, b.producesSupply ? "true" : "false", b.supplyRange, b.supplies, b.suppliesMax, b.capturePoints, cid));
         }
         sb.Append("\n],\n\"units\":[");
         f = true;
@@ -108,8 +120,8 @@ public static class ScenarioFile {
                 if (!f) sb.Append(',');
                 f = false;
                 string prefab = u.name.Replace("(Clone)", "");
-                sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":0}}",
-                    u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab));
+                sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":0,\"refuelStockPlusOne\":{11}}}",
+                    u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab, u.refuelStock + 1));
             }
         }
         sb.Append("\n]\n}\n");
@@ -170,16 +182,35 @@ public static class ScenarioFile {
         Match w = Regex.Match(json, "\"width\"\\s*:\\s*(\\d+)");
         Board = w.Success ? int.Parse(w.Groups[1].Value) / 2 : 7;
         Rig.NewGame(Board);
+        List<HexTile> cities = new List<HexTile>();
         foreach (Dictionary<string, string> t in Array(json, "tiles")) {
             HexTile tile = Rig.hg.get(int.Parse(t["x"]), int.Parse(t["y"]), int.Parse(t["z"]));
-            if (tile != null) tile.terrain = Terrain(t["terrain"]);
+            if (tile == null) continue;
+            // City was a terrain; it is a building now (as the game's loader does).
+            if (t["terrain"] == "City") { tile.terrain = Terrain("Grassland"); cities.Add(tile); }
+            else tile.terrain = Terrain(t["terrain"]);
         }
         l.ai = Rig.AddPlayer("Blue", AI_ID);
         l.other = Rig.AddPlayer("Red", OTHER_ID);
+        foreach (Dictionary<string, string> b in Array(json, "buildings")) {
+            HexTile at = Rig.hg.get(int.Parse(b["x"]), int.Parse(b["y"]), int.Parse(b["z"]));
+            if (at == null || at.building != null) continue;
+            long oid = b.ContainsKey("owner_id") ? long.Parse(b["owner_id"]) : -1;
+            Player owner = oid == AI_ID ? l.ai : oid == OTHER_ID ? l.other : null;
+            Building made = Rig.PlaceBuilding(b["gameobject_name"].Replace("(Clone)", "").Trim(), owner, at.x, at.y);
+            int n;
+            if (b.ContainsKey("capturePoints") && int.TryParse(b["capturePoints"], out n) && (n > 0 || owner == null)) made.capturePoints = n;
+            if (b.ContainsKey("supplies") && int.TryParse(b["supplies"], out n)) made.supplies = n;
+            long cid = b.ContainsKey("capturingPlayerId") ? long.Parse(b["capturingPlayerId"]) : -1;
+            made.capturingPlayer = cid == AI_ID ? l.ai : cid == OTHER_ID ? l.other : null;
+        }
+        foreach (HexTile c in cities) if (c.building == null) Rig.PlaceBuilding("City", null, c.x, c.y);
         foreach (Dictionary<string, string> u in Array(json, "units")) {
             Player owner = long.Parse(u["owner_id"]) == AI_ID ? l.ai : l.other;
-            string prefab = u["gameobject_name"];
+            string prefab = u["gameobject_name"].Replace("(Clone)", "").Trim();
             HexTile at = Rig.hg.get(int.Parse(u["x"]), int.Parse(u["y"]), int.Parse(u["z"]));
+            // TempHQ is retired: an HQ unit in an older file becomes the HQ building.
+            if (prefab == "TempHQ") { if (at.building == null) Rig.PlaceBuilding("HQ", owner, at.x, at.y); continue; }
             Unit unit = Rig.Spawn(PrefabLoader.Load(prefab), owner, at.x, at.y);
             PrefabLoader.AttachHubIfAny(prefab, unit);
             int n;
@@ -187,6 +218,7 @@ public static class ScenarioFile {
             if (u.ContainsKey("supplies") && int.TryParse(u["supplies"], out n)) unit.supplies = n;
             if (u.ContainsKey("ammo") && int.TryParse(u["ammo"], out n)) unit.ammo = n;
             if (u.ContainsKey("fuel") && int.TryParse(u["fuel"], out n)) unit.fuel = n;
+            if (u.ContainsKey("refuelStockPlusOne") && int.TryParse(u["refuelStockPlusOne"], out n) && n > 0) unit.refuelStock = n - 1;
         }
 
         AIProfile profile = ScriptableObject.CreateInstance<AIProfile>();
@@ -205,6 +237,7 @@ public static class ScenarioFile {
 
         string rules = Environment.GetEnvironmentVariable("RULES") ?? l.meta.Get("rules", "standard");
         Rig.gc.rules = rules.ToLowerInvariant() == "attrition" ? RuleSet.Attrition : RuleSet.Standard;
+        Rig.gc.roundLimit = l.meta.GetInt("rounds", 30);
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
         return l;
@@ -225,7 +258,7 @@ public static class ScenarioFile {
     /// <summary>Material: strength times material worth, every unit.</summary>
     public static int Material(Player p) {
         float m = 0;
-        foreach (Unit u in p.units) if (u != null) m += u.Strength * AIScore.Worth(u);
+        foreach (Unit u in p.units) if (u != null) m += u.Strength * AIScore.Cost(u);
         return (int)m;
     }
 }

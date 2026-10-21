@@ -96,6 +96,34 @@ namespace HexTactica.AI {
         [Tooltip("The forecast's enemy weighs its own risk: an attack counts only if it is worth more than what our counterattack would cost the attacker on its firing tile (beyond what it risks staying put), times enemyCaution.")]
         public bool enemyWeighsRisk = true;
 
+        [Tooltip("Reply at full damage, so kills land where they really would, with the enemy focusing fire (assists counted as ours are); replyDiscount then applies to what that reply costs us, except unanswered ranged fire (artillery), which is certain.")]
+        public bool replyBreakpoints = true;
+
+        [Tooltip("Forecast a target our shot drives back from its retreat tile: the reply it fires from there, the tile it frees for our units' reach and cover.")]
+        public bool forecastKnockback = true;
+
+        [Header("Building values")]
+        [Tooltip("Score capturing buildings (and the enemy's infantry threat to ours) in the forecast")]
+        public bool forecastBuildings = true;
+        [Tooltip("What any building is worth to hold, in gold, before what it does")]
+        public float buildingValue = 3000f;
+        [Tooltip("Turns of a building's income counted in its worth")]
+        public float buildingIncomeTurns = 3f;
+        [Tooltip("Added to a building's worth if it supplies the area around it")]
+        public float buildingSupplyValue = 3000f;
+        [Tooltip("Added to a building's worth if units can be built at it")]
+        public float buildingProductionValue = 3000f;
+
+        [Tooltip("Gold against a unit of ours that does not land there ending its turn on our runway or dock tiles, while we have units that do")]
+        public float runwayBlockValue = 2000f;
+
+        [Header("Unit values")]
+        [Tooltip("What a grunt is worth to the AI, in gold for a full-strength unit (0 = its cost). Grunts block roads and screen beyond what they cost.")]
+        public float gruntWorth = 4000f;
+
+        [Tooltip("What a supply unit is worth to the AI as material (0 = its cost). What it keeps supplied is priced separately (hubDependentsWeight).")]
+        public float supplyWorth = 10000f;
+
         [Tooltip("How much the forecast's enemy minds being counterattacked (1 = at full value).")]
         [Range(0f, 3f)]
         public float enemyCaution = 1f;
@@ -237,6 +265,12 @@ namespace HexTactica.AI {
         [Range(0, 6)]
         public int withdrawStrength = 2;
 
+        [Tooltip("A unit at or below withdrawStrength withdraws only to a tile that heals it and the enemy cannot reach next turn, and only when fighting on is not worth more by the forecast; otherwise it fights.")]
+        public bool woundedNeedsSafety = false;
+
+        [Tooltip("With woundedNeedsSafety: off = skip the safe-and-supplied test and just compare fighting with withdrawing.")]
+        public bool woundedSafetyGate = true;
+
         [Tooltip("Pull toward a front's objective, as a fraction of the objective's value at distance zero, falling off as 1/(1+d).")]
         [Range(0f, 0.5f)]
         public float objectivePull = 0.01f;
@@ -327,6 +361,36 @@ namespace HexTactica.AI {
         [Tooltip("A group plan must beat 'stay' by this much (gold) in the forecast to be adopted.")]
         public float coordinationMargin = 500f;
 
+        [Tooltip("Coordinated strikes in passes (AICoordinator): each unit's best attacks, a survive move and a retreat; battle plans of two or more units on one target from non-conflicting tiles, forecast as one board; best plans act first.")]
+        public bool coordinationPasses = true;
+
+        [Tooltip("Attack options each unit keeps for battle plans.")]
+        public int coordOffensiveOptions = 3;
+
+        [Tooltip("Coordination: a unit whose chosen attack counted on an assist, with no battle plan committing the finisher, decides again without assist credit.")]
+        public bool coordNoAssist = true;
+
+        [Tooltip("Coordination: only plans that kill their target (and, as they run, can still kill it; otherwise the rest of the plan is dropped).")]
+        public bool coordKillsOnly = true;
+
+        [Tooltip("Coordination: after kill plans, cover swaps — a unit guarding a friend's approach versus the friend stepping to a safer tile, taken when acting together beats both units' own choices.")]
+        public bool coordCoverSwaps = false;
+
+        [Tooltip("Strategy measures distance as a ground unit travels it (over land, around water), not as the crow flies: the pull toward objectives and staging, the staging tile, which units can reach a front, turns to contact.")]
+        public bool travelDistance = true;
+
+        [Tooltip("Supply units form a chain along the road from the HQ toward the objective, moved rear to front so the chain never breaks (AISupplyChain).")]
+        public bool supplyChain = true;
+
+        [Tooltip("Buy a supply unit at the HQ when the chain cannot reach as far as the army needs it to.")]
+        public bool buySupply = true;
+
+        [Tooltip("March: a fighting unit out of contact gains this much of a strength's worth for each step over land it ends nearer its front's objective (linear, so it pulls from any distance; supply costs still keep it inside supply).")]
+        public float marchWeight = 0.05f;
+
+        [Tooltip("A battle plan is adopted only if its forecast beats its units acting alone by more than this (gold).")]
+        public float coordinationPassMargin = 0f;
+
         [Tooltip("Model retreats in the group-plan forecast: a defender driven back moves, and the tile it held opens.")]
         public bool coordinationRetreats = true;
 
@@ -345,6 +409,12 @@ namespace HexTactica.AI {
         [Tooltip("A hit our units still to act this turn could finish counts as this fraction of a kill (its reply removed, its material gone).")]
         [Range(0f, 1f)]
         public float assistWeight = 0.75f;
+
+        [Tooltip("Supply forecast: strength points of each enemy unit our move or kill puts out of supply (re-solving their network with our unit moved and any supply unit we destroy removed). Replaces the dependents price of their supply units' deaths.")]
+        public float supplyForecastValue = 0f;
+
+        [Tooltip("Mutual cover, gold per tile: each tile next to one of our units that the enemy could step onto next turn counts + this if another of our units could strike it next turn, - this if none could.")]
+        public float coverTileValue = 25f;
 
         [Tooltip("Artillery: gold per tile the enemy could move to next turn that the gun covers from where it ends its turn (its zone of control).")]
         public float artilleryCoverValue = 25f;
