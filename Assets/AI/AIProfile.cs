@@ -99,6 +99,9 @@ namespace HexTactica.AI {
         [Tooltip("Reply at full damage, so kills land where they really would, with the enemy focusing fire (assists counted as ours are); replyDiscount then applies to what that reply costs us, except unanswered ranged fire (artillery), which is certain.")]
         public bool replyBreakpoints = true;
 
+        [Tooltip("Forecast a target our shot drives back from its retreat tile: the reply it fires from there, the tile it frees for our units' reach and cover.")]
+        public bool forecastKnockback = true;
+
         [Header("Unit values")]
         [Tooltip("What a grunt is worth to the AI, in gold for a full-strength unit (0 = its cost). Grunts block roads and screen beyond what they cost.")]
         public float gruntWorth = 4000f;

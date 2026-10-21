@@ -88,8 +88,45 @@ namespace HexTactica.AI {
             return Evaluate(u, stop, shot, map, cache, narrate, false);
         }
 
+        /// <summary>The enemy unit our shot is forecast to drive back, while Evaluate runs (forecastKnockback).</summary>
+        static Unit knocked;
+        static HexTile knockedFrom;
+
         /// <param name="space">Also score space (AIProfile.spaceTileValue / spaceSupplyValue): used when choosing a move.</param>
         public static Outcome Evaluate(Unit u, HexTile stop, AttackAppraisal shot, AIMap map, Cache cache, bool narrate, bool space) {
+            // Knockback: a target that survives our shot and falls back is forecast from its retreat
+            // tile — the reply it fires from there, the tile it frees (for our reach and cover), the
+            // supply and space around where it ends up. Done by moving it on the board for the
+            // duration of the forecast.
+            Unit t = shot.valid ? shot.target : null;
+            HexTile rt = null, was = null;
+            if (map.profile.forecastKnockback && t != null && t.tile != null && t.moveRange > 0 && knocked == null
+                && shot.outcome.defenderRetreats && !shot.outcome.defenderPinned && !shot.outcome.defenderDies
+                && t.Strength - shot.outcome.damageToDefender > 0) {
+                Dictionary<Unit, float> alive = new Dictionary<Unit, float>();
+                foreach (Unit x in map.ownUnits) if (x != null && x.tile != null) alive[x] = x.Strength;
+                foreach (Unit x in map.enemyUnits) if (x != null && x.tile != null) alive[x] = x.Strength;
+                HashSet<HexTile> taken = new HashSet<HexTile>();
+                if (stop != null) taken.Add(stop);
+                rt = AIPlan.RetreatTile(t, t.tile, stop ?? u.tile, alive, taken);
+                if (rt != null && rt.occupier == null) {
+                    // Our units' reach is cached per board read: fill it before the board changes.
+                    foreach (Unit x in map.ownUnits) if (x != null && x.tile != null && x.active && x.moveAndAttack && x.Firepower > 0) map.ReachThisTurn(x);
+                    was = t.tile;
+                    was.occupier = null; rt.occupier = t; t.tile = rt;
+                    knocked = t; knockedFrom = was;
+                } else rt = null;
+            }
+            try {
+                Outcome w = EvaluateOnBoard(u, stop, shot, map, cache, narrate, space);
+                if (rt != null && narrate) w.replies.Insert(0, t.name + " driven back to (" + rt.x + "," + rt.y + ")");
+                return w;
+            } finally {
+                if (rt != null) { t.tile = was; rt.occupier = null; was.occupier = t; knocked = null; knockedFrom = null; }
+            }
+        }
+
+        static Outcome EvaluateOnBoard(Unit u, HexTile stop, AttackAppraisal shot, AIMap map, Cache cache, bool narrate, bool space) {
             Outcome w = new Outcome();
             Dictionary<Unit, float> hp = new Dictionary<Unit, float>();
             foreach (Unit x in map.ownUnits) if (x != null && x.tile != null) hp[x] = x.Strength;
@@ -143,6 +180,7 @@ namespace HexTactica.AI {
                 if (e.Firepower <= 0 || !e.CanAttack(e.tile)) continue;
                 bool near = e.moveAndAttack && (e.tile.Distance(uAt) <= e.moveRange + 1 || e.tile.Distance(from) <= e.moveRange + 1 || NearAny(e, gone, uAt));
                 HashSet<HexTile> p;
+                if (e == knocked) near = true;   // it stands somewhere else in this forecast
                 if (!near && cache.positions.TryGetValue(e, out p)) { positions[e] = p; continue; }
                 p = PositionsOnBoard(e, u, from, uAt, moving, stopWas, map.profile.forecastDeadBlock ? new HashSet<Unit>() : gone, ownSideBlocks: map.profile.forecastOwnSideBlocks);
                 positions[e] = p;
@@ -450,7 +488,9 @@ namespace HexTactica.AI {
             Dictionary<Unit, HashSet<HexTile>> fireOf = new Dictionary<Unit, HashSet<HexTile>>();
             foreach (Unit x in map.ownUnits) {
                 if (x == null || x.tile == null || !hp.ContainsKey(x) || hp[x] <= 0f || x.trasnporter != null) continue;
-                HashSet<HexTile>[] s = x == u ? AIMap.SpaceFrom(u, uAt, null) : map.SpaceOf(x);
+                // Near a unit driven back, reach is re-run on this board (the cached read is from before).
+                bool fresh = knocked != null && (x.tile.Distance(knockedFrom) <= x.moveRange + x.AttackRange + 1 || x.tile.Distance(knocked.tile) <= x.moveRange + x.AttackRange + 1);
+                HashSet<HexTile>[] s = x == u ? AIMap.SpaceFrom(u, uAt, null) : fresh ? AIMap.SpaceFrom(x, x.tile, null) : map.SpaceOf(x);
                 ourMove.UnionWith(s[0]);
                 ourStrike.UnionWith(s[1]);
                 if (x.Firepower > 0 && x.GetComponent<SupplyPoint>() == null) fireOf[x] = s[1];
