@@ -125,8 +125,39 @@ public class AIPlayer : MonoBehaviour {
             if (did) return true;
         }
 
+        BuySupply();
         EndTurn();
         return false;
+    }
+
+    /// <summary>The supply chain as planned at the start of this turn (profile.supplyChain).</summary>
+    AISupplyChain.Plan chainPlan;
+    public AISupplyChain.Plan CurrentChain { get { return chainPlan; } }
+    /// <summary>Called when the AI buys a unit: the unit and where.</summary>
+    public System.Action<Unit> onBuy;
+
+    /// <summary>
+    /// profile.buySupply: at the end of the turn, if the chain was stretched this turn (no link
+    /// could move up, and none was waiting on the army), buy a supply unit at our HQ when we can
+    /// afford one — never on a tile reserved for a landing.
+    /// </summary>
+    void BuySupply() {
+        if (!Profile.buySupply || chainPlan == null || !chainPlan.short_ || map == null) return;
+        Building hq = GameController.HQOf(player);
+        if (hq == null || BuildingController.bc == null || hq.buildable == null) return;
+        Unit pick = null;
+        foreach (Unit b in hq.buildable) {
+            if (b == null) continue;
+            SupplyPoint sp = b.GetComponent<SupplyPoint>();
+            if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion)) continue;
+            if (pick == null || b.cost < pick.cost) pick = b;
+        }
+        if (pick == null || player.money < pick.cost) { if (Trace != null) Trace("   no supply bought: " + (pick == null ? "the HQ builds none" : "money " + player.money + " of " + pick.cost)); return; }
+        AIMap m = map;
+        Unit made = BuildingController.bc.Produce(hq, pick, t => AIAir.MayBuildOn(t, m));
+        if (made == null) { if (Trace != null) Trace("   no supply bought: no free tile at the HQ"); return; }
+        if (onBuy != null) onBuy(made);
+        if (Trace != null) Trace("   " + player.personal_name + " buys " + pick.name.Replace("(Clone)", "") + " at the HQ: the supply chain is stretched (" + chainPlan + ")");
     }
 
     /// <summary>Forget the turn in progress and everything remembered between turns: a new board was loaded.</summary>
@@ -156,6 +187,9 @@ public class AIPlayer : MonoBehaviour {
         }
         for (int i = 0; i < stale.Count; i++) intents.Remove(stale[i]);
         fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
+        if (Trace != null) foreach (Front f in fronts)
+            Trace("   front " + f + (f.objectiveTile != null ? " objective (" + f.objectiveTile.x + "," + f.objectiveTile.y + ") value " + f.objectiveValue.ToString("0") : "")
+                  + (f.staging && f.stagingTile != null ? " staging at (" + f.stagingTile.x + "," + f.stagingTile.y + ")" : "") + ", " + f.assigned.Count + " units");
         objectives = AIObjectives.Build(map, Profile);
         assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
         objectivePulls += assignments.Count;
@@ -178,6 +212,21 @@ public class AIPlayer : MonoBehaviour {
 
         queue = AIRoles.Order(actionable, map, Profile);
         map.ClearAnnotations();
+        chainPlan = null;
+        if (Profile.supplyChain) {
+            chainPlan = AISupplyChain.Make(map, null);
+            if (Trace != null) Trace("   " + chainPlan);
+            map.chainTiles.Clear();
+            foreach (KeyValuePair<SupplyPoint, HexTile> kv in chainPlan.links) if (kv.Value != kv.Key.myUnit.tile) map.chainTiles[kv.Value] = kv.Key.myUnit;
+            // Supply units move after everyone else, rearmost first: the army clears the road and
+            // goes ahead, and each link moves up into the supply of the links behind it.
+            Dictionary<HexTile, int> toObj = chainPlan.objective != null ? map.LandSteps(chainPlan.objective) : null;
+            List<Unit> hubsLast = new List<Unit>();
+            foreach (Unit u in queue) { SupplyPoint sp = u.GetComponent<SupplyPoint>(); if (sp != null && !sp.producer) hubsLast.Add(u); }
+            System.Func<Unit, int> st = u => { int s; return toObj != null && u.tile != null && toObj.TryGetValue(u.tile, out s) ? s : int.MaxValue; };
+            hubsLast.Sort((a, b) => { int c = st(b).CompareTo(st(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+            foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
+        }
         if (Profile.ghostSupply) PlanGhosts();
         // Aircraft reserve their landings before anyone moves.
         map.landings = AIAir.PlanLandings(map);
@@ -226,6 +275,12 @@ public class AIPlayer : MonoBehaviour {
         for (int i = 0; i < map.ownHubs.Count; i++) {
             SupplyPoint hub = map.ownHubs[i];
             if (hub == null || hub.producer || hub.myUnit == null || !hub.myUnit.active) continue;
+            HexTile link;
+            if (chainPlan != null && chainPlan.links.TryGetValue(hub, out link)) {
+                map.SetGhost(hub, link);
+                if (onGhost != null) onGhost(hub.myUnit, link == hub.myUnit.tile ? null : link);
+                continue;
+            }
             AISupplyPlanner.Ghost = true;
             TransportPlan plan;
             try { plan = AISupplyPlanner.PlanHub(hub, map, Profile, new HashSet<Unit>(reservedTransports)); }
@@ -291,6 +346,19 @@ public class AIPlayer : MonoBehaviour {
             if (hub.producer) return AIAction.Wait(unit, "HQ holds");
             // The real move is planned on the real board: the ghost has served its purpose.
             map.ClearGhost(hub);
+
+            // A link of the supply chain: planned again now, with the supply units that have
+            // already moved where they are and the army where it went.
+            if (Profile.supplyChain && unit.trasnporter == null) {
+                List<Unit> moved = new List<Unit>();
+                foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
+                AISupplyChain.Plan now = AISupplyChain.Make(map, moved);
+                HexTile link;
+                if (now.links.TryGetValue(hub, out link)) {
+                    if (link == unit.tile) return AIAction.Wait(unit, "supply chain: holds this link");
+                    return AIAction.Move(unit, link, 0f, "supply chain: link moves up (supply " + now.reachSteps + " steps from the objective)");
+                }
+            }
 
             TransportPlan plan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
             if (plan == null && unit.trasnporter != null) plan = UnloadHere(unit);

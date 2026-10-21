@@ -578,12 +578,12 @@ namespace HexTactica.AI {
             // tie-breaker on top of everything else, evaluated last.
             Objective job;
             if (Assignments != null && Assignments.TryGetValue(unit, out job) && job.tile != null) {
-                bonus += worth * context.profile.assignmentPull / (1 + tile.Distance(job.tile));
+                bonus += worth * context.profile.assignmentPull / (1 + context.map.Travel(unit, tile, job.tile));
             }
 
             Front front = context.front;
             if (front != null && front.objectiveTile != null) {
-                int d = tile.Distance(front.objectiveTile);
+                int d = context.map.Travel(unit, tile, front.objectiveTile);
                 bool building = front.objective != null;
                 bool canTake = building && Building.CanCapture(unit);
 
@@ -610,9 +610,17 @@ namespace HexTactica.AI {
                 // (A tank parked on the enemy HQ for four turns while three rifles walked around it.)
                 if (building && !canTake && tile == front.objectiveTile) bonus -= worth * unit.Strength;
             }
+            // March: out of contact, every step over land toward the objective is worth the same, so
+            // the army walks up a long road to the edge of its supply instead of feeling a pull that
+            // fades to nothing with distance.
+            if (context.profile.marchWeight > 0f && front != null && front.objectiveTile != null && unit.tile != null
+                && unit.GetComponent<SupplyPoint>() == null && context.map.TurnsToContact(unit) > context.profile.objectiveContactTurns) {
+                int gained = context.map.Travel(unit, unit.tile, front.objectiveTile) - context.map.Travel(unit, tile, front.objectiveTile);
+                bonus += worth * context.profile.marchWeight * gained;
+            }
             // Regrouping for an attack: gather on the edge of our supply nearest the objective.
             if (front != null && front.staging && front.stagingTile != null) {
-                bonus += worth * context.profile.stagingPull / (1 + tile.Distance(front.stagingTile));
+                bonus += worth * context.profile.stagingPull / (1 + context.map.Travel(unit, tile, front.stagingTile));
             }
             return bonus;
         }

@@ -22,10 +22,13 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// May <paramref name="u"/> end this turn on <paramref name="t"/>? Not if another aircraft has
-        /// reserved it for this turn: the tile must be clear for its landing.
+        /// reserved it for this turn (the tile must be clear for its landing), nor if a link of the
+        /// supply chain is moving up to it (AISupplyChain).
         /// </summary>
         public static bool MayEndOn(Unit u, HexTile t, AIMap map) {
             if (u != null && u.trasnporter != null) return true;
+            Unit link;
+            if (t != null && map.chainTiles.TryGetValue(t, out link) && link != u) return false;
             if (map.landings == null || t == null) return true;
             foreach (Landing l in map.landings.Values) if (l.turn == 1 && l.tile == t && l.unit != u) return false;
             return true;
@@ -33,7 +36,7 @@ namespace HexTactica.AI {
 
         /// <summary>Remove the stops another aircraft has reserved for landing this turn (any unit; an aircraft parked there must lift off).</summary>
         public static void FilterReserved(Unit u, AIMap map, Dictionary<HexTile, KeyValuePair<float, HexTile>> stops) {
-            if (map.landings == null || map.landings.Count == 0) return;
+            if ((map.landings == null || map.landings.Count == 0) && map.chainTiles.Count == 0) return;
             foreach (HexTile s in new List<HexTile>(stops.Keys)) if (!MayEndOn(u, s, map)) stops.Remove(s);
         }
 

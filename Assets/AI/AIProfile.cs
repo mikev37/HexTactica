@@ -376,6 +376,18 @@ namespace HexTactica.AI {
         [Tooltip("Coordination: after kill plans, cover swaps — a unit guarding a friend's approach versus the friend stepping to a safer tile, taken when acting together beats both units' own choices.")]
         public bool coordCoverSwaps = false;
 
+        [Tooltip("Strategy measures distance as a ground unit travels it (over land, around water), not as the crow flies: the pull toward objectives and staging, the staging tile, which units can reach a front, turns to contact.")]
+        public bool travelDistance = true;
+
+        [Tooltip("Supply units form a chain along the road from the HQ toward the objective, moved rear to front so the chain never breaks (AISupplyChain).")]
+        public bool supplyChain = true;
+
+        [Tooltip("Buy a supply unit at the HQ when the chain cannot reach as far as the army needs it to.")]
+        public bool buySupply = true;
+
+        [Tooltip("March: a fighting unit out of contact gains this much of a strength's worth for each step over land it ends nearer its front's objective (linear, so it pulls from any distance; supply costs still keep it inside supply).")]
+        public float marchWeight = 0.05f;
+
         [Tooltip("A battle plan is adopted only if its forecast beats its units acting alone by more than this (gold).")]
         public float coordinationPassMargin = 0f;
 

@@ -53,4 +53,5 @@ Harness/LegacyAI.cs
 AI/AICoordinator.cs
 Buildings/BuildingMenu.cs
 AI/AIAir.cs
+AI/AISupplyChain.cs
 Units/TransportMenu.cs
