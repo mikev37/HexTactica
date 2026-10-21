@@ -55,6 +55,7 @@ namespace HexTactica.Harness {
 
             Unit.Attacked += OnAttack;
             Building.Captured += OnCapture;
+            Unit.Ditched += OnDitch;
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
             AIPlayer.Trace = Line;
@@ -73,6 +74,7 @@ namespace HexTactica.Harness {
             if (writer == null) return;
             Unit.Attacked -= OnAttack;
             Building.Captured -= OnCapture;
+            Unit.Ditched -= OnDitch;
             Unit.Finished -= OnFinished;
             GameController.TurnStarted -= OnTurnStarted;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
@@ -121,6 +123,11 @@ namespace HexTactica.Harness {
             if (u.tile != null && was != null && was != u.tile)
                 Line("   " + Who(u) + " moved " + D(was) + " -> " + D(u.tile));
             if (u.tile != null) lastSeen[u] = u.tile;
+        }
+
+        static void OnDitch(Unit u) {
+            if (writer == null || u == null) return;
+            Line("   " + Who(u) + " ditched at " + D(u.tile) + ": out of fuel");
         }
 
         static void OnCapture(Building b, Player side, int before, int after) {
@@ -203,6 +210,7 @@ namespace HexTactica.Harness {
                   .Append(D(u.tile)).Append('s').Append(u.Strength);
                 if (u.ammoMax > 0 && u.ammo < u.ammoMax) sb.Append('a').Append(u.ammo);
                 if (u.suppliesMax > 0 && u.supplies < u.suppliesMax) sb.Append('u').Append(u.supplies);
+                if (LocomotionRules.NeedsBase(u.locomotion) && u.fuelMax > 0) sb.Append('f').Append(u.fuel);
             }
             return sb.ToString();
         }

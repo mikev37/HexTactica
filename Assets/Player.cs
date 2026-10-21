@@ -47,8 +47,10 @@ public class Player : MonoBehaviour
 
             // On one of our buildings that services its kind (an airport, a naval yard): full service.
             if (Building.ServicingUnder(u) != null) { Resupplied(u, true); continue; }
-            // Aircraft and ships are resupplied only at their bases; ships live off what they carry.
-            if (LocomotionRules.NeedsBase(u.locomotion)) { Starve(u); continue; }
+            // Aircraft and ships take nothing from the supply network and do not starve: they run on
+            // fuel. Air units burn minFuelPerTurn every turn away from base (an air tanker beside
+            // them at the start of the turn fills them instead); out of fuel, they are ditched.
+            if (LocomotionRules.NeedsBase(u.locomotion)) { Aloft(u, roster); continue; }
 
             if (u.tile.isSupplied(this)) {
                 Resupplied(u, !selfSupplying.Contains(u));
@@ -71,6 +73,34 @@ public class Player : MonoBehaviour
         u.ammo = u.ammoMax;
         u.fuel = u.fuelMax;
         u.supplies = u.suppliesMax;
+    }
+
+    /// <summary>Upkeep of an aircraft or ship away from its base (see StartTurn).</summary>
+    void Aloft(Unit u, List<Unit> roster) {
+        if (LocomotionRules.IsAirborne(u.locomotion) && u.fuelMax > 0) {
+            Unit tanker = TankerBeside(u, roster);
+            if (tanker != null) {
+                u.fuel = u.fuelMax;
+                tanker.supplies = Mathf.Max(0, tanker.supplies - 1);
+            } else {
+                u.fuel = Mathf.Max(0, u.fuel - u.minFuelPerTurn);
+            }
+        }
+        if (u.fuelMax > 0 && u.fuel <= 0) {
+            unitsLostToAttrition++;
+            u.Ditch();
+        }
+    }
+
+    /// <summary>A friendly air tanker beside <paramref name="u"/> with supplies left to give.</summary>
+    static Unit TankerBeside(Unit u, List<Unit> roster) {
+        if (u.airTanker) return null;
+        for (int i = 0; i < roster.Count; i++) {
+            Unit t = roster[i];
+            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
+            if (u.tile.neighbors.Contains(t.tile)) return t;
+        }
+        return null;
     }
 
     /// <summary>

@@ -267,8 +267,25 @@ public static class Scenarios {
              "A Blue FOB inside the HQ's supply charges 1 a turn; cut off (the HQ lost), it supplies its area for as many turns as it stored, then stops.");
         make("rule-production", "production", (a, o) => { },
              "Blue's HQ builds a Grunt for 2000 of 3000: it appears on the HQ, spent for the turn, money 1000.");
-        make("rule-base-service", "service", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", a, -4, 1); Put("Grunt", a, -3, 2); },
-             "A unit that needs a base (made an aircraft for the test) is resupplied only on an airport: in supply elsewhere it uses up its supplies.");
+        // Air and sea (attrition: these do not test capture).
+        Action<int, int, int, int> water = (x0, x1, y0, y1) => { for (int x = x0; x <= x1; x++) for (int y = y0; y <= y1; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Water"); } };
+        make("attrition-rule-air-fuel", "attritionAirFuel", (a, o) => { Unit f = Put("Fighter", a, -4, 1); f.fuel = 5; f.Strength = 4; Put("Grunt", o, 4, 0); },
+             "A Fighter (fuel 5, burns 3 a turn) inside the HQ's supply but off any airport: not healed or refuelled, 2 fuel after a turn, ditched the next.");
+        make("attrition-rule-air-base", "attritionAirBase", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Unit f = Put("Fighter", a, -3, 3); f.fuel = 2; f.Strength = 4; Put("Grunt", o, 4, 0); },
+             "A Fighter on its own airport's runway (fuel 2, strength 4) is refuelled to 14 and healed to 5.");
+        make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit t = Put("AirTanker", a, 1, 0); t.supplies = 1; Put("Grunt", o, 5, 0); },
+             "A Fighter starting its turn beside an air tanker with 1 supply is refuelled (tanker 0); the next turn the tanker is empty and the fighter burns 3.");
+        make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
+             "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
+        make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
+             "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
+        make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
+                 water(-2, 1, -7, 7);
+                 Rig.PlaceBuilding("NavalYard", a, -3, 0);
+                 Put("SupplyBoat", a, -1, 0); Put("SupplyBoat", a, 1, 0); Put("Grunt", a, 3, 0); Put("Grunt", o, 4, 3); },
+             "A strait four tiles wide: the HQ's supply stops at the water. Two supply boats link from the naval yard's dock (in supply) to each other, and the far one supplies the island it borders. With the far boat moved out to sea, the island grunt is not supplied.");
+        make("attrition-rule-amphibious", "attritionAmphibious", (a, o) => { water(-1, 2, -7, 7); Put("Marine", a, -2, 1); Put("Grunt", a, -2, 2); Put("Grunt", o, 5, 0); },
+             "A Marine can enter water beside land but not open water away from it; a Grunt cannot enter water.");
         return n;
     }
 
@@ -358,13 +375,71 @@ public static class Scenarios {
                 detail = made == null ? "nothing built" : "built " + made.name + " on " + Pos(made.tile) + ", active " + made.active + ", money " + a.money;
                 return made != null && made.tile == hq.tile && !made.active && a.money == 1000;
             }
-            case "service": {
-                Unit away = Rig.At(-4, 1).occupier, onBase = Rig.At(-3, 2).occupier;
-                away.locomotion = Locomotion.Aircraft; onBase.locomotion = Locomotion.Aircraft;
-                away.supplies = 3; onBase.supplies = 1; onBase.Strength = 4;
+            case "service":
+                detail = "SKIP: obsolete file (aircraft no longer use supplies); replaced by attrition-rule-air-*; yours to delete";
+                return true;
+            case "attritionAirFuel": {
+                Unit f = Rig.At(-4, 1).occupier;
+                int ditched = 0; Action<Unit> hook = u => ditched++;
+                Unit.Ditched += hook;
+                try {
+                    endTurn(); endTurn();
+                    string first = "fuel " + f.fuel + ", strength " + f.Strength + ", supplies " + f.supplies;
+                    bool ok1 = f.fuel == 2 && f.Strength == 4 && f.tile != null;
+                    endTurn(); endTurn();
+                    detail = "after a turn " + first + "; after two " + (f.tile == null ? "gone, ditched " + ditched : "still flying, fuel " + f.fuel);
+                    return ok1 && f.tile == null && ditched == 1;
+                } finally { Unit.Ditched -= hook; }
+            }
+            case "attritionAirBase": {
+                Unit f = Rig.At(-3, 3).occupier;
                 endTurn(); endTurn();
-                detail = "away from the airport supplies " + away.supplies + "; on it supplies " + onBase.supplies + ", strength " + onBase.Strength;
-                return away.supplies == 2 && onBase.supplies == onBase.suppliesMax && onBase.Strength == 5;
+                detail = "on the runway (" + (Rig.At(-3, 3).building != null && Rig.At(-3, 3).building.IsServiceTile(Rig.At(-3, 3)) ? "runway tile" : "not a runway") + "): fuel " + f.fuel + ", strength " + f.Strength;
+                return f.fuel == f.fuelMax && f.Strength == 5;
+            }
+            case "attritionTanker": {
+                Unit f = Rig.At(0, 0).occupier, t = Rig.At(1, 0).occupier;
+                endTurn(); endTurn();
+                string first = "fighter fuel " + f.fuel + ", tanker supplies " + t.supplies;
+                bool ok1 = f.fuel == f.fuelMax && t.supplies == 0;
+                endTurn(); endTurn();
+                detail = "after a turn " + first + "; after two fighter fuel " + f.fuel;
+                return ok1 && f.fuel == f.fuelMax - f.minFuelPerTurn;
+            }
+            case "attritionShip": {
+                Unit away = Rig.At(1, 2).occupier, dock = Rig.At(-1, 0).occupier;
+                int before = away.fuel;
+                endTurn(); endTurn();
+                int idle = away.fuel;
+                away.TeleportTo(Rig.At(1, 5), 3);
+                endTurn(); endTurn();
+                detail = "away from port: fuel " + before + " -> " + idle + " idle, " + away.fuel + " after 3 tiles, strength " + away.Strength + "; on the dock: strength " + dock.Strength + ", fuel " + dock.fuel;
+                return idle == before && away.fuel == before - 3 && away.Strength == 6 && dock.Strength == 5 && dock.fuel == dock.fuelMax;
+            }
+            case "runwayNoCapture": {
+                Building ap = Rig.At(-3, 2).building;
+                endTurn(); endTurn();
+                detail = "Red grunt on a runway tile: " + show(ap);
+                return ap.owner == a && ap.capturePoints == ap.CaptureThreshold;
+            }
+            case "attritionBoats": {
+                Unit g = Rig.At(3, 0).occupier, far = Rig.At(1, 0).occupier;
+                SupplyNetwork.Result with = SupplyNetwork.Solve(a, false);
+                bool withBoats = with.IsSupplied(g.tile);
+                int linked = with.connectedHubs.Count;
+                far.TeleportTo(Rig.At(0, 6), 0);
+                SupplyNetwork.Result without = SupplyNetwork.Solve(a, false);
+                bool withoutFar = without.IsSupplied(g.tile);
+                bool yardSupplied = with.IsSupplied(Rig.At(-3, 0));
+                detail = "naval yard in supply " + yardSupplied + "; island grunt supplied with both boats " + withBoats + ", without the far one " + withoutFar
+                         + "; boats linked " + with.connectedHubs.Count;
+                return yardSupplied && withBoats && !withoutFar && linked == 2;
+            }
+            case "attritionAmphibious": {
+                Unit m = Rig.At(-2, 1).occupier, g = Rig.At(-2, 2).occupier;
+                HexTile coast = Rig.At(-1, 1), open = Rig.At(0, 1);
+                detail = "Marine: coastal water " + m.CanEnter(coast) + ", open water " + m.CanEnter(open) + "; Grunt: coastal water " + g.CanEnter(coast);
+                return m.CanEnter(coast) && !m.CanEnter(open) && !g.CanEnter(coast);
             }
         }
         detail = "unknown check";
@@ -483,7 +558,7 @@ public static class Scenarios {
 
     /// <summary>Regenerate every scenario file.</summary>
     public static void Export() {
-        if (Directory.Exists(Dir)) foreach (string f in Directory.GetFiles(Dir, "*.dat")) if (!Path.GetFileName(f).StartsWith("gauntlet-bridge")) File.Delete(f);
+        // Files are written over, never deleted: a scenario that is no longer generated stays until you remove it.
         int n = 0;
 
         // ---- matchups: each generated map, AI on either side, three line-ups.
@@ -565,6 +640,27 @@ public static class Scenarios {
                 ai, other, ai);
             n++;
         }
+        // ---- air and sea (attrition, Red passive: these test the AI's own logistics).
+        Action<string, string, Action<Player, Player>, int, string> air = (name, check, setup, rounds, question) => {
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0); Put("Grunt", other, 5, 1);
+            setup(ai, other);
+            Dictionary<string, string> test = Test(name, "behaviour", "Human", rounds, check, question);
+            test["rules"] = "attrition";
+            ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
+            n++;
+        };
+        Action<int, int> sea = (x0, x1) => { for (int x = x0; x <= x1; x++) for (int y = -7; y <= 7; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Water"); } };
+        air("fighter-comes-home", "fighterHome", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 2, -2); f.fuel = 11; Put("Grunt", a, -5, 0); }, 4,
+            "A Fighter 6 tiles from its airport with 11 fuel (7 a turn's flying, 3 burnt each turn away): it has to come home now, and should never be ditched.");
+        air("keep-the-runway-clear", "runwayClear", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 8; Put("Grunt", a, -4, 3); Put("Grunt", a, -5, 3); Put("Grunt", a, -3, 3); }, 1,
+            "Our grunts are parked on all three runway tiles and a Fighter low on fuel needs one: the grunts should leave the runway.");
+        air("tanker-meets-fighter", "tankerMeets", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 1, -1); f.fuel = 9; Put("AirTanker", a, -3, 0); Put("Grunt", a, -5, 0); }, 1,
+            "An air tanker (3 supplies) and a Fighter that is short of fuel: the tanker should end its turn beside the fighter.");
+        air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); Put("SupplyBoat", a, -2, 0); Put("SupplyBoat", a, -2, -1); Put("Grunt", a, 3, 0); Put("Grunt", a, -4, 1); }, 3,
+            "A Blue grunt stranded on an island across a four-tile strait; two supply boats at the naval yard's docks. Within three turns the boats should link up and supply the island.");
+
         {   // Infantry next to a neutral city with nothing in the way should step onto it and capture.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
@@ -674,6 +770,56 @@ public static class Scenarios {
                 detail = "enemy supply unit " + (hub == null || hub.tile == null ? "destroyed" : "at s" + hub.Strength);
                 return hub == null || hub.tile == null || hub.Strength < 6;
             }
+            case "fighterHome": {
+                Unit f = First(l.ai, "Fighter");
+                int ditched = 0; Action<Unit> hook = u => { if (u == f) ditched++; };
+                Unit.Ditched += hook;
+                List<string> trail = new List<string>();
+                try {
+                    for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) {
+                        bool blue = gc.activePlayer == l.ai;
+                        ScenarioFile.PlayTurn();
+                        if (blue && f.tile != null) trail.Add(Pos(f.tile) + " fuel " + f.fuel);
+                    }
+                } finally { Unit.Ditched -= hook; }
+                bool home = f.tile != null && f.tile.building != null && f.tile.building.Services(f);
+                detail = (ditched > 0 ? "DITCHED; " : "") + string.Join(" -> ", trail.ToArray()) + (home ? " (on base)" : "");
+                return ditched == 0 && f.tile != null;
+            }
+            case "runwayClear": {
+                Building ap = Rig.At(-4, 2).building;
+                ScenarioFile.PlayTurn();
+                int blocked = 0;
+                foreach (HexTile t in ap.runway) if (t.occupier != null && !AIAir.NeedsBase(t.occupier)) blocked++;
+                Unit f = First(l.ai, "Fighter");
+                detail = blocked + " runway tiles still blocked by grunts; fighter at " + (f != null && f.tile != null ? Pos(f.tile) + " fuel " + f.fuel : "gone");
+                return blocked < ap.runway.Count;
+            }
+            case "tankerMeets": {
+                Unit t = First(l.ai, "AirTanker"), f = First(l.ai, "Fighter");
+                ScenarioFile.PlayTurn();
+                bool beside = t.tile != null && f.tile != null && t.tile.neighbors.Contains(f.tile);
+                detail = "tanker at " + Pos(t.tile) + ", fighter at " + Pos(f.tile) + " fuel " + f.fuel + (beside ? ": beside" : ": not beside");
+                return beside;
+            }
+            case "boatsIsland": {
+                Unit g = Rig.At(3, 0).occupier;
+                List<string> trail = new List<string>();
+                bool ok = false;
+                for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) {
+                    bool blue = gc.activePlayer == l.ai;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    SupplyNetwork.Result res = SupplyNetwork.Solve(l.ai, false);
+                    string boats = "";
+                    foreach (Unit u in l.ai.units) if (u != null && u.name == "SupplyBoat" && u.tile != null) boats += " " + Pos(u.tile) + (res.connectedHubs.Contains(u.GetComponent<SupplyPoint>()) ? "+" : "-");
+                    bool sup = g.tile != null && res.IsSupplied(g.tile);
+                    trail.Add("boats" + boats + (sup ? ", island supplied" : ""));
+                    if (sup) ok = true;
+                }
+                detail = string.Join(" | ", trail.ToArray());
+                return ok;
+            }
             case "capturesCity": {
                 Building city = Rig.At(-1, 0).building;
                 ScenarioFile.PlayTurn();
@@ -766,13 +912,16 @@ public static class Scenarios {
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             bool ok = RuleCheck(l, out detail);
-            if (ok) passed++; else failed++;
-            Console.WriteLine(string.Format("  {0}  {1,-24} {2}", ok ? "PASS" : "FAIL", l.meta.Name, detail));
+            bool skip = detail.StartsWith("SKIP");
+            if (skip) { } else if (ok) passed++; else failed++;
+            Console.WriteLine(string.Format("  {0}  {1,-24} {2}", skip ? "SKIP" : ok ? "PASS" : "FAIL", l.meta.Name, skip ? detail.Substring(6) : detail));
         }
         Console.WriteLine();
-        Console.WriteLine("== Matchups (generated terrain maps) ==");
+        // The matchup, large and campaign files play the Legacy and Greedy baselines, which know
+        // nothing of buildings, aircraft or ships: run them only on request (ONLY=match|large|campaign).
+        Console.WriteLine("== Matchups (generated terrain maps; baseline opponents, ONLY=match to run) ==");
         int w = 0, lo = 0, d = 0;
-        foreach (string f in Files(only == null || only == "match" ? "match" : "-")) {
+        foreach (string f in Files(only == "match" ? "match" : "-")) {
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             Judge(l, out detail);
@@ -781,7 +930,7 @@ public static class Scenarios {
         }
         Console.WriteLine(string.Format("  matchups: {0}W {1}L {2}D", w, lo, d));
         foreach (string kind in new[] { "large", "campaign" }) {
-            if (only != null && only != kind) continue;
+            if (only != kind) continue;
             Console.WriteLine();
             Console.WriteLine(kind == "large" ? "== Large boards (radius 7, twelve a side) ==" : "== Campaign boards (radius 13, sixteen a side) ==");
             int lw = 0, ll = 0, ld = 0;
@@ -1000,6 +1149,10 @@ public static class Scenarios {
                             bad++;
                             if (bad <= 10) Console.WriteLine(string.Format("  {0}: {1} at {2} {3}: single {4:0} vs plan {5:0}", Path.GetFileNameWithoutExtension(f), u.name, D(s),
                                 a.valid ? "hit " + a.target.name : "no shot", one.score, many.score));
+                            if (bad <= 3) {
+                                Console.WriteLine("     single: " + AIWorld.Evaluate(u, s, a, map, new AIWorld.Cache(), true, false).Summary());
+                                Console.WriteLine("     plan:   " + AIPlan.Evaluate(new List<PlanStep> { step }, map, true, false).Summary());
+                            }
                         }
                     }
                 }

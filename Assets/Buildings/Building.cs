@@ -67,7 +67,12 @@ public class Building : MonoBehaviour {
     public List<TileOffset> footprint = new List<TileOffset>();
     [Tooltip("The ground of every tile it covers: cover, movement cost and floor sprites. Empty keeps the terrain.")]
     public TerrainData ground;
+    [Tooltip("Runway or dock tiles, relative to the anchor: they service units like the building, but are not part of it for capture")]
+    public List<TileOffset> serviceTiles = new List<TileOffset>();
+    [Tooltip("The ground of the runway or dock tiles (a runway: road). Empty keeps the terrain (docks stay water).")]
+    public TerrainData serviceGround;
     [NonSerialized] public List<HexTile> tiles = new List<HexTile>();
+    [NonSerialized] public List<HexTile> runway = new List<HexTile>();
     readonly Dictionary<HexTile, TerrainData> underlying = new Dictionary<HexTile, TerrainData>();
 
     [Header("Render")]
@@ -197,6 +202,17 @@ public class Building : MonoBehaviour {
             underlying[t] = t.terrain;
             if (ground != null) SetGround(t, ground);
         }
+        runway.Clear();
+        if (serviceTiles != null && HexGenerator.hg != null) {
+            foreach (TileOffset o in serviceTiles) {
+                HexTile t = HexGenerator.hg.get(anchor.x + o.x, anchor.y + o.y, anchor.z - o.x - o.y);
+                if (t == null || tiles.Contains(t) || runway.Contains(t) || (t.building != null && t.building != this)) continue;
+                runway.Add(t);
+                t.building = this;
+                underlying[t] = t.terrain;
+                if (serviceGround != null) SetGround(t, serviceGround);
+            }
+        }
         if (owner != null && capturePoints <= 0) capturePoints = CaptureThreshold;
     }
 
@@ -205,9 +221,19 @@ public class Building : MonoBehaviour {
         foreach (KeyValuePair<HexTile, TerrainData> kv in underlying) {
             if (kv.Key == null) continue;
             if (kv.Key.building == this) kv.Key.building = null;
-            if (ground != null && kv.Value != null) SetGround(kv.Key, kv.Value);
+            if (kv.Value != null && kv.Key.terrain != kv.Value) SetGround(kv.Key, kv.Value);
         }
         underlying.Clear();
+        runway.Clear();
+    }
+
+    /// <summary>Is <paramref name="t"/> one of its runway or dock tiles (not part of it for capture)?</summary>
+    public bool IsServiceTile(HexTile t) { return runway.Contains(t); }
+
+    /// <summary>Its tiles where units are serviced: the building and its runways or docks.</summary>
+    public IEnumerable<HexTile> ServiceTiles() {
+        foreach (HexTile t in Footprint) yield return t;
+        foreach (HexTile t in runway) yield return t;
     }
 
     /// <summary>The terrain under the building on <paramref name="t"/> (what a save records).</summary>

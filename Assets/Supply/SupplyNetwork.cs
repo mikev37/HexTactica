@@ -146,7 +146,11 @@ public static class SupplyNetwork {
                 if (activated.Contains(hub)) continue;
                 HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
                 if (at == null) continue;
-                if (!result.IsSupplied(at)) continue;
+                if (IsNavalHub(hub)) {
+                    // A supply boat links to a friendly dock in supply, or to a linked supply boat,
+                    // over water within its range; it supplies only the land it borders.
+                    if (!NavalLinked(hub, at, player, result, activated, movedHub, hypotheticalTile, moved)) continue;
+                } else if (!result.IsSupplied(at)) continue;
 
                 activated.Add(hub);
                 result.connectedHubs.Add(hub);
@@ -235,6 +239,45 @@ public static class SupplyNetwork {
         foreach (HexTile t in b.Footprint) Flood(t, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
     }
 
+    static bool IsNavalHub(SupplyPoint hub) {
+        return hub != null && hub.myUnit != null && !hub.producer && hub.myUnit.trasnporter == null && LocomotionRules.IsNaval(hub.myUnit.locomotion);
+    }
+
+    /// <summary>
+    /// Is the supply boat on <paramref name="at"/> linked: within its range over water (one step a
+    /// tile) of a dock of one of our naval yards that is itself in supply, or of a supply boat already
+    /// linked?
+    /// </summary>
+    static bool NavalLinked(SupplyPoint hub, HexTile at, Player owner, Result result, HashSet<SupplyPoint> activated,
+                            SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
+        HashSet<HexTile> linkedBoats = new HashSet<HexTile>();
+        foreach (SupplyPoint other in activated) {
+            if (other == hub || !IsNavalHub(other)) continue;
+            HexTile t = TileOf(other, movedHub, hypotheticalTile, moved);
+            if (t != null) linkedBoats.Add(t);
+        }
+        Dictionary<HexTile, int> cost = new Dictionary<HexTile, int> { { at, 0 } };
+        Queue<HexTile> q = new Queue<HexTile>();
+        q.Enqueue(at);
+        while (q.Count > 0) {
+            HexTile t = q.Dequeue();
+            if (t != at && linkedBoats.Contains(t)) return true;
+            Building b = t.building;
+            if (b != null && b.owner == owner && b.IsServiceTile(t)) {
+                foreach (HexTile f in b.Footprint) if (result.IsSupplied(f)) return true;
+            }
+            if (cost[t] >= hub.range) continue;
+            foreach (HexTile n in t.neighbors) {
+                if (n == null || n.terrain == null || cost.ContainsKey(n)) continue;
+                if (n.terrain.elevation >= 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;   // water (and docks) only
+                if (n.occupier != null && n.occupier.owner != owner) continue;
+                cost[n] = cost[t] + 1;
+                q.Enqueue(n);
+            }
+        }
+        return false;
+    }
+
     static int CompareBuildings(Building a, Building b) {
         int ka = a.tile != null ? (a.tile.x + 512) * 2048 + (a.tile.y + 512) : int.MaxValue;
         int kb = b.tile != null ? (b.tile.x + 512) * 2048 + (b.tile.y + 512) : int.MaxValue;
@@ -244,6 +287,15 @@ public static class SupplyNetwork {
     static void FloodFromHub(SupplyPoint hub, HexTile origin, Result result) {
         Unit u = hub.myUnit;
         if (u == null) return;
+        if (IsNavalHub(hub)) {
+            // Not across water: onto the land beside it, a step shorter.
+            foreach (HexTile n in origin.neighbors) {
+                if (n == null || n.terrain == null || n.terrain.elevation < 0) continue;
+                if (n.occupier != null && n.occupier.owner != u.owner) continue;
+                Flood(n, hub.range - 1, u.terrainScramble, u.owner, Locomotion.Wheels, result);
+            }
+            return;
+        }
 
         int range = hub.range;
         int scramble = u.terrainScramble;
@@ -309,6 +361,8 @@ public static class SupplyNetwork {
 
                 // An enemy unit standing in the corridor severs it.
                 if (n.occupier != null && n.occupier.owner != owner) continue;
+                // Supply does not cross water over land (supply boats carry it; see FloodFromHub).
+                if (n.terrain.elevation < 0 && !LocomotionRules.IgnoresTerrain(loco) && !LocomotionRules.IsNaval(loco)) continue;
 
                 int step;
                 if (LocomotionRules.IgnoresTerrain(loco)) step = 1;
