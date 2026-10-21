@@ -94,7 +94,7 @@ namespace HexTactica.AI {
         public float replyDiscount = 0.3f;
 
         [Tooltip("The forecast's enemy weighs its own risk: an attack counts only if it is worth more than what our counterattack would cost the attacker on its firing tile (beyond what it risks staying put), times enemyCaution.")]
-        public bool enemyWeighsRisk = false;
+        public bool enemyWeighsRisk = true;
 
         [Tooltip("How much the forecast's enemy minds being counterattacked (1 = at full value).")]
         [Range(0f, 3f)]

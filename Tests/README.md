@@ -174,7 +174,9 @@ driven back, so never pinned. Artillery is paid `artilleryCoverValue` (25) per t
 could move to next turn that its guns cover from where it ends its turn.
 
 `replyDiscount` (0–0.5, default 0.3) lightens the enemy's forecast reply by that fraction — it
-still picks targets on full damage. A unit left on fewer than `healMinStrength` (2) gets no
+still picks targets on full damage. The forecast's enemy also weighs its own risk (`enemyWeighsRisk`, on): an attack counts only
+if it is worth more than the counterattack it invites on its firing tile (`enemyCaution` 1).
+A unit left on fewer than `healMinStrength` (2) gets no
 heal-back credit in the forecast or in attack values.
 
 Optional (off by default): `selfPreservationWeight` — the acting unit also counts every blow
