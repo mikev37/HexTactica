@@ -91,7 +91,7 @@ namespace HexTactica.AI {
 
         [Tooltip("Forecast boldness: the enemy's reply in the forecast lands this fraction lighter (0 = full worst case, 0.5 = half). The enemy still picks its targets on full damage; only what it costs us is discounted. Real opponents attack less than the forecast's all-out reply.")]
         [Range(0f, 0.5f)]
-        public float replyDiscount = 0f;
+        public float replyDiscount = 0.3f;
 
         [Tooltip("A damaged unit left on fewer than this many strength points gets no heal-back credit in the forecast: it is more likely to be finished than to heal.")]
         [Range(1, 6)]

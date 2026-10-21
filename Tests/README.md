@@ -173,7 +173,7 @@ their tiles in the reply; supply units and the rest step aside. Immobile units (
 driven back, so never pinned. Artillery is paid `artilleryCoverValue` (25) per tile the enemy
 could move to next turn that its guns cover from where it ends its turn.
 
-`replyDiscount` (0–0.5, default 0) lightens the enemy's forecast reply by that fraction — it
+`replyDiscount` (0–0.5, default 0.3) lightens the enemy's forecast reply by that fraction — it
 still picks targets on full damage. A unit left on fewer than `healMinStrength` (2) gets no
 heal-back credit in the forecast or in attack values.
 
