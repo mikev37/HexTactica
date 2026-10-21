@@ -46,6 +46,7 @@ public static class Tests {
                 int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"), tweak);
             return 0;
         }
+        if (probe == "accuracy") { Scenarios.Accuracy(tweak); return 0; }
         if (probe == "equiv") { Scenarios.Equivalence(Environment.GetEnvironmentVariable("FILE")); return 0; }
         if (probe == "versus") {
             Scenarios.Versus(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
