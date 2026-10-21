@@ -396,7 +396,16 @@ public static class Scenarios {
     static IEnumerable<string> Files(string kind) {
         List<string> files = new List<string>(Directory.GetFiles(Dir, "*.dat"));
         files.Sort(StringComparer.Ordinal);
-        foreach (string f in files) if (ScenarioFile.ReadMeta(f).Get("kind", "") == kind) yield return f;
+        string filter = Environment.GetEnvironmentVariable("FILTER");
+        foreach (string f in files) {
+            if (ScenarioFile.ReadMeta(f).Get("kind", "") != kind) continue;
+            if (filter != null) {
+                bool any = false;
+                foreach (string part in filter.Split('|')) if (part.Length > 0 && Path.GetFileName(f).Contains(part)) any = true;
+                if (!any) continue;
+            }
+            yield return f;
+        }
     }
 
     /// <summary>Run every scenario. Returns the number of failed behaviour checks.</summary>
@@ -536,6 +545,140 @@ public static class Scenarios {
         AISupplyPlanner.DebugLog = null;
         Console.WriteLine("winner " + (gc.winner != null ? gc.winner.personal_name : "none"));
     }
+
+    /// <summary>
+    /// This AI against itself with different profiles: Blue with <paramref name="blue"/>, Red with
+    /// <paramref name="red"/>. One game, recorded like a game in Unity (GameLog) when OUT is set,
+    /// with a line per round of material and losses.
+    /// </summary>
+    public static void Duel(string name, int rounds, Action<AIProfile> blue, Action<AIProfile> red, string root) {
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
+        if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
+        GameController gc = Rig.gc;
+        Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
+                          + " | Red " + (Environment.GetEnvironmentVariable("SET_RED") ?? "defaults"));
+        int startBlue = l.ai.units.Count, startRed = l.other.units.Count;
+        for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
+            ScenarioFile.PlayTurn();
+            if (gc.activePlayer == l.ai || gc.gameOver)
+                Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6}",
+                    gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other)));
+        }
+        string folder = HexTactica.Harness.GameLog.Folder;
+        if (root != null) HexTactica.Harness.GameLog.Stop();
+        Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")
+                          + string.Format("; units lost: Blue {0} of {1}, Red {2} of {3}", startBlue - Alive(l.ai), startBlue, startRed - Alive(l.other), startRed));
+        if (root != null) Console.WriteLine("log: " + folder);
+    }
+
+    /// <summary>
+    /// How well the forecast predicts the opponent's turn: for each of Blue's turns, the loss the
+    /// last decision's forecast expected Blue to take in Red's reply, against what Red actually did
+    /// (strength lost to Red's attacks, in gold). Over every match and large file.
+    /// </summary>
+    public static void Accuracy(Action<AIProfile> tweak) {
+        double absErr = 0, bias = 0, predSum = 0, actSum = 0; int n = 0;
+        foreach (string kind in new[] { "match", "large" }) {
+            foreach (string f in Files(kind)) {
+                ScenarioFile.Loaded l = ScenarioFile.Load(f, string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPP")) ? null : Environment.GetEnvironmentVariable("OPP"), tweak);
+                GameController gc = Rig.gc;
+                float actual = 0f;
+                Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (a, d, fr, at, o) => {
+                    if (d.owner == l.ai) actual += o.damageToDefender * AIScore.Worth(d);
+                    if (a.owner == l.ai) actual += o.damageToAttacker * AIScore.Worth(a);
+                };
+                int rounds = l.meta.GetInt("rounds", 30);
+                for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) {
+                    bool blue = gc.activePlayer == l.ai;
+                    AITactical.LastChosen = null;
+                    ScenarioFile.PlayTurn();
+                    if (!blue || gc.gameOver) continue;
+                    AIWorld.Outcome w = AITactical.LastChosen;
+                    if (w == null) continue;
+                    float predicted = 0f;
+                    foreach (KeyValuePair<Unit, float> kv in w.lost) predicted += kv.Value * AIScore.Worth(kv.Key);
+                    // Red's turn, with its attacks counted.
+                    actual = 0f;
+                    Unit.Attacked += hook;
+                    try { ScenarioFile.PlayTurn(); t++; } finally { Unit.Attacked -= hook; }
+                    absErr += Math.Abs(predicted - actual); bias += predicted - actual; predSum += predicted; actSum += actual; n++;
+                }
+            }
+        }
+        Console.WriteLine(string.Format("forecast accuracy over {0} turns: mean predicted loss {1:0}, mean actual {2:0}, mean |error| {3:0}, bias {4:+0;-0}",
+            n, predSum / n, actSum / n, absErr / n, bias / n));
+    }
+
+    /// <summary>
+    /// The group-plan forecast (AIPlan.Evaluate) with one move and retreats off must score what the
+    /// single-move forecast (AIWorld.Evaluate) does with its extras off. Checks every option of every
+    /// unit of Blue's on the boards of each match file (or FILE), and prints the mismatches.
+    /// </summary>
+    public static void Equivalence(string name) {
+        List<string> files = name != null ? new List<string> { Find(name) } : new List<string>(Files("match"));
+        int checks = 0, bad = 0;
+        foreach (string f in files) {
+            ScenarioFile.Loaded l = ScenarioFile.Load(f, "Human", p => {
+                p.assistWeight = 0f; p.selfPreservationWeight = 0f; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
+            });
+            // Play a few rounds so units are in contact, then check Blue's options.
+            GameController gc = Rig.gc;
+            Rig.AttachBaseline(l.other, AIKind.Legacy);
+            for (int t = 0; t < 6 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
+            if (gc.gameOver || gc.activePlayer != l.ai) continue;
+            AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+            foreach (Unit u in new List<Unit>(map.ownUnits)) {
+                if (u == null || u.tile == null || u.Firepower <= 0) continue;
+                MoveField fld = AIPath.ThisTurn(u);
+                List<HexTile> stops = new List<HexTile> { u.tile };
+                foreach (HexTile t in fld.Tiles) if (t != u.tile && fld.ReachableThisTurn(t) && AIPath.CanFinishTurnOn(u, t)) stops.Add(t);
+                foreach (HexTile s in stops) {
+                    List<AttackAppraisal> shots = new List<AttackAppraisal> { new AttackAppraisal() };
+                    if (u.moveAndAttack || s == u.tile) shots.AddRange(AITargeting.AllFrom(u, s, map, map.profile, Posture.Defensive, true));
+                    foreach (AttackAppraisal a in shots) {
+                        AIWorld.Outcome one = AIWorld.Evaluate(u, s, a, map, new AIWorld.Cache(), false, false);
+                        PlanStep step = new PlanStep { unit = u, stop = s, target = a.valid ? a.target : null };
+                        if (a.valid) step.known = a.outcome;
+                        AIWorld.Outcome many = AIPlan.Evaluate(new List<PlanStep> { step }, map, false, false);
+                        checks++;
+                        if (Mathf.Abs(one.score - many.score) > 0.5f) {
+                            bad++;
+                            if (bad <= 10) Console.WriteLine(string.Format("  {0}: {1} at {2} {3}: single {4:0} vs plan {5:0}", Path.GetFileNameWithoutExtension(f), u.name, D(s),
+                                a.valid ? "hit " + a.target.name : "no shot", one.score, many.score));
+                        }
+                    }
+                }
+            }
+        }
+        Console.WriteLine(string.Format("equivalence: {0} options checked, {1} mismatches", checks, bad));
+    }
+
+    /// <summary>
+    /// AI A (Blue) against AI B (Red) on every generated map with even armies, A on each side in
+    /// turn (the "-legacy-ai-left/right" files: equal line-ups; the left side moves first).
+    /// 22 games. Prints each result and A's record.
+    /// </summary>
+    public static void Versus(Action<AIProfile> a, Action<AIProfile> b, string aName, string bName) {
+        int w = 0, lo = 0, d = 0;
+        Console.WriteLine("A = " + aName + "\nB = " + bName + "\nrules: " + (Environment.GetEnvironmentVariable("RULES") ?? "as files say"));
+        foreach (string kind in new[] { "match", "large", "campaign" }) {
+            foreach (string f in Files(kind)) {
+                string n = Path.GetFileNameWithoutExtension(f);
+                if (n.IndexOf("-legacy-ai-") < 0) continue;
+                ScenarioFile.Loaded l = ScenarioFile.Load(f, "Full", a, b);
+                GameController gc = Rig.gc;
+                int rounds = l.meta.GetInt("rounds", 30);
+                for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
+                string r = gc.winner == l.ai ? "A wins" : gc.winner == l.other ? "B wins" : "draw";
+                if (gc.winner == l.ai) w++; else if (gc.winner == l.other) lo++; else d++;
+                Console.WriteLine(string.Format("  {0,-36} {1,-6} round {2,2}; left: A {3,6:0} v B {4,6:0}", n.Replace("-legacy", ""), r, gc.days,
+                    GameController.Remaining(l.ai), GameController.Remaining(l.other)));
+            }
+        }
+        Console.WriteLine(string.Format("  A: {0}W {1}L {2}D", w, lo, d));
+    }
+
+    static int Alive(Player p) { int n = 0; foreach (Unit u in p.units) if (u != null && u.Strength > 0 && u.tile != null) n++; return n; }
 
     /// <summary>
     /// Record a scenario the way the game does (GameLog), then load the snapshot of the last
