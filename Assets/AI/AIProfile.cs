@@ -358,6 +358,9 @@ namespace HexTactica.AI {
         [Tooltip("Coordination: only plans that kill their target (and, as they run, can still kill it; otherwise the rest of the plan is dropped).")]
         public bool coordKillsOnly = true;
 
+        [Tooltip("Coordination: after kill plans, cover swaps — a unit guarding a friend's approach versus the friend stepping to a safer tile, taken when acting together beats both units' own choices.")]
+        public bool coordCoverSwaps = false;
+
         [Tooltip("A battle plan is adopted only if its forecast beats its units acting alone by more than this (gold).")]
         public float coordinationPassMargin = 0f;
 

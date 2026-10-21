@@ -285,7 +285,7 @@ public class AIPlayer : MonoBehaviour {
         if (unit.trasnporter != null) return AIAction.Wait(unit, "aboard transport");
 
         PlanStep step;
-        if (planned.TryGetValue(unit, out step) && Profile.coordinationPasses && step.group > 0) {
+        if (planned.TryGetValue(unit, out step) && Profile.coordinationPasses && step.group > 0 && step.kind != null && step.kind.StartsWith("battle")) {
             // A battle plan runs only while it can still make its kill: earlier blows may have
             // driven the target out of reach or done less than forecast. Then the rest of the plan
             // is dropped and those units decide alone.
