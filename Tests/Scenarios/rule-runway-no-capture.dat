@@ -179,6 +179,6 @@
 {"x":-3,"y":2,"z":1,"gameobject_name":"Airport","personal_name":"Airport","type":6,"owner_id":112,"income":500,"producesSupply":false,"supplyRange":4,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":15,"capturingPlayerId":-1}
 ],
 "units":[
-{"x":-3,"y":3,"z":0,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
+{"x":-3,"y":3,"z":0,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

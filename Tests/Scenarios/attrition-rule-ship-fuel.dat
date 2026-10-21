@@ -179,8 +179,8 @@
 {"x":-2,"y":0,"z":2,"gameobject_name":"NavalYard","personal_name":"Naval yard","type":7,"owner_id":112,"income":0,"producesSupply":true,"supplyRange":3,"supplies":0,"suppliesMax":3,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1}
 ],
 "units":[
-{"x":1,"y":2,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Gunboat","active":true,"owner_id":112,"supplies":3,"fuel":70,"ammo":6,"gameobject_name":"Gunboat","transporterIndexPlusOne":0},
-{"x":-1,"y":0,"z":1,"Strength":3,"Veterancy":0,"personalName":"Gunboat","active":true,"owner_id":112,"supplies":3,"fuel":10,"ammo":6,"gameobject_name":"Gunboat","transporterIndexPlusOne":0},
-{"x":5,"y":0,"z":-5,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
+{"x":1,"y":2,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Gunboat","active":true,"owner_id":112,"supplies":15,"fuel":70,"ammo":6,"gameobject_name":"Gunboat","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-1,"y":0,"z":1,"Strength":3,"Veterancy":0,"personalName":"Gunboat","active":true,"owner_id":112,"supplies":15,"fuel":10,"ammo":6,"gameobject_name":"Gunboat","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":5,"y":0,"z":-5,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

@@ -241,6 +241,32 @@ public class HexTile : MonoBehaviour
             // A building is clickable only with no unit on it: its build list.
             BuildingMenu.Open(building);
         }
+        else if (state == UIState.UNLOAD_CONFIRM && TransportMenu.pendingCargo != null) {
+            // The tile picked for the unit being unloaded.
+            Unit cargo = TransportMenu.pendingCargo, transport = TransportMenu.pendingTransport;
+            TransportMenu.pendingCargo = null; TransportMenu.pendingTransport = null;
+            Transporting.Unload(transport, cargo, this);
+            HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+        }
+        else if (occupier != null && Transporting.IsTransport(occupier) && occupier.transported.Count > 0 && occupier.owner == GameController.gc.activePlayer
+                 && (state == UIState.SELECTED || (state == UIState.FREE && !occupier.active && !occupier.attackedThisTurn))) {
+            // A transport clicked again once selected, or after it has moved without attacking: what is aboard.
+            TransportMenu.Open(occupier);
+        }
+        else if (state == UIState.LOAD_CONFIRM) {
+            // Board: walk beside the transport if not already there, then get in.
+            Unit mover = GameController.gc.activeUnit;
+            Unit transport = occupier;
+            if (mover != null && transport != null) {
+                if (!neighbors.Contains(mover.tile) && mover.tile != this) {
+                    HexTile beside = null;
+                    foreach (HexTile n in neighbors) if (n != null && n.state == UIState.MOVE && n.occupier == null && (beside == null || n.G < beside.G)) beside = n;
+                    if (beside != null) mover.CompleteMove(beside);
+                }
+                if (Transporting.Load(transport, mover)) mover.FinishActive();
+            }
+            HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+        }
         else {
             if (occupier != null && state == UIState.FREE && occupier.active && occupier.owner.Equals(GameController.gc.activePlayer)) {
                 GameController.gc.activeUnit = occupier;
@@ -248,6 +274,14 @@ public class HexTile : MonoBehaviour
                 CheckMovementRange(occupier).ForEach(x => { if(x.G != 0 && x.CanEndTurnHere(occupier)) x.changeState(UIState.MOVE);});
                 CheckAttackRange(occupier).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
                 changeState(UIState.SELECTED);
+                // Our transports it can board: beside it now, or beside a tile it can move to.
+                Unit cargo = occupier;
+                foreach (Unit tr in cargo.owner.units) {
+                    if (tr == null || tr == cargo || tr.tile == null || !Transporting.CanCarry(tr, cargo)) continue;
+                    bool reach = tr.tile.neighbors.Contains(this);
+                    foreach (HexTile n in tr.tile.neighbors) if (n != null && n.state == UIState.MOVE) reach = true;
+                    if (reach) tr.tile.changeState(UIState.LOAD_CONFIRM);
+                }
             } else if( state==UIState.MOVE) {
                 Unit mover = GameController.gc.activeUnit;
                 mover.tile.parent = null;

@@ -54,6 +54,7 @@ public static class Transporting {
         cargo.trasnporter = transport;
         transport.transported.Add(cargo);
         cargo.active = false;
+        cargo.OnBoarded(transport);
         return true;
     }
 
@@ -82,6 +83,8 @@ public static class Transporting {
         cargo.trasnporter = null;
         cargo.tile = onto;
         onto.occupier = cargo;
+        cargo.active = false;   // it has used its turn getting off
+        cargo.OnUnloaded(transport);
         return true;
     }
 

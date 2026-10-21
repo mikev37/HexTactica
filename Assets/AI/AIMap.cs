@@ -149,6 +149,9 @@ namespace HexTactica.AI {
         public readonly List<SupplyPoint> ownHubs = new List<SupplyPoint>();
         public readonly List<SupplyPoint> enemyHubs = new List<SupplyPoint>();
 
+        /// <summary>This turn's reserved landings (AIAir.PlanLandings), set by AIPlayer when the turn is prepared.</summary>
+        public Dictionary<Unit, AIAir.Landing> landings;
+
         public AIMap(Player player, AIProfile profile) {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;

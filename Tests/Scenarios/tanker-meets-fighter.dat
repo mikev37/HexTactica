@@ -179,9 +179,9 @@
 {"x":-4,"y":2,"z":2,"gameobject_name":"Airport","personal_name":"Airport","type":6,"owner_id":112,"income":500,"producesSupply":false,"supplyRange":4,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":15,"capturingPlayerId":-1}
 ],
 "units":[
-{"x":1,"y":-1,"z":0,"Strength":6,"Veterancy":0,"personalName":"Fighter","active":true,"owner_id":112,"supplies":3,"fuel":9,"ammo":6,"gameobject_name":"Fighter","transporterIndexPlusOne":0},
-{"x":-3,"y":0,"z":3,"Strength":6,"Veterancy":0,"personalName":"AirTanker","active":true,"owner_id":112,"supplies":3,"fuel":18,"ammo":6,"gameobject_name":"AirTanker","transporterIndexPlusOne":0},
-{"x":-5,"y":0,"z":5,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0},
-{"x":5,"y":1,"z":-6,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
+{"x":1,"y":-1,"z":0,"Strength":6,"Veterancy":0,"personalName":"Fighter","active":true,"owner_id":112,"supplies":3,"fuel":9,"ammo":6,"gameobject_name":"Fighter","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-3,"y":0,"z":3,"Strength":6,"Veterancy":0,"personalName":"AirTanker","active":true,"owner_id":112,"supplies":4,"fuel":18,"ammo":6,"gameobject_name":"AirTanker","transporterIndexPlusOne":0,"refuelStockPlusOne":4},
+{"x":-5,"y":0,"z":5,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":5,"y":1,"z":-6,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

@@ -39,8 +39,11 @@ public class Unit : MonoBehaviour
     public HexTile tile;
     [Tooltip("Ground unit able to move into and through water tiles that border land")]
     public bool amphibious;
-    [Tooltip("Air tanker: refuels friendly air units that start their turn beside it, one of its supplies for each")]
+    [Tooltip("Air tanker: refuels friendly air units that start their turn beside it, one refuelStock for each")]
     public bool airTanker;
+    [Tooltip("Air tanker: refuels it can give before it must go back to base")]
+    public int refuelStock;
+    public int refuelStockMax;
     /// <summary>Fired this turn: an infantry unit that attacked does not capture the building it stands on.</summary>
     [System.NonSerialized] public bool attackedThisTurn;
 
@@ -116,6 +119,15 @@ public class Unit : MonoBehaviour
 
     public List<Unit> transported;
     public Unit trasnporter;
+    [Tooltip("Where carried units sit on this transport, one per slot (the transport itself if none)")]
+    public List<Transform> cargoSlots = new List<Transform>();
+    [Tooltip("Scale of a carried unit's sprites while aboard")]
+    public float cargoScale = 0.45f;
+
+    // Boarding animation state: the unit's own scale, and whether it is still settling.
+    Vector3 homeScale = Vector3.one;
+    bool scaleKnown;
+    UnityEngine.Rendering.SortingGroup cargoGroup;
 
     [Header("AI Variables")]
     public int threatValue;
@@ -143,6 +155,14 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Aboard: shrink into the transport's slot; nothing else moves this sprite.
+        if (trasnporter != null) {
+            transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
+            transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale * cargoScale, Time.deltaTime * 2f);
+            return;
+        }
+        // Just unloaded: grow back while walking off.
+        if (scaleKnown && transform.localScale != homeScale) transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale, Time.deltaTime * 2f);
         if(Strength <=0) {
             if( deathRattleTimer <= 0) {
                 Die();
@@ -203,6 +223,52 @@ public class Unit : MonoBehaviour
             if (m != null && m.terrain != null && m.terrain.elevation >= 0) return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Boarding (Transporting.Load calls this): the unit's sprites go into the transport — parented
+    /// to its next cargo slot, shrunk to cargoScale (Update animates it), drawn in the "Transported"
+    /// sorting layer when the project has one (else just above the transport). A supply unit is
+    /// not shown: the transport's own animator gets CarryingSupply (its hand-made supply form).
+    /// </summary>
+    public void OnBoarded(Unit transport) {
+        if (!scaleKnown) { homeScale = transform.localScale; scaleKnown = true; }
+        if (path != null) path.Clear();
+        if (animator != null) animator.SetBool("Moving", false);
+        int slot = Mathf.Max(0, transport.transported.IndexOf(this));
+        Transform at = transport.cargoSlots != null && slot < transport.cargoSlots.Count && transport.cargoSlots[slot] != null
+                     ? transport.cargoSlots[slot] : transport.transform;
+        transform.SetParent(at, true);
+        transform.rotation = at.rotation;
+        if (cargoGroup == null) cargoGroup = gameObject.AddComponent<UnityEngine.Rendering.SortingGroup>();
+        int layer = SortingLayer.NameToID("Transported");
+        SpriteRenderer top = null;
+        foreach (SpriteRenderer r in transport.GetComponentsInChildren<SpriteRenderer>()) if (top == null || r.sortingOrder > top.sortingOrder) top = r;
+        if (layer != 0 && SortingLayer.IsValid(layer)) { cargoGroup.sortingLayerID = layer; cargoGroup.sortingOrder = slot; }
+        else if (top != null) { cargoGroup.sortingLayerID = top.sortingLayerID; cargoGroup.sortingOrder = top.sortingOrder + 1 + slot; }
+        if (GetComponent<SupplyPoint>() != null) {
+            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            transport.SetAnimatorBool("CarryingSupply", true);
+        }
+    }
+
+    /// <summary>Unloading (Transporting.Unload calls this): everything OnBoarded did, undone; the unit walks to its tile.</summary>
+    public void OnUnloaded(Unit transport) {
+        transform.SetParent(null, true);
+        transform.rotation = Quaternion.identity;
+        if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
+        if (GetComponent<SupplyPoint>() != null) {
+            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            bool still = false;
+            foreach (Unit c in transport.transported) if (c != null && c != this && c.GetComponent<SupplyPoint>() != null) still = true;
+            transport.SetAnimatorBool("CarryingSupply", still);
+        }
+    }
+
+    /// <summary>Set an animator bool if this unit's animator has it (art can add states without code).</summary>
+    public void SetAnimatorBool(string name, bool on) {
+        if (animator == null) return;
+        foreach (AnimatorControllerParameter p in animator.parameters) if (p.name == name) { animator.SetBool(name, on); return; }
     }
 
     /// <summary>A unit (aircraft or ship) ran out of fuel and was ditched.</summary>
@@ -606,8 +672,11 @@ public struct UnitData {
     /// would be loaded into the first unit on the roster.
     /// </summary>
     public int transporterIndexPlusOne;
+    /// <summary>An air tanker's refuels left, plus one (zero: an older save, keep the prefab's).</summary>
+    public int refuelStockPlusOne;
     public UnitData(Unit t) {
         transporterIndexPlusOne = 0;
+        refuelStockPlusOne = t.refuelStock + 1;
         x = t.tile.x;
         y = t.tile.y;
         z = t.tile.z;
@@ -645,6 +714,7 @@ public struct UnitData {
         ut.supplies = supplies;
         ut.fuel = fuel;
         ut.ammo = ammo;
+        if (refuelStockPlusOne > 0) ut.refuelStock = refuelStockPlusOne - 1;
         return ut;
     }
 }

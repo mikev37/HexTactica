@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -19,17 +20,127 @@ namespace HexTactica.AI {
 
         public static bool NeedsBase(Unit u) { return u != null && LocomotionRules.NeedsBase(u.locomotion); }
 
-        /// <summary>Tiles of our buildings that service <paramref name="u"/> and are free (or where it stands).</summary>
-        public static List<HexTile> Bases(Unit u, AIMap map) {
+        public static Landing LandingOf(Unit u, AIMap map) {
+            Landing l;
+            return map.landings != null && map.landings.TryGetValue(u, out l) ? l : null;
+        }
+
+        /// <summary>
+        /// A landing reserved for an aircraft: the base tile, and the turn it lands (1 = this turn). The
+        /// tile is held from that turn to the next (it refuels at the start of the turn after landing,
+        /// then can take off), so another aircraft can use it before or after, not in between.
+        /// </summary>
+        public class Landing {
+            public Unit unit;
+            public HexTile tile;
+            public int turn;
+            public override string ToString() { return unit.name.Replace("(Clone)", "") + " lands on (" + tile.x + "," + tile.y + ") in " + turn + (turn == 1 ? " turn (this one)" : " turns"); }
+        }
+
+        /// <summary>How far ahead (turns) aircraft reserve their landings.</summary>
+        public const int LandingHorizon = 3;
+
+        /// <summary>Tiles of our buildings that service <paramref name="u"/>, whatever is on them.</summary>
+        static List<HexTile> AllBases(Unit u) {
             List<HexTile> list = new List<HexTile>();
             foreach (Building b in Building.all) {
                 if (b == null || b.owner != u.owner || !b.Services(u)) continue;
-                foreach (HexTile t in b.ServiceTiles()) {
-                    if (t == null || !u.CanEnter(t)) continue;
-                    if (t.occupier == null || t.occupier == u) list.Add(t);
-                }
+                foreach (HexTile t in b.ServiceTiles()) if (t != null && u.CanEnter(t)) list.Add(t);
             }
             return list;
+        }
+
+        /// <summary>
+        /// Base tiles <paramref name="u"/> may plan to end on: its reserved landing tile if it has one;
+        /// otherwise any free one nobody else has reserved. (Our own ground units are moved off runways,
+        /// so only aircraft and ships count as taking a tile.)
+        /// </summary>
+        public static List<HexTile> Bases(Unit u, AIMap map) {
+            Landing mine;
+            if (map.landings != null && map.landings.TryGetValue(u, out mine)) return new List<HexTile> { mine.tile };
+            HashSet<HexTile> reserved = new HashSet<HexTile>();
+            if (map.landings != null) foreach (Landing l in map.landings.Values) if (l.unit != u) reserved.Add(l.tile);
+            List<HexTile> list = new List<HexTile>();
+            foreach (HexTile t in AllBases(u)) {
+                if (reserved.Contains(t)) continue;
+                if (t.occupier == null || t.occupier == u || !NeedsBase(t.occupier)) list.Add(t);
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// The latest turn (1 = this one) <paramref name="u"/> can land on <paramref name="t"/>: within its
+        /// movement, with the fuel for the trip and a turn's burn for each turn before it lands, and
+        /// before its own supplies run out. 0 if it cannot.
+        /// </summary>
+        static int LatestLanding(Unit u, HexTile t) {
+            int d = u.tile.Distance(t);
+            int per = Mathf.Max(0, u.minFuelPerTile), burn = Mathf.Max(0, u.minFuelPerTurn);
+            int left = u.fuel - d * per;
+            if (left < 0) return 0;
+            int byFuel = burn > 0 ? left / burn + 1 : 99;
+            int bySupplies = u.suppliesMax > 0 ? u.supplies + 1 : 99;
+            int latest = Mathf.Min(byFuel, bySupplies);
+            int earliest = Mathf.Max(1, Mathf.CeilToInt(d / (float)Mathf.Max(1, u.moveRange)));
+            return latest >= earliest ? latest : 0;
+        }
+
+        /// <summary>
+        /// Plan this turn's landings. Every aircraft of ours that has to land within LandingHorizon turns,
+        /// the most urgent first, tries its latest landing turn on the nearest base tile it can make; if
+        /// that tile is held at that time (another landing reserved there, or an aircraft standing on it
+        /// this turn), the next base tile; if every one is, a turn earlier; and so on down to this turn.
+        /// Aircraft already on a base and full of fuel need no reservation.
+        /// </summary>
+        public static Dictionary<Unit, Landing> PlanLandings(AIMap map) {
+            Dictionary<Unit, Landing> plan = new Dictionary<Unit, Landing>();
+            List<KeyValuePair<Unit, int>> need = new List<KeyValuePair<Unit, int>>();
+            foreach (Unit u in map.ownUnits) {
+                if (u == null || u.tile == null || u.trasnporter != null || !LocomotionRules.IsAirborne(u.locomotion) || u.fuelMax <= 0) continue;
+                if (Building.ServicingUnder(u) != null) continue;
+                int latest = 0;
+                foreach (HexTile t in AllBases(u)) latest = Mathf.Max(latest, LatestLanding(u, t));
+                if (latest <= 0 || latest > LandingHorizon) continue;
+                need.Add(new KeyValuePair<Unit, int>(u, latest));
+            }
+            need.Sort((a, b) => { int c = a.Value.CompareTo(b.Value); return c != 0 ? c : AIMap.CompareUnits(a.Key, b.Key); });
+            // Held: tile -> turns it is taken. Aircraft on a base tile now hold it this turn.
+            Dictionary<HexTile, HashSet<int>> held = new Dictionary<HexTile, HashSet<int>>();
+            Func<HexTile, HashSet<int>> at = t => { HashSet<int> h; if (!held.TryGetValue(t, out h)) { h = new HashSet<int>(); held[t] = h; } return h; };
+            foreach (Unit x in map.ownUnits) if (x != null && x.tile != null && NeedsBase(x) && Building.ServicingUnder(x) != null) at(x.tile).Add(1);
+            foreach (KeyValuePair<Unit, int> kv in need) {
+                Unit u = kv.Key;
+                List<HexTile> bases = AllBases(u);
+                bases.Sort((a, b) => { int c = u.tile.Distance(a).CompareTo(u.tile.Distance(b)); return c != 0 ? c : CombatMath.CompareTiles(a, b); });
+                Landing got = null;
+                for (int turn = kv.Value; turn >= 1 && got == null; turn--) {
+                    foreach (HexTile t in bases) {
+                        if (LatestLanding(u, t) < turn) continue;
+                        if (Mathf.CeilToInt(u.tile.Distance(t) / (float)Mathf.Max(1, u.moveRange)) > turn) continue;
+                        HashSet<int> h = at(t);
+                        if (h.Contains(turn) || h.Contains(turn + 1)) continue;
+                        if (t.occupier != null && t.occupier != u && NeedsBase(t.occupier) && turn == 1) continue;
+                        got = new Landing { unit = u, tile = t, turn = turn };
+                        h.Add(turn); h.Add(turn + 1);
+                        break;
+                    }
+                }
+                if (got != null) plan[u] = got;
+            }
+            return plan;
+        }
+
+        /// <summary>
+        /// Could an aircraft be built at (or land on) <paramref name="b"/> without taking a tile an aircraft
+        /// has reserved within the next <paramref name="turns"/> turns? For production: no new aircraft on a
+        /// crowded airfield, or on a turn another needs its runway.
+        /// </summary>
+        public static bool RoomForAircraft(Building b, AIMap map, int turns) {
+            if (b == null) return false;
+            HashSet<HexTile> reserved = new HashSet<HexTile>();
+            if (map.landings != null) foreach (Landing l in map.landings.Values) if (l.turn <= turns) reserved.Add(l.tile);
+            foreach (HexTile t in b.ServiceTiles()) if (t.occupier == null && !reserved.Contains(t)) return true;
+            return false;
         }
 
         /// <summary>Fuel steps from every tile to the nearest of <paramref name="bases"/>, moving as <paramref name="u"/> moves (air: any tile, one each; ships: water only).</summary>
@@ -52,7 +163,7 @@ namespace HexTactica.AI {
         static bool BesideTanker(Unit u, HexTile at) {
             if (u.airTanker || !LocomotionRules.IsAirborne(u.locomotion) || u.owner == null) return false;
             foreach (Unit t in u.owner.units) {
-                if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
+                if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.refuelStock <= 0) continue;
                 if (at.neighbors.Contains(t.tile)) return true;
             }
             return false;
@@ -63,7 +174,16 @@ namespace HexTactica.AI {
         /// and then heads for the nearest base. Bases and tiles beside a tanker: its fuel after the move.
         /// </summary>
         public static int Margin(Unit u, HexTile stop, Dictionary<HexTile, int> toBase, List<HexTile> bases) {
+            return Margin(u, stop, toBase, bases, null);
+        }
+
+        /// <param name="land">Its reserved landing, if any: then it must also still make that tile by its turn.</param>
+        public static int Margin(Unit u, HexTile stop, Dictionary<HexTile, int> toBase, List<HexTile> bases, Landing land) {
             if (u.fuelMax <= 0) return int.MaxValue;
+            if (land != null && stop != land.tile) {
+                int turnsLeft = land.turn - 1;
+                if (turnsLeft <= 0 || stop.Distance(land.tile) > turnsLeft * Mathf.Max(1, u.moveRange)) return -1;
+            }
             int per = Mathf.Max(0, u.minFuelPerTile);
             int after = u.fuel - u.tile.Distance(stop) * per;
             if (bases.Contains(stop) || BesideTanker(u, stop)) return after;
@@ -79,10 +199,11 @@ namespace HexTactica.AI {
         /// </summary>
         public static void FilterSafe(Unit u, AIMap map, Dictionary<HexTile, KeyValuePair<float, HexTile>> stops) {
             if (!NeedsBase(u) || u.fuelMax <= 0 || stops.Count == 0) return;
+            Landing land = LandingOf(u, map);
             List<HexTile> bases = Bases(u, map);
             Dictionary<HexTile, int> toBase = DistanceToBase(u, bases);
             List<HexTile> safe = new List<HexTile>(), all = new List<HexTile>(stops.Keys);
-            foreach (HexTile s in all) if (Margin(u, s, toBase, bases) >= 0) safe.Add(s);
+            foreach (HexTile s in all) if (Margin(u, s, toBase, bases, land) >= 0) safe.Add(s);
             if (safe.Count == 0) {
                 int best = int.MaxValue;
                 foreach (HexTile s in all) { int d; if (toBase.TryGetValue(s, out d) && d < best) best = d; }
@@ -98,16 +219,17 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction Guard(Unit u, AIAction action, AIMap map) {
             if (!NeedsBase(u) || u.fuelMax <= 0 || u.tile == null || u.trasnporter != null) return action;
+            Landing land = LandingOf(u, map);
             List<HexTile> bases = Bases(u, map);
             Dictionary<HexTile, int> toBase = DistanceToBase(u, bases);
             HexTile stop = action.destination ?? u.tile;
             if (action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack) stop = u.tile;
-            if (Margin(u, stop, toBase, bases) >= 0) return action;
+            if (Margin(u, stop, toBase, bases, land) >= 0) return action;
             MoveField f = map.ReachThisTurn(u);
             HexTile best = null; int bestMargin = int.MinValue, bestDist = int.MaxValue;
             foreach (HexTile t in f.Tiles) {
                 if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
-                int m = Margin(u, t, toBase, bases);
+                int m = Margin(u, t, toBase, bases, land);
                 int d; if (!toBase.TryGetValue(t, out d)) d = 999;
                 // Safe tiles first; among them (or, if none is safe, among all) the nearest a base.
                 bool better;
@@ -148,9 +270,9 @@ namespace HexTactica.AI {
             HexTile best = null; float bestValue = float.NegativeInfinity;
             foreach (HexTile t in f.Tiles) {
                 if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
-                if (Margin(u, t, toBase, bases) < 0) continue;
+                if (Margin(u, t, toBase, bases, LandingOf(u, map)) < 0) continue;
                 float v = 0f;
-                if (u.supplies > 0) {
+                if (u.refuelStock > 0) {
                     foreach (Unit x in map.ownUnits) {
                         if (x == null || x == u || x.airTanker || !LocomotionRules.IsAirborne(x.locomotion) || x.tile == null || x.fuelMax <= 0) continue;
                         if (!t.neighbors.Contains(x.tile)) continue;
@@ -164,7 +286,7 @@ namespace HexTactica.AI {
                 if (best == null || v > bestValue || (v == bestValue && CombatMath.Precedes(t, best))) { best = t; bestValue = v; }
             }
             if (best == null || best == u.tile) return AIAction.Wait(u, "tanker: holds");
-            return AIAction.Move(u, best, bestValue, u.supplies > 0 ? "tanker: beside the thirstiest aircraft" : "tanker: empty, home to refill");
+            return AIAction.Move(u, best, bestValue, u.refuelStock > 0 ? "tanker: beside the thirstiest aircraft" : "tanker: empty, home to refill");
         }
     }
 }

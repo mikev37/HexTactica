@@ -270,11 +270,11 @@ public static class Scenarios {
         // Air and sea (attrition: these do not test capture).
         Action<int, int, int, int> water = (x0, x1, y0, y1) => { for (int x = x0; x <= x1; x++) for (int y = y0; y <= y1; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Water"); } };
         make("attrition-rule-air-fuel", "attritionAirFuel", (a, o) => { Unit f = Put("Fighter", a, -4, 1); f.fuel = 5; f.Strength = 4; Put("Grunt", o, 4, 0); },
-             "A Fighter (fuel 5, burns 3 a turn) inside the HQ's supply but off any airport: not healed or refuelled, 2 fuel after a turn, ditched the next.");
+             "A Fighter (fuel 5, burns 3 a turn; 3 supplies aboard) inside the HQ's supply but off any airport: not healed or refuelled, its own supplies down to 2 and 2 fuel after a turn, ditched the next.");
         make("attrition-rule-air-base", "attritionAirBase", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Unit f = Put("Fighter", a, -3, 3); f.fuel = 2; f.Strength = 4; Put("Grunt", o, 4, 0); },
              "A Fighter on its own airport's runway (fuel 2, strength 4) is refuelled to 14 and healed to 5.");
-        make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit t = Put("AirTanker", a, 1, 0); t.supplies = 1; Put("Grunt", o, 5, 0); },
-             "A Fighter starting its turn beside an air tanker with 1 supply is refuelled (tanker 0); the next turn the tanker is empty and the fighter burns 3.");
+        make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit t = Put("AirTanker", a, 1, 0); t.refuelStock = 1; Put("Grunt", o, 5, 0); },
+             "A Fighter starting its turn beside an air tanker with 1 refuel left is refuelled (tanker 0); the next turn the tanker is empty and the fighter burns 3.");
         make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
@@ -284,6 +284,11 @@ public static class Scenarios {
                  Rig.PlaceBuilding("NavalYard", a, -3, 0);
                  Put("SupplyBoat", a, -1, 0); Put("SupplyBoat", a, 1, 0); Put("Grunt", a, 3, 0); Put("Grunt", o, 4, 3); },
              "A strait four tiles wide: the HQ's supply stops at the water. Two supply boats link from the naval yard's dock (in supply) to each other, and the far one supplies the island it borders. With the far boat moved out to sea, the island grunt is not supplied.");
+        make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
+             "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board, unparented, and has used its turn.");
+        make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
+                 Put("TransportShip", a, 1, 0); Unit m = Put("Grunt", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
+             "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; aboard a transport ship at sea it neither heals nor uses its supplies while the ship has supplies, and starves once the ship's are gone.");
         make("attrition-rule-amphibious", "attritionAmphibious", (a, o) => { water(-1, 2, -7, 7); Put("Marine", a, -2, 1); Put("Grunt", a, -2, 2); Put("Grunt", o, 5, 0); },
              "A Marine can enter water beside land but not open water away from it; a Grunt cannot enter water.");
         return n;
@@ -385,7 +390,7 @@ public static class Scenarios {
                 try {
                     endTurn(); endTurn();
                     string first = "fuel " + f.fuel + ", strength " + f.Strength + ", supplies " + f.supplies;
-                    bool ok1 = f.fuel == 2 && f.Strength == 4 && f.tile != null;
+                    bool ok1 = f.fuel == 2 && f.Strength == 4 && f.tile != null && f.supplies == 2;
                     endTurn(); endTurn();
                     detail = "after a turn " + first + "; after two " + (f.tile == null ? "gone, ditched " + ditched : "still flying, fuel " + f.fuel);
                     return ok1 && f.tile == null && ditched == 1;
@@ -400,8 +405,8 @@ public static class Scenarios {
             case "attritionTanker": {
                 Unit f = Rig.At(0, 0).occupier, t = Rig.At(1, 0).occupier;
                 endTurn(); endTurn();
-                string first = "fighter fuel " + f.fuel + ", tanker supplies " + t.supplies;
-                bool ok1 = f.fuel == f.fuelMax && t.supplies == 0;
+                string first = "fighter fuel " + f.fuel + ", tanker refuels left " + t.refuelStock;
+                bool ok1 = f.fuel == f.fuelMax && t.refuelStock == 0;
                 endTurn(); endTurn();
                 detail = "after a turn " + first + "; after two fighter fuel " + f.fuel;
                 return ok1 && f.fuel == f.fuelMax - f.minFuelPerTurn;
@@ -434,6 +439,32 @@ public static class Scenarios {
                 detail = "naval yard in supply " + yardSupplied + "; island grunt supplied with both boats " + withBoats + ", without the far one " + withoutFar
                          + "; boats linked " + with.connectedHubs.Count;
                 return yardSupplied && withBoats && !withoutFar && linked == 2;
+            }
+            case "attritionTransport": {
+                Unit apc = Rig.At(-3, 0).occupier, g = Rig.At(-2, 0).occupier;
+                bool loaded = Transporting.Load(apc, g);
+                bool off = Rig.At(-2, 0).occupier == null && g.tile == apc.tile && g.trasnporter == apc && g.transform.parent == (apc.cargoSlots.Count > 0 ? apc.cargoSlots[0] : apc.transform);
+                apc.TeleportTo(Rig.At(-3, 3), 3);
+                bool rides = g.tile == apc.tile;
+                HexTile onto = Transporting.UnloadOptions(apc, g)[0];
+                bool unloaded = Transporting.Unload(apc, g, onto);
+                bool back = onto.occupier == g && g.trasnporter == null && g.transform.parent == null && !g.active && apc.transported.Count == 0;
+                detail = "loaded " + loaded + ", off the board and in slot 0 " + off + ", moves with the APC " + rides + "; unloaded to " + Pos(onto) + " " + unloaded + ", back on the board, unparented, spent " + back;
+                return loaded && off && rides && unloaded && back;
+            }
+            case "attritionCargoSupply": {
+                Unit apc = Rig.At(-4, 0).occupier, g = Rig.At(-4, 1).occupier, ship = Rig.At(1, 0).occupier, m = Rig.At(-2, 1).occupier;
+                Transporting.Load(apc, g);
+                // The marine grunt boards the ship from the shore beside it.
+                m.TeleportTo(Rig.At(0, 1), 0);
+                Transporting.Load(ship, m);
+                endTurn(); endTurn();
+                string first = "APC cargo strength " + g.Strength + "; ship cargo supplies " + m.supplies + ", strength " + m.Strength;
+                bool ok1 = g.Strength == 5 && m.supplies == 2 && m.Strength == 6;
+                ship.supplies = 0;
+                endTurn(); endTurn();
+                detail = "after a turn " + first + "; with the ship's supplies gone, ship cargo supplies " + m.supplies;
+                return ok1 && m.supplies == 1;
             }
             case "attritionAmphibious": {
                 Unit m = Rig.At(-2, 1).occupier, g = Rig.At(-2, 2).occupier;
@@ -656,6 +687,8 @@ public static class Scenarios {
             "A Fighter 6 tiles from its airport with 11 fuel (7 a turn's flying, 3 burnt each turn away): it has to come home now, and should never be ditched.");
         air("keep-the-runway-clear", "runwayClear", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 8; Put("Grunt", a, -4, 3); Put("Grunt", a, -5, 3); Put("Grunt", a, -3, 3); }, 1,
             "Our grunts are parked on all three runway tiles and a Fighter low on fuel needs one: the grunts should leave the runway.");
+        air("reserve-the-runway", "runwayReserve", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f1 = Put("Fighter", a, -1, 2); f1.fuel = 10; Unit f2 = Put("Fighter", a, -1, 3); f2.fuel = 10; Put("Grunt", a, -5, 0); }, 1,
+            "An airfield cut down to one landing tile and two Fighters that could each stay up three more turns: the first reserves the tile for its third turn, so the second must land now, two turns early.");
         air("tanker-meets-fighter", "tankerMeets", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 1, -1); f.fuel = 9; Put("AirTanker", a, -3, 0); Put("Grunt", a, -5, 0); }, 1,
             "An air tanker (3 supplies) and a Fighter that is short of fuel: the tanker should end its turn beside the fighter.");
         air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); Put("SupplyBoat", a, -2, 0); Put("SupplyBoat", a, -2, -1); Put("Grunt", a, 3, 0); Put("Grunt", a, -4, 1); }, 3,
@@ -794,6 +827,20 @@ public static class Scenarios {
                 Unit f = First(l.ai, "Fighter");
                 detail = blocked + " runway tiles still blocked by grunts; fighter at " + (f != null && f.tile != null ? Pos(f.tile) + " fuel " + f.fuel : "gone");
                 return blocked < ap.runway.Count;
+            }
+            case "runwayReserve": {
+                Building ap = Rig.At(-4, 2).building;
+                // One landing tile: the anchor; the rest of the airfield is taken out for the test.
+                foreach (HexTile t in new List<HexTile>(ap.ServiceTiles())) if (t != ap.tile) { t.building = null; ap.tiles.Remove(t); ap.runway.Remove(t); }
+                Unit f1 = Rig.At(-1, 2).occupier, f2 = Rig.At(-1, 3).occupier;
+                AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+                Dictionary<Unit, AIAir.Landing> plan = AIAir.PlanLandings(map);
+                AIAir.Landing l1, l2;
+                plan.TryGetValue(f1, out l1); plan.TryGetValue(f2, out l2);
+                ScenarioFile.PlayTurn();
+                Unit landed = ap.tile.occupier;
+                detail = "plan: " + (l1 != null ? l1.ToString() : "first none") + "; " + (l2 != null ? l2.ToString() : "second none") + "; after our turn the tile has " + (landed != null ? landed.name + " " + Pos(landed.tile) : "nothing");
+                return l1 != null && l2 != null && l1.tile == ap.tile && l2.tile == ap.tile && l1.turn == 3 && l2.turn == 1 && landed != null && AIAir.NeedsBase(landed);
             }
             case "tankerMeets": {
                 Unit t = First(l.ai, "AirTanker"), f = First(l.ai, "Fighter");

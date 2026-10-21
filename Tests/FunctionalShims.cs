@@ -40,6 +40,12 @@ namespace UnityEngine {
         public float x, y, z;
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero { get { return new Vector3(0, 0, 0); } }
+        public static Vector3 one { get { return new Vector3(1, 1, 1); } }
+        public static Vector3 MoveTowards(Vector3 a, Vector3 b, float d) { return b; }
+        public static bool operator ==(Vector3 a, Vector3 b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
+        public static bool operator !=(Vector3 a, Vector3 b) { return !(a == b); }
+        public override bool Equals(object o) { return o is Vector3 && (Vector3)o == this; }
+        public override int GetHashCode() { return x.GetHashCode() ^ y.GetHashCode() ^ z.GetHashCode(); }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z); }
         public static Vector3 operator *(Vector3 a, float k) { return new Vector3(a.x * k, a.y * k, a.z * k); }
@@ -122,6 +128,7 @@ namespace UnityEngine {
         public T GetComponentInParent<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T GetComponentInChildren<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
+        public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
         public T AddComponent<T>() where T : class, new() { return gameObject.AddComponent<T>(); }
     }
 
@@ -137,6 +144,8 @@ namespace UnityEngine {
         public Vector3 position, localPosition, localScale, up, right;
         public Quaternion rotation, localRotation;
         public Transform parent;
+        public void SetParent(Transform p, bool worldPositionStays) { parent = p; }
+        public void SetParent(Transform p) { parent = p; }
         public int childCount { get { return 0; } }
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
     }
@@ -200,10 +209,11 @@ namespace UnityEngine {
     }
     public class Texture : Object { }
     public class Texture2D : Texture { }
-    public class Renderer : Component { public bool enabled = true; }
+    public class Renderer : Component { public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
+    public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } }
     public class SpriteRenderer : Renderer {
-        public Sprite sprite; public Color color; public int sortingOrder;
-        public int rendererPriority; public string sortingLayerName;
+        public Sprite sprite; public Color color;
+        public int rendererPriority;
     }
     public class MeshRenderer : Renderer { public Material material; public Material sharedMaterial; }
     public class MeshFilter : Component { }
@@ -294,4 +304,8 @@ namespace UnityEditor {
         static T inst;
         public static T instance { get { if (inst == null) inst = System.Activator.CreateInstance<T>(); return inst; } }
     }
+}
+
+namespace UnityEngine.Rendering {
+    public class SortingGroup : Behaviour { public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
 }
