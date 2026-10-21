@@ -319,7 +319,7 @@ public class HexTile : MonoBehaviour
                 Unit defender = occupier;
                 if (attacker.tile != move_confirm) {
                     //firing on the move
-                    attacker.CompleteMove(move_confirm);
+                    attacker.CompleteMove(move_confirm, true);
                 }
                 //TODO Attack
                 attacker.OrderAttack(defender);

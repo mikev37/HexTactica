@@ -42,6 +42,7 @@ namespace UnityEngine {
         public static Vector3 zero { get { return new Vector3(0, 0, 0); } }
         public static Vector3 one { get { return new Vector3(1, 1, 1); } }
         public static Vector3 MoveTowards(Vector3 a, Vector3 b, float d) { return b; }
+        public static Vector3 Lerp(Vector3 a, Vector3 b, float t) { return new Vector3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t); }
         public static bool operator ==(Vector3 a, Vector3 b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
         public static bool operator !=(Vector3 a, Vector3 b) { return !(a == b); }
         public override bool Equals(object o) { return o is Vector3 && (Vector3)o == this; }

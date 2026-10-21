@@ -55,6 +55,7 @@ public static class Tests {
                                 Tweak(Environment.GetEnvironmentVariable("SET_RED")), Environment.GetEnvironmentVariable("OUT"));
             return 0;
         }
+        if (probe == "export-air-gauntlet") { Console.WriteLine(Scenarios.ExportAirGauntlet() + " air gauntlet files"); return 0; }
         if (probe == "export-gauntlet") { Console.WriteLine(Scenarios.ExportGauntlet() + " gauntlet files"); return 0; }
         if (probe == "gauntlet") {
             Scenarios.Gauntlet(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),

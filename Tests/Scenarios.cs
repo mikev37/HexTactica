@@ -98,6 +98,57 @@ public static class Scenarios {
     }
 
     /// <summary>
+    /// The gauntlet's random maps with an air wing each side: an Airport as near its HQ as it fits
+    /// on land (two footprint tiles, three runway tiles), two Fighters and an Air Tanker on it, then
+    /// the usual army. Kind "airgauntlet", attrition rules.
+    /// </summary>
+    public static int ExportAirGauntlet() {
+        int n = 0;
+        foreach (MapSpec s in GauntletMaps) {
+            foreach (bool aiLeft in new[] { true, false }) {
+                Generate(s);
+                Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+                HexTile left = Rig.At(-(s.radius - 1), 0), right = Rig.At(s.radius - 1, 0);
+                bool ok = true;
+                foreach (Player p in new[] { ai, other }) {
+                    HexTile hq = (p == ai) == aiLeft ? left : right;
+                    Put("HQ", p, hq.x, hq.y);
+                    Building ap = null;
+                    foreach (HexTile c in Deployment(hq, Rig.hg.tiles.Count)) {
+                        if (c.Distance(hq) < 2 || c.building != null || c.occupier != null) continue;
+                        Building b = Rig.PlaceBuilding("Airport", p, c.x, c.y);
+                        List<HexTile> all = new List<HexTile>(b.ServiceTiles());
+                        bool fits = b.Footprint.Count == 2 && b.runway.Count == 3;
+                        foreach (HexTile t in all) if (t == null || t.occupier != null || t == hq || t.terrain == T("Water") || (t.building != null && t.building != b)) fits = false;
+                        if (fits) { ap = b; break; }
+                        b.Release(); BuildingController.bc.buildings.Remove(b); Building.all.Remove(b);
+                    }
+                    if (ap == null) { ok = false; break; }
+                    List<HexTile> pads = new List<HexTile>(ap.ServiceTiles());
+                    Put("Fighter", p, pads[0].x, pads[0].y);
+                    Put("Fighter", p, pads[1].x, pads[1].y);
+                    Put("AirTanker", p, pads[2].x, pads[2].y);
+                    int placed = 0;
+                    foreach (HexTile t in Deployment(hq, Rig.hg.tiles.Count)) {
+                        if (placed >= GauntletRoster.Length) break;
+                        if (t.occupier != null || t.building != null) continue;
+                        Put(GauntletRoster[placed], p, t.x, t.y);
+                        placed++;
+                    }
+                }
+                if (!ok) { Console.WriteLine("  " + s.name + ": no room for an airport, skipped"); continue; }
+                string name = "air-" + s.name + (aiLeft ? "-challenger-left" : "-challenger-right");
+                Dictionary<string, string> test = Test(name, "airgauntlet", "Full", 30, "report",
+                    "Random radius-7 map (seed " + s.seed + "), the gauntlet army plus an Airport with two Fighters and an Air Tanker each side, attrition rules. The left side moves first.");
+                test["rules"] = "attrition";
+                ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, aiLeft ? ai : other);
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /// <summary>
     /// Challenger (Blue, tweak <paramref name="challenger"/>) against the champion (Red, defaults
     /// plus <paramref name="champion"/>): the bridge map once, then the ten random-map games.
     /// </summary>
@@ -277,8 +328,8 @@ public static class Scenarios {
              "A Fighter starting its turn beside an air tanker with 1 refuel left is refuelled (tanker 0); the next turn the tanker is empty and the fighter burns 3.");
         make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
-        make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Put("Grunt", o, 4, 0); },
-             "A Fighter with 3 fuel flies 3 tiles onto its airport's runway: refuelled and re-armed as it lands (fuel 14, ammo 6). The airport is then lost before its next turn: it burns a turn's fuel (11) and is not ditched.");
+        make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
+             "A Fighter with 3 fuel flies 3 tiles onto its airport's runway (a plain move): refuelled and re-armed as it lands (fuel 14, ammo 6). Another lands there as a move and attack: nothing until its next turn (fuel 5 - 3 = 2, ammo 1). The airport is then lost before their next turn: the first burns a turn's fuel (11) and is not ditched.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -410,8 +461,14 @@ public static class Scenarios {
                 Building ap = Rig.At(-3, 2).building;
                 bool ditched = false; Action<Unit> hook = u => { if (u == f) ditched = true; };
                 f.TeleportTo(runway, 3);
-                string landed = "on landing fuel " + f.fuel + ", ammo " + f.ammo;
+                string landed = "plain move: on landing fuel " + f.fuel + ", ammo " + f.ammo;
                 bool ok1 = f.fuel == f.fuelMax && f.ammo == f.ammoMax;
+                Unit g = Rig.At(0, 4).occupier;
+                HexTile other = null;
+                foreach (HexTile t in ap.ServiceTiles()) if (t != runway && t.occupier == null && other == null) other = t;
+                g.TeleportTo(other, 3, true);
+                landed += "; move and attack: fuel " + g.fuel + ", ammo " + g.ammo;
+                ok1 = ok1 && g.fuel == 2 && g.ammo == 1;
                 ap.owner = l.other;
                 Unit.Ditched += hook;
                 try { endTurn(); endTurn(); } finally { Unit.Ditched -= hook; }
@@ -1161,12 +1218,27 @@ public static class Scenarios {
         Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
                           + " | Red " + (Environment.GetEnvironmentVariable("SET_RED") ?? "defaults"));
         int startBlue = l.ai.units.Count, startRed = l.other.units.Count;
+        int ditchBlue = 0, ditchRed = 0; int sorties = 0, landings = 0;
+        Action<Unit> dh = u => { if (u.owner == l.ai) ditchBlue++; else ditchRed++; };
+        Unit.Ditched += dh;
         for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
             ScenarioFile.PlayTurn();
+            if (Environment.GetEnvironmentVariable("BOARD") != null) {
+                List<string> b = new List<string>();
+                foreach (Player p in new[] { l.ai, l.other }) foreach (Unit u in p.units) if (u != null && u.tile != null)
+                    b.Add(p.personal_name + ":" + u.name.Replace("(Clone)", "") + "@" + u.tile.x + "," + u.tile.y + " s" + u.Strength + " f" + u.fuel + " a" + u.ammo + " p" + u.supplies);
+                b.Sort(string.CompareOrdinal);
+                Console.WriteLine("  board after turn " + turn + ": " + string.Join(" | ", b.ToArray()));
+            }
             if (gc.activePlayer == l.ai || gc.gameOver)
                 Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6}",
                     gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other)));
         }
+        Unit.Ditched -= dh;
+        int airBlue = 0, airRed = 0;
+        foreach (Unit u in l.ai.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airBlue++;
+        foreach (Unit u in l.other.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airRed++;
+        Console.WriteLine("aircraft: ditched Blue " + ditchBlue + " Red " + ditchRed + "; still flying Blue " + airBlue + " Red " + airRed);
         string folder = HexTactica.Harness.GameLog.Folder;
         if (root != null) HexTactica.Harness.GameLog.Stop();
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")

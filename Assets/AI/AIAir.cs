@@ -25,6 +25,7 @@ namespace HexTactica.AI {
         /// reserved it for this turn: the tile must be clear for its landing.
         /// </summary>
         public static bool MayEndOn(Unit u, HexTile t, AIMap map) {
+            if (u != null && u.trasnporter != null) return true;
             if (map.landings == null || t == null) return true;
             foreach (Landing l in map.landings.Values) if (l.turn == 1 && l.tile == t && l.unit != u) return false;
             return true;
@@ -195,7 +196,9 @@ namespace HexTactica.AI {
         }
 
         /// <param name="land">Its reserved landing, if any: then it must also still make that tile by its turn.</param>
-        public static int Margin(Unit u, HexTile stop, Dictionary<HexTile, int> toBase, List<HexTile> bases, Landing land) {
+        /// <param name="map">If given, a stop the enemy can hit leaves room for being driven back a tile
+        /// (a retreat after combat): one tile further from home, one more tile of fuel.</param>
+        public static int Margin(Unit u, HexTile stop, Dictionary<HexTile, int> toBase, List<HexTile> bases, Landing land, AIMap map = null) {
             if (u.fuelMax <= 0) return int.MaxValue;
             if (land != null && stop != land.tile) {
                 int turnsLeft = land.turn - 1;
@@ -207,6 +210,7 @@ namespace HexTactica.AI {
             int burn = LocomotionRules.IsAirborne(u.locomotion) ? Mathf.Max(0, u.minFuelPerTurn) : 0;
             int home;
             if (!toBase.TryGetValue(stop, out home)) return -999;
+            if (map != null && map.ExpectedLoss(u, stop) > 0f) home += 1;
             int turns = Mathf.Max(1, Mathf.CeilToInt(home / (float)Mathf.Max(1, u.moveRange)));
             return after - burn * turns - home * per;
         }
@@ -220,7 +224,7 @@ namespace HexTactica.AI {
             List<HexTile> bases = Bases(u, map);
             Dictionary<HexTile, int> toBase = DistanceToBase(u, bases);
             List<HexTile> safe = new List<HexTile>(), all = new List<HexTile>(stops.Keys);
-            foreach (HexTile s in all) if (Margin(u, s, toBase, bases, land) >= 0) safe.Add(s);
+            foreach (HexTile s in all) if (Margin(u, s, toBase, bases, land, map) >= 0) safe.Add(s);
             if (safe.Count == 0) {
                 int best = int.MaxValue;
                 foreach (HexTile s in all) { int d; if (toBase.TryGetValue(s, out d) && d < best) best = d; }
@@ -234,38 +238,26 @@ namespace HexTactica.AI {
         /// The last word on an aircraft's or ship's action: if it would end the turn somewhere it cannot
         /// get home from, it heads for the nearest base instead (the farthest it can get toward it).
         /// </summary>
+        /// <summary>Where <paramref name="action"/> leaves its unit at the end of the turn.</summary>
+        public static HexTile EndOf(Unit u, AIAction action) {
+            if (action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack) return u.tile;
+            return action.destination ?? u.tile;
+        }
+
         public static AIAction Guard(Unit u, AIAction action, AIMap map) {
-            // A tile reserved for another aircraft's landing this turn: never end there (lift off if on it).
-            if (u != null && u.tile != null && u.trasnporter == null) {
-                HexTile end = action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack ? u.tile : action.destination ?? u.tile;
-                if (!MayEndOn(u, end, map)) {
-                    MoveField mf = map.ReachThisTurn(u);
-                    HexTile alt = null; int altD = int.MaxValue;
-                    foreach (HexTile t in mf.Tiles) {
-                        if (t == u.tile || !mf.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t) || !MayEndOn(u, t, map)) continue;
-                        if (NeedsBase(u)) {
-                            List<HexTile> b0 = Bases(u, map);
-                            if (Margin(u, t, DistanceToBase(u, b0), b0, LandingOf(u, map)) < 0) continue;
-                        }
-                        int d = t.Distance(end);
-                        if (d < altD || (d == altD && CombatMath.Precedes(t, alt))) { alt = t; altD = d; }
-                    }
-                    if (alt != null) action = AIAction.Move(u, alt, 0f, "off a runway tile reserved for a landing this turn");
-                }
-            }
             if (!NeedsBase(u) || u.fuelMax <= 0 || u.tile == null || u.trasnporter != null) return action;
             Landing land = LandingOf(u, map);
             List<HexTile> bases = Bases(u, map);
             Dictionary<HexTile, int> toBase = DistanceToBase(u, bases);
             HexTile stop = action.destination ?? u.tile;
             if (action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack) stop = u.tile;
-            if (Margin(u, stop, toBase, bases, land) >= 0 && MayEndOn(u, stop, map)) return action;
+            if (Margin(u, stop, toBase, bases, land, map) >= 0 && MayEndOn(u, stop, map)) return action;
             MoveField f = map.ReachThisTurn(u);
             HexTile best = null; int bestMargin = int.MinValue, bestDist = int.MaxValue;
             foreach (HexTile t in f.Tiles) {
                 if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
                 if (!MayEndOn(u, t, map)) continue;
-                int m = Margin(u, t, toBase, bases, land);
+                int m = Margin(u, t, toBase, bases, land, map);
                 int d; if (!toBase.TryGetValue(t, out d)) d = 999;
                 // Safe tiles first; among them (or, if none is safe, among all) the nearest a base.
                 bool better;
@@ -306,7 +298,7 @@ namespace HexTactica.AI {
             HexTile best = null; float bestValue = float.NegativeInfinity;
             foreach (HexTile t in f.Tiles) {
                 if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
-                if (Margin(u, t, toBase, bases, LandingOf(u, map)) < 0) continue;
+                if (Margin(u, t, toBase, bases, LandingOf(u, map), map) < 0) continue;
                 float v = 0f;
                 if (u.refuelStock > 0) {
                     foreach (Unit x in map.ownUnits) {

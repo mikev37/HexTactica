@@ -29,7 +29,7 @@ namespace HexTactica.AI {
                     return DoAttack(action.unit, action.target, map);
 
                 case AIActionKind.MoveAndAttack: {
-                    bool moved = DoMove(action.unit, action.destination, headless, map);
+                    bool moved = DoMove(action.unit, action.destination, headless, map, true);
                     bool fired = DoAttack(action.unit, action.target, map);
                     return moved || fired;
                 }
@@ -58,7 +58,7 @@ namespace HexTactica.AI {
             return false;
         }
 
-        static bool DoMove(Unit unit, HexTile dest, bool headless, AIMap map) {
+        static bool DoMove(Unit unit, HexTile dest, bool headless, AIMap map, bool thenAttacks = false) {
             if (unit == null || dest == null || dest == unit.tile) return false;
             if (dest.occupier != null) return false;
             if (!unit.CanEnter(dest)) return false;
@@ -68,13 +68,13 @@ namespace HexTactica.AI {
                 // charged identically to the animated path.
                 MoveField field = map.ReachThisTurn(unit);
                 int steps = field.Reachable(dest) ? field.Get(dest).steps : unit.tile.Distance(dest);
-                unit.TeleportTo(dest, steps);
+                unit.TeleportTo(dest, steps, thenAttacks);
             } else {
                 // CompleteMove reads the parent chain that CheckMovementRange leaves on
                 // the tiles, so that has to be primed first.
                 HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
                 unit.tile.CheckMovementRange(unit);
-                unit.CompleteMove(dest);
+                unit.CompleteMove(dest, thenAttacks);
             }
 
             map.Invalidate(unit);

@@ -115,6 +115,7 @@ public class Player : MonoBehaviour
             if (tanker != null) {
                 u.fuel = u.fuelMax;
                 tanker.refuelStock = Mathf.Max(0, tanker.refuelStock - 1);
+                u.PlayRefuelHop(tanker);
             } else {
                 u.fuel = Mathf.Max(0, u.fuel - u.minFuelPerTurn);
             }
