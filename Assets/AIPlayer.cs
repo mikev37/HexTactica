@@ -257,6 +257,14 @@ public class AIPlayer : MonoBehaviour {
     /// </summary>
     public AIAction DecideFor(Unit unit) {
         AIAction a = DecideForUnit(unit);
+        // A decision path that does not go through the tactical choice (which already leaves out tiles
+        // reserved for a landing this turn) chose one: the unit decides again the ordinary way, so an
+        // aircraft parked there lifts off to whatever mission it would pick anyway.
+        if (map != null && unit != null && unit.tile != null && !AIAir.MayEndOn(unit, AIAir.EndOf(unit, a), map)) {
+            Front f = AIStrategic.FrontFor(unit, fronts);
+            AIWorld.NoAssist = noAssist.Count > 0 ? noAssist : null;
+            a = AITactical.Decide(unit, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective);
+        }
         // Aircraft and ships never end a turn where they cannot get home from.
         return map != null && unit != null ? AIAir.Guard(unit, a, map) : a;
     }

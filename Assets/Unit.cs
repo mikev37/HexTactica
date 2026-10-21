@@ -190,7 +190,8 @@ public class Unit : MonoBehaviour
                 if (StrengthDisplay == Strength && !AnimatorIsPlaying()) retreatHold = 0f;
                 else retreatHold -= Time.deltaTime;
             }
-            if(tile && retreatHold <= 0f)
+            if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
+            else if(tile && retreatHold <= 0f)
                 transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed);
             else {
 
@@ -289,7 +290,7 @@ public class Unit : MonoBehaviour
         }
     }
 
-    internal void CompleteMove(HexTile hexTile) {
+    internal void CompleteMove(HexTile hexTile, bool thenAttacks = false) {
         tile.parent = null;
         List<HexTile> path = hexTile.buildpath();
 
@@ -302,7 +303,7 @@ public class Unit : MonoBehaviour
         tile = hexTile;
         tile.occupier = this;
         this.path = path;
-        ServiceOnLanding();
+        if (!thenAttacks) ServiceOnLanding();
 
         // Carried units ride along rather than being left behind on the old tile.
         for (int i = 0; i < transported.Count; i++) {
@@ -313,11 +314,40 @@ public class Unit : MonoBehaviour
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
     }
 
+    /// <summary>How long the visual hop to an air tanker and back takes, in seconds.</summary>
+    public const float RefuelHopSeconds = 1f;
+    HexTile refuelHopTo;
+    float refuelHopT;
+
     /// <summary>
-    /// An aircraft or ship that ends its move on one of our buildings that services it is refuelled,
-    /// re-armed and restocked there and then, not at the start of the next turn: whatever happens
-    /// before then (the building lost, a turn's burn), it does not ditch at the runway it reached.
-    /// Healing still waits for the start of the turn (Player.StartTurn), so it is not counted twice.
+    /// Show a refuel from <paramref name="tanker"/>: the sprite flies onto the tanker's tile and back
+    /// to its own over RefuelHopSeconds. Visual only: the unit never leaves its tile.
+    /// </summary>
+    public void PlayRefuelHop(Unit tanker) {
+        if (tanker == null || tanker.tile == null || tile == null) return;
+        refuelHopTo = tanker.tile;
+        refuelHopT = 0f;
+    }
+
+    void RefuelHopStep() {
+        refuelHopT += Time.deltaTime;
+        float k = refuelHopT / RefuelHopSeconds;
+        Vector3 home = tile.unitPlacement.position, there = refuelHopTo.unitPlacement.position;
+        if (k >= 1f) { refuelHopTo = null; transform.position = home; return; }
+        // Out for the first half, back for the second; facing the way it is flying.
+        bool outbound = k < 0.5f;
+        float f = outbound ? k * 2f : (1f - k) * 2f;
+        transform.position = Vector3.Lerp(home, there, f);
+        bool faceLeft = outbound ? there.x < home.x : home.x < there.x;
+        transform.rotation = faceLeft ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+    }
+
+    /// <summary>
+    /// An aircraft or ship whose turn is a move (not a move and attack) that ends on one of our
+    /// buildings that services it is refuelled, re-armed and restocked there and then, not at the
+    /// start of the next turn: whatever happens before then (the building lost, a turn's burn), it
+    /// does not ditch at the runway it reached. A move and attack gets nothing until the start of
+    /// the next turn. Healing always waits for the start of the turn (Player.StartTurn).
     /// </summary>
     public void ServiceOnLanding() {
         if (tile == null || !LocomotionRules.NeedsBase(locomotion) || Building.ServicingUnder(this) == null) return;
@@ -328,14 +358,14 @@ public class Unit : MonoBehaviour
     }
 
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
-    internal void TeleportTo(HexTile hexTile, int tilesEntered) {
+    internal void TeleportTo(HexTile hexTile, int tilesEntered, bool thenAttacks = false) {
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
         // they are away from base (Player.StartTurn).
         if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = hexTile;
         if (hexTile != null) hexTile.occupier = this;
-        ServiceOnLanding();
+        if (!thenAttacks) ServiceOnLanding();
         for (int i = 0; i < transported.Count; i++) {
             if (transported[i] != null) transported[i].tile = hexTile;
         }
