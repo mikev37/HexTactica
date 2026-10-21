@@ -54,6 +54,7 @@ namespace HexTactica.Harness {
             lastSeen.Clear();
 
             Unit.Attacked += OnAttack;
+            Building.Captured += OnCapture;
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
             AIPlayer.Trace = Line;
@@ -64,13 +65,14 @@ namespace HexTactica.Harness {
             Line("source: " + (source.Length > 0 ? source : "board as it was"));
             Line("Blue (upper case) = this AI; Red (lower case) = " + (redKind == "Full" ? "this AI" : redKind));
             if (GameController.gc != null) Line("rules: " + GameController.gc.rules + (GameController.gc.rules == RuleSet.Attrition ? " (HQs cannot be attacked; after " + GameController.gc.roundLimit + " rounds the most strength x cost left wins)" : ""));
-            Line("glyphs: H HQ, S supply unit, G grunt, T tank, A artillery; . grass, f forest, ^ mountain, ~ water");
+            Line("glyphs: S supply unit, G grunt, T tank, A artillery; buildings (no unit on them) H HQ, C city, B forward base, P airport, D naval yard, = neutral; . grass, f forest, ^ mountain, ~ water");
             OnTurnStarted(GameController.gc != null ? GameController.gc.activePlayer : null);
         }
 
         public static void Stop() {
             if (writer == null) return;
             Unit.Attacked -= OnAttack;
+            Building.Captured -= OnCapture;
             Unit.Finished -= OnFinished;
             GameController.TurnStarted -= OnTurnStarted;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
@@ -97,6 +99,7 @@ namespace HexTactica.Harness {
             Line("== round " + round + ": " + side + " to move");
             Line(Draw());
             Line("   units:" + Roster());
+            if (Buildings().Length > 0) Line("   buildings:" + Buildings());
             string file = string.Format("turn-{0:000}-{1}.dat", TurnIndex(), Safe(side));
             try {
                 File.WriteAllText(Path.Combine(Folder, file), Snapshot(p, "snapshot of round " + round + ", " + side + " to move"));
@@ -118,6 +121,13 @@ namespace HexTactica.Harness {
             if (u.tile != null && was != null && was != u.tile)
                 Line("   " + Who(u) + " moved " + D(was) + " -> " + D(u.tile));
             if (u.tile != null) lastSeen[u] = u.tile;
+        }
+
+        static void OnCapture(Building b, Player side, int before, int after) {
+            if (writer == null || b == null) return;
+            Line("   " + (side != null ? side.personal_name : "?") + " captures " + b.name.Replace("(Clone)", "") + " " + D(b.tile) + ": "
+                 + before + " -> " + after + " of " + b.CaptureThreshold + ", now " + (b.owner != null ? b.owner.personal_name + "'s" : "neutral"
+                 + (b.capturingPlayer != null ? " (" + b.capturingPlayer.personal_name + " progress)" : "")));
         }
 
         static void OnAttack(Unit attacker, Unit defender, HexTile from, HexTile at, CombatOutcome o) {
@@ -148,6 +158,7 @@ namespace HexTactica.Harness {
             Line("== game over after round " + (gc != null ? gc.days : 0) + ": winner " + (gc != null && gc.winner != null ? gc.winner.personal_name : "none"));
             Line(Draw());
             Line("   units:" + Roster());
+            if (Buildings().Length > 0) Line("   buildings:" + Buildings());
         }
 
         // ------------------------------------------------------------------ text
@@ -167,6 +178,20 @@ namespace HexTactica.Harness {
 
         static List<Unit> AllUnits() {
             return UnitController.uc != null ? new List<Unit>(UnitController.uc.units) : new List<Unit>();
+        }
+
+        /// <summary>Every building: owner (or neutral and whose progress), points of its threshold, store.</summary>
+        static string Buildings() {
+            StringBuilder sb = new StringBuilder();
+            foreach (Building b in Building.all) {
+                if (b == null || b.tile == null) continue;
+                sb.Append(' ').Append(b.name.Replace("(Clone)", "")).Append(D(b.tile)).Append(' ')
+                  .Append(b.owner != null ? b.owner.personal_name : "neutral" + (b.capturingPlayer != null ? "/" + b.capturingPlayer.personal_name : ""))
+                  .Append(' ').Append(b.capturePoints).Append('/').Append(b.CaptureThreshold);
+                if (b.producesSupply && !b.IsHQ) sb.Append(" store ").Append(b.supplies).Append('/').Append(b.suppliesMax);
+                sb.Append(';');
+            }
+            return sb.ToString();
         }
 
         static string Roster() {
@@ -223,6 +248,12 @@ namespace HexTactica.Harness {
                 else if (u.name.StartsWith("Artillery")) c = 'A';
                 return u.owner != null && u.owner.id == 112 ? c : char.ToLower(c);
             }
+            if (t.building != null) {
+                Building b = t.building;
+                char c = b.IsHQ ? 'H' : b.type == BuildingType.City ? 'C' : b.type == BuildingType.FOB ? 'B' : b.type == BuildingType.Airport ? 'P' : b.type == BuildingType.NavalYard ? 'D' : 'X';
+                if (b.owner == null) return '=';
+                return b.owner.id == 112 ? c : char.ToLower(c);
+            }
             if (t.terrain == null) return '?';
             switch (t.terrain.name) {
                 case "Forest": return 'f';
@@ -233,6 +264,8 @@ namespace HexTactica.Harness {
         }
 
         // ------------------------------------------------------------------ snapshot
+
+        static TerrainData Under(HexTile t) { return t.building != null ? t.building.Underlying(t) : t.terrain; }
 
         static string Q(string s) { return "\"" + (s ?? "").Replace("\\", "/").Replace("\"", "'") + "\""; }
 
@@ -254,7 +287,7 @@ namespace HexTactica.Harness {
                 if (!first) sb.Append(',');
                 first = false;
                 sb.Append(string.Format(CultureInfo.InvariantCulture, "\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"damage\":{3},\"combatCount\":{4},\"terrain\":{5}}}",
-                    t.x, t.y, t.z, t.damageLevel, t.combatCount, Q(t.terrain != null ? t.terrain.name : "Water")));
+                    t.x, t.y, t.z, t.damageLevel, t.combatCount, Q(Under(t) != null ? Under(t).name : "Water")));
             }
             sb.Append("\n]");
 
@@ -267,9 +300,9 @@ namespace HexTactica.Harness {
                     if (!first) sb.Append(',');
                     first = false;
                     sb.Append(string.Format(CultureInfo.InvariantCulture,
-                        "\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"gameobject_name\":{3},\"personal_name\":{4},\"type\":{5},\"owner_id\":{6},\"income\":{7},\"producesSupply\":{8},\"supplyRange\":{9},\"supplies\":{10},\"suppliesMax\":{11},\"damageLevel\":{12},\"captureProgress\":{13},\"capturingPlayerId\":{14}}}",
+                        "\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"gameobject_name\":{3},\"personal_name\":{4},\"type\":{5},\"owner_id\":{6},\"income\":{7},\"producesSupply\":{8},\"supplyRange\":{9},\"supplies\":{10},\"suppliesMax\":{11},\"damageLevel\":{12},\"capturePoints\":{13},\"capturingPlayerId\":{14}}}",
                         bd.x, bd.y, bd.z, Q(bd.gameobject_name), Q(bd.personal_name), bd.type, bd.owner_id, bd.income, bd.producesSupply ? "true" : "false",
-                        bd.supplyRange, bd.supplies, bd.suppliesMax, bd.damageLevel, bd.captureProgress, bd.capturingPlayerId));
+                        bd.supplyRange, bd.supplies, bd.suppliesMax, bd.damageLevel, bd.capturePoints, bd.capturingPlayerId));
                 }
                 sb.Append("\n]");
             }

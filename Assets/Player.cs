@@ -43,6 +43,12 @@ public class Player : MonoBehaviour
         for (int i = 0; i < roster.Count; i++) {
             Unit u = roster[i];
             if (u == null || u.tile == null) continue;
+            u.attackedThisTurn = false;
+
+            // On one of our buildings that services its kind (an airport, a naval yard): full service.
+            if (Building.ServicingUnder(u) != null) { Resupplied(u, true); continue; }
+            // Aircraft and ships are resupplied only at their bases; ships live off what they carry.
+            if (LocomotionRules.NeedsBase(u.locomotion)) { Starve(u); continue; }
 
             if (u.tile.isSupplied(this)) {
                 Resupplied(u, !selfSupplying.Contains(u));
@@ -51,10 +57,6 @@ public class Player : MonoBehaviour
             }
         }
 
-        for (int i = 0; i < Building.all.Count; i++) {
-            Building b = Building.all[i];
-            if (b != null && b.owner == this) b.TickCapture();
-        }
     }
 
     /// <summary>

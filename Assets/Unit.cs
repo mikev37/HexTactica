@@ -37,6 +37,8 @@ public class Unit : MonoBehaviour
     public int Veterancy;
     [Tooltip("Where the unit stands")]
     public HexTile tile;
+    /// <summary>Fired this turn: an infantry unit that attacked does not capture the building it stands on.</summary>
+    [System.NonSerialized] public bool attackedThisTurn;
 
     [Tooltip("((Firepower+Veterancy) / (Evasion - Targeting)™ / (Armor - Pierce)™ - (Concealment of Hex.Cover)) * Unit_Strength / Defender_Strength")]
     [Header("Combat Variables")]
@@ -323,6 +325,7 @@ public class Unit : MonoBehaviour
 
     internal CombatOutcome OrderAttack(Unit defender) {
         attacking = true;
+        attackedThisTurn = true;
         target = defender;
         HexTile firedFrom = tile;
 
@@ -602,6 +605,12 @@ public struct UnitData {
         UnitData that = this;
         GameController.gc.players.ForEach(pl => { if (pl.id == that.owner_id) player = pl; });
         HexTile tile = HexGenerator.hg.get(x, y, z);
+        // TempHQ is retired: an HQ unit in an older save becomes the HQ building.
+        if (gameobject_name != null && gameobject_name.Replace("(Clone)", "").Trim() == "TempHQ") {
+            Building hq = LevelEditor.loadBuilding("HQ");
+            if (hq != null && BuildingController.bc != null && tile != null && tile.building == null) BuildingController.bc.Place(player, hq, tile);
+            return null;
+        }
         Unit ut = LevelEditor.PlaceNewUnit(player, gameobject_name,tile);
         ut.Strength = Strength;
         ut.Veterancy = Veterancy;

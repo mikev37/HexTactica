@@ -102,6 +102,18 @@ namespace HexTactica.AI {
         [Tooltip("Forecast a target our shot drives back from its retreat tile: the reply it fires from there, the tile it frees for our units' reach and cover.")]
         public bool forecastKnockback = true;
 
+        [Header("Building values")]
+        [Tooltip("Score capturing buildings (and the enemy's infantry threat to ours) in the forecast")]
+        public bool forecastBuildings = true;
+        [Tooltip("What any building is worth to hold, in gold, before what it does")]
+        public float buildingValue = 3000f;
+        [Tooltip("Turns of a building's income counted in its worth")]
+        public float buildingIncomeTurns = 3f;
+        [Tooltip("Added to a building's worth if it supplies the area around it")]
+        public float buildingSupplyValue = 3000f;
+        [Tooltip("Added to a building's worth if units can be built at it")]
+        public float buildingProductionValue = 3000f;
+
         [Header("Unit values")]
         [Tooltip("What a grunt is worth to the AI, in gold for a full-strength unit (0 = its cost). Grunts block roads and screen beyond what they cost.")]
         public float gruntWorth = 4000f;

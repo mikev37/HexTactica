@@ -3,7 +3,8 @@ using UnityEngine;
 
 /// <summary>
 /// Registry for buildings, mirroring UnitController so that save/load, clearing and
-/// placement all work the same way they already do for units.
+/// placement all work the same way they already do for units. Installs itself in any scene
+/// that lacks one.
 /// </summary>
 public class BuildingController : MonoBehaviour {
 
@@ -11,23 +12,40 @@ public class BuildingController : MonoBehaviour {
 
     public List<Building> buildings = new List<Building>();
 
+    /// <summary>How a produced unit is made (the harness swaps in its own); default UnitController.CreateUnit.</summary>
+    public static System.Func<Player, Unit, HexTile, Unit> Spawner;
+
     void Awake() { bc = this; }
     void Start() { bc = this; }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Install() {
+        if (bc != null) return;
+        GameObject go = new GameObject("BuildingController");
+        bc = go.AddComponent<BuildingController>();
+        go.AddComponent<BuildingMenu>();
+    }
+
+    /// <summary>Place a building from its prefab with its anchor on <paramref name="tile"/>. Null if any of its tiles is taken by another building.</summary>
     public Building Place(Player player, Building prefab, HexTile tile) {
         if (prefab == null || tile == null) return null;
         if (tile.building != null) return null;
 
-        Vector3 at = tile.unitPlacement != null
-                   ? tile.unitPlacement.transform.position
-                   : tile.transform.position;
+        // Building art is drawn like a tile's upper layer: at the tile itself.
+        Vector3 at = tile.transform.position;
 
         Building made = GameObject.Instantiate(prefab.gameObject, at, Quaternion.identity)
                                   .GetComponent<Building>();
-        made.tile = tile;
+        return Adopt(made, player, tile);
+    }
+
+    /// <summary>Register an instantiated building and stand it on its tiles.</summary>
+    public Building Adopt(Building made, Player player, HexTile tile) {
+        if (made == null) return null;
         made.owner = player;
-        tile.building = made;
-        buildings.Add(made);
+        made.Occupy(tile);
+        if (!buildings.Contains(made)) buildings.Add(made);
+        if (!Building.all.Contains(made)) Building.all.Add(made);
         made.RefreshFlag();
         return made;
     }
@@ -36,11 +54,30 @@ public class BuildingController : MonoBehaviour {
         List<Building> all = new List<Building>(buildings);
         for (int i = 0; i < all.Count; i++) {
             if (all[i] == null) continue;
-            if (all[i].tile != null) all[i].tile.building = null;
+            all[i].Release();
             GameObject.Destroy(all[i].gameObject);
         }
         buildings.Clear();
         Building.all.Clear();
+    }
+
+    /// <summary>
+    /// Build <paramref name="unit"/> at <paramref name="b"/>: paid from the owner's money, placed on
+    /// the first free tile of the building it can stand on. It has used its turn. Null if the
+    /// owner cannot afford it or there is no room.
+    /// </summary>
+    public Unit Produce(Building b, Unit unit) {
+        if (b == null || unit == null || b.owner == null || !b.CanProduce || !b.buildable.Contains(unit)) return null;
+        if (b.owner.money < unit.cost) return null;
+        foreach (HexTile t in b.Footprint) {
+            if (t.occupier != null || !unit.CanEnter(t)) continue;
+            Unit made = Spawner != null ? Spawner(b.owner, unit, t) : UnitController.uc.CreateUnit(b.owner, unit, t);
+            if (made == null) continue;
+            b.owner.money -= unit.cost;
+            made.active = false;
+            return made;
+        }
+        return null;
     }
 }
 
@@ -57,7 +94,7 @@ public struct BuildingData {
     public int supplies;
     public int suppliesMax;
     public int damageLevel;
-    public int captureProgress;
+    public int capturePoints;
     public long capturingPlayerId;
 
     public BuildingData(Building b) {
@@ -74,7 +111,7 @@ public struct BuildingData {
         supplies = b.supplies;
         suppliesMax = b.suppliesMax;
         damageLevel = b.damageLevel;
-        captureProgress = b.captureProgress;
+        capturePoints = b.capturePoints;
         capturingPlayerId = b.capturingPlayer != null ? b.capturingPlayer.id : -1;
     }
 
@@ -95,15 +132,11 @@ public struct BuildingData {
         Building b = BuildingController.bc.Place(owner, prefab, tile);
         if (b == null) return null;
 
-        b.personal_name = personal_name;
-        b.type = (BuildingType)type;
-        b.income = income;
-        b.producesSupply = producesSupply;
-        b.supplyRange = supplyRange;
+        if (!string.IsNullOrEmpty(personal_name)) b.personal_name = personal_name;
         b.supplies = supplies;
-        b.suppliesMax = suppliesMax;
         b.damageLevel = damageLevel;
-        b.captureProgress = captureProgress;
+        // An owned building saved with no points (an older save) is fully held.
+        b.capturePoints = owner != null && capturePoints <= 0 ? b.CaptureThreshold : capturePoints;
         b.capturingPlayer = capturing;
         b.RefreshFlag();
         return b;

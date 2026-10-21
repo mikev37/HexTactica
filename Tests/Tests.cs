@@ -48,6 +48,7 @@ public static class Tests {
         }
         if (probe == "accuracy") { Scenarios.Accuracy(tweak); return 0; }
         if (probe == "equiv") { Scenarios.Equivalence(Environment.GetEnvironmentVariable("FILE")); return 0; }
+        if (probe == "export-rules") { Console.WriteLine(Scenarios.ExportBuildingRules() + " rule files"); return 0; }
         if (probe == "export-zigzag") { Scenarios.ExportZigzag(); Console.WriteLine("logistics-zigzag.dat"); return 0; }
         if (probe == "logistics") {
             Scenarios.Logistics(Environment.GetEnvironmentVariable("FILE") ?? "logistics-zigzag", Tweak(Environment.GetEnvironmentVariable("SET_BLUE")),
