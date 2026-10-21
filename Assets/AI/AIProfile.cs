@@ -93,6 +93,13 @@ namespace HexTactica.AI {
         [Range(0f, 0.5f)]
         public float replyDiscount = 0.3f;
 
+        [Tooltip("The forecast's enemy weighs its own risk: an attack counts only if it is worth more than what our counterattack would cost the attacker on its firing tile (beyond what it risks staying put), times enemyCaution.")]
+        public bool enemyWeighsRisk = false;
+
+        [Tooltip("How much the forecast's enemy minds being counterattacked (1 = at full value).")]
+        [Range(0f, 3f)]
+        public float enemyCaution = 1f;
+
         [Tooltip("A damaged unit left on fewer than this many strength points gets no heal-back credit in the forecast: it is more likely to be finished than to heal.")]
         [Range(1, 6)]
         public int healMinStrength = 2;

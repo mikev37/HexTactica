@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -184,11 +185,14 @@ namespace HexTactica.AI {
                 if (ownSideBlocks || firesInPlace || e.moveRange <= 0) taken.Add(e.tile);
             }
 
+            bool weighs = map.profile.enemyWeighsRisk;
+            Func<Unit, HexTile> ourPos = x => x == u ? uAt : x.tile;
             foreach (Unit e in enemies) {
                 HashSet<HexTile> pos;
                 if (!positions.TryGetValue(e, out pos) || hp[e] <= 0f) continue;
                 Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f; int bestDamage = 0, bestBack = 0;
                 bool bestPinned = false;
+                float home = weighs ? Exposure(e, hp[e], e.tile, map, hp, ourPos) : 0f;
                 foreach (Unit d in map.ownUnits) {
                     if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d)) continue;
                     HexTile dAt = d == u ? uAt : d.tile;
@@ -205,6 +209,9 @@ namespace HexTactica.AI {
                         pinned = true;
                     }
                     float value = (dmg * Value(d) - back * Value(e)) * (dmg >= hp[d] ? 2f : 1f);
+                    // Would it rather? The attack must be worth more than the extra our next turn
+                    // could cost it on the tile it fires from (the counterattack it invites).
+                    if (weighs) value -= Mathf.Max(0f, Exposure(e, hp[e] - back, fire, map, hp, ourPos) - home) * map.profile.enemyCaution;
                     if (value > bestValue || (value == bestValue && bestTarget != null && AIMap.CompareUnits(d, bestTarget) < 0)) {
                         bestValue = value; bestTarget = d; bestTile = fire; bestDamage = dmg; bestBack = back; bestPinned = pinned;
                     }
@@ -502,7 +509,7 @@ namespace HexTactica.AI {
         /// <paramref name="dAt"/> next turn (hex reach: move + range), and for how much each way.
         /// The firing tile is approximated by the defender's neighbour nearest the attacker.
         /// </summary>
-        static bool InReach(Unit x, HexTile xAt, HexTile dAt, out int dmg, out int back, int xHp, Unit d, int dHp) {
+        internal static bool InReach(Unit x, HexTile xAt, HexTile dAt, out int dmg, out int back, int xHp, Unit d, int dHp) {
             dmg = 0; back = 0;
             int dist = xAt.Distance(dAt);
             int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
@@ -515,6 +522,28 @@ namespace HexTactica.AI {
             }
             CombatMath.Exchange(x, xHp, fire, d, dHp, dAt, out dmg, out back);
             return dmg > 0;
+        }
+
+        /// <summary>
+        /// What our next turn could cost enemy <paramref name="e"/> (at <paramref name="eHp"/>) standing on
+        /// <paramref name="tile"/>: every blow our surviving units could land there (hex reach),
+        /// biggest first at weights 1, 1/2, 1/4 …, capped at its strength, plus the death premium
+        /// if that would destroy it. In gold.
+        /// </summary>
+        internal static float Exposure(Unit e, float eHp, HexTile tile, AIMap map, Dictionary<Unit, float> hp, Func<Unit, HexTile> posOf) {
+            if (eHp <= 0f || tile == null || !GameController.Targetable(e)) return 0f;
+            List<float> blows = new List<float>();
+            foreach (Unit x in map.ownUnits) {
+                if (x == null || !hp.ContainsKey(x) || hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x)) continue;
+                HexTile xAt = posOf(x);
+                if (xAt == null) continue;
+                int dmg, back;
+                if (InReach(x, xAt, tile, out dmg, out back, Hp(hp[x]), e, Hp(eHp))) blows.Add(dmg);
+            }
+            blows.Sort((a, b) => b.CompareTo(a));
+            float sum = 0f, w = 1f;
+            foreach (float b in blows) { sum += b * w; w *= 0.5f; }
+            return Mathf.Min(sum, eHp) * Value(e) + (sum >= eHp ? map.profile.deathPremium * Value(e) : 0f);
         }
 
         /// <summary>Simulated strength as the whole number the game's damage rules use.</summary>
