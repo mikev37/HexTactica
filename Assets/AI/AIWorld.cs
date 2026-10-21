@@ -213,7 +213,7 @@ namespace HexTactica.AI {
                 if (ownSideBlocks && bestTile != e.tile) taken.Remove(e.tile);
                 taken.Add(bestTile);
                 endsAt[e] = bestTile;
-                float dealt = Mathf.Min(hp[bestTarget], bestDamage);
+                float dealt = Mathf.Min(hp[bestTarget], bestDamage * (1f - map.profile.replyDiscount));
                 hp[bestTarget] -= dealt;
                 float sofar;
                 w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
@@ -247,7 +247,7 @@ namespace HexTactica.AI {
                 // doesn't count; kills, damage beyond that, and damage to units that won't heal
                 // (out of supply, or a cut-off supply unit) count in full. (It was half of all the
                 // damage, which made a 5-point hit on our HQ look like 2.5 when only 1 comes back.)
-                if (left > 0f && left < kv.Key.Strength) {
+                if (left >= map.profile.healMinStrength && left < kv.Key.Strength) {
                     HexTile at = kv.Key == u ? uAt : (endsAt.ContainsKey(kv.Key) ? endsAt[kv.Key] : kv.Key.tile);
                     if (map.Heals(kv.Key, at)) {
                         float healed = Mathf.Min(kv.Key.Strength - left, healN);
