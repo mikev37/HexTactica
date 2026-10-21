@@ -44,6 +44,9 @@ namespace HexTactica.AI {
         [Range(0f, 6f)]
         public float worldTie = 0.25f;
 
+        [Tooltip("Floor on the tie margin, in gold, whatever the unit's worth.")]
+        public float worldTieMin = 250f;
+
         [Tooltip("Tier 1: keep every option whose attack value is at least this fraction of the best. 1 = only the best shot; 0.5 = anything doing half as much, which leaves room for the later tiers.")]
         [Range(0f, 1f)]
         public float attackTie = 0.5f;
@@ -85,6 +88,21 @@ namespace HexTactica.AI {
 
         [Tooltip("Bonus multiplier when an attack finishes the target.")]
         public float killBonus = 1.35f;
+
+        [Tooltip("Forecast boldness: the enemy's reply in the forecast lands this fraction lighter (0 = full worst case, 0.5 = half). The enemy still picks its targets on full damage; only what it costs us is discounted. Real opponents attack less than the forecast's all-out reply.")]
+        [Range(0f, 0.5f)]
+        public float replyDiscount = 0.3f;
+
+        [Tooltip("The forecast's enemy weighs its own risk: an attack counts only if it is worth more than what our counterattack would cost the attacker on its firing tile (beyond what it risks staying put), times enemyCaution.")]
+        public bool enemyWeighsRisk = true;
+
+        [Tooltip("How much the forecast's enemy minds being counterattacked (1 = at full value).")]
+        [Range(0f, 3f)]
+        public float enemyCaution = 1f;
+
+        [Tooltip("A damaged unit left on fewer than this many strength points gets no heal-back credit in the forecast: it is more likely to be finished than to heal.")]
+        [Range(1, 6)]
+        public int healMinStrength = 2;
 
         [Tooltip("Strength a unit in its own supply heals back by its next turn (the game's rule: 1). That much of the damage done to it doesn't count; kills, and damage beyond it, count in full.")]
         [Range(0f, 6f)]
@@ -290,6 +308,32 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float enemyStrikeWeight = 0.25f;
 
+        [Tooltip("Reply forecast: a defender driven back with nowhere to go takes the pinned point (an HQ always). Off: the old forecast, which never counted it.")]
+        public bool forecastPins = true;
+
+        [Tooltip("Reply forecast: the enemy's own units block it — it cannot end on a tile another of its units holds. Off (the fix): they pass through and make room for each other.")]
+        public bool forecastOwnSideBlocks = false;
+
+        [Tooltip("Reply forecast: a unit of ours destroyed during the reply keeps blocking enemy movement. Off (the fix): its tile opens for every enemy still to act.")]
+        public bool forecastDeadBlock = false;
+
+        [Tooltip("An assist needs a finisher with a free firing tile it can reach this turn by real movement. Off: the old check, hex distance only.")]
+        public bool assistNeedsReach = true;
+
+        [Header("Coordination")]
+        [Tooltip("Before units act one at a time, give each group in contact a whole-group plan (strike / withdraw / stay), forecast with all of its moves at once (AIPlan).")]
+        public bool coordination = false;
+
+        [Tooltip("A group plan must beat 'stay' by this much (gold) in the forecast to be adopted.")]
+        public float coordinationMargin = 500f;
+
+        [Tooltip("Model retreats in the group-plan forecast: a defender driven back moves, and the tile it held opens.")]
+        public bool coordinationRetreats = true;
+
+        [Tooltip("Self-preservation: the acting unit counts every enemy blow that could reach its tile (biggest first, weights 1, 1/2, 1/4 ...), beyond what the forecast reply already takes from it, at this weight. 0 = off.")]
+        [Range(0f, 2f)]
+        public float selfPreservationWeight = 0f;
+
         [Tooltip("A unit destroyed costs this many more of its strength points' worth than the points themselves: alive, it would heal back, hold ground and fire again.")]
         [Range(0f, 6f)]
         public float deathPremium = 1f;
@@ -301,6 +345,9 @@ namespace HexTactica.AI {
         [Tooltip("A hit our units still to act this turn could finish counts as this fraction of a kill (its reply removed, its material gone).")]
         [Range(0f, 1f)]
         public float assistWeight = 0.75f;
+
+        [Tooltip("Artillery: gold per tile the enemy could move to next turn that the gun covers from where it ends its turn (its zone of control).")]
+        public float artilleryCoverValue = 25f;
 
         [Tooltip("Space: gold per tile one side's units could move to next turn, and again per tile they could strike. Ours count for us, theirs against us — so taking space from them is a gain, and doing it with a cheap unit is a cheap gain.")]
         public float spaceTileValue = 10f;

@@ -102,6 +102,21 @@ Diagnostics:
 - `PROBE=chokes FILE=<name>` — how much enemy movement a grunt would cut on each tile.
 - `PROBE=export` — regenerate the files from the builders in `Tests/Scenarios.cs`.
 - `SET=field=value,…` — override any `AIProfile` field for a run.
+- `RULES=attrition` — play under the attrition variant (HQs cannot be attacked; a side is out
+  with nothing but its HQ left; after 30 rounds the most strength × cost left wins). In Unity:
+  **HexTactica → Rules**, or `"rules":"attrition"` in a scenario's test block.
+- `PROBE=versus SET_A=… [SET_B=…]` — this AI with settings A (Blue) against settings B (Red) on
+  every generated map with even armies, A on each side: 22 games.
+- `PROBE=accuracy [OPP=Full]` — how far the forecast's expected loss for each of our turns is
+  from what the opponent then actually did.
+- `FILTER=a|b` — run only scenario files whose names contain one of the parts.
+- `PROBE=equiv [FILE=…]` — checks the group-plan forecast against the single-move forecast
+  (must agree exactly with one move and retreats off).
+- `PROBE=duel FILE=<name> [SET_BLUE=…] [SET_RED=…] [ROUNDS=r] [OUT=dir]` — this AI against
+  itself with different settings, one game, a line per round (and a game log with OUT). The
+  forecast fixes are switches: `forecastPins`, `forecastOwnSideBlocks`, `forecastDeadBlock`,
+  `assistNeedsReach` (plus `deathPremium`, `worldTie`); the old behaviour is
+  `forecastPins=false,forecastOwnSideBlocks=true,forecastDeadBlock=true,assistNeedsReach=false,deathPremium=0,worldTie=1`.
 
 ### How this AI chooses a move (defaults)
 
@@ -152,7 +167,25 @@ on each other's tiles), a unit of ours destroyed during the reply stops blocking
 to go takes the pinned point — an HQ always. A destroyed unit costs `deathPremium` (1) more of
 its strength points' worth than the points themselves, both sides. An assist needs a real
 attack: a finisher with a free firing tile it can reach this turn. Options within `worldTie`
-(0.25) of a strength point of the best world survive to the positional tie-break.
+(0.25) of a strength point of the best world — never less than `worldTieMin` (250) — survive
+to the positional tie-break. Only enemy units that fire in place (artillery) or cannot move keep
+their tiles in the reply; supply units and the rest step aside. Immobile units (the HQ) are never
+driven back, so never pinned. Artillery is paid `artilleryCoverValue` (25) per tile the enemy
+could move to next turn that its guns cover from where it ends its turn.
+
+`replyDiscount` (0–0.5, default 0.3) lightens the enemy's forecast reply by that fraction — it
+still picks targets on full damage. The forecast's enemy also weighs its own risk (`enemyWeighsRisk`, on): an attack counts only
+if it is worth more than the counterattack it invites on its firing tile (`enemyCaution` 1).
+A unit left on fewer than `healMinStrength` (2) gets no
+heal-back credit in the forecast or in attack values.
+
+Optional (off by default): `selfPreservationWeight` — the acting unit also counts every blow
+that could reach its tile, biggest first at weights 1, ½, ¼ …, beyond what the forecast reply
+takes; and `coordination` — before units act one at a time, each group in contact gets three
+whole-group plans (strike: kill what can be killed, artillery first; withdraw: out of next-turn
+strike range, as close as that allows; stay: hold and shoot), forecast as one board with every
+move applied and retreats modelled (`AIPlan`); the best is adopted if it beats stay by
+`coordinationMargin`, and each step is re-checked before it runs.
 
 Each tile a unit could stop on is simulated once without firing and once for every shot it
 could take from there; the simulation, not the attack score, picks. The simulated enemy picks targets net of the retaliation it takes.

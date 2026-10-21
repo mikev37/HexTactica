@@ -59,7 +59,7 @@ namespace HexTactica.AI {
             // (Supply units heal too, unless cut off — the 25,000 hub healed its 3 points back while the
             // tank that hit it was lost for good. It used to be exempt here.)
             // The game heals one strength a turn (profile.healedPerTurn): that much doesn't count.
-            if (!o.defenderDies && o.damageToDefender > 0 && map.Heals(defender, defender.tile))
+            if (!o.defenderDies && o.damageToDefender > 0 && defender.Strength - o.damageToDefender >= profile.healMinStrength && map.Heals(defender, defender.tile))
                 value *= Mathf.Max(0f, o.damageToDefender - profile.healedPerTurn) / o.damageToDefender;
 
             // An HQ is priced by what attacking it achieves: the win, or nothing lasting.
@@ -164,7 +164,7 @@ namespace HexTactica.AI {
             List<HexTile> inRange = AIPath.TilesInRange(from, attacker.MinRange, attacker.AttackRange);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner) continue;
+                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
 
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (!a.valid) continue;
@@ -185,7 +185,7 @@ namespace HexTactica.AI {
             inRange.Sort(CombatMath.CompareTiles);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner) continue;
+                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (a.valid) all.Add(a);
             }

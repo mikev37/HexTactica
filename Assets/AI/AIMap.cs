@@ -248,7 +248,7 @@ namespace HexTactica.AI {
                 }
                 for (int j = 0; j < ownUnits.Count; j++) {
                     Unit u = ownUnits[j];
-                    if (u != null && u.tile != null && u.trasnporter == null && ef.tiles.Contains(u.tile)) {
+                    if (u != null && u.tile != null && u.trasnporter == null && ef.tiles.Contains(u.tile) && GameController.Targetable(u)) {
                         ef.exposedFriendlies++;
                         float at = Attraction(e, u, u.tile);
                         ef.attractionOf[u] = at;
@@ -259,7 +259,7 @@ namespace HexTactica.AI {
                 // can land on anything of ours, in material (kills counted with the kill bonus).
                 for (int j = 0; j < ownUnits.Count; j++) {
                     Unit u = ownUnits[j];
-                    if (u == null || u.tile == null || u.trasnporter != null || !ef.tiles.Contains(u.tile)) continue;
+                    if (u == null || u.tile == null || u.trasnporter != null || !ef.tiles.Contains(u.tile) || !GameController.Targetable(u)) continue;
                     int dmg = Mathf.Min(u.Strength, Unit.calculateDamage(e, u, u.tile, 0));
                     if (dmg <= 0) continue;
                     float v = dmg * AIScore.Worth(u) * (dmg >= u.Strength ? profile.killBonus : 1f);
@@ -626,6 +626,7 @@ namespace HexTactica.AI {
             hqThreat.Clear();
             hqDanger.Clear();
             hqAttackPower.Clear();
+            if (GameController.gc != null && GameController.gc.rules == RuleSet.Attrition) return;   // HQs out of play
             float stake = BoardStake;
             for (int h = 0; h < ownHubs.Count; h++) {
                 SupplyPoint sp = ownHubs[h];

@@ -97,7 +97,8 @@ namespace HexTactica.AI {
                 list.Add(o);
             }
 
-            for (int i = 0; i < map.enemyHubs.Count; i++) {
+            bool attrition = GameController.gc != null && GameController.gc.rules == RuleSet.Attrition;
+            for (int i = 0; i < map.enemyHubs.Count && !attrition; i++) {
                 SupplyPoint sp = map.enemyHubs[i];
                 if (sp == null || !sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;
                 Unit hub = sp.myUnit;

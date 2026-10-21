@@ -306,6 +306,9 @@ namespace HexTactica.AI {
         /// worldTie of this unit's strength points of the best world survive; among them the
         /// highest denial + positional score wins (approach, supply, strategy, commitment).
         /// </summary>
+        /// <summary>The forecast of the option most recently chosen by the world-score decider (for diagnostics).</summary>
+        public static AIWorld.Outcome LastChosen;
+
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = new AIWorld.Cache();
@@ -324,7 +327,11 @@ namespace HexTactica.AI {
                 }
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
-            List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - profile.worldTie * worth);
+            // The tie margin: a fraction of a strength point, but never less than worldTieMin —
+            // a quarter of a grunt's point (83) treated real differences as noise in reverse:
+            // tiny ones decided everything.
+            float tie = Mathf.Max(profile.worldTieMin, profile.worldTie * worth);
+            List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - tie);
             Option best = null;
             Dictionary<HexTile, AIDenial.Result> denial = new Dictionary<HexTile, AIDenial.Result>();
             foreach (Option o in kept) {
@@ -343,7 +350,7 @@ namespace HexTactica.AI {
                 System.Text.StringBuilder sb = new System.Text.StringBuilder();
                 sb.Append(unit.owner.personal_name).Append(' ').Append(unit.name).Append(D(unit.tile)).Append(" s").Append(unit.Strength)
                   .Append(" [").Append(tag).Append(", world] ").Append(options.Count).Append(" options | best world ").Append(bestWorld.ToString("0"))
-                  .Append(", within ").Append((profile.worldTie * worth).ToString("0")).Append(": ").Append(kept.Count);
+                  .Append(", within ").Append(tie.ToString("0")).Append(": ").Append(kept.Count);
                 List<Option> shown = new List<Option>(options);
                 shown.Sort((a, b) => b.world.score.CompareTo(a.world.score));
                 for (int i = 0; i < Mathf.Min(5, shown.Count); i++) {
@@ -363,6 +370,7 @@ namespace HexTactica.AI {
                 else context.intents.Remove(unit);
             }
             if (best == null) return AIAction.Wait(unit, tag + ": no option");
+            LastChosen = best.world;
             string why = tag + ": world " + best.world.score.ToString("0");
             if (best.shot.valid) {
                 if (best.stop == unit.tile) return AIAction.Strike(unit, best.shot.target, best.rest, why + " strike");
