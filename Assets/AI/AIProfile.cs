@@ -89,6 +89,14 @@ namespace HexTactica.AI {
         [Tooltip("Bonus multiplier when an attack finishes the target.")]
         public float killBonus = 1.35f;
 
+        [Tooltip("Forecast boldness: the enemy's reply in the forecast lands this fraction lighter (0 = full worst case, 0.5 = half). The enemy still picks its targets on full damage; only what it costs us is discounted. Real opponents attack less than the forecast's all-out reply.")]
+        [Range(0f, 0.5f)]
+        public float replyDiscount = 0f;
+
+        [Tooltip("A damaged unit left on fewer than this many strength points gets no heal-back credit in the forecast: it is more likely to be finished than to heal.")]
+        [Range(1, 6)]
+        public int healMinStrength = 2;
+
         [Tooltip("Strength a unit in its own supply heals back by its next turn (the game's rule: 1). That much of the damage done to it doesn't count; kills, and damage beyond it, count in full.")]
         [Range(0f, 6f)]
         public float healedPerTurn = 1f;

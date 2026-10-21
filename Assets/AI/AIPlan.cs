@@ -190,7 +190,7 @@ namespace HexTactica.AI {
                     if (ownSideBlocks && bestTile != at[e]) taken.Remove(at[e]);
                     taken.Add(bestTile);
                     endsAt[e] = bestTile;
-                    float dealt = Mathf.Min(hp[bestTarget], bestDamage);
+                    float dealt = Mathf.Min(hp[bestTarget], bestDamage * (1f - prof.replyDiscount));
                     hp[bestTarget] -= dealt;
                     float sofar;
                     w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
@@ -232,7 +232,7 @@ namespace HexTactica.AI {
                 Unit x = kv.Key;
                 float left = Mathf.Max(0f, kv.Value);
                 bool ours = x.owner == us;
-                if (left > 0f && left < x.Strength) {
+                if (left >= prof.healMinStrength && left < x.Strength) {
                     HexTile where = ours ? at[x] : (endsAt.ContainsKey(x) ? endsAt[x] : at[x]);
                     if (map.Heals(x, where)) {
                         float healed = Mathf.Min(x.Strength - left, prof.healedPerTurn);
