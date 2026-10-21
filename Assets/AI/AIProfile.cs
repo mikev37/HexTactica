@@ -114,6 +114,9 @@ namespace HexTactica.AI {
         [Tooltip("Added to a building's worth if units can be built at it")]
         public float buildingProductionValue = 3000f;
 
+        [Tooltip("Gold against a unit of ours that does not land there ending its turn on our runway or dock tiles, while we have units that do")]
+        public float runwayBlockValue = 2000f;
+
         [Header("Unit values")]
         [Tooltip("What a grunt is worth to the AI, in gold for a full-strength unit (0 = its cost). Grunts block roads and screen beyond what they cost.")]
         public float gruntWorth = 4000f;

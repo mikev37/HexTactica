@@ -267,6 +267,12 @@ MonoBehaviour:
   owner: {fileID: 0}
   footprint: []
   ground: {fileID: 11400000, guid: 9c9844dd7fd7fdcd9c187b589764e853, type: 2}
+  serviceTiles:
+  - x: 1
+    y: 0
+  - x: 1
+    y: -1
+  serviceGround: {fileID: 0}
   sprite: {fileID: 2120000000000000001}
   ownerFlag: {fileID: 2120000000000000002}
   flag: {fileID: 4000000000000000003}
@@ -274,15 +280,17 @@ MonoBehaviour:
   flagBottom: 0
   flagTop: 2.5
   income: 0
-  producesSupply: 0
-  supplyRange: 4
+  producesSupply: 1
+  supplyRange: 3
   supplyScramble: 1
   supplies: 0
-  suppliesMax: 0
+  suppliesMax: 3
   chargePerTurn: 1
   services:
   - 6
   capturePoints: 0
   capturingPlayer: {fileID: 0}
   damageLevel: 0
-  buildable: []
+  buildable:
+  - {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
+  - {fileID: 9081080694409079478, guid: d4647588f393cbbac1e0144614333098, type: 3}

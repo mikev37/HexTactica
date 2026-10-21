@@ -44,6 +44,7 @@ namespace HexTactica.AI {
             context.objective = objective;
             context.posture = posture;
 
+            if (unit.airTanker) return AIAir.DecideTanker(unit, map);
             AIRole role = AIRoles.Classify(unit, profile);
             if (role == AIRole.Wounded && profile.woundedNeedsSafety) return DecideWounded(unit, map, profile, posture);
             if (role == AIRole.Line && ShouldRotate(unit, map, profile)) role = AIRole.Wounded;
@@ -166,6 +167,8 @@ namespace HexTactica.AI {
             float worth = AIScore.Worth(unit);
             List<Option> options = new List<Option>();
             if (!stops.ContainsKey(unit.tile)) stops[unit.tile] = new KeyValuePair<float, HexTile>(float.NegativeInfinity, unit.tile);
+            // Aircraft and ships: only stops they can still get home from (bingo fuel).
+            AIAir.FilterSafe(unit, map, stops);
             foreach (KeyValuePair<HexTile, KeyValuePair<float, HexTile>> kv in stops) {
                 HexTile s = kv.Key;
                 if (s != unit.tile && !AIPath.CanFinishTurnOn(unit, s)) continue;
@@ -320,6 +323,8 @@ namespace HexTactica.AI {
             foreach (Option o in options) {
                 o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
+                // Runways and docks are kept clear for the aircraft and ships that land there.
+                o.world.score -= AIAir.RunwayBlockCost(unit, o.stop, map);
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
             if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });

@@ -37,6 +37,10 @@ public class Unit : MonoBehaviour
     public int Veterancy;
     [Tooltip("Where the unit stands")]
     public HexTile tile;
+    [Tooltip("Ground unit able to move into and through water tiles that border land")]
+    public bool amphibious;
+    [Tooltip("Air tanker: refuels friendly air units that start their turn beside it, one of its supplies for each")]
+    public bool airTanker;
     /// <summary>Fired this turn: an infantry unit that attacked does not capture the building it stands on.</summary>
     [System.NonSerialized] public bool attackedThisTurn;
 
@@ -184,23 +188,49 @@ public class Unit : MonoBehaviour
     }
 
     internal bool CanEnter(HexTile n) {
-        return n.terrain.elevation >= elevationMin && n.terrain.elevation <= elevationMax;
+        if (n == null || n.terrain == null) return false;
+        int e = n.terrain.elevation;
+        if (e >= elevationMin && e <= elevationMax) return true;
+        // Amphibious: into and through water that borders land.
+        return amphibious && e < 0 && BordersLand(n);
 	}
+
+    /// <summary>A tile with land (elevation 0 or more: bridges included) beside it.</summary>
+    public static bool BordersLand(HexTile n) {
+        if (n == null || n.neighbors == null) return false;
+        for (int i = 0; i < n.neighbors.Count; i++) {
+            HexTile m = n.neighbors[i];
+            if (m != null && m.terrain != null && m.terrain.elevation >= 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary>A unit (aircraft or ship) ran out of fuel and was ditched.</summary>
+    public static event System.Action<Unit> Ditched;
+
+    /// <summary>
+    /// Out of fuel: the unit is lost. Plays the "Ditch" animation when the unit's animator has one
+    /// (its last frame should call DeathResolve, as "Die" does), the death animation otherwise.
+    /// </summary>
+    public void Ditch() {
+        if (dead) return;
+        if (Ditched != null) Ditched(this);
+        DieActual();
+        if (animator != null) {
+            bool hasDitch = false;
+            foreach (AnimatorControllerParameter p in animator.parameters) if (p.name == "Ditch") hasDitch = true;
+            animator.SetTrigger(hasDitch ? "Ditch" : "Die");
+        }
+    }
 
     internal void CompleteMove(HexTile hexTile) {
         tile.parent = null;
         List<HexTile> path = hexTile.buildpath();
 
-        // Fuel is charged per tile entered. Aircraft burn their whole per-turn
-        // allowance regardless of distance flown, per the design doc.
         int tilesEntered = Mathf.Max(0, path.Count - 1);
-        if (fuelMax > 0) {
-            if (LocomotionRules.BurnsFullFuelPerTurn(locomotion)) {
-                if (tilesEntered > 0) fuel = Mathf.Max(0, fuel - Mathf.Max(minFuelPerTurn, minFuelPerTile));
-            } else {
-                fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
-            }
-        }
+        // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
+        // they are away from base (Player.StartTurn).
+        if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
 
         tile.occupier = null;
         tile = hexTile;
@@ -218,13 +248,9 @@ public class Unit : MonoBehaviour
 
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
     internal void TeleportTo(HexTile hexTile, int tilesEntered) {
-        if (fuelMax > 0) {
-            if (LocomotionRules.BurnsFullFuelPerTurn(locomotion)) {
-                if (tilesEntered > 0) fuel = Mathf.Max(0, fuel - Mathf.Max(minFuelPerTurn, minFuelPerTile));
-            } else {
-                fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
-            }
-        }
+        // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
+        // they are away from base (Player.StartTurn).
+        if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = hexTile;
         if (hexTile != null) hexTile.occupier = this;

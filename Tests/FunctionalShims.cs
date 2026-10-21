@@ -214,9 +214,11 @@ namespace UnityEngine {
     public class Animator : Behaviour {
         public void SetBool(string s, bool b) { }
         public void SetTrigger(string s) { }
+        public AnimatorControllerParameter[] parameters { get { return new AnimatorControllerParameter[0]; } }
         public void ResetTrigger(string s) { }
         public AnimatorStateInfo GetCurrentAnimatorStateInfo(int layer) { return new AnimatorStateInfo(); }
     }
+    public class AnimatorControllerParameter { public string name; }
     public struct AnimatorStateInfo { public float normalizedTime { get { return 0; } } }
     public class StateMachineBehaviour : ScriptableObject {
         public virtual void OnStateEnter(Animator a, AnimatorStateInfo s, int l) { }

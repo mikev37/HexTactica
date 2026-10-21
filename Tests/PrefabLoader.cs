@@ -111,6 +111,7 @@ namespace HexTactica.Testing {
                 fi.SetValue(b, v);
             }
             b.tiles = new List<HexTile>();
+            b.runway = new List<HexTile>();
             b.tile = null;
             b.owner = null;
             return b;
@@ -137,14 +138,16 @@ namespace HexTactica.Testing {
                 } catch (FormatException) { }
             }
             b.footprint = new List<TileOffset>();
+            b.serviceTiles = new List<TileOffset>();
             b.services = new List<Locomotion>();
             b.buildable = new List<Unit>();
             List<string> lines = new List<string>(doc.Split('\n'));
             for (int i = 0; i < lines.Count; i++) {
                 string l = lines[i];
-                if (l.StartsWith("  footprint:")) {
+                if (l.StartsWith("  footprint:") || l.StartsWith("  serviceTiles:")) {
+                    List<TileOffset> into = l.StartsWith("  footprint:") ? b.footprint : b.serviceTiles;
                     for (int j = i + 1; j + 1 < lines.Count && lines[j].StartsWith("  - x:"); j += 2)
-                        b.footprint.Add(new TileOffset(int.Parse(lines[j].Substring(lines[j].IndexOf(':') + 1).Trim()), int.Parse(lines[j + 1].Substring(lines[j + 1].IndexOf(':') + 1).Trim())));
+                        into.Add(new TileOffset(int.Parse(lines[j].Substring(lines[j].IndexOf(':') + 1).Trim()), int.Parse(lines[j + 1].Substring(lines[j + 1].IndexOf(':') + 1).Trim())));
                 } else if (l.StartsWith("  services:")) {
                     for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) b.services.Add((Locomotion)int.Parse(lines[j].Substring(4).Trim()));
                 } else if (l.StartsWith("  buildable:")) {
@@ -153,10 +156,11 @@ namespace HexTactica.Testing {
                         string unit = g != null ? AssetByGuid(Path.Combine(AssetsRoot, "Units"), "*.prefab.meta", g) : null;
                         if (unit != null && Has(unit)) b.buildable.Add(Load(unit));
                     }
-                } else if (l.StartsWith("  ground:")) {
+                } else if (l.StartsWith("  ground:") || l.StartsWith("  serviceGround:")) {
                     string g = GuidIn(l);
                     string terrain = g != null ? AssetByGuid(Path.Combine(AssetsRoot, "Tiles"), "*.asset.meta", g) : null;
-                    if (terrain != null) b.ground = ScenarioFile.Terrain(terrain);
+                    TerrainData td = terrain != null ? ScenarioFile.Terrain(terrain) : null;
+                    if (l.StartsWith("  ground:")) b.ground = td; else b.serviceGround = td;
                 }
             }
             return b;

@@ -184,6 +184,8 @@ MonoBehaviour:
   owner: {fileID: 0}
   footprint: []
   ground: {fileID: 11400000, guid: 9c9844dd7fd7fdcd9c187b589764e853, type: 2}
+  serviceTiles: []
+  serviceGround: {fileID: 0}
   sprite: {fileID: 2120000000000000001}
   ownerFlag: {fileID: 0}
   flag: {fileID: 4000000000000000003}
@@ -207,6 +209,7 @@ MonoBehaviour:
   damageLevel: 0
   buildable:
   - {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+  - {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
   - {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
   - {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
   - {fileID: 9081080694409079478, guid: bef79f3571dc6a548ad283decf31b0d7, type: 3}

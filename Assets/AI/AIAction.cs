@@ -102,6 +102,7 @@ namespace HexTactica.AI {
         /// because a hub cannot know where to park until the line has settled.
         /// </summary>
         public static int Priority(Unit u, AIProfile profile, bool hasTargetInRange) {
+            if (u != null && u.airTanker) return 80;   // after the aircraft it refuels have moved
             AIRole role = Classify(u, profile);
 
             switch (role) {

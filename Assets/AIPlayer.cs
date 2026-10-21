@@ -248,6 +248,12 @@ public class AIPlayer : MonoBehaviour {
     /// everything else goes to its role-specific tactical decider.
     /// </summary>
     public AIAction DecideFor(Unit unit) {
+        AIAction a = DecideForUnit(unit);
+        // Aircraft and ships never end a turn where they cannot get home from.
+        return map != null && unit != null ? AIAir.Guard(unit, a, map) : a;
+    }
+
+    AIAction DecideForUnit(Unit unit) {
         if (unit == null) return AIAction.Wait(null, "null");
         AIWorld.NoAssist = noAssist.Count > 0 ? noAssist : null;
         AITactical.Intents = intents;

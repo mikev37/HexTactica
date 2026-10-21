@@ -186,6 +186,14 @@ MonoBehaviour:
   - x: 1
     y: 0
   ground: {fileID: 11400000, guid: 9c9844dd7fd7fdcd9c187b589764e853, type: 2}
+  serviceTiles:
+  - x: 0
+    y: 1
+  - x: 1
+    y: 1
+  - x: -1
+    y: 1
+  serviceGround: {fileID: 11400000, guid: a0a7b54395426e346a34eae723e25f42, type: 2}
   sprite: {fileID: 2120000000000000001}
   ownerFlag: {fileID: 0}
   flag: {fileID: 4000000000000000003}
@@ -205,4 +213,6 @@ MonoBehaviour:
   capturePoints: 0
   capturingPlayer: {fileID: 0}
   damageLevel: 0
-  buildable: []
+  buildable:
+  - {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+  - {fileID: 9081080694409079478, guid: 23e1a5730bfd3039f29b7eb74e603542, type: 3}

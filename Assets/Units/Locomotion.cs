@@ -46,7 +46,7 @@ public static class LocomotionRules {
 
     /// <summary>Resupplied (healed, refuelled, rearmed) only on a building that services them: aircraft at airports, ships at naval yards.</summary>
     public static bool NeedsBase(Locomotion l) {
-        return l == Locomotion.Aircraft || l == Locomotion.Ship;
+        return l == Locomotion.Aircraft || l == Locomotion.Rotor || l == Locomotion.Ship;
     }
 
     public static bool IsNaval(Locomotion l) {
