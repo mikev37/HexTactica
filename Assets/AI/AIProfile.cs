@@ -247,6 +247,12 @@ namespace HexTactica.AI {
         [Range(0, 6)]
         public int withdrawStrength = 2;
 
+        [Tooltip("A unit at or below withdrawStrength withdraws only to a tile that heals it and the enemy cannot reach next turn, and only when fighting on is not worth more by the forecast; otherwise it fights.")]
+        public bool woundedNeedsSafety = false;
+
+        [Tooltip("With woundedNeedsSafety: off = skip the safe-and-supplied test and just compare fighting with withdrawing.")]
+        public bool woundedSafetyGate = true;
+
         [Tooltip("Pull toward a front's objective, as a fraction of the objective's value at distance zero, falling off as 1/(1+d).")]
         [Range(0f, 0.5f)]
         public float objectivePull = 0.01f;
