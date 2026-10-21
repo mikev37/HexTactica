@@ -352,6 +352,11 @@ namespace HexTactica.AI {
         /// <summary>What is left on <paramref name="hp"/>: material both sides (heal-back counted), death
         /// premiums, HQ stakes and supply-unit dependents. Fills <paramref name="w"/>'s parts; returns the sum.</summary>
         static float Valuate(Dictionary<Unit, float> hp, Unit u, HexTile uAt, Dictionary<Unit, HexTile> endsAt, AIMap map, Outcome w) {
+            return Valuate(hp, u.owner, x => x == u ? uAt : (endsAt.ContainsKey(x) ? endsAt[x] : x.tile), map, w);
+        }
+
+        /// <param name="where">Where each unit ends up (for healing).</param>
+        internal static float Valuate(Dictionary<Unit, float> hp, Player us, Func<Unit, HexTile> where, AIMap map, Outcome w) {
             float stake = map.BoardStake;
             w.own = 0f; w.enemy = 0f; w.deaths = 0f; w.hubs = 0f; w.healOwn = 0f; w.healEnemy = 0f;
             float healN = map.profile.healedPerTurn;
@@ -362,11 +367,11 @@ namespace HexTactica.AI {
                 // (out of supply, or a cut-off supply unit) count in full. (It was half of all the
                 // damage, which made a 5-point hit on our HQ look like 2.5 when only 1 comes back.)
                 if (left >= map.profile.healMinStrength && left < kv.Key.Strength) {
-                    HexTile at = kv.Key == u ? uAt : (endsAt.ContainsKey(kv.Key) ? endsAt[kv.Key] : kv.Key.tile);
+                    HexTile at = where(kv.Key);
                     if (map.Heals(kv.Key, at)) {
                         float healed = Mathf.Min(kv.Key.Strength - left, healN);
                         left += healed;
-                        if (kv.Key.owner == u.owner) w.healOwn += healed * Value(kv.Key); else w.healEnemy += healed * Value(kv.Key);
+                        if (kv.Key.owner == us) w.healOwn += healed * Value(kv.Key); else w.healEnemy += healed * Value(kv.Key);
                     }
                 }
                 float v = left * Value(kv.Key);
@@ -375,9 +380,9 @@ namespace HexTactica.AI {
                 // back, holds ground and fires again. deathPremium more points of its worth.
                 if (kv.Value <= 0f && !hq) {
                     float extra = map.profile.deathPremium * Value(kv.Key);
-                    if (kv.Key.owner == u.owner) w.deaths -= extra; else w.deaths += extra;
+                    if (kv.Key.owner == us) w.deaths -= extra; else w.deaths += extra;
                 }
-                if (kv.Key.owner == u.owner) {
+                if (kv.Key.owner == us) {
                     w.own += v;
                     if (hq && kv.Value <= 0f) w.ourHQFalls = true;
                 } else {
@@ -395,9 +400,9 @@ namespace HexTactica.AI {
                 foreach (KeyValuePair<Unit, float> kv in hp) {
                     if (kv.Value > 0f || IsHQ(kv.Key) || kv.Key.GetComponent<SupplyPoint>() == null) continue;
                     // With supplyForecastValue the enemy's loss is the supply forecast's (Space).
-                    if (kv.Key.owner != u.owner && prof.supplyForecastValue > 0f) continue;
+                    if (kv.Key.owner != us && prof.supplyForecastValue > 0f) continue;
                     float dep = map.HubStake(kv.Key) * prof.hubDependentsWeight;
-                    if (kv.Key.owner == u.owner) w.hubs -= dep; else w.hubs += dep;
+                    if (kv.Key.owner == us) w.hubs -= dep; else w.hubs += dep;
                 }
                 score += w.hubs;
             }
@@ -409,7 +414,7 @@ namespace HexTactica.AI {
         /// <paramref name="d"/> on <paramref name="dAt"/> at <paramref name="left"/>? Each from a free firing
         /// tile it can reach (not <paramref name="fire"/>, which the first attacker takes); strongest first.
         /// </summary>
-        static bool EnemyCanFinish(Unit d, HexTile dAt, float left, List<Unit> enemies, int ei,
+        internal static bool EnemyCanFinish(Unit d, HexTile dAt, float left, List<Unit> enemies, int ei,
                                    Dictionary<Unit, HashSet<HexTile>> positions, HashSet<HexTile> taken, HexTile fire, Dictionary<Unit, float> hp) {
             HashSet<HexTile> claimed = new HashSet<HexTile>(taken);
             claimed.Add(fire);
