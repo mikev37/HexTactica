@@ -201,6 +201,11 @@ public class AIPlayer : MonoBehaviour {
             foreach (Unit u in first) queue.Remove(u);
             queue.InsertRange(0, first);
         }
+        // Aircraft landing this turn act last (after any coordinated plan too), once whatever was on their tiles has left.
+        List<Unit> landingNow = new List<Unit>();
+        foreach (AIAir.Landing l in map.landings.Values) if (l.turn == 1 && queue.Contains(l.unit)) landingNow.Add(l.unit);
+        landingNow.Sort(AIMap.CompareUnits);
+        foreach (Unit u in landingNow) { queue.Remove(u); queue.Add(u); }
         if (Trace != null) {
             Trace("   " + player.personal_name + " (this AI) reads the board: " + map.SupplyReport());
             string contact = "";

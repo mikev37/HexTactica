@@ -302,6 +302,7 @@ public class Unit : MonoBehaviour
         tile = hexTile;
         tile.occupier = this;
         this.path = path;
+        ServiceOnLanding();
 
         // Carried units ride along rather than being left behind on the old tile.
         for (int i = 0; i < transported.Count; i++) {
@@ -312,6 +313,20 @@ public class Unit : MonoBehaviour
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
     }
 
+    /// <summary>
+    /// An aircraft or ship that ends its move on one of our buildings that services it is refuelled,
+    /// re-armed and restocked there and then, not at the start of the next turn: whatever happens
+    /// before then (the building lost, a turn's burn), it does not ditch at the runway it reached.
+    /// Healing still waits for the start of the turn (Player.StartTurn), so it is not counted twice.
+    /// </summary>
+    public void ServiceOnLanding() {
+        if (tile == null || !LocomotionRules.NeedsBase(locomotion) || Building.ServicingUnder(this) == null) return;
+        fuel = fuelMax;
+        ammo = ammoMax;
+        supplies = suppliesMax;
+        refuelStock = refuelStockMax;
+    }
+
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
     internal void TeleportTo(HexTile hexTile, int tilesEntered) {
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
@@ -320,6 +335,7 @@ public class Unit : MonoBehaviour
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = hexTile;
         if (hexTile != null) hexTile.occupier = this;
+        ServiceOnLanding();
         for (int i = 0; i < transported.Count; i++) {
             if (transported[i] != null) transported[i].tile = hexTile;
         }
