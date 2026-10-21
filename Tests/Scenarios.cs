@@ -121,6 +121,116 @@ public static class Scenarios {
         Console.WriteLine(string.Format("  random maps: challenger {0}W {1}L {2}D", w, lo, d));
     }
 
+    /// <summary>
+    /// Logistics test: an ocean with one zigzag land corridor (three tiles wide, some forest)
+    /// between the HQs. The HQs are 25 tiles apart in a straight line but about 52 along the road,
+    /// so the armies meet far beyond the HQ's supply (8) and each side has to chain its five supply
+    /// units (4 each) up the road to fight supplied. Attrition rules, 60 rounds. The arms of the
+    /// zigzag are close enough for artillery to fire across the water.
+    /// </summary>
+    public static int ExportZigzag() {
+        int r = 14;
+        Blank(r);
+        foreach (HexTile t in Rig.hg.tiles) t.terrain = T("Water");
+        // A serpentine road two tiles wide: three long rows (y = -6, 0, 6) joined at alternate ends.
+        // Rows are six apart, so the water between them (five tiles) is wider than artillery range.
+        int[,] way = { { -7, -6 }, { 13, -6 }, { 13, 0 }, { -13, 0 }, { -13, 6 }, { 7, 6 } };
+        List<HexTile> road = new List<HexTile>();
+        HexTile at = Rig.At(way[0, 0], way[0, 1]);
+        road.Add(at);
+        for (int i = 1; i < way.GetLength(0); i++) {
+            HexTile goal = Rig.At(way[i, 0], way[i, 1]);
+            int guard = 0;
+            while (at != goal && guard++ < 100) {
+                HexTile next = null;
+                foreach (HexTile n in at.neighbors) if (n != null && (next == null || n.Distance(goal) < next.Distance(goal) || (n.Distance(goal) == next.Distance(goal) && CombatMath.Precedes(n, next)))) next = n;
+                at = next;
+                road.Add(at);
+            }
+        }
+        rng = 4241;
+        foreach (HexTile t in road) {
+            t.terrain = T("Grassland");
+            // The second lane: the tile below on the rows, the tile beside on the joins.
+            HexTile lane = Rig.At(t.x, t.y + 1);
+            if (lane != null && Math.Abs(t.y) % 6 != 0) lane = Rig.At(t.x - 1, t.y);
+            if (lane != null && lane.terrain.name == "Water") lane.terrain = Next(100) < 20 ? T("Forest") : T("Grassland");
+        }
+        Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+        string[] roster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Tank", "Artillery", "Supplies", "Supplies", "Supplies", "Supplies" };
+        foreach (Player p in new[] { ai, other }) {
+            HexTile hq = p == ai ? road[1] : road[road.Count - 2];
+            List<HexTile> land = new List<HexTile>();
+            foreach (HexTile t in Rig.hg.tiles) if (t != hq && t.terrain.name != "Water") land.Add(t);
+            land.Sort((x, y) => { int c = RoadSteps(hq, x).CompareTo(RoadSteps(hq, y)); return c != 0 ? c : CombatMath.CompareTiles(x, y); });
+            Put("TempHQ", p, hq.x, hq.y);
+            for (int i = 0; i < roster.Length; i++) Put(roster[i], p, land[i].x, land[i].y);
+        }
+        Dictionary<string, string> test = Test("logistics-zigzag", "logistics", "Full", 60, "report",
+            "Ocean with one serpentine road (" + road.Count + " tiles, two wide) between the HQs; the water between its rows is wider than artillery range. Supply must be chained forward: HQ range 8, five supply units of range 4 (moving 2 a turn) each side, and the armies meet about " + (road.Count / 2) + " tiles from home. Attrition rules, 60 rounds. This AI on both sides; Blue moves first.");
+        test["rules"] = "attrition";
+        ScenarioFile.Save(Path.Combine(Dir, "logistics-zigzag.dat"), test, ai, other, ai);
+        return 1;
+    }
+
+    /// <summary>
+    /// A logistics game, narrated by supply: each round, per side, combat units in and out of
+    /// supply, supply units connected to the HQ, how far up the road the front unit is (steps from
+    /// its own HQ), unit-turns spent out of supply and units lost to attrition so far.
+    /// </summary>
+    public static void Logistics(string name, Action<AIProfile> blue, Action<AIProfile> red, string root) {
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
+        if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
+        GameController gc = Rig.gc;
+        int rounds = l.meta.GetInt("rounds", 60);
+        Dictionary<Player, HexTile> hq = new Dictionary<Player, HexTile>();
+        foreach (Player p in new[] { l.ai, l.other })
+            foreach (Unit u in p.units) if (u != null && u.GetComponent<SupplyPoint>() != null && u.GetComponent<SupplyPoint>().producer) hq[p] = u.tile;
+        Console.WriteLine(l.meta.Name + ": " + l.meta.Get("question", ""));
+        for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
+            ScenarioFile.PlayTurn();
+            if (gc.activePlayer != l.ai && !gc.gameOver) continue;
+            StringBuilder sb = new StringBuilder();
+            sb.Append(string.Format("  round {0,2}:", gc.days));
+            foreach (Player p in new[] { l.ai, l.other }) {
+                SupplyNetwork.Result sup = SupplyNetwork.Solve(p, false);
+                int inS = 0, outS = 0, hubs = 0, linked = 0, front = 0;
+                foreach (Unit u in p.units) {
+                    if (u == null || u.tile == null || u.Strength <= 0 || u.trasnporter != null) continue;
+                    SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                    if (sp != null) { if (!sp.producer) { hubs++; if (sup.connectedHubs.Contains(sp)) linked++; } continue; }
+                    if (sup.DepthAt(u.tile) > 0) inS++; else outS++;
+                    front = Math.Max(front, RoadSteps(hq[p], u.tile));
+                }
+                sb.Append(string.Format(" | {0}: {1} in / {2} out of supply, hubs linked {3}/{4}, front {5,2} steps, out-of-supply unit-turns {6,3}, lost to attrition {7}",
+                    p == l.ai ? "Blue" : "Red", inS, outS, linked, hubs, front, p.unitTurnsOutOfSupply, p.unitsLostToAttrition));
+            }
+            Console.WriteLine(sb.ToString());
+        }
+        string folder = HexTactica.Harness.GameLog.Folder;
+        if (root != null) HexTactica.Harness.GameLog.Stop();
+        Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none") + string.Format("; material left Blue {0}, Red {1}", ScenarioFile.Material(l.ai), ScenarioFile.Material(l.other)));
+        if (root != null) Console.WriteLine("log: " + folder);
+    }
+
+    /// <summary>Land steps from <paramref name="a"/> to <paramref name="b"/> (breadth first over non-water tiles).</summary>
+    static int RoadSteps(HexTile a, HexTile b) {
+        if (a == null || b == null) return 0;
+        Dictionary<HexTile, int> d = new Dictionary<HexTile, int> { { a, 0 } };
+        Queue<HexTile> q = new Queue<HexTile>();
+        q.Enqueue(a);
+        while (q.Count > 0) {
+            HexTile t = q.Dequeue();
+            if (t == b) return d[t];
+            foreach (HexTile n in t.neighbors) {
+                if (n == null || d.ContainsKey(n) || n.terrain == null || n.terrain.name == "Water") continue;
+                d[n] = d[t] + 1;
+                q.Enqueue(n);
+            }
+        }
+        return 0;
+    }
+
     static int DeploymentSize(MapSpec s) { return s.radius >= 13 ? 30 : s.radius >= 7 ? 18 : 9; }
 
     /// <summary>One map spec list as matchups: AI on either side, three line-ups.</summary>
@@ -268,6 +378,7 @@ public static class Scenarios {
         // ---- campaign boards: radius 13, armies that start more than three turns apart and
         // need a chain of supply units to stay supplied on the way.
         n += ExportGauntlet();
+        n += ExportZigzag();
 
         n += ExportMatches(CampaignMaps, "campaign", 60,
             new[] { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Grunt", "Grunt", "Tank", "Grunt", "Supplies",
