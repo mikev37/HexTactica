@@ -37,6 +37,15 @@ public class Unit : MonoBehaviour
     public int Veterancy;
     [Tooltip("Where the unit stands")]
     public HexTile tile;
+    [Tooltip("Ground unit able to move into and through water tiles that border land")]
+    public bool amphibious;
+    [Tooltip("Air tanker: refuels friendly air units that start their turn beside it, one refuelStock for each")]
+    public bool airTanker;
+    [Tooltip("Air tanker: refuels it can give before it must go back to base")]
+    public int refuelStock;
+    public int refuelStockMax;
+    /// <summary>Fired this turn: an infantry unit that attacked does not capture the building it stands on.</summary>
+    [System.NonSerialized] public bool attackedThisTurn;
 
     [Tooltip("((Firepower+Veterancy) / (Evasion - Targeting)™ / (Armor - Pierce)™ - (Concealment of Hex.Cover)) * Unit_Strength / Defender_Strength")]
     [Header("Combat Variables")]
@@ -110,6 +119,15 @@ public class Unit : MonoBehaviour
 
     public List<Unit> transported;
     public Unit trasnporter;
+    [Tooltip("Where carried units sit on this transport, one per slot (the transport itself if none)")]
+    public List<Transform> cargoSlots = new List<Transform>();
+    [Tooltip("Scale of a carried unit's sprites while aboard")]
+    public float cargoScale = 0.45f;
+
+    // Boarding animation state: the unit's own scale, and whether it is still settling.
+    Vector3 homeScale = Vector3.one;
+    bool scaleKnown;
+    UnityEngine.Rendering.SortingGroup cargoGroup;
 
     [Header("AI Variables")]
     public int threatValue;
@@ -137,6 +155,14 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Aboard: shrink into the transport's slot; nothing else moves this sprite.
+        if (trasnporter != null) {
+            transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
+            transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale * cargoScale, Time.deltaTime * 2f);
+            return;
+        }
+        // Just unloaded: grow back while walking off.
+        if (scaleKnown && transform.localScale != homeScale) transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale, Time.deltaTime * 2f);
         if(Strength <=0) {
             if( deathRattleTimer <= 0) {
                 Die();
@@ -164,7 +190,8 @@ public class Unit : MonoBehaviour
                 if (StrengthDisplay == Strength && !AnimatorIsPlaying()) retreatHold = 0f;
                 else retreatHold -= Time.deltaTime;
             }
-            if(tile && retreatHold <= 0f)
+            if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
+            else if(tile && retreatHold <= 0f)
                 transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed);
             else {
 
@@ -182,28 +209,101 @@ public class Unit : MonoBehaviour
     }
 
     internal bool CanEnter(HexTile n) {
-        return n.terrain.elevation >= elevationMin && n.terrain.elevation <= elevationMax;
+        if (n == null || n.terrain == null) return false;
+        int e = n.terrain.elevation;
+        if (e >= elevationMin && e <= elevationMax) return true;
+        // Amphibious: into and through water that borders land.
+        return amphibious && e < 0 && BordersLand(n);
 	}
 
-    internal void CompleteMove(HexTile hexTile) {
+    /// <summary>A tile with land (elevation 0 or more: bridges included) beside it.</summary>
+    public static bool BordersLand(HexTile n) {
+        if (n == null || n.neighbors == null) return false;
+        for (int i = 0; i < n.neighbors.Count; i++) {
+            HexTile m = n.neighbors[i];
+            if (m != null && m.terrain != null && m.terrain.elevation >= 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Boarding (Transporting.Load calls this): the unit's sprites go into the transport — parented
+    /// to its next cargo slot, shrunk to cargoScale (Update animates it), drawn in the "Transported"
+    /// sorting layer when the project has one (else just above the transport). A supply unit is
+    /// not shown: the transport's own animator gets CarryingSupply (its hand-made supply form).
+    /// </summary>
+    public void OnBoarded(Unit transport) {
+        if (!scaleKnown) { homeScale = transform.localScale; scaleKnown = true; }
+        if (path != null) path.Clear();
+        if (animator != null) animator.SetBool("Moving", false);
+        int slot = Mathf.Max(0, transport.transported.IndexOf(this));
+        Transform at = transport.cargoSlots != null && slot < transport.cargoSlots.Count && transport.cargoSlots[slot] != null
+                     ? transport.cargoSlots[slot] : transport.transform;
+        transform.SetParent(at, true);
+        transform.rotation = at.rotation;
+        if (cargoGroup == null) cargoGroup = gameObject.AddComponent<UnityEngine.Rendering.SortingGroup>();
+        int layer = SortingLayer.NameToID("Transported");
+        SpriteRenderer top = null;
+        foreach (SpriteRenderer r in transport.GetComponentsInChildren<SpriteRenderer>()) if (top == null || r.sortingOrder > top.sortingOrder) top = r;
+        if (layer != 0 && SortingLayer.IsValid(layer)) { cargoGroup.sortingLayerID = layer; cargoGroup.sortingOrder = slot; }
+        else if (top != null) { cargoGroup.sortingLayerID = top.sortingLayerID; cargoGroup.sortingOrder = top.sortingOrder + 1 + slot; }
+        if (GetComponent<SupplyPoint>() != null) {
+            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            transport.SetAnimatorBool("CarryingSupply", true);
+        }
+    }
+
+    /// <summary>Unloading (Transporting.Unload calls this): everything OnBoarded did, undone; the unit walks to its tile.</summary>
+    public void OnUnloaded(Unit transport) {
+        transform.SetParent(null, true);
+        transform.rotation = Quaternion.identity;
+        if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
+        if (GetComponent<SupplyPoint>() != null) {
+            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            bool still = false;
+            foreach (Unit c in transport.transported) if (c != null && c != this && c.GetComponent<SupplyPoint>() != null) still = true;
+            transport.SetAnimatorBool("CarryingSupply", still);
+        }
+    }
+
+    /// <summary>Set an animator bool if this unit's animator has it (art can add states without code).</summary>
+    public void SetAnimatorBool(string name, bool on) {
+        if (animator == null) return;
+        foreach (AnimatorControllerParameter p in animator.parameters) if (p.name == name) { animator.SetBool(name, on); return; }
+    }
+
+    /// <summary>A unit (aircraft or ship) ran out of fuel and was ditched.</summary>
+    public static event System.Action<Unit> Ditched;
+
+    /// <summary>
+    /// Out of fuel: the unit is lost. Plays the "Ditch" animation when the unit's animator has one
+    /// (its last frame should call DeathResolve, as "Die" does), the death animation otherwise.
+    /// </summary>
+    public void Ditch() {
+        if (dead) return;
+        if (Ditched != null) Ditched(this);
+        DieActual();
+        if (animator != null) {
+            bool hasDitch = false;
+            foreach (AnimatorControllerParameter p in animator.parameters) if (p.name == "Ditch") hasDitch = true;
+            animator.SetTrigger(hasDitch ? "Ditch" : "Die");
+        }
+    }
+
+    internal void CompleteMove(HexTile hexTile, bool thenAttacks = false) {
         tile.parent = null;
         List<HexTile> path = hexTile.buildpath();
 
-        // Fuel is charged per tile entered. Aircraft burn their whole per-turn
-        // allowance regardless of distance flown, per the design doc.
         int tilesEntered = Mathf.Max(0, path.Count - 1);
-        if (fuelMax > 0) {
-            if (LocomotionRules.BurnsFullFuelPerTurn(locomotion)) {
-                if (tilesEntered > 0) fuel = Mathf.Max(0, fuel - Mathf.Max(minFuelPerTurn, minFuelPerTile));
-            } else {
-                fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
-            }
-        }
+        // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
+        // they are away from base (Player.StartTurn).
+        if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
 
         tile.occupier = null;
         tile = hexTile;
         tile.occupier = this;
         this.path = path;
+        if (!thenAttacks) ServiceOnLanding();
 
         // Carried units ride along rather than being left behind on the old tile.
         for (int i = 0; i < transported.Count; i++) {
@@ -214,18 +314,58 @@ public class Unit : MonoBehaviour
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
     }
 
+    /// <summary>How long the visual hop to an air tanker and back takes, in seconds.</summary>
+    public const float RefuelHopSeconds = 1f;
+    HexTile refuelHopTo;
+    float refuelHopT;
+
+    /// <summary>
+    /// Show a refuel from <paramref name="tanker"/>: the sprite flies onto the tanker's tile and back
+    /// to its own over RefuelHopSeconds. Visual only: the unit never leaves its tile.
+    /// </summary>
+    public void PlayRefuelHop(Unit tanker) {
+        if (tanker == null || tanker.tile == null || tile == null) return;
+        refuelHopTo = tanker.tile;
+        refuelHopT = 0f;
+    }
+
+    void RefuelHopStep() {
+        refuelHopT += Time.deltaTime;
+        float k = refuelHopT / RefuelHopSeconds;
+        Vector3 home = tile.unitPlacement.position, there = refuelHopTo.unitPlacement.position;
+        if (k >= 1f) { refuelHopTo = null; transform.position = home; return; }
+        // Out for the first half, back for the second; facing the way it is flying.
+        bool outbound = k < 0.5f;
+        float f = outbound ? k * 2f : (1f - k) * 2f;
+        transform.position = Vector3.Lerp(home, there, f);
+        bool faceLeft = outbound ? there.x < home.x : home.x < there.x;
+        transform.rotation = faceLeft ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+    }
+
+    /// <summary>
+    /// An aircraft or ship whose turn is a move (not a move and attack) that ends on one of our
+    /// buildings that services it is refuelled, re-armed and restocked there and then, not at the
+    /// start of the next turn: whatever happens before then (the building lost, a turn's burn), it
+    /// does not ditch at the runway it reached. A move and attack gets nothing until the start of
+    /// the next turn. Healing always waits for the start of the turn (Player.StartTurn).
+    /// </summary>
+    public void ServiceOnLanding() {
+        if (tile == null || !LocomotionRules.NeedsBase(locomotion) || Building.ServicingUnder(this) == null) return;
+        fuel = fuelMax;
+        ammo = ammoMax;
+        supplies = suppliesMax;
+        refuelStock = refuelStockMax;
+    }
+
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
-    internal void TeleportTo(HexTile hexTile, int tilesEntered) {
-        if (fuelMax > 0) {
-            if (LocomotionRules.BurnsFullFuelPerTurn(locomotion)) {
-                if (tilesEntered > 0) fuel = Mathf.Max(0, fuel - Mathf.Max(minFuelPerTurn, minFuelPerTile));
-            } else {
-                fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
-            }
-        }
+    internal void TeleportTo(HexTile hexTile, int tilesEntered, bool thenAttacks = false) {
+        // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
+        // they are away from base (Player.StartTurn).
+        if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = hexTile;
         if (hexTile != null) hexTile.occupier = this;
+        if (!thenAttacks) ServiceOnLanding();
         for (int i = 0; i < transported.Count; i++) {
             if (transported[i] != null) transported[i].tile = hexTile;
         }
@@ -323,6 +463,7 @@ public class Unit : MonoBehaviour
 
     internal CombatOutcome OrderAttack(Unit defender) {
         attacking = true;
+        attackedThisTurn = true;
         target = defender;
         HexTile firedFrom = tile;
 
@@ -577,8 +718,11 @@ public struct UnitData {
     /// would be loaded into the first unit on the roster.
     /// </summary>
     public int transporterIndexPlusOne;
+    /// <summary>An air tanker's refuels left, plus one (zero: an older save, keep the prefab's).</summary>
+    public int refuelStockPlusOne;
     public UnitData(Unit t) {
         transporterIndexPlusOne = 0;
+        refuelStockPlusOne = t.refuelStock + 1;
         x = t.tile.x;
         y = t.tile.y;
         z = t.tile.z;
@@ -602,6 +746,12 @@ public struct UnitData {
         UnitData that = this;
         GameController.gc.players.ForEach(pl => { if (pl.id == that.owner_id) player = pl; });
         HexTile tile = HexGenerator.hg.get(x, y, z);
+        // TempHQ is retired: an HQ unit in an older save becomes the HQ building.
+        if (gameobject_name != null && gameobject_name.Replace("(Clone)", "").Trim() == "TempHQ") {
+            Building hq = LevelEditor.loadBuilding("HQ");
+            if (hq != null && BuildingController.bc != null && tile != null && tile.building == null) BuildingController.bc.Place(player, hq, tile);
+            return null;
+        }
         Unit ut = LevelEditor.PlaceNewUnit(player, gameobject_name,tile);
         ut.Strength = Strength;
         ut.Veterancy = Veterancy;
@@ -610,6 +760,7 @@ public struct UnitData {
         ut.supplies = supplies;
         ut.fuel = fuel;
         ut.ammo = ammo;
+        if (refuelStockPlusOne > 0) ut.refuelStock = refuelStockPlusOne - 1;
         return ut;
     }
 }

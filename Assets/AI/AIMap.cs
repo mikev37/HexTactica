@@ -149,9 +149,15 @@ namespace HexTactica.AI {
         public readonly List<SupplyPoint> ownHubs = new List<SupplyPoint>();
         public readonly List<SupplyPoint> enemyHubs = new List<SupplyPoint>();
 
+        /// <summary>This turn's reserved landings (AIAir.PlanLandings), set by AIPlayer when the turn is prepared.</summary>
+        public Dictionary<Unit, AIAir.Landing> landings;
+        /// <summary>Tiles the supply chain's links are moving to this turn, and which supply unit: nobody else ends there.</summary>
+        public readonly Dictionary<HexTile, Unit> chainTiles = new Dictionary<HexTile, Unit>();
+
         public AIMap(Player player, AIProfile profile) {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
+            AIScore.Use(this.profile);
             Rebuild();
         }
 
@@ -671,13 +677,55 @@ namespace HexTactica.AI {
         /// Turns before this unit and an enemy combat unit could first exchange fire, either way,
         /// by hex distance and movement (0 = in reach now). 99 when there is no enemy.
         /// </summary>
+        // ------------------------------------------------------------ travel distance
+
+        readonly Dictionary<HexTile, Dictionary<HexTile, int>> landSteps = new Dictionary<HexTile, Dictionary<HexTile, int>>();
+
+        /// <summary>
+        /// Steps over land from every tile to <paramref name="to"/>, one a tile, around water (units
+        /// ignored: this is the shape of the map, not tonight's traffic). Cached for the turn.
+        /// </summary>
+        public Dictionary<HexTile, int> LandSteps(HexTile to) {
+            Dictionary<HexTile, int> d;
+            if (to == null) return null;
+            if (landSteps.TryGetValue(to, out d)) return d;
+            d = new Dictionary<HexTile, int>();
+            Queue<HexTile> q = new Queue<HexTile>();
+            d[to] = 0; q.Enqueue(to);
+            while (q.Count > 0) {
+                HexTile t = q.Dequeue();
+                foreach (HexTile n in t.neighbors) {
+                    if (n == null || n.terrain == null || d.ContainsKey(n)) continue;
+                    if (n.terrain.elevation < 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;
+                    d[n] = d[t] + 1;
+                    q.Enqueue(n);
+                }
+            }
+            landSteps[to] = d;
+            return d;
+        }
+
+        /// <summary>
+        /// How far <paramref name="from"/> is from <paramref name="to"/> for strategy. With
+        /// profile.travelDistance and a unit that walks: steps over land (hex distance plus the
+        /// map's width when there is no land route). Otherwise, and for aircraft and ships, hex distance.
+        /// </summary>
+        public int Travel(Unit u, HexTile from, HexTile to) {
+            if (from == null || to == null) return 99;
+            if (!profile.travelDistance || (u != null && (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion))))
+                return from.Distance(to);
+            Dictionary<HexTile, int> d = LandSteps(to);
+            int s;
+            return d.TryGetValue(from, out s) ? s : from.Distance(to) + 64;
+        }
+
         public int TurnsToContact(Unit u) {
             if (u == null || u.tile == null) return 99;
             int mineBest = 99, theirsBest = 99;
             for (int i = 0; i < enemyUnits.Count; i++) {
                 Unit e = enemyUnits[i];
                 if (e == null || e.tile == null || e.Firepower <= 0 || e.GetComponent<SupplyPoint>() != null) continue;
-                int d = u.tile.Distance(e.tile);
+                int d = Travel(u, u.tile, e.tile);
                 mineBest = Mathf.Min(mineBest, Turns(d - u.AttackRange, u.moveRange));
                 theirsBest = Mathf.Min(theirsBest, Turns(d - e.AttackRange, e.moveRange));
             }

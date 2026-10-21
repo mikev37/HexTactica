@@ -32,6 +32,11 @@ namespace HexTactica.Testing {
             bc = New<BuildingController>();
             bc.buildings = new List<Building>();
             SetStatic(typeof(BuildingController), "bc", bc);
+            BuildingController.Spawner = (p, u, t) => {
+                Unit made = Spawn(u, p, t.x, t.y);
+                PrefabLoader.AttachHubIfAny(u.name, made);
+                return made;
+            };
 
             hg = New<HexGenerator>();
             hg.width = radius * 4;
@@ -100,6 +105,14 @@ namespace HexTactica.Testing {
             return b;
         }
 
+        /// <summary>A building from its prefab, anchored on (x, y), owned by <paramref name="owner"/> (null: neutral).</summary>
+        public static Building PlaceBuilding(string prefab, Player owner, int x, int y) {
+            HexTile tile = At(x, y);
+            if (tile == null) throw new Exception("no tile at " + x + "," + y);
+            if (tile.building != null) throw new Exception("building already at " + x + "," + y);
+            return bc.Adopt(PrefabLoader.LoadBuilding(prefab), owner, tile);
+        }
+
         public static Unit Spawn(Unit archetype, Player owner, int x, int y) {
             HexTile tile = At(x, y);
             if (tile == null) throw new Exception("no tile at " + x + "," + y);
@@ -122,26 +135,6 @@ namespace HexTactica.Testing {
             sp.myUnit = u;
             sp.range = range;
             return sp;
-        }
-
-        public static Building AddBuilding(BuildingType type, Player owner, int x, int y,
-                                           bool producesSupply, int supplyRange) {
-            HexTile tile = At(x, y);
-            Building b = New<Building>();
-            b.type = type;
-            b.owner = owner;
-            b.tile = tile;
-            b.producesSupply = producesSupply;
-            b.supplyRange = supplyRange;
-            b.supplyScramble = 1;
-            b.supplies = 999;
-            b.suppliesMax = 999;
-            b.income = type == BuildingType.City ? 100 : 0;
-            b.captureThreshold = 6;
-            tile.building = b;
-            Building.all.Add(b);
-            bc.buildings.Add(b);
-            return b;
         }
 
         public static void SetTerrain(int x, int y, TerrainData td) {

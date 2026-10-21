@@ -164,7 +164,7 @@ namespace HexTactica.AI {
                 Dictionary<Unit, int> eta = new Dictionary<Unit, int>();
                 foreach (Unit u in pool) {
                     if (used.Contains(u)) continue;
-                    int t = Eta(u, o.tile);
+                    int t = Eta(u, o.tile, map);
                     if (t > profile.objectiveReachTurns) continue;
                     // Not a trip it would starve on: out there and back must fit in what it carries.
                     if (profile.objectivesNeedForce && u.suppliesMax > 0 && map.SupplyDepth(o.tile) <= 0 &&
@@ -212,8 +212,11 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Turns for <paramref name="u"/> to bring its weapon to bear on <paramref name="tile"/>, by hex distance.</summary>
-        public static int Eta(Unit u, HexTile tile) {
-            int d = Mathf.Max(0, u.tile.Distance(tile) - u.AttackRange);
+        public static int Eta(Unit u, HexTile tile) { return Eta(u, tile, null); }
+
+        /// <summary>As Eta, measured as the unit travels when <paramref name="map"/>'s profile says so.</summary>
+        public static int Eta(Unit u, HexTile tile, AIMap map) {
+            int d = Mathf.Max(0, (map != null ? map.Travel(u, u.tile, tile) : u.tile.Distance(tile)) - u.AttackRange);
             if (d == 0) return 0;
             if (u.moveRange <= 0) return 99;
             return Mathf.CeilToInt(d / (float)u.moveRange);

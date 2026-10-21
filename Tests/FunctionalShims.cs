@@ -40,6 +40,13 @@ namespace UnityEngine {
         public float x, y, z;
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero { get { return new Vector3(0, 0, 0); } }
+        public static Vector3 one { get { return new Vector3(1, 1, 1); } }
+        public static Vector3 MoveTowards(Vector3 a, Vector3 b, float d) { return b; }
+        public static Vector3 Lerp(Vector3 a, Vector3 b, float t) { return new Vector3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t); }
+        public static bool operator ==(Vector3 a, Vector3 b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
+        public static bool operator !=(Vector3 a, Vector3 b) { return !(a == b); }
+        public override bool Equals(object o) { return o is Vector3 && (Vector3)o == this; }
+        public override int GetHashCode() { return x.GetHashCode() ^ y.GetHashCode() ^ z.GetHashCode(); }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z); }
         public static Vector3 operator *(Vector3 a, float k) { return new Vector3(a.x * k, a.y * k, a.z * k); }
@@ -82,6 +89,7 @@ namespace UnityEngine {
     }
 
     public static class Mathf {
+        public static float MoveTowards(float a, float b, float d) { return Math.Abs(b - a) <= d ? b : a + Math.Sign(b - a) * d; }
         public const float Infinity = float.PositiveInfinity;
         public static float Max(float a, float b) { return Math.Max(a, b); }
         public static int Max(int a, int b) { return Math.Max(a, b); }
@@ -121,6 +129,7 @@ namespace UnityEngine {
         public T GetComponentInParent<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T GetComponentInChildren<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
+        public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
         public T AddComponent<T>() where T : class, new() { return gameObject.AddComponent<T>(); }
     }
 
@@ -136,6 +145,8 @@ namespace UnityEngine {
         public Vector3 position, localPosition, localScale, up, right;
         public Quaternion rotation, localRotation;
         public Transform parent;
+        public void SetParent(Transform p, bool worldPositionStays) { parent = p; }
+        public void SetParent(Transform p) { parent = p; }
         public int childCount { get { return 0; } }
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
     }
@@ -199,10 +210,11 @@ namespace UnityEngine {
     }
     public class Texture : Object { }
     public class Texture2D : Texture { }
-    public class Renderer : Component { public bool enabled = true; }
+    public class Renderer : Component { public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
+    public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } }
     public class SpriteRenderer : Renderer {
-        public Sprite sprite; public Color color; public int sortingOrder;
-        public int rendererPriority; public string sortingLayerName;
+        public Sprite sprite; public Color color;
+        public int rendererPriority;
     }
     public class MeshRenderer : Renderer { public Material material; public Material sharedMaterial; }
     public class MeshFilter : Component { }
@@ -213,9 +225,11 @@ namespace UnityEngine {
     public class Animator : Behaviour {
         public void SetBool(string s, bool b) { }
         public void SetTrigger(string s) { }
+        public AnimatorControllerParameter[] parameters { get { return new AnimatorControllerParameter[0]; } }
         public void ResetTrigger(string s) { }
         public AnimatorStateInfo GetCurrentAnimatorStateInfo(int layer) { return new AnimatorStateInfo(); }
     }
+    public class AnimatorControllerParameter { public string name; }
     public struct AnimatorStateInfo { public float normalizedTime { get { return 0; } } }
     public class StateMachineBehaviour : ScriptableObject {
         public virtual void OnStateEnter(Animator a, AnimatorStateInfo s, int l) { }
@@ -228,6 +242,13 @@ namespace UnityEngine {
         public static void Log(object o) { if (verbose) Console.WriteLine("[log] " + o); }
         public static void LogWarning(object o) { Console.WriteLine("[warn] " + o); }
         public static void LogError(object o) { Console.WriteLine("[error] " + o); }
+    }
+    public static class Screen { public static int width { get { return 1920; } } public static int height { get { return 1080; } } }
+    public static class GUI {
+        public static bool enabled = true;
+        public static void Box(Rect r, string s) { }
+        public static void Label(Rect r, string s) { }
+        public static bool Button(Rect r, string s) { return false; }
     }
     public static class Time {
         public static float deltaTime { get { return 0.016f; } }
@@ -284,4 +305,8 @@ namespace UnityEditor {
         static T inst;
         public static T instance { get { if (inst == null) inst = System.Activator.CreateInstance<T>(); return inst; } }
     }
+}
+
+namespace UnityEngine.Rendering {
+    public class SortingGroup : Behaviour { public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
 }

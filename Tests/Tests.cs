@@ -48,6 +48,20 @@ public static class Tests {
         }
         if (probe == "accuracy") { Scenarios.Accuracy(tweak); return 0; }
         if (probe == "equiv") { Scenarios.Equivalence(Environment.GetEnvironmentVariable("FILE")); return 0; }
+        if (probe == "export-rules") { Console.WriteLine(Scenarios.ExportBuildingRules() + " rule files"); return 0; }
+        if (probe == "export-zigzag") { Scenarios.ExportZigzag(); Console.WriteLine("logistics-zigzag.dat"); return 0; }
+        if (probe == "logistics") {
+            Scenarios.Logistics(Environment.GetEnvironmentVariable("FILE") ?? "logistics-zigzag", Tweak(Environment.GetEnvironmentVariable("SET_BLUE")),
+                                Tweak(Environment.GetEnvironmentVariable("SET_RED")), Environment.GetEnvironmentVariable("OUT"));
+            return 0;
+        }
+        if (probe == "export-air-gauntlet") { Console.WriteLine(Scenarios.ExportAirGauntlet() + " air gauntlet files"); return 0; }
+        if (probe == "export-gauntlet") { Console.WriteLine(Scenarios.ExportGauntlet() + " gauntlet files"); return 0; }
+        if (probe == "gauntlet") {
+            Scenarios.Gauntlet(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
+                               Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
+            return 0;
+        }
         if (probe == "versus") {
             Scenarios.Versus(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
                              Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");

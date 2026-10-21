@@ -111,26 +111,25 @@ namespace HexTactica.Harness {
             }
 
             List<UnitData> unitData = new List<UnitData>();
+            List<Unit> made = new List<Unit>();   // by position in the file (null: an HQ that became a building)
             if (obj.GetField("units")) {
                 JSONObjectEnumerator units = obj.GetField("units").GetEnumerator();
                 while (units.MoveNext()) {
                     UnitData ud = JsonUtility.FromJson<UnitData>(units.Current.Print());
                     unitData.Add(ud);
-                    ud.load();
+                    made.Add(ud.load());
                 }
             }
 
             string redKind = ApplyTestBlock(obj);
 
             // Second pass: re-establish transport links now that every unit exists.
-            if (UnitController.uc != null) {
-                for (int i = 0; i < unitData.Count && i < UnitController.uc.units.Count; i++) {
-                    int idx = unitData[i].transporterIndexPlusOne - 1;
-                    if (idx < 0 || idx >= UnitController.uc.units.Count) continue;
-                    Unit cargo = UnitController.uc.units[i];
-                    Unit transport = UnitController.uc.units[idx];
-                    if (cargo != null && transport != null) Transporting.Load(transport, cargo);
-                }
+            for (int i = 0; i < unitData.Count; i++) {
+                int idx = unitData[i].transporterIndexPlusOne - 1;
+                if (idx < 0 || idx >= made.Count) continue;
+                Unit cargo = made[i];
+                Unit transport = made[idx];
+                if (cargo != null && transport != null) Transporting.Load(transport, cargo);
             }
 
             if (RecordGames && GameController.gc != null && !GameController.gc.headless) {
@@ -174,6 +173,9 @@ namespace HexTactica.Harness {
             string rules = RulesOverride;
             if (string.IsNullOrEmpty(rules) && test != null && test.GetField("rules") != null) rules = test.GetField("rules").stringValue;
             GameController.gc.rules = rules != null && rules.ToLowerInvariant() == "attrition" ? RuleSet.Attrition : RuleSet.Standard;
+            // The file's round count is the attrition limit (30 when it gives none).
+            int limit;
+            GameController.gc.roundLimit = test != null && test.GetField("rounds") != null && int.TryParse(test.GetField("rounds").stringValue, out limit) ? limit : 30;
 
             Player red = null, blue = null;
             GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; if (pl != null && pl.id == 112) blue = pl; });
