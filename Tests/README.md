@@ -107,6 +107,9 @@ Diagnostics:
   **HexTactica → Rules**, or `"rules":"attrition"` in a scenario's test block.
 - `PROBE=versus SET_A=… [SET_B=…]` — this AI with settings A (Blue) against settings B (Red) on
   every generated map with even armies, A on each side: 22 games.
+- `PROBE=accuracy [OPP=Full]` — how far the forecast's expected loss for each of our turns is
+  from what the opponent then actually did.
+- `FILTER=a|b` — run only scenario files whose names contain one of the parts.
 - `PROBE=equiv [FILE=…]` — checks the group-plan forecast against the single-move forecast
   (must agree exactly with one move and retreats off).
 - `PROBE=duel FILE=<name> [SET_BLUE=…] [SET_RED=…] [ROUNDS=r] [OUT=dir]` — this AI against

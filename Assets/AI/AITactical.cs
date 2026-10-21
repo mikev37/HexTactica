@@ -306,6 +306,9 @@ namespace HexTactica.AI {
         /// worldTie of this unit's strength points of the best world survive; among them the
         /// highest denial + positional score wins (approach, supply, strategy, commitment).
         /// </summary>
+        /// <summary>The forecast of the option most recently chosen by the world-score decider (for diagnostics).</summary>
+        public static AIWorld.Outcome LastChosen;
+
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = new AIWorld.Cache();
@@ -367,6 +370,7 @@ namespace HexTactica.AI {
                 else context.intents.Remove(unit);
             }
             if (best == null) return AIAction.Wait(unit, tag + ": no option");
+            LastChosen = best.world;
             string why = tag + ": world " + best.world.score.ToString("0");
             if (best.shot.valid) {
                 if (best.stop == unit.tile) return AIAction.Strike(unit, best.shot.target, best.rest, why + " strike");

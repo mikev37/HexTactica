@@ -396,7 +396,16 @@ public static class Scenarios {
     static IEnumerable<string> Files(string kind) {
         List<string> files = new List<string>(Directory.GetFiles(Dir, "*.dat"));
         files.Sort(StringComparer.Ordinal);
-        foreach (string f in files) if (ScenarioFile.ReadMeta(f).Get("kind", "") == kind) yield return f;
+        string filter = Environment.GetEnvironmentVariable("FILTER");
+        foreach (string f in files) {
+            if (ScenarioFile.ReadMeta(f).Get("kind", "") != kind) continue;
+            if (filter != null) {
+                bool any = false;
+                foreach (string part in filter.Split('|')) if (part.Length > 0 && Path.GetFileName(f).Contains(part)) any = true;
+                if (!any) continue;
+            }
+            yield return f;
+        }
     }
 
     /// <summary>Run every scenario. Returns the number of failed behaviour checks.</summary>
@@ -560,6 +569,44 @@ public static class Scenarios {
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")
                           + string.Format("; units lost: Blue {0} of {1}, Red {2} of {3}", startBlue - Alive(l.ai), startBlue, startRed - Alive(l.other), startRed));
         if (root != null) Console.WriteLine("log: " + folder);
+    }
+
+    /// <summary>
+    /// How well the forecast predicts the opponent's turn: for each of Blue's turns, the loss the
+    /// last decision's forecast expected Blue to take in Red's reply, against what Red actually did
+    /// (strength lost to Red's attacks, in gold). Over every match and large file.
+    /// </summary>
+    public static void Accuracy(Action<AIProfile> tweak) {
+        double absErr = 0, bias = 0, predSum = 0, actSum = 0; int n = 0;
+        foreach (string kind in new[] { "match", "large" }) {
+            foreach (string f in Files(kind)) {
+                ScenarioFile.Loaded l = ScenarioFile.Load(f, string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPP")) ? null : Environment.GetEnvironmentVariable("OPP"), tweak);
+                GameController gc = Rig.gc;
+                float actual = 0f;
+                Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (a, d, fr, at, o) => {
+                    if (d.owner == l.ai) actual += o.damageToDefender * AIScore.Worth(d);
+                    if (a.owner == l.ai) actual += o.damageToAttacker * AIScore.Worth(a);
+                };
+                int rounds = l.meta.GetInt("rounds", 30);
+                for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) {
+                    bool blue = gc.activePlayer == l.ai;
+                    AITactical.LastChosen = null;
+                    ScenarioFile.PlayTurn();
+                    if (!blue || gc.gameOver) continue;
+                    AIWorld.Outcome w = AITactical.LastChosen;
+                    if (w == null) continue;
+                    float predicted = 0f;
+                    foreach (KeyValuePair<Unit, float> kv in w.lost) predicted += kv.Value * AIScore.Worth(kv.Key);
+                    // Red's turn, with its attacks counted.
+                    actual = 0f;
+                    Unit.Attacked += hook;
+                    try { ScenarioFile.PlayTurn(); t++; } finally { Unit.Attacked -= hook; }
+                    absErr += Math.Abs(predicted - actual); bias += predicted - actual; predSum += predicted; actSum += actual; n++;
+                }
+            }
+        }
+        Console.WriteLine(string.Format("forecast accuracy over {0} turns: mean predicted loss {1:0}, mean actual {2:0}, mean |error| {3:0}, bias {4:+0;-0}",
+            n, predSum / n, actSum / n, absErr / n, bias / n));
     }
 
     /// <summary>
