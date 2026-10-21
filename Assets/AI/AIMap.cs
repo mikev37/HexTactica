@@ -152,6 +152,7 @@ namespace HexTactica.AI {
         public AIMap(Player player, AIProfile profile) {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
+            AIScore.Use(this.profile);
             Rebuild();
         }
 
