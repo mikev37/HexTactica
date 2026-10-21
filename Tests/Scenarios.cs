@@ -686,7 +686,7 @@ public static class Scenarios {
         int checks = 0, bad = 0;
         foreach (string f in files) {
             ScenarioFile.Loaded l = ScenarioFile.Load(f, "Human", p => {
-                p.assistWeight = 0f; p.selfPreservationWeight = 0f; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
+                p.assistWeight = 0f; p.forecastKnockback = false; p.selfPreservationWeight = 0f; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
             });
             // Play a few rounds so units are in contact, then check Blue's options.
             GameController gc = Rig.gc;
