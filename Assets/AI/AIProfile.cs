@@ -362,6 +362,9 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float assistWeight = 0.75f;
 
+        [Tooltip("Mutual cover, gold per tile: each tile next to one of our units that the enemy could step onto next turn counts + this if another of our units could strike it next turn, - this if none could.")]
+        public float coverTileValue = 25f;
+
         [Tooltip("Artillery: gold per tile the enemy could move to next turn that the gun covers from where it ends its turn (its zone of control).")]
         public float artilleryCoverValue = 25f;
 

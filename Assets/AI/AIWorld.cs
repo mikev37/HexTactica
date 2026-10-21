@@ -49,6 +49,8 @@ namespace HexTactica.AI {
             public int ourSpace, theirSpace, supplyCut, enemyUnsupplied;
             /// <summary>Artillery only: enemy-reachable tiles under this gun next turn.</summary>
             public int gunCover;
+            /// <summary>Tiles next to our units the enemy could step onto: covered by another of ours, or not.</summary>
+            public int covered, exposed;
             public float space;
             public readonly List<string> replies = new List<string>();
             /// <summary>Strength each of our units loses in the reply.</summary>
@@ -63,6 +65,7 @@ namespace HexTactica.AI {
                 if (hubs != 0f) sb.Append(" hubs ").Append(hubs.ToString("+0;-0"));
                 if (space != 0f) sb.Append(" space ").Append(space.ToString("+0;-0")).Append(" (").Append(ourSpace).Append('/').Append(theirSpace).Append(supplyCut > 0 ? " cut " + supplyCut : "").Append(enemyUnsupplied > 0 ? " unsupplied " + enemyUnsupplied : "").Append(')');
                 if (gunCover > 0) sb.Append(" covers ").Append(gunCover);
+                if (covered > 0 || exposed > 0) sb.Append(" mutual ").Append(covered).Append('/').Append(exposed);
                 if (healOwn != 0f || healEnemy != 0f) sb.Append(" heals +").Append(healOwn.ToString("0")).Append("/-").Append(healEnemy.ToString("0"));
                 if (ownStrike != 0f || enemyStrike != 0f) sb.Append(" strike +").Append(ownStrike.ToString("0")).Append("/-").Append(enemyStrike.ToString("0"));
                 if (replies.Count > 0) sb.Append(" [").Append(string.Join("; ", replies.ToArray())).Append(']');
@@ -339,7 +342,7 @@ namespace HexTactica.AI {
                 w.score += w.ownStrike - w.enemyStrike;
             }
 
-            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.artilleryCoverValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
+            if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.artilleryCoverValue > 0f || prof.coverTileValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
             return w;
         }
 
@@ -431,11 +434,13 @@ namespace HexTactica.AI {
                           Dictionary<Unit, HashSet<HexTile>> positions, Dictionary<Unit, float> hp) {
             AIProfile prof = map.profile;
             HashSet<HexTile> ourMove = new HashSet<HexTile>(), ourStrike = new HashSet<HexTile>();
+            Dictionary<Unit, HashSet<HexTile>> fireOf = new Dictionary<Unit, HashSet<HexTile>>();
             foreach (Unit x in map.ownUnits) {
                 if (x == null || x.tile == null || !hp.ContainsKey(x) || hp[x] <= 0f || x.trasnporter != null) continue;
                 HashSet<HexTile>[] s = x == u ? AIMap.SpaceFrom(u, uAt, null) : map.SpaceOf(x);
                 ourMove.UnionWith(s[0]);
                 ourStrike.UnionWith(s[1]);
+                if (x.Firepower > 0 && x.GetComponent<SupplyPoint>() == null) fireOf[x] = s[1];
             }
             HashSet<HexTile> theirMove = new HashSet<HexTile>(), theirStrike = new HashSet<HexTile>();
             foreach (Unit e in map.enemyUnits) {
@@ -453,6 +458,23 @@ namespace HexTactica.AI {
             if (prof.artilleryCoverValue > 0f && !u.moveAndAttack && u.AttackRange >= 2 && u.Firepower > 0 && hp[u] > 0f) {
                 foreach (HexTile t in AIPath.TilesInRange(uAt, u.MinRange, u.AttackRange)) if (theirMove.Contains(t)) w.gunCover++;
                 w.score += w.gunCover * prof.artilleryCoverValue;
+            }
+            // Mutual cover: every tile next to one of our units that the enemy could move onto next
+            // turn (where it would stand to hit that unit) is covered if another of our units could
+            // strike it next turn, and exposed if none could. Covered tiles count +coverTileValue,
+            // exposed ones -coverTileValue: keep within reach of each other near the enemy.
+            if (prof.coverTileValue > 0f) {
+                foreach (Unit f in map.ownUnits) {
+                    if (f == null || f.tile == null || !hp.ContainsKey(f) || hp[f] <= 0f || f.trasnporter != null || !GameController.Targetable(f)) continue;
+                    HexTile fAt = f == u ? uAt : f.tile;
+                    foreach (HexTile n in fAt.neighbors) {
+                        if (n == null || !theirMove.Contains(n)) continue;
+                        bool covered = false;
+                        foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in fireOf) if (kv.Key != f && kv.Value.Contains(n)) { covered = true; break; }
+                        if (covered) w.covered++; else w.exposed++;
+                    }
+                }
+                w.score += (w.covered - w.exposed) * prof.coverTileValue;
             }
             if (prof.spaceContestedOnly) {
                 ourMove.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
