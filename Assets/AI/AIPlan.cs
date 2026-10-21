@@ -163,11 +163,14 @@ namespace HexTactica.AI {
                     if (ownSideBlocks || firesInPlace || e.moveRange <= 0) taken.Add(at[e]);
                 }
 
+                bool weighs = prof.enemyWeighsRisk;
+                Func<Unit, HexTile> ourPos = x => at.ContainsKey(x) ? at[x] : x.tile;
                 foreach (Unit e in enemies) {
                     HashSet<HexTile> pos;
                     if (!positions.TryGetValue(e, out pos) || hp[e] <= 0f) continue;
                     Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f; int bestDamage = 0, bestBack = 0;
                     bool bestPinned = false;
+                    float home = weighs ? AIWorld.Exposure(e, hp[e], at[e], map, hp, ourPos) : 0f;
                     foreach (Unit d in map.ownUnits) {
                         if (d == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d)) continue;
                         HexTile dAt = at[d];
@@ -182,6 +185,7 @@ namespace HexTactica.AI {
                             pinned = true;
                         }
                         float value = (dmg * AIWorld.Value(d) - back * AIWorld.Value(e)) * (dmg >= hp[d] ? 2f : 1f);
+                        if (weighs) value -= Mathf.Max(0f, AIWorld.Exposure(e, hp[e] - back, fire, map, hp, ourPos) - home) * prof.enemyCaution;
                         if (value > bestValue || (value == bestValue && bestTarget != null && AIMap.CompareUnits(d, bestTarget) < 0)) {
                             bestValue = value; bestTarget = d; bestTile = fire; bestDamage = dmg; bestBack = back; bestPinned = pinned;
                         }
