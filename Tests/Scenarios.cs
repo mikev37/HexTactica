@@ -82,7 +82,7 @@ public static class Scenarios {
                 foreach (Player p in new[] { ai, other }) {
                     HexTile hq = (p == ai) == aiLeft ? left : right;
                     List<HexTile> dep = Deployment(hq, DeploymentSize(s));
-                    Put("TempHQ", p, hq.x, hq.y);
+                    Put("HQ", p, hq.x, hq.y);
                     for (int i = 0; i < GauntletRoster.Length; i++) Put(GauntletRoster[i], p, dep[i].x, dep[i].y);
                 }
                 string name = s.name + (aiLeft ? "-challenger-left" : "-challenger-right");
@@ -163,7 +163,7 @@ public static class Scenarios {
             List<HexTile> land = new List<HexTile>();
             foreach (HexTile t in Rig.hg.tiles) if (t != hq && t.terrain.name != "Water") land.Add(t);
             land.Sort((x, y) => { int c = RoadSteps(hq, x).CompareTo(RoadSteps(hq, y)); return c != 0 ? c : CombatMath.CompareTiles(x, y); });
-            Put("TempHQ", p, hq.x, hq.y);
+            Put("HQ", p, hq.x, hq.y);
             for (int i = 0; i < roster.Length; i++) Put(roster[i], p, land[i].x, land[i].y);
         }
         Dictionary<string, string> test = Test("logistics-zigzag", "logistics", "Full", 60, "report",
@@ -185,7 +185,7 @@ public static class Scenarios {
         int rounds = l.meta.GetInt("rounds", 60);
         Dictionary<Player, HexTile> hq = new Dictionary<Player, HexTile>();
         foreach (Player p in new[] { l.ai, l.other })
-            foreach (Unit u in p.units) if (u != null && u.GetComponent<SupplyPoint>() != null && u.GetComponent<SupplyPoint>().producer) hq[p] = u.tile;
+            if (GameController.HQOf(p) != null) hq[p] = GameController.HQOf(p).tile;
         Console.WriteLine(l.meta.Name + ": " + l.meta.Get("question", ""));
         for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
             ScenarioFile.PlayTurn();
@@ -231,6 +231,146 @@ public static class Scenarios {
         return 0;
     }
 
+    // ------------------------------------------------------------------ building rules
+
+    /// <summary>
+    /// Building rule scenarios (kind "rules"): small boards set up for one rule each; the check
+    /// plays the turns by hand (moves, an attack, end of turn) and reads the building afterwards.
+    /// </summary>
+    public static int ExportBuildingRules() {
+        int n = 0;
+        Action<string, string, Action<Player, Player>, string> make = (name, check, setup, question) => {
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
+            setup(ai, other);
+            Dictionary<string, string> test = Test(name, "rules", "Human", 4, check, question);
+            test["rules"] = check.StartsWith("attrition") ? "attrition" : "standard";
+            ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
+            n++;
+        };
+        make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
+             "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
+        make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
+             "A Blue City at 3 points, a Red grunt (6) on it: after Red's turn it is neutral with 3 Red.");
+        make("rule-attack-no-capture", "attackNoCapture", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 1, 0); },
+             "A Red grunt on a Blue City that attacks during its turn does not capture.");
+        make("rule-contested-airport", "contested", (a, o) => { Building ap = Rig.PlaceBuilding("Airport", a, 0, 0); ap.capturePoints = 3; Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0); },
+             "A two-tile Airport (threshold 15) at 3 Blue, a Blue grunt and a Red grunt on it: Blue cannot raise it; Red brings it to 0 (neutral), not past.");
+        make("rule-neutral-decay", "decay", (a, o) => { Building c = Rig.PlaceBuilding("City", null, 0, 0); c.capturingPlayer = o; c.capturePoints = 4; Put("Grunt", o, 3, 0); },
+             "A neutral City with 4 Red progress and no Red infantry on it: 2 after Red's turn. An owned building does not decay.");
+        make("rule-hq-standard", "hqStandard", (a, o) => { Put("Grunt", o, -6, 0); },
+             "Standard rules: a Red grunt on Blue's HQ (10). Two Red turns bring it to 0: Blue has lost.");
+        make("attrition-rule-hq", "attritionHQ", (a, o) => { Put("Grunt", o, -6, 0); Put("Grunt", a, -3, 2); },
+             "Attrition rules: the HQ cannot be captured, a Red grunt standing on it changes nothing.");
+        make("rule-fob-battery", "battery", (a, o) => { Building f = Rig.PlaceBuilding("FOB", a, -4, 0); f.supplies = 0; Put("Grunt", a, -3, 1); },
+             "A Blue FOB inside the HQ's supply charges 1 a turn; cut off (the HQ lost), it supplies its area for as many turns as it stored, then stops.");
+        make("rule-production", "production", (a, o) => { },
+             "Blue's HQ builds a Grunt for 2000 of 3000: it appears on the HQ, spent for the turn, money 1000.");
+        make("rule-base-service", "service", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", a, -4, 1); Put("Grunt", a, -3, 2); },
+             "A unit that needs a base (made an aircraft for the test) is resupplied only on an airport: in supply elsewhere it uses up its supplies.");
+        return n;
+    }
+
+    static bool RuleCheck(ScenarioFile.Loaded l, out string detail) {
+        GameController gc = Rig.gc;
+        Player a = l.ai, o = l.other;
+        Building at00 = Rig.At(0, 0).building;
+        Func<Building, string> show = b => b.name + " " + (b.owner != null ? b.owner.personal_name : "neutral" + (b.capturingPlayer != null ? "/" + b.capturingPlayer.personal_name : "")) + " " + b.capturePoints + "/" + b.CaptureThreshold;
+        Action endTurn = () => gc.EndTurn();
+        switch (l.meta.Get("check", "")) {
+            case "captureNeutral": {
+                endTurn(); string first = show(at00);
+                bool ok1 = at00.owner == null && at00.capturingPlayer == a && at00.capturePoints == 6;
+                endTurn(); endTurn();
+                bool ok2 = at00.owner == a && at00.capturePoints == 10;
+                detail = "after one Blue turn " + first + ", after two " + show(at00);
+                return ok1 && ok2;
+            }
+            case "captureOverflow": {
+                endTurn(); endTurn();
+                detail = show(at00);
+                return at00.owner == null && at00.capturingPlayer == o && at00.capturePoints == 3;
+            }
+            case "attackNoCapture": {
+                endTurn();
+                Unit red = Rig.At(0, 0).occupier;
+                red.OrderAttack(Rig.At(1, 0).occupier);
+                endTurn();
+                detail = show(at00) + " after the Red grunt attacked from it";
+                return at00.owner == a && at00.capturePoints == 10;
+            }
+            case "contested": {
+                endTurn(); string afterBlue = show(at00);
+                bool ok1 = at00.owner == a && at00.capturePoints == 3;
+                endTurn();
+                detail = "after Blue " + afterBlue + ", after Red " + show(at00);
+                return ok1 && at00.owner == null && at00.capturePoints == 0 && at00.capturingPlayer == null;
+            }
+            case "decay": {
+                endTurn(); endTurn();
+                bool ok = at00.owner == null && at00.capturePoints == 2;
+                Building hq = GameController.HQOf(a);
+                int before = hq.capturePoints;
+                endTurn(); endTurn();
+                detail = show(at00) + "; Blue HQ " + before + " -> " + hq.capturePoints;
+                return ok && hq.capturePoints == before;
+            }
+            case "hqStandard": {
+                Building hq = GameController.HQOf(a);
+                endTurn(); endTurn(); string mid = show(hq);
+                endTurn(); endTurn();
+                detail = "after one Red turn " + mid + ", after two: " + show(hq) + "; game over " + gc.gameOver + ", winner " + (gc.winner != null ? gc.winner.personal_name : "none");
+                return gc.gameOver && gc.winner == o;
+            }
+            case "attritionHQ": {
+                Building hq = GameController.HQOf(a);
+                for (int i = 0; i < 4; i++) endTurn();
+                detail = show(hq) + ", game over " + gc.gameOver;
+                return hq.owner == a && hq.capturePoints == 10 && !gc.gameOver;
+            }
+            case "battery": {
+                Building fob = Rig.At(-4, 0).building;
+                for (int i = 0; i < 6; i++) endTurn();   // three Blue turns connected
+                int charged = fob.supplies;
+                // Cut off: the forward base (and the grunt beside it) moved far from the HQ.
+                Unit g = Rig.At(-3, 1).occupier;
+                fob.Occupy(Rig.At(5, -4));
+                g.tile.occupier = null; g.tile = Rig.At(4, -3); g.tile.occupier = g;
+                List<string> trace = new List<string>();
+                int suppliedTurns = 0;
+                for (int i = 0; i < 12 && !gc.gameOver; i++) {
+                    endTurn();
+                    if (gc.activePlayer != a) continue;
+                    bool supplied = g.tile.isSupplied(a);
+                    if (supplied) suppliedTurns++;
+                    trace.Add(fob.supplies + (supplied ? "s" : "-"));
+                }
+                detail = "store after three connected turns " + charged + " (max " + fob.suppliesMax + ", charge " + fob.chargePerTurn + ", supplies area " + fob.producesSupply + ")" + "; cut off, each Blue turn (store, s = grunt supplied): " + string.Join(" ", trace.ToArray());
+                return charged == 3 && suppliedTurns == 3 && fob.supplies == 0;
+            }
+            case "production": {
+                a.money = 3000;
+                Building hq = GameController.HQOf(a);
+                Unit grunt = null;
+                foreach (Unit u in hq.buildable) if (u.name == "Grunt") grunt = u;
+                Unit made = Rig.bc.Produce(hq, grunt);
+                detail = made == null ? "nothing built" : "built " + made.name + " on " + Pos(made.tile) + ", active " + made.active + ", money " + a.money;
+                return made != null && made.tile == hq.tile && !made.active && a.money == 1000;
+            }
+            case "service": {
+                Unit away = Rig.At(-4, 1).occupier, onBase = Rig.At(-3, 2).occupier;
+                away.locomotion = Locomotion.Aircraft; onBase.locomotion = Locomotion.Aircraft;
+                away.supplies = 3; onBase.supplies = 1; onBase.Strength = 4;
+                endTurn(); endTurn();
+                detail = "away from the airport supplies " + away.supplies + "; on it supplies " + onBase.supplies + ", strength " + onBase.Strength;
+                return away.supplies == 2 && onBase.supplies == onBase.suppliesMax && onBase.Strength == 5;
+            }
+        }
+        detail = "unknown check";
+        return false;
+    }
+
     static int DeploymentSize(MapSpec s) { return s.radius >= 13 ? 30 : s.radius >= 7 ? 18 : 9; }
 
     /// <summary>One map spec list as matchups: AI on either side, three line-ups.</summary>
@@ -245,7 +385,7 @@ public static class Scenarios {
                     foreach (Player p in new[] { ai, other }) {
                         HexTile hq = (p == ai) == aiLeft ? left : right;
                         List<HexTile> dep = Deployment(hq, DeploymentSize(s));
-                        Put("TempHQ", p, hq.x, hq.y);
+                        Put("HQ", p, hq.x, hq.y);
                         for (int i = 0; i < roster.Length; i++) Put(roster[i], p, dep[i].x, dep[i].y);
                         if (lineup == "legacy-outnumbered" && p == other)
                             for (int i = 0; i < extra.Length; i++) Put(extra[i], p, dep[roster.Length + i].x, dep[roster.Length + i].y);
@@ -326,7 +466,9 @@ public static class Scenarios {
         return tiles.GetRange(0, Math.Min(n, tiles.Count));
     }
 
+    /// <summary>A unit, or a building when <paramref name="prefab"/> names one (HQ, City, FOB ...): null then.</summary>
     static Unit Put(string prefab, Player p, int x, int y) {
+        if (!PrefabLoader.Has(prefab) && PrefabLoader.HasBuilding(prefab)) { Rig.PlaceBuilding(prefab, p, x, y); return null; }
         Unit u = Rig.Spawn(PrefabLoader.Load(prefab), p, x, y);
         PrefabLoader.AttachHubIfAny(prefab, u);
         return u;
@@ -354,7 +496,7 @@ public static class Scenarios {
                     foreach (Player p in new[] { ai, other }) {
                         HexTile hq = (p == ai) == aiLeft ? left : right;
                         List<HexTile> dep = Deployment(hq, 9);
-                        Put("TempHQ", p, hq.x, hq.y);
+                        Put("HQ", p, hq.x, hq.y);
                         string[] roster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery" };
                         for (int i = 0; i < roster.Length; i++) Put(roster[i], p, dep[i].x, dep[i].y);
                         if (lineup == "legacy-outnumbered" && p == other) { Put("Tank", p, dep[6].x, dep[6].y); Put("Grunt", p, dep[7].x, dep[7].y); }
@@ -378,6 +520,7 @@ public static class Scenarios {
         // ---- campaign boards: radius 13, armies that start more than three turns apart and
         // need a chain of supply units to stay supplied on the way.
         n += ExportGauntlet();
+        n += ExportBuildingRules();
         n += ExportZigzag();
 
         n += ExportMatches(CampaignMaps, "campaign", 60,
@@ -390,9 +533,9 @@ public static class Scenarios {
             Blank(7);
             for (int y = -7; y <= 7; y++) { HexTile t = Rig.At(3, y); if (t != null && Math.Abs(y) > 1) t.terrain = T("Forest"); }
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("TempHQ", ai, -6, 0); Put("Supplies", ai, -4, 0);
+            Put("HQ", ai, -6, 0); Put("Supplies", ai, -4, 0);
             Put("Grunt", ai, 1, 0); Put("Grunt", ai, 1, 1); Put("Tank", ai, 0, 0); Put("Artillery", ai, -2, 0);
-            Put("TempHQ", other, 6, 0); Put("Grunt", other, 4, -1); Put("Grunt", other, 4, 1); Put("Tank", other, 5, 0);
+            Put("HQ", other, 6, 0); Put("Grunt", other, 4, -1); Put("Grunt", other, 4, 1); Put("Tank", other, 5, 0);
             ScenarioFile.Save(Path.Combine(Dir, "hub-stays-out-of-reach.dat"),
                 Test("hub-stays-out-of-reach", "behaviour", "Legacy", 4, "hubSafe",
                      "Our army stands beyond HQ supply with the enemy close. The supply unit should bring supply forward without ever ending our turn where an enemy can attack it."),
@@ -402,8 +545,8 @@ public static class Scenarios {
         {   // A lone tank must not take a shot that leaves it where the enemy army kills it.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("TempHQ", ai, -6, 0); Put("Tank", ai, -1, 0); Put("Grunt", ai, -5, 1);
-            Put("TempHQ", other, 6, 0); Put("Grunt", other, 2, 0); Put("Tank", other, 4, 0); Put("Grunt", other, 4, -1); Put("Grunt", other, 4, 1);
+            Put("HQ", ai, -6, 0); Put("Tank", ai, -1, 0); Put("Grunt", ai, -5, 1);
+            Put("HQ", other, 6, 0); Put("Grunt", other, 2, 0); Put("Tank", other, 4, 0); Put("Grunt", other, 4, -1); Put("Grunt", other, 4, 1);
             ScenarioFile.Save(Path.Combine(Dir, "no-suicide-attack.dat"),
                 Test("no-suicide-attack", "behaviour", "Legacy", 1, "tankSurvivesReply",
                      "Our lone tank can hit an enemy grunt, but every tile it could hit from is within reach of the enemy tank and two grunts. It should not end its turn where the reply destroys it."),
@@ -413,8 +556,8 @@ public static class Scenarios {
         {   // Hub before rifle: killing their supply unit outweighs a grunt that can only scratch us.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("TempHQ", ai, -6, 0); Put("Tank", ai, 0, 0);
-            Put("TempHQ", other, 6, 0); Put("Supplies", other, 1, 0); Put("Grunt", other, 0, 1);
+            Put("HQ", ai, -6, 0); Put("Tank", ai, 0, 0);
+            Put("HQ", other, 6, 0); Put("Supplies", other, 1, 0); Put("Grunt", other, 0, 1);
             for (int x = 2; x <= 4; x++) Put("Grunt", other, x, 0);
             ScenarioFile.Save(Path.Combine(Dir, "hit-the-supply-unit.dat"),
                 Test("hit-the-supply-unit", "behaviour", "Legacy", 1, "enemyHubHit",
@@ -422,11 +565,23 @@ public static class Scenarios {
                 ai, other, ai);
             n++;
         }
+        {   // Infantry next to a neutral city with nothing in the way should step onto it and capture.
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("Grunt", ai, -3, 0); Put("Tank", ai, -5, 1);
+            Rig.PlaceBuilding("City", null, -1, 0);
+            Put("HQ", other, 6, 0); Put("Grunt", other, 5, 0); Put("Tank", other, 5, 1);
+            ScenarioFile.Save(Path.Combine(Dir, "take-the-city.dat"),
+                Test("take-the-city", "behaviour", "Legacy", 1, "capturesCity",
+                     "A neutral City two tiles from our grunt, the enemy far away. The grunt should end its turn on the City (capturing it)."),
+                ai, other, ai);
+            n++;
+        }
         {   // Our HQ under direct threat: it must survive.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("TempHQ", ai, -6, 0); Put("Grunt", ai, -5, 1); Put("Grunt", ai, -4, -1); Put("Tank", ai, -3, 1); Put("Artillery", ai, -6, 2);
-            Put("TempHQ", other, 6, 0); Put("Tank", other, -1, 0); Put("Grunt", other, -2, 2); Put("Grunt", other, -1, -1);
+            Put("HQ", ai, -6, 0); Put("Grunt", ai, -5, 1); Put("Grunt", ai, -4, -1); Put("Tank", ai, -3, 1); Put("Artillery", ai, -6, 2);
+            Put("HQ", other, 6, 0); Put("Tank", other, -1, 0); Put("Grunt", other, -2, 2); Put("Grunt", other, -1, -1);
             ScenarioFile.Save(Path.Combine(Dir, "defend-the-hq.dat"),
                 Test("defend-the-hq", "behaviour", "Legacy", 4, "hqSurvives",
                      "An enemy tank and two grunts are two moves from our HQ. Our HQ must still stand after four rounds."),
@@ -436,10 +591,10 @@ public static class Scenarios {
         {   // A damaged grunt with a fresh one behind it should pull back to heal.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("TempHQ", ai, -6, 0);
+            Put("HQ", ai, -6, 0);
             Unit hurt = Put("Grunt", ai, -1, 0); hurt.Strength = 3;
             Put("Grunt", ai, -3, 0); Put("Grunt", ai, -3, 1);
-            Put("TempHQ", other, 6, 0); Put("Grunt", other, 1, 0); Put("Grunt", other, 1, -1);
+            Put("HQ", other, 6, 0); Put("Grunt", other, 1, 0); Put("Grunt", other, 1, -1);
             ScenarioFile.Save(Path.Combine(Dir, "rotate-the-wounded.dat"),
                 Test("rotate-the-wounded", "behaviour", "Legacy", 1, "woundedPullsBack",
                      "Our 3-strength grunt is in contact; two fresh grunts are close behind, inside supply. It should pull back rather than stay in reach."),
@@ -450,8 +605,8 @@ public static class Scenarios {
             Blank(7);
             for (int y = -7; y <= 7; y++) { HexTile t = Rig.At(0, y); if (t != null && y != 0) t.terrain = T("Water"); }
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("TempHQ", ai, -6, 0); Put("Grunt", ai, -3, 0); Put("Grunt", ai, -3, 1); Put("Tank", ai, -4, 0);
-            Put("TempHQ", other, 6, 0); Put("Grunt", other, 6, -1); Put("Grunt", other, 5, 1); Put("Tank", other, 5, 0);
+            Put("HQ", ai, -6, 0); Put("Grunt", ai, -3, 0); Put("Grunt", ai, -3, 1); Put("Tank", ai, -4, 0);
+            Put("HQ", other, 6, 0); Put("Grunt", other, 6, -1); Put("Grunt", other, 5, 1); Put("Tank", other, 5, 0);
             ScenarioFile.Save(Path.Combine(Dir, "hold-the-gap.dat"),
                 Test("hold-the-gap", "behaviour", "Legacy", 2, "gapHeld",
                      "A water line splits the map with a single land gap at (0,0). The enemy is outside striking range. One of our units should stand on the gap within two rounds."),
@@ -461,8 +616,8 @@ public static class Scenarios {
         {   // Finish the game: their HQ stands alone.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("TempHQ", ai, -6, 0); Put("Grunt", ai, 0, 0); Put("Grunt", ai, 0, 1); Put("Tank", ai, -1, 0); Put("Artillery", ai, -2, 1);
-            Put("TempHQ", other, 5, 0);
+            Put("HQ", ai, -6, 0); Put("Grunt", ai, 0, 0); Put("Grunt", ai, 0, 1); Put("Tank", ai, -1, 0); Put("Artillery", ai, -2, 1);
+            Put("HQ", other, 5, 0);
             ScenarioFile.Save(Path.Combine(Dir, "finish-the-game.dat"),
                 Test("finish-the-game", "behaviour", "Legacy", 5, "aiWins",
                      "The enemy has only its HQ left, five hexes away. We should destroy it within five rounds."),
@@ -519,11 +674,18 @@ public static class Scenarios {
                 detail = "enemy supply unit " + (hub == null || hub.tile == null ? "destroyed" : "at s" + hub.Strength);
                 return hub == null || hub.tile == null || hub.Strength < 6;
             }
+            case "capturesCity": {
+                Building city = Rig.At(-1, 0).building;
+                ScenarioFile.PlayTurn();
+                Unit on = Rig.At(-1, 0).occupier;
+                detail = "City " + (on != null ? "has our " + on.name : "empty") + "; " + (city.owner != null ? city.owner.personal_name + "'s" : "neutral") + " " + city.capturePoints + "/" + city.CaptureThreshold;
+                return on != null && on.owner == l.ai && city.capturingPlayer == l.ai && city.capturePoints > 0;
+            }
             case "hqSurvives": {
-                Unit hq = First(l.ai, "TempHQ");
+                Building hq = GameController.HQOf(l.ai);
                 for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) ScenarioFile.PlayTurn();
-                bool alive = hq != null && hq.tile != null && hq.Strength > 0;
-                detail = "our HQ " + (alive ? "s" + hq.Strength : "destroyed") + ", winner " + (gc.winner != null ? gc.winner.personal_name : "none");
+                bool alive = hq != null && hq.owner == l.ai;
+                detail = "our HQ " + (alive ? hq.capturePoints + "/" + hq.CaptureThreshold : "lost") + ", winner " + (gc.winner != null ? gc.winner.personal_name : "none");
                 return alive;
             }
             case "woundedPullsBack": {
@@ -599,6 +761,15 @@ public static class Scenarios {
             Console.WriteLine(string.Format("  {0}  {1,-24} {2}", ok ? "PASS" : "FAIL", l.meta.Name, detail));
         }
         Console.WriteLine();
+        Console.WriteLine("== Building rules ==");
+        foreach (string f in Files(only == null || only == "rules" ? "rules" : "-")) {
+            ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
+            string detail;
+            bool ok = RuleCheck(l, out detail);
+            if (ok) passed++; else failed++;
+            Console.WriteLine(string.Format("  {0}  {1,-24} {2}", ok ? "PASS" : "FAIL", l.meta.Name, detail));
+        }
+        Console.WriteLine();
         Console.WriteLine("== Matchups (generated terrain maps) ==");
         int w = 0, lo = 0, d = 0;
         foreach (string f in Files(only == null || only == "match" ? "match" : "-")) {
@@ -662,6 +833,12 @@ public static class Scenarios {
             else if (u.name.StartsWith("Tank")) c = 'T';
             else if (u.name.StartsWith("Artillery")) c = 'A';
             return u.owner != null && u.owner.id == ScenarioFile.AI_ID ? c : char.ToLower(c);
+        }
+        if (t.building != null) {
+            Building b = t.building;
+            char c = b.IsHQ ? 'H' : b.type == BuildingType.City ? 'C' : b.type == BuildingType.FOB ? 'B' : b.type == BuildingType.Airport ? 'P' : b.type == BuildingType.NavalYard ? 'D' : 'X';
+            if (b.owner == null) return '=';
+            return b.owner.id == ScenarioFile.AI_ID ? c : char.ToLower(c);
         }
         if (t.terrain == null) return '?';
         switch (t.terrain.name) {
@@ -797,7 +974,7 @@ public static class Scenarios {
         int checks = 0, bad = 0;
         foreach (string f in files) {
             ScenarioFile.Loaded l = ScenarioFile.Load(f, "Human", p => {
-                p.assistWeight = 0f; p.forecastKnockback = false; p.selfPreservationWeight = 0f; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
+                p.assistWeight = 0f; p.forecastKnockback = false; p.forecastBuildings = false; p.selfPreservationWeight = 0f; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
             });
             // Play a few rounds so units are in contact, then check Blue's options.
             GameController gc = Rig.gc;

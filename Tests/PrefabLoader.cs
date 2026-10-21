@@ -85,6 +85,101 @@ namespace HexTactica.Testing {
             return u;
         }
 
+        static readonly Dictionary<string, Building> buildingCache = new Dictionary<string, Building>();
+
+        public static bool HasBuilding(string name) {
+            return File.Exists(Path.Combine(AssetsRoot, "Buildings", "Prefabs", name + ".prefab"));
+        }
+
+        /// <summary>
+        /// A building archetype from Assets/Buildings/Prefabs/&lt;name&gt;.prefab: its Building fields,
+        /// footprint, services, build list (unit prefab names) and ground terrain.
+        /// </summary>
+        public static Building LoadBuilding(string name) {
+            Building cached;
+            if (!buildingCache.TryGetValue(name, out cached)) {
+                cached = ParseBuilding(name);
+                buildingCache[name] = cached;
+            }
+            Building b = Rig.New<Building>();
+            b.name = cached.name;
+            foreach (FieldInfo fi in typeof(Building).GetFields(BindingFlags.Public | BindingFlags.Instance)) {
+                object v = fi.GetValue(cached);
+                if (v is List<TileOffset>) v = new List<TileOffset>((List<TileOffset>)v);
+                else if (v is List<Locomotion>) v = new List<Locomotion>((List<Locomotion>)v);
+                else if (v is List<Unit>) v = new List<Unit>((List<Unit>)v);
+                fi.SetValue(b, v);
+            }
+            b.tiles = new List<HexTile>();
+            b.tile = null;
+            b.owner = null;
+            return b;
+        }
+
+        static Building ParseBuilding(string name) {
+            string path = Path.Combine(AssetsRoot, "Buildings", "Prefabs", name + ".prefab");
+            string text = File.ReadAllText(path);
+            string doc = null;
+            foreach (string d in text.Split(new[] { "\n--- " }, StringSplitOptions.None)) if (d.Contains("\n  supplyRange:")) doc = d;
+            if (doc == null) throw new Exception("no Building component in " + name);
+            Dictionary<string, string> f = Fields(doc);
+            Building b = Rig.New<Building>();
+            b.name = name;
+            foreach (FieldInfo fi in typeof(Building).GetFields(BindingFlags.Public | BindingFlags.Instance)) {
+                string raw;
+                if (!f.TryGetValue(fi.Name, out raw)) continue;
+                try {
+                    if (fi.FieldType == typeof(int)) fi.SetValue(b, int.Parse(raw, CultureInfo.InvariantCulture));
+                    else if (fi.FieldType == typeof(float)) fi.SetValue(b, float.Parse(raw, CultureInfo.InvariantCulture));
+                    else if (fi.FieldType == typeof(bool)) fi.SetValue(b, raw.Trim() == "1");
+                    else if (fi.FieldType == typeof(string)) fi.SetValue(b, raw);
+                    else if (fi.FieldType.IsEnum) fi.SetValue(b, Enum.ToObject(fi.FieldType, int.Parse(raw)));
+                } catch (FormatException) { }
+            }
+            b.footprint = new List<TileOffset>();
+            b.services = new List<Locomotion>();
+            b.buildable = new List<Unit>();
+            List<string> lines = new List<string>(doc.Split('\n'));
+            for (int i = 0; i < lines.Count; i++) {
+                string l = lines[i];
+                if (l.StartsWith("  footprint:")) {
+                    for (int j = i + 1; j + 1 < lines.Count && lines[j].StartsWith("  - x:"); j += 2)
+                        b.footprint.Add(new TileOffset(int.Parse(lines[j].Substring(lines[j].IndexOf(':') + 1).Trim()), int.Parse(lines[j + 1].Substring(lines[j + 1].IndexOf(':') + 1).Trim())));
+                } else if (l.StartsWith("  services:")) {
+                    for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) b.services.Add((Locomotion)int.Parse(lines[j].Substring(4).Trim()));
+                } else if (l.StartsWith("  buildable:")) {
+                    for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) {
+                        string g = GuidIn(lines[j]);
+                        string unit = g != null ? AssetByGuid(Path.Combine(AssetsRoot, "Units"), "*.prefab.meta", g) : null;
+                        if (unit != null && Has(unit)) b.buildable.Add(Load(unit));
+                    }
+                } else if (l.StartsWith("  ground:")) {
+                    string g = GuidIn(l);
+                    string terrain = g != null ? AssetByGuid(Path.Combine(AssetsRoot, "Tiles"), "*.asset.meta", g) : null;
+                    if (terrain != null) b.ground = ScenarioFile.Terrain(terrain);
+                }
+            }
+            return b;
+        }
+
+        static string GuidIn(string line) {
+            int i = line.IndexOf("guid: ");
+            if (i < 0) return null;
+            int j = line.IndexOf(',', i);
+            return line.Substring(i + 6, (j < 0 ? line.Length : j) - i - 6).Trim();
+        }
+
+        /// <summary>The asset in <paramref name="dir"/> whose meta carries <paramref name="guid"/> (name without extensions).</summary>
+        static string AssetByGuid(string dir, string pattern, string guid) {
+            foreach (string meta in Directory.GetFiles(dir, pattern)) {
+                if (File.ReadAllText(meta).Contains("guid: " + guid)) {
+                    string n = Path.GetFileName(meta);
+                    return n.Substring(0, n.IndexOf('.'));
+                }
+            }
+            return null;
+        }
+
         /// <summary>Top-level scalar keys of one YAML document (exactly two-space indent).</summary>
         static Dictionary<string, string> Fields(string doc) {
             Dictionary<string, string> f = new Dictionary<string, string>();

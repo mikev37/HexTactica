@@ -319,16 +319,7 @@ namespace HexTactica.AI {
             float bestWorld = float.NegativeInfinity;
             foreach (Option o in options) {
                 o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
-                // Buildings are not units, so the material count never sees a capture under way.
-                // Standing on an enemy building with a unit that can take it is worth what taking it
-                // is worth (the same values TryCapture uses), as long as the unit survives the reply.
-                Building b = o.stop.building;
-                if (b != null && b.owner != unit.owner && Building.CanCapture(unit)) {
-                    float lostThere;
-                    o.world.lost.TryGetValue(unit, out lostThere);
-                    if (lostThere < unit.Strength)
-                        o.world.score += b.IsHQ ? map.BoardStake * 0.5f : worth * 3f + b.income * 10f;
-                }
+                // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
             if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });
@@ -623,9 +614,6 @@ namespace HexTactica.AI {
 
         static AIAction DecideLine(Unit unit, AIMap map, AIProfile profile, Posture posture) {
 
-            AIAction capture = TryCapture(unit, map, profile);
-            if (!capture.IsNothing) return capture;
-
             AttackAppraisal best = AITargeting.BestThisTurn(unit, map, profile, posture);
 
             float worth = AIScore.Worth(unit);
@@ -732,9 +720,6 @@ namespace HexTactica.AI {
         // ------------------------------------------------------------------- recon
 
         static AIAction DecideRecon(Unit unit, AIMap map, AIProfile profile, Posture posture) {
-
-            AIAction capture = TryCapture(unit, map, profile);
-            if (!capture.IsNothing) return capture;
 
             AttackAppraisal shot = AITargeting.BestThisTurn(unit, map, profile, posture);
             if (shot.valid && shot.outcome.damageToAttacker != 0) shot.valid = false;   // recon only takes free shots
@@ -848,16 +833,5 @@ namespace HexTactica.AI {
             }, true, 1.5f, 0.02f, "transport");
         }
 
-        // ------------------------------------------------------------------ capture
-
-        static AIAction TryCapture(Unit unit, AIMap map, AIProfile profile) {
-            if (!Building.CanCapture(unit)) return AIAction.Wait(unit, "");
-            if (unit.tile == null || unit.tile.building == null) return AIAction.Wait(unit, "");
-            Building b = unit.tile.building;
-            if (b.owner == unit.owner) return AIAction.Wait(unit, "");
-
-            float worth = b.IsHQ ? 1e6f : AIScore.Worth(unit) * 3f + b.income * 10f;
-            return AIAction.Seize(unit, b, worth, b.IsHQ ? "capture HQ" : "capture building");
-        }
     }
 }

@@ -94,10 +94,22 @@ public static class ScenarioFile {
             int z = -x - y;
             if (Math.Abs(z) > Board) continue;
             HexTile t = Rig.At(x, y);
-            string name = t != null && t.terrain != null ? t.terrain.name : "Water";
+            TerrainData under = t != null ? (t.building != null ? t.building.Underlying(t) : t.terrain) : null;
+            string name = under != null ? under.name : "Water";
             if (!f) sb.Append(',');
             f = false;
             sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"damage\":0,\"combatCount\":0,\"terrain\":\"{3}\"}}", x, y, z, name));
+        }
+        sb.Append("\n],\n\"buildings\":[");
+        f = true;
+        foreach (Building b in Rig.bc.buildings) {
+            if (b == null || b.tile == null) continue;
+            if (!f) sb.Append(',');
+            f = false;
+            long oid = b.owner == ai ? AI_ID : b.owner == other ? OTHER_ID : -1;
+            long cid = b.capturingPlayer == ai ? AI_ID : b.capturingPlayer == other ? OTHER_ID : -1;
+            sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"gameobject_name\":\"{3}\",\"personal_name\":\"{4}\",\"type\":{5},\"owner_id\":{6},\"income\":{7},\"producesSupply\":{8},\"supplyRange\":{9},\"supplies\":{10},\"suppliesMax\":{11},\"damageLevel\":0,\"capturePoints\":{12},\"capturingPlayerId\":{13}}}",
+                b.tile.x, b.tile.y, b.tile.z, b.name.Replace("(Clone)", ""), b.personal_name, (int)b.type, oid, b.income, b.producesSupply ? "true" : "false", b.supplyRange, b.supplies, b.suppliesMax, b.capturePoints, cid));
         }
         sb.Append("\n],\n\"units\":[");
         f = true;
@@ -170,16 +182,35 @@ public static class ScenarioFile {
         Match w = Regex.Match(json, "\"width\"\\s*:\\s*(\\d+)");
         Board = w.Success ? int.Parse(w.Groups[1].Value) / 2 : 7;
         Rig.NewGame(Board);
+        List<HexTile> cities = new List<HexTile>();
         foreach (Dictionary<string, string> t in Array(json, "tiles")) {
             HexTile tile = Rig.hg.get(int.Parse(t["x"]), int.Parse(t["y"]), int.Parse(t["z"]));
-            if (tile != null) tile.terrain = Terrain(t["terrain"]);
+            if (tile == null) continue;
+            // City was a terrain; it is a building now (as the game's loader does).
+            if (t["terrain"] == "City") { tile.terrain = Terrain("Grassland"); cities.Add(tile); }
+            else tile.terrain = Terrain(t["terrain"]);
         }
         l.ai = Rig.AddPlayer("Blue", AI_ID);
         l.other = Rig.AddPlayer("Red", OTHER_ID);
+        foreach (Dictionary<string, string> b in Array(json, "buildings")) {
+            HexTile at = Rig.hg.get(int.Parse(b["x"]), int.Parse(b["y"]), int.Parse(b["z"]));
+            if (at == null || at.building != null) continue;
+            long oid = b.ContainsKey("owner_id") ? long.Parse(b["owner_id"]) : -1;
+            Player owner = oid == AI_ID ? l.ai : oid == OTHER_ID ? l.other : null;
+            Building made = Rig.PlaceBuilding(b["gameobject_name"].Replace("(Clone)", "").Trim(), owner, at.x, at.y);
+            int n;
+            if (b.ContainsKey("capturePoints") && int.TryParse(b["capturePoints"], out n) && (n > 0 || owner == null)) made.capturePoints = n;
+            if (b.ContainsKey("supplies") && int.TryParse(b["supplies"], out n)) made.supplies = n;
+            long cid = b.ContainsKey("capturingPlayerId") ? long.Parse(b["capturingPlayerId"]) : -1;
+            made.capturingPlayer = cid == AI_ID ? l.ai : cid == OTHER_ID ? l.other : null;
+        }
+        foreach (HexTile c in cities) if (c.building == null) Rig.PlaceBuilding("City", null, c.x, c.y);
         foreach (Dictionary<string, string> u in Array(json, "units")) {
             Player owner = long.Parse(u["owner_id"]) == AI_ID ? l.ai : l.other;
             string prefab = u["gameobject_name"].Replace("(Clone)", "").Trim();
             HexTile at = Rig.hg.get(int.Parse(u["x"]), int.Parse(u["y"]), int.Parse(u["z"]));
+            // TempHQ is retired: an HQ unit in an older file becomes the HQ building.
+            if (prefab == "TempHQ") { if (at.building == null) Rig.PlaceBuilding("HQ", owner, at.x, at.y); continue; }
             Unit unit = Rig.Spawn(PrefabLoader.Load(prefab), owner, at.x, at.y);
             PrefabLoader.AttachHubIfAny(prefab, unit);
             int n;

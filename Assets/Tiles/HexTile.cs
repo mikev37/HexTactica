@@ -233,6 +233,13 @@ public class HexTile : MonoBehaviour
             loadData(LevelEditor.singleton.td);
         } else if (LevelEditor.singleton.unit_placement) {
             LevelEditor.PlaceNewUnit(this);
+        } else if (LevelEditor.singleton.building_placement) {
+            LevelEditor.PlaceNewBuilding(this);
+        }
+        else if (occupier == null && building != null && state == UIState.FREE && GameController.gc.activeUnit == null
+                 && building.owner != null && building.owner == GameController.gc.activePlayer && building.CanProduce) {
+            // A building is clickable only with no unit on it: its build list.
+            BuildingMenu.Open(building);
         }
         else {
             if (occupier != null && state == UIState.FREE && occupier.active && occupier.owner.Equals(GameController.gc.activePlayer)) {
@@ -424,7 +431,8 @@ public struct TileData {
         z = t.z;
         damage = t.damageLevel;
         combatCount = t.combatCount;
-        terrain = t.terrain.name;
+        // A building's tiles record the terrain under it (the building restores its ground on load).
+        terrain = (t.building != null ? t.building.Underlying(t) : t.terrain).name;
     }
 
     public HexTile load() {
@@ -432,7 +440,14 @@ public struct TileData {
         if (t == null) return null;   // a save written for a bigger board: skip what this one lacks
         t.damageLevel = damage;
         t.combatCount = combatCount;
-        t.loadData(LevelEditor.loadTerrain(terrain));
+        // City was a terrain; it is a building now. A City tile in an older map becomes a neutral
+        // City building on grassland.
+        Building city = terrain == "City" ? LevelEditor.loadBuilding("City") : null;
+        TerrainData grass = LevelEditor.loadTerrain("Grassland");
+        if (city != null && grass != null && BuildingController.bc != null) {
+            t.loadData(grass);
+            if (t.building == null) BuildingController.bc.Place(null, city, t);
+        } else t.loadData(LevelEditor.loadTerrain(terrain));
         t.RefreshDamageSprite();
         t.changeState(UIState.FREE);
         return t;

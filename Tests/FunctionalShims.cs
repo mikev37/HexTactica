@@ -82,6 +82,7 @@ namespace UnityEngine {
     }
 
     public static class Mathf {
+        public static float MoveTowards(float a, float b, float d) { return Math.Abs(b - a) <= d ? b : a + Math.Sign(b - a) * d; }
         public const float Infinity = float.PositiveInfinity;
         public static float Max(float a, float b) { return Math.Max(a, b); }
         public static int Max(int a, int b) { return Math.Max(a, b); }
@@ -228,6 +229,13 @@ namespace UnityEngine {
         public static void Log(object o) { if (verbose) Console.WriteLine("[log] " + o); }
         public static void LogWarning(object o) { Console.WriteLine("[warn] " + o); }
         public static void LogError(object o) { Console.WriteLine("[error] " + o); }
+    }
+    public static class Screen { public static int width { get { return 1920; } } public static int height { get { return 1080; } } }
+    public static class GUI {
+        public static bool enabled = true;
+        public static void Box(Rect r, string s) { }
+        public static void Label(Rect r, string s) { }
+        public static bool Button(Rect r, string s) { return false; }
     }
     public static class Time {
         public static float deltaTime { get { return 0.016f; } }

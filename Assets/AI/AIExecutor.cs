@@ -51,11 +51,8 @@ namespace HexTactica.AI {
                     return false;
 
                 case AIActionKind.Capture:
-                    if (action.building != null) {
-                        bool flipped = action.building.Capture(action.unit);
-                        if (flipped) map.Rebuild();
-                        return true;
-                    }
+                    // Capture is implicit (infantry ending its turn on a building without attacking):
+                    // holding the tile is all there is to do.
                     return false;
             }
             return false;

@@ -28,6 +28,9 @@ public static class SupplyNetwork {
         /// <summary>Producers and every relay chained back to a producer or supply building.</summary>
         public readonly List<SupplyPoint> connectedHubs = new List<SupplyPoint>();
         public readonly List<SupplyPoint> strandedHubs = new List<SupplyPoint>();
+        /// <summary>Supply buildings relaying the network, and cut-off ones living off their store.</summary>
+        public readonly List<Building> connectedBuildings = new List<Building>();
+        public readonly List<Building> strandedBuildings = new List<Building>();
         public int mobileHubs;
 
         public int DepthAt(HexTile t) {
@@ -94,11 +97,16 @@ public static class SupplyNetwork {
         Queue<SupplyPoint> pending = new Queue<SupplyPoint>();
         HashSet<SupplyPoint> activated = new HashSet<SupplyPoint>();
 
+        // The HQ is the root. Other supply buildings relay, like supply units (below).
+        List<Building> relayBuildings = new List<Building>();
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
-            if (b == null || b.owner != player || !b.HasSupplyToGive) continue;
-            FloodFromBuilding(b, result);
+            if (b == null || b.owner != player || !b.producesSupply || b.tile == null) continue;
+            if (b.IsHQ) FloodFromBuilding(b, result);
+            else relayBuildings.Add(b);
         }
+        relayBuildings.Sort((a, b) => CompareBuildings(a, b));
+        HashSet<Building> buildingsOn = new HashSet<Building>();
 
         // Gather this player's hubs, in a deterministic order.
         List<SupplyPoint> hubs = new List<SupplyPoint>();
@@ -145,6 +153,27 @@ public static class SupplyNetwork {
                 FloodFromHub(hub, at, result);
                 progress = true;
             }
+            for (int i = 0; i < relayBuildings.Count; i++) {
+                Building b = relayBuildings[i];
+                if (buildingsOn.Contains(b)) continue;
+                bool reached = false;
+                foreach (HexTile t in b.Footprint) if (result.IsSupplied(t)) { reached = true; break; }
+                if (!reached) continue;
+                buildingsOn.Add(b);
+                result.connectedBuildings.Add(b);
+                FloodFromBuilding(b, result);
+                progress = true;
+            }
+        }
+
+        // Cut-off supply buildings give out of their store while it lasts.
+        if (!staticOnly) {
+            for (int i = 0; i < relayBuildings.Count; i++) {
+                Building b = relayBuildings[i];
+                if (buildingsOn.Contains(b) || b.supplies <= 0) continue;
+                result.strandedBuildings.Add(b);
+                FloodFromBuilding(b, result);
+            }
         }
 
         // Hubs that never connected still supply their surroundings, out of pocket.
@@ -175,6 +204,9 @@ public static class SupplyNetwork {
             for (int i = 0; i < result.connectedHubs.Count; i++) {
                 result.connectedHubs[i].connected = true;
             }
+            // A connected supply building charges its store; a cut-off one spends a turn of it.
+            for (int i = 0; i < result.connectedBuildings.Count; i++) result.connectedBuildings[i].Replenish(result.connectedBuildings[i].chargePerTurn);
+            for (int i = 0; i < result.strandedBuildings.Count; i++) result.strandedBuildings[i].SpendSupply(1);
         }
 
         return result;
@@ -200,7 +232,13 @@ public static class SupplyNetwork {
     /// </summary>
     static void FloodFromBuilding(Building b, Result result) {
         if (b.tile == null) return;
-        Flood(b.tile, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
+        foreach (HexTile t in b.Footprint) Flood(t, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
+    }
+
+    static int CompareBuildings(Building a, Building b) {
+        int ka = a.tile != null ? (a.tile.x + 512) * 2048 + (a.tile.y + 512) : int.MaxValue;
+        int kb = b.tile != null ? (b.tile.x + 512) * 2048 + (b.tile.y + 512) : int.MaxValue;
+        return ka.CompareTo(kb);
     }
 
     static void FloodFromHub(SupplyPoint hub, HexTile origin, Result result) {

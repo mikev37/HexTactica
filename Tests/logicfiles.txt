@@ -51,3 +51,4 @@ AI/AIScore.cs
 Units/LocomotionInference.cs
 Harness/LegacyAI.cs
 AI/AICoordinator.cs
+Buildings/BuildingMenu.cs

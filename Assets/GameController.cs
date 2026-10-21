@@ -27,6 +27,16 @@ public class GameController : MonoBehaviour
         return true;
     }
 
+    /// <summary>The player's HQ building, if it still has one.</summary>
+    public static Building HQOf(Player p) {
+        if (p == null) return null;
+        for (int i = 0; i < Building.all.Count; i++) {
+            Building b = Building.all[i];
+            if (b != null && b.IsHQ && b.owner == p) return b;
+        }
+        return null;
+    }
+
     /// <summary>Strength x cost of a player's units, HQs excluded: the attrition score.</summary>
     public static float Remaining(Player p) {
         float m = 0f;
@@ -119,6 +129,9 @@ public class GameController : MonoBehaviour
     }
 
     public void EndTurn() {
+        if (gameOver) return;
+        // Infantry that ended the turn on a building without attacking captures it.
+        Building.ResolveCaptures(activePlayer);
         if (gameOver) return;
 
         activePlayer.EndTurn();
