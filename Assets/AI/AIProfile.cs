@@ -96,6 +96,16 @@ namespace HexTactica.AI {
         [Tooltip("The forecast's enemy weighs its own risk: an attack counts only if it is worth more than what our counterattack would cost the attacker on its firing tile (beyond what it risks staying put), times enemyCaution.")]
         public bool enemyWeighsRisk = true;
 
+        [Tooltip("Reply at full damage, so kills land where they really would, with the enemy focusing fire (assists counted as ours are); replyDiscount then applies to what that reply costs us, except unanswered ranged fire (artillery), which is certain.")]
+        public bool replyBreakpoints = true;
+
+        [Header("Unit values")]
+        [Tooltip("What a grunt is worth to the AI, in gold for a full-strength unit (0 = its cost). Grunts block roads and screen beyond what they cost.")]
+        public float gruntWorth = 0f;
+
+        [Tooltip("What a supply unit is worth to the AI as material (0 = its cost). What it keeps supplied is priced separately (hubDependentsWeight).")]
+        public float supplyWorth = 0f;
+
         [Tooltip("How much the forecast's enemy minds being counterattacked (1 = at full value).")]
         [Range(0f, 3f)]
         public float enemyCaution = 1f;

@@ -178,7 +178,7 @@ public static class ScenarioFile {
         l.other = Rig.AddPlayer("Red", OTHER_ID);
         foreach (Dictionary<string, string> u in Array(json, "units")) {
             Player owner = long.Parse(u["owner_id"]) == AI_ID ? l.ai : l.other;
-            string prefab = u["gameobject_name"];
+            string prefab = u["gameobject_name"].Replace("(Clone)", "").Trim();
             HexTile at = Rig.hg.get(int.Parse(u["x"]), int.Parse(u["y"]), int.Parse(u["z"]));
             Unit unit = Rig.Spawn(PrefabLoader.Load(prefab), owner, at.x, at.y);
             PrefabLoader.AttachHubIfAny(prefab, unit);
@@ -225,7 +225,7 @@ public static class ScenarioFile {
     /// <summary>Material: strength times material worth, every unit.</summary>
     public static int Material(Player p) {
         float m = 0;
-        foreach (Unit u in p.units) if (u != null) m += u.Strength * AIScore.Worth(u);
+        foreach (Unit u in p.units) if (u != null) m += u.Strength * AIScore.Cost(u);
         return (int)m;
     }
 }

@@ -56,6 +56,71 @@ public static class Scenarios {
         new MapSpec("campaign-rough", 13, 113, 0.15f, 0.15f, 0.30f),
     };
 
+    /// <summary>
+    /// The gauntlet's random maps: fresh seeds never used for tuning, radius 7 (SampleScene), the
+    /// bridge map's army on each side (HQ, three grunts, two tanks, two artillery, two supply units).
+    /// Each map is played twice, the challenger on either side: ten games.
+    /// </summary>
+    static readonly MapSpec[] GauntletMaps = {
+        new MapSpec("gauntlet-1", 7, 211, 0.10f, 0.10f, 0.30f),
+        new MapSpec("gauntlet-2", 7, 223, 0.10f, 0.12f, 0.25f),
+        new MapSpec("gauntlet-3", 7, 227, 0.15f, 0.15f, 0.30f),
+        new MapSpec("gauntlet-4", 7, 229, 0.05f, 0.10f, 0.20f),
+        new MapSpec("gauntlet-5", 7, 233, 0.12f, 0.08f, 0.35f),
+    };
+
+    static readonly string[] GauntletRoster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Tank", "Artillery", "Supplies" };
+
+    /// <summary>Write the gauntlet's random-map files (Tests/Scenarios/gauntlet-*.dat); the bridge file is kept.</summary>
+    public static int ExportGauntlet() {
+        int n = 0;
+        foreach (MapSpec s in GauntletMaps) {
+            foreach (bool aiLeft in new[] { true, false }) {
+                Generate(s);
+                Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+                HexTile left = Rig.At(-(s.radius - 1), 0), right = Rig.At(s.radius - 1, 0);
+                foreach (Player p in new[] { ai, other }) {
+                    HexTile hq = (p == ai) == aiLeft ? left : right;
+                    List<HexTile> dep = Deployment(hq, DeploymentSize(s));
+                    Put("TempHQ", p, hq.x, hq.y);
+                    for (int i = 0; i < GauntletRoster.Length; i++) Put(GauntletRoster[i], p, dep[i].x, dep[i].y);
+                }
+                string name = s.name + (aiLeft ? "-challenger-left" : "-challenger-right");
+                Dictionary<string, string> test = Test(name, "gauntlet", "Full", 30, "report",
+                    "Random radius-7 map (seed " + s.seed + ", mountain " + s.mountain + ", water " + s.water + ", forest " + s.forest
+                    + "), the bridge map's army each side. This AI on both sides: the challenger as Blue. The left side moves first.");
+                test["rules"] = "standard";
+                ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, aiLeft ? ai : other);
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /// <summary>
+    /// Challenger (Blue, tweak <paramref name="challenger"/>) against the champion (Red, defaults
+    /// plus <paramref name="champion"/>): the bridge map once, then the ten random-map games.
+    /// </summary>
+    public static void Gauntlet(Action<AIProfile> challenger, Action<AIProfile> champion, string cName, string chName) {
+        Console.WriteLine("challenger = " + cName + "\nchampion   = " + chName);
+        int w = 0, lo = 0, d = 0;
+        string only = Environment.GetEnvironmentVariable("FILTER");
+        foreach (string f in Files("gauntlet")) {
+            string n = Path.GetFileNameWithoutExtension(f);
+            ScenarioFile.Loaded l = ScenarioFile.Load(f, "Full", challenger, champion);
+            GameController gc = Rig.gc;
+            int rounds = l.meta.GetInt("rounds", 30);
+            DateTime t0 = DateTime.Now;
+            for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
+            string r = gc.winner == l.ai ? "challenger" : gc.winner == l.other ? "champion" : "draw";
+            bool bridge = n == "gauntlet-bridge";
+            if (!bridge) { if (gc.winner == l.ai) w++; else if (gc.winner == l.other) lo++; else d++; }
+            Console.WriteLine(string.Format("  {0,-34} {1,-10} round {2,2}; units left: challenger {3,2} v champion {4,2}; material {5,6:0} v {6,6:0} ({7:0}s)",
+                n, r, gc.days, Alive(l.ai), Alive(l.other), ScenarioFile.Material(l.ai), ScenarioFile.Material(l.other), (DateTime.Now - t0).TotalSeconds));
+        }
+        Console.WriteLine(string.Format("  random maps: challenger {0}W {1}L {2}D", w, lo, d));
+    }
+
     static int DeploymentSize(MapSpec s) { return s.radius >= 13 ? 30 : s.radius >= 7 ? 18 : 9; }
 
     /// <summary>One map spec list as matchups: AI on either side, three line-ups.</summary>
@@ -166,7 +231,7 @@ public static class Scenarios {
 
     /// <summary>Regenerate every scenario file.</summary>
     public static void Export() {
-        if (Directory.Exists(Dir)) foreach (string f in Directory.GetFiles(Dir, "*.dat")) File.Delete(f);
+        if (Directory.Exists(Dir)) foreach (string f in Directory.GetFiles(Dir, "*.dat")) if (!Path.GetFileName(f).StartsWith("gauntlet-bridge")) File.Delete(f);
         int n = 0;
 
         // ---- matchups: each generated map, AI on either side, three line-ups.
@@ -202,6 +267,8 @@ public static class Scenarios {
 
         // ---- campaign boards: radius 13, armies that start more than three turns apart and
         // need a chain of supply units to stay supplied on the way.
+        n += ExportGauntlet();
+
         n += ExportMatches(CampaignMaps, "campaign", 60,
             new[] { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Grunt", "Grunt", "Tank", "Grunt", "Supplies",
                     "Artillery", "Grunt", "Tank", "Supplies", "Grunt" },
@@ -584,8 +651,8 @@ public static class Scenarios {
                 GameController gc = Rig.gc;
                 float actual = 0f;
                 Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (a, d, fr, at, o) => {
-                    if (d.owner == l.ai) actual += o.damageToDefender * AIScore.Worth(d);
-                    if (a.owner == l.ai) actual += o.damageToAttacker * AIScore.Worth(a);
+                    if (d.owner == l.ai) actual += o.damageToDefender * AIScore.Cost(d);
+                    if (a.owner == l.ai) actual += o.damageToAttacker * AIScore.Cost(a);
                 };
                 int rounds = l.meta.GetInt("rounds", 30);
                 for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) {
@@ -596,7 +663,7 @@ public static class Scenarios {
                     AIWorld.Outcome w = AITactical.LastChosen;
                     if (w == null) continue;
                     float predicted = 0f;
-                    foreach (KeyValuePair<Unit, float> kv in w.lost) predicted += kv.Value * AIScore.Worth(kv.Key);
+                    foreach (KeyValuePair<Unit, float> kv in w.lost) predicted += kv.Value * AIScore.Cost(kv.Key);
                     // Red's turn, with its attacks counted.
                     actual = 0f;
                     Unit.Attacked += hook;

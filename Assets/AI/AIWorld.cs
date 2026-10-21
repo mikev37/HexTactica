@@ -186,8 +186,14 @@ namespace HexTactica.AI {
             }
 
             bool weighs = map.profile.enemyWeighsRisk;
+            bool breakpoints = map.profile.replyBreakpoints;
+            // With replyBreakpoints, the reply is played at full damage (kills where they really
+            // happen) and the discount is applied afterwards to what it cost us; unanswered ranged
+            // fire (artillery) is certain and not discounted, so it is also tracked on its own.
+            Dictionary<Unit, float> hpCertain = breakpoints ? new Dictionary<Unit, float>(hp) : null;
             Func<Unit, HexTile> ourPos = x => x == u ? uAt : x.tile;
-            foreach (Unit e in enemies) {
+            for (int ei = 0; ei < enemies.Count; ei++) {
+                Unit e = enemies[ei];
                 HashSet<HexTile> pos;
                 if (!positions.TryGetValue(e, out pos) || hp[e] <= 0f) continue;
                 Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f; int bestDamage = 0, bestBack = 0;
@@ -209,6 +215,13 @@ namespace HexTactica.AI {
                         pinned = true;
                     }
                     float value = (dmg * Value(d) - back * Value(e)) * (dmg >= hp[d] ? 2f : 1f);
+                    // Focus fire: the enemy counts assists as we do. A hit that leaves the target for
+                    // its units still to act to finish is worth assistWeight of the kill.
+                    if (breakpoints && dmg < hp[d] && map.profile.assistWeight > 0f
+                        && EnemyCanFinish(d, dAt, hp[d] - dmg, enemies, ei, positions, taken, fire, hp)) {
+                        float aw = map.profile.assistWeight;
+                        value = ((dmg + aw * (hp[d] - dmg)) * Value(d) - back * Value(e)) * (1f + aw);
+                    }
                     // Would it rather? The attack must be worth more than the extra our next turn
                     // could cost it on the tile it fires from (the counterattack it invites).
                     if (weighs) value -= Mathf.Max(0f, Exposure(e, hp[e] - back, fire, map, hp, ourPos) - home) * map.profile.enemyCaution;
@@ -220,12 +233,21 @@ namespace HexTactica.AI {
                 if (ownSideBlocks && bestTile != e.tile) taken.Remove(e.tile);
                 taken.Add(bestTile);
                 endsAt[e] = bestTile;
-                float dealt = Mathf.Min(hp[bestTarget], bestDamage * (1f - map.profile.replyDiscount));
+                float dealt = Mathf.Min(hp[bestTarget], bestDamage * (breakpoints ? 1f : 1f - map.profile.replyDiscount));
+                bool certain = false;
+                if (breakpoints) {
+                    HexTile tAt = bestTarget == u ? uAt : bestTarget.tile;
+                    certain = bestBack == 0 && bestTile.Distance(tAt) > 1;
+                    if (certain) {
+                        hpCertain[bestTarget] = Mathf.Max(0f, hpCertain[bestTarget] - dealt);
+                    }
+                }
                 hp[bestTarget] -= dealt;
                 float sofar;
                 w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
                 hp[e] = Mathf.Max(0f, hp[e] - bestBack);
-                if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + dealt.ToString("0.#") + (bestPinned ? " pinned" : "") + (bestBack > 0 ? "/" + bestBack : ""));
+                if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + dealt.ToString("0.#") + (bestPinned ? " pinned" : "") + (bestBack > 0 ? "/" + bestBack : "")
+                                           + (certain ? " certain" : "") + (breakpoints && hp[bestTarget] <= 0f ? " kill" : ""));
                 if (hp[bestTarget] <= 0f && !map.profile.forecastDeadBlock) {
                     // Destroyed: it no longer holds its tile or blocks anyone still to act.
                     HexTile freed = bestTarget == u ? uAt : bestTarget.tile;
@@ -245,53 +267,23 @@ namespace HexTactica.AI {
                 w.selfRisk = Mathf.Max(0f, selfExposure - already) * sp0.selfPreservationWeight;
             }
 
-            // What is left.
-            float stake = map.BoardStake;
-            float healN = map.profile.healedPerTurn;
-            foreach (KeyValuePair<Unit, float> kv in hp) {
-                float left = Mathf.Max(0f, kv.Value);
-                // The strength a supplied unit heals back by its next turn (one, by the game's rule)
-                // doesn't count; kills, damage beyond that, and damage to units that won't heal
-                // (out of supply, or a cut-off supply unit) count in full. (It was half of all the
-                // damage, which made a 5-point hit on our HQ look like 2.5 when only 1 comes back.)
-                if (left >= map.profile.healMinStrength && left < kv.Key.Strength) {
-                    HexTile at = kv.Key == u ? uAt : (endsAt.ContainsKey(kv.Key) ? endsAt[kv.Key] : kv.Key.tile);
-                    if (map.Heals(kv.Key, at)) {
-                        float healed = Mathf.Min(kv.Key.Strength - left, healN);
-                        left += healed;
-                        if (kv.Key.owner == u.owner) w.healOwn += healed * Value(kv.Key); else w.healEnemy += healed * Value(kv.Key);
-                    }
-                }
-                float v = left * Value(kv.Key);
-                bool hq = IsHQ(kv.Key);
-                // A unit destroyed is worth more than its last strength point: alive, it heals
-                // back, holds ground and fires again. deathPremium more points of its worth.
-                if (kv.Value <= 0f && !hq) {
-                    float extra = map.profile.deathPremium * Value(kv.Key);
-                    if (kv.Key.owner == u.owner) w.deaths -= extra; else w.deaths += extra;
-                }
-                if (kv.Key.owner == u.owner) {
-                    w.own += v;
-                    if (hq && kv.Value <= 0f) w.ourHQFalls = true;
-                } else {
-                    w.enemy += v;
-                    if (hq && kv.Value <= 0f) w.theirHQFalls = true;
-                }
+            // What is left. With replyBreakpoints: valued at full damage and with only the certain
+            // fire, and the uncertain part of the difference discounted.
+            float valued = Valuate(hp, u, uAt, endsAt, map, w);
+            if (breakpoints) {
+                Outcome c = new Outcome();
+                float vc = Valuate(hpCertain, u, uAt, endsAt, map, c);
+                float k = 1f - map.profile.replyDiscount;
+                valued = vc + k * (valued - vc);
+                w.own = c.own + k * (w.own - c.own);
+                w.enemy = c.enemy + k * (w.enemy - c.enemy);
+                w.deaths = c.deaths + k * (w.deaths - c.deaths);
+                w.hubs = c.hubs + k * (w.hubs - c.hubs);
+                w.healOwn = c.healOwn + k * (w.healOwn - c.healOwn);
+                w.healEnemy = c.healEnemy + k * (w.healEnemy - c.healEnemy);
             }
-            w.score = w.own - w.enemy + w.deaths - w.selfRisk;
-            if (w.ourHQFalls) w.score -= stake;
-            if (w.theirHQFalls) w.score += stake;
-
-            // A supply unit's death also costs a strength of everyone only it kept supplied.
+            w.score = valued - w.selfRisk;
             AIProfile prof = map.profile;
-            if (prof.hubDependentsWeight > 0f) {
-                foreach (KeyValuePair<Unit, float> kv in hp) {
-                    if (kv.Value > 0f || IsHQ(kv.Key) || kv.Key.GetComponent<SupplyPoint>() == null) continue;
-                    float dep = map.HubStake(kv.Key) * prof.hubDependentsWeight;
-                    if (kv.Key.owner == u.owner) w.hubs -= dep; else w.hubs += dep;
-                }
-                w.score += w.hubs;
-            }
 
             // Each unit's point of view: what it can hit next. Ours strike first.
             //
@@ -349,6 +341,85 @@ namespace HexTactica.AI {
 
             if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.artilleryCoverValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
             return w;
+        }
+
+        /// <summary>What is left on <paramref name="hp"/>: material both sides (heal-back counted), death
+        /// premiums, HQ stakes and supply-unit dependents. Fills <paramref name="w"/>'s parts; returns the sum.</summary>
+        static float Valuate(Dictionary<Unit, float> hp, Unit u, HexTile uAt, Dictionary<Unit, HexTile> endsAt, AIMap map, Outcome w) {
+            float stake = map.BoardStake;
+            w.own = 0f; w.enemy = 0f; w.deaths = 0f; w.hubs = 0f; w.healOwn = 0f; w.healEnemy = 0f;
+            float healN = map.profile.healedPerTurn;
+            foreach (KeyValuePair<Unit, float> kv in hp) {
+                float left = Mathf.Max(0f, kv.Value);
+                // The strength a supplied unit heals back by its next turn (one, by the game's rule)
+                // doesn't count; kills, damage beyond that, and damage to units that won't heal
+                // (out of supply, or a cut-off supply unit) count in full. (It was half of all the
+                // damage, which made a 5-point hit on our HQ look like 2.5 when only 1 comes back.)
+                if (left >= map.profile.healMinStrength && left < kv.Key.Strength) {
+                    HexTile at = kv.Key == u ? uAt : (endsAt.ContainsKey(kv.Key) ? endsAt[kv.Key] : kv.Key.tile);
+                    if (map.Heals(kv.Key, at)) {
+                        float healed = Mathf.Min(kv.Key.Strength - left, healN);
+                        left += healed;
+                        if (kv.Key.owner == u.owner) w.healOwn += healed * Value(kv.Key); else w.healEnemy += healed * Value(kv.Key);
+                    }
+                }
+                float v = left * Value(kv.Key);
+                bool hq = IsHQ(kv.Key);
+                // A unit destroyed is worth more than its last strength point: alive, it heals
+                // back, holds ground and fires again. deathPremium more points of its worth.
+                if (kv.Value <= 0f && !hq) {
+                    float extra = map.profile.deathPremium * Value(kv.Key);
+                    if (kv.Key.owner == u.owner) w.deaths -= extra; else w.deaths += extra;
+                }
+                if (kv.Key.owner == u.owner) {
+                    w.own += v;
+                    if (hq && kv.Value <= 0f) w.ourHQFalls = true;
+                } else {
+                    w.enemy += v;
+                    if (hq && kv.Value <= 0f) w.theirHQFalls = true;
+                }
+            }
+            float score = w.own - w.enemy + w.deaths;
+            if (w.ourHQFalls) score -= stake;
+            if (w.theirHQFalls) score += stake;
+
+            // A supply unit's death also costs a strength of everyone only it kept supplied.
+            AIProfile prof = map.profile;
+            if (prof.hubDependentsWeight > 0f) {
+                foreach (KeyValuePair<Unit, float> kv in hp) {
+                    if (kv.Value > 0f || IsHQ(kv.Key) || kv.Key.GetComponent<SupplyPoint>() == null) continue;
+                    float dep = map.HubStake(kv.Key) * prof.hubDependentsWeight;
+                    if (kv.Key.owner == u.owner) w.hubs -= dep; else w.hubs += dep;
+                }
+                score += w.hubs;
+            }
+            return score;
+        }
+
+        /// <summary>
+        /// Can the enemies after index <paramref name="ei"/> (those still to act in the reply) finish
+        /// <paramref name="d"/> on <paramref name="dAt"/> at <paramref name="left"/>? Each from a free firing
+        /// tile it can reach (not <paramref name="fire"/>, which the first attacker takes); strongest first.
+        /// </summary>
+        static bool EnemyCanFinish(Unit d, HexTile dAt, float left, List<Unit> enemies, int ei,
+                                   Dictionary<Unit, HashSet<HexTile>> positions, HashSet<HexTile> taken, HexTile fire, Dictionary<Unit, float> hp) {
+            HashSet<HexTile> claimed = new HashSet<HexTile>(taken);
+            claimed.Add(fire);
+            float sum = 0f;
+            for (int j = ei + 1; j < enemies.Count; j++) {
+                Unit x = enemies[j];
+                HashSet<HexTile> pos;
+                if (x == null || !positions.TryGetValue(x, out pos) || !hp.ContainsKey(x) || hp[x] <= 0f) continue;
+                HexTile f = FiringTile(x, dAt, pos, claimed);
+                if (f == null) continue;
+                int dmg, back;
+                CombatMath.Exchange(x, Hp(hp[x]), f, d, Hp(left), dAt, out dmg, out back);
+                if (dmg <= 0) continue;
+                if (f != x.tile) claimed.Add(f);
+                sum += dmg;
+                if (sum >= left) return true;
+            }
+            return false;
         }
 
         /// <summary>
