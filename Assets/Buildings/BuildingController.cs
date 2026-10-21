@@ -65,13 +65,15 @@ public class BuildingController : MonoBehaviour {
     /// <summary>
     /// Build <paramref name="unit"/> at <paramref name="b"/>: paid from the owner's money, placed on
     /// the first free tile of the building it can stand on. It has used its turn. Null if the
-    /// owner cannot afford it or there is no room.
+    /// owner cannot afford it or there is no room. <paramref name="allowed"/>, if given, says which
+    /// tiles may be built on (the AI passes AIAir.MayBuildOn: never a tile reserved for a landing).
     /// </summary>
-    public Unit Produce(Building b, Unit unit) {
+    public Unit Produce(Building b, Unit unit, System.Func<HexTile, bool> allowed = null) {
         if (b == null || unit == null || b.owner == null || !b.CanProduce || !b.buildable.Contains(unit)) return null;
         if (b.owner.money < unit.cost) return null;
         foreach (HexTile t in b.Footprint) {
             if (t.occupier != null || !unit.CanEnter(t)) continue;
+            if (allowed != null && !allowed(t)) continue;
             Unit made = Spawner != null ? Spawner(b.owner, unit, t) : UnitController.uc.CreateUnit(b.owner, unit, t);
             if (made == null) continue;
             b.owner.money -= unit.cost;

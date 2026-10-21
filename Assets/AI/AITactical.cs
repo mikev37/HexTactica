@@ -167,8 +167,10 @@ namespace HexTactica.AI {
             float worth = AIScore.Worth(unit);
             List<Option> options = new List<Option>();
             if (!stops.ContainsKey(unit.tile)) stops[unit.tile] = new KeyValuePair<float, HexTile>(float.NegativeInfinity, unit.tile);
-            // Aircraft and ships: only stops they can still get home from (bingo fuel).
+            // Aircraft and ships: only stops they can still get home from (bingo fuel). Nobody ends on a
+            // tile reserved for an aircraft's landing this turn.
             AIAir.FilterSafe(unit, map, stops);
+            AIAir.FilterReserved(unit, map, stops);
             foreach (KeyValuePair<HexTile, KeyValuePair<float, HexTile>> kv in stops) {
                 HexTile s = kv.Key;
                 if (s != unit.tile && !AIPath.CanFinishTurnOn(unit, s)) continue;
