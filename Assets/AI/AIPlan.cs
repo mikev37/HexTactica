@@ -13,9 +13,11 @@ namespace HexTactica.AI {
         /// <summary>Optional: the exact outcome of the shot, when it is already known (CombatMath.Resolve).</summary>
         public CombatOutcome? known;
         public string kind;
+        /// <summary>Which battle plan this step belongs to (AICoordinator); 0 = none.</summary>
+        public int group;
         public override string ToString() {
             return unit.name.Replace("(Clone)", "") + (stop != null && stop != unit.tile ? "->(" + stop.x + "," + stop.y + ")" : "")
-                 + (target != null ? " hits " + target.name.Replace("(Clone)", "") + "(" + target.tile.x + "," + target.tile.y + ")" : "");
+                 + (target != null ? " hits " + target.name.Replace("(Clone)", "") + (target.tile != null ? "(" + target.tile.x + "," + target.tile.y + ")" : "(gone)") : "");
         }
     }
 
@@ -65,7 +67,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>A free neighbour no closer to <paramref name="attacker"/> (CombatMath.FindRetreatTile's rule), on the overridden board.</summary>
-        static HexTile RetreatTile(Unit d, HexTile dAt, HexTile attacker, Dictionary<Unit, float> hp, HashSet<HexTile> taken) {
+        internal static HexTile RetreatTile(Unit d, HexTile dAt, HexTile attacker, Dictionary<Unit, float> hp, HashSet<HexTile> taken) {
             if (d.moveRange <= 0 || dAt == null) return null;
             int now = attacker != null ? dAt.Distance(attacker) : 0;
             HexTile best = null; int bestD = now;
@@ -117,6 +119,9 @@ namespace HexTactica.AI {
                     if (st.stop != null && st.stop != at[x]) { board.Move(x, at[x], st.stop); at[x] = st.stop; }
                     Unit t = st.target;
                     if (t == null || !hp.ContainsKey(t) || hp[t] <= 0f) continue;
+                    // Out of range now (an earlier shot drove it back): no shot.
+                    int range = at[x].Distance(at[t]);
+                    if (range > x.AttackRange || range <= x.MinRange) continue;
                     int dmg, back;
                     HexTile retreat = null;
                     bool pinned = false;

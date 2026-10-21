@@ -344,10 +344,16 @@ namespace HexTactica.AI {
         public float coordinationMargin = 500f;
 
         [Tooltip("Coordinated strikes in passes (AICoordinator): each unit's best attacks, a survive move and a retreat; battle plans of two or more units on one target from non-conflicting tiles, forecast as one board; best plans act first.")]
-        public bool coordinationPasses = false;
+        public bool coordinationPasses = true;
 
         [Tooltip("Attack options each unit keeps for battle plans.")]
         public int coordOffensiveOptions = 3;
+
+        [Tooltip("Coordination: a unit whose chosen attack counted on an assist, with no battle plan committing the finisher, decides again without assist credit.")]
+        public bool coordNoAssist = true;
+
+        [Tooltip("Coordination: only plans that kill their target (and, as they run, can still kill it; otherwise the rest of the plan is dropped).")]
+        public bool coordKillsOnly = true;
 
         [Tooltip("A battle plan is adopted only if its forecast beats its units acting alone by more than this (gold).")]
         public float coordinationPassMargin = 0f;

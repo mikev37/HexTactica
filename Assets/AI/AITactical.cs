@@ -331,7 +331,7 @@ namespace HexTactica.AI {
                 }
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
-            if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score });
+            if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });
             // The tie margin: a fraction of a strength point, but never less than worldTieMin —
             // a quarter of a grunt's point (83) treated real differences as noise in reverse:
             // tiny ones decided everything.

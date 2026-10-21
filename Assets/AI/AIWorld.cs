@@ -81,6 +81,9 @@ namespace HexTactica.AI {
             public readonly Dictionary<Unit, HashSet<HexTile>> positions = new Dictionary<Unit, HashSet<HexTile>>();
         }
 
+        /// <summary>Units that get no assist credit this turn (AICoordinator: no one has committed to finish their target).</summary>
+        public static HashSet<Unit> NoAssist;
+
         public static Outcome Evaluate(Unit u, HexTile stop, AttackAppraisal shot, AIMap map, Cache cache, bool narrate) {
             return Evaluate(u, stop, shot, map, cache, narrate, false);
         }
@@ -105,7 +108,7 @@ namespace HexTactica.AI {
                 // real attack on it (a free firing tile they can reach this turn) that finishes it.
                 // Counted as assistWeight of a kill — its reply and its material go in that
                 // proportion — so a hit that sets up a kill beats a hit that does not.
-                if (hp[shot.target] > 0f && map.profile.assistWeight > 0f) {
+                if (hp[shot.target] > 0f && map.profile.assistWeight > 0f && (NoAssist == null || !NoAssist.Contains(u))) {
                     string by;
                     bool can = map.profile.assistNeedsReach ? CanFinish(shot.target, hp[shot.target], u, uAt, map, out by)
                                                             : CanFinishByDistance(shot.target, hp[shot.target], u, map, out by);
