@@ -50,6 +50,8 @@ public class AIPlayer : MonoBehaviour {
     List<Objective> objectives = new List<Objective>();
     /// <summary>This turn's group-plan steps (AIPlan), by unit, consumed as each unit acts.</summary>
     readonly Dictionary<Unit, PlanStep> planned = new Dictionary<Unit, PlanStep>();
+    readonly HashSet<Unit> noAssist = new HashSet<Unit>();
+    readonly List<PlanStep> planOrder = new List<PlanStep>();
     Dictionary<Unit, Objective> assignments = new Dictionary<Unit, Objective>();
     bool turnPrepared;
 
@@ -178,16 +180,20 @@ public class AIPlayer : MonoBehaviour {
         map.ClearAnnotations();
         if (Profile.ghostSupply) PlanGhosts();
         planned.Clear();
+        noAssist.Clear();
         if (Profile.coordination || Profile.coordinationPasses) {
             List<PlanStep> steps = Profile.coordinationPasses
                 ? AICoordinator.Plan(map, Profile, u => {
+                      AIWorld.NoAssist = null;
                       AITactical.Assignments = assignments;
                       Front f = AIStrategic.FrontFor(u, fronts);
                       return AITactical.Decide(u, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective);
-                  }, Trace)
+                  }, noAssist, Trace)
                 : AIPlan.Choose(map, Profile, Trace);
             // Planned units act first, in plan order; everyone else keeps the usual order after them.
             List<Unit> first = new List<Unit>();
+            planOrder.Clear();
+            planOrder.AddRange(steps);
             foreach (PlanStep s in steps) if (s.unit != null && queue.Contains(s.unit) && !planned.ContainsKey(s.unit)) { planned[s.unit] = s; first.Add(s.unit); }
             foreach (Unit u in first) queue.Remove(u);
             queue.InsertRange(0, first);
@@ -243,6 +249,7 @@ public class AIPlayer : MonoBehaviour {
     /// </summary>
     public AIAction DecideFor(Unit unit) {
         if (unit == null) return AIAction.Wait(null, "null");
+        AIWorld.NoAssist = noAssist.Count > 0 ? noAssist : null;
         AITactical.Intents = intents;
         AITactical.Assignments = assignments;
 
@@ -278,8 +285,24 @@ public class AIPlayer : MonoBehaviour {
         if (unit.trasnporter != null) return AIAction.Wait(unit, "aboard transport");
 
         PlanStep step;
+        if (planned.TryGetValue(unit, out step) && Profile.coordinationPasses && step.group > 0) {
+            // A battle plan runs only while it can still make its kill: earlier blows may have
+            // driven the target out of reach or done less than forecast. Then the rest of the plan
+            // is dropped and those units decide alone.
+            List<PlanStep> rest = new List<PlanStep>();
+            foreach (PlanStep s in planned.Values) if (s.group == step.group) rest.Add(s);
+            rest.Sort((a, b) => planOrder.IndexOf(a).CompareTo(planOrder.IndexOf(b)));
+            if (!AICoordinator.StillKills(rest, map)) {
+                foreach (PlanStep s in rest) planned.Remove(s.unit);
+                if (Trace != null) Trace("   battle plan on " + step.target.name.Replace("(Clone)", "") + " can no longer kill; " + rest.Count + " units decide alone");
+            }
+        }
         if (planned.TryGetValue(unit, out step)) {
             planned.Remove(unit);
+            if (!AIPlan.StillValid(step, map) && Profile.coordinationPasses) {
+                PlanStep fresh = AICoordinator.Refresh(step, map);
+                if (fresh != null && AIPlan.StillValid(fresh, map)) step = fresh;
+            }
             if (AIPlan.StillValid(step, map)) {
                 string why = "group " + step.kind + ": " + step;
                 if (step.target != null && (step.stop == null || step.stop == unit.tile)) return AIAction.Strike(unit, step.target, 0f, why);

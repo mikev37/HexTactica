@@ -88,8 +88,8 @@ public static class Scenarios {
                 string name = s.name + (aiLeft ? "-challenger-left" : "-challenger-right");
                 Dictionary<string, string> test = Test(name, "gauntlet", "Full", 30, "report",
                     "Random radius-7 map (seed " + s.seed + ", mountain " + s.mountain + ", water " + s.water + ", forest " + s.forest
-                    + "), the bridge map's army each side. This AI on both sides: the challenger as Blue. The left side moves first.");
-                test["rules"] = "standard";
+                    + "), the bridge map's army each side, attrition rules. This AI on both sides: the challenger as Blue. The left side moves first.");
+                test["rules"] = "attrition";
                 ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, aiLeft ? ai : other);
                 n++;
             }

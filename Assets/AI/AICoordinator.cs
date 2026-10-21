@@ -6,24 +6,31 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// Coordinated strikes in passes (AIProfile.coordinationPasses).
+    /// Coordinated strikes (AIProfile.coordinationPasses): a correction on top of the units' own
+    /// decisions, not a replacement for them.
     ///
-    ///   1. Every combat unit in contact runs its normal decision without acting, and its scored
-    ///      options are kept: its coordOffensiveOptions best attacks (by forecast), its best move
-    ///      that survives and keeps contact (no shot, still within a turn of the enemy), and its
-    ///      best full retreat (no shot, out of the enemy's reach next turn).
-    ///   2. Battle plans: for each enemy that two or more of our units have an attack on, every
-    ///      group of those attackers gets one plan — each unit takes its most preferred attack on
-    ///      that target whose tile no one in the group has taken (two can't share a tile; that is
-    ///      why each unit keeps several). Groups whose blows kill the target are kept, and the group
-    ///      of all of them. Each plan is forecast as one board (AIPlan.Evaluate: every move and shot
-    ///      in order, retreats modelled, then the enemy's reply), and valued by what it adds over
-    ///      the same units each doing its own best alone.
-    ///   3. Plans are taken best first; a plan that shares a unit or a tile with one already taken
-    ///      is dropped; until none are left. Inside a plan the units go in order of the retaliation
-    ///      they take, least first: artillery (none), then tanks, then infantry.
-    ///   4. Everyone else, and anyone whose planned step has gone stale (target gone, tile taken),
-    ///      decides alone as usual.
+    ///   1. Every combat unit in contact runs its normal decision without acting. What it chose is
+    ///      its favourite; its scored options are kept too: its coordOffensiveOptions best attacks,
+    ///      its best no-shot move that keeps contact ("survive") and its best move out of the
+    ///      enemy's reach ("retreat").
+    ///   2. Battle plans: for each enemy that two or more units have an attack on, every group of
+    ///      those attackers gets one plan — each takes its most preferred attack on that target
+    ///      from a tile nobody else in the group has taken. Groups whose blows kill are kept, and
+    ///      the group of all of them.
+    ///   3. A plan is worth taking only for what acting together adds. Synergy = the plan's
+    ///      forecast (AIPlan.Evaluate: all moves and shots in order, retreats modelled, then the
+    ///      enemy's reply) minus what each of its steps would have done on its own. Sacrifice = for
+    ///      each unit, how much worse its plan move is than its favourite by its own normal
+    ///      evaluation (so blocking, cover, space and the rest still count). Surplus = synergy −
+    ///      sacrifice; a plan whose units all keep their favourites costs nothing.
+    ///   4. Plans are taken best surplus first, above coordinationPassMargin; a plan sharing a unit, a
+    ///      tile or a target with one already taken is dropped. Inside a plan the units go in order of
+    ///      the retaliation they take, least first (artillery, then tanks, then infantry).
+    ///   5. A unit whose favourite is an attack that counted on an assist (someone else finishing the
+    ///      target), and that is not in a plan making that kill, decides again with no assist credit:
+    ///      nobody has promised to finish the job, so it should not charge in expecting it.
+    ///   6. Everyone else decides alone as usual, and so does anyone whose planned step has gone
+    ///      stale (target gone, tile taken).
     /// </summary>
     public static class AICoordinator {
 
@@ -32,22 +39,21 @@ namespace HexTactica.AI {
             public HexTile stop;
             public AttackAppraisal shot;
             public float world;
+            public bool assist;
         }
 
         class Menu {
             public Unit unit;
+            public Candidate favourite, survive, retreat;
             public List<Candidate> attacks = new List<Candidate>();
-            public Candidate survive, retreat, best;
-            public List<Candidate> all;
-            public float aloneGain;
         }
 
         class Battle {
             public Unit target;
             public List<PlanStep> steps = new List<PlanStep>();
-            public float gain, alone, surplus;
+            public List<Candidate> picks = new List<Candidate>();
+            public float joint, synergy, sacrifice, surplus;
             public bool kills;
-            public List<PlanStep> aloneSteps;
         }
 
         static bool Eligible(Unit u, AIMap map) {
@@ -62,14 +68,15 @@ namespace HexTactica.AI {
         static string Show(Candidate c) {
             if (c == null) return "none";
             return D(c.stop) + (c.shot.valid ? " hit " + N(c.shot.target) + D(c.shot.target.tile) + " " + c.shot.outcome.damageToDefender + "/" + c.shot.outcome.damageToAttacker : " no shot")
-                   + " world " + c.world.ToString("0");
+                   + (c.assist ? " (counts on assist)" : "") + " world " + c.world.ToString("0");
         }
 
         /// <param name="decide">The unit's normal decision (its options are captured; nothing acts).</param>
-        public static List<PlanStep> Plan(AIMap map, AIProfile profile, Func<Unit, AIAction> decide, Action<string> log) {
+        /// <param name="noAssist">Filled with the units that must decide without assist credit (rule 5).</param>
+        public static List<PlanStep> Plan(AIMap map, AIProfile profile, Func<Unit, AIAction> decide, HashSet<Unit> noAssist, Action<string> log) {
             List<PlanStep> result = new List<PlanStep>();
 
-            // ---- pass 1: each unit's menu.
+            // ---- pass 1: each unit's favourite and menu.
             List<Menu> menus = new List<Menu>();
             Action<string> savedLog = AITactical.DecisionLog;
             Dictionary<Unit, HexTile> savedIntents = AITactical.Intents;
@@ -80,23 +87,26 @@ namespace HexTactica.AI {
                 foreach (Unit u in map.ownUnits) {
                     if (!Eligible(u, map)) continue;
                     List<Candidate> all = new List<Candidate>();
+                    AIAction chosen;
                     AITactical.Capture = all;
-                    try { decide(u); } finally { AITactical.Capture = null; }
+                    try { chosen = decide(u); } finally { AITactical.Capture = null; }
                     if (all.Count == 0) continue;
+                    HexTile stop = chosen.destination ?? u.tile;
+                    Unit target = chosen.kind == AIActionKind.Attack || chosen.kind == AIActionKind.MoveAndAttack ? chosen.target : null;
+                    Candidate fav = all.Find(c => c.stop == stop && (c.shot.valid ? c.shot.target : null) == target);
+                    if (fav == null) continue;   // not a world-scored choice (a withdraw, a capture)
                     all.Sort((a, b) => {
                         int c = b.world.CompareTo(a.world);
                         return c != 0 ? c : CombatMath.CompareTiles(a.stop, b.stop);
                     });
-                    Menu m = new Menu { unit = u, best = all[0], all = all };
+                    Menu m = new Menu { unit = u, favourite = fav };
+                    if (fav.shot.valid && GameController.Targetable(fav.shot.target)) m.attacks.Add(fav);
                     foreach (Candidate c in all) {
                         if (c.shot.valid && c.shot.target != null && GameController.Targetable(c.shot.target)) {
                             if (m.attacks.Count >= profile.coordOffensiveOptions) continue;
                             if (!m.attacks.Exists(x => x.stop == c.stop && x.shot.target == c.shot.target)) m.attacks.Add(c);
-                        } else {
-                            int reach = map.EnemyStrikeTurns(c.stop);
-                            if (reach > 1) { if (m.retreat == null) m.retreat = c; }
-                            else if (m.survive == null) m.survive = c;
-                        }
+                        } else if (map.EnemyStrikeTurns(c.stop) > 1) { if (m.retreat == null) m.retreat = c; }
+                        else if (m.survive == null) m.survive = c;
                     }
                     menus.Add(m);
                 }
@@ -105,20 +115,11 @@ namespace HexTactica.AI {
                 AITactical.Intents = savedIntents;
                 AITactical.LastChosen = savedLast;
             }
-            if (menus.Count < 2) return result;
-
-            // What each unit adds alone, on the same forecast the plans use.
-            bool retreats = profile.coordinationRetreats;
-            float baseScore = AIPlan.Evaluate(new List<PlanStep>(), map, false, retreats).score;
-            foreach (Menu m in menus) {
-                List<PlanStep> one = new List<PlanStep> { Step(m.best, "alone") };
-                m.aloneGain = AIPlan.Evaluate(one, map, false, retreats).score - baseScore;
-            }
-            if (log != null) {
-                log("   coordination pass 1 (" + menus.Count + " units in contact; nothing yet with no plan: " + baseScore.ToString("0") + "):");
+            if (log != null && menus.Count > 0) {
+                log("   coordination pass 1: " + menus.Count + " units in contact");
                 foreach (Menu m in menus) {
                     StringBuilder sb = new StringBuilder();
-                    sb.Append("     ").Append(N(m.unit)).Append(D(m.unit.tile)).Append(" alone +").Append(m.aloneGain.ToString("0")).Append(':');
+                    sb.Append("     ").Append(N(m.unit)).Append(D(m.unit.tile)).Append(" favourite ").Append(Show(m.favourite)).Append(" |");
                     for (int i = 0; i < m.attacks.Count; i++) sb.Append(" attack").Append(i + 1).Append(' ').Append(Show(m.attacks[i])).Append(';');
                     sb.Append(" survive ").Append(Show(m.survive)).Append("; retreat ").Append(Show(m.retreat));
                     log(sb.ToString());
@@ -126,6 +127,22 @@ namespace HexTactica.AI {
             }
 
             // ---- pass 2: battle plans per target.
+            bool retreats = profile.coordinationRetreats;
+            float empty = float.NaN;
+            Dictionary<string, float> single = new Dictionary<string, float>();
+            Func<PlanStep, float> alone = st => {
+                float v;
+                string key = st.unit.tile.x + "," + st.unit.tile.y + ">" + st.stop.x + "," + st.stop.y + ">" + (st.target != null ? st.target.tile.x + "," + st.target.tile.y : "-");
+                if (single.TryGetValue(key, out v)) return v;
+                if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, retreats).score;
+                v = AIPlan.Evaluate(new List<PlanStep> { st }, map, false, retreats).score - empty;
+                single[key] = v;
+                return v;
+            };
+            Dictionary<Unit, float> strength = new Dictionary<Unit, float>();
+            foreach (Unit x in map.ownUnits) if (x != null && x.tile != null) strength[x] = x.Strength;
+            foreach (Unit x in map.enemyUnits) if (x != null && x.tile != null) strength[x] = x.Strength;
+
             Dictionary<Unit, List<Menu>> byTarget = new Dictionary<Unit, List<Menu>>();
             List<Unit> targets = new List<Unit>();
             foreach (Menu m in menus) {
@@ -154,79 +171,150 @@ namespace HexTactica.AI {
                     if (CountBits(mask) < 2) continue;
                     Battle b = new Battle { target = t };
                     HashSet<HexTile> claimed = new HashSet<HexTile>();
-                    List<Menu> members = new List<Menu>();
                     float left = t.Strength;
+                    HexTile tAt = t.tile;
                     bool ok = true;
-                    for (int i = 0; i < n && ok; i++) {
+                    for (int i = 0; i < n; i++) {
                         if ((mask & (1 << i)) == 0) continue;
                         Menu m = atk[i];
+                        Candidate best = m.attacks.Find(c => c.shot.target == t);
+                        HexTile stop = null;
                         Candidate pick = null;
-                        foreach (Candidate c in m.attacks) if (c.shot.target == t && !claimed.Contains(c.stop)) { pick = c; break; }
-                        if (pick == null) { ok = false; break; }
-                        claimed.Add(pick.stop);
-                        b.steps.Add(Step(pick, "battle"));
-                        members.Add(m);
-                        if (left > 0f) {
-                            int dmg, back;
-                            CombatMath.Exchange(m.unit, m.unit.Strength, pick.stop, t, AIWorld.Hp(left), t.tile, out dmg, out back);
-                            left -= dmg;
+                        if (tAt == t.tile) {
+                            // Its favourite if that is an attack on this target, else its next preferred.
+                            foreach (Candidate c in m.attacks) if (c.shot.target == t && !claimed.Contains(c.stop)) { pick = c; break; }
+                            if (pick != null) stop = pick.stop;
+                        } else {
+                            // An earlier blow drove the target back: fire on where it went.
+                            stop = FreshTile(m.unit, tAt, claimed, map);
+                        }
+                        if (stop == null || left <= 0f) { ok = false; break; }
+                        claimed.Add(stop);
+                        if (pick != null) b.picks.Add(pick);
+                        b.steps.Add(new PlanStep { unit = m.unit, stop = stop, target = t, kind = "battle" });
+                        b.sacrifice += Mathf.Max(0f, m.favourite.world - (pick ?? best).world);
+                        int dmg, back;
+                        CombatMath.Exchange(m.unit, m.unit.Strength, stop, t, AIWorld.Hp(left), tAt, out dmg, out back);
+                        left -= dmg;
+                        if (left > 0f && dmg > 0 && dmg - t.Veterancy > back - m.unit.Veterancy && t.moveRange > 0) {
+                            HexTile rt = AIPlan.RetreatTile(t, tAt, stop, strength, claimed);
+                            if (rt == null) left -= 1f; else tAt = rt;
                         }
                     }
                     if (!ok) continue;
                     b.kills = left <= 0f;
-                    if (!b.kills && mask != full) continue;
-                    AIWorld.Outcome w = AIPlan.Evaluate(b.steps, map, false, retreats);
-                    b.gain = w.score - baseScore;
-                    // The same units each doing its own favourite instead, on one board (the next
-                    // favourite when a tile is already taken): what the plan has to beat.
-                    List<PlanStep> alone = new List<PlanStep>();
-                    HashSet<HexTile> aloneTiles = new HashSet<HexTile>();
-                    foreach (Menu m in members) {
-                        Candidate pick = m.all.Find(c => !aloneTiles.Contains(c.stop));
-                        if (pick == null) continue;
-                        if (pick.stop != m.unit.tile) aloneTiles.Add(pick.stop);
-                        alone.Add(Step(pick, "alone"));
-                    }
-                    b.alone = AIPlan.Evaluate(alone, map, false, retreats).score - baseScore;
-                    b.aloneSteps = alone;
-                    b.surplus = b.gain - b.alone;
+                    if (!b.kills && (profile.coordKillsOnly || mask != full)) continue;
+                    if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, retreats).score;
+                    b.joint = AIPlan.Evaluate(b.steps, map, false, retreats).score - empty;
+                    float sum = 0f;
+                    foreach (PlanStep st in b.steps) sum += alone(st);
+                    b.synergy = b.joint - sum;
+                    b.surplus = b.synergy - b.sacrifice;
                     battles.Add(b);
                 }
             }
 
-            // ---- pass 3: best plans first, no shared units or tiles.
+            // ---- pass 3: best plans first; no shared units, tiles or targets.
             battles.Sort((a, b) => {
                 int c = b.surplus.CompareTo(a.surplus);
                 return c != 0 ? c : a.steps.Count.CompareTo(b.steps.Count);
             });
-            HashSet<Unit> usedUnits = new HashSet<Unit>();
+            HashSet<Unit> usedUnits = new HashSet<Unit>(), usedTargets = new HashSet<Unit>();
             HashSet<HexTile> usedTiles = new HashSet<HexTile>();
-            HashSet<Unit> usedTargets = new HashSet<Unit>();
             int shown = 0;
             foreach (Battle b in battles) {
                 bool adopt = b.surplus > profile.coordinationPassMargin && !usedTargets.Contains(b.target);
                 foreach (PlanStep s in b.steps) if (usedUnits.Contains(s.unit) || usedTiles.Contains(s.stop)) adopt = false;
-                if (log != null && (adopt || shown < 6)) {
+                if (log != null && (adopt || shown < 5)) {
                     shown++;
-                    log("     " + (adopt ? "> " : "  ") + "battle on " + N(b.target) + D(b.target.tile) + (b.kills ? " (kill)" : "") + ": gain " + b.gain.ToString("0")
-                        + " v alone " + b.alone.ToString("0") + " = " + b.surplus.ToString("+0;-0") + " | "
+                    log("     " + (adopt ? "> " : "  ") + "battle on " + N(b.target) + D(b.target.tile) + (b.kills ? " (kill)" : "")
+                        + ": together " + b.joint.ToString("+0;-0") + ", synergy " + b.synergy.ToString("+0;-0")
+                        + ", sacrifice " + b.sacrifice.ToString("0") + " = " + b.surplus.ToString("+0;-0") + " | "
                         + string.Join("; ", b.steps.ConvertAll(s => s.ToString()).ToArray()));
-                    if (adopt) {
-                        log("         plan forecast: " + AIPlan.Evaluate(b.steps, map, true, retreats).Summary());
-                        log("         alone (" + string.Join("; ", b.aloneSteps.ConvertAll(s => s.ToString()).ToArray()) + "): " + AIPlan.Evaluate(b.aloneSteps, map, true, retreats).Summary());
-                        log("         nobody acts: " + AIPlan.Evaluate(new List<PlanStep>(), map, true, retreats).Summary());
-                    }
                 }
                 if (!adopt) continue;
                 usedTargets.Add(b.target);
-                foreach (PlanStep s in b.steps) { usedUnits.Add(s.unit); usedTiles.Add(s.stop); result.Add(s); }
+                int group = usedTargets.Count;
+                foreach (PlanStep s in b.steps) { s.group = group; usedUnits.Add(s.unit); usedTiles.Add(s.stop); result.Add(s); }
             }
-            if (log != null) log("   coordination: " + (result.Count == 0 ? "no battle plan; units decide one at a time" : result.Count + " units in battle plans, acting first"));
+
+            // ---- rule 5: no charging in on a promise nobody made.
+            foreach (Menu m in menus) {
+                if (!profile.coordNoAssist || !m.favourite.assist || usedUnits.Contains(m.unit)) continue;
+                noAssist.Add(m.unit);
+            }
+            if (log != null) {
+                log("   coordination: " + (result.Count == 0 ? "no battle plan" : result.Count + " units in battle plans, acting first")
+                    + (noAssist.Count > 0 ? "; deciding again without assist credit: " + string.Join(", ", new List<Unit>(noAssist).ConvertAll(x => N(x) + D(x.tile)).ToArray()) : ""));
+            }
             return result;
         }
 
-        static PlanStep Step(Candidate c, string kind) {
-            return new PlanStep { unit = c.unit, stop = c.stop, target = c.shot.valid ? c.shot.target : null, kind = kind };
+        /// <summary>A tile <paramref name="u"/> can reach this turn and fire on <paramref name="at"/> from: free, not claimed, least exposed.</summary>
+        static HexTile FreshTile(Unit u, HexTile at, HashSet<HexTile> claimed, AIMap map) {
+            if (!u.CanAttack(u.tile)) return null;
+            int d0 = u.tile.Distance(at);
+            if (d0 <= u.AttackRange && d0 > u.MinRange && !claimed.Contains(u.tile)) return u.tile;
+            if (!u.moveAndAttack) return null;
+            MoveField f = map.ReachThisTurn(u);
+            HexTile best = null; float bestLoss = float.MaxValue;
+            foreach (HexTile r in AIPath.TilesInRange(at, u.MinRange, u.AttackRange)) {
+                if (r == u.tile || claimed.Contains(r) || !f.ReachableThisTurn(r) || !AIPath.CanFinishTurnOn(u, r)) continue;
+                float loss = map.ExpectedLoss(u, r);
+                if (best == null || loss < bestLoss || (loss == bestLoss && CombatMath.Precedes(r, best))) { best = r; bestLoss = loss; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Can these steps (what is left of one battle plan, this unit's first) still kill their
+        /// target on the board as it is now? Each from its planned tile if still in range, else a tile
+        /// it can still reach; blows in order, the target driven back where the rule says.
+        /// </summary>
+        public static bool StillKills(List<PlanStep> steps, AIMap map) {
+            if (steps.Count == 0) return false;
+            Unit t = steps[0].target;
+            if (t == null || t.tile == null || t.Strength <= 0) return false;
+            float left = t.Strength;
+            HexTile tAt = t.tile;
+            HashSet<HexTile> claimed = new HashSet<HexTile>();
+            Dictionary<Unit, float> strength = new Dictionary<Unit, float>();
+            foreach (Unit x in map.ownUnits) if (x != null && x.tile != null) strength[x] = x.Strength;
+            foreach (Unit x in map.enemyUnits) if (x != null && x.tile != null) strength[x] = x.Strength;
+            foreach (PlanStep s in steps) {
+                Unit u = s.unit;
+                if (u == null || u.tile == null || u.Strength <= 0) continue;
+                HexTile stop = s.stop;
+                int d = stop != null ? stop.Distance(tAt) : 99;
+                bool reachable = stop != null && (stop == u.tile || (u.moveAndAttack && map.ReachThisTurn(u).ReachableThisTurn(stop) && AIPath.CanFinishTurnOn(u, stop)));
+                if (!reachable || d > u.AttackRange || d <= u.MinRange || claimed.Contains(stop)) stop = FreshTile(u, tAt, claimed, map);
+                if (stop == null) continue;
+                claimed.Add(stop);
+                int dmg, back;
+                CombatMath.Exchange(u, u.Strength, stop, t, AIWorld.Hp(left), tAt, out dmg, out back);
+                left -= dmg;
+                if (left <= 0f) return true;
+                if (dmg > 0 && dmg - t.Veterancy > back - u.Veterancy && t.moveRange > 0) {
+                    HexTile rt = AIPlan.RetreatTile(t, tAt, stop, strength, claimed);
+                    if (rt == null) left -= 1f; else tAt = rt;
+                    if (left <= 0f) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// A planned step gone stale because its target was driven back: the same unit and target,
+        /// fired on from a tile it can still reach. Null if there is none.
+        /// </summary>
+        public static PlanStep Refresh(PlanStep s, AIMap map) {
+            if (s == null || s.unit == null || s.target == null || s.target.tile == null || s.target.Strength <= 0) return null;
+            HexTile stop = FreshTile(s.unit, s.target.tile, new HashSet<HexTile>(), map);
+            return stop == null ? null : new PlanStep { unit = s.unit, stop = stop, target = s.target, kind = s.kind + " (target moved)" };
+        }
+
+        static PlanStep Step(Candidate c) {
+            return new PlanStep { unit = c.unit, stop = c.stop, target = c.shot.valid ? c.shot.target : null, kind = "battle" };
         }
 
         static float Retaliation(Menu m, Unit t) {

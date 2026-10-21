@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":0,
-"test":{"name":"gauntlet-5-challenger-right","kind":"gauntlet","opponent":"Full","rounds":"30","check":"report","question":"Random radius-7 map (seed 233, mountain 0.12, water 0.08, forest 0.35), the bridge map's army each side. This AI on both sides: the challenger as Blue. The left side moves first.","rules":"standard"},
+"test":{"name":"gauntlet-5-challenger-right","kind":"gauntlet","opponent":"Full","rounds":"30","check":"report","question":"Random radius-7 map (seed 233, mountain 0.12, water 0.08, forest 0.35), the bridge map's army each side, attrition rules. This AI on both sides: the challenger as Blue. The left side moves first.","rules":"attrition"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
