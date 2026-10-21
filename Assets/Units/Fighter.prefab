@@ -77,6 +77,8 @@ MonoBehaviour:
   move_display: {fileID: 0}
   locomotion: 5
   airTanker: 0
+  refuelStock: 0
+  refuelStockMax: 0
   amphibious: 0
   moveRange: 7
   terrainScramble: 5

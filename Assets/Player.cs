@@ -44,21 +44,44 @@ public class Player : MonoBehaviour
             Unit u = roster[i];
             if (u == null || u.tile == null) continue;
             u.attackedThisTurn = false;
+            // Carried units get what their transport gets (below), never anything of their own.
+            if (u.trasnporter != null) continue;
+            Upkeep(u, roster, selfSupplying);
+        }
+    }
+
+    enum Fed { Resupplied, Starved, Aloft }
+
+    /// <summary>One unit's turn-start supply, and the same for whatever it carries.</summary>
+    void Upkeep(Unit u, List<Unit> roster, HashSet<Unit> selfSupplying) {
+        Fed fed = UpkeepOne(u, roster, selfSupplying);
+        if (u.transported == null) return;
+        foreach (Unit c in u.transported.ToArray()) {
+            if (c == null) continue;
+            c.attackedThisTurn = false;
+            if (fed == Fed.Resupplied) Resupplied(c, true);
+            else if (fed == Fed.Starved || (u.suppliesMax > 0 && u.supplies <= 0)) Starve(c);
+            // Aloft or at sea with supplies aboard: carried along, neither fed nor starving.
+        }
+    }
+
+    Fed UpkeepOne(Unit u, List<Unit> roster, HashSet<Unit> selfSupplying) {
+        {
 
             // On one of our buildings that services its kind (an airport, a naval yard): full service.
-            if (Building.ServicingUnder(u) != null) { Resupplied(u, true); continue; }
+            if (Building.ServicingUnder(u) != null) { Resupplied(u, true); return Fed.Resupplied; }
             // Aircraft and ships take nothing from the supply network and do not starve: they run on
             // fuel. Air units burn minFuelPerTurn every turn away from base (an air tanker beside
             // them at the start of the turn fills them instead); out of fuel, they are ditched.
-            if (LocomotionRules.NeedsBase(u.locomotion)) { Aloft(u, roster); continue; }
+            if (LocomotionRules.NeedsBase(u.locomotion)) { Aloft(u, roster); return Fed.Aloft; }
 
             if (u.tile.isSupplied(this)) {
                 Resupplied(u, !selfSupplying.Contains(u));
-            } else {
-                Starve(u);
+                return Fed.Resupplied;
             }
+            Starve(u);
+            return Fed.Starved;
         }
-
     }
 
     /// <summary>
@@ -73,15 +96,25 @@ public class Player : MonoBehaviour
         u.ammo = u.ammoMax;
         u.fuel = u.fuelMax;
         u.supplies = u.suppliesMax;
+        u.refuelStock = u.refuelStockMax;
     }
 
     /// <summary>Upkeep of an aircraft or ship away from its base (see StartTurn).</summary>
     void Aloft(Unit u, List<Unit> roster) {
+        // Its own supplies run down a turn at a time (enough to reach a base, usually); out of
+        // them, it weakens a strength a turn, like any unit out of supply.
+        if (u.suppliesMax > 0) {
+            if (u.supplies > 0) u.supplies--;
+            else {
+                u.Strength = Mathf.Max(0, u.Strength - 1);
+                if (u.Strength <= 0) { unitsLostToAttrition++; u.Delete(); return; }
+            }
+        }
         if (LocomotionRules.IsAirborne(u.locomotion) && u.fuelMax > 0) {
             Unit tanker = TankerBeside(u, roster);
             if (tanker != null) {
                 u.fuel = u.fuelMax;
-                tanker.supplies = Mathf.Max(0, tanker.supplies - 1);
+                tanker.refuelStock = Mathf.Max(0, tanker.refuelStock - 1);
             } else {
                 u.fuel = Mathf.Max(0, u.fuel - u.minFuelPerTurn);
             }
@@ -97,7 +130,7 @@ public class Player : MonoBehaviour
         if (u.airTanker) return null;
         for (int i = 0; i < roster.Count; i++) {
             Unit t = roster[i];
-            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
+            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.refuelStock <= 0) continue;
             if (u.tile.neighbors.Contains(t.tile)) return t;
         }
         return null;

@@ -179,6 +179,6 @@
 {"x":-4,"y":0,"z":4,"gameobject_name":"FOB","personal_name":"Forward base","type":10,"owner_id":112,"income":0,"producesSupply":true,"supplyRange":4,"supplies":0,"suppliesMax":6,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1}
 ],
 "units":[
-{"x":-3,"y":1,"z":2,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
+{"x":-3,"y":1,"z":2,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

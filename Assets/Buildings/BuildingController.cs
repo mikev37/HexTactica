@@ -24,6 +24,7 @@ public class BuildingController : MonoBehaviour {
         GameObject go = new GameObject("BuildingController");
         bc = go.AddComponent<BuildingController>();
         go.AddComponent<BuildingMenu>();
+        go.AddComponent<TransportMenu>();
     }
 
     /// <summary>Place a building from its prefab with its anchor on <paramref name="tile"/>. Null if any of its tiles is taken by another building.</summary>

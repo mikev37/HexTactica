@@ -77,6 +77,8 @@ MonoBehaviour:
   move_display: {fileID: 0}
   locomotion: 5
   airTanker: 1
+  refuelStock: 3
+  refuelStockMax: 3
   amphibious: 0
   moveRange: 6
   terrainScramble: 5
@@ -87,8 +89,8 @@ MonoBehaviour:
   moveSpeed: 10
   StrengthDisplay: 0
   path: []
-  supplies: 3
-  suppliesMax: 3
+  supplies: 4
+  suppliesMax: 4
   fuel: 18
   fuelMax: 18
   ammo: 6

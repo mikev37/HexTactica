@@ -88,8 +88,8 @@ MonoBehaviour:
   moveSpeed: 10
   StrengthDisplay: 0
   path: []
-  supplies: 3
-  suppliesMax: 3
+  supplies: 15
+  suppliesMax: 15
   fuel: 60
   fuelMax: 60
   ammo: 6

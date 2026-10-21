@@ -179,6 +179,9 @@ public class AIPlayer : MonoBehaviour {
         queue = AIRoles.Order(actionable, map, Profile);
         map.ClearAnnotations();
         if (Profile.ghostSupply) PlanGhosts();
+        // Aircraft reserve their landings before anyone moves.
+        map.landings = AIAir.PlanLandings(map);
+        if (Trace != null) foreach (AIAir.Landing l in map.landings.Values) Trace("   landing reserved: " + l);
         planned.Clear();
         noAssist.Clear();
         if (Profile.coordination || Profile.coordinationPasses) {
