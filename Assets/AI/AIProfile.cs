@@ -101,10 +101,10 @@ namespace HexTactica.AI {
 
         [Header("Unit values")]
         [Tooltip("What a grunt is worth to the AI, in gold for a full-strength unit (0 = its cost). Grunts block roads and screen beyond what they cost.")]
-        public float gruntWorth = 0f;
+        public float gruntWorth = 4000f;
 
         [Tooltip("What a supply unit is worth to the AI as material (0 = its cost). What it keeps supplied is priced separately (hubDependentsWeight).")]
-        public float supplyWorth = 0f;
+        public float supplyWorth = 10000f;
 
         [Tooltip("How much the forecast's enemy minds being counterattacked (1 = at full value).")]
         [Range(0f, 3f)]
