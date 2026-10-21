@@ -174,6 +174,9 @@ namespace HexTactica.Harness {
             string rules = RulesOverride;
             if (string.IsNullOrEmpty(rules) && test != null && test.GetField("rules") != null) rules = test.GetField("rules").stringValue;
             GameController.gc.rules = rules != null && rules.ToLowerInvariant() == "attrition" ? RuleSet.Attrition : RuleSet.Standard;
+            // The file's round count is the attrition limit (30 when it gives none).
+            int limit;
+            GameController.gc.roundLimit = test != null && test.GetField("rounds") != null && int.TryParse(test.GetField("rounds").stringValue, out limit) ? limit : 30;
 
             Player red = null, blue = null;
             GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; if (pl != null && pl.id == 112) blue = pl; });
