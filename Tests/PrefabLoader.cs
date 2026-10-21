@@ -154,7 +154,7 @@ namespace HexTactica.Testing {
                     for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) {
                         string g = GuidIn(lines[j]);
                         string unit = g != null ? AssetByGuid(Path.Combine(AssetsRoot, "Units"), "*.prefab.meta", g) : null;
-                        if (unit != null && Has(unit)) b.buildable.Add(Load(unit));
+                        if (unit != null && Has(unit)) { Unit arch = Load(unit); AttachHubIfAny(unit, arch); b.buildable.Add(arch); }   // as in Unity: the prefab carries its SupplyPoint
                     }
                 } else if (l.StartsWith("  ground:") || l.StartsWith("  serviceGround:")) {
                     string g = GuidIn(l);

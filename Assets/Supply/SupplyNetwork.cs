@@ -83,12 +83,26 @@ public static class SupplyNetwork {
         return Solve(player, false, null, null, null, false, moved);
     }
 
+    /// <summary>
+    /// The network made by our supply buildings, producers and only the hubs in
+    /// <paramref name="planned"/>, each standing where it says. For planning a chain of supply
+    /// units a link at a time (AISupplyChain). Not published.
+    /// </summary>
+    public static Result SolvePlanned(Player player, Dictionary<SupplyPoint, HexTile> planned) {
+        return Solve(player, false, null, null, null, false, planned, true);
+    }
+
     static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded) {
         return Solve(player, applyDrain, movedHub, hypotheticalTile, excluded, false, null);
     }
 
     static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded,
                         bool staticOnly, Dictionary<SupplyPoint, HexTile> moved) {
+        return Solve(player, applyDrain, movedHub, hypotheticalTile, excluded, staticOnly, moved, false);
+    }
+
+    static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded,
+                        bool staticOnly, Dictionary<SupplyPoint, HexTile> moved, bool onlyMoved) {
 
         Result result = new Result();
         if (player == null || HexGenerator.hg == null) return result;
@@ -114,7 +128,7 @@ public static class SupplyNetwork {
             Unit u = player.units[i];
             if (u == null) continue;
             SupplyPoint sp = u.GetComponent<SupplyPoint>();
-            if (sp != null && sp != excluded && (!staticOnly || sp.producer)) hubs.Add(sp);
+            if (sp != null && sp != excluded && (!staticOnly || sp.producer) && (!onlyMoved || sp.producer || moved.ContainsKey(sp))) hubs.Add(sp);
         }
         hubs.Sort((a, b) => StableId(a).CompareTo(StableId(b)));
         result.mobileHubs = 0;
@@ -191,7 +205,7 @@ public static class SupplyNetwork {
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null && !staticOnly && moved == null) HexGenerator.forAllTiles(t => {
+        if (excluded == null && !staticOnly && moved == null && !onlyMoved) HexGenerator.forAllTiles(t => {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });

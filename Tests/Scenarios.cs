@@ -771,6 +771,60 @@ public static class Scenarios {
         air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); Put("SupplyBoat", a, -2, 0); Put("SupplyBoat", a, -2, -1); Put("Grunt", a, 3, 0); Put("Grunt", a, -4, 1); }, 3,
             "A Blue grunt stranded on an island across a four-tile strait; two supply boats at the naval yard's docks. Within three turns the boats should link up and supply the island.");
 
+        // A winding road two tiles wide over water: east along y = -3, down, and back west along y = 3.
+        // The HQs are 6 apart as the crow flies and about 26 apart by road.
+        Func<List<HexTile>> windingRoad = () => {
+            Blank(7);
+            foreach (HexTile t in Rig.hg.tiles) t.terrain = T("Water");
+            int[,] way = { { -4, -3 }, { 6, -3 }, { 4, 3 }, { -6, 3 } };
+            List<HexTile> road = new List<HexTile>();
+            HexTile at = Rig.At(way[0, 0], way[0, 1]);
+            road.Add(at);
+            for (int i = 1; i < way.GetLength(0); i++) {
+                HexTile goal = Rig.At(way[i, 0], way[i, 1]);
+                int guard = 0;
+                while (at != goal && guard++ < 100) {
+                    HexTile next = null;
+                    foreach (HexTile nb in at.neighbors) if (nb != null && (next == null || nb.Distance(goal) < next.Distance(goal) || (nb.Distance(goal) == next.Distance(goal) && CombatMath.Precedes(nb, next)))) next = nb;
+                    at = next;
+                    road.Add(at);
+                }
+            }
+            foreach (HexTile t in road) {
+                t.terrain = T("Grassland");
+                HexTile lane = Rig.At(t.x, t.y + 1);
+                if (lane != null && Math.Abs(t.y) % 3 != 0) lane = Rig.At(t.x - 1, t.y);
+                if (lane != null && lane.terrain.name == "Water") lane.terrain = T("Grassland");
+            }
+            return road;
+        };
+        {
+            List<HexTile> road = windingRoad();
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, road[0].x, road[0].y);
+            string[] blue = { "Grunt", "Tank", "Grunt", "Supplies", "Supplies", "Supplies" };
+            for (int i = 0; i < blue.Length; i++) Put(blue[i], ai, road[i + 1].x, road[i + 1].y);
+            HexTile end = road[road.Count - 1];
+            Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
+            Dictionary<string, string> test = Test("supply-chain-up-the-road", "behaviour", "Human", 6, "chainAdvance",
+                "A winding road over water (" + road.Count + " tiles; the enemy HQ 6 away as the crow flies, about " + road.Count + " by road). Blue has an HQ (supply 8), two grunts, a tank and three supply units, Red sits at home. Over six rounds Blue should go up the road, not toward the water: the supply units moving up as a chain that is never broken, never ahead of the army, and the army at least 12 steps from home.");
+            test["rules"] = "attrition";
+            ScenarioFile.Save(Path.Combine(Dir, "supply-chain-up-the-road.dat"), test, ai, other, ai);
+            n++;
+        }
+        {
+            List<HexTile> road = windingRoad();
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, road[0].x, road[0].y);
+            Put("Supplies", ai, road[7].x, road[7].y); Put("Grunt", ai, road[9].x, road[9].y); Put("Grunt", ai, road[10].x, road[10].y);
+            HexTile end = road[road.Count - 1];
+            Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
+            Dictionary<string, string> test = Test("buy-supply-when-stretched", "behaviour", "Human", 1, "buySupply",
+                "Blue's one supply unit stands at the far edge of the HQ's supply, its grunts beyond it: the chain cannot reach further. With 25,000 (a supply unit's price) Blue should buy a supply unit at the HQ.");
+            test["rules"] = "attrition";
+            ScenarioFile.Save(Path.Combine(Dir, "buy-supply-when-stretched.dat"), test, ai, other, ai);
+            n++;
+        }
         {   // Infantry next to a neutral city with nothing in the way should step onto it and capture.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
@@ -918,6 +972,47 @@ public static class Scenarios {
                 Unit landed = ap.tile.occupier;
                 detail = "plan: " + (l1 != null ? l1.ToString() : "first none") + "; " + (l2 != null ? l2.ToString() : "second none") + "; after our turn the tile has " + (landed != null ? landed.name + " " + Pos(landed.tile) : "nothing");
                 return l1 != null && l2 != null && l1.tile == ap.tile && l2.tile == ap.tile && l1.turn == 3 && l2.turn == 2 && landed == null;
+            }
+            case "chainAdvance": {
+                HexTile home = GameController.HQOf(l.ai).tile, theirs = GameController.HQOf(l.other).tile;
+                AIMap m0 = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+                Dictionary<HexTile, int> fromHome = m0.LandSteps(home), toThem = m0.LandSteps(theirs);
+                Func<HexTile, int> hs = t => { int v; return t != null && fromHome.TryGetValue(t, out v) ? v : -1; };
+                Func<HexTile, int> ts = t => { int v; return t != null && toThem.TryGetValue(t, out v) ? v : 999; };
+                List<string> trail = new List<string>();
+                bool broken = false, ahead = false;
+                for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) {
+                    bool blue = gc.activePlayer == l.ai;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                    int front = 999, hubFront = 999, armyFar = 0, reach = 0;
+                    foreach (Unit u in l.ai.units) {
+                        if (u == null || u.tile == null || u.Strength <= 0) continue;
+                        SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                        if (sp != null && sp.producer) continue;
+                        if (sp != null) hubFront = Math.Min(hubFront, ts(u.tile));
+                        else { front = Math.Min(front, ts(u.tile)); armyFar = Math.Max(armyFar, hs(u.tile)); }
+                    }
+                    foreach (KeyValuePair<HexTile, int> kv in net.depth) if (kv.Value > 0) reach = Math.Max(reach, hs(kv.Key));
+                    if (net.strandedHubs.Count > 0) broken = true;
+                    if (hubFront < front) ahead = true;
+                    trail.Add("army " + armyFar + " supply " + reach + (net.strandedHubs.Count > 0 ? " BROKEN" : "") + (hubFront < front ? " HUB AHEAD" : ""));
+                }
+                int farthest = 0;
+                foreach (Unit u in l.ai.units) if (u != null && u.tile != null && u.GetComponent<SupplyPoint>() == null) farthest = Math.Max(farthest, hs(u.tile));
+                detail = "steps from home after each Blue turn: " + string.Join(" | ", trail.ToArray());
+                return !broken && !ahead && farthest >= 12;
+            }
+            case "buySupply": {
+                l.ai.money = 25000;
+                int before = 0;
+                foreach (Unit u in l.ai.units) if (u != null && u.GetComponent<SupplyPoint>() != null && !u.GetComponent<SupplyPoint>().producer) before++;
+                ScenarioFile.PlayTurn();
+                int after = 0; Unit made = null;
+                foreach (Unit u in l.ai.units) if (u != null && u.tile != null && u.GetComponent<SupplyPoint>() != null && !u.GetComponent<SupplyPoint>().producer) { after++; if (u.tile == GameController.HQOf(l.ai).tile) made = u; }
+                detail = "supply units " + before + " -> " + after + ", money " + l.ai.money + (made != null ? ", new one on the HQ" : "");
+                return after == before + 1 && made != null && l.ai.money == 0;
             }
             case "liftOff": {
                 Building ap = Rig.At(-4, 2).building;
@@ -1188,6 +1283,9 @@ public static class Scenarios {
                         Console.WriteLine("    turns to contact:" + contact);
                         foreach (Objective o in full.CurrentObjectives) Console.WriteLine("    objective " + o);
                         Console.WriteLine("    objective pulls this turn: " + full.CurrentAssignments.Count);
+                        foreach (Front f in full.CurrentFronts)
+                            Console.WriteLine("    front " + f + (f.objectiveTile != null ? " objective " + D(f.objectiveTile) + " value " + f.objectiveValue.ToString("0") : "")
+                                              + (f.staging && f.stagingTile != null ? " staging at " + D(f.stagingTile) : "") + ", " + f.assigned.Count + " units");
                     }
                     if (!log || (act.kind == AIActionKind.Wait && !did)) return;
                     if (u.GetComponent<SupplyPoint>() != null || act.reason == null || act.reason.IndexOf("world") < 0 && act.reason.IndexOf("tiers") < 0)
