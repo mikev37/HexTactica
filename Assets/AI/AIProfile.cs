@@ -343,6 +343,15 @@ namespace HexTactica.AI {
         [Tooltip("A group plan must beat 'stay' by this much (gold) in the forecast to be adopted.")]
         public float coordinationMargin = 500f;
 
+        [Tooltip("Coordinated strikes in passes (AICoordinator): each unit's best attacks, a survive move and a retreat; battle plans of two or more units on one target from non-conflicting tiles, forecast as one board; best plans act first.")]
+        public bool coordinationPasses = false;
+
+        [Tooltip("Attack options each unit keeps for battle plans.")]
+        public int coordOffensiveOptions = 3;
+
+        [Tooltip("A battle plan is adopted only if its forecast beats its units acting alone by more than this (gold).")]
+        public float coordinationPassMargin = 0f;
+
         [Tooltip("Model retreats in the group-plan forecast: a defender driven back moves, and the tile it held opens.")]
         public bool coordinationRetreats = true;
 

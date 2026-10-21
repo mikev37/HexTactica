@@ -178,8 +178,14 @@ public class AIPlayer : MonoBehaviour {
         map.ClearAnnotations();
         if (Profile.ghostSupply) PlanGhosts();
         planned.Clear();
-        if (Profile.coordination) {
-            List<PlanStep> steps = AIPlan.Choose(map, Profile, Trace);
+        if (Profile.coordination || Profile.coordinationPasses) {
+            List<PlanStep> steps = Profile.coordinationPasses
+                ? AICoordinator.Plan(map, Profile, u => {
+                      AITactical.Assignments = assignments;
+                      Front f = AIStrategic.FrontFor(u, fronts);
+                      return AITactical.Decide(u, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective);
+                  }, Trace)
+                : AIPlan.Choose(map, Profile, Trace);
             // Planned units act first, in plan order; everyone else keeps the usual order after them.
             List<Unit> first = new List<Unit>();
             foreach (PlanStep s in steps) if (s.unit != null && queue.Contains(s.unit) && !planned.ContainsKey(s.unit)) { planned[s.unit] = s; first.Add(s.unit); }

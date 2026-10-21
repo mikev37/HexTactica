@@ -310,6 +310,9 @@ namespace HexTactica.AI {
         /// <summary>The forecast of the option most recently chosen by the world-score decider (for diagnostics).</summary>
         public static AIWorld.Outcome LastChosen;
 
+        /// <summary>When set, the world-score decider adds every option it scored here (AICoordinator's first pass).</summary>
+        public static List<AICoordinator.Candidate> Capture;
+
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = new AIWorld.Cache();
@@ -328,6 +331,7 @@ namespace HexTactica.AI {
                 }
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
+            if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score });
             // The tie margin: a fraction of a strength point, but never less than worldTieMin —
             // a quarter of a grunt's point (83) treated real differences as noise in reverse:
             // tiny ones decided everything.
