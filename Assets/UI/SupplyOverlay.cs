@@ -106,8 +106,7 @@ public class SupplyOverlay : MonoBehaviour {
         LineRenderer lr = Line(0);
         lr.positionCount = points.Count;
         for (int i = 0; i < points.Count; i++) lr.SetPosition(i, points[i]);
-        Color c = p.displayColor; c.a = 0.9f;
-        lr.startColor = c; lr.endColor = new Color(c.r, c.g, c.b, 0.5f);
+        Tint(lr, p.displayColor);
         lr.gameObject.SetActive(true);
     }
 
@@ -200,11 +199,44 @@ public class SupplyOverlay : MonoBehaviour {
         return null;
     }
 
+    /// <summary>The line's look: Assets/Resources/SupplyLine.prefab (width, colours, material, caps, sorting).</summary>
+    public const string LinePrefab = "SupplyLine";
+    Gradient prefabGradient;
+
+    /// <summary>The prefab's colours times the player's: its gradient sets opacity and fade, the player the hue.</summary>
+    void Tint(LineRenderer lr, Color player) {
+        if (prefabGradient == null) return;
+        GradientColorKey[] keys = prefabGradient.colorKeys;
+        for (int k = 0; k < keys.Length; k++) {
+            Color c = keys[k].color;
+            keys[k].color = new Color(c.r * player.r, c.g * player.g, c.b * player.b, 1f);
+        }
+        Gradient g = new Gradient();
+        g.SetKeys(keys, prefabGradient.alphaKeys);
+        lr.colorGradient = g;
+    }
+
     LineRenderer Line(int i) {
         while (lines.Count <= i) {
+            LineRenderer template = Resources.Load<LineRenderer>(LinePrefab);
+            if (template != null) {
+                LineRenderer made = GameObject.Instantiate(template, transform);
+                made.name = "SupplyLine" + lines.Count;
+                made.useWorldSpace = true;
+                if (prefabGradient == null) prefabGradient = template.colorGradient;
+                made.gameObject.SetActive(false);
+                lines.Add(made);
+                continue;
+            }
+            // No prefab: a plain line in code.
             GameObject g = new GameObject("SupplyLine" + lines.Count);
             g.transform.SetParent(transform, false);
             LineRenderer lr = g.AddComponent<LineRenderer>();
+            if (prefabGradient == null) {
+                prefabGradient = new Gradient();
+                prefabGradient.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                                       new[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0.5f, 1f) });
+            }
             if (lineMaterial == null) {
                 Shader s = Shader.Find("Sprites/Default");
                 if (s != null) lineMaterial = new Material(s);
