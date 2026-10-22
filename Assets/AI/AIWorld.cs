@@ -872,17 +872,17 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// Could <paramref name="d"/>, hit on <paramref name="dAt"/> from <paramref name="fire"/>, fall
-        /// back to a free neighbour no closer to the attacker (CombatMath.FindRetreatTile's rule)?
+        /// back to a free neighbour farther from the attacker (CombatMath.FindRetreatTile's rule)?
         /// Immobile units (an HQ) never can.
         /// </summary>
         internal static bool CanFallBack(Unit d, HexTile dAt, HexTile fire, Unit u, HexTile uAt, Dictionary<Unit, float> hp, HashSet<HexTile> taken) {
             if (d.moveRange <= 0) return true;   // immobile (an HQ): never driven back, never pinned
-            int now = dAt.Distance(fire);
             foreach (HexTile n in dAt.neighbors) {
-                if (n == null || n == fire || !d.CanEnter(n) || taken.Contains(n) || n == uAt) continue;
+                if (n == null || taken.Contains(n) || n == uAt) continue;
+                if (!CombatMath.IsRetreatStep(d, dAt, n, fire)) continue;
                 Unit o = n.occupier;
                 if (o != null && o != u && hp.ContainsKey(o) && hp[o] > 0f) continue;
-                if (n.Distance(fire) >= now) return true;
+                return true;
             }
             return false;
         }

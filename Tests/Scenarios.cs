@@ -336,6 +336,12 @@ public static class Scenarios {
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
         make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
              "A Red grunt attacked by a Blue tank beside it retreats straight back, to one of the three tiles on its far side; with those three taken it is pinned, never sliding sideways (still beside the tank).");
+        make("rule-bridge-road-only", "bridgeRoad", (a, o) => {
+                 water(0, 0, -7, 7);
+                 Rig.At(0, 0).terrain = T("Bridge");
+                 Rig.At(-1, 0).terrain = T("Road"); Rig.At(1, 0).terrain = T("Road");
+                 Put("Grunt", a, -1, 1); Put("Grunt", o, 4, 3); },
+             "A river with one bridge, a road tile at each end and grass beside them. A bridge joins only those roads: no stepping onto it from the grass beside it, or off it onto the grass across; a unit driven back off it goes onto the road.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -504,6 +510,22 @@ public static class Scenarios {
                 List<string> aw = new List<string>(); foreach (HexTile t in away) aw.Add(Pos(t));
                 detail = "away tiles " + string.Join(" ", aw.ToArray()) + "; retreats to " + (first != null ? Pos(first) : "none") + " (straight back " + Pos(straight) + "); with those taken: " + (blocked != null ? Pos(blocked) : "pinned");
                 return away.Count == 3 && first == straight && blocked == null;
+            }
+            case "bridgeRoad": {
+                Unit g = Rig.At(-1, 1).occupier;
+                HexTile bridge = Rig.At(0, 0), westRoad = Rig.At(-1, 0), eastRoad = Rig.At(1, 0), eastGrass = Rig.At(1, -1);
+                bool noGrassOn = HexTactica.AI.AIPath.StepCost(g, g.tile, bridge) == int.MaxValue;
+                bool roadOn = HexTactica.AI.AIPath.StepCost(g, westRoad, bridge) != int.MaxValue;
+                bool noGrassOff = HexTactica.AI.AIPath.StepCost(g, bridge, eastGrass) == int.MaxValue;
+                g.moveRange = 20;
+                HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurn(g);
+                HexTile via = f.Reachable(bridge) ? f.ParentOf(bridge) : null;
+                HexTile grassFrom = f.Reachable(eastGrass) ? f.ParentOf(eastGrass) : null;
+                g.TeleportTo(bridge, 0);
+                HexTile back = CombatMath.FindRetreatTile(g, westRoad);
+                detail = "onto the bridge from grass " + !noGrassOn + ", from road " + roadOn + "; off onto grass " + !noGrassOff + "; path onto it from " + (via != null ? Pos(via) : "nowhere")
+                       + ", to the grass across from " + (grassFrom != null ? Pos(grassFrom) : "nowhere") + "; hit from the west road it falls back to " + (back != null ? Pos(back) : "nowhere");
+                return noGrassOn && roadOn && noGrassOff && via == westRoad && grassFrom != null && grassFrom != bridge && back == eastRoad;
             }
             case "attritionLandRefuel": {
                 Unit f = Rig.At(0, 2).occupier;
