@@ -334,6 +334,8 @@ public static class Scenarios {
              "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off.");
         make("attrition-rule-supply-line", "attritionSupplyLine", (a, o) => { Put("Supplies", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 6, -3); },
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
+        make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
+             "A Red grunt attacked by a Blue tank beside it retreats straight back, to one of the three tiles on its far side; with those three taken it is pinned, never sliding sideways (still beside the tank).");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -490,6 +492,18 @@ public static class Scenarios {
                 detail = "grunt supplied only through the supply unit " + viaHub + "; line " + string.Join(" ", shown.ToArray());
                 return viaHub && path.Count > 2 && path[0] == g.tile && path.Contains(sup.tile) && path[path.Count - 1] == hq
                        && path.IndexOf(sup.tile) < path.Count - 1;
+            }
+            case "retreatAway": {
+                Unit tank = Rig.At(1, 0).occupier, g = Rig.At(0, 0).occupier;
+                List<HexTile> away = new List<HexTile>();
+                foreach (HexTile n in g.tile.neighbors) if (n != null && n.Distance(tank.tile) > g.tile.Distance(tank.tile)) away.Add(n);
+                HexTile straight = Rig.At(2 * g.tile.x - tank.tile.x, 2 * g.tile.y - tank.tile.y);
+                HexTile first = CombatMath.FindRetreatTile(g, tank.tile);
+                foreach (HexTile t in away) if (t.occupier == null) Put("Grunt", l.other, t.x, t.y);
+                HexTile blocked = CombatMath.FindRetreatTile(g, tank.tile);
+                List<string> aw = new List<string>(); foreach (HexTile t in away) aw.Add(Pos(t));
+                detail = "away tiles " + string.Join(" ", aw.ToArray()) + "; retreats to " + (first != null ? Pos(first) : "none") + " (straight back " + Pos(straight) + "); with those taken: " + (blocked != null ? Pos(blocked) : "pinned");
+                return away.Count == 3 && first == straight && blocked == null;
             }
             case "attritionLandRefuel": {
                 Unit f = Rig.At(0, 2).occupier;
