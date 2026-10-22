@@ -615,9 +615,29 @@ public class Unit : MonoBehaviour
     /// waits for the incoming shot to land before sliding over (at most a few seconds).
     /// </summary>
     public void RetreatTo(HexTile to) {
+        HexTile was = tile;
         pendingRetreat = to;
         ApplyPendingRetreat();
-        if (tile == to) retreatHold = 3f;
+        if (tile == to) { retreatHold = 3f; retreatFrom = was; retreatStarted = Time.time; }
+    }
+
+    /// <summary>While a retreat is still playing on screen: the tile the sprite is leaving (else null).</summary>
+    [System.NonSerialized] public HexTile retreatFrom;
+    [System.NonSerialized] float retreatStarted;
+
+    /// <summary>
+    /// Is a retreat still playing for this unit (the sprite has not yet slid onto its new tile)?
+    /// At most a few seconds, whatever the animation does.
+    /// </summary>
+    public bool RetreatPlaying {
+        get {
+            if (retreatFrom == null) return false;
+            if (Strength <= 0 || tile == null || Time.time - retreatStarted > 4f) { retreatFrom = null; return false; }
+            if (retreatHold > 0f) return true;
+            if (tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f) return true;
+            retreatFrom = null;
+            return false;
+        }
     }
 
     /// <summary>
