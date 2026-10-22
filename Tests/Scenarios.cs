@@ -374,6 +374,8 @@ public static class Scenarios {
              "A river with one bridge, a road tile at each end and grass beside them. A bridge joins only those roads: no stepping onto it from the grass beside it, or off it onto the grass across; a unit driven back off it goes onto the road.");
         make("rule-swap-sides", "swapSides", (a, o) => { Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Artillery", o, 3, 0); Building c = Rig.PlaceBuilding("City", o, 2, 2); c.capturingPlayer = a; },
              "HexTactica > Swap Sides of Scenario File on this file: every unit and building changes to the other side (the HQs too, and who was capturing what); the player list and terrain are unchanged.");
+        make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
+             "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -584,6 +586,15 @@ public static class Scenarios {
                 bool capturer = city != null && city.capturingPlayer != null && beforeCapturer != null && (city.capturingPlayer.id == aiId) != (beforeCapturer.id == aiId);
                 detail = units + " units, " + flipped + " changed side; " + bFlipped + " of " + bBefore.Count + " buildings changed side; capture progress changed side " + capturer;
                 return units == before.Count && flipped == units && bFlipped == bBefore.Count && capturer;
+            }
+            case "attritionCutOff": {
+                Unit hub = Rig.At(4, 0).occupier, g = Rig.At(4, 1).occupier;
+                SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                bool cut = net.strandedHubs.Contains(hub.GetComponent<SupplyPoint>()) && !net.IsSupplied(hub.tile) && !net.IsSupplied(g.tile);
+                int gs = g.supplies, hs = hub.Strength;
+                endTurn(); endTurn();
+                detail = "cut off, nothing supplied " + cut + "; grunt supplies " + gs + " -> " + g.supplies + "; supply unit strength " + hs + " -> " + hub.Strength;
+                return cut && g.supplies == gs - 1 && hub.Strength == hs;
             }
             case "attritionLandRefuel": {
                 Unit f = Rig.At(0, 2).occupier;
