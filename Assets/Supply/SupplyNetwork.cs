@@ -394,6 +394,8 @@ public static class SupplyNetwork {
 
                 // An enemy unit standing in the corridor severs it.
                 if (n.occupier != null && n.occupier.owner != owner) continue;
+                // On and off a bridge only by road, as units move.
+                if (!LocomotionRules.BridgeStep(current, n, loco)) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).
                 if (n.terrain.elevation < 0 && !LocomotionRules.IgnoresTerrain(loco) && !LocomotionRules.IsNaval(loco)) continue;
                 // A boat's move: water only (and its own docks).

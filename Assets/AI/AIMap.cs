@@ -697,6 +697,7 @@ namespace HexTactica.AI {
                 foreach (HexTile n in t.neighbors) {
                     if (n == null || n.terrain == null || d.ContainsKey(n)) continue;
                     if (n.terrain.elevation < 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;
+                    if (!LocomotionRules.BridgeStep(t, n, Locomotion.Wheels)) continue;
                     d[n] = d[t] + 1;
                     q.Enqueue(n);
                 }

@@ -132,6 +132,8 @@ namespace HexTactica.AI {
             Locomotion loco = mover.locomotion;
 
             if (LocomotionRules.IgnoresTerrain(loco)) return 1;
+            // On and off a bridge only by road.
+            if (!LocomotionRules.BridgeStep(from, to, loco)) return int.MaxValue;
 
             if (LocomotionRules.UsesRoads(loco) &&
                 from != null && from.terrain != null &&

@@ -66,19 +66,17 @@ namespace HexTactica.AI {
             public void Restore() { foreach (KeyValuePair<HexTile, Unit> kv in saved) kv.Key.occupier = kv.Value; saved.Clear(); }
         }
 
-        /// <summary>A free neighbour no closer to <paramref name="attacker"/> (CombatMath.FindRetreatTile's rule), on the overridden board.</summary>
+        /// <summary>A free neighbour away from <paramref name="attacker"/> (CombatMath.FindRetreatTile's rule), on the overridden board.</summary>
         internal static HexTile RetreatTile(Unit d, HexTile dAt, HexTile attacker, Dictionary<Unit, float> hp, HashSet<HexTile> taken) {
             if (d.moveRange <= 0 || dAt == null) return null;
-            int now = attacker != null ? dAt.Distance(attacker) : 0;
-            HexTile best = null; int bestD = now;
+            HexTile best = null; int bestD = 0;
             foreach (HexTile n in dAt.neighbors) {
-                if (n == null || n == attacker || !d.CanEnter(n)) continue;
+                if (!CombatMath.IsRetreatStep(d, dAt, n, attacker)) continue;
                 if (taken != null && taken.Contains(n)) continue;
                 Unit o = n.occupier;
                 if (o != null && (!hp.ContainsKey(o) || hp[o] > 0f)) continue;
                 int dd = attacker != null ? n.Distance(attacker) : 1;
-                if (dd < bestD) continue;
-                if (best == null || dd > bestD || CombatMath.Precedes(n, best)) { best = n; bestD = dd; }
+                if (best == null || dd > bestD || (dd == bestD && CombatMath.Straighter(n, best, dAt, attacker))) { best = n; bestD = dd; }
             }
             return best;
         }
