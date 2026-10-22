@@ -73,6 +73,31 @@ public static class HarnessMenu {
         if (ScenarioLoader.LoadBoardFromPath(path)) UnityEngine.Debug.Log("Loaded scenario " + path);
     }
 
+    /// <summary>
+    /// Write a copy of a scenario file with the sides swapped (ScenarioMirror): Red gets Blue's
+    /// army and buildings and Blue gets Red's, the same army still moving first. Saved beside the
+    /// original as name-swapped.dat; in play mode it is loaded straight away.
+    /// </summary>
+    [MenuItem("HexTactica/Swap Sides of Scenario File...")]
+    public static void SwapSides() {
+        string start = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Tests", "Scenarios");
+        string path = EditorUtility.OpenFilePanel("Swap sides of scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
+        if (string.IsNullOrEmpty(path)) return;
+        string text = File.ReadAllText(path);
+        string swapped = ScenarioMirror.SwapSides(text);
+        if (swapped == text) { UnityEngine.Debug.LogError("Swap sides: " + path + " does not have exactly two players."); return; }
+        string name = Path.GetFileNameWithoutExtension(path);
+        string outPath = Path.Combine(Path.GetDirectoryName(path), (name.EndsWith("-swapped") ? name.Substring(0, name.Length - 8) : name + "-swapped") + ".dat");
+        File.WriteAllText(outPath, swapped);
+        UnityEngine.Debug.Log("Sides swapped: " + outPath);
+        if (Application.isPlaying) {
+            ScenarioLoader.RedOverride = RedChoice();
+            string rules = EditorPrefs.GetString(RulesKey, "");
+            ScenarioLoader.RulesOverride = string.IsNullOrEmpty(rules) ? null : rules;
+            if (ScenarioLoader.LoadBoardFromPath(outPath)) UnityEngine.Debug.Log("Loaded scenario " + outPath);
+        }
+    }
+
     // ---- Rules for loaded scenarios: as the file says, standard, or attrition (HQs out of play,
     // win by elimination or by strength x cost left after the round limit).
 

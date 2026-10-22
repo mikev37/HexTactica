@@ -223,7 +223,16 @@ namespace UnityEngine {
     }
     public class MeshRenderer : Renderer { public Material material; public Material sharedMaterial; }
     public class MeshFilter : Component { }
+    public struct GradientColorKey { public Color color; public float time; public GradientColorKey(Color c, float t) { color = c; time = t; } }
+    public struct GradientAlphaKey { public float alpha; public float time; public GradientAlphaKey(float a, float t) { alpha = a; time = t; } }
+    public class Gradient {
+        public GradientColorKey[] colorKeys = new GradientColorKey[0];
+        public GradientAlphaKey[] alphaKeys = new GradientAlphaKey[0];
+        public void SetKeys(GradientColorKey[] c, GradientAlphaKey[] a) { colorKeys = c; alphaKeys = a; }
+    }
+    public static class Resources { public static T Load<T>(string path) where T : class { return null; } }
     public class LineRenderer : Renderer {
+        public Gradient colorGradient;
         public int positionCount;
         public Color startColor, endColor;
         public Material material;
