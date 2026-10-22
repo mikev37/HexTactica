@@ -161,9 +161,11 @@ public static class CombatMath {
     }
 
     /// <summary>
-    /// Retreat one tile directly away from the attacker where possible, otherwise
-    /// any legal neighbour that does not close the distance. Deterministic: ties
-    /// break on cube coordinate so replays are exact.
+    /// Retreat one tile away from the attacker: one of the neighbours that is farther from the
+    /// attacker than the defender is now (beside the attacker, the three tiles on the far side).
+    /// Sideways or closer is never a retreat; if none of those tiles is open, the defender is
+    /// pinned (and takes the extra point). The one straight back first, then the others;
+    /// deterministic ties on cube coordinate so replays are exact.
     /// </summary>
     public static HexTile FindRetreatTile(Unit defender, HexTile attackerTile) {
         if (defender == null || defender.tile == null) return null;
@@ -182,15 +184,28 @@ public static class CombatMath {
             if (n.occupier != null) continue;
             if (!defender.CanEnter(n)) continue;
 
-            int d = attackerTile != null ? n.Distance(attackerTile) : 1;
-            if (d < bestDistance) continue;
+            int d = attackerTile != null ? n.Distance(attackerTile) : currentDistance + 1;
+            if (d <= currentDistance) continue;          // not away from the attacker
 
-            if (best == null || d > bestDistance || Precedes(n, best)) {
+            // Straight back is the one farthest from the attacker's line: the most distant, then
+            // the one whose step is most nearly opposite the attacker.
+            if (best == null || d > bestDistance || (d == bestDistance && Straighter(n, best, defender.tile, attackerTile))) {
                 best = n;
                 bestDistance = d;
             }
         }
         return best;
+    }
+
+    /// <summary>Is the step to <paramref name="a"/> more nearly straight away from the attacker than the step to <paramref name="b"/>? (Ties: cube order.)</summary>
+    static bool Straighter(HexTile a, HexTile b, HexTile from, HexTile attacker) {
+        if (attacker == null) return Precedes(a, b);
+        // Opposite of the attacker's direction, in cube coordinates; compare by dot product.
+        int ax = from.x - attacker.x, ay = from.y - attacker.y, az = from.z - attacker.z;
+        int da = (a.x - from.x) * ax + (a.y - from.y) * ay + (a.z - from.z) * az;
+        int db = (b.x - from.x) * ax + (b.y - from.y) * ay + (b.z - from.z) * az;
+        if (da != db) return da > db;
+        return Precedes(a, b);
     }
 
     /// <summary>
