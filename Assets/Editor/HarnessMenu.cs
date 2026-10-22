@@ -68,6 +68,7 @@ public static class HarnessMenu {
         string path = EditorUtility.OpenFilePanel("Load scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
         if (string.IsNullOrEmpty(path)) return;
         ScenarioLoader.RedOverride = RedChoice();
+        ScenarioLoader.PurchasesOverride = string.IsNullOrEmpty(BuyChoice()) ? null : BuyChoice();
         string rules = EditorPrefs.GetString(RulesKey, "");
         ScenarioLoader.RulesOverride = string.IsNullOrEmpty(rules) ? null : rules;
         if (ScenarioLoader.LoadBoardFromPath(path)) UnityEngine.Debug.Log("Loaded scenario " + path);
@@ -92,6 +93,7 @@ public static class HarnessMenu {
         UnityEngine.Debug.Log("Sides swapped: " + outPath);
         if (Application.isPlaying) {
             ScenarioLoader.RedOverride = RedChoice();
+            ScenarioLoader.PurchasesOverride = string.IsNullOrEmpty(BuyChoice()) ? null : BuyChoice();
             string rules = EditorPrefs.GetString(RulesKey, "");
             ScenarioLoader.RulesOverride = string.IsNullOrEmpty(rules) ? null : rules;
             if (ScenarioLoader.LoadBoardFromPath(outPath)) UnityEngine.Debug.Log("Loaded scenario " + outPath);
@@ -113,6 +115,22 @@ public static class HarnessMenu {
     [MenuItem(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", true)] static bool RulesAttCheck() { Menu.SetChecked(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", RulesChoice() == "attrition"); return true; }
     [MenuItem(RulesMenu + "Sandbox (never ends)", false, 3)] static void RulesSandbox() { SetRules("sandbox"); }
     [MenuItem(RulesMenu + "Sandbox (never ends)", true)] static bool RulesSandboxCheck() { Menu.SetChecked(RulesMenu + "Sandbox (never ends)", RulesChoice() == "sandbox"); return true; }
+
+    // ---- Purchases for loaded scenarios: as the file says (else the rules' default), on, or off.
+    const string BuyKey = "HexTactica.Purchases";
+    const string BuyMenu = "HexTactica/Purchases/";
+    static string BuyChoice() { return EditorPrefs.GetString(BuyKey, ""); }
+    static void SetBuy(string v) {
+        EditorPrefs.SetString(BuyKey, v ?? "");
+        ScenarioLoader.PurchasesOverride = string.IsNullOrEmpty(v) ? null : v;
+        UnityEngine.Debug.Log("Purchases for loaded scenarios: " + (string.IsNullOrEmpty(v) ? "as the file says" : v) + ". Applies the next time you load a scenario file.");
+    }
+    [MenuItem(BuyMenu + "As the File Says", false, 0)] static void BuyFile() { SetBuy(null); }
+    [MenuItem(BuyMenu + "As the File Says", true)] static bool BuyFileCheck() { Menu.SetChecked(BuyMenu + "As the File Says", BuyChoice() == ""); return true; }
+    [MenuItem(BuyMenu + "Allowed", false, 1)] static void BuyOn() { SetBuy("on"); }
+    [MenuItem(BuyMenu + "Allowed", true)] static bool BuyOnCheck() { Menu.SetChecked(BuyMenu + "Allowed", BuyChoice() == "on"); return true; }
+    [MenuItem(BuyMenu + "Not Allowed", false, 2)] static void BuyOff() { SetBuy("off"); }
+    [MenuItem(BuyMenu + "Not Allowed", true)] static bool BuyOffCheck() { Menu.SetChecked(BuyMenu + "Not Allowed", BuyChoice() == "off"); return true; }
 
     // ---- Who plays Red when a scenario loads. Blue (id 112) is always this AI.
 

@@ -239,6 +239,10 @@ public static class ScenarioFile {
 
         string rules = Environment.GetEnvironmentVariable("RULES") ?? l.meta.Get("rules", "standard");
         Rig.gc.rules = GameController.ParseRules(rules);
+        // Purchases: PURCHASES=on|off, else the file's (test block or top level), else the rules' default.
+        Func<string, string> top = key => { Match m = Regex.Match(json, "\"" + key + "\"\\s*:\\s*\"([^\"]*)\""); return m.Success ? m.Groups[1].Value : null; };
+        Rig.gc.ApplyPurchaseRules(Environment.GetEnvironmentVariable("PURCHASES") ?? l.meta.Get("purchases", null) ?? top("purchases"),
+                                  l.meta.Get("allowedUnits", null) ?? top("allowedUnits"));
         Rig.gc.roundLimit = l.meta.GetInt("rounds", 30);
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;

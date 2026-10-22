@@ -55,6 +55,11 @@ public class Player : MonoBehaviour
     /// <summary>One unit's turn-start supply, and the same for whatever it carries.</summary>
     void Upkeep(Unit u, List<Unit> roster, HashSet<Unit> selfSupplying) {
         Fed fed = UpkeepOne(u, roster, selfSupplying);
+        CargoUpkeep(u, fed);
+    }
+
+    /// <summary>What is aboard <paramref name="u"/> (and aboard that, and so on) gets what <paramref name="u"/> got.</summary>
+    void CargoUpkeep(Unit u, Fed fed) {
         if (u.transported == null) return;
         foreach (Unit c in u.transported.ToArray()) {
             if (c == null) continue;
@@ -62,6 +67,7 @@ public class Player : MonoBehaviour
             if (fed == Fed.Resupplied) Resupplied(c, true);
             else if (fed == Fed.Starved || (u.suppliesMax > 0 && u.supplies <= 0)) Starve(c);
             // Aloft or at sea with supplies aboard: carried along, neither fed nor starving.
+            CargoUpkeep(c, fed);
         }
     }
 

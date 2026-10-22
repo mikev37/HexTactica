@@ -59,6 +59,8 @@ public class LevelEditor : MonoBehaviour
             json = json.Substring(0, json.Length - 1) + "\n],\n";
 
             json += "\n\"active\":" + GameController.gc.activePlayer.id;
+            // The scenario's purchase settings (GameController inspector).
+            json += ",\n\"purchases\":\"" + GameController.gc.PurchasesSetting + "\",\n\"allowedUnits\":\"" + GameController.gc.AllowedUnitsSetting + "\"";
         }
         if (BuildingController.bc != null && BuildingController.bc.buildings.Count > 0) {
             json += ",\n";
@@ -120,6 +122,8 @@ public class LevelEditor : MonoBehaviour
                 PlayerData pd = JsonUtility.FromJson<PlayerData>(numplayer.Current.Print());
                 pd.load();
             }
+            JSONObject pf = obj.GetField("purchases"), af = obj.GetField("allowedUnits");
+            if (pf != null || af != null) GameController.gc.ApplyPurchaseRules(pf != null ? pf.stringValue : null, af != null ? af.stringValue : null);
             long active_player = obj.GetField("active").longValue;
             GameController.gc.players.ForEach(pl => { if (pl.id == active_player) GameController.gc.activePlayer = pl; });
         }

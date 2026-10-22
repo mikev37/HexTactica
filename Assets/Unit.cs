@@ -113,9 +113,14 @@ public class Unit : MonoBehaviour
     public int ammoMax;
 
     [Header("Transport Variables")]
+    [Tooltip("Room aboard, in slots: the weights of what it carries add up to at most this. 0: not a transport.")]
     public int transportSlots;
+    [Tooltip("Not used: capacity is transportSlots, counted in weight.")]
     public int maxWeight;
+    [Tooltip("Slots this unit takes aboard a transport (a grunt 1, supplies 2).")]
     public int weight;
+    [Tooltip("The locomotion types this transport carries (an APC: Boots). Empty: Boots only.")]
+    public List<Locomotion> carries = new List<Locomotion>();
 
     public List<Unit> transported;
     public Unit trasnporter;
@@ -201,8 +206,11 @@ public class Unit : MonoBehaviour
             // A retreating unit's sprite waits on its old tile until the shot that drove it
             // back has landed (AttackResolve sets StrengthDisplay on impact), then slides.
             if (retreatHold > 0f) {
-                if (StrengthDisplay == Strength && !AnimatorIsPlaying()) retreatHold = 0f;
-                else retreatHold -= Time.deltaTime;
+                // Once the shot has landed, a moment for the hit to show, then slide. (Waiting on the
+                // animator as well never ended early: a looping idle state is always "playing", so
+                // every retreat held the full three seconds, and the AI waited on it.)
+                if (StrengthDisplay == Strength) retreatHold = Mathf.Min(retreatHold, 0.3f);
+                retreatHold -= Time.deltaTime;
             }
             if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
             else if(tile && retreatHold <= 0f)
@@ -228,7 +236,9 @@ public class Unit : MonoBehaviour
         get {
             if (Strength <= 0 || tile == null) return false;
             if (path.Count > 0 || attacking || retreatHold > 0f || boardingWalk.Count > 0 || refuelHopTo != null) return true;
-            if (firing) return true;   // its shot has not landed yet
+            // Its shot has not landed yet (at most a couple of seconds: a fire animation without the
+            // event that lands the shot must not hold the AI up for every action after it).
+            if (firing && Time.time - firedAt < 2.5f) return true;
             if (trasnporter == null && tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f) return true;
             return false;
         }
@@ -385,9 +395,7 @@ public class Unit : MonoBehaviour
         if (!thenAttacks) ServiceOnLanding();
 
         // Carried units ride along rather than being left behind on the old tile.
-        for (int i = 0; i < transported.Count; i++) {
-            if (transported[i] != null) transported[i].tile = hexTile;
-        }
+        SetCargoTile(hexTile);
 
         animator.SetBool("Moving", true);
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
@@ -436,6 +444,15 @@ public class Unit : MonoBehaviour
         refuelStock = refuelStockMax;
     }
 
+    /// <summary>Everything aboard (and aboard that, and so on) is where this transport is.</summary>
+    public void SetCargoTile(HexTile t) {
+        for (int i = 0; i < transported.Count; i++) {
+            if (transported[i] == null) continue;
+            transported[i].tile = t;
+            transported[i].SetCargoTile(t);
+        }
+    }
+
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
     internal void TeleportTo(HexTile hexTile, int tilesEntered, bool thenAttacks = false) {
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
@@ -445,9 +462,7 @@ public class Unit : MonoBehaviour
         tile = hexTile;
         if (hexTile != null) hexTile.occupier = this;
         if (!thenAttacks) ServiceOnLanding();
-        for (int i = 0; i < transported.Count; i++) {
-            if (transported[i] != null) transported[i].tile = hexTile;
-        }
+        SetCargoTile(hexTile);
     }
 
     /// <summary>
@@ -610,9 +625,29 @@ public class Unit : MonoBehaviour
     /// waits for the incoming shot to land before sliding over (at most a few seconds).
     /// </summary>
     public void RetreatTo(HexTile to) {
+        HexTile was = tile;
         pendingRetreat = to;
         ApplyPendingRetreat();
-        if (tile == to) retreatHold = 3f;
+        if (tile == to) { retreatHold = 3f; retreatFrom = was; retreatStarted = Time.time; }
+    }
+
+    /// <summary>While a retreat is still playing on screen: the tile the sprite is leaving (else null).</summary>
+    [System.NonSerialized] public HexTile retreatFrom;
+    [System.NonSerialized] float retreatStarted;
+
+    /// <summary>
+    /// Is a retreat still playing for this unit (the sprite has not yet slid onto its new tile)?
+    /// At most a few seconds, whatever the animation does.
+    /// </summary>
+    public bool RetreatPlaying {
+        get {
+            if (retreatFrom == null) return false;
+            if (Strength <= 0 || tile == null || Time.time - retreatStarted > 4f) { retreatFrom = null; return false; }
+            if (retreatHold > 0f) return true;
+            if (tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f) return true;
+            retreatFrom = null;
+            return false;
+        }
     }
 
     /// <summary>
@@ -630,9 +665,7 @@ public class Unit : MonoBehaviour
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = to;
         to.occupier = this;
-        for (int i = 0; i < transported.Count; i++) {
-            if (transported[i] != null) transported[i].tile = to;
-        }
+        SetCargoTile(to);
         // Empty path: Update() glides the sprite to the new tile at moveSpeed.
         path.Clear();
     }
@@ -695,6 +728,7 @@ public class Unit : MonoBehaviour
     internal void Fire(Unit defender, bool retaliate) {
         target = defender;
         firing = defender != null;
+        firedAt = Time.time;
         animator.SetTrigger("Fire!");
         attacking = false;
         if (target == null)
@@ -711,6 +745,7 @@ public class Unit : MonoBehaviour
 
     /// <summary>Between Fire and the shot landing (AttackResolve): animation only.</summary>
     [System.NonSerialized] public bool firing;
+    [System.NonSerialized] float firedAt;
 
     internal void AttackResolve(Unit defender, bool retaliate) {
         firing = false;

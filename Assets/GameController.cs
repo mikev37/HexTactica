@@ -19,6 +19,46 @@ public class GameController : MonoBehaviour
     [Tooltip("Attrition: rounds before the game is decided on what is left.")]
     public int roundLimit = 30;
 
+    [Header("Purchases")]
+    [Tooltip("Can units be bought at buildings? (A scenario sets this; when it does not, Standard and Sandbox allow purchases and Attrition does not.)")]
+    public bool purchasesAllowed = true;
+    [Tooltip("The units that may be bought, by prefab name (Grunt, Tank, Supplies ...). Empty: any unit a building can build.")]
+    public List<string> allowedUnits = new List<string>();
+
+    /// <summary>A unit's prefab name ("Tank" for "Tank(Clone)").</summary>
+    public static string UnitName(Unit u) {
+        return u == null ? "" : u.name.Replace("(Clone)", "").Trim();
+    }
+
+    /// <summary>May this unit be bought under the current rules and scenario?</summary>
+    public static bool MayPurchase(Unit prefab) {
+        if (prefab == null) return false;
+        if (gc == null) return true;
+        if (!gc.purchasesAllowed) return false;
+        if (gc.allowedUnits == null || gc.allowedUnits.Count == 0) return true;
+        string n = UnitName(prefab);
+        foreach (string a in gc.allowedUnits) if (string.Equals((a ?? "").Trim(), n, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Set purchases from a scenario: <paramref name="purchases"/> "on" / "off" (empty: the rule
+    /// set's default, on except under Attrition), <paramref name="allowed"/> a comma-separated list
+    /// of unit names (empty: all).
+    /// </summary>
+    public void ApplyPurchaseRules(string purchases, string allowed) {
+        string p = (purchases ?? "").Trim().ToLowerInvariant();
+        purchasesAllowed = p == "on" || p == "true" || p == "yes" ? true
+                         : p == "off" || p == "false" || p == "no" ? false
+                         : rules != RuleSet.Attrition;
+        allowedUnits = new List<string>();
+        foreach (string a in (allowed ?? "").Split(',')) if (a.Trim().Length > 0) allowedUnits.Add(a.Trim());
+    }
+
+    /// <summary>The scenario's purchase settings, as a save writes them ("on"/"off", comma-separated names).</summary>
+    public string PurchasesSetting { get { return purchasesAllowed ? "on" : "off"; } }
+    public string AllowedUnitsSetting { get { return allowedUnits == null ? "" : string.Join(",", allowedUnits.ToArray()); } }
+
     /// <summary>"standard", "attrition" or "sandbox" (any case); anything else is Standard.</summary>
     public static RuleSet ParseRules(string s) {
         switch ((s ?? "").Trim().ToLowerInvariant()) {

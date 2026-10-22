@@ -220,8 +220,40 @@ public static class Scenarios {
         Dictionary<string, string> test = Test("logistics-zigzag", "logistics", "Full", 60, "report",
             "Ocean with one serpentine road (" + road.Count + " tiles, two wide) between the HQs; the water between its rows is wider than artillery range. Supply must be chained forward: HQ range 8, five supply units of range 4 (moving 2 a turn) each side, and the armies meet about " + (road.Count / 2) + " tiles from home. Attrition rules, 60 rounds. This AI on both sides; Blue moves first.");
         test["rules"] = "attrition";
+        test["purchases"] = "on";
+        test["allowedUnits"] = "Supplies";   // supply units only: the chain may grow, the armies do not
         ScenarioFile.Save(Path.Combine(Dir, "logistics-zigzag.dat"), test, ai, other, ai);
         return 1;
+    }
+
+    /// <summary>
+    /// Every choice one Blue unit has on a scenario's board (UNIT=x,y), as the AI forecasts it: each
+    /// tile it can end on this turn, standing or with each shot it could take from there, with the
+    /// world score and the enemy reply. AT=x,y shows only that tile. For finding why it chose what it did.
+    /// </summary>
+    public static void Options(string name, string unitAt, string onlyAt, Action<AIProfile> tweak) {
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Human", tweak);
+        string[] xy = unitAt.Split(',');
+        Unit u = Rig.At(int.Parse(xy[0]), int.Parse(xy[1])).occupier;
+        AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+        HexTile only = null;
+        if (!string.IsNullOrEmpty(onlyAt)) { string[] a = onlyAt.Split(','); only = Rig.At(int.Parse(a[0]), int.Parse(a[1])); }
+        MoveField f = map.ReachThisTurn(u);
+        List<KeyValuePair<float, string>> rows = new List<KeyValuePair<float, string>>();
+        foreach (HexTile t in f.Tiles) {
+            if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
+            if (only != null && t != only) continue;
+            AIWorld.Outcome w = AIWorld.Evaluate(u, t, new AttackAppraisal(), map, new AIWorld.Cache(), true);
+            rows.Add(new KeyValuePair<float, string>(w.score, Pos(t) + " no shot: " + w.Summary()));
+            if (u.moveAndAttack || t == u.tile)
+                foreach (AttackAppraisal s in AITargeting.AllFrom(u, t, map, map.profile, Posture.Aggressive, true)) {
+                    AIWorld.Outcome ws = AIWorld.Evaluate(u, t, s, map, new AIWorld.Cache(), true);
+                    rows.Add(new KeyValuePair<float, string>(ws.score, Pos(t) + " hit " + s.target.name.Replace("(Clone)", "") + Pos(s.target.tile) + " " + s.outcome.damageToDefender + "/" + s.outcome.damageToAttacker + ": " + ws.Summary()));
+                }
+        }
+        rows.Sort((a, b) => b.Key.CompareTo(a.Key));
+        Console.WriteLine(u.name + " at " + Pos(u.tile) + " s" + u.Strength + ": " + rows.Count + " options, best first");
+        foreach (KeyValuePair<float, string> r in rows) Console.WriteLine(string.Format("  {0,8:0}  {1}", r.Key, r.Value));
     }
 
     /// <summary>
@@ -344,6 +376,32 @@ public static class Scenarios {
              "A river with one bridge, a road tile at each end and grass beside them. A bridge joins only those roads: no stepping onto it from the grass beside it, or off it onto the grass across; a unit driven back off it goes onto the road.");
         make("rule-swap-sides", "swapSides", (a, o) => { Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Artillery", o, 3, 0); Building c = Rig.PlaceBuilding("City", o, 2, 2); c.capturingPlayer = a; },
              "HexTactica > Swap Sides of Scenario File on this file: every unit and building changes to the other side (the HQs too, and who was capturing what); the player list and terrain are unchanged.");
+        make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
+             "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
+        Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
+            setup(ai, other);
+            Dictionary<string, string> test = Test(name, "rules", "Human", 1, check, question);
+            test["rules"] = "standard";
+            if (purchases != null) test["purchases"] = purchases;
+            if (allowed != null) test["allowedUnits"] = allowed;
+            ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
+            n++;
+        };
+        makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
+             "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
+        makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
+             "A scenario allowing only Grunts: Blue's HQ offers only the Grunt; it builds one, and refuses a Tank even with the money.", "on", "Grunt");
+        makeBuy("ai-buys-units", "aiBuys", (a, o) => { Put("Tank", o, 3, 0); Put("Grunt", o, 3, 1); Put("Grunt", a, -4, 0); },
+             "An AI with money (10,000), purchases on, Grunt and Tank allowed: at the end of its turn it buys an allowed unit at its HQ (one: the HQ has one tile to build on), never a unit the scenario does not allow.", "on", "Grunt,Tank");
+        make("attrition-rule-transport-load", "transportLoad", (a, o) => {
+                 water(-1, 7, -7, 7);
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("APC", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", a, -5, 1); Put("Supplies", a, -5, 0); Put("Tank", a, -3, -1); Put("Fighter", a, -6, 0);
+                 Put("TransportShip", a, 3, 0); Put("Grunt", o, 6, -3); },
+             "What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1) or one supply unit (weight 2), never a tank (Treads) or a fighter. A grunt cannot board a transport ship on open water beside the shore, but can at the naval yard's dock. A loaded APC can itself board the ship at the dock (it takes its own weight, 3 of the ship's 4), and everything aboard goes where the ship goes.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -354,8 +412,8 @@ public static class Scenarios {
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board, unparented, and has used its turn.");
         make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
-                 Put("TransportShip", a, 1, 0); Unit m = Put("Grunt", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
-             "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; aboard a transport ship at sea it neither heals nor uses its supplies while the ship has supplies, and starves once the ship's are gone.");
+                 Put("TransportShip", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
+             "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; a marine that boards a transport ship from the shore (it can step into water beside land) neither heals nor uses its supplies while the ship has supplies, and starves once the ship's are gone.");
         make("attrition-rule-amphibious", "attritionAmphibious", (a, o) => { water(-1, 2, -7, 7); Put("Marine", a, -2, 1); Put("Grunt", a, -2, 2); Put("Grunt", o, 5, 0); },
              "A Marine can enter water beside land but not open water away from it; a Grunt cannot enter water.");
         return n;
@@ -555,6 +613,79 @@ public static class Scenarios {
                 detail = units + " units, " + flipped + " changed side; " + bFlipped + " of " + bBefore.Count + " buildings changed side; capture progress changed side " + capturer;
                 return units == before.Count && flipped == units && bFlipped == bBefore.Count && capturer;
             }
+            case "attritionCutOff": {
+                Unit hub = Rig.At(4, 0).occupier, g = Rig.At(4, 1).occupier;
+                SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                bool cut = net.strandedHubs.Contains(hub.GetComponent<SupplyPoint>()) && !net.IsSupplied(hub.tile) && !net.IsSupplied(g.tile);
+                int gs = g.supplies, hs = hub.Strength;
+                endTurn(); endTurn();
+                detail = "cut off, nothing supplied " + cut + "; grunt supplies " + gs + " -> " + g.supplies + "; supply unit strength " + hs + " -> " + hub.Strength;
+                return cut && g.supplies == gs - 1 && hub.Strength == hs;
+            }
+            case "purchasesOff":
+            case "allowedUnits": {
+                Building hq = GameController.HQOf(l.ai);
+                l.ai.money = 100000;
+                List<string> offered = new List<string>();
+                foreach (Unit u in hq.Purchasable()) offered.Add(GameController.UnitName(u));
+                Unit grunt = null, tank = null;
+                foreach (Unit u in hq.buildable) { if (GameController.UnitName(u) == "Grunt") grunt = u; if (GameController.UnitName(u) == "Tank") tank = u; }
+                Unit madeTank = Rig.bc.Produce(hq, tank);
+                Unit madeGrunt = Rig.bc.Produce(hq, grunt);
+                detail = "purchases " + gc.PurchasesSetting + ", allowed '" + gc.AllowedUnitsSetting + "'; offered: " + string.Join(",", offered.ToArray()) + "; tank " + (madeTank != null ? "built" : "refused") + ", grunt " + (madeGrunt != null ? "built" : "refused");
+                if (l.meta.Get("check", "") == "purchasesOff") return offered.Count == 0 && madeTank == null && madeGrunt == null;
+                return offered.Count == 1 && offered[0] == "Grunt" && madeTank == null && madeGrunt != null;
+            }
+            case "aiBuys": {
+                l.ai.money = 10000;
+                l.ai.GetComponent<AIPlayer>().Profile.buyUnits = true;
+                List<Unit> had = new List<Unit>(l.ai.units);
+                int before = l.ai.units.Count;
+                ScenarioFile.PlayTurn();
+                List<string> got = new List<string>(); bool bad = false;
+                foreach (Unit u in l.ai.units) if (u != null && !had.Contains(u)) got.Add(GameController.UnitName(u) + " at " + Pos(u.tile));
+                foreach (Unit u in l.ai.units) { string nm = u != null ? GameController.UnitName(u) : ""; if (nm != "Grunt" && nm != "Tank" && nm != "TempHQ" && nm != "HQ") bad = true; }
+                detail = "units " + before + " -> " + l.ai.units.Count + ", money " + l.ai.money + "; bought on the HQ: " + string.Join(",", got.ToArray());
+                return l.ai.units.Count > before && !bad && l.ai.money < 10000;
+            }
+            case "transportLoad": {
+                Unit apc = Rig.At(-4, 0).occupier, g1 = Rig.At(-4, 1).occupier, g2 = Rig.At(-5, 1).occupier, sup = Rig.At(-5, 0).occupier;
+                Unit tank = Rig.At(-3, -1).occupier, fighter = Rig.At(-6, 0).occupier, ship = Rig.At(3, 0).occupier;
+                List<string> r = new List<string>();
+                bool a1 = Transporting.Load(apc, g1), a2 = Transporting.Load(apc, g2), a3 = !Transporting.Load(apc, sup);
+                r.Add("two grunts " + (a1 && a2) + ", then supplies refused " + a3);
+                bool b1 = Transporting.Unload(apc, g1, Rig.At(-4, 1)) && Transporting.Unload(apc, g2, Rig.At(-5, 1));
+                bool b2 = Transporting.Load(apc, sup);
+                r.Add("emptied " + b1 + ", supplies alone " + b2);
+                Unit tankBeside = tank; tank.TeleportTo(Rig.At(-3, 0), 0);
+                bool c1 = !Transporting.CanCarry(apc, tankBeside) && !Transporting.CanCarry(apc, fighter);
+                r.Add("tank and fighter refused " + c1);
+                // The ship beside the shore on open water: a grunt cannot board; at the dock it can.
+                Building yard = Rig.At(-2, 0).building;
+                HexTile dock = yard.runway.Count > 0 ? yard.runway[0] : null;
+                HexTile beach = null, shore = null;
+                foreach (HexTile t in HexGenerator.hg.tiles) {
+                    if (t.terrain.elevation >= 0 || t.building != null || t.occupier != null) continue;
+                    foreach (HexTile n in t.neighbors) if (n != null && n.terrain.elevation >= 0 && n.occupier == null && n.building == null && t.Distance(Rig.At(-2, 0)) > 3) { beach = t; shore = n; break; }
+                    if (beach != null) break;
+                }
+                ship.TeleportTo(beach, 0); g1.TeleportTo(shore, 0);
+                bool d1 = !Transporting.CanBoardFrom(ship, g1);
+                HexTile quay = null;
+                foreach (HexTile n in dock.neighbors) if (n != null && n.terrain.elevation >= 0 && n.occupier == null && n.building == null) { quay = n; break; }
+                ship.TeleportTo(dock, 0); g1.TeleportTo(quay, 0);
+                bool d2 = Transporting.CanBoardFrom(ship, g1);
+                r.Add("grunt boards at sea " + !d1 + ", at the dock " + d2);
+                apc.TeleportTo(quay == null ? null : quay, 0);
+                g1.TeleportTo(Rig.At(-6, 2), 0);
+                bool e1 = Transporting.Load(ship, apc);
+                HexTile sea = Rig.At(4, 1);
+                ship.TeleportTo(sea, 0);
+                bool e2 = apc.tile == sea && sup.tile == sea && Transporting.FreeWeight(ship) == 1;
+                r.Add("loaded APC boards at the dock " + e1 + ", rides with its cargo " + e2);
+                detail = string.Join("; ", r.ToArray());
+                return a1 && a2 && a3 && b1 && b2 && c1 && d1 && d2 && e1 && e2;
+            }
             case "attritionLandRefuel": {
                 Unit f = Rig.At(0, 2).occupier;
                 HexTile runway = Rig.At(-3, 3);
@@ -627,14 +758,13 @@ public static class Scenarios {
                 return loaded && off && rides && unloaded && back;
             }
             case "attritionCargoSupply": {
-                Unit apc = Rig.At(-4, 0).occupier, g = Rig.At(-4, 1).occupier, ship = Rig.At(1, 0).occupier, m = Rig.At(-2, 1).occupier;
-                Transporting.Load(apc, g);
-                // The marine grunt boards the ship from the shore beside it.
-                m.TeleportTo(Rig.At(0, 1), 0);
-                Transporting.Load(ship, m);
+                Unit apc = Rig.At(-4, 0).occupier, g = Rig.At(-4, 1).occupier, ship = Rig.At(-1, 1).occupier, m = Rig.At(-2, 1).occupier;
+                bool l1 = Transporting.Load(apc, g);
+                // The marine boards the ship from the shore beside it.
+                bool l2 = Transporting.Load(ship, m);
                 endTurn(); endTurn();
-                string first = "APC cargo strength " + g.Strength + "; ship cargo supplies " + m.supplies + ", strength " + m.Strength;
-                bool ok1 = g.Strength == 5 && m.supplies == 2 && m.Strength == 6;
+                string first = "loaded " + l1 + "/" + l2 + "; APC cargo strength " + g.Strength + "; ship cargo supplies " + m.supplies + ", strength " + m.Strength;
+                bool ok1 = l1 && l2 && g.Strength == 5 && m.supplies == 2 && m.Strength == 6;
                 ship.supplies = 0;
                 endTurn(); endTurn();
                 detail = "after a turn " + first + "; with the ship's supplies gone, ship cargo supplies " + m.supplies;
@@ -853,6 +983,7 @@ public static class Scenarios {
             setup(ai, other);
             Dictionary<string, string> test = Test(name, "behaviour", "Human", rounds, check, question);
             test["rules"] = "attrition";
+            test["purchases"] = "on";   // the build-on-reserved check buys at the airport
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
@@ -923,7 +1054,22 @@ public static class Scenarios {
             Dictionary<string, string> test = Test("buy-supply-when-stretched", "behaviour", "Human", 1, "buySupply",
                 "Blue's one supply unit stands at the far edge of the HQ's supply, its grunts beyond it: the chain cannot reach further. With 25,000 (a supply unit's price) Blue should buy a supply unit at the HQ.");
             test["rules"] = "attrition";
+            test["purchases"] = "on";
             ScenarioFile.Save(Path.Combine(Dir, "buy-supply-when-stretched.dat"), test, ai, other, ai);
+            n++;
+        }
+        {
+            List<HexTile> road = windingRoad();
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, road[0].x, road[0].y);
+            Put("Grunt", ai, road[1].x, road[1].y); Put("Grunt", ai, road[2].x, road[2].y); Put("APC", ai, road[3].x, road[3].y + 1);
+            Put("Supplies", ai, road[4].x, road[4].y); Put("Supplies", ai, road[7].x, road[7].y); Put("Supplies", ai, road[10].x, road[10].y); Put("Tank", ai, road[12].x, road[12].y);
+            HexTile end = road[road.Count - 1];
+            Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
+            Dictionary<string, string> test = Test("grunts-ride-the-apc", "behaviour", "Human", 2, "combatRide",
+                "The winding road again: Blue's two grunts at home with an empty APC beside them (grunts move 3, the APC 6 and takes both); three supply units already carry supply up the road to a tank at the far end of it, the enemy beyond. With rides for fighting units on (combatRides), over two rounds the grunts should ride the APC: the farthest grunt ends further up the road than walking could take it (6 steps), or aboard.");
+            test["rules"] = "attrition";
+            ScenarioFile.Save(Path.Combine(Dir, "grunts-ride-the-apc.dat"), test, ai, other, ai);
             n++;
         }
         {   // Infantry next to a neutral city with nothing in the way should step onto it and capture.
@@ -1104,6 +1250,27 @@ public static class Scenarios {
                 foreach (Unit u in l.ai.units) if (u != null && u.tile != null && u.GetComponent<SupplyPoint>() == null) farthest = Math.Max(farthest, hs(u.tile));
                 detail = "steps from home after each Blue turn: " + string.Join(" | ", trail.ToArray());
                 return !broken && !ahead && farthest >= 12;
+            }
+            case "combatRide": {
+                if (Environment.GetEnvironmentVariable("SET") == null) l.ai.GetComponent<AIPlayer>().Profile.combatRides = true;
+                HexTile home = GameController.HQOf(l.ai).tile;
+                Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
+                Func<HexTile, int> hs = t => { int v; return t != null && fromHome.TryGetValue(t, out v) ? v : -1; };
+                List<Unit> grunts = new List<Unit>();
+                foreach (Unit u in l.ai.units) if (u != null && GameController.UnitName(u) == "Grunt") grunts.Add(u);
+                int start = 0; foreach (Unit g in grunts) start = Math.Max(start, hs(g.tile));
+                List<string> trail = new List<string>(); bool aboard = false;
+                for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) {
+                    bool blue = gc.activePlayer == l.ai;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    List<string> at = new List<string>();
+                    foreach (Unit g in grunts) { if (g.trasnporter != null) aboard = true; at.Add(hs(g.tile) + (g.trasnporter != null ? " aboard" : "")); }
+                    trail.Add(string.Join(", ", at.ToArray()));
+                }
+                int far = 0; foreach (Unit g in grunts) far = Math.Max(far, hs(g.tile));
+                detail = "grunts' steps from home after each Blue turn (start " + start + "): " + string.Join(" | ", trail.ToArray());
+                return far > start + 6 || aboard;
             }
             case "buySupply": {
                 l.ai.money = 25000;

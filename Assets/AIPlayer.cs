@@ -22,8 +22,8 @@ public class AIPlayer : MonoBehaviour {
 
     [Tooltip("Seconds between visible actions. Ignored in headless mode.")]
     public float actionInterval = 0.5f;
-    [Tooltip("Longest the AI waits for the last action's animations (moves, shots, retreats) before acting again, in seconds.")]
-    public float maxAnimationWait = 6f;
+    [Tooltip("Longest the AI holds an action that follows up on a retreat (a shot at the retreating unit, a move onto the tile it left) for the retreat to play, in seconds. Other actions only wait actionInterval.")]
+    public float maxAnimationWait = 3f;
     float animationWait;
 
     float timer;
@@ -76,11 +76,15 @@ public class AIPlayer : MonoBehaviour {
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
         if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; return; }
 
-        // Let the last action finish on screen first (a retreat sliding back, a shot landing): the
-        // next one acts on the board as the rules have it, and the player should see the same.
-        // (At most a few seconds, in case an animation never reports done.)
-        if (Unit.AnyAnimating() && animationWait < maxAnimationWait) { animationWait += Time.deltaTime; return; }
-        animationWait = 0f;
+        // An action held back until a retreat it follows up on has played (see WaitsOnRetreat).
+        if (holding) {
+            if (WaitsOnRetreat(held) && animationWait < maxAnimationWait) { animationWait += Time.deltaTime; return; }
+            animationWait = 0f;
+            AIAction a = held; holding = false;
+            Run(a.unit, a, false);
+            timer = actionInterval;
+            return;
+        }
 
         timer -= Time.deltaTime;
         if (timer > 0) return;
@@ -112,6 +116,42 @@ public class AIPlayer : MonoBehaviour {
             GameController.gc.activeUnit = unit;
 
             AIAction action = DecideFor(unit);
+            // Following up on a unit still sliding back from a retreat (shooting it, or moving onto
+            // the tile it is leaving): wait for the slide to show first. Anything else goes ahead.
+            if (!headless && WaitsOnRetreat(action)) { held = action; held.unit = unit; holding = true; animationWait = 0f; return true; }
+            bool did = Run(unit, action, headless);
+            if (GameController.gc.gameOver) return false;
+            if (did) return true;
+        }
+
+        BuySupply();
+        if (Profile.buyUnits && map != null) {
+            List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace);
+            if (onBuy != null) foreach (Unit u in bought) onBuy(u);
+        }
+        EndTurn();
+        return false;
+    }
+
+    /// <summary>An action decided but held until a retreat it follows up on has played.</summary>
+    AIAction held;
+    bool holding;
+
+    /// <summary>
+    /// Does <paramref name="a"/> follow up on a retreat still playing on screen: fire at a unit
+    /// that is sliding back, or move onto (or through the end of) the tile it is leaving?
+    /// </summary>
+    static bool WaitsOnRetreat(AIAction a) {
+        if (a.target != null && a.target.RetreatPlaying) return true;
+        if (a.destination != null && UnitController.uc != null)
+            foreach (Unit x in UnitController.uc.units)
+                if (x != null && x.RetreatPlaying && (x.retreatFrom == a.destination || x.tile == a.destination)) return true;
+        return false;
+    }
+
+    /// <summary>Carry out one decided action, with the bookkeeping after it. True if it did something.</summary>
+    bool Run(Unit unit, AIAction action, bool headless) {
+        {
             bool did = HexTactica.AI.AIExecutor.Execute(action, map, headless);
             if (did) {
                 // Any action can change what every other unit can reach, where supply
@@ -129,14 +169,8 @@ public class AIPlayer : MonoBehaviour {
             // A unit that waited changed nothing, so there is nothing to recalculate.
             unit.active = false;
             if (!did) GameController.gc.activeUnit = null;
-
-            if (GameController.gc.gameOver) return false;
-            if (did) return true;
+            return did;
         }
-
-        BuySupply();
-        EndTurn();
-        return false;
     }
 
     /// <summary>The supply chain as planned at the start of this turn (profile.supplyChain).</summary>
@@ -158,7 +192,7 @@ public class AIPlayer : MonoBehaviour {
         foreach (Unit b in hq.buildable) {
             if (b == null) continue;
             SupplyPoint sp = b.GetComponent<SupplyPoint>();
-            if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion)) continue;
+            if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion) || !hq.CanBuild(b)) continue;
             if (pick == null || b.cost < pick.cost) pick = b;
         }
         if (pick == null || player.money < pick.cost) { if (Trace != null) Trace("   no supply bought: " + (pick == null ? "the HQ builds none" : "money " + player.money + " of " + pick.cost)); return; }
@@ -172,6 +206,7 @@ public class AIPlayer : MonoBehaviour {
     /// <summary>Forget the turn in progress and everything remembered between turns: a new board was loaded.</summary>
     public void ResetTurn() {
         turnPrepared = false;
+        holding = false;
         queue.Clear();
         intents.Clear();
         postureMemory.Clear();
@@ -235,6 +270,13 @@ public class AIPlayer : MonoBehaviour {
             System.Func<Unit, int> st = u => { int s; return toObj != null && u.tile != null && toObj.TryGetValue(u.tile, out s) ? s : int.MaxValue; };
             hubsLast.Sort((a, b) => { int c = st(b).CompareTo(st(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
             foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
+        }
+        // Transports act after everyone else, so the units they carry (or are to pick up) have
+        // decided first and handed them their plans.
+        if (Profile.combatRides) {
+            List<Unit> carriers = new List<Unit>();
+            foreach (Unit u in queue) if (Transporting.IsTransport(u) && u.Firepower <= 1) carriers.Add(u);
+            foreach (Unit u in carriers) { queue.Remove(u); queue.Add(u); }
         }
         if (Profile.ghostSupply) PlanGhosts();
         // Aircraft reserve their landings before anyone moves.
@@ -343,6 +385,13 @@ public class AIPlayer : MonoBehaviour {
         Posture posture = front != null ? front.posture : Posture.Defensive;
 
 
+        // A fighting unit out of contact (an objective's or not): ride a transport toward the
+        // objective if that is quicker than walking.
+        if (Profile.combatRides && unit.Firepower > 0 && unit.GetComponent<SupplyPoint>() == null) {
+            AIAction ride;
+            if (TryRide(unit, front, out ride)) return ride;
+        }
+
         // Mission objectives narrow the possibility space rather than commanding units,
         // which is what lets them compose with tactics instead of overriding them.
         if (objective != null && objective.OverridesTactics(unit, map)) {
@@ -381,7 +430,12 @@ public class AIPlayer : MonoBehaviour {
             return AIAction.Wait(unit, "hub: no better position");
         }
 
-        if (unit.trasnporter != null) return AIAction.Wait(unit, "aboard transport");
+        if (unit.trasnporter != null) {
+            // Aboard with nowhere better to be carried: get off here.
+            TransportPlan off = UnloadHere(unit);
+            if (off != null) { transportAssignments[off.transport] = off; reservedTransports.Add(off.transport); }
+            return AIAction.Wait(unit, "aboard transport");
+        }
 
         PlanStep step;
         if (planned.TryGetValue(unit, out step) && Profile.coordinationPasses && step.group > 0 && step.kind != null && step.kind.StartsWith("battle")) {
@@ -426,6 +480,43 @@ public class AIPlayer : MonoBehaviour {
         }
 
         return AITactical.Decide(unit, map, Profile, posture, front, objective);
+    }
+
+    /// <summary>
+    /// profile.combatRides: a fighting unit out of contact (or already riding) asks the walk-or-ride
+    /// planner for the quickest way to the supplied ground nearest its objective. When the answer is
+    /// a ride, the unit heads for the rendezvous (or boards, or stays aboard) and the transport is
+    /// given the plan; when it is a walk and the unit is aboard, it gets off. Otherwise the unit
+    /// decides as usual.
+    /// </summary>
+    bool TryRide(Unit unit, Front front, out AIAction action) {
+        action = default(AIAction);
+        if (unit.tile == null || unit.GetComponent<SupplyPoint>() != null) return false;
+        bool aboard = unit.trasnporter != null;
+        string who = unit.name.Replace("(Clone)", "");
+        if (!aboard && map.TurnsToContact(unit) <= Profile.objectiveContactTurns) return false;
+        if (!aboard && Transporting.AvailableFor(player, unit).Count == 0) { if (Trace != null) Trace("   " + who + " ride: no transport can take it"); return false; }
+        HexTile objectiveTile = front != null && front.objectiveTile != null ? front.objectiveTile : AISupplyChain.Objective(map);
+        if (objectiveTile == null) return false;
+        int from = map.Travel(unit, unit.tile, objectiveTile);
+        float worth = AIScore.Worth(unit);
+        float per = worth * Mathf.Max(0.05f, Profile.marchWeight);
+        List<HexTile> candidates = new List<HexTile>();
+        foreach (HexTile t in HexGenerator.hg.tiles) if (t != null && (map.SupplyDepth(t) > 0 || t == unit.tile) && unit.CanEnter(t)) candidates.Add(t);
+        System.Func<HexTile, float> valueOf = t => per * (from - map.Travel(unit, t, objectiveTile)) - AIScore.Risk(unit, t, map, Profile);
+        TransportPlan plan = AITransportPlanner.Plan(unit, map, Profile, valueOf, candidates, reservedTransports);
+        if (plan == null) { if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + " ride: no plan (" + candidates.Count + " supplied tiles)"); return false; }
+        if (!plan.usesTransport) {
+            if (Trace != null && !aboard) Trace("   " + unit.name.Replace("(Clone)", "") + " ride: walking is as good: " + plan);
+            if (!aboard) return false;   // walking: the ordinary decision does that better
+            action = AITransportPlanner.NextAction(plan, map, Profile);
+            return true;
+        }
+        transportAssignments[plan.transport] = plan;
+        reservedTransports.Add(plan.transport);
+        action = AITransportPlanner.NextAction(plan, map, Profile);
+        if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + " rides: " + plan);
+        return true;
     }
 
     /// <summary>A plan that drops cargo next to wherever its transport is now.</summary>

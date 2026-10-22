@@ -94,8 +94,13 @@ MonoBehaviour:
   fuelMax: 70
   ammo: 6
   ammoMax: 6
-  transportSlots: 3
+  transportSlots: 4
   maxWeight: 4
+  carries:
+  - 0
+  - 1
+  - 2
+  - 4
   weight: 4
   transported: []
   cargoSlots:
