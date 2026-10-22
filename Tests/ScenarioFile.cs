@@ -189,6 +189,8 @@ public static class ScenarioFile {
             // City was a terrain; it is a building now (as the game's loader does).
             if (t["terrain"] == "City") { tile.terrain = Terrain("Grassland"); cities.Add(tile); }
             else tile.terrain = Terrain(t["terrain"]);
+            string under;
+            if (t.TryGetValue("under", out under) && !string.IsNullOrEmpty(under)) tile.pendingUnder = Terrain(under);
         }
         l.ai = Rig.AddPlayer("Blue", AI_ID);
         l.other = Rig.AddPlayer("Red", OTHER_ID);
@@ -236,7 +238,7 @@ public static class ScenarioFile {
         // "Human": nobody acts for Red; the harness ends its turns.
 
         string rules = Environment.GetEnvironmentVariable("RULES") ?? l.meta.Get("rules", "standard");
-        Rig.gc.rules = rules.ToLowerInvariant() == "attrition" ? RuleSet.Attrition : RuleSet.Standard;
+        Rig.gc.rules = GameController.ParseRules(rules);
         Rig.gc.roundLimit = l.meta.GetInt("rounds", 30);
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;

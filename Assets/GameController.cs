@@ -7,8 +7,10 @@ using UnityEngine;
 /// Standard: destroy or capture the enemy HQ.
 /// Attrition (a test variant): HQs cannot be attacked; a side is out when it has no units but its
 /// HQ; after roundLimit rounds the side with the most strength x cost left (HQs not counted) wins.
+/// Sandbox: as Standard on the board (HQs can be attacked and captured), but the game never ends:
+/// nobody is eliminated, there is no winner and no round limit.
 /// </summary>
-public enum RuleSet { Standard, Attrition }
+public enum RuleSet { Standard, Attrition, Sandbox }
 
 public class GameController : MonoBehaviour
 {
@@ -16,6 +18,15 @@ public class GameController : MonoBehaviour
     public RuleSet rules = RuleSet.Standard;
     [Tooltip("Attrition: rounds before the game is decided on what is left.")]
     public int roundLimit = 30;
+
+    /// <summary>"standard", "attrition" or "sandbox" (any case); anything else is Standard.</summary>
+    public static RuleSet ParseRules(string s) {
+        switch ((s ?? "").Trim().ToLowerInvariant()) {
+            case "attrition": return RuleSet.Attrition;
+            case "sandbox": return RuleSet.Sandbox;
+            default: return RuleSet.Standard;
+        }
+    }
 
     /// <summary>Can this unit be attacked under the current rules? (Attrition: HQs cannot.)</summary>
     public static bool Targetable(Unit u) {
@@ -171,6 +182,7 @@ public class GameController : MonoBehaviour
     /// <summary>"Capturing HQ ends the game for that player."</summary>
     public void OnHQCaptured(Building hq, Player previousOwner) {
         if (previousOwner == null) return;
+        if (rules == RuleSet.Sandbox) return;   // nobody is ever out
         if (!previousOwner.HasHQ) {
             Eliminate(previousOwner);
         }
@@ -188,6 +200,7 @@ public class GameController : MonoBehaviour
 
     public void CheckVictory() {
         if (gameOver) return;
+        if (rules == RuleSet.Sandbox) return;   // the game never ends
 
         for (int i = 0; i < players.Count; i++) {
             Player p = players[i];

@@ -47,6 +47,7 @@ Harness/BatchRunner.cs
 Harness/ScenarioLoader.cs
 Harness/GameLog.cs
 UI/UnitStatusIcon.cs
+UI/SupplyOverlay.cs
 AI/AIScore.cs
 Units/LocomotionInference.cs
 Harness/LegacyAI.cs

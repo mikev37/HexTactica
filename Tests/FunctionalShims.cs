@@ -56,7 +56,7 @@ namespace UnityEngine {
     public struct Vector4 { public float x, y, z, w; public Vector4(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; } }
     public struct Matrix4x4 { public static Matrix4x4 identity { get { return new Matrix4x4(); } } }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) { return m.value; } }
-    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } }
+    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
     public class RectOffset { public int left, right, top, bottom; }
     public struct Quaternion {
         public static Quaternion identity { get { return new Quaternion(); } }
@@ -68,6 +68,7 @@ namespace UnityEngine {
         public static Color white { get { return new Color(1, 1, 1, 1); } }
         public static Color black { get { return new Color(0, 0, 0, 1); } }
         public static Color gray { get { return new Color(.5f, .5f, .5f, 1); } }
+        public static Color red { get { return new Color(1, 0, 0, 1); } }
         public static Color clear { get { return new Color(0, 0, 0, 0); } }
     }
     public struct Bounds {
@@ -130,6 +131,7 @@ namespace UnityEngine {
         public T GetComponentInChildren<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
+        public T[] GetComponents<T>() where T : class { T c = gameObject.GetComponent<T>(); return c != null ? new T[] { c } : new T[0]; }
         public T AddComponent<T>() where T : class, new() { return gameObject.AddComponent<T>(); }
     }
 
@@ -201,7 +203,10 @@ namespace UnityEngine {
     }
 
     public class Sprite : Object { public Bounds bounds; }
+    public class Shader : Object { public static Shader Find(string n) { return null; } }
     public class Material : Object {
+        public Material() { }
+        public Material(Shader s) { }
         public Color color;
         public void SetFloat(string n, float v) { }
         public void SetVector(string n, Vector4 v) { }
@@ -220,8 +225,14 @@ namespace UnityEngine {
     public class MeshFilter : Component { }
     public class LineRenderer : Renderer {
         public int positionCount;
+        public Color startColor, endColor;
+        public Material material;
+        public float widthMultiplier;
+        public int numCapVertices, numCornerVertices;
+        public bool useWorldSpace;
         public void SetPosition(int i, Vector3 v) { }
     }
+    public class Canvas : Behaviour { }
     public class Animator : Behaviour {
         public void SetBool(string s, bool b) { }
         public void SetTrigger(string s) { }

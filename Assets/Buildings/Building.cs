@@ -174,6 +174,17 @@ public class Building : MonoBehaviour {
             && (u.locomotion == Locomotion.Boots || u.locomotion == Locomotion.Marine);
     }
 
+    /// <summary>
+    /// Would <paramref name="u"/> ending its turn on <paramref name="t"/> work toward taking a
+    /// building: one of its own tiles (not a runway or dock), not ours, capturable under the rules,
+    /// and <paramref name="u"/> a unit that captures.
+    /// </summary>
+    public static bool WouldCapture(Unit u, HexTile t) {
+        if (u == null || t == null || t.building == null) return false;
+        Building b = t.building;
+        return !b.IsServiceTile(t) && b.Capturable && CanCapture(u) && (b.owner != u.owner || (b.capturingPlayer != null && b.capturingPlayer != u.owner));
+    }
+
     /// <summary>Can this building change hands under the current rules? (Attrition: not the HQ.)</summary>
     public bool Capturable {
         get { return !(IsHQ && GameController.gc != null && GameController.gc.rules == RuleSet.Attrition); }
@@ -183,7 +194,8 @@ public class Building : MonoBehaviour {
 
     /// <summary>
     /// Stand on <paramref name="anchor"/> and the footprint around it: each tile takes the
-    /// building's ground (its old terrain is kept, for saving and for removal).
+    /// building's ground (its old terrain is kept, for saving and for removal). The ground can be
+    /// painted over in the editor afterwards; a save keeps what is shown, and the terrain under it.
     /// </summary>
     public void Occupy(HexTile anchor) {
         Release();
@@ -199,8 +211,10 @@ public class Building : MonoBehaviour {
         }
         foreach (HexTile t in tiles) {
             t.building = this;
-            underlying[t] = t.terrain;
-            if (ground != null) SetGround(t, ground);
+            // Loaded from a save that kept the ground as shown (painted in the editor, say): keep it.
+            TerrainData under = t.pendingUnder; t.pendingUnder = null;
+            underlying[t] = under ?? t.terrain;
+            if (under == null && ground != null) SetGround(t, ground);
         }
         runway.Clear();
         if (serviceTiles != null && HexGenerator.hg != null) {
@@ -209,8 +223,9 @@ public class Building : MonoBehaviour {
                 if (t == null || tiles.Contains(t) || runway.Contains(t) || (t.building != null && t.building != this)) continue;
                 runway.Add(t);
                 t.building = this;
-                underlying[t] = t.terrain;
-                if (serviceGround != null) SetGround(t, serviceGround);
+                TerrainData under = t.pendingUnder; t.pendingUnder = null;
+                underlying[t] = under ?? t.terrain;
+                if (under == null && serviceGround != null) SetGround(t, serviceGround);
             }
         }
         if (owner != null && capturePoints <= 0) capturePoints = CaptureThreshold;
