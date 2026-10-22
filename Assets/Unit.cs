@@ -201,8 +201,11 @@ public class Unit : MonoBehaviour
             // A retreating unit's sprite waits on its old tile until the shot that drove it
             // back has landed (AttackResolve sets StrengthDisplay on impact), then slides.
             if (retreatHold > 0f) {
-                if (StrengthDisplay == Strength && !AnimatorIsPlaying()) retreatHold = 0f;
-                else retreatHold -= Time.deltaTime;
+                // Once the shot has landed, a moment for the hit to show, then slide. (Waiting on the
+                // animator as well never ended early: a looping idle state is always "playing", so
+                // every retreat held the full three seconds, and the AI waited on it.)
+                if (StrengthDisplay == Strength) retreatHold = Mathf.Min(retreatHold, 0.3f);
+                retreatHold -= Time.deltaTime;
             }
             if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
             else if(tile && retreatHold <= 0f)
@@ -228,7 +231,9 @@ public class Unit : MonoBehaviour
         get {
             if (Strength <= 0 || tile == null) return false;
             if (path.Count > 0 || attacking || retreatHold > 0f || boardingWalk.Count > 0 || refuelHopTo != null) return true;
-            if (firing) return true;   // its shot has not landed yet
+            // Its shot has not landed yet (at most a couple of seconds: a fire animation without the
+            // event that lands the shot must not hold the AI up for every action after it).
+            if (firing && Time.time - firedAt < 2.5f) return true;
             if (trasnporter == null && tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f) return true;
             return false;
         }
@@ -695,6 +700,7 @@ public class Unit : MonoBehaviour
     internal void Fire(Unit defender, bool retaliate) {
         target = defender;
         firing = defender != null;
+        firedAt = Time.time;
         animator.SetTrigger("Fire!");
         attacking = false;
         if (target == null)
@@ -711,6 +717,7 @@ public class Unit : MonoBehaviour
 
     /// <summary>Between Fire and the shot landing (AttackResolve): animation only.</summary>
     [System.NonSerialized] public bool firing;
+    [System.NonSerialized] float firedAt;
 
     internal void AttackResolve(Unit defender, bool retaliate) {
         firing = false;
