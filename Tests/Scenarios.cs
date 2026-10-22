@@ -342,6 +342,8 @@ public static class Scenarios {
                  Rig.At(-1, 0).terrain = T("Road"); Rig.At(1, 0).terrain = T("Road");
                  Put("Grunt", a, -1, 1); Put("Grunt", o, 4, 3); },
              "A river with one bridge, a road tile at each end and grass beside them. A bridge joins only those roads: no stepping onto it from the grass beside it, or off it onto the grass across; a unit driven back off it goes onto the road.");
+        make("rule-swap-sides", "swapSides", (a, o) => { Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Artillery", o, 3, 0); Building c = Rig.PlaceBuilding("City", o, 2, 2); c.capturingPlayer = a; },
+             "HexTactica > Swap Sides of Scenario File on this file: every unit and building changes to the other side (the HQs too, and who was capturing what); the player list and terrain are unchanged.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -526,6 +528,32 @@ public static class Scenarios {
                 detail = "onto the bridge from grass " + !noGrassOn + ", from road " + roadOn + "; off onto grass " + !noGrassOff + "; path onto it from " + (via != null ? Pos(via) : "nowhere")
                        + ", to the grass across from " + (grassFrom != null ? Pos(grassFrom) : "nowhere") + "; hit from the west road it falls back to " + (back != null ? Pos(back) : "nowhere");
                 return noGrassOn && roadOn && noGrassOff && via == westRoad && grassFrom != null && grassFrom != bridge && back == eastRoad;
+            }
+            case "swapSides": {
+                string text = File.ReadAllText(l.path);
+                string swapped = HexTactica.Harness.ScenarioMirror.SwapSides(text);
+                string tmp = Path.Combine(Path.GetTempPath(), "hextactica-swapped.dat");
+                File.WriteAllText(tmp, swapped);
+                Dictionary<string, Player> before = new Dictionary<string, Player>();
+                foreach (Unit u in UnitController.uc.units) if (u != null && u.tile != null) before[Pos(u.tile)] = u.owner;
+                Dictionary<string, Player> bBefore = new Dictionary<string, Player>();
+                foreach (Building b in Building.all) if (b != null && b.tile != null) bBefore[Pos(b.tile)] = b.owner;
+                Player beforeCapturer = Rig.At(2, 2).building.capturingPlayer;
+                long aiId = l.ai.id;
+                ScenarioFile.Loaded m = ScenarioFile.Load(tmp, "Human", null, null);
+                int units = 0, flipped = 0, bFlipped = 0;
+                foreach (Unit u in UnitController.uc.units) {
+                    if (u == null || u.tile == null) continue;
+                    units++;
+                    Player was; if (before.TryGetValue(Pos(u.tile), out was) && was != null && u.owner != null && (was.id == aiId) != (u.owner.id == aiId)) flipped++;
+                }
+                foreach (Building b in Building.all) {
+                    Player was; if (b != null && b.tile != null && bBefore.TryGetValue(Pos(b.tile), out was) && was != null && b.owner != null && (was.id == aiId) != (b.owner.id == aiId)) bFlipped++;
+                }
+                Building city = Rig.At(2, 2).building;
+                bool capturer = city != null && city.capturingPlayer != null && beforeCapturer != null && (city.capturingPlayer.id == aiId) != (beforeCapturer.id == aiId);
+                detail = units + " units, " + flipped + " changed side; " + bFlipped + " of " + bBefore.Count + " buildings changed side; capture progress changed side " + capturer;
+                return units == before.Count && flipped == units && bFlipped == bBefore.Count && capturer;
             }
             case "attritionLandRefuel": {
                 Unit f = Rig.At(0, 2).occupier;

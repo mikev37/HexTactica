@@ -120,8 +120,6 @@ public class HexTile : MonoBehaviour
         overlay.color = new Color(c.r, c.g, c.b, s == UIState.ENEMY_MOVE ? 0.85f : 0.6f);
     }
 
-    public void OnMouseEnter() { SupplyOverlay.hovered = this; }
-    public void OnMouseExit() { if (SupplyOverlay.hovered == this) SupplyOverlay.hovered = null; }
 
     public void changeState(UIState ud) {
         state = ud;
