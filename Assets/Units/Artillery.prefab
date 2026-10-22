@@ -1728,6 +1728,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4244418167984918303, guid: bd61729200673c94682c4352a0bae1ec, type: 3}
+      propertyPath: m_SortingLayer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4244418167984918303, guid: bd61729200673c94682c4352a0bae1ec, type: 3}
+      propertyPath: m_SortingLayerID
+      value: -279978025
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1812,6 +1820,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3742740317528701852}
     m_Modifications:
+    - target: {fileID: 7360807869421676800, guid: 38d80533b2a2cad4c88f54e64c28ab90, type: 3}
+      propertyPath: m_SortingLayer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7360807869421676800, guid: 38d80533b2a2cad4c88f54e64c28ab90, type: 3}
+      propertyPath: m_SortingLayerID
+      value: -279978025
+      objectReference: {fileID: 0}
     - target: {fileID: 7360807869421676801, guid: 38d80533b2a2cad4c88f54e64c28ab90, type: 3}
       propertyPath: m_RootOrder
       value: 3
@@ -1878,6 +1894,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3742740317528701852}
     m_Modifications:
+    - target: {fileID: 7910348211102898400, guid: bcd799db344aa1a4c9827d41c181d9cb, type: 3}
+      propertyPath: m_SortingLayer
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7910348211102898400, guid: bcd799db344aa1a4c9827d41c181d9cb, type: 3}
+      propertyPath: m_SortingLayerID
+      value: -279978025
+      objectReference: {fileID: 0}
     - target: {fileID: 7910348211102898400, guid: bcd799db344aa1a4c9827d41c181d9cb, type: 3}
       propertyPath: m_Positions.Array.size
       value: 11
