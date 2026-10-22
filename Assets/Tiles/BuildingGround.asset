@@ -16,8 +16,8 @@ MonoBehaviour:
   upper_normal: {fileID: 0}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}
-  lower: {fileID: 21300000, guid: 412f6f764fc74204eae9205489b1b8df, type: 3}
-  floor: {fileID: 21300000, guid: f9258ac41365d4d4e8fef28a4aeb8d79, type: 3}
+  lower: {fileID: 21300000, guid: e96e96398b38016408e4f754da25c55d, type: 3}
+  floor: {fileID: 21300000, guid: bf2589f464175124ebe6aa6bc70b4057, type: 3}
   water: {fileID: 0}
   cover: 2
   moveability: 1
