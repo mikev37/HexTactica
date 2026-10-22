@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -30,13 +31,14 @@ public class BuildingMenu : MonoBehaviour {
     void OnGUI() {
         Building b = open;
         if (b == null || b.buildable == null) return;
+        List<Unit> list = b.Purchasable();
         float w = 240f, row = 28f;
-        float h = 60f + row * (b.buildable.Count + 1);
+        float h = 60f + row * (list.Count + 1);
         Rect box = new Rect(Screen.width - w - 16f, 16f, w, h);
         drawn = box;
         GUI.Box(box, (string.IsNullOrEmpty(b.personal_name) ? b.type.ToString() : b.personal_name) + " — money " + b.owner.money);
         float y = box.y + 30f;
-        foreach (Unit u in b.buildable) {
+        foreach (Unit u in list) {
             if (u == null) continue;
             string label = u.name.Replace("(Clone)", "") + "   " + u.cost;
             GUI.enabled = b.owner.money >= u.cost;

@@ -220,6 +220,8 @@ public static class Scenarios {
         Dictionary<string, string> test = Test("logistics-zigzag", "logistics", "Full", 60, "report",
             "Ocean with one serpentine road (" + road.Count + " tiles, two wide) between the HQs; the water between its rows is wider than artillery range. Supply must be chained forward: HQ range 8, five supply units of range 4 (moving 2 a turn) each side, and the armies meet about " + (road.Count / 2) + " tiles from home. Attrition rules, 60 rounds. This AI on both sides; Blue moves first.");
         test["rules"] = "attrition";
+        test["purchases"] = "on";
+        test["allowedUnits"] = "Supplies";   // supply units only: the chain may grow, the armies do not
         ScenarioFile.Save(Path.Combine(Dir, "logistics-zigzag.dat"), test, ai, other, ai);
         return 1;
     }
@@ -376,6 +378,24 @@ public static class Scenarios {
              "HexTactica > Swap Sides of Scenario File on this file: every unit and building changes to the other side (the HQs too, and who was capturing what); the player list and terrain are unchanged.");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
+        Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
+            setup(ai, other);
+            Dictionary<string, string> test = Test(name, "rules", "Human", 1, check, question);
+            test["rules"] = "standard";
+            if (purchases != null) test["purchases"] = purchases;
+            if (allowed != null) test["allowedUnits"] = allowed;
+            ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
+            n++;
+        };
+        makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
+             "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
+        makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
+             "A scenario allowing only Grunts: Blue's HQ offers only the Grunt; it builds one, and refuses a Tank even with the money.", "on", "Grunt");
+        makeBuy("ai-buys-units", "aiBuys", (a, o) => { Put("Tank", o, 3, 0); Put("Grunt", o, 3, 1); Put("Grunt", a, -4, 0); },
+             "An AI with money (10,000), purchases on, Grunt and Tank allowed: at the end of its turn it buys an allowed unit at its HQ (one: the HQ has one tile to build on), never a unit the scenario does not allow.", "on", "Grunt,Tank");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -595,6 +615,32 @@ public static class Scenarios {
                 endTurn(); endTurn();
                 detail = "cut off, nothing supplied " + cut + "; grunt supplies " + gs + " -> " + g.supplies + "; supply unit strength " + hs + " -> " + hub.Strength;
                 return cut && g.supplies == gs - 1 && hub.Strength == hs;
+            }
+            case "purchasesOff":
+            case "allowedUnits": {
+                Building hq = GameController.HQOf(l.ai);
+                l.ai.money = 100000;
+                List<string> offered = new List<string>();
+                foreach (Unit u in hq.Purchasable()) offered.Add(GameController.UnitName(u));
+                Unit grunt = null, tank = null;
+                foreach (Unit u in hq.buildable) { if (GameController.UnitName(u) == "Grunt") grunt = u; if (GameController.UnitName(u) == "Tank") tank = u; }
+                Unit madeTank = Rig.bc.Produce(hq, tank);
+                Unit madeGrunt = Rig.bc.Produce(hq, grunt);
+                detail = "purchases " + gc.PurchasesSetting + ", allowed '" + gc.AllowedUnitsSetting + "'; offered: " + string.Join(",", offered.ToArray()) + "; tank " + (madeTank != null ? "built" : "refused") + ", grunt " + (madeGrunt != null ? "built" : "refused");
+                if (l.meta.Get("check", "") == "purchasesOff") return offered.Count == 0 && madeTank == null && madeGrunt == null;
+                return offered.Count == 1 && offered[0] == "Grunt" && madeTank == null && madeGrunt != null;
+            }
+            case "aiBuys": {
+                l.ai.money = 10000;
+                l.ai.GetComponent<AIPlayer>().Profile.buyUnits = true;
+                List<Unit> had = new List<Unit>(l.ai.units);
+                int before = l.ai.units.Count;
+                ScenarioFile.PlayTurn();
+                List<string> got = new List<string>(); bool bad = false;
+                foreach (Unit u in l.ai.units) if (u != null && !had.Contains(u)) got.Add(GameController.UnitName(u) + " at " + Pos(u.tile));
+                foreach (Unit u in l.ai.units) { string nm = u != null ? GameController.UnitName(u) : ""; if (nm != "Grunt" && nm != "Tank" && nm != "TempHQ" && nm != "HQ") bad = true; }
+                detail = "units " + before + " -> " + l.ai.units.Count + ", money " + l.ai.money + "; bought on the HQ: " + string.Join(",", got.ToArray());
+                return l.ai.units.Count > before && !bad && l.ai.money < 10000;
             }
             case "attritionLandRefuel": {
                 Unit f = Rig.At(0, 2).occupier;
@@ -894,6 +940,7 @@ public static class Scenarios {
             setup(ai, other);
             Dictionary<string, string> test = Test(name, "behaviour", "Human", rounds, check, question);
             test["rules"] = "attrition";
+            test["purchases"] = "on";   // the build-on-reserved check buys at the airport
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
@@ -964,6 +1011,7 @@ public static class Scenarios {
             Dictionary<string, string> test = Test("buy-supply-when-stretched", "behaviour", "Human", 1, "buySupply",
                 "Blue's one supply unit stands at the far edge of the HQ's supply, its grunts beyond it: the chain cannot reach further. With 25,000 (a supply unit's price) Blue should buy a supply unit at the HQ.");
             test["rules"] = "attrition";
+            test["purchases"] = "on";
             ScenarioFile.Save(Path.Combine(Dir, "buy-supply-when-stretched.dat"), test, ai, other, ai);
             n++;
         }

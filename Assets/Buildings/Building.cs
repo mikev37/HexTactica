@@ -153,6 +153,16 @@ public class Building : MonoBehaviour {
 
     public bool CanProduce { get { return buildable != null && buildable.Count > 0; } }
 
+    /// <summary>Can this building build <paramref name="u"/> now: on its list, and purchases allow it (rules and the scenario's allowed units)?</summary>
+    public bool CanBuild(Unit u) { return u != null && CanProduce && buildable.Contains(u) && GameController.MayPurchase(u); }
+
+    /// <summary>The units this building may build now.</summary>
+    public List<Unit> Purchasable() {
+        List<Unit> list = new List<Unit>();
+        if (buildable != null) foreach (Unit u in buildable) if (CanBuild(u)) list.Add(u);
+        return list;
+    }
+
     public int CaptureThreshold { get { return 10 + 5 * Mathf.Max(0, Footprint.Count - 1); } }
 
     /// <summary>The tiles it stands on (anchor first).</summary>

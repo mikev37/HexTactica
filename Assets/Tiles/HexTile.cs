@@ -279,7 +279,7 @@ public class HexTile : MonoBehaviour
             LevelEditor.PlaceNewBuilding(this);
         }
         else if (occupier == null && building != null && state == UIState.FREE && GameController.gc.activeUnit == null
-                 && building.owner != null && building.owner == GameController.gc.activePlayer && BuildingMenu.IsHumanTurn() && building.CanProduce) {
+                 && building.owner != null && building.owner == GameController.gc.activePlayer && BuildingMenu.IsHumanTurn() && building.Purchasable().Count > 0) {
             // A building is clickable only with no unit on it: its build list.
             BuildingMenu.Open(building);
         }
