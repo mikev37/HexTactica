@@ -2,7 +2,7 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
+  serializedVersion: 3
   tags: []
   layers:
   - Default
@@ -41,9 +41,30 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Land
+    uniqueID: 1604857745
+    locked: 0
+  - name: Building
+    uniqueID: 2893119715
+    locked: 0
+  - name: UnitShadow
+    uniqueID: 3314056345
+    locked: 0
+  - name: TransportBG
+    uniqueID: 1602073229
+    locked: 0
   - name: Transported
     uniqueID: 1556864837
+    locked: 0
+  - name: Unit
+    uniqueID: 4014989271
+    locked: 0
+  - name: Effects
+    uniqueID: 67919237
     locked: 0
   - name: UI
     uniqueID: 2847545821
     locked: 0
+  m_RenderingLayers:
+  - Default
+  m_MigratedRenderPipelines: []
