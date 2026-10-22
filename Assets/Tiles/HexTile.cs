@@ -22,6 +22,8 @@ public class HexTile : MonoBehaviour
     [Header("UI Sprites")]
     public HexTileUIData uiData;// = HexTileUIData.instance;
     public TerrainData terrain;
+    /// <summary>Set by a save being loaded: the terrain under the building that will stand here, whose ground is already on the tile.</summary>
+    [System.NonSerialized] public TerrainData pendingUnder;
 
     [Header("Connection Variables")]
     public List<HexTile> neighbors;
@@ -103,8 +105,28 @@ public class HexTile : MonoBehaviour
         neighbors.ForEach(x => x.drawRoads());
     }
 
+    /// <summary>The unit being moved would capture a building by ending here (and there is a capture sprite to show).</summary>
+    bool CaptureHere() {
+        return uiData != null && uiData.capture != null && GameController.gc != null && Building.WouldCapture(GameController.gc.activeUnit, this);
+    }
+
+    Color overlayColour;
+    bool overlayColourKnown;
+
+    /// <summary>Show this tile as one an enemy can move to or fire on, in that enemy's colour.</summary>
+    public void ShowEnemy(UIState s, Player enemy) {
+        changeState(s);
+        Color c = enemy != null ? enemy.displayColor : Color.red;
+        overlay.color = new Color(c.r, c.g, c.b, s == UIState.ENEMY_MOVE ? 0.85f : 0.6f);
+    }
+
+    public void OnMouseEnter() { SupplyOverlay.hovered = this; }
+    public void OnMouseExit() { if (SupplyOverlay.hovered == this) SupplyOverlay.hovered = null; }
+
     public void changeState(UIState ud) {
         state = ud;
+        if (!overlayColourKnown) { overlayColour = overlay.color; overlayColourKnown = true; }
+        overlay.color = overlayColour;
         overlay.gameObject.SetActive(true);
         arrow.gameObject.SetActive(false);
         switch (state) {
@@ -112,7 +134,7 @@ public class HexTile : MonoBehaviour
                 overlay.sprite = uiData.selected;
                 break;
             case UIState.MOVE:
-                overlay.sprite = uiData.move_possible;
+                overlay.sprite = CaptureHere() ? uiData.capture : uiData.move_possible;
                 break;
             case UIState.ATTACK:
                 overlay.sprite = uiData.attack_possible;
@@ -134,7 +156,7 @@ public class HexTile : MonoBehaviour
                     arrow.transform.up = parent.transform.position - transform.position;
                     arrow.sprite = uiData.move_arrow;
                 }
-                overlay.sprite = uiData.move_confirm;
+                overlay.sprite = CaptureHere() ? uiData.capture : uiData.move_confirm;
                 break;
             case UIState.ATTACK_CONFIRM:
                 overlay.sprite = uiData.attack_Confirm;
@@ -144,6 +166,12 @@ public class HexTile : MonoBehaviour
                 break;
             case UIState.UNLOAD_CONFIRM:
                 overlay.sprite = uiData.unload;
+                break;
+            case UIState.ENEMY_MOVE:
+                overlay.sprite = uiData.move_possible;
+                break;
+            case UIState.ENEMY_THREAT:
+                overlay.sprite = uiData.attack_possible;
                 break;
             default: overlay.gameObject.SetActive(false); break;
         }
@@ -228,6 +256,14 @@ public class HexTile : MonoBehaviour
 
 
     public void OnMouseDown() {
+        // A click on an open menu is the menu's (IMGUI does not stop it reaching the board).
+        if (TransportMenu.Covers(Input.mousePosition) || BuildingMenu.Covers(Input.mousePosition)) return;
+        // Any other click closes them; one that is not on a tile offered for unloading drops the unload.
+        TransportMenu.open = null;
+        BuildingMenu.open = null;
+        if (TransportMenu.pendingCargo != null && state != UIState.UNLOAD_CONFIRM) { TransportMenu.pendingCargo = null; TransportMenu.pendingTransport = null; }
+        // An enemy's move and threat on show: any click clears it first.
+        SupplyOverlay.HideEnemy();
         UnitController.uc.units.ForEach(x => x.clearDisplay());
         if (LevelEditor.singleton.editing) {
             loadData(LevelEditor.singleton.td);
@@ -237,7 +273,7 @@ public class HexTile : MonoBehaviour
             LevelEditor.PlaceNewBuilding(this);
         }
         else if (occupier == null && building != null && state == UIState.FREE && GameController.gc.activeUnit == null
-                 && building.owner != null && building.owner == GameController.gc.activePlayer && building.CanProduce) {
+                 && building.owner != null && building.owner == GameController.gc.activePlayer && BuildingMenu.IsHumanTurn() && building.CanProduce) {
             // A building is clickable only with no unit on it: its build list.
             BuildingMenu.Open(building);
         }
@@ -325,6 +361,9 @@ public class HexTile : MonoBehaviour
                 attacker.OrderAttack(defender);
                 attacker.FinishActive();
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+            } else if (occupier != null && state == UIState.FREE && GameController.gc.activeUnit == null && occupier.owner != GameController.gc.activePlayer) {
+                // An enemy: where it can go and what it can hit.
+                SupplyOverlay.ShowEnemy(occupier);
             } else {
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
             }
@@ -459,14 +498,21 @@ public struct TileData {
     public int damage;
     public int combatCount;
     public string terrain;
+    /// <summary>
+    /// A building's tile: the terrain under the building (what the tile gets back if the building
+    /// goes), while <see cref="terrain"/> is the ground shown, which the editor can paint. Empty
+    /// for other tiles. Older saves have no such field and store the terrain under the building in
+    /// <see cref="terrain"/>; the building then lays its own ground over it when it loads.
+    /// </summary>
+    public string under;
     public TileData(HexTile t) {
         x = t.x;
         y = t.y;
         z = t.z;
         damage = t.damageLevel;
         combatCount = t.combatCount;
-        // A building's tiles record the terrain under it (the building restores its ground on load).
-        terrain = (t.building != null ? t.building.Underlying(t) : t.terrain).name;
+        terrain = t.terrain.name;
+        under = t.building != null ? t.building.Underlying(t).name : "";
     }
 
     public HexTile load() {
@@ -482,6 +528,8 @@ public struct TileData {
             t.loadData(grass);
             if (t.building == null) BuildingController.bc.Place(null, city, t);
         } else t.loadData(LevelEditor.loadTerrain(terrain));
+        // A building's tile, saved with its ground as shown: the building keeps it (see Building.Occupy).
+        t.pendingUnder = !string.IsNullOrEmpty(under) ? LevelEditor.loadTerrain(under) : null;
         t.RefreshDamageSprite();
         t.changeState(UIState.FREE);
         return t;

@@ -330,6 +330,10 @@ public static class Scenarios {
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
         make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
              "A Fighter with 3 fuel flies 3 tiles onto its airport's runway (a plain move): refuelled and re-armed as it lands (fuel 14, ammo 6). Another lands there as a move and attack: nothing until its next turn (fuel 5 - 3 = 2, ammo 1). The airport is then lost before their next turn: the first burns a turn's fuel (11) and is not ditched.");
+        make("attrition-rule-supply-aboard", "attritionSupplyAboard", (a, o) => { Put("APC", a, 1, 0); Put("Supplies", a, 2, 0); Put("Grunt", o, 6, -3); },
+             "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off.");
+        make("attrition-rule-supply-line", "attritionSupplyLine", (a, o) => { Put("Supplies", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 6, -3); },
+             "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -455,6 +459,38 @@ public static class Scenarios {
                 detail = "on the runway (" + (Rig.At(-3, 3).building != null && Rig.At(-3, 3).building.IsServiceTile(Rig.At(-3, 3)) ? "runway tile" : "not a runway") + "): fuel " + f.fuel + ", strength " + f.Strength;
                 return f.fuel == f.fuelMax && f.Strength == 5;
             }
+            case "attritionSupplyAboard": {
+                Unit apc = Rig.At(1, 0).occupier, sup = Rig.At(2, 0).occupier;
+                bool loaded = Transporting.Load(apc, sup);
+                SupplyPoint hub = sup.GetComponent<SupplyPoint>();
+                SupplyNetwork.Result stat = SupplyNetwork.SolveStatic(l.ai);
+                SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                bool linked = net.connectedHubs.Contains(hub);
+                // Its own spread: nothing supplied farther from the APC than its range that the HQ does not supply.
+                int far = 0;
+                foreach (KeyValuePair<HexTile, int> kv in net.depth) if (kv.Value > 0 && !stat.IsSupplied(kv.Key)) far = Math.Max(far, kv.Key.Distance(apc.tile));
+                int gap = 99;
+                foreach (KeyValuePair<HexTile, int> kv in stat.depth) if (kv.Value > 0) gap = Math.Min(gap, kv.Key.Distance(apc.tile));
+                int moves = apc.moveRange;
+                apc.moveRange = 1;
+                bool cut = !SupplyNetwork.Solve(l.ai, false).connectedHubs.Contains(hub);
+                apc.moveRange = moves;
+                SupplyNetwork.Solve(l.ai, false);
+                detail = "loaded " + loaded + "; HQ supply " + gap + " tiles from the APC; linked " + linked + "; spreads up to " + far + " tiles from the APC (range " + hub.range + "); with 1 move, cut off " + cut;
+                return loaded && gap > 1 && gap <= moves && linked && far <= hub.range && far > 0 && cut;
+            }
+            case "attritionSupplyLine": {
+                Unit g = Rig.At(-2, 0).occupier, sup = Rig.At(-3, 0).occupier;
+                HexTile hq = GameController.HQOf(l.ai).tile;
+                SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                bool viaHub = SupplyNetwork.SolveWithout(l.ai, sup.GetComponent<SupplyPoint>()).DepthAt(g.tile) <= 0;
+                List<HexTile> path = SupplyOverlay.SourcePath(l.ai, g.tile, net, null, null);
+                List<string> shown = new List<string>();
+                foreach (HexTile t in path) shown.Add(Pos(t));
+                detail = "grunt supplied only through the supply unit " + viaHub + "; line " + string.Join(" ", shown.ToArray());
+                return viaHub && path.Count > 2 && path[0] == g.tile && path.Contains(sup.tile) && path[path.Count - 1] == hq
+                       && path.IndexOf(sup.tile) < path.Count - 1;
+            }
             case "attritionLandRefuel": {
                 Unit f = Rig.At(0, 2).occupier;
                 HexTile runway = Rig.At(-3, 3);
@@ -516,6 +552,7 @@ public static class Scenarios {
             case "attritionTransport": {
                 Unit apc = Rig.At(-3, 0).occupier, g = Rig.At(-2, 0).occupier;
                 bool loaded = Transporting.Load(apc, g);
+                g.FinishBoarding();   // the boarding walk is animation: played out here at once
                 bool off = Rig.At(-2, 0).occupier == null && g.tile == apc.tile && g.trasnporter == apc && g.transform.parent == (apc.cargoSlots.Count > 0 ? apc.cargoSlots[0] : apc.transform);
                 apc.TeleportTo(Rig.At(-3, 3), 3);
                 bool rides = g.tile == apc.tile;

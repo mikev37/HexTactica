@@ -13,6 +13,8 @@ public class HexTileUIData : ScriptableSingleton<HexTileUIData> {
     public Sprite attack_Confirm;
     public Sprite load;
     public Sprite unload;
+    [Tooltip("A move tile where ending the move would capture a building (Sprites/UI/CapOption). Empty: the ordinary move sprite.")]
+    public Sprite capture;
        
 }
 
@@ -25,5 +27,9 @@ public enum UIState {
     MOVE_CONFIRM,
     LOAD_CONFIRM,
     UNLOAD_CONFIRM,
-    FREE
+    FREE,
+    /// <summary>An enemy unit was clicked: a tile it can move to (SupplyOverlay.ShowEnemy).</summary>
+    ENEMY_MOVE,
+    /// <summary>An enemy unit was clicked: a tile it could fire on.</summary>
+    ENEMY_THREAT
 }

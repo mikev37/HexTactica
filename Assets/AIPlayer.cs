@@ -22,6 +22,9 @@ public class AIPlayer : MonoBehaviour {
 
     [Tooltip("Seconds between visible actions. Ignored in headless mode.")]
     public float actionInterval = 0.5f;
+    [Tooltip("Longest the AI waits for the last action's animations (moves, shots, retreats) before acting again, in seconds.")]
+    public float maxAnimationWait = 6f;
+    float animationWait;
 
     float timer;
 
@@ -72,6 +75,12 @@ public class AIPlayer : MonoBehaviour {
         if (LevelEditor.singleton != null &&
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
         if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; return; }
+
+        // Let the last action finish on screen first (a retreat sliding back, a shot landing): the
+        // next one acts on the board as the rules have it, and the player should see the same.
+        // (At most a few seconds, in case an animation never reports done.)
+        if (Unit.AnyAnimating() && animationWait < maxAnimationWait) { animationWait += Time.deltaTime; return; }
+        animationWait = 0f;
 
         timer -= Time.deltaTime;
         if (timer > 0) return;
