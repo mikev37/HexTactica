@@ -4,21 +4,21 @@ using UnityEngine;
 /// <summary>
 /// Supply and threat read-outs on the board (installed with the BuildingController).
 ///
-/// With one of your units selected:
-///   - a line along the hexes from where it stands (or from the tile you point at or picked to
-///     move to) back to where its supply comes from: the supply unit or building feeding it, then
-///     what feeds that, and so on back to the HQ;
-///   - moving a supply unit: the supply it would give from the tile you point at (or picked) is
-///     shown on the board in place of the real supply until you look away;
-///   - a move that would take a supplied unit out of supply says so on the unit ("Leaves supply")
-///     and tints that tile.
+/// With one of your supply units (or a transport carrying one) selected:
+///   - a line along the hexes from where it stands (or from the tile picked to move to) back to
+///     where its supply comes from: the supply unit or building feeding it, then what feeds that,
+///     and so on back to the HQ;
+///   - once a tile is picked to move to (the first tap or click on it), the supply it would give
+///     from there is shown on the board in place of the real supply, until the move is made or
+///     another tile is picked.
+/// With any of your units selected, a picked tile that would take it out of supply says so on the
+/// unit ("Leaves supply") and is tinted.
+/// Everything follows the picked tile, not the pointer, so it works the same with a finger.
 /// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there.
 /// </summary>
 public class SupplyOverlay : MonoBehaviour {
 
     public static SupplyOverlay instance;
-    /// <summary>The tile under the mouse (HexTile.OnMouseEnter / OnMouseExit).</summary>
-    public static HexTile hovered;
 
     readonly List<LineRenderer> lines = new List<LineRenderer>();
     Material lineMaterial;
@@ -34,11 +34,9 @@ public class SupplyOverlay : MonoBehaviour {
 
     void Awake() { instance = this; }
 
-    /// <summary>Where the selected unit is being pointed: the hovered move tile, else the tile picked to move to.</summary>
+    /// <summary>The tile picked for the selected unit to move to (first click or tap on it), if any.</summary>
     static HexTile Destination(Unit u) {
         if (u == null || u.tile == null) return null;
-        if (hovered != null && (hovered.state == UIState.MOVE || hovered.state == UIState.MOVE_CONFIRM || hovered.state == UIState.MOVE_ARROW) && hovered.occupier == null)
-            return hovered;
         HexTile picked = null;
         if (HexGenerator.hg != null)
             foreach (HexTile t in HexGenerator.hg.tiles) if (t != null && t.state == UIState.MOVE_CONFIRM) { picked = t; break; }
@@ -57,8 +55,8 @@ public class SupplyOverlay : MonoBehaviour {
         if (u == null) return;
 
         Player p = u.owner;
-        SupplyPoint hub = u.GetComponent<SupplyPoint>();
-        bool movingHub = hub != null && !hub.producer && dest != null;
+        SupplyPoint hub = CarriedSupply(u);
+        bool movingHub = hub != null && dest != null;
         // The field to read: a supply unit being moved shows the supply it would give from there
         // (published, so the board's supply edges show it); anything else reads the real one.
         SupplyNetwork.Result field = movingHub ? SupplyNetwork.Solve(p, false, hub, dest) : SupplyNetwork.Solve(p, false);
@@ -70,7 +68,19 @@ public class SupplyOverlay : MonoBehaviour {
             if (dest.overlay != null) { warnedTile = dest; warnedColour = dest.overlay.color; dest.overlay.color = new Color(1f, 0.55f, 0.1f, 1f); }
             if (u.textArea != null) { u.textArea.text = "Leaves supply"; warnedText = true; }
         }
-        DrawSupplyLine(p, from, field, movingHub ? hub : null, dest);
+        // The line is for supply units (and what carries them): where their supply comes from.
+        if (hub != null) DrawSupplyLine(p, from, field, movingHub ? hub : null, dest);
+    }
+
+    /// <summary>The supply unit that moves when <paramref name="u"/> does: itself, or one it carries.</summary>
+    static SupplyPoint CarriedSupply(Unit u) {
+        SupplyPoint own = u.GetComponent<SupplyPoint>();
+        if (own != null) return own.producer ? null : own;
+        foreach (Unit c in u.transported) {
+            SupplyPoint sp = c != null ? c.GetComponent<SupplyPoint>() : null;
+            if (sp != null && !sp.producer) return sp;
+        }
+        return null;
     }
 
     void Clear() {
@@ -120,12 +130,26 @@ public class SupplyOverlay : MonoBehaviour {
             if (source == null || source.producer || seen.Contains(source)) break;   // a building or the HQ: the root (or a loop)
             seen.Add(source);
             f = moved != null && source != moved ? SolveWithout(p, source, moved, movedTo) : SupplyNetwork.SolveWithout(p, source);
-            if (f.DepthAt(top) <= 0) break;   // stranded: it feeds itself
+            if (f.DepthAt(top) <= 0) {
+                // Aboard a transport it links over the transport's move (SupplyNetwork): the line
+                // jumps to the nearest supplied ground and carries on from there.
+                HexTile near = null;
+                if (source.myUnit != null && source.myUnit.trasnporter != null)
+                    foreach (KeyValuePair<HexTile, int> kv in f.depth)
+                        if (kv.Value > 0 && (near == null || kv.Key.Distance(top) < near.Distance(top) || (kv.Key.Distance(top) == near.Distance(top) && CombatMath.Precedes(kv.Key, near)))) near = kv.Key;
+                if (near == null || !Linked(p, source, moved, movedTo)) break;   // stranded: it feeds itself
+                top = near;
+            }
             at = top;
         }
         if (moved != null) SupplyNetwork.Solve(p, false, moved, movedTo);   // the preview stays on the board
         else SupplyNetwork.Solve(p, false);
         return points;
+    }
+
+    static bool Linked(Player p, SupplyPoint hub, SupplyPoint moved, HexTile movedTo) {
+        SupplyNetwork.Result r = moved != null ? SupplyNetwork.Solve(p, false, moved, movedTo) : SupplyNetwork.Solve(p, false);
+        return r.connectedHubs.Contains(hub);
     }
 
     static SupplyNetwork.Result SolveWithout(Player p, SupplyPoint without, SupplyPoint moved, HexTile movedTo) {
