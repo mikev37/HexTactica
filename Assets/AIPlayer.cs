@@ -22,8 +22,8 @@ public class AIPlayer : MonoBehaviour {
 
     [Tooltip("Seconds between visible actions. Ignored in headless mode.")]
     public float actionInterval = 0.5f;
-    [Tooltip("Longest the AI waits for the last action's animations (moves, shots, retreats) before acting again, in seconds.")]
-    public float maxAnimationWait = 2.5f;
+    [Tooltip("Longest the AI holds an action that follows up on a retreat (a shot at the retreating unit, a move onto the tile it left) for the retreat to play, in seconds. Other actions only wait actionInterval.")]
+    public float maxAnimationWait = 3f;
     float animationWait;
 
     float timer;
@@ -76,11 +76,15 @@ public class AIPlayer : MonoBehaviour {
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
         if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; return; }
 
-        // Let the last action finish on screen first (a retreat sliding back, a shot landing): the
-        // next one acts on the board as the rules have it, and the player should see the same.
-        // (At most a few seconds, in case an animation never reports done.)
-        if (Unit.AnyAnimating() && animationWait < maxAnimationWait) { animationWait += Time.deltaTime; return; }
-        animationWait = 0f;
+        // An action held back until a retreat it follows up on has played (see WaitsOnRetreat).
+        if (holding) {
+            if (WaitsOnRetreat(held) && animationWait < maxAnimationWait) { animationWait += Time.deltaTime; return; }
+            animationWait = 0f;
+            AIAction a = held; holding = false;
+            Run(a.unit, a, false);
+            timer = actionInterval;
+            return;
+        }
 
         timer -= Time.deltaTime;
         if (timer > 0) return;
@@ -112,6 +116,38 @@ public class AIPlayer : MonoBehaviour {
             GameController.gc.activeUnit = unit;
 
             AIAction action = DecideFor(unit);
+            // Following up on a unit still sliding back from a retreat (shooting it, or moving onto
+            // the tile it is leaving): wait for the slide to show first. Anything else goes ahead.
+            if (!headless && WaitsOnRetreat(action)) { held = action; held.unit = unit; holding = true; animationWait = 0f; return true; }
+            bool did = Run(unit, action, headless);
+            if (GameController.gc.gameOver) return false;
+            if (did) return true;
+        }
+
+        BuySupply();
+        EndTurn();
+        return false;
+    }
+
+    /// <summary>An action decided but held until a retreat it follows up on has played.</summary>
+    AIAction held;
+    bool holding;
+
+    /// <summary>
+    /// Does <paramref name="a"/> follow up on a retreat still playing on screen: fire at a unit
+    /// that is sliding back, or move onto (or through the end of) the tile it is leaving?
+    /// </summary>
+    static bool WaitsOnRetreat(AIAction a) {
+        if (a.target != null && a.target.RetreatPlaying) return true;
+        if (a.destination != null && UnitController.uc != null)
+            foreach (Unit x in UnitController.uc.units)
+                if (x != null && x.RetreatPlaying && (x.retreatFrom == a.destination || x.tile == a.destination)) return true;
+        return false;
+    }
+
+    /// <summary>Carry out one decided action, with the bookkeeping after it. True if it did something.</summary>
+    bool Run(Unit unit, AIAction action, bool headless) {
+        {
             bool did = HexTactica.AI.AIExecutor.Execute(action, map, headless);
             if (did) {
                 // Any action can change what every other unit can reach, where supply
@@ -129,14 +165,8 @@ public class AIPlayer : MonoBehaviour {
             // A unit that waited changed nothing, so there is nothing to recalculate.
             unit.active = false;
             if (!did) GameController.gc.activeUnit = null;
-
-            if (GameController.gc.gameOver) return false;
-            if (did) return true;
+            return did;
         }
-
-        BuySupply();
-        EndTurn();
-        return false;
     }
 
     /// <summary>The supply chain as planned at the start of this turn (profile.supplyChain).</summary>
@@ -172,6 +202,7 @@ public class AIPlayer : MonoBehaviour {
     /// <summary>Forget the turn in progress and everything remembered between turns: a new board was loaded.</summary>
     public void ResetTurn() {
         turnPrepared = false;
+        holding = false;
         queue.Clear();
         intents.Clear();
         postureMemory.Clear();
