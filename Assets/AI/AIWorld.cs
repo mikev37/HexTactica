@@ -242,7 +242,10 @@ namespace HexTactica.AI {
             // happen) and the discount is applied afterwards to what it cost us; unanswered ranged
             // fire (artillery) is certain and not discounted, so it is also tracked on its own.
             Dictionary<Unit, float> hpCertain = breakpoints ? new Dictionary<Unit, float>(hp) : null;
-            Func<Unit, HexTile> ourPos = x => x == u ? uAt : x.tile;
+            // Where each of ours stands as the reply plays out (forecastRetreatChain moves those driven back).
+            Dictionary<Unit, HexTile> displaced = new Dictionary<Unit, HexTile>();
+            string chainNote = null;
+            Func<Unit, HexTile> ourPos = x => { HexTile t; return displaced.TryGetValue(x, out t) ? t : x == u ? uAt : x.tile; };
             for (int ei = 0; ei < enemies.Count; ei++) {
                 Unit e = enemies[ei];
                 HashSet<HexTile> pos;
@@ -252,7 +255,7 @@ namespace HexTactica.AI {
                 float home = weighs ? Exposure(e, hp[e], e.tile, map, hp, ourPos) : 0f;
                 foreach (Unit d in map.ownUnits) {
                     if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d)) continue;
-                    HexTile dAt = d == u ? uAt : d.tile;
+                    HexTile dAt = ourPos(d);
                     HexTile fire = FiringTile(e, dAt, pos, taken);
                     if (fire == null) continue;
                     // The game's own exchange: cover on the defender's tile, retaliation without
@@ -287,21 +290,40 @@ namespace HexTactica.AI {
                 float dealt = Mathf.Min(hp[bestTarget], bestDamage * (breakpoints ? 1f : 1f - map.profile.replyDiscount));
                 bool certain = false;
                 if (breakpoints) {
-                    HexTile tAt = bestTarget == u ? uAt : bestTarget.tile;
+                    HexTile tAt = ourPos(bestTarget);
                     certain = bestBack == 0 && bestTile.Distance(tAt) > 1;
                     if (certain) {
                         hpCertain[bestTarget] = Mathf.Max(0f, hpCertain[bestTarget] - dealt);
                     }
                 }
                 hp[bestTarget] -= dealt;
+                // Driven back: for the blows still to come it stands on its retreat tile, and the tile
+                // it left is open to anyone who could step into it. (A tank knocked back by artillery,
+                // followed into the tile it left by a tank that knocks it back again, then finished.)
+                if (map.profile.forecastRetreatChain && hp[bestTarget] > 0f && !bestPinned && bestDamage - bestTarget.Veterancy > bestBack - e.Veterancy) {
+                    HexTile left = ourPos(bestTarget);
+                    HexTile back = AIPlan.RetreatTile(bestTarget, left, bestTile, hp, taken);
+                    if (back != null) {
+                        displaced[bestTarget] = back;
+                        taken.Remove(left); taken.Add(back);
+                        foreach (Unit later in enemies) {
+                            HashSet<HexTile> lp;
+                            if (later == e || !later.moveAndAttack || hp.ContainsKey(later) && hp[later] <= 0f || !positions.TryGetValue(later, out lp) || lp.Contains(left)) continue;
+                            foreach (HexTile n in left.neighbors) if (n != null && lp.Contains(n) && later.CanEnter(left)) { lp = new HashSet<HexTile>(lp); lp.Add(left); positions[later] = lp; break; }
+                        }
+                        chainNote = bestTarget.name + " driven back to (" + back.x + "," + back.y + ")";
+                    }
+                }
                 float sofar;
                 w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
                 hp[e] = Mathf.Max(0f, hp[e] - bestBack);
                 if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + dealt.ToString("0.#") + (bestPinned ? " pinned" : "") + (bestBack > 0 ? "/" + bestBack : "")
                                            + (certain ? " certain" : "") + (breakpoints && hp[bestTarget] <= 0f ? " kill" : ""));
+                if (narrate && chainNote != null) w.replies.Add(chainNote);
+                chainNote = null;
                 if (hp[bestTarget] <= 0f && !map.profile.forecastDeadBlock) {
                     // Destroyed: it no longer holds its tile or blocks anyone still to act.
-                    HexTile freed = bestTarget == u ? uAt : bestTarget.tile;
+                    HexTile freed = ourPos(bestTarget);
                     taken.Remove(freed);
                     gone.Add(bestTarget);
                     foreach (Unit later in enemies) {
@@ -350,7 +372,7 @@ namespace HexTactica.AI {
             if (prof.ownStrikeWeight > 0f || prof.enemyStrikeWeight > 0f) {
                 foreach (Unit x in hp.Keys) {
                     if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner != u.owner) continue;
-                    HexTile xAt = x == u ? uAt : x.tile;
+                    HexTile xAt = ourPos(x);
                     float best = 0f;
                     Unit bestD = null; int bestDmg = 0;
                     foreach (Unit d in hp.Keys) {
@@ -379,7 +401,7 @@ namespace HexTactica.AI {
                         float best = 0f;
                         foreach (Unit d in hp.Keys) {
                             if (hp[d] <= 0f || d.owner != u.owner || IsHQ(d)) continue;
-                            HexTile dAt = d == u ? uAt : d.tile;
+                            HexTile dAt = ourPos(d);
                             int dmg, back;
                             if (!InReach(x, xAt, dAt, out dmg, out back, Hp(hp[x]), d, Hp(hp[d]))) continue;
                             best = Mathf.Max(best, dmg * Value(d) - back * Value(x) + (dmg >= hp[d] ? prof.deathPremium * Value(d) : 0f));

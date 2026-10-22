@@ -379,6 +379,9 @@ namespace HexTactica.AI {
         [Tooltip("Strategy measures distance as a ground unit travels it (over land, around water), not as the crow flies: the pull toward objectives and staging, the staging tile, which units can reach a front, turns to contact.")]
         public bool travelDistance = true;
 
+        [Tooltip("Enemy reply forecast: a unit of ours driven back by one of their blows is where it retreated to for the blows after (and the tile it left is open to them), so chains of hits that push a unit back and follow it up are seen.")]
+        public bool forecastRetreatChain = false;
+
         [Tooltip("Supply units form a chain along the road from the HQ toward the objective, moved rear to front so the chain never breaks (AISupplyChain).")]
         public bool supplyChain = true;
 
