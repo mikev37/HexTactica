@@ -78,6 +78,10 @@ public static class Tests {
                              Environment.GetEnvironmentVariable("OUT") ?? "/tmp/hextactica-logs", tweak);
             return 0;
         }
+        if (probe == "options") {
+            Scenarios.Options(Environment.GetEnvironmentVariable("FILE"), Environment.GetEnvironmentVariable("UNIT"), Environment.GetEnvironmentVariable("AT"), tweak);
+            return 0;
+        }
         if (probe == "chokes") { Scenarios.Chokes(Environment.GetEnvironmentVariable("FILE")); return 0; }
         return Scenarios.RunAll(tweak) == 0 ? 0 : 1;
     }

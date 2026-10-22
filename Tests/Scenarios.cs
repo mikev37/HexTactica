@@ -225,6 +225,36 @@ public static class Scenarios {
     }
 
     /// <summary>
+    /// Every choice one Blue unit has on a scenario's board (UNIT=x,y), as the AI forecasts it: each
+    /// tile it can end on this turn, standing or with each shot it could take from there, with the
+    /// world score and the enemy reply. AT=x,y shows only that tile. For finding why it chose what it did.
+    /// </summary>
+    public static void Options(string name, string unitAt, string onlyAt, Action<AIProfile> tweak) {
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Human", tweak);
+        string[] xy = unitAt.Split(',');
+        Unit u = Rig.At(int.Parse(xy[0]), int.Parse(xy[1])).occupier;
+        AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+        HexTile only = null;
+        if (!string.IsNullOrEmpty(onlyAt)) { string[] a = onlyAt.Split(','); only = Rig.At(int.Parse(a[0]), int.Parse(a[1])); }
+        MoveField f = map.ReachThisTurn(u);
+        List<KeyValuePair<float, string>> rows = new List<KeyValuePair<float, string>>();
+        foreach (HexTile t in f.Tiles) {
+            if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
+            if (only != null && t != only) continue;
+            AIWorld.Outcome w = AIWorld.Evaluate(u, t, new AttackAppraisal(), map, new AIWorld.Cache(), true);
+            rows.Add(new KeyValuePair<float, string>(w.score, Pos(t) + " no shot: " + w.Summary()));
+            if (u.moveAndAttack || t == u.tile)
+                foreach (AttackAppraisal s in AITargeting.AllFrom(u, t, map, map.profile, Posture.Aggressive, true)) {
+                    AIWorld.Outcome ws = AIWorld.Evaluate(u, t, s, map, new AIWorld.Cache(), true);
+                    rows.Add(new KeyValuePair<float, string>(ws.score, Pos(t) + " hit " + s.target.name.Replace("(Clone)", "") + Pos(s.target.tile) + " " + s.outcome.damageToDefender + "/" + s.outcome.damageToAttacker + ": " + ws.Summary()));
+                }
+        }
+        rows.Sort((a, b) => b.Key.CompareTo(a.Key));
+        Console.WriteLine(u.name + " at " + Pos(u.tile) + " s" + u.Strength + ": " + rows.Count + " options, best first");
+        foreach (KeyValuePair<float, string> r in rows) Console.WriteLine(string.Format("  {0,8:0}  {1}", r.Key, r.Value));
+    }
+
+    /// <summary>
     /// A logistics game, narrated by supply: each round, per side, combat units in and out of
     /// supply, supply units connected to the HQ, how far up the road the front unit is (steps from
     /// its own HQ), unit-turns spent out of supply and units lost to attrition so far.
