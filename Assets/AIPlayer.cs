@@ -23,7 +23,7 @@ public class AIPlayer : MonoBehaviour {
     [Tooltip("Seconds between visible actions. Ignored in headless mode.")]
     public float actionInterval = 0.5f;
     [Tooltip("Longest the AI waits for the last action's animations (moves, shots, retreats) before acting again, in seconds.")]
-    public float maxAnimationWait = 6f;
+    public float maxAnimationWait = 2.5f;
     float animationWait;
 
     float timer;
