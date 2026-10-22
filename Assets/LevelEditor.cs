@@ -11,8 +11,10 @@ public class LevelEditor : MonoBehaviour
     public static LevelEditor singleton;
 	public bool editing,unit_placement,building_placement;
     public Unit ut;
-    [Tooltip("Building placed by clicking a tile while building_placement is on (owned by the active player)")]
+    [Tooltip("Building placed by clicking a tile while building_placement is on (owned by the active player, or nobody with placeNeutral)")]
     public Building bt;
+    [Tooltip("Buildings placed are neutral (owned by nobody) instead of the active player's")]
+    public bool placeNeutral;
 
     public List<TerrainData> allTerrain;
     public List<Unit> allUnit;
@@ -188,7 +190,7 @@ public class LevelEditor : MonoBehaviour
             GameObject.Destroy(old.gameObject);
             return;
         }
-        BuildingController.bc.Place(GameController.gc.activePlayer, singleton.bt, t);
+        BuildingController.bc.Place(singleton.placeNeutral ? null : GameController.gc.activePlayer, singleton.bt, t);
     }
 
     public static void PlaceNewUnit(HexTile t) {

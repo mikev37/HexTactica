@@ -86,6 +86,8 @@ public static class HarnessMenu {
     [MenuItem(RulesMenu + "Standard (HQ)", true)] static bool RulesStdCheck() { Menu.SetChecked(RulesMenu + "Standard (HQ)", RulesChoice() == "standard"); return true; }
     [MenuItem(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", false, 2)] static void RulesAtt() { SetRules("attrition"); }
     [MenuItem(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", true)] static bool RulesAttCheck() { Menu.SetChecked(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", RulesChoice() == "attrition"); return true; }
+    [MenuItem(RulesMenu + "Sandbox (never ends)", false, 3)] static void RulesSandbox() { SetRules("sandbox"); }
+    [MenuItem(RulesMenu + "Sandbox (never ends)", true)] static bool RulesSandboxCheck() { Menu.SetChecked(RulesMenu + "Sandbox (never ends)", RulesChoice() == "sandbox"); return true; }
 
     // ---- Who plays Red when a scenario loads. Blue (id 112) is always this AI.
 

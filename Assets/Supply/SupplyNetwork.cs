@@ -17,8 +17,9 @@ using UnityEngine;
 ///
 /// Propagation uses the *supplier's own movement rules*, which is what makes roads
 /// matter and lets enemy units physically sever a corridor. A hub riding a transport
-/// projects along the transport's movement instead — "the supply range is extended
-/// by the range of any transportation that the unit is on."
+/// spreads supply only as far as it would on foot, from where the transport stands, but links
+/// to the network as far as the transport could carry it: it is connected if supplied ground
+/// lies within one move of the transport.
 /// </summary>
 public static class SupplyNetwork {
 
@@ -164,6 +165,9 @@ public static class SupplyNetwork {
                     // A supply boat links to a friendly dock in supply, or to a linked supply boat,
                     // over water within its range; it supplies only the land it borders.
                     if (!NavalLinked(hub, at, player, result, activated, movedHub, hypotheticalTile, moved)) continue;
+                } else if (hub.myUnit != null && hub.myUnit.trasnporter != null) {
+                    // Aboard: linked if the transport could carry it onto supplied ground in one move.
+                    if (!WithinMoveOfSupply(hub.myUnit.trasnporter, at, result)) continue;
                 } else if (!result.IsSupplied(at)) continue;
 
                 activated.Add(hub);
@@ -311,18 +315,26 @@ public static class SupplyNetwork {
             return;
         }
 
-        int range = hub.range;
-        int scramble = u.terrainScramble;
-        Locomotion loco = u.locomotion;
+        // Aboard a transport or not, it spreads supply by its own range and rules from where it is
+        // (the transport carries it; it does not reach further for riding).
+        Flood(origin, hub.range, u.terrainScramble, u.owner, u.locomotion, result);
+    }
 
-        // Riding a transport extends reach using the transport's legs.
-        if (u.trasnporter != null) {
-            range += u.trasnporter.moveRange;
-            scramble = Mathf.Max(scramble, u.trasnporter.terrainScramble);
-            loco = u.trasnporter.locomotion;
+    /// <summary>
+    /// Is there supplied ground within one move of <paramref name="transport"/> standing on
+    /// <paramref name="at"/>, moving as it moves (its range, terrain and locomotion; enemies block)?
+    /// </summary>
+    static bool WithinMoveOfSupply(Unit transport, HexTile at, Result result) {
+        if (transport == null || at == null) return false;
+        if (result.IsSupplied(at)) return true;
+        Result reach = new Result();
+        Flood(at, transport.moveRange, transport.terrainScramble, transport.owner, transport.locomotion, reach, true);
+        // Onto supplied ground, or beside it (the cargo can step off there).
+        foreach (HexTile t in reach.depth.Keys) {
+            if (result.IsSupplied(t)) return true;
+            foreach (HexTile n in t.neighbors) if (n != null && result.IsSupplied(n)) return true;
         }
-
-        Flood(origin, range, scramble, u.owner, loco, result);
+        return false;
     }
 
     /// <summary>
@@ -338,7 +350,8 @@ public static class SupplyNetwork {
         int scramble = u.terrainScramble;
         Locomotion loco = u.locomotion;
         if (u.trasnporter != null) {
-            range = hub.range + u.trasnporter.moveRange * 2;
+            // Carried a move, then spreading its own range.
+            range = hub.range + u.trasnporter.moveRange;
             scramble = Mathf.Max(scramble, u.trasnporter.terrainScramble);
             loco = u.trasnporter.locomotion;
         }
@@ -353,6 +366,12 @@ public static class SupplyNetwork {
     /// AI input even though the *rule* (resupply or not) is binary.
     /// </summary>
     static void Flood(HexTile origin, int range, int scramble, Player owner, Locomotion loco, Result result) {
+        Flood(origin, range, scramble, owner, loco, result, false);
+    }
+
+    /// <param name="asMover">Trace a unit's move rather than supply: water is open to boats (and to
+    /// what can cross it), land is closed to them, and the origin counts at depth range.</param>
+    static void Flood(HexTile origin, int range, int scramble, Player owner, Locomotion loco, Result result, bool asMover) {
         if (origin == null || range <= 0) return;
 
         Dictionary<HexTile, int> cost = new Dictionary<HexTile, int>();
@@ -377,6 +396,8 @@ public static class SupplyNetwork {
                 if (n.occupier != null && n.occupier.owner != owner) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).
                 if (n.terrain.elevation < 0 && !LocomotionRules.IgnoresTerrain(loco) && !LocomotionRules.IsNaval(loco)) continue;
+                // A boat's move: water only (and its own docks).
+                if (asMover && LocomotionRules.IsNaval(loco) && n.terrain.elevation >= 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;
 
                 int step;
                 if (LocomotionRules.IgnoresTerrain(loco)) step = 1;

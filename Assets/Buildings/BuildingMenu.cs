@@ -11,9 +11,20 @@ public class BuildingMenu : MonoBehaviour {
 
     public static void Open(Building b) { open = b; }
 
+    /// <summary>Where the menu was last drawn (GUI coordinates), so a click on it is not also a click on the board.</summary>
+    static Rect drawn;
+    public static bool Covers(Vector3 mouse) { return open != null && drawn.Contains(new Vector2(mouse.x, Screen.height - mouse.y)); }
+
     void Update() {
         if (open != null && Input.GetKeyDown(KeyCode.Escape)) open = null;
-        if (open != null && (open.owner == null || GameController.gc == null || open.owner != GameController.gc.activePlayer)) open = null;
+        if (open != null && (open.owner == null || GameController.gc == null || open.owner != GameController.gc.activePlayer || !IsHumanTurn())) open = null;
+    }
+
+    /// <summary>The player whose turn it is plays by hand (no AI playing it).</summary>
+    public static bool IsHumanTurn() {
+        if (GameController.gc == null || GameController.gc.activePlayer == null) return false;
+        AIPlayer ai = GameController.gc.activePlayer.GetComponent<AIPlayer>();
+        return ai == null || !ai.enabled;
     }
 
     void OnGUI() {
@@ -22,6 +33,7 @@ public class BuildingMenu : MonoBehaviour {
         float w = 240f, row = 28f;
         float h = 60f + row * (b.buildable.Count + 1);
         Rect box = new Rect(Screen.width - w - 16f, 16f, w, h);
+        drawn = box;
         GUI.Box(box, (string.IsNullOrEmpty(b.personal_name) ? b.type.ToString() : b.personal_name) + " — money " + b.owner.money);
         float y = box.y + 30f;
         foreach (Unit u in b.buildable) {
