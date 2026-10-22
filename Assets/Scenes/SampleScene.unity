@@ -3155,7 +3155,9 @@ MonoBehaviour:
   td: {fileID: 11400000, guid: a75726bc2d31e154bbc76c4a3b87274c, type: 2}
   editing: 0
   unit_placement: 1
+  building_placement: 0
   ut: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+  bt: {fileID: 0}
   allTerrain:
   - {fileID: 11400000, guid: 497fe45b7f53f9c4585c70bfd42b9af8, type: 2}
   - {fileID: 11400000, guid: 877360fc9ea75e242ae7376b192ed80c, type: 2}
@@ -3240,6 +3242,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7163b8278da43249a75217da579ecb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  rules: 0
+  roundLimit: 30
   players:
   - {fileID: 1909610619}
   - {fileID: 1811020726}
