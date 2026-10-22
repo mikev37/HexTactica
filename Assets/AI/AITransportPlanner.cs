@@ -183,6 +183,7 @@ namespace HexTactica.AI {
 
         class RideSolution {
             public Unit transport;
+            public Unit cargoUnit;
             public MoveField rideField;                      // multi-source: min arrival over all rendezvous
             public Dictionary<HexTile, HexTile> seedOf;      // ride tile -> rendezvous that reached it
             public int bestLoadTurn = int.MaxValue;
@@ -204,6 +205,7 @@ namespace HexTactica.AI {
                     HexTile n = neighbors[i];
                     if (n == null || !rideField.Reachable(n)) continue;
                     if (!AIPath.CanFinishTurnOn(transport, n)) continue;
+                    if (cargoUnit != null && !LocomotionRules.BridgeStep(n, dest, cargoUnit.locomotion)) continue;   // off a bridge only by road
                     int eta = Ready(rideField.Get(n));
                     if (eta < best || (eta == best && dropoff != null && CombatMath.Precedes(n, dropoff))) {
                         best = eta;
@@ -270,6 +272,7 @@ namespace HexTactica.AI {
                         HexTile n = neighbors[i];
                         if (n == null || !cargoWalk.Reachable(n)) continue;
                         if (n != cargo.tile && !AIPath.CanFinishTurnOn(cargo, n)) continue;
+                        if (!Transporting.CanBoardOnto(cargo, n, r, transport)) continue;   // able to step aboard there (or at a dock)
                         cargoReady = Mathf.Min(cargoReady, Ready(cargoWalk.Get(n)));
                     }
                     if (cargoReady == int.MaxValue) continue;
@@ -291,6 +294,7 @@ namespace HexTactica.AI {
 
             return new RideSolution {
                 transport = transport,
+                cargoUnit = cargo,
                 rideField = rideField,
                 seedOf = seedOf,
                 bestLoadTurn = bestLoadTurn
@@ -335,6 +339,19 @@ namespace HexTactica.AI {
             // --- Not aboard yet: converge on the rendezvous, and board when adjacent.
             if (Transporting.CanBoardFrom(transport, cargo)) {
                 return AIAction.Board(cargo, transport, transport.tile, "board: " + plan.ToString());
+            }
+
+            // In reach of a tile beside the transport this turn: walk there and board (as a
+            // player can: move next to it, then get in).
+            if (Transporting.CanCarry(transport, cargo) && transport.tile != null) {
+                MoveField now = map.ReachThisTurn(cargo);
+                HexTile beside = null;
+                foreach (HexTile n in transport.tile.neighbors) {
+                    if (n == null || n.occupier != null || !now.ReachableThisTurn(n)) continue;
+                    if (!Transporting.CanBoardOnto(cargo, n, transport.tile, transport)) continue;
+                    if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
+                }
+                if (beside != null) return AIAction.Board(cargo, transport, beside, "walk and board: " + plan.ToString());
             }
 
             MoveField cargoField = map.ReachHorizon(cargo);

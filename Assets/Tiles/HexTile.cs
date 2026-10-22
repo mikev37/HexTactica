@@ -300,9 +300,9 @@ public class HexTile : MonoBehaviour
             Unit mover = GameController.gc.activeUnit;
             Unit transport = occupier;
             if (mover != null && transport != null) {
-                if (!neighbors.Contains(mover.tile) && mover.tile != this) {
+                if (!(neighbors.Contains(mover.tile) && Transporting.CanBoardOnto(mover, mover.tile, this, transport)) && mover.tile != this) {
                     HexTile beside = null;
-                    foreach (HexTile n in neighbors) if (n != null && n.state == UIState.MOVE && n.occupier == null && (beside == null || n.G < beside.G)) beside = n;
+                    foreach (HexTile n in neighbors) if (n != null && n.state == UIState.MOVE && n.occupier == null && Transporting.CanBoardOnto(mover, n, this, transport) && (beside == null || n.G < beside.G)) beside = n;
                     if (beside != null) mover.CompleteMove(beside);
                 }
                 if (Transporting.Load(transport, mover)) mover.FinishActive();
@@ -323,8 +323,9 @@ public class HexTile : MonoBehaviour
                 Unit cargo = occupier;
                 foreach (Unit tr in cargo.owner.units) {
                     if (tr == null || tr == cargo || tr.tile == null || !Transporting.CanCarry(tr, cargo)) continue;
-                    bool reach = tr.tile.neighbors.Contains(this);
-                    foreach (HexTile n in tr.tile.neighbors) if (n != null && n.state == UIState.MOVE) reach = true;
+                    // From here or from a tile it can move to beside the transport, and able to step aboard from there.
+                    bool reach = tr.tile.neighbors.Contains(this) && Transporting.CanBoardOnto(cargo, this, tr.tile, tr);
+                    foreach (HexTile n in tr.tile.neighbors) if (n != null && n.state == UIState.MOVE && Transporting.CanBoardOnto(cargo, n, tr.tile, tr)) reach = true;
                     if (reach) tr.tile.changeState(UIState.LOAD_CONFIRM);
                 }
             } else if( state==UIState.MOVE) {

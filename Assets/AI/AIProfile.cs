@@ -391,6 +391,9 @@ namespace HexTactica.AI {
         [Tooltip("Buy fighting units at our buildings with the money left at the end of the turn, when the rules and the scenario allow it (AIProduction).")]
         public bool buyUnits = true;
 
+        [Tooltip("Fighting units out of contact ride a free transport to the front when that gets them there sooner than walking (the same walk-or-ride planner supply units use), and get off where the ride ends.")]
+        public bool combatRides = false;
+
         [Tooltip("March: a fighting unit out of contact gains this much of a strength's worth for each step over land it ends nearer its front's objective (linear, so it pulls from any distance; supply costs still keep it inside supply).")]
         public float marchWeight = 0.05f;
 

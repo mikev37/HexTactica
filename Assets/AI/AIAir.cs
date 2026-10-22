@@ -244,6 +244,7 @@ namespace HexTactica.AI {
         /// <summary>Where <paramref name="action"/> leaves its unit at the end of the turn.</summary>
         public static HexTile EndOf(Unit u, AIAction action) {
             if (action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack) return u.tile;
+            if (action.kind == AIActionKind.Load && action.transport != null) return action.transport.tile;   // it ends aboard
             return action.destination ?? u.tile;
         }
 

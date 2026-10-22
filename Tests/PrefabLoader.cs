@@ -82,6 +82,14 @@ namespace HexTactica.Testing {
                     else if (fi.FieldType.IsEnum) fi.SetValue(u, Enum.ToObject(fi.FieldType, int.Parse(raw)));
                 } catch (FormatException) { /* complex value: skip */ }
             }
+            // Lists: the locomotion types a transport carries.
+            u.carries = new List<Locomotion>();
+            string[] lines = text.Replace("\r", "").Split('\n');
+            for (int i = 0; i < lines.Length; i++) {
+                if (lines[i] != "  carries:") continue;
+                for (int j = i + 1; j < lines.Length && lines[j].StartsWith("  - "); j++) u.carries.Add((Locomotion)int.Parse(lines[j].Substring(4).Trim()));
+                break;
+            }
             return u;
         }
 
