@@ -917,7 +917,7 @@ public static class Scenarios {
             List<HexTile> road = windingRoad();
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, road[0].x, road[0].y);
-            Put("Supplies", ai, road[7].x, road[7].y); Put("Grunt", ai, road[9].x, road[9].y); Put("Grunt", ai, road[10].x, road[10].y);
+            Put("Supplies", ai, road[3].x, road[3].y); Put("Grunt", ai, road[5].x, road[5].y); Put("Grunt", ai, road[6].x, road[6].y);
             HexTile end = road[road.Count - 1];
             Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
             Dictionary<string, string> test = Test("buy-supply-when-stretched", "behaviour", "Human", 1, "buySupply",

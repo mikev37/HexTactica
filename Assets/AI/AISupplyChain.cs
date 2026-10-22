@@ -125,7 +125,11 @@ namespace HexTactica.AI {
                     if (s == int.MaxValue) continue;
                     if (s < plan.frontSteps) { cappedOut = true; continue; }    // not ahead of the army
                     if (map.ExpectedLoss(u, t) > 0f) continue;                  // nothing can hit it tonight
-                    if (s < bestSteps || (s == bestSteps && CombatMath.Precedes(t, best))) { best = t; bestSteps = s; }
+                    if (best != null && !(s < bestSteps || (s == bestSteps && CombatMath.Precedes(t, best)))) continue;
+                    // ...not even by a chain of blows (the enemy's reply played out, as everywhere else).
+                    float lost;
+                    if (AIWorld.Evaluate(u, t, new AttackAppraisal(), map, new AIWorld.Cache(), false).lost.TryGetValue(u, out lost) && lost > 0f) continue;
+                    best = t; bestSteps = s;
                 }
                 if (best != null) {
                     Dictionary<SupplyPoint, HexTile> trial = new Dictionary<SupplyPoint, HexTile>(placed);
@@ -145,7 +149,7 @@ namespace HexTactica.AI {
                 plan.spare.Add(h);
             }
             plan.reachSteps = reach;
-            plan.short_ = hubs.Count == 0 || (!anyAdvance && !anyCapped && reach > 0);
+            plan.short_ = hubs.Count == 0 || (plan.spare.Count == 0 && !anyAdvance && !anyCapped && reach > 0);
             return plan;
         }
 
