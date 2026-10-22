@@ -56,4 +56,5 @@ AI/AICoordinator.cs
 Buildings/BuildingMenu.cs
 AI/AIAir.cs
 AI/AISupplyChain.cs
+AI/AIProduction.cs
 Units/TransportMenu.cs

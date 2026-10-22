@@ -1,7 +1,7 @@
 {
 "width":29,
 "active":112,
-"test":{"name":"logistics-zigzag","kind":"logistics","opponent":"Full","rounds":"60","check":"report","question":"Ocean with one serpentine road (79 tiles, two wide) between the HQs; the water between its rows is wider than artillery range. Supply must be chained forward: HQ range 8, five supply units of range 4 (moving 2 a turn) each side, and the armies meet about 39 tiles from home. Attrition rules, 60 rounds. This AI on both sides; Blue moves first.","rules":"attrition"},
+"test":{"name":"logistics-zigzag","kind":"logistics","opponent":"Full","rounds":"60","check":"report","question":"Ocean with one serpentine road (79 tiles, two wide) between the HQs; the water between its rows is wider than artillery range. Supply must be chained forward: HQ range 8, five supply units of range 4 (moving 2 a turn) each side, and the armies meet about 39 tiles from home. Attrition rules, 60 rounds. This AI on both sides; Blue moves first.","rules":"attrition","purchases":"on","allowedUnits":"Supplies"},
 "tiles":[
 {"x":-14,"y":0,"z":14,"damage":0,"combatCount":0,"terrain":"Water"},
 {"x":-14,"y":1,"z":13,"damage":0,"combatCount":0,"terrain":"Grassland"},

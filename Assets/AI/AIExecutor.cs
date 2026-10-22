@@ -35,6 +35,11 @@ namespace HexTactica.AI {
                 }
 
                 case AIActionKind.Load:
+                    // A destination beside the transport: walk there first, then board.
+                    if (action.destination != null && action.unit.tile != action.destination && action.transport != null && action.destination != action.transport.tile) {
+                        if (!DoMove(action.unit, action.destination, headless, map)) return false;
+                        if (action.unit.tile != action.destination) return true;
+                    }
                     if (Transporting.Load(action.transport, action.unit)) {
                         map.Invalidate(action.unit);
                         map.Invalidate(action.transport);

@@ -149,6 +149,16 @@ namespace HexTactica.Harness {
         /// <summary>"standard", "attrition", "sandbox", or null to use the file. Set from HexTactica ▸ Rules.</summary>
         public static string RulesOverride;
 
+        /// <summary>"on", "off", or null to use the file (else the rule set's default). Set from HexTactica ▸ Purchases.</summary>
+        public static string PurchasesOverride;
+
+        /// <summary>A setting from the test block, else from the top of the file, else null.</summary>
+        static string Setting(JSONObject obj, JSONObject test, string key) {
+            JSONObject f = test != null ? test.GetField(key) : null;
+            if (f == null) f = obj.GetField(key);
+            return f != null ? f.stringValue : null;
+        }
+
         /// <summary>
         /// Red's opponent and who moves first, from a scenario file's test block. Blue (id 112) is
         /// always this AI (AIPlayer), set up exactly as the headless harness runs it: no mission
@@ -173,6 +183,9 @@ namespace HexTactica.Harness {
             string rules = RulesOverride;
             if (string.IsNullOrEmpty(rules) && test != null && test.GetField("rules") != null) rules = test.GetField("rules").stringValue;
             GameController.gc.rules = GameController.ParseRules(rules);
+            // Purchases: the menu's choice, else the file's, else the rule set's default; and the
+            // units the scenario allows to be bought (all when it names none).
+            GameController.gc.ApplyPurchaseRules(PurchasesOverride ?? Setting(obj, test, "purchases"), Setting(obj, test, "allowedUnits"));
             // The file's round count is the attrition limit (30 when it gives none).
             int limit;
             GameController.gc.roundLimit = test != null && test.GetField("rounds") != null && int.TryParse(test.GetField("rounds").stringValue, out limit) ? limit : 30;

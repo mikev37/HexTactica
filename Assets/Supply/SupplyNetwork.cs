@@ -11,9 +11,8 @@ using UnityEngine;
 ///     from the HQ, so if there's an unbroken connection from the headquarters
 ///     building to the supply it is resupplied."
 ///
-/// So connection to HQ is not a nicety, it is the difference between a sustainable
-/// line and a burning fuse. A hub cut off from the network keeps supplying the
-/// units around it and pays for that out of its own health, six turns at most.
+/// A supply unit is a relay, not a source: cut off from the network it supplies nothing
+/// (supply buildings are different: a cut-off one gives out of the store it charged).
 ///
 /// Propagation uses the *supplier's own movement rules*, which is what makes roads
 /// matter and lets enemy units physically sever a corridor. A hub riding a transport
@@ -198,14 +197,14 @@ public static class SupplyNetwork {
             }
         }
 
-        // Hubs that never connected still supply their surroundings, out of pocket.
+        // Hubs that never connected are cut off: a supply unit relays supply, it does not make it,
+        // so a cut-off one supplies nothing (not even itself; it lives on what it carries, like any
+        // unit out of supply).
         for (int i = 0; i < hubs.Count; i++) {
             SupplyPoint hub = hubs[i];
             if (activated.Contains(hub)) continue;
-            HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
-            if (at == null) continue;
+            if (TileOf(hub, movedHub, hypotheticalTile, moved) == null) continue;
             result.strandedHubs.Add(hub);
-            FloodFromHub(hub, at, result);
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
@@ -215,14 +214,7 @@ public static class SupplyNetwork {
         });
 
         if (applyDrain) {
-            for (int i = 0; i < result.strandedHubs.Count; i++) {
-                SupplyPoint hub = result.strandedHubs[i];
-                hub.connected = false;
-                if (hub.myUnit != null) {
-                    hub.myUnit.Strength = Mathf.Max(0, hub.myUnit.Strength - 1);
-                    if (hub.myUnit.Strength <= 0) hub.myUnit.Delete();
-                }
-            }
+            for (int i = 0; i < result.strandedHubs.Count; i++) result.strandedHubs[i].connected = false;
             for (int i = 0; i < result.connectedHubs.Count; i++) {
                 result.connectedHubs[i].connected = true;
             }
