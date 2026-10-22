@@ -113,9 +113,14 @@ public class Unit : MonoBehaviour
     public int ammoMax;
 
     [Header("Transport Variables")]
+    [Tooltip("Room aboard, in slots: the weights of what it carries add up to at most this. 0: not a transport.")]
     public int transportSlots;
+    [Tooltip("Not used: capacity is transportSlots, counted in weight.")]
     public int maxWeight;
+    [Tooltip("Slots this unit takes aboard a transport (a grunt 1, supplies 2).")]
     public int weight;
+    [Tooltip("The locomotion types this transport carries (an APC: Boots). Empty: Boots only.")]
+    public List<Locomotion> carries = new List<Locomotion>();
 
     public List<Unit> transported;
     public Unit trasnporter;
@@ -390,9 +395,7 @@ public class Unit : MonoBehaviour
         if (!thenAttacks) ServiceOnLanding();
 
         // Carried units ride along rather than being left behind on the old tile.
-        for (int i = 0; i < transported.Count; i++) {
-            if (transported[i] != null) transported[i].tile = hexTile;
-        }
+        SetCargoTile(hexTile);
 
         animator.SetBool("Moving", true);
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
@@ -441,6 +444,15 @@ public class Unit : MonoBehaviour
         refuelStock = refuelStockMax;
     }
 
+    /// <summary>Everything aboard (and aboard that, and so on) is where this transport is.</summary>
+    public void SetCargoTile(HexTile t) {
+        for (int i = 0; i < transported.Count; i++) {
+            if (transported[i] == null) continue;
+            transported[i].tile = t;
+            transported[i].SetCargoTile(t);
+        }
+    }
+
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
     internal void TeleportTo(HexTile hexTile, int tilesEntered, bool thenAttacks = false) {
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
@@ -450,9 +462,7 @@ public class Unit : MonoBehaviour
         tile = hexTile;
         if (hexTile != null) hexTile.occupier = this;
         if (!thenAttacks) ServiceOnLanding();
-        for (int i = 0; i < transported.Count; i++) {
-            if (transported[i] != null) transported[i].tile = hexTile;
-        }
+        SetCargoTile(hexTile);
     }
 
     /// <summary>
@@ -655,9 +665,7 @@ public class Unit : MonoBehaviour
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = to;
         to.occupier = this;
-        for (int i = 0; i < transported.Count; i++) {
-            if (transported[i] != null) transported[i].tile = to;
-        }
+        SetCargoTile(to);
         // Empty path: Update() glides the sprite to the new tile at moveSpeed.
         path.Clear();
     }

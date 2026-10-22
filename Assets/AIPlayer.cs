@@ -271,6 +271,13 @@ public class AIPlayer : MonoBehaviour {
             hubsLast.Sort((a, b) => { int c = st(b).CompareTo(st(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
             foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
         }
+        // Transports act after everyone else, so the units they carry (or are to pick up) have
+        // decided first and handed them their plans.
+        if (Profile.combatRides) {
+            List<Unit> carriers = new List<Unit>();
+            foreach (Unit u in queue) if (Transporting.IsTransport(u) && u.Firepower <= 1) carriers.Add(u);
+            foreach (Unit u in carriers) { queue.Remove(u); queue.Add(u); }
+        }
         if (Profile.ghostSupply) PlanGhosts();
         // Aircraft reserve their landings before anyone moves.
         map.landings = AIAir.PlanLandings(map);
@@ -378,6 +385,13 @@ public class AIPlayer : MonoBehaviour {
         Posture posture = front != null ? front.posture : Posture.Defensive;
 
 
+        // A fighting unit out of contact (an objective's or not): ride a transport toward the
+        // objective if that is quicker than walking.
+        if (Profile.combatRides && unit.Firepower > 0 && unit.GetComponent<SupplyPoint>() == null) {
+            AIAction ride;
+            if (TryRide(unit, front, out ride)) return ride;
+        }
+
         // Mission objectives narrow the possibility space rather than commanding units,
         // which is what lets them compose with tactics instead of overriding them.
         if (objective != null && objective.OverridesTactics(unit, map)) {
@@ -416,7 +430,12 @@ public class AIPlayer : MonoBehaviour {
             return AIAction.Wait(unit, "hub: no better position");
         }
 
-        if (unit.trasnporter != null) return AIAction.Wait(unit, "aboard transport");
+        if (unit.trasnporter != null) {
+            // Aboard with nowhere better to be carried: get off here.
+            TransportPlan off = UnloadHere(unit);
+            if (off != null) { transportAssignments[off.transport] = off; reservedTransports.Add(off.transport); }
+            return AIAction.Wait(unit, "aboard transport");
+        }
 
         PlanStep step;
         if (planned.TryGetValue(unit, out step) && Profile.coordinationPasses && step.group > 0 && step.kind != null && step.kind.StartsWith("battle")) {
@@ -461,6 +480,43 @@ public class AIPlayer : MonoBehaviour {
         }
 
         return AITactical.Decide(unit, map, Profile, posture, front, objective);
+    }
+
+    /// <summary>
+    /// profile.combatRides: a fighting unit out of contact (or already riding) asks the walk-or-ride
+    /// planner for the quickest way to the supplied ground nearest its objective. When the answer is
+    /// a ride, the unit heads for the rendezvous (or boards, or stays aboard) and the transport is
+    /// given the plan; when it is a walk and the unit is aboard, it gets off. Otherwise the unit
+    /// decides as usual.
+    /// </summary>
+    bool TryRide(Unit unit, Front front, out AIAction action) {
+        action = default(AIAction);
+        if (unit.tile == null || unit.GetComponent<SupplyPoint>() != null) return false;
+        bool aboard = unit.trasnporter != null;
+        string who = unit.name.Replace("(Clone)", "");
+        if (!aboard && map.TurnsToContact(unit) <= Profile.objectiveContactTurns) return false;
+        if (!aboard && Transporting.AvailableFor(player, unit).Count == 0) { if (Trace != null) Trace("   " + who + " ride: no transport can take it"); return false; }
+        HexTile objectiveTile = front != null && front.objectiveTile != null ? front.objectiveTile : AISupplyChain.Objective(map);
+        if (objectiveTile == null) return false;
+        int from = map.Travel(unit, unit.tile, objectiveTile);
+        float worth = AIScore.Worth(unit);
+        float per = worth * Mathf.Max(0.05f, Profile.marchWeight);
+        List<HexTile> candidates = new List<HexTile>();
+        foreach (HexTile t in HexGenerator.hg.tiles) if (t != null && (map.SupplyDepth(t) > 0 || t == unit.tile) && unit.CanEnter(t)) candidates.Add(t);
+        System.Func<HexTile, float> valueOf = t => per * (from - map.Travel(unit, t, objectiveTile)) - AIScore.Risk(unit, t, map, Profile);
+        TransportPlan plan = AITransportPlanner.Plan(unit, map, Profile, valueOf, candidates, reservedTransports);
+        if (plan == null) { if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + " ride: no plan (" + candidates.Count + " supplied tiles)"); return false; }
+        if (!plan.usesTransport) {
+            if (Trace != null && !aboard) Trace("   " + unit.name.Replace("(Clone)", "") + " ride: walking is as good: " + plan);
+            if (!aboard) return false;   // walking: the ordinary decision does that better
+            action = AITransportPlanner.NextAction(plan, map, Profile);
+            return true;
+        }
+        transportAssignments[plan.transport] = plan;
+        reservedTransports.Add(plan.transport);
+        action = AITransportPlanner.NextAction(plan, map, Profile);
+        if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + " rides: " + plan);
+        return true;
     }
 
     /// <summary>A plan that drops cargo next to wherever its transport is now.</summary>

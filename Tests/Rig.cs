@@ -158,6 +158,7 @@ namespace HexTactica.Testing {
                 if (f.IsInitOnly) continue;
                 f.SetValue(u, f.GetValue(source));
             }
+            u.carries = source.carries != null ? new List<Locomotion>(source.carries) : new List<Locomotion>();
             u.name = source.name;
             return u;
         }
