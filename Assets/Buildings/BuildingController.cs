@@ -70,7 +70,7 @@ public class BuildingController : MonoBehaviour {
     /// tiles may be built on (the AI passes AIAir.MayBuildOn: never a tile reserved for a landing).
     /// </summary>
     public Unit Produce(Building b, Unit unit, System.Func<HexTile, bool> allowed = null) {
-        if (b == null || unit == null || b.owner == null || !b.CanProduce || !b.buildable.Contains(unit)) return null;
+        if (b == null || unit == null || b.owner == null || !b.CanBuild(unit)) return null;
         if (b.owner.money < unit.cost) return null;
         foreach (HexTile t in b.Footprint) {
             if (t.occupier != null || !unit.CanEnter(t)) continue;

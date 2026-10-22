@@ -125,6 +125,10 @@ public class AIPlayer : MonoBehaviour {
         }
 
         BuySupply();
+        if (Profile.buyUnits && map != null) {
+            List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace);
+            if (onBuy != null) foreach (Unit u in bought) onBuy(u);
+        }
         EndTurn();
         return false;
     }
@@ -188,7 +192,7 @@ public class AIPlayer : MonoBehaviour {
         foreach (Unit b in hq.buildable) {
             if (b == null) continue;
             SupplyPoint sp = b.GetComponent<SupplyPoint>();
-            if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion)) continue;
+            if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion) || !hq.CanBuild(b)) continue;
             if (pick == null || b.cost < pick.cost) pick = b;
         }
         if (pick == null || player.money < pick.cost) { if (Trace != null) Trace("   no supply bought: " + (pick == null ? "the HQ builds none" : "money " + player.money + " of " + pick.cost)); return; }
