@@ -15,6 +15,10 @@ public class TransportMenu : MonoBehaviour {
 
     public static void Open(Unit transport) { open = transport; pendingCargo = null; pendingTransport = null; }
 
+    /// <summary>Where the menu was last drawn (GUI coordinates), so a click on it is not also a click on the board.</summary>
+    static Rect drawn;
+    public static bool Covers(Vector3 mouse) { return open != null && drawn.Contains(new Vector2(mouse.x, Screen.height - mouse.y)); }
+
     void Update() {
         if (open != null && Input.GetKeyDown(KeyCode.Escape)) open = null;
         if (open != null && (open.tile == null || GameController.gc == null || open.owner != GameController.gc.activePlayer || open.transported.Count == 0)) open = null;
@@ -26,6 +30,7 @@ public class TransportMenu : MonoBehaviour {
         float w = 220f, row = 28f;
         float h = 60f + row * (t.transported.Count + 1);
         Rect box = new Rect(16f, 16f, w, h);
+        drawn = box;
         GUI.Box(box, t.name.Replace("(Clone)", "") + ": unload");
         float y = box.y + 30f;
         foreach (Unit c in t.transported.ToArray()) {

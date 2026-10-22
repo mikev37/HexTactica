@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 4000000000000000001}
   - component: {fileID: 2120000000000000001}
   - component: {fileID: 1140000000000000001}
+  - component: {fileID: 5200155903767369007}
   m_Layer: 0
   m_Name: City
   m_TagString: Untagged
@@ -70,8 +71,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1401847581
+  m_SortingLayer: 2
   m_SortingOrder: 5
   m_Sprite: {fileID: 21300000, guid: 3557a23bfa58e1c41bd2fac44fda1058, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -152,8 +153,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1401847581
+  m_SortingLayer: 2
   m_SortingOrder: 7
   m_Sprite: {fileID: 21300000, guid: cf9032679a36f464db216e9c3bc57515, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -208,3 +209,19 @@ MonoBehaviour:
   capturingPlayer: {fileID: 0}
   damageLevel: 0
   buildable: []
+--- !u!114 &5200155903767369007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000000000000000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61fdfdd9566278d4ebf863df5f4823ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sprite: {fileID: 0}
+  color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
+  distance: 0.2
+  renderQueue: 4

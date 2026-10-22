@@ -146,7 +146,7 @@ namespace HexTactica.Harness {
         /// </summary>
         public static string RedOverride;
 
-        /// <summary>"standard", "attrition", or null to use the file. Set from HexTactica ▸ Rules.</summary>
+        /// <summary>"standard", "attrition", "sandbox", or null to use the file. Set from HexTactica ▸ Rules.</summary>
         public static string RulesOverride;
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace HexTactica.Harness {
             // Rules: the menu's choice, else the file's ("rules":"attrition"), else standard.
             string rules = RulesOverride;
             if (string.IsNullOrEmpty(rules) && test != null && test.GetField("rules") != null) rules = test.GetField("rules").stringValue;
-            GameController.gc.rules = rules != null && rules.ToLowerInvariant() == "attrition" ? RuleSet.Attrition : RuleSet.Standard;
+            GameController.gc.rules = GameController.ParseRules(rules);
             // The file's round count is the attrition limit (30 when it gives none).
             int limit;
             GameController.gc.roundLimit = test != null && test.GetField("rounds") != null && int.TryParse(test.GetField("rounds").stringValue, out limit) ? limit : 30;

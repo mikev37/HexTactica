@@ -155,6 +155,20 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Boarding: walk the path to the transport at full size; only the last step, onto the
+        // transport's tile, is taken shrinking into the slot.
+        if (trasnporter != null && boardingWalk.Count > 0) {
+            HexTile next = boardingWalk[0];
+            if (boardingWalk.Count == 1 || next == null) { boardingWalk.Clear(); SettleAboard(trasnporter); }
+            else {
+                if (animator != null) animator.SetBool("Moving", true);
+                Vector3 to = next.unitPlacement != null ? next.unitPlacement.position : next.transform.position;
+                transform.rotation = to.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+                if (Vector2.Distance(transform.position, to) > .1f) transform.position = Vector2.MoveTowards(transform.position, to, Time.deltaTime * moveSpeed);
+                else boardingWalk.RemoveAt(0);
+                return;
+            }
+        }
         // Aboard: shrink into the transport's slot; nothing else moves this sprite.
         if (trasnporter != null) {
             transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
@@ -204,6 +218,29 @@ public class Unit : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Is this unit still showing something that already happened in the rules: walking, sliding
+    /// back after a retreat, boarding, a shot on its way to it or from it, its sprite not yet on
+    /// its tile? The AI waits for these before its next action, so what is on screen matches the
+    /// board (a unit is never shot where its sprite no longer is).
+    /// </summary>
+    public bool Animating {
+        get {
+            if (Strength <= 0 || tile == null) return false;
+            if (path.Count > 0 || attacking || retreatHold > 0f || boardingWalk.Count > 0 || refuelHopTo != null) return true;
+            if (firing) return true;   // its shot has not landed yet
+            if (trasnporter == null && tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f) return true;
+            return false;
+        }
+    }
+
+    /// <summary>Any unit on the board still animating (see <see cref="Animating"/>).</summary>
+    public static bool AnyAnimating() {
+        if (UnitController.uc == null) return false;
+        foreach (Unit u in UnitController.uc.units) if (u != null && u.Animating) return true;
+        return false;
+    }
+
     bool AnimatorIsPlaying() {
         return animator.GetCurrentAnimatorStateInfo(0).normalizedTime % 1 != 0;
     }
@@ -234,7 +271,38 @@ public class Unit : MonoBehaviour
     /// </summary>
     public void OnBoarded(Unit transport) {
         if (!scaleKnown) { homeScale = transform.localScale; scaleKnown = true; }
+        // Its own UI goes: strength, veterancy and warnings are not shown for a unit aboard.
+        hiddenUI.Clear();
+        foreach (Transform t in GetComponentsInChildren<Transform>(true)) {
+            if (t == transform || !t.gameObject.activeSelf) continue;
+            bool ui = t.GetComponent<Canvas>() != null || t.name == "HealthCircles" || t.name == "Veterancy" || t.name == "Canvas";
+            foreach (MonoBehaviour m in t.GetComponents<MonoBehaviour>())
+                if (m != null && (m.GetType().Name == "UnitStatusIcon" || m.GetType().Name == "HealthDot" || m.GetType().Name == "VeterancyChevron")) ui = true;
+            if (ui) {
+                t.gameObject.SetActive(false);
+                hiddenUI.Add(t.gameObject);
+            }
+        }
+        // The walk there (if it moved to board) is played out first, at full size.
+        boardingWalk.Clear();
+        if (path != null && path.Count > 0) boardingWalk.AddRange(path);
+        boardingWalk.Add(transport.tile);
         if (path != null) path.Clear();
+    }
+
+    /// <summary>Tiles still to walk before stepping into the transport (animation only).</summary>
+    readonly List<HexTile> boardingWalk = new List<HexTile>();
+    readonly List<GameObject> hiddenUI = new List<GameObject>();
+
+    /// <summary>Skip the boarding walk: straight into the slot (no frames to play it, or not wanted).</summary>
+    public void FinishBoarding() {
+        if (trasnporter == null) return;
+        boardingWalk.Clear();
+        SettleAboard(trasnporter);
+    }
+
+    /// <summary>The last step of boarding: into the transport's slot and its sorting group.</summary>
+    void SettleAboard(Unit transport) {
         if (animator != null) animator.SetBool("Moving", false);
         int slot = Mathf.Max(0, transport.transported.IndexOf(this));
         Transform at = transport.cargoSlots != null && slot < transport.cargoSlots.Count && transport.cargoSlots[slot] != null
@@ -247,14 +315,25 @@ public class Unit : MonoBehaviour
         foreach (SpriteRenderer r in transport.GetComponentsInChildren<SpriteRenderer>()) if (top == null || r.sortingOrder > top.sortingOrder) top = r;
         if (layer != 0 && SortingLayer.IsValid(layer)) { cargoGroup.sortingLayerID = layer; cargoGroup.sortingOrder = slot; }
         else if (top != null) { cargoGroup.sortingLayerID = top.sortingLayerID; cargoGroup.sortingOrder = top.sortingOrder + 1 + slot; }
-        if (GetComponent<SupplyPoint>() != null) {
+        // Supplies: hidden only when the transport has its own carrying-supply animation to show
+        // instead (a "CarryingSupply" parameter on its animator); otherwise shown like any cargo.
+        if (GetComponent<SupplyPoint>() != null && transport.HasAnimatorParameter("CarryingSupply")) {
             foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = false;
             transport.SetAnimatorBool("CarryingSupply", true);
         }
     }
 
+    public bool HasAnimatorParameter(string name) {
+        if (animator == null) return false;
+        foreach (AnimatorControllerParameter p in animator.parameters) if (p.name == name) return true;
+        return false;
+    }
+
     /// <summary>Unloading (Transporting.Unload calls this): everything OnBoarded did, undone; the unit walks to its tile.</summary>
     public void OnUnloaded(Unit transport) {
+        boardingWalk.Clear();
+        foreach (GameObject g in hiddenUI) if (g != null) g.SetActive(true);
+        hiddenUI.Clear();
         transform.SetParent(null, true);
         transform.rotation = Quaternion.identity;
         if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
@@ -615,6 +694,7 @@ public class Unit : MonoBehaviour
     //This starts the shooting process, but the animation controller determines when it is resolved.
     internal void Fire(Unit defender, bool retaliate) {
         target = defender;
+        firing = defender != null;
         animator.SetTrigger("Fire!");
         attacking = false;
         if (target == null)
@@ -629,7 +709,11 @@ public class Unit : MonoBehaviour
     /// <summary>Who fires back once this unit's shot lands (decided when the attack resolved). Animation only.</summary>
     [HideInInspector] public Unit answeredBy;
 
+    /// <summary>Between Fire and the shot landing (AttackResolve): animation only.</summary>
+    [System.NonSerialized] public bool firing;
+
     internal void AttackResolve(Unit defender, bool retaliate) {
+        firing = false;
         if (!defender) return;
         GameObject.Instantiate(weaponImpact, defender.transform.position, defender.transform.rotation);
         defender.StrengthDisplay = defender.Strength;
