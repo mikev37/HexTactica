@@ -31,5 +31,7 @@ public enum UIState {
     /// <summary>An enemy unit was clicked: a tile it can move to (SupplyOverlay.ShowEnemy).</summary>
     ENEMY_MOVE,
     /// <summary>An enemy unit was clicked: a tile it could fire on.</summary>
-    ENEMY_THREAT
+    ENEMY_THREAT,
+    /// <summary>A selected unit that fires without moving (artillery): a tile in its range with nothing to hit now.</summary>
+    RANGE
 }

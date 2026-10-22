@@ -169,6 +169,7 @@ public class HexTile : MonoBehaviour
                 overlay.sprite = uiData.move_possible;
                 break;
             case UIState.ENEMY_THREAT:
+            case UIState.RANGE:
                 overlay.sprite = uiData.attack_possible;
                 break;
             default: overlay.gameObject.SetActive(false); break;
@@ -253,6 +254,13 @@ public class HexTile : MonoBehaviour
 
 
 
+    /// <summary>Show this tile as in the range of our selected unit (faint, in our colour).</summary>
+    public void ShowRange(Player owner) {
+        changeState(UIState.RANGE);
+        Color c = owner != null ? owner.displayColor : Color.white;
+        overlay.color = new Color(c.r, c.g, c.b, 0.35f);
+    }
+
     public void OnMouseDown() {
         // A click on an open menu is the menu's (IMGUI does not stop it reaching the board).
         if (TransportMenu.Covers(Input.mousePosition) || BuildingMenu.Covers(Input.mousePosition)) return;
@@ -302,11 +310,14 @@ public class HexTile : MonoBehaviour
             HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
         }
         else {
-            if (occupier != null && state == UIState.FREE && occupier.active && occupier.owner.Equals(GameController.gc.activePlayer)) {
+            if (occupier != null && (state == UIState.FREE || state == UIState.RANGE) && occupier.active && occupier.owner.Equals(GameController.gc.activePlayer)) {
                 GameController.gc.activeUnit = occupier;
                 HexGenerator.forAllTiles(x => { x.G = 0; x.Reset(); return 0; });
                 CheckMovementRange(occupier).ForEach(x => { if(x.G != 0 && x.CanEndTurnHere(occupier)) x.changeState(UIState.MOVE);});
                 CheckAttackRange(occupier).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
+                // A unit that cannot move and fire (artillery): its whole range, not only what it can hit now.
+                if (!occupier.moveAndAttack)
+                    foreach (HexTile t in AllInAttackRange(occupier)) if (t.state == UIState.FREE) t.ShowRange(occupier.owner);
                 changeState(UIState.SELECTED);
                 // Our transports it can board: beside it now, or beside a tile it can move to.
                 Unit cargo = occupier;
@@ -359,10 +370,13 @@ public class HexTile : MonoBehaviour
                 attacker.OrderAttack(defender);
                 attacker.FinishActive();
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
-            } else if (occupier != null && state == UIState.FREE && GameController.gc.activeUnit == null && occupier.owner != GameController.gc.activePlayer) {
-                // An enemy: where it can go and what it can hit.
+            } else if (occupier != null && (state == UIState.FREE || state == UIState.RANGE) && occupier.owner != GameController.gc.activePlayer) {
+                // An enemy we are not attacking: where it can go and what it can hit (any selection is dropped).
+                GameController.gc.activeUnit = null;
                 SupplyOverlay.ShowEnemy(occupier);
             } else {
+                // Anywhere else: clear the board and the selection.
+                GameController.gc.activeUnit = null;
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
             }
         }
