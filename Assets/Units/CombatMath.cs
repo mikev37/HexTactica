@@ -182,10 +182,8 @@ public static class CombatMath {
             HexTile n = neighbors[i];
             if (n == null) continue;
             if (n.occupier != null) continue;
-            if (!defender.CanEnter(n)) continue;
-
+            if (!IsRetreatStep(defender, defender.tile, n, attackerTile)) continue;
             int d = attackerTile != null ? n.Distance(attackerTile) : currentDistance + 1;
-            if (d <= currentDistance) continue;          // not away from the attacker
 
             // Straight back is the one farthest from the attacker's line: the most distant, then
             // the one whose step is most nearly opposite the attacker.
@@ -197,8 +195,21 @@ public static class CombatMath {
         return best;
     }
 
+    /// <summary>
+    /// Could <paramref name="d"/> on <paramref name="from"/> fall back onto <paramref name="to"/> (a
+    /// neighbour), hit from <paramref name="attacker"/>? It must be able to stand there, step there
+    /// (off a bridge only by road), and end farther from the attacker. Occupancy is the caller's.
+    /// The AI's forecasts use this too, so they cannot drift from the rule.
+    /// </summary>
+    public static bool IsRetreatStep(Unit d, HexTile from, HexTile to, HexTile attacker) {
+        if (d == null || from == null || to == null || to == attacker) return false;
+        if (!d.CanEnter(to)) return false;
+        if (!LocomotionRules.BridgeStep(from, to, d.locomotion)) return false;
+        return attacker == null || to.Distance(attacker) > from.Distance(attacker);
+    }
+
     /// <summary>Is the step to <paramref name="a"/> more nearly straight away from the attacker than the step to <paramref name="b"/>? (Ties: cube order.)</summary>
-    static bool Straighter(HexTile a, HexTile b, HexTile from, HexTile attacker) {
+    public static bool Straighter(HexTile a, HexTile b, HexTile from, HexTile attacker) {
         if (attacker == null) return Precedes(a, b);
         // Opposite of the attacker's direction, in cube coordinates; compare by dot product.
         int ax = from.x - attacker.x, ay = from.y - attacker.y, az = from.z - attacker.z;

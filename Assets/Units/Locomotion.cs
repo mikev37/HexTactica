@@ -52,4 +52,21 @@ public static class LocomotionRules {
     public static bool IsNaval(Locomotion l) {
         return l == Locomotion.Ship;
     }
+
+    /// <summary>A bridge tile (elevation 0: over water, at road level).</summary>
+    public static bool IsBridge(HexTile t) {
+        return t != null && t.terrain != null && t.terrain.elevation == 0;
+    }
+
+    /// <summary>
+    /// A bridge joins only the roads at its ends: a step onto or off a bridge is allowed only from
+    /// or to a road tile (another bridge counts: bridges are road). Aircraft, which ignore the
+    /// ground, are not held to it. Everything else that walks, drives or spreads supply is.
+    /// </summary>
+    public static bool BridgeStep(HexTile from, HexTile to, Locomotion l) {
+        if (from == null || to == null || IgnoresTerrain(l)) return true;
+        if (IsBridge(from) && (to.terrain == null || !to.terrain.road)) return false;
+        if (IsBridge(to) && (from.terrain == null || !from.terrain.road)) return false;
+        return true;
+    }
 }

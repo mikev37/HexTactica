@@ -67,6 +67,7 @@ public static class Transporting {
             HexTile n = neighbors[i];
             if (n == null || n.occupier != null) continue;
             if (!cargo.CanEnter(n)) continue;
+            if (!LocomotionRules.BridgeStep(transport.tile, n, cargo.locomotion)) continue;   // off a bridge only by road
             options.Add(n);
         }
         return options;
@@ -77,6 +78,7 @@ public static class Transporting {
         if (!transport.transported.Contains(cargo)) return false;
         if (onto.occupier != null) return false;
         if (!cargo.CanEnter(onto)) return false;
+        if (!LocomotionRules.BridgeStep(transport.tile, onto, cargo.locomotion)) return false;
         if (!transport.tile.neighbors.Contains(onto) && onto != transport.tile) return false;
 
         transport.transported.Remove(cargo);
