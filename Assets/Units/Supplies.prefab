@@ -91,6 +91,7 @@ MonoBehaviour:
   elevationMax: 2
   moveSpeed: 10
   StrengthDisplay: 0
+  suppressed: 0
   path: []
   supplies: 3
   suppliesMax: 3
@@ -101,6 +102,7 @@ MonoBehaviour:
   transportSlots: 0
   maxWeight: 0
   weight: 2
+  carries: 
   transported: []
   trasnporter: {fileID: 0}
   cargoSlots: []
@@ -109,6 +111,7 @@ MonoBehaviour:
   attacking: 0
   target: {fileID: 0}
   pendingRetreat: {fileID: 0}
+  retreatPause: 0.1
   shooter: 0
   answeredBy: {fileID: 0}
 --- !u!95 &1922176808774982529
@@ -323,7 +326,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4268216487124329169, guid: c7970adddc23d154b9de98dbd7707eb6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -7.149191
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4268216487124329169, guid: c7970adddc23d154b9de98dbd7707eb6, type: 3}
       propertyPath: m_LocalRotation.w
