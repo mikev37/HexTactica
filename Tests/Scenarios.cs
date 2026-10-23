@@ -414,6 +414,8 @@ public static class Scenarios {
                  Put("Artillery", a, -4, 0); Put("Artillery", a, -4, 2); Put("Grunt", a, -1, 1); Put("Tank", a, -3, -2);
                  Put("Tank", o, 0, 0); Put("Tank", o, 0, 3); Put("Tank", o, -1, -2); Put("Grunt", o, 2, -2); },
              "Indirect fire suppresses instead of driving back. Artillery hits a tank hard enough that it would have retreated: it stays where it is, takes the same damage, and half its unsuppressed pips (rounded up) are suppressed. Attacked again that turn, it fires back with its strength less the suppressed pips (none at all when every pip is suppressed). A second artillery hit suppresses half of what is left. A hit too light to push it (a veteran) suppresses nothing. Its own turn starting, every pip comes back. Direct fire still drives back.");
+        make("attrition-rule-recon-transport", "reconTransport", (a, o) => { Put("Recon", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
+             "The recon truck (1 slot, carries Boots) takes a grunt, drives, and puts it down beside it, as the APC does.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
              "Sandbox: turns go Blue, Red, Blue, Red even if a side is marked out (a file saved after it was knocked out), and the day goes up once per round.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
@@ -714,6 +716,17 @@ public static class Scenarios {
                 r.Add("tank on a grunt: retreats " + d.defenderRetreats + ", suppressed " + d.defenderSuppressed + " " + a7); ok &= a7;
                 detail = string.Join("; ", r.ToArray());
                 return ok;
+            }
+            case "reconTransport": {
+                Unit rc = Rig.At(-3, 0).occupier, g = Rig.At(-2, 0).occupier;
+                bool kinds = rc.carries.Count == 1 && rc.carries[0] == Locomotion.Boots;
+                bool loaded = Transporting.Load(rc, g);
+                g.FinishBoarding();
+                rc.TeleportTo(Rig.At(-3, 3), 3);
+                List<HexTile> opts = Transporting.UnloadOptions(rc, g);
+                bool unloaded = opts.Count > 0 && Transporting.Unload(rc, g, opts[0]);
+                detail = "carries " + string.Join(",", rc.carries.ConvertAll(x => x.ToString()).ToArray()) + " (slots " + rc.transportSlots + "); loaded " + loaded + "; " + opts.Count + " tiles to put it down; unloaded " + unloaded;
+                return kinds && loaded && unloaded;
             }
             case "sandboxTurns": {
                 gc.rules = RuleSet.Sandbox;
