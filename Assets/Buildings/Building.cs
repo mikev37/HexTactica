@@ -181,7 +181,7 @@ public class Building : MonoBehaviour {
         return u != null
             && u.Strength > 0
             && u.GetComponent<SupplyPoint>() == null
-            && (u.locomotion == Locomotion.Boots || u.locomotion == Locomotion.Marine);
+            && u.locomotion == Locomotion.Boots;
     }
 
     /// <summary>
