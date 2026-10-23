@@ -48,6 +48,11 @@ namespace HexTactica.AI {
                     return false;
 
                 case AIActionKind.Unload:
+                    // Drive there first, then put the cargo down (same turn: getting off costs nothing).
+                    if (action.via != null && action.via != action.unit.tile) {
+                        if (!DoMove(action.unit, action.via, headless, map)) return false;
+                        if (action.unit.tile != action.via) return true;
+                    }
                     if (Transporting.Unload(action.unit, action.target, action.destination)) {
                         map.Invalidate(action.unit);
                         map.Invalidate(action.target);
