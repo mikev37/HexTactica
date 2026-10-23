@@ -11,7 +11,15 @@ namespace UnityEditor {
         public static string GetString(string k, string d) { return d; }
         public static void SetString(string k, string v) { }
     }
+    [AttributeUsage(AttributeTargets.Class)] public class InitializeOnLoadAttribute : Attribute { }
+    public static class EditorApplication {
+        public delegate void CallbackFunction();
+        public static CallbackFunction delayCall;
+        public static bool isPlayingOrWillChangePlaymode;
+    }
+    public static class PrefabUtility { public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject g, string path) { return g; } }
     public static class EditorUtility {
+        public static bool DisplayDialog(string t, string m, string ok, string cancel) { return false; }
         public static void SetDirty(UnityEngine.Object o) { }
         public static void RevealInFinder(string path) { }
         public static string OpenFilePanel(string title, string dir, string ext) { return ""; }

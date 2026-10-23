@@ -16,6 +16,7 @@ namespace UnityEngine {
         public static void Destroy(Object o) { }
         public static void DestroyImmediate(Object o) { }
         public static T FindObjectOfType<T>() where T : class { return null; }
+        public static T FindAnyObjectByType<T>() where T : class { return null; }
     }
 
     public struct Vector2 {
@@ -57,7 +58,7 @@ namespace UnityEngine {
     public struct Matrix4x4 { public static Matrix4x4 identity { get { return new Matrix4x4(); } } }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) { return m.value; } }
     public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
-    public class RectOffset { public int left, right, top, bottom; }
+    public class RectOffset { public int left, right, top, bottom; public RectOffset() { } public RectOffset(int l, int r, int t, int b) { left = l; right = r; top = t; bottom = b; } }
     public struct Quaternion {
         public static Quaternion identity { get { return new Quaternion(); } }
         public static Quaternion Euler(float x, float y, float z) { return new Quaternion(); }
@@ -74,6 +75,7 @@ namespace UnityEngine {
     public struct Bounds {
         public Vector3 center, extents;
         public Bounds(Vector3 c, Vector3 size) { center = c; extents = new Vector3(size.x / 2, size.y / 2, size.z / 2); }
+        public Vector3 size { get { return new Vector3(extents.x * 2, extents.y * 2, extents.z * 2); } }
         public void Encapsulate(Vector3 p) { }
         public void Expand(float a) { }
     }
@@ -148,6 +150,7 @@ namespace UnityEngine {
         public Quaternion rotation, localRotation;
         public Transform parent;
         public void SetParent(Transform p, bool worldPositionStays) { parent = p; }
+        public Transform Find(string n) { return null; }
         public void SetParent(Transform p) { parent = p; }
         public int childCount { get { return 0; } }
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
@@ -230,7 +233,7 @@ namespace UnityEngine {
         public GradientAlphaKey[] alphaKeys = new GradientAlphaKey[0];
         public void SetKeys(GradientColorKey[] c, GradientAlphaKey[] a) { colorKeys = c; alphaKeys = a; }
     }
-    public static class Resources { public static T Load<T>(string path) where T : class { return null; } }
+    public static class Resources { public static T Load<T>(string path) where T : class { return null; } public static T GetBuiltinResource<T>(string path) where T : class { return null; } }
     public class LineRenderer : Renderer {
         public Gradient colorGradient;
         public int positionCount;
@@ -241,7 +244,7 @@ namespace UnityEngine {
         public bool useWorldSpace;
         public void SetPosition(int i, Vector3 v) { }
     }
-    public class Canvas : Behaviour { }
+    public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; }
     public class Animator : Behaviour {
         public void SetBool(string s, bool b) { }
         public void SetTrigger(string s) { }
@@ -313,11 +316,18 @@ namespace UnityEngine {
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class ContextMenuAttribute : Attribute { public ContextMenuAttribute(string s) { } }
 }
 
+namespace UnityEngine {
+    public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }
+    public class Font : Object { }
+    public enum TextAnchor { UpperLeft, UpperCenter, UpperRight, MiddleLeft, MiddleCenter, MiddleRight, LowerLeft, LowerCenter, LowerRight }
+}
+namespace UnityEngine.Events { public delegate void UnityAction(); }
 namespace UnityEngine.UI {
-    public class Graphic : UnityEngine.Component { public UnityEngine.Color color; }
-    public class Text : Graphic { public string text = ""; public int fontSize; }
-    public class Image : Graphic { public UnityEngine.Sprite sprite; }
-    public class Button : UnityEngine.Component { }
+    public class ButtonClickedEvent { public void AddListener(UnityEngine.Events.UnityAction a) { } public void RemoveAllListeners() { } }
+    public class Graphic : UnityEngine.Behaviour { public UnityEngine.Color color; public bool raycastTarget; }
+    public class Text : Graphic { public string text = ""; public int fontSize; public UnityEngine.Font font; public UnityEngine.TextAnchor alignment; }
+    public class Image : Graphic { public UnityEngine.Sprite sprite; public bool preserveAspect; }
+    public class Button : UnityEngine.Behaviour { public Graphic targetGraphic; public bool interactable = true; public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
 }
 
 namespace UnityEditor {

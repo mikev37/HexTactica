@@ -286,12 +286,14 @@ public class HexTile : MonoBehaviour
         if (LevelEditor.singleton.editing) {
             LevelEditor.singleton.mouseDown = true;
 		} else { 
-            // A click on an open menu is the menu's (IMGUI does not stop it reaching the board).
+            // A click on an open menu is the menu's (neither the UI nor IMGUI stops it reaching the board).
             if (TransportMenu.Covers(Input.mousePosition) || BuildingMenu.Covers(Input.mousePosition)) return;
-            // Any other click closes them; one that is not on a tile offered for unloading drops the unload.
-            TransportMenu.open = null;
+            // Any other click closes them (the transport panel reopens below while its transport
+            // stays selected); one that is not on a tile offered for unloading drops the unload.
+            Unit justMoved = null;
+            bool unloading = state == UIState.UNLOAD_CONFIRM && TransportMenu.pendingCargo != null;
+            if (!unloading) TransportMenu.Close();
             BuildingMenu.open = null;
-            if (TransportMenu.pendingCargo != null && state != UIState.UNLOAD_CONFIRM) { TransportMenu.pendingCargo = null; TransportMenu.pendingTransport = null; }
             // An enemy's move and threat on show: any click clears it first.
             SupplyOverlay.HideEnemy();
             UnitController.uc.units.ForEach(x => x.clearDisplay());
@@ -299,15 +301,13 @@ public class HexTile : MonoBehaviour
                      && building.owner != null && building.owner == GameController.gc.activePlayer && BuildingMenu.IsHumanTurn() && building.Purchasable().Count > 0) {
                 // A building is clickable only with no unit on it: its build list.
                 BuildingMenu.Open(building);
-            } else if (state == UIState.UNLOAD_CONFIRM && TransportMenu.pendingCargo != null) {
-                // The tile picked for the unit being unloaded.
-                Unit cargo = TransportMenu.pendingCargo, transport = TransportMenu.pendingTransport;
-                TransportMenu.pendingCargo = null; TransportMenu.pendingTransport = null;
-                Transporting.Unload(transport, cargo, this);
-                HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+            } else if (unloading) {
+                // The tile picked for the unit being unloaded (the transport moves to its picked tile first, if it unloads from there).
+                TransportMenu.UnloadOnto(this);
             } else if (occupier != null && Transporting.IsTransport(occupier) && occupier.transported.Count > 0 && occupier.owner == GameController.gc.activePlayer
-                       && (state == UIState.SELECTED || (state == UIState.FREE && !occupier.active && !occupier.attackedThisTurn))) {
-                // A transport clicked again once selected, or after it has moved without attacking: what is aboard.
+                       && (state == UIState.SELECTED || (state == UIState.FREE && !occupier.active))) {
+                // A transport clicked again once selected, or after its turn is over (units can still
+                // be put down then): what is aboard.
                 TransportMenu.Open(occupier);
             } else if (state == UIState.LOAD_CONFIRM) {
                 // Board: walk beside the transport if not already there, then get in.
@@ -332,9 +332,6 @@ public class HexTile : MonoBehaviour
                     if (!occupier.moveAndAttack)
                         foreach (HexTile t in AllInAttackRange(occupier)) if (t.state == UIState.FREE) t.ShowRange(occupier.owner);
                     changeState(UIState.SELECTED);
-                    // A transport with something aboard: its unload list opens with the selection (no
-                    // second click needed; any click on the board closes it and leaves the selection).
-                    if (Transporting.IsTransport(occupier) && occupier.transported.Count > 0) TransportMenu.Open(occupier);
                     // Our transports it can board: beside it now, or beside a tile it can move to.
                     Unit cargo = occupier;
                     foreach (Unit tr in cargo.owner.units) {
@@ -367,6 +364,8 @@ public class HexTile : MonoBehaviour
                     mover.CompleteMove(this);
                     mover.FinishActive();
                     HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+                    // A transport that has moved can still put down what it carries.
+                    if (Transporting.IsTransport(mover) && mover.transported.Count > 0) justMoved = mover;
                 } else if (state == UIState.ATTACK) {
                     HexGenerator.forAllTiles(x => { if (x.state == UIState.ATTACK_CONFIRM) x.changeState(UIState.ATTACK); return 0; });
                     changeState(UIState.ATTACK_CONFIRM);
@@ -397,6 +396,13 @@ public class HexTile : MonoBehaviour
                     GameController.gc.activeUnit = null;
                     HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
                 }
+            }
+            // A selected transport with something aboard shows its panel, whatever the click did to
+            // the selection (picking its move tile, say); so does one that has just moved.
+            Unit selected = GameController.gc.activeUnit;
+            if (TransportMenu.open == null) {
+                if (selected != null && Transporting.IsTransport(selected) && selected.transported.Count > 0 && selected.owner == GameController.gc.activePlayer) TransportMenu.Open(selected);
+                else if (justMoved != null && justMoved.tile != null) TransportMenu.Open(justMoved);
             }
         }
 			//gameObject.Destroy(this.gameObject);
