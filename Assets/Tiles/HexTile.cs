@@ -332,6 +332,9 @@ public class HexTile : MonoBehaviour
                     if (!occupier.moveAndAttack)
                         foreach (HexTile t in AllInAttackRange(occupier)) if (t.state == UIState.FREE) t.ShowRange(occupier.owner);
                     changeState(UIState.SELECTED);
+                    // A transport with something aboard: its unload list opens with the selection (no
+                    // second click needed; any click on the board closes it and leaves the selection).
+                    if (Transporting.IsTransport(occupier) && occupier.transported.Count > 0) TransportMenu.Open(occupier);
                     // Our transports it can board: beside it now, or beside a tile it can move to.
                     Unit cargo = occupier;
                     foreach (Unit tr in cargo.owner.units) {
