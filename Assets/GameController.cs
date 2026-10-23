@@ -197,7 +197,7 @@ public class GameController : MonoBehaviour
                 index--;
             }
             activePlayer = players[index];
-        } while (activePlayer.eliminated && guard++ < players.Count);
+        } while (activePlayer.eliminated && rules != RuleSet.Sandbox && guard++ < players.Count);   // Sandbox: nobody is ever out
 
         activePlayer.StartTurn();
         CheckVictory();
