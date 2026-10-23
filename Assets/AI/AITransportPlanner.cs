@@ -111,6 +111,7 @@ namespace HexTactica.AI {
 
             for (int i = 0; i < transports.Count; i++) {
                 RideSolution ride = BuildRide(cargo, transports[i], walk, horizon, profile);
+                if (ride != null) { ride.freshUnload = profile.freshUnload; ride.walkAfterDrop = profile.freshUnload && profile.freshUnloadPlanning; }
                 if (ride == null) continue;
                 if (bestRide == null || ride.IsBetterThan(bestRide)) bestRide = ride;
             }
@@ -186,6 +187,10 @@ namespace HexTactica.AI {
             public Unit cargoUnit;
             public MoveField rideField;                      // multi-source: min arrival over all rendezvous
             public Dictionary<HexTile, HexTile> seedOf;      // ride tile -> rendezvous that reached it
+            public Dictionary<HexTile, int> loadTurnOf;      // rendezvous -> turn the cargo is aboard there
+            public bool freshAboard;                         // aboard already, and has not acted this turn
+            public bool freshUnload = true;                  // profile.freshUnload
+            public bool walkAfterDrop = true;                // profile.freshUnloadPlanning
             public int bestLoadTurn = int.MaxValue;
 
             /// <summary>
@@ -197,19 +202,32 @@ namespace HexTactica.AI {
                 dropoff = null;
                 if (dest == null) return int.MaxValue;
 
-                // Unload onto dest from a transport standing on a neighbour. (The transport
-                // cannot unload onto its own tile: it is occupying it.)
-                int best = int.MaxValue;
-                List<HexTile> neighbors = dest.neighbors;
-                for (int i = 0; i < neighbors.Count; i++) {
-                    HexTile n = neighbors[i];
-                    if (n == null || !rideField.Reachable(n)) continue;
-                    if (!AIPath.CanFinishTurnOn(transport, n)) continue;
-                    if (cargoUnit != null && !LocomotionRules.BridgeStep(n, dest, cargoUnit.locomotion)) continue;   // off a bridge only by road
-                    int eta = Ready(rideField.Get(n));
-                    if (eta < best || (eta == best && dropoff != null && CombatMath.Precedes(n, dropoff))) {
-                        best = eta;
-                        dropoff = n;
+                // The transport drives to a tile and puts the cargo down beside it in the same
+                // turn (getting off costs nothing). A passenger that boarded on an earlier turn,
+                // or is aboard and has not acted yet, still has its whole move when it lands, so
+                // it can be dropped anywhere within one disembark step and one move of dest (as
+                // the crow flies: its own path is found when it moves). One that boarded this
+                // turn has used its turn and must be put down beside dest.
+                int reachFresh = walkAfterDrop && cargoUnit != null ? 1 + Mathf.Max(0, cargoUnit.moveRange) : 1;
+                int best = int.MaxValue, bestDist = int.MaxValue;
+                foreach (HexTile n in rideField.Tiles) {
+                    if (n == null || n == dest || !rideField.Reachable(n)) continue;
+                    if (n != transport.tile && !AIPath.CanFinishTurnOn(transport, n)) continue;
+                    int d = n.Distance(dest);
+                    if (d > reachFresh) continue;
+                    Eta e = rideField.Get(n);
+                    int arrive = freshUnload ? e.turns : Ready(e);   // off: put down the turn after it stops
+                    int loadTurn = 0;
+                    HexTile seed = RendezvousFor(n);
+                    if (seed != null && loadTurnOf != null) loadTurnOf.TryGetValue(seed, out loadTurn);
+                    bool fresh = loadTurnOf == null ? freshAboard || arrive > 0 : arrive > loadTurn;
+                    if (d > 1 && !fresh) continue;
+                    if (d == 1) {
+                        if (cargoUnit != null && !cargoUnit.CanEnter(dest)) continue;
+                        if (cargoUnit != null && !LocomotionRules.BridgeStep(n, dest, cargoUnit.locomotion)) continue;   // off a bridge only by road
+                    }
+                    if (arrive < best || (arrive == best && (d < bestDist || (d == bestDist && dropoff != null && CombatMath.Precedes(n, dropoff))))) {
+                        best = arrive; bestDist = d; dropoff = n;
                     }
                 }
                 return best;
@@ -251,11 +269,13 @@ namespace HexTactica.AI {
             Dictionary<HexTile, HexTile> seedOf = new Dictionary<HexTile, HexTile>();
             int bestLoadTurn = int.MaxValue;
 
+            Dictionary<HexTile, int> loadTurnOf = new Dictionary<HexTile, int>();
             if (alreadyAboard) {
                 // The rendezvous already happened; the ride starts here and now.
                 seeds.Add(new KeyValuePair<HexTile, Eta>(transport.tile, Eta.Origin));
                 seedOf[transport.tile] = transport.tile;
                 bestLoadTurn = 0;
+                loadTurnOf = null;   // aboard already: fresh if it has not acted this turn
             } else {
                 if (cargoWalk == null) return null;
                 MoveField drive = AIPath.MultiTurn(transport, horizon);
@@ -283,6 +303,7 @@ namespace HexTactica.AI {
                     seeds.Add(new KeyValuePair<HexTile, Eta>(
                         r, new Eta { turns = loadTurn, used = 0, steps = 0 }));
                     seedOf[r] = r;
+                    loadTurnOf[r] = loadTurn;
                     if (loadTurn < bestLoadTurn) bestLoadTurn = loadTurn;
                 }
             }
@@ -297,6 +318,8 @@ namespace HexTactica.AI {
                 cargoUnit = cargo,
                 rideField = rideField,
                 seedOf = seedOf,
+                loadTurnOf = loadTurnOf,
+                freshAboard = alreadyAboard && cargo.active,
                 bestLoadTurn = bestLoadTurn
             };
         }
@@ -377,11 +400,7 @@ namespace HexTactica.AI {
 
             if (aboard && transport.tile == plan.dropoff) {
                 // Arrived: put the cargo on the destination, or the nearest free tile to it.
-                HexTile onto = plan.destination;
-                if (onto == null || onto.occupier != null || !cargo.CanEnter(onto) ||
-                    !(transport.tile.neighbors.Contains(onto) || onto == transport.tile)) {
-                    onto = PickClosest(Transporting.UnloadOptions(transport, cargo), plan.destination);
-                }
+                HexTile onto = DropTile(transport, cargo, transport.tile, plan.destination);
                 if (onto != null) return AIAction.Disembark(transport, cargo, onto, "drop off: " + plan.ToString());
                 return AIAction.Wait(transport, "dropoff blocked");
             }
@@ -393,6 +412,13 @@ namespace HexTactica.AI {
             MoveField field = map.ReachHorizon(transport);
             HexTile step = SafeStepToward(transport, goal, field, map, aboard);
             if (step == null || step == transport.tile) return AIAction.Wait(transport, "holding: route unsafe or blocked");
+            // The drop-off is in reach this turn: drive there and put the cargo down in the same
+            // action. Getting off costs nothing, so a passenger that has not acted yet this turn
+            // still moves and fights from where it lands (it decides again once it is down).
+            if (aboard && step == goal && map.profile.freshUnload) {
+                HexTile onto = DropTile(transport, cargo, goal, plan.destination);
+                if (onto != null) return AIAction.MoveAndDisembark(transport, goal, cargo, onto, "carry and drop off: " + plan.ToString());
+            }
             return AIAction.Move(transport, step, plan.score, (aboard ? "carry: " : "to rendezvous: ") + plan.ToString());
         }
 
@@ -415,6 +441,13 @@ namespace HexTactica.AI {
                 best = t;
             }
             return best;
+        }
+
+        /// <summary>Where to put <paramref name="cargo"/> down from <paramref name="at"/>: the destination if it is a legal drop, else the legal drop nearest it.</summary>
+        static HexTile DropTile(Unit transport, Unit cargo, HexTile at, HexTile destination) {
+            List<HexTile> options = Transporting.UnloadOptions(transport, cargo, at);
+            if (destination != null && options.Contains(destination)) return destination;
+            return PickClosest(options, destination);
         }
 
         static HexTile PickClosest(List<HexTile> options, HexTile to) {

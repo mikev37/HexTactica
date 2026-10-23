@@ -1098,6 +1098,20 @@ public static class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, "grunts-ride-the-apc.dat"), test, ai, other, ai);
             n++;
         }
+        {
+            List<HexTile> road = windingRoad();
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, road[0].x, road[0].y);
+            Put("APC", ai, road[1].x, road[1].y);
+            Put("Supplies", ai, road[4].x, road[4].y); Put("Supplies", ai, road[7].x, road[7].y); Put("Supplies", ai, road[10].x, road[10].y); Put("Tank", ai, road[12].x, road[12].y);
+            HexTile end = road[road.Count - 1];
+            Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
+            Dictionary<string, string> test = Test("drop-and-advance", "behaviour", "Human", 1, "dropAndAdvance",
+                "The winding road with supply carried up it, as in grunts-ride-the-apc, but the grunt starts the turn aboard the APC at home (it has not acted). Getting off costs nothing, so in one turn the APC should drive it up the road and put it down, and the grunt should then make its own move from there: it ends off the APC, two or more tiles from it.");
+            test["rules"] = "attrition";
+            ScenarioFile.Save(Path.Combine(Dir, "drop-and-advance.dat"), test, ai, other, ai);
+            n++;
+        }
         {   // Infantry next to a neutral city with nothing in the way should step onto it and capture.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
@@ -1276,6 +1290,21 @@ public static class Scenarios {
                 foreach (Unit u in l.ai.units) if (u != null && u.tile != null && u.GetComponent<SupplyPoint>() == null) farthest = Math.Max(farthest, hs(u.tile));
                 detail = "steps from home after each Blue turn: " + string.Join(" | ", trail.ToArray());
                 return !broken && !ahead && farthest >= 12;
+            }
+            case "dropAndAdvance": {
+                Unit apc = First(l.ai, "APC");
+                Unit g = Put("Grunt", l.ai, apc.tile.neighbors.Find(t => t != null && t.occupier == null && t.terrain.elevation >= 0).x, apc.tile.neighbors.Find(t => t != null && t.occupier == null && t.terrain.elevation >= 0).y);
+                Transporting.Load(apc, g); g.FinishBoarding();
+                g.active = true;   // aboard at the start of the turn: it has not acted
+                HexTile home = GameController.HQOf(l.ai).tile;
+                Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
+                Func<HexTile, int> hs = t => { int v; return t != null && fromHome.TryGetValue(t, out v) ? v : -1; };
+                string apcFrom = Pos(apc.tile);
+                ScenarioFile.PlayTurn();
+                bool off = g.trasnporter == null && g.tile != null;
+                int apart = off && apc.tile != null ? g.tile.Distance(apc.tile) : 0;
+                detail = "APC " + apcFrom + " -> " + Pos(apc.tile) + " (" + hs(apc.tile) + " steps from home); grunt " + (off ? "off at " + Pos(g.tile) + " (" + hs(g.tile) + " steps), " + apart + " tiles from the APC" : "still aboard");
+                return off && apart >= 2;
             }
             case "combatRide": {
                 if (Environment.GetEnvironmentVariable("SET") == null) l.ai.GetComponent<AIPlayer>().Profile.combatRides = true;
