@@ -12,7 +12,7 @@ public enum Locomotion {
     Wheels = 1,     // long range, heavily terrain-impacted, road bonus
     Treads = 2,     // middling range, standard terrain impact, road bonus
     Rotor = 3,      // ignores terrain, fast, burns fuel hard
-    // 4 is unused and reserved (it was Marine, now Boots with Unit.amphibious set); prefabs store the number.
+    Munition = 4,   // missiles and bombs: fly over anything, never land or refuel (4 was Marine, now Boots with Unit.amphibious set)
     Jet = 5,        // ignores terrain, must return to airfield, fixed fuel burn
     Ship = 6,       // water only, long endurance, carries supply
     Immobile = 7    // cannot move itself (emplaced guns); can still be carried
@@ -32,7 +32,7 @@ public static class LocomotionRules {
 
     /// <summary>Terrain movement cost is ignored entirely by air movement.</summary>
     public static bool IgnoresTerrain(Locomotion l) {
-        return l == Locomotion.Rotor || l == Locomotion.Jet;
+        return l == Locomotion.Rotor || l == Locomotion.Jet || l == Locomotion.Munition;
     }
 
     /// <summary>Air units burn their full per-turn fuel allowance no matter how far they fly.</summary>
@@ -47,7 +47,7 @@ public static class LocomotionRules {
 
     /// <summary>Terrain cover and entrenchment do not protect airborne units.</summary>
     public static bool IsAirborne(Locomotion l) {
-        return l == Locomotion.Rotor || l == Locomotion.Jet;
+        return l == Locomotion.Rotor || l == Locomotion.Jet || l == Locomotion.Munition;
     }
 
     /// <summary>Resupplied (healed, refuelled, rearmed) only on a building that services them: aircraft at airports, ships at naval yards.</summary>

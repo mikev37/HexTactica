@@ -189,6 +189,12 @@ public class Unit : MonoBehaviour
                 deathRattleTimer -= Time.deltaTime;
             }
         }
+        // Walking onto (or through) a tile a retreating unit's sprite has not left yet: wait for it
+        // to go (at most a few seconds), so the two are never drawn on one tile.
+        if (path.Count > 0 && SlidingOff(path[0]) != null) {
+            if (pathWaitSince < 0f) pathWaitSince = Time.time;
+            if (Time.time - pathWaitSince < 3f) { animator.SetBool("Moving", false); return; }
+        } else pathWaitSince = -1f;
         if (path.Count > 0) {
             animator.SetBool("Moving", true);
             HexTile ht = path[0];
@@ -209,18 +215,27 @@ public class Unit : MonoBehaviour
                 // Once the shot has landed, a moment for the hit to show, then slide. (Waiting on the
                 // animator as well never ended early: a looping idle state is always "playing", so
                 // every retreat held the full three seconds, and the AI waited on it.)
-                if (StrengthDisplay == Strength) retreatHold = Mathf.Min(retreatHold, 0.3f);
+                if (StrengthDisplay == Strength) retreatHold = Mathf.Min(retreatHold, retreatPause);
                 retreatHold -= Time.deltaTime;
             }
-            if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
+            // Still sliding to an earlier retreat tile when this one was ordered: finish that slide
+            // first, so the shot that waits on it (see the ambush/attack check below) has a sprite
+            // to aim at, and the new retreat starts from where the unit really was.
+            if (slideFirst.HasValue) {
+                transform.position = Vector2.MoveTowards(transform.position, slideFirst.Value, Time.deltaTime * moveSpeed);
+                if (Vector2.Distance(transform.position, slideFirst.Value) <= 0.05f) slideFirst = null;
+            }
+            else if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
             else if(tile && retreatHold <= 0f)
                 transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed);
             else {
 
             }
 
-            // An ambusher waits for its attacker to finish moving in before it fires.
-            if (attacking && (target == null || target.path.Count == 0)) {
+            // An ambusher waits for its attacker to finish moving in before it fires, and any
+            // shot waits for a target still sliding back from an earlier retreat to get there
+            // (at most a few seconds), so the hit is never drawn on the tile it has left.
+            if (attacking && (target == null || (target.path.Count == 0 && !TargetStillSliding()))) {
                 Fire(target,true);
             }
         }
@@ -556,6 +571,12 @@ public class Unit : MonoBehaviour
     public static event System.Action<Unit> Finished;
 
     internal CombatOutcome OrderAttack(Unit defender) {
+        // The defender's sprite is still sliding back from an earlier retreat: the shot waits until
+        // it has arrived where the defender now is (the tile it stands on as this attack begins).
+        waitForSlide = null;
+        if (defender != null && defender.RetreatPlaying && defender.tile != null && defender.tile.unitPlacement != null) {
+            waitForSlide = defender; waitForSlideTo = defender.tile.unitPlacement.position; waitForSlideSince = Time.time;
+        }
         attacking = true;
         attackedThisTurn = true;
         target = defender;
@@ -620,12 +641,41 @@ public class Unit : MonoBehaviour
     /// <summary>Seconds the sprite may still wait before sliding to a retreat tile. Animation only.</summary>
     float retreatHold;
 
+    [Tooltip("Seconds a retreating unit's sprite waits after the hit lands before it slides back (animation only).")]
+    public float retreatPause = 0.1f;
+
+    /// <summary>Where the sprite was still sliding to (an earlier retreat) when a new retreat was ordered. Animation only.</summary>
+    [System.NonSerialized] Vector3? slideFirst;
+
+    /// <summary>The target this unit's shot waits for: it was sliding back from an earlier retreat when the attack was ordered.</summary>
+    [System.NonSerialized] Unit waitForSlide;
+    [System.NonSerialized] Vector3 waitForSlideTo;
+    [System.NonSerialized] float waitForSlideSince;
+
+    [System.NonSerialized] float pathWaitSince = -1f;
+
+    /// <summary>A unit (not this one) whose sprite is still sliding back off <paramref name="t"/> after a retreat, if any.</summary>
+    Unit SlidingOff(HexTile t) {
+        if (t == null || UnitController.uc == null) return null;
+        foreach (Unit u in UnitController.uc.units)
+            if (u != null && u != this && u.retreatFrom == t && u.RetreatPlaying) return u;
+        return null;
+    }
+
+    bool TargetStillSliding() {
+        if (waitForSlide == null || waitForSlide != target || waitForSlide.Strength <= 0) { waitForSlide = null; return false; }
+        if (Time.time - waitForSlideSince > 3f || Vector2.Distance(waitForSlide.transform.position, waitForSlideTo) <= 0.15f) { waitForSlide = null; return false; }
+        return true;
+    }
+
     /// <summary>
     /// Post-combat retreat: the unit is on <paramref name="to"/> immediately. Only the sprite
     /// waits for the incoming shot to land before sliding over (at most a few seconds).
     /// </summary>
     public void RetreatTo(HexTile to) {
         HexTile was = tile;
+        // Hit again while still sliding back from the last retreat: that slide is finished first.
+        if (RetreatPlaying && was != null && was.unitPlacement != null) slideFirst = was.unitPlacement.position;
         pendingRetreat = to;
         ApplyPendingRetreat();
         if (tile == to) { retreatHold = 3f; retreatFrom = was; retreatStarted = Time.time; }

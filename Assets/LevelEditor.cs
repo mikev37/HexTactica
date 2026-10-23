@@ -120,7 +120,11 @@ public class LevelEditor : MonoBehaviour
             while (numplayer.MoveNext()) {
                 Debug.Log(numplayer.Current.Print());
                 PlayerData pd = JsonUtility.FromJson<PlayerData>(numplayer.Current.Print());
-                pd.load();
+                Player loaded = pd.load();
+                // Everyone starts in the game (a file saved after a side was knocked out says
+                // "eliminated":true, and its turns were skipped from then on). A side with nothing
+                // left is knocked out again by the next victory check, except in Sandbox.
+                if (loaded != null) loaded.eliminated = false;
             }
             JSONObject pf = obj.GetField("purchases"), af = obj.GetField("allowedUnits");
             if (pf != null || af != null) GameController.gc.ApplyPurchaseRules(pf != null ? pf.stringValue : null, af != null ? af.stringValue : null);
