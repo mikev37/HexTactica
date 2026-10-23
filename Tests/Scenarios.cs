@@ -69,7 +69,14 @@ public static class Scenarios {
         new MapSpec("gauntlet-5", 7, 233, 0.12f, 0.08f, 0.35f),
     };
 
-    static readonly string[] GauntletRoster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Tank", "Artillery", "Supplies" };
+    static readonly string[] GauntletRoster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Tank", "Artillery", "Supplies", "APC" };
+
+    /// <summary>What may be bought on a map with purchases on: every kind of unit on it.</summary>
+    static string AllowedOf(string[] roster) {
+        List<string> kinds = new List<string>();
+        foreach (string r in roster) if (!kinds.Contains(r)) kinds.Add(r);
+        return string.Join(",", kinds.ToArray());
+    }
 
     /// <summary>Write the gauntlet's random-map files (Tests/Scenarios/gauntlet-*.dat); the bridge file is kept.</summary>
     public static int ExportGauntlet() {
@@ -88,8 +95,9 @@ public static class Scenarios {
                 string name = s.name + (aiLeft ? "-challenger-left" : "-challenger-right");
                 Dictionary<string, string> test = Test(name, "gauntlet", "Full", 30, "report",
                     "Random radius-7 map (seed " + s.seed + ", mountain " + s.mountain + ", water " + s.water + ", forest " + s.forest
-                    + "), the bridge map's army each side, attrition rules. This AI on both sides: the challenger as Blue. The left side moves first.");
+                    + "), the bridge map's army plus an APC each side, attrition rules. This AI on both sides: the challenger as Blue. The left side moves first.");
                 test["rules"] = "attrition";
+                test["allowedUnits"] = AllowedOf(GauntletRoster);   // with purchases on: any kind on the map
                 ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, aiLeft ? ai : other);
                 n++;
             }
@@ -208,7 +216,7 @@ public static class Scenarios {
             if (lane != null && lane.terrain.name == "Water") lane.terrain = Next(100) < 20 ? T("Forest") : T("Grassland");
         }
         Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-        string[] roster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Tank", "Artillery", "Supplies", "Supplies", "Supplies", "Supplies" };
+        string[] roster = { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Tank", "Artillery", "Supplies", "Supplies", "Supplies", "Supplies", "APC" };
         foreach (Player p in new[] { ai, other }) {
             HexTile hq = p == ai ? road[1] : road[road.Count - 2];
             List<HexTile> land = new List<HexTile>();
@@ -218,10 +226,10 @@ public static class Scenarios {
             for (int i = 0; i < roster.Length; i++) Put(roster[i], p, land[i].x, land[i].y);
         }
         Dictionary<string, string> test = Test("logistics-zigzag", "logistics", "Full", 60, "report",
-            "Ocean with one serpentine road (" + road.Count + " tiles, two wide) between the HQs; the water between its rows is wider than artillery range. Supply must be chained forward: HQ range 8, five supply units of range 4 (moving 2 a turn) each side, and the armies meet about " + (road.Count / 2) + " tiles from home. Attrition rules, 60 rounds. This AI on both sides; Blue moves first.");
+            "Ocean with one serpentine road (" + road.Count + " tiles, two wide) between the HQs; the water between its rows is wider than artillery range. Supply must be chained forward: HQ range 8, five supply units of range 4 (moving 2 a turn) and an APC each side, and the armies meet about " + (road.Count / 2) + " tiles from home. Attrition rules, 60 rounds. This AI on both sides; Blue moves first.");
         test["rules"] = "attrition";
         test["purchases"] = "on";
-        test["allowedUnits"] = "Supplies";   // supply units only: the chain may grow, the armies do not
+        test["allowedUnits"] = AllowedOf(roster);   // any kind of unit on the map, the APC included
         ScenarioFile.Save(Path.Combine(Dir, "logistics-zigzag.dat"), test, ai, other, ai);
         return 1;
     }

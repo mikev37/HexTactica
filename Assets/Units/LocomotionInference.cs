@@ -12,7 +12,7 @@
 public static class LocomotionInference {
 
     public static Locomotion Infer(Unit u) {
-        if (u.elevationMax >= 4) return Locomotion.Aircraft;
+        if (u.elevationMax >= 4) return Locomotion.Jet;
         if (u.elevationMax <= 0 && u.elevationMin < 0) return Locomotion.Ship;
         if (u.Evasion >= 3) return Locomotion.Rotor;
         if (u.Concealment >= 2) return Locomotion.Boots;                 // only infantry use real cover
