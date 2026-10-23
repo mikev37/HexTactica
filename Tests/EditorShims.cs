@@ -17,6 +17,10 @@ namespace UnityEditor {
         public static CallbackFunction delayCall;
         public static bool isPlayingOrWillChangePlaymode;
     }
+    public enum TextureImporterType { Default, Sprite }
+    public enum SpriteImportMode { None, Single, Multiple }
+    public class AssetImporter { public static AssetImporter GetAtPath(string p) { return null; } public void SaveAndReimport() { } }
+    public class TextureImporter : AssetImporter { public TextureImporterType textureType; public SpriteImportMode spriteImportMode; public bool mipmapEnabled, alphaIsTransparency; public UnityEngine.Vector4 spriteBorder; }
     public static class PrefabUtility { public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject g, string path) { return g; } }
     public static class EditorUtility {
         public static bool DisplayDialog(string t, string m, string ok, string cancel) { return false; }

@@ -89,7 +89,8 @@ public class TransportPanel : MonoBehaviour {
         return best;
     }
 
-    static void EnsureEventSystem() {
+    /// <summary>Make an EventSystem if the scene has none (uGUI buttons need one).</summary>
+    public static void EnsureEventSystem() {
         if (EventSystem.current != null || Object.FindAnyObjectByType<EventSystem>() != null) return;
         GameObject es = new GameObject("EventSystem");
         es.AddComponent<EventSystem>();
