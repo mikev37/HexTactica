@@ -117,7 +117,9 @@ public class AIPlayer : MonoBehaviour {
 
             GameController.gc.activeUnit = unit;
 
+            long __d = AIPerf.Begin();
             AIAction action = DecideFor(unit);
+            AIPerf.End("decide: " + (unit.GetComponent<SupplyPoint>() != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
             // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
             // still fresh, and decides again if its transport puts it down this turn (Run).
             if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
@@ -161,7 +163,9 @@ public class AIPlayer : MonoBehaviour {
     /// <summary>Carry out one decided action, with the bookkeeping after it. True if it did something.</summary>
     bool Run(Unit unit, AIAction action, bool headless) {
         {
+            long __x = AIPerf.Begin();
             bool did = HexTactica.AI.AIExecutor.Execute(action, map, headless);
+            AIPerf.End("act: execute", __x);
             // Cargo put down that has not acted this turn: it decides next, from where it landed
             // (getting off costs nothing: it moves, attacks or captures as any fresh unit would).
             if (Profile.freshUnload && did && action.kind == AIActionKind.Unload && action.target != null && action.target.active
@@ -171,8 +175,12 @@ public class AIPlayer : MonoBehaviour {
                 // Any action can change what every other unit can reach, where supply
                 // flows, and who the enemy can fire on: a tile was vacated or filled, a unit
                 // died in a corridor, a hub moved. Conflict and distress are recomputed too.
+                long __f = AIPerf.Begin();
                 unit.FinishActive();
+                AIPerf.End("act: FinishActive (threat, resupply)", __f);
+                __f = AIPerf.Begin();
                 map.RefreshAfterAction();
+                AIPerf.End("act: board re-read (RefreshAfterAction)", __f);
             }
 
             Annotate(unit, action);
@@ -236,7 +244,9 @@ public class AIPlayer : MonoBehaviour {
     }
 
     void PrepareTurn() {
+        { long __p = AIPerf.Begin();
         map = new AIMap(player, Profile);
+        AIPerf.End("prepare: board read (AIMap)", __p); }
 
         // Forget the intentions of units that no longer exist.
         List<Unit> stale = new List<Unit>();
@@ -244,11 +254,15 @@ public class AIPlayer : MonoBehaviour {
             if (kv.Key == null || kv.Key.Strength <= 0 || kv.Key.tile == null) stale.Add(kv.Key);
         }
         for (int i = 0; i < stale.Count; i++) intents.Remove(stale[i]);
+        { long __p = AIPerf.Begin();
         fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
+        AIPerf.End("prepare: fronts", __p); }
         if (Trace != null) foreach (Front f in fronts)
             Trace("   front " + f + (f.objectiveTile != null ? " objective (" + f.objectiveTile.x + "," + f.objectiveTile.y + ") value " + f.objectiveValue.ToString("0") : "")
                   + (f.staging && f.stagingTile != null ? " staging at (" + f.stagingTile.x + "," + f.stagingTile.y + ")" : "") + ", " + f.assigned.Count + " units");
+        { long __p = AIPerf.Begin();
         objectives = AIObjectives.Build(map, Profile);
+        AIPerf.End("prepare: objectives", __p); }
         assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
         objectivePulls += assignments.Count;
         turnsPlayed++;
@@ -268,11 +282,15 @@ public class AIPlayer : MonoBehaviour {
             if (u != null && u.active) actionable.Add(u);
         }
 
+        { long __p = AIPerf.Begin();
         queue = AIRoles.Order(actionable, map, Profile);
+        AIPerf.End("prepare: roles", __p); }
         map.ClearAnnotations();
         chainPlan = null;
         if (Profile.supplyChain) {
+            { long __p = AIPerf.Begin();
             chainPlan = AISupplyChain.Make(map, null);
+            AIPerf.End("prepare: supply chain", __p); }
             if (Trace != null) Trace("   " + chainPlan);
             map.chainTiles.Clear();
             foreach (KeyValuePair<SupplyPoint, HexTile> kv in chainPlan.links) if (kv.Value != kv.Key.myUnit.tile) map.chainTiles[kv.Value] = kv.Key.myUnit;
@@ -295,12 +313,17 @@ public class AIPlayer : MonoBehaviour {
             foreach (Unit u in queue) if (Transporting.IsTransport(u) && u.Firepower <= 1) carriers.Add(u);
             foreach (Unit u in carriers) { queue.Remove(u); queue.Add(u); }
         }
+        { long __p = AIPerf.Begin();
         if (Profile.ghostSupply) PlanGhosts();
+        AIPerf.End("prepare: ghosts", __p); }
         // Aircraft reserve their landings before anyone moves.
+        { long __p = AIPerf.Begin();
         map.landings = AIAir.PlanLandings(map);
+        AIPerf.End("prepare: landings", __p); }
         if (Trace != null) foreach (AIAir.Landing l in map.landings.Values) Trace("   landing reserved: " + l);
         planned.Clear();
         noAssist.Clear();
+        long __c = AIPerf.Begin();
         if (Profile.coordination || Profile.coordinationPasses) {
             List<PlanStep> steps = Profile.coordinationPasses
                 ? AICoordinator.Plan(map, Profile, u => {
@@ -318,6 +341,7 @@ public class AIPlayer : MonoBehaviour {
             foreach (Unit u in first) queue.Remove(u);
             queue.InsertRange(0, first);
         }
+        AIPerf.End("prepare: coordinated plans", __c);
         // Aircraft landing this turn act last (after any coordinated plan too), once whatever was on their tiles has left.
         List<Unit> landingNow = new List<Unit>();
         foreach (AIAir.Landing l in map.landings.Values) if (l.turn == 1 && queue.Contains(l.unit)) landingNow.Add(l.unit);

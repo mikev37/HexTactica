@@ -30,6 +30,8 @@ namespace HexTactica.AI {
         /// <summary>Per-board cache of the "before" side, so each candidate only pays for its "after".</summary>
         public class Baseline {
             public readonly Dictionary<Unit, int> reach = new Dictionary<Unit, int>();
+            /// <summary>The tiles behind each count (to tell whether a move can change it at all).</summary>
+            public readonly Dictionary<Unit, HashSet<HexTile>> reachTiles = new Dictionary<Unit, HashSet<HexTile>>();
             public readonly Dictionary<Player, SupplyNetwork.Result> supply = new Dictionary<Player, SupplyNetwork.Result>();
         }
 
@@ -56,7 +58,7 @@ namespace HexTactica.AI {
 
             // Before.
             foreach (Unit e in affected) {
-                if (!baseline.reach.ContainsKey(e)) baseline.reach[e] = Reach(e);
+                if (!baseline.reach.ContainsKey(e)) { HashSet<HexTile> tiles; baseline.reach[e] = Reach(e, out tiles); baseline.reachTiles[e] = tiles; }
             }
             foreach (Player o in enemies) {
                 if (!baseline.supply.ContainsKey(o)) baseline.supply[o] = SupplyNetwork.Solve(o, false);
@@ -66,19 +68,27 @@ namespace HexTactica.AI {
             HexTile from = u.tile;
             int afterReach = 0, beforeReach = 0;
             Dictionary<Player, SupplyNetwork.Result> afterSupply = new Dictionary<Player, SupplyNetwork.Result>();
+            // Only what the move can touch is measured again: an enemy whose reach neither contains
+            // the tile taken nor borders the tile left keeps its count (movement has no zone of
+            // control), and a side whose supply comes nowhere near either tile keeps its field.
+            // (Every enemy and every side was re-solved for every option: much of the AI's time.)
+            List<Player> resolve = new List<Player>();
+            foreach (Player o in enemies) if (Near(baseline.supply[o], at) || Near(baseline.supply[o], from)) resolve.Add(o); else afterSupply[o] = baseline.supply[o];
             from.occupier = null;
             at.occupier = u;
             try {
                 foreach (Unit e in affected) {
                     beforeReach += baseline.reach[e];
-                    afterReach += Reach(e);
+                    HashSet<HexTile> tiles = baseline.reachTiles[e];
+                    if (!tiles.Contains(at) && !Borders(tiles, e, from)) afterReach += baseline.reach[e];
+                    else { HashSet<HexTile> unused; afterReach += Reach(e, out unused); }
                 }
-                foreach (Player o in enemies) afterSupply[o] = SupplyNetwork.Solve(o, false);
+                foreach (Player o in resolve) afterSupply[o] = SupplyNetwork.Solve(o, false);
             } finally {
                 at.occupier = null;
                 from.occupier = u;
                 // Solve publishes onto HexTile.supply; republish the real network.
-                foreach (Player o in enemies) SupplyNetwork.Solve(o, false);
+                foreach (Player o in resolve) SupplyNetwork.Solve(o, false);
             }
             r.tiles = beforeReach - afterReach;
 
@@ -190,11 +200,28 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Tiles this unit can reach within two turns from where it stands.</summary>
-        static int Reach(Unit e) {
+        static int Reach(Unit e, out HashSet<HexTile> tiles) {
             MoveField f = AIPath.MultiTurn(e, 1);
+            tiles = new HashSet<HexTile>();
             int n = 0;
-            foreach (HexTile t in f.Tiles) if (!f.Get(t).IsUnreachable) n++;
+            foreach (HexTile t in f.Tiles) if (!f.Get(t).IsUnreachable) { n++; tiles.Add(t); }
             return n;
+        }
+
+        /// <summary>Is <paramref name="t"/> one of <paramref name="tiles"/>, the unit's own tile, or beside one?</summary>
+        static bool Borders(HashSet<HexTile> tiles, Unit e, HexTile t) {
+            if (t == null) return false;
+            if (tiles.Contains(t) || t == e.tile) return true;
+            foreach (HexTile n in t.neighbors) if (n != null && (tiles.Contains(n) || n == e.tile)) return true;
+            return false;
+        }
+
+        /// <summary>Could a unit on (or leaving) <paramref name="t"/> change this supply field: is it in it, or beside it?</summary>
+        static bool Near(SupplyNetwork.Result s, HexTile t) {
+            if (s == null || s.depth == null || t == null) return false;
+            if (s.depth.ContainsKey(t)) return true;
+            foreach (HexTile n in t.neighbors) if (n != null && s.depth.ContainsKey(n)) return true;
+            return false;
         }
 
         static int Count(SupplyNetwork.Result s) {

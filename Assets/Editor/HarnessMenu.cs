@@ -75,6 +75,25 @@ public static class HarnessMenu {
     }
 
     /// <summary>
+    /// Save the board as it stands (play mode) to a scenario file of your choosing — the same file
+    /// the level editor's S key writes to persistentDataPath, put where you want it (Assets/Scenarios
+    /// by default). Load it again with Load Scenario File.
+    /// </summary>
+    [MenuItem("HexTactica/Save Scenario File...")]
+    public static void SaveScenarioFile() {
+        if (!Application.isPlaying) {
+            UnityEngine.Debug.LogError("Enter play mode first: the board is saved as it stands.");
+            return;
+        }
+        string start = Path.Combine(Application.dataPath, "Scenarios");
+        string path = EditorUtility.SaveFilePanel("Save scenario", Directory.Exists(start) ? start : Application.dataPath, "NewScenario", "dat");
+        if (string.IsNullOrEmpty(path)) return;
+        File.WriteAllText(path, LevelEditor.BoardJson());
+        UnityEngine.Debug.Log("Saved scenario " + path);
+        if (path.Replace('\\', '/').StartsWith(Application.dataPath)) AssetDatabase.Refresh();
+    }
+
+    /// <summary>
     /// Write a copy of a scenario file with the sides swapped (ScenarioMirror): Red gets Blue's
     /// army and buildings and Blue gets Red's, the same army still moving first. Saved beside the
     /// original as name-swapped.dat; in play mode it is loaded straight away.
