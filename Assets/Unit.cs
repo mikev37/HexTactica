@@ -346,12 +346,9 @@ public class Unit : MonoBehaviour
         foreach (SpriteRenderer r in transport.GetComponentsInChildren<SpriteRenderer>()) if (top == null || r.sortingOrder > top.sortingOrder) top = r;
         if (layer != 0 && SortingLayer.IsValid(layer)) { cargoGroup.sortingLayerID = layer; cargoGroup.sortingOrder = slot; }
         else if (top != null) { cargoGroup.sortingLayerID = top.sortingLayerID; cargoGroup.sortingOrder = top.sortingOrder + 1 + slot; }
-        // Supplies: hidden only when the transport has its own carrying-supply animation to show
-        // instead (a "CarryingSupply" parameter on its animator); otherwise shown like any cargo.
-        if (GetComponent<SupplyPoint>() != null && transport.HasAnimatorParameter("CarryingSupply")) {
-            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = false;
-            transport.SetAnimatorBool("CarryingSupply", true);
-        }
+        // Supplies aboard are shown like any cargo; a transport whose animator has a "CarryingSupply"
+        // bool is told, in case its art wants to react.
+        if (GetComponent<SupplyPoint>() != null) transport.SetAnimatorBool("CarryingSupply", true);
     }
 
     public bool HasAnimatorParameter(string name) {
@@ -369,7 +366,6 @@ public class Unit : MonoBehaviour
         transform.rotation = Quaternion.identity;
         if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
         if (GetComponent<SupplyPoint>() != null) {
-            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = true;
             bool still = false;
             foreach (Unit c in transport.transported) if (c != null && c != this && c.GetComponent<SupplyPoint>() != null) still = true;
             transport.SetAnimatorBool("CarryingSupply", still);
