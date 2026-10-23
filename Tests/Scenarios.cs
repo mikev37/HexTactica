@@ -1655,6 +1655,42 @@ public static class Scenarios {
         return path;
     }
 
+    /// <summary>
+    /// How long the AI takes: every step (StepOnce: one Update's worth of work in the game, one
+    /// action), timed, per side and turn, with the slowest steps and what they did.
+    /// </summary>
+    public static void Perf(string path, int rounds, Action<AIProfile> tweak) {
+        ScenarioFile.Loaded l = ScenarioFile.Load(path, "Full", tweak, tweak);
+        GameController gc = Rig.gc;
+        AIPerf.Enabled = Environment.GetEnvironmentVariable("SECTIONS") != null;
+        AIPerf.CallerDepth = int.Parse(Environment.GetEnvironmentVariable("PERFCALLERS") ?? "0");
+        Console.WriteLine(Path.GetFileName(path) + ": " + Rig.hg.tiles.Count + " tiles, Blue " + l.ai.units.Count + " units, Red " + l.other.units.Count);
+        for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
+            Player active = gc.activePlayer;
+            AIPlayer ai = active.GetComponent<AIPlayer>();
+            if (ai == null) { gc.EndTurn(); continue; }
+            List<KeyValuePair<double, string>> steps = new List<KeyValuePair<double, string>>();
+            string last = "";
+            ai.onDecision = (u, act, did) => { last = u.name.Replace("(Clone)", "") + " " + act.kind + (did ? "" : " (not done)"); };
+            System.Diagnostics.Stopwatch total = System.Diagnostics.Stopwatch.StartNew();
+            long alloc0 = GC.GetAllocatedBytesForCurrentThread();
+            int guard = 0; bool more = true;
+            while (more && guard++ < 4096) {
+                last = "(end of turn)";
+                System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+                more = ai.StepOnce(true);
+                steps.Add(new KeyValuePair<double, string>(sw.Elapsed.TotalMilliseconds, last));
+            }
+            double sum = total.Elapsed.TotalMilliseconds;
+            steps.Sort((a, b) => b.Key.CompareTo(a.Key));
+            Console.WriteLine(string.Format("  round {0} {1}: {2} steps, {3:0} ms in all, slowest {4:0} ms, median {5:0} ms; allocated {7:0} MB this turn; live managed memory {6:0.0} MB", gc.days, active.personal_name, steps.Count, sum,
+                steps.Count > 0 ? steps[0].Key : 0, steps.Count > 0 ? steps[steps.Count / 2].Key : 0, GC.GetTotalMemory(true) / 1048576.0,
+                (GC.GetAllocatedBytesForCurrentThread() - alloc0) / 1048576.0));
+            for (int i = 0; i < Math.Min(5, steps.Count); i++) Console.WriteLine(string.Format("      {0,7:0} ms  {1}", steps[i].Key, steps[i].Value));
+            if (AIPerf.Enabled) { Console.WriteLine(AIPerf.Report()); AIPerf.Reset(); }
+        }
+    }
+
     /// <summary>One scenario, narrated: the board after every turn and every decision's reasoning.</summary>
     public static void Narrate(string name, int rounds, Action<AIProfile> tweak) {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), null, tweak);

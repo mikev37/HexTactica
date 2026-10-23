@@ -22,6 +22,10 @@ using UnityEngine;
 /// </summary>
 public static class SupplyNetwork {
 
+    /// <summary>Goes up every time a supply field is published onto the board (displays redraw only then).</summary>
+    public static int Published;
+
+
     /// <summary>Result of a solve, for the AI and the harness to inspect.</summary>
     public class Result {
         public readonly Dictionary<HexTile, int> depth = new Dictionary<HexTile, int>();
@@ -208,10 +212,14 @@ public static class SupplyNetwork {
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null && !staticOnly && moved == null && !onlyMoved) HexGenerator.forAllTiles(t => {
-            if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
-            return 0;
-        });
+        if (excluded == null && !staticOnly && moved == null && !onlyMoved) {
+            HexGenerator.forAllTiles(t => {
+                if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
+                return 0;
+            });
+            Published++;
+            HexTilePlayerSupplyDisplay.WakeAll();
+        }
 
         if (applyDrain) {
             for (int i = 0; i < result.strandedHubs.Count; i++) result.strandedHubs[i].connected = false;

@@ -27,13 +27,13 @@ public class HexGenerator : MonoBehaviour
 
     public HexTile get(int x, int y, int z)
     {
-        try
-        {
-            return Grid[x + width / 2, y + width / 2, z + width / 2];
-        }catch(IndexOutOfRangeException e)
-        {
-            return null;
-        }
+        // Off the board: null. (Bounds checked here: catching the out-of-range exception cost an
+        // exception, with its stack trace, for every lookup past the edge, and the AI makes
+        // thousands of them a turn near the edges.)
+        if (Grid == null) return null;
+        int i = x + width / 2, j = y + width / 2, k = z + width / 2;
+        if (i < 0 || j < 0 || k < 0 || i >= Grid.GetLength(0) || j >= Grid.GetLength(1) || k >= Grid.GetLength(2)) return null;
+        return Grid[i, j, k];
     }
     /*
     public void load(BoardState bs)
