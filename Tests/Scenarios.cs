@@ -420,7 +420,7 @@ public static class Scenarios {
                  Put("SupplyBoat", a, -1, 0); Put("SupplyBoat", a, 1, 0); Put("Grunt", a, 3, 0); Put("Grunt", o, 4, 3); },
              "A strait four tiles wide: the HQ's supply stops at the water. Two supply boats link from the naval yard's dock (in supply) to each other, and the far one supplies the island it borders. With the far boat moved out to sea, the island grunt is not supplied.");
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
-             "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board, unparented, and has used its turn.");
+             "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board and unparented. Getting off costs nothing: having boarded this turn it is still spent; aboard at the start of a turn, it is still free to act once unloaded.");
         make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
                  Put("TransportShip", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
              "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; a marine that boards a transport ship from the shore (it can step into water beside land) neither heals nor uses its supplies while the ship has supplies, and starves once the ship's are gone.");
@@ -770,11 +770,18 @@ public static class Scenarios {
                 bool off = Rig.At(-2, 0).occupier == null && g.tile == apc.tile && g.trasnporter == apc && g.transform.parent == (apc.cargoSlots.Count > 0 ? apc.cargoSlots[0] : apc.transform);
                 apc.TeleportTo(Rig.At(-3, 3), 3);
                 bool rides = g.tile == apc.tile;
+                // Boarded this turn: it has used its turn, and getting off does not give it back.
                 HexTile onto = Transporting.UnloadOptions(apc, g)[0];
                 bool unloaded = Transporting.Unload(apc, g, onto);
                 bool back = onto.occupier == g && g.trasnporter == null && g.transform.parent == null && !g.active && apc.transported.Count == 0;
-                detail = "loaded " + loaded + ", off the board and in slot 0 " + off + ", moves with the APC " + rides + "; unloaded to " + Pos(onto) + " " + unloaded + ", back on the board, unparented, spent " + back;
-                return loaded && off && rides && unloaded && back;
+                // Aboard at the start of a turn (fresh): unloaded, it is still fresh and can act.
+                bool reloaded = Transporting.Load(apc, g); g.FinishBoarding();
+                l.ai.EndTurn();   // the turn passes: every unit, cargo included, is ready again
+                HexTile onto2 = Transporting.UnloadOptions(apc, g)[0];
+                bool fresh = reloaded && g.active && Transporting.Unload(apc, g, onto2) && g.active;
+                detail = "loaded " + loaded + ", off the board and in slot 0 " + off + ", moves with the APC " + rides + "; unloaded to " + Pos(onto) + " " + unloaded + ", back on the board, unparented, still spent " + back
+                         + "; aboard at the start of a turn and unloaded, still able to act " + fresh;
+                return loaded && off && rides && unloaded && back && fresh;
             }
             case "attritionCargoSupply": {
                 Unit apc = Rig.At(-4, 0).occupier, g = Rig.At(-4, 1).occupier, ship = Rig.At(-1, 1).occupier, m = Rig.At(-2, 1).occupier;

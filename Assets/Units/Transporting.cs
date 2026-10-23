@@ -111,7 +111,8 @@ public static class Transporting {
         cargo.trasnporter = null;
         cargo.tile = onto;
         onto.occupier = cargo;
-        cargo.active = false;   // it has used its turn getting off
+        // Getting off costs nothing: the unit is as it was aboard (one that has not acted this
+        // turn can still move and fight; one that boarded this turn has already used its turn).
         cargo.OnUnloaded(transport);
         return true;
     }
