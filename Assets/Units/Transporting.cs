@@ -86,14 +86,19 @@ public static class Transporting {
 
     /// <summary>Legal disembark tiles: vacant neighbours of the transport the cargo can enter.</summary>
     public static List<HexTile> UnloadOptions(Unit transport, Unit cargo) {
+        return UnloadOptions(transport, cargo, transport != null ? transport.tile : null);
+    }
+
+    /// <summary>Legal disembark tiles were the transport standing on <paramref name="at"/> (the AI planning a move and drop).</summary>
+    public static List<HexTile> UnloadOptions(Unit transport, Unit cargo, HexTile at) {
         List<HexTile> options = new List<HexTile>();
-        if (transport == null || transport.tile == null || cargo == null) return options;
-        List<HexTile> neighbors = transport.tile.neighbors;
+        if (transport == null || at == null || cargo == null) return options;
+        List<HexTile> neighbors = at.neighbors;
         for (int i = 0; i < neighbors.Count; i++) {
             HexTile n = neighbors[i];
-            if (n == null || n.occupier != null) continue;
+            if (n == null || (n.occupier != null && n.occupier != transport)) continue;
             if (!cargo.CanEnter(n)) continue;
-            if (!LocomotionRules.BridgeStep(transport.tile, n, cargo.locomotion)) continue;   // off a bridge only by road
+            if (!LocomotionRules.BridgeStep(at, n, cargo.locomotion)) continue;   // off a bridge only by road
             options.Add(n);
         }
         return options;
@@ -111,7 +116,8 @@ public static class Transporting {
         cargo.trasnporter = null;
         cargo.tile = onto;
         onto.occupier = cargo;
-        cargo.active = false;   // it has used its turn getting off
+        // Getting off costs nothing: the unit is as it was aboard (one that has not acted this
+        // turn can still move and fight; one that boarded this turn has already used its turn).
         cargo.OnUnloaded(transport);
         return true;
     }

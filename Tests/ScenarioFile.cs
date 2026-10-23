@@ -220,6 +220,7 @@ public static class ScenarioFile {
             if (u.ContainsKey("supplies") && int.TryParse(u["supplies"], out n)) unit.supplies = n;
             if (u.ContainsKey("ammo") && int.TryParse(u["ammo"], out n)) unit.ammo = n;
             if (u.ContainsKey("fuel") && int.TryParse(u["fuel"], out n)) unit.fuel = n;
+            if (u.ContainsKey("suppressed") && int.TryParse(u["suppressed"], out n)) unit.suppressed = Math.Min(n, unit.Strength);
             if (u.ContainsKey("refuelStockPlusOne") && int.TryParse(u["refuelStockPlusOne"], out n) && n > 0) unit.refuelStock = n - 1;
         }
 

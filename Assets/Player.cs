@@ -23,6 +23,8 @@ public class Player : MonoBehaviour
     public int hubsStranded;
 
     public void StartTurn() {
+        // Suppression lasts until the unit's own turn: every pip comes back now.
+        foreach (Unit u in units) if (u != null) u.suppressed = 0;
         CollectIncome();
 
         SupplyNetwork.Result supply = SupplyNetwork.Solve(this, true);

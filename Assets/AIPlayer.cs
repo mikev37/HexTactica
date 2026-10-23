@@ -118,6 +118,13 @@ public class AIPlayer : MonoBehaviour {
             GameController.gc.activeUnit = unit;
 
             AIAction action = DecideFor(unit);
+            // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
+            // still fresh, and decides again if its transport puts it down this turn (Run).
+            if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
+                if (onDecision != null) onDecision(unit, action, false);
+                if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": aboard, decides again if put down — " + action.reason);
+                continue;
+            }
             // Following up on a unit still sliding back from a retreat (shooting it, or moving onto
             // the tile it is leaving): wait for the slide to show first. Anything else goes ahead.
             if (!headless && holdForRetreats && WaitsOnRetreat(action)) { held = action; held.unit = unit; holding = true; animationWait = 0f; return true; }
@@ -155,6 +162,11 @@ public class AIPlayer : MonoBehaviour {
     bool Run(Unit unit, AIAction action, bool headless) {
         {
             bool did = HexTactica.AI.AIExecutor.Execute(action, map, headless);
+            // Cargo put down that has not acted this turn: it decides next, from where it landed
+            // (getting off costs nothing: it moves, attacks or captures as any fresh unit would).
+            if (Profile.freshUnload && did && action.kind == AIActionKind.Unload && action.target != null && action.target.active
+                && action.target.trasnporter == null && action.target.tile != null && !queue.Contains(action.target))
+                queue.Insert(0, action.target);
             if (did) {
                 // Any action can change what every other unit can reach, where supply
                 // flows, and who the enemy can fire on: a tile was vacated or filled, a unit
@@ -353,7 +365,9 @@ public class AIPlayer : MonoBehaviour {
     HexTile GhostTile(TransportPlan plan) {
         if (plan == null || plan.cargo == null || plan.destination == null) return null;
         Unit cargo = plan.cargo;
-        if (plan.usesTransport) return plan.eta <= 1 ? plan.destination : null;
+        // A ride lands it there tonight only if it arrives this turn (eta 0). (This said eta 1,
+        // a turn early: the line planned with supply that was not there yet and over-reached.)
+        if (plan.usesTransport) return plan.eta <= 0 ? plan.destination : null;
         if (cargo.trasnporter != null) return null;
         HexTile step = map.ReachHorizon(cargo).StepToward(plan.destination);
         return step != null && step != cargo.tile ? step : null;

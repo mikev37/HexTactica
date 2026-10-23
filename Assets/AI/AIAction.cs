@@ -26,6 +26,8 @@ namespace HexTactica.AI {
         public Unit target;
         public Unit transport;
         public Building building;
+        /// <summary>Unload only: the tile the transport moves to first (null: unload where it stands).</summary>
+        public HexTile via;
         public float score;
         public string reason;
 
@@ -51,6 +53,11 @@ namespace HexTactica.AI {
 
         public static AIAction Disembark(Unit transport, Unit cargo, HexTile at, string why) {
             return new AIAction { kind = AIActionKind.Unload, unit = transport, target = cargo, destination = at, reason = why };
+        }
+
+        /// <summary>Move the transport to <paramref name="via"/>, then put <paramref name="cargo"/> down on <paramref name="at"/>.</summary>
+        public static AIAction MoveAndDisembark(Unit transport, HexTile via, Unit cargo, HexTile at, string why) {
+            return new AIAction { kind = AIActionKind.Unload, unit = transport, target = cargo, destination = at, via = via, reason = why };
         }
 
         public static AIAction Seize(Unit u, Building b, float score, string why) {

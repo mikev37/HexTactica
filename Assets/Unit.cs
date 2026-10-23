@@ -97,6 +97,12 @@ public class Unit : MonoBehaviour
     [Tooltip("How much health the unit appears to have (for animations so the unit doesn't die before the shot is fired)")]
     public int StrengthDisplay;
 
+    [Tooltip("Strength pips suppressed by indirect fire: they do not fire back if the unit is attacked again before its own turn starts, when they all come back. Never more than Strength.")]
+    public int suppressed;
+
+    /// <summary>Strength that fires back when this unit is attacked: Strength less the suppressed pips (not below 0).</summary>
+    public int RetaliationStrength { get { return Mathf.Max(0, Strength - Mathf.Clamp(suppressed, 0, Strength)); } }
+
     internal void Delete() {
         DieActual();
         Destroy(gameObject);
@@ -609,6 +615,11 @@ public class Unit : MonoBehaviour
             answeredBy = o.retaliationHappens && o.damageToAttacker > 0 && defender.Strength > 0 ? defender : null;
         }
 
+        // Indirect fire that would have driven it back suppresses it where it stands.
+        if (o.defenderSuppressed && !o.defenderDies) defender.suppressed += o.suppressionAdded;
+        defender.suppressed = Mathf.Clamp(defender.suppressed, 0, Mathf.Max(0, defender.Strength));
+        suppressed = Mathf.Clamp(suppressed, 0, Mathf.Max(0, Strength));
+
         if (o.defenderRetreats && !o.defenderDies) {
             if (o.defenderPinned) {
                 // nowhere to go; the extra strength is already taken
@@ -889,7 +900,10 @@ public struct UnitData {
     public int transporterIndexPlusOne;
     /// <summary>An air tanker's refuels left, plus one (zero: an older save, keep the prefab's).</summary>
     public int refuelStockPlusOne;
+    /// <summary>Suppressed strength pips (zero in older saves, which is right: nothing was suppressed).</summary>
+    public int suppressed;
     public UnitData(Unit t) {
+        suppressed = t.suppressed;
         transporterIndexPlusOne = 0;
         refuelStockPlusOne = t.refuelStock + 1;
         x = t.tile.x;
@@ -930,6 +944,7 @@ public struct UnitData {
         ut.fuel = fuel;
         ut.ammo = ammo;
         if (refuelStockPlusOne > 0) ut.refuelStock = refuelStockPlusOne - 1;
+        ut.suppressed = Mathf.Clamp(suppressed, 0, Strength);
         return ut;
     }
 }
