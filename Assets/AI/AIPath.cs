@@ -167,6 +167,7 @@ namespace HexTactica.AI {
             // "Once out of fuel the unit will not be able to move." Partial fuel is
             // enforced per tile by StepBudget, not by shrinking movement points.
             if (mover.fuelMax > 0 && mover.fuel <= 0) return 0;
+            if (!LocomotionRules.CanMove(mover.locomotion)) return 0;
             return Mathf.Max(0, mover.moveRange);
         }
 
@@ -235,7 +236,7 @@ namespace HexTactica.AI {
             if (mover == null) return field;
 
             int range = rangeOverride >= 0 ? rangeOverride : RangeThisTurn(mover);
-            int futureRange = Mathf.Max(0, mover.moveRange);
+            int futureRange = LocomotionRules.CanMove(mover.locomotion) ? Mathf.Max(0, mover.moveRange) : 0;
             int stepBudget = StepBudget(mover);
 
             // A unit with no movement at all still occupies its own tile.
