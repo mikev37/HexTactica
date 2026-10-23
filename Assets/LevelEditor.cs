@@ -9,6 +9,7 @@ public class LevelEditor : MonoBehaviour
 {
     public TerrainData td;
     public static LevelEditor singleton;
+    public bool mouseDown;
 	public bool editing,unit_placement,building_placement;
     public Unit ut;
     [Tooltip("Building placed by clicking a tile while building_placement is on (owned by the active player, or nobody with placeNeutral)")]
