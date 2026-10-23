@@ -40,6 +40,16 @@ public class LevelEditor : MonoBehaviour
     }
 
     void Save() {
+        string json = BoardJson();
+        Debug.Log(json);
+
+        string destination = Application.persistentDataPath + "/save.dat";
+        Debug.Log(destination);
+        File.WriteAllText(destination, json);
+    }
+
+    /// <summary>The board as a scenario file: tiles, players, purchase settings, buildings and units (what the S key saves, and HexTactica ▸ Save Scenario File).</summary>
+    public static string BoardJson() {
         string json = "{\n\"width\":" + HexGenerator.hg.width + ",\n \"tiles\":[";
 
         HexGenerator.forAllTiles(t => {
@@ -84,15 +94,7 @@ public class LevelEditor : MonoBehaviour
             json = json.Substring(0, json.Length - 1) + "\n]\n";
         }
         json += "}";
-        Debug.Log(json);
-
-        string destination = Application.persistentDataPath + "/save.dat";
-        Debug.Log(destination);
-        //File file;
-
-        /*if (File.Exists(destination)) file = File.OpenWrite(destination);
-        else file = File.Create(destination);*/
-        File.WriteAllText(destination, json);
+        return json;
     }
 
     void Load() {

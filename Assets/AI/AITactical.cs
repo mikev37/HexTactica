@@ -320,7 +320,7 @@ namespace HexTactica.AI {
 
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
             float worth = AIScore.Worth(unit);
-            AIWorld.Cache cache = new AIWorld.Cache();
+            AIWorld.Cache cache = map.replyCache;
             float bestWorld = float.NegativeInfinity;
             foreach (Option o in options) {
                 o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
@@ -796,7 +796,7 @@ namespace HexTactica.AI {
                 return f;
             }
             if (fw != null) {
-                AIWorld.Outcome rw = AIWorld.Evaluate(unit, dest, default(AttackAppraisal), map, new AIWorld.Cache(), false, true);
+                AIWorld.Outcome rw = AIWorld.Evaluate(unit, dest, default(AttackAppraisal), map, map.replyCache, false, true);
                 if (fw.score > rw.score) {
                     f.reason = "wounded, fighting worth more (" + fw.score.ToString("0") + " v withdraw " + rw.score.ToString("0") + "): " + f.reason;
                     return f;

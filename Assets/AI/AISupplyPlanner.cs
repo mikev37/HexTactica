@@ -223,7 +223,7 @@ namespace HexTactica.AI {
             // and a real opponent's choice of target (the most valuable thing in reach, which a
             // 25,000-gold truck usually is) replaces the share-of-fire average when it is worse.
             float simulated = 0f;
-            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, new AIWorld.Cache(), false);
+            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, map.replyCache, false);
             reply.lost.TryGetValue(hub.myUnit, out simulated);
             dRisk = Mathf.Max(map.ExpectedLoss(hub.myUnit, at), simulated) * AIScore.Worth(hub.myUnit) * profile.riskWeight;
             total -= dRisk;
@@ -285,7 +285,7 @@ namespace HexTactica.AI {
                 total -= stranded;
             }
             float simulated = 0f;
-            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, new AIWorld.Cache(), false);
+            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, map.replyCache, false);
             reply.lost.TryGetValue(hub.myUnit, out simulated);
             float risk = simulated * hubWorth;
             total -= risk;
@@ -374,7 +374,7 @@ namespace HexTactica.AI {
                 HexTile stop = reach.StepToward(t);
                 if (stop == null || stop == unit.tile) continue;
                 float lost = 0f;
-                AIWorld.Outcome reply = AIWorld.Evaluate(unit, stop, new AttackAppraisal(), map, new AIWorld.Cache(), false);
+                AIWorld.Outcome reply = AIWorld.Evaluate(unit, stop, new AttackAppraisal(), map, map.replyCache, false);
                 reply.lost.TryGetValue(unit, out lost);
                 lost = Mathf.Max(lost, map.ExpectedLoss(unit, stop));
                 if (lost > 0f) {

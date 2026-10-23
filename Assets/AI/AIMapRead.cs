@@ -120,6 +120,22 @@ namespace HexTactica.AI {
         readonly Dictionary<Unit, HashSet<HexTile>[]> ourSpace = new Dictionary<Unit, HashSet<HexTile>[]>();
 
         /// <summary>Movement tiles [0] and strike tiles [1] of one of our units from where it stands. Cached per board read.</summary>
+        /// <summary>
+        /// An enemy's move and strike tiles for the space forecast, computed from the move tiles
+        /// <paramref name="positions"/>: kept while the forecasts hand in the same set (the reply
+        /// cache's, for an enemy far from the unit deciding), so each is worked out once per board.
+        /// </summary>
+        public HashSet<HexTile>[] EnemySpace(Unit e, HashSet<HexTile> positions) {
+            KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]> kv;
+            // No move tiles handed in (a unit that does not fire tonight): its reach on the board as
+            // it stands, which is the same for every forecast on this board.
+            if (enemySpace.TryGetValue(e, out kv) && ReferenceEquals(kv.Key, positions)) return kv.Value;
+            HashSet<HexTile>[] s = SpaceFrom(e, e.tile, positions);
+            enemySpace[e] = new KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>(positions, s);
+            return s;
+        }
+        readonly Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>> enemySpace = new Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>>();
+
         public HashSet<HexTile>[] SpaceOf(Unit x) {
             HashSet<HexTile>[] s;
             if (ourSpace.TryGetValue(x, out s)) return s;
@@ -141,12 +157,13 @@ namespace HexTactica.AI {
                 if (x.moveRange > 0 && x.trasnporter == null) {
                     MoveField f = AIPath.ThisTurnFrom(x, origin, x.moveRange);
                     foreach (HexTile p in f.Tiles) if (p != origin && f.ReachableThisTurn(p) && AIPath.CanFinishTurnOn(x, p)) move.Add(p);
+                    AIPath.Release(f);
                 }
             }
             HashSet<HexTile> strike = new HashSet<HexTile>();
             if (x.Firepower > 0 && x.AttackRange > 0) {
-                if (x.moveAndAttack) { foreach (HexTile p in move) foreach (HexTile r in AIPath.TilesInRange(p, x.MinRange, x.AttackRange)) strike.Add(r); }
-                else foreach (HexTile r in AIPath.TilesInRange(origin, x.MinRange, x.AttackRange)) strike.Add(r);
+                if (x.moveAndAttack) { foreach (HexTile p in move) foreach (HexTile r in AIPath.TilesInRangeShared(p, x.MinRange, x.AttackRange)) strike.Add(r); }
+                else foreach (HexTile r in AIPath.TilesInRangeShared(origin, x.MinRange, x.AttackRange)) strike.Add(r);
             }
             return new[] { move, strike };
         }
@@ -196,6 +213,7 @@ namespace HexTactica.AI {
             theirConnected.Clear();
             enemyPlayers.Clear();
             ourSpace.Clear();
+            enemySpace.Clear();
             HashSet<Player> enemies = new HashSet<Player>();
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
             if (all != null) for (int i = 0; i < all.Count; i++) if (all[i] != null && all[i].owner != null && all[i].owner != player) enemies.Add(all[i].owner);
@@ -244,7 +262,7 @@ namespace HexTactica.AI {
                     int strike = eta.turns + (e.moveAndAttack || p == e.tile ? 1 : 2);
                     if (strike > profile.enemyReachTurns) continue;
                     if (p != e.tile && !AIPath.CanFinishTurnOn(e, p)) continue;
-                    List<HexTile> ring = AIPath.TilesInRange(p, e.MinRange, e.AttackRange);
+                    List<HexTile> ring = AIPath.TilesInRangeShared(p, e.MinRange, e.AttackRange);
                     for (int k = 0; k < ring.Count; k++) {
                         int cur;
                         if (!strikeTurns.TryGetValue(ring[k], out cur) || strike < cur) strikeTurns[ring[k]] = strike;

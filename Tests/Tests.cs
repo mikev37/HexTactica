@@ -67,6 +67,12 @@ public static class Tests {
                              Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
             return 0;
         }
+        if (probe == "perf") {
+            // PROBE=perf FILE=<path or name> [ROUNDS=r]: time every AI step (one Update's worth of work in the game).
+            string f = Environment.GetEnvironmentVariable("FILE");
+            Scenarios.Perf(System.IO.File.Exists(f) ? f : Scenarios.Find(f), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "1"), tweak);
+            return 0;
+        }
         if (probe == "duel") {
             Scenarios.Duel(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "40"),
                            Tweak(Environment.GetEnvironmentVariable("SET_BLUE")), Tweak(Environment.GetEnvironmentVariable("SET_RED")),

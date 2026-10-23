@@ -172,7 +172,27 @@ namespace HexTactica.AI {
         /// </summary>
         public void RefreshAfterAction() { Rebuild(false); }
 
+        /// <summary>
+        /// Where each enemy could fire from tonight, for the reply forecasts (AIWorld.Evaluate) of
+        /// every decision on this board: an enemy far from the unit deciding stands where it stands
+        /// whatever that unit does. Cleared whenever the board is read again (after every action).
+        /// (Each forecast used to start from scratch: on a 2,800-tile map with 40 enemies that was
+        /// two dozen path searches per option, most of the AI's time.)
+        /// </summary>
+        public readonly AIWorld.Cache replyCache = new AIWorld.Cache();
+
+        /// <summary>Where each enemy could move to tonight on the board as it stands (AIWorld.Positions), once per board read.</summary>
+        public HashSet<HexTile> BaseReach(Unit e, bool ownSideBlocks) {
+            Dictionary<Unit, HashSet<HexTile>> d = ownSideBlocks ? baseReachBlocked : baseReach;
+            HashSet<HexTile> r;
+            if (!d.TryGetValue(e, out r)) { r = AIWorld.Positions(e, ownSideBlocks); d[e] = r; }
+            return r;
+        }
+        readonly Dictionary<Unit, HashSet<HexTile>> baseReach = new Dictionary<Unit, HashSet<HexTile>>(), baseReachBlocked = new Dictionary<Unit, HashSet<HexTile>>();
+
         void Rebuild(bool recalculateThreat) {
+            replyCache.positions.Clear();
+            baseReach.Clear(); baseReachBlocked.Clear();
             space = null;
             denialBaseline = null;
             thisTurnFields.Clear();
@@ -189,11 +209,11 @@ namespace HexTactica.AI {
             ownHubs.Clear();
             enemyHubs.Clear();
 
-            if (recalculateThreat) GameController.RecalculateThreat();
+            { long __p = AIPerf.Begin(); if (recalculateThreat) GameController.RecalculateThreat(); AIPerf.End("map: game threat field", __p); }
             // Our field (with any planned supply-unit ghosts applied), its static/mobile/potential
             // split, the enemy's field and the distance maps: AIMapRead.
             // Connection state is published there too — the planner reads hub.connected.
-            SolveOurSupply();
+            { long __p = AIPerf.Begin(); SolveOurSupply(); AIPerf.End("map: supply", __p); }
 
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : new List<Unit>();
             for (int i = 0; i < all.Count; i++) {
@@ -210,11 +230,11 @@ namespace HexTactica.AI {
             SortStable(ownUnits);
             SortStable(enemyUnits);
 
-            ComputeConflict();
-            ComputeDistress();
-            ScoreSupplyImportance();
-            ComputeHQDanger();
-            ComputeEnemyFire();
+            { long __p = AIPerf.Begin(); ComputeConflict(); AIPerf.End("map: conflict", __p); }
+            { long __p = AIPerf.Begin(); ComputeDistress(); AIPerf.End("map: distress", __p); }
+            { long __p = AIPerf.Begin(); ScoreSupplyImportance(); AIPerf.End("map: supply importance", __p); }
+            { long __p = AIPerf.Begin(); ComputeHQDanger(); AIPerf.End("map: HQ danger", __p); }
+            { long __p = AIPerf.Begin(); ComputeEnemyFire(); AIPerf.End("map: enemy fire", __p); }
         }
 
         /// <summary>
@@ -249,7 +269,7 @@ namespace HexTactica.AI {
 
                 EnemyFire ef = new EnemyFire { unit = e, tiles = new HashSet<HexTile>(), positions = firingPositions };
                 for (int j = 0; j < firingPositions.Count; j++) {
-                    List<HexTile> hits = AIPath.TilesInRange(firingPositions[j], e.MinRange, e.AttackRange);
+                    List<HexTile> hits = AIPath.TilesInRangeShared(firingPositions[j], e.MinRange, e.AttackRange);
                     for (int k = 0; k < hits.Count; k++) ef.tiles.Add(hits[k]);
                 }
                 for (int j = 0; j < ownUnits.Count; j++) {
