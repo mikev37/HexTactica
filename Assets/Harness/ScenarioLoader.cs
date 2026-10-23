@@ -82,10 +82,16 @@ namespace HexTactica.Harness {
             FloodWater();
 
             JSONObjectEnumerator tiles = obj.GetField("tiles").GetEnumerator();
+            int offBoard = 0;
             while (tiles.MoveNext()) {
                 TileData td = JsonUtility.FromJson<TileData>(tiles.Current.Print());
+                if (HexGenerator.hg.get(td.x, td.y, td.z) == null) { offBoard++; continue; }
                 td.load();
             }
+            // The scene's board is smaller than the file's map: those tiles are simply gone (water),
+            // which can cut a map in two. Say so rather than load something else in silence.
+            if (offBoard > 0) UnityEngine.Debug.LogWarning("Scenario: " + offBoard + " tiles lie outside this scene's board (width " + HexGenerator.hg.width
+                + (obj.GetField("width") != null ? ", the file's is " + obj.GetField("width").intValue : "") + ") and were left out. Enlarge the board in the scene to play this map as made.");
 
             if (obj.GetField("players")) {
                 JSONObjectEnumerator players = obj.GetField("players").GetEnumerator();

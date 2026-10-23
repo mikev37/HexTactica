@@ -132,7 +132,7 @@ namespace HexTactica.AI {
                     if (best != null && !(s < bestSteps || (s == bestSteps && CombatMath.Precedes(t, best)))) continue;
                     // ...not even by a chain of blows (the enemy's reply played out, as everywhere else).
                     float lost;
-                    if (AIWorld.Evaluate(u, t, new AttackAppraisal(), map, new AIWorld.Cache(), false).lost.TryGetValue(u, out lost) && lost > 0f) continue;
+                    if (AIWorld.Evaluate(u, t, new AttackAppraisal(), map, map.replyCache, false).lost.TryGetValue(u, out lost) && lost > 0f) continue;
                     best = t; bestSteps = s;
                 }
                 if (best != null) {

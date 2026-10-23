@@ -63,6 +63,12 @@ namespace HexTactica.AI {
                 if (to != null) Set(to, u);
             }
             public void Clear(HexTile t, Unit u) { if (t != null && t.occupier == u) Set(t, null); }
+            /// <summary>Is every tile this board has changed beyond <paramref name="e"/>'s move this turn (so its reach is the real board's)?</summary>
+            public bool FarFrom(Unit e) {
+                int reach = (e.moveAndAttack ? e.moveRange : 0) + 1;
+                foreach (HexTile t in saved.Keys) if (t.Distance(e.tile) <= reach) return false;
+                return true;
+            }
             public void Restore() { foreach (KeyValuePair<HexTile, Unit> kv in saved) kv.Key.occupier = kv.Value; saved.Clear(); }
         }
 
@@ -169,6 +175,15 @@ namespace HexTactica.AI {
                 foreach (Unit e in enemies) {
                     if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f) continue;
                     if (e.Firepower <= 0 || !e.CanAttack(e.tile)) continue;
+                    // An enemy where it stands, out of reach of every tile this plan changed (moves,
+                    // kills, retreats): where it can go is what it is on the real board, worked out
+                    // once per board (the reply cache) instead of once per plan scored.
+                    HashSet<HexTile> cached;
+                    if (at[e] == e.tile && !ownSideBlocks && board.FarFrom(e)) {
+                        if (!map.replyCache.positions.TryGetValue(e, out cached)) { cached = AIWorld.Positions(e, false); map.replyCache.positions[e] = cached; }
+                        positions[e] = cached;
+                        continue;
+                    }
                     positions[e] = PositionsFrom(e, at[e], ownSideBlocks);
                 }
                 HashSet<HexTile> taken = new HashSet<HexTile>();

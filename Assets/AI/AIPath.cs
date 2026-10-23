@@ -231,6 +231,16 @@ namespace HexTactica.AI {
                                         int maxTurns,
                                         bool ignoreEnemies,
                                         int rangeOverride) {
+            long __p = AIPerf.Begin();
+            try { return ComputeField(mover, sources, maxTurns, ignoreEnemies, rangeOverride); }
+            finally { AIPerf.End("path: AIPath.Compute (maxTurns " + (maxTurns <= 0 ? "0" : maxTurns <= 1 ? "1" : "2+") + ")" + AIPerf.Caller(), __p); }
+        }
+
+        static MoveField ComputeField(Unit mover,
+                                        IEnumerable<KeyValuePair<HexTile, Eta>> sources,
+                                        int maxTurns,
+                                        bool ignoreEnemies,
+                                        int rangeOverride) {
 
             MoveField field = new MoveField(mover);
             if (mover == null) return field;

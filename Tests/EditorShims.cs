@@ -15,6 +15,7 @@ namespace UnityEditor {
         public static void SetDirty(UnityEngine.Object o) { }
         public static void RevealInFinder(string path) { }
         public static string OpenFilePanel(string title, string dir, string ext) { return ""; }
+        public static string SaveFilePanel(string title, string dir, string name, string ext) { return ""; }
     }
     public static class AssetDatabase {
         public static string[] FindAssets(string filter) { return new string[0]; }
