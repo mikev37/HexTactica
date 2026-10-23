@@ -245,6 +245,7 @@ namespace HexTactica.AI {
         public static HexTile EndOf(Unit u, AIAction action) {
             if (action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack) return u.tile;
             if (action.kind == AIActionKind.Load && action.transport != null) return action.transport.tile;   // it ends aboard
+            if (action.kind == AIActionKind.Unload) return action.via ?? u.tile;   // the transport ends where it put the cargo down
             return action.destination ?? u.tile;
         }
 

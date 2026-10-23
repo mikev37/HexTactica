@@ -173,6 +173,7 @@ namespace HexTactica.AI {
                     Battle b = new Battle { target = t };
                     HashSet<HexTile> claimed = new HashSet<HexTile>();
                     float left = t.Strength;
+                    int tsup = t.suppressed;
                     HexTile tAt = t.tile;
                     bool ok = true;
                     for (int i = 0; i < n; i++) {
@@ -195,11 +196,16 @@ namespace HexTactica.AI {
                         b.steps.Add(new PlanStep { unit = m.unit, stop = stop, target = t, kind = "battle" });
                         b.sacrifice += Mathf.Max(0f, m.favourite.world - (pick ?? best).world);
                         int dmg, back;
-                        CombatMath.Exchange(m.unit, m.unit.Strength, stop, t, AIWorld.Hp(left), tAt, out dmg, out back);
+                        CombatMath.Exchange(m.unit, m.unit.Strength, stop, t, AIWorld.Hp(left), tAt, tsup, out dmg, out back);
                         left -= dmg;
                         if (left > 0f && dmg > 0 && dmg - t.Veterancy > back - m.unit.Veterancy && t.moveRange > 0) {
-                            HexTile rt = AIPlan.RetreatTile(t, tAt, stop, strength, claimed);
-                            if (rt == null) left -= 1f; else tAt = rt;
+                            if (CombatMath.Suppresses(m.unit)) {
+                                // Indirect fire: suppressed where it stands, so the blows after it are answered less.
+                                tsup += CombatMath.SuppressionFrom(AIWorld.Hp(left), tsup);
+                            } else {
+                                HexTile rt = AIPlan.RetreatTile(t, tAt, stop, strength, claimed);
+                                if (rt == null) left -= 1f; else tAt = rt;
+                            }
                         }
                     }
                     if (!ok) continue;
@@ -354,6 +360,7 @@ namespace HexTactica.AI {
             Unit t = steps[0].target;
             if (t == null || t.tile == null || t.Strength <= 0) return false;
             float left = t.Strength;
+            int tsup = t.suppressed;
             HexTile tAt = t.tile;
             HashSet<HexTile> claimed = new HashSet<HexTile>();
             Dictionary<Unit, float> strength = new Dictionary<Unit, float>();
@@ -369,10 +376,12 @@ namespace HexTactica.AI {
                 if (stop == null) continue;
                 claimed.Add(stop);
                 int dmg, back;
-                CombatMath.Exchange(u, u.Strength, stop, t, AIWorld.Hp(left), tAt, out dmg, out back);
+                CombatMath.Exchange(u, u.Strength, stop, t, AIWorld.Hp(left), tAt, tsup, out dmg, out back);
                 left -= dmg;
                 if (left <= 0f) return true;
-                if (dmg > 0 && dmg - t.Veterancy > back - u.Veterancy && t.moveRange > 0) {
+                if (dmg > 0 && dmg - t.Veterancy > back - u.Veterancy && t.moveRange > 0 && CombatMath.Suppresses(u)) {
+                    tsup += CombatMath.SuppressionFrom(AIWorld.Hp(left), tsup);   // suppressed, not driven back
+                } else if (dmg > 0 && dmg - t.Veterancy > back - u.Veterancy && t.moveRange > 0) {
                     HexTile rt = AIPlan.RetreatTile(t, tAt, stop, strength, claimed);
                     if (rt == null) left -= 1f; else tAt = rt;
                     if (left <= 0f) return true;

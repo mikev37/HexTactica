@@ -397,6 +397,12 @@ namespace HexTactica.AI {
         [Tooltip("An empty transport is credited, like a fighting unit, for drawing fire off friends and blocking the enemy's way (FirstStrikeCredit, SpaceDenial). Off: it is not, and keeps out of reach.")]
         public bool idleTransportScreens = false;
 
+        [Tooltip("Plan with getting off costing nothing: a passenger aboard is not spent while it rides, a transport drives and drops in one action, and a passenger put down fresh moves and fights from where it lands (the ride is planned with that move). Off: drop-off waits for the next turn and the passenger's turn is spent.")]
+        public bool freshUnload = true;
+
+        [Tooltip("With freshUnload: plan rides counting the passenger's own move after it is put down (it may be dropped up to a move short of where it is going). Off: rides are planned to a drop beside the destination, and the passenger's move after landing is a bonus.")]
+        public bool freshUnloadPlanning = true;
+
         [Tooltip("A supply-chain link may stand ahead of the army where no enemy can strike for more than two turns (otherwise links never pass the frontmost fighting unit).")]
         public bool chainLeadsWhenClear = false;
 

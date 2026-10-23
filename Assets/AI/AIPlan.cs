@@ -109,6 +109,12 @@ namespace HexTactica.AI {
             Dictionary<Unit, HexTile> endsAt = new Dictionary<Unit, HexTile>();
             bool breakpoints = prof.replyBreakpoints;
             Dictionary<Unit, float> hpCertain = null;
+            // Suppressed pips as the forecast plays out. Ours: their fire suppresses in their reply.
+            // Theirs: what our indirect fire has suppressed this turn (and what it will in the steps
+            // below), which do not answer our later blows; their turn starting gives them back.
+            Dictionary<Unit, int> sup = new Dictionary<Unit, int>();
+            foreach (Unit x in map.enemyUnits) if (x != null && x.suppressed > 0) sup[x] = x.suppressed;
+            Func<Unit, int> supOf = x => { int v; return sup.TryGetValue(x, out v) ? v : 0; };
             try {
                 // ---- our moves and shots, in order.
                 foreach (PlanStep st in steps) {
@@ -129,16 +135,19 @@ namespace HexTactica.AI {
                         pinned = o.defenderPinned;
                         if (o.defenderRetreats && !o.defenderPinned && !o.defenderDies) retreat = o.retreatTile;
                     } else {
-                        CombatMath.Exchange(x, AIWorld.Hp(hp[x]), at[x], t, AIWorld.Hp(hp[t]), at[t], out dmg, out back);
-                        if (dmg > 0 && dmg < hp[t] && dmg - t.Veterancy > back - x.Veterancy && t.moveRange > 0) {
+                        CombatMath.Exchange(x, AIWorld.Hp(hp[x]), at[x], t, AIWorld.Hp(hp[t]), at[t], supOf(t), out dmg, out back);
+                        if (CombatMath.Suppresses(x)) { }   // indirect fire: suppresses (below), never drives back or pins
+                        else if (dmg > 0 && dmg < hp[t] && dmg - t.Veterancy > back - x.Veterancy && t.moveRange > 0) {
                             retreat = RetreatTile(t, at[t], at[x], hp, null);
                             if (retreat == null && prof.forecastPins) { dmg += 1; pinned = true; }
                         }
                     }
                     float dealt = Mathf.Min(hp[t], dmg);
+                    bool suppresses = CombatMath.Suppresses(x) && CombatMath.Pushes(x, back, t, dmg, hp[t]);
                     hp[t] -= dealt;
                     hp[x] = Mathf.Max(0f, hp[x] - back);
-                    if (narrate) w.replies.Add("we: " + st + " " + dealt.ToString("0.#") + (pinned ? " pinned" : "") + (back > 0 ? "/" + back : ""));
+                    if (suppresses && hp[t] > 0f) sup[t] = supOf(t) + CombatMath.SuppressionFrom(AIWorld.Hp(hp[t]), supOf(t));
+                    if (narrate) w.replies.Add("we: " + st + " " + dealt.ToString("0.#") + (pinned ? " pinned" : "") + (back > 0 ? "/" + back : "") + (suppresses && hp[t] > 0f ? " suppressed " + supOf(t) : ""));
                     if (hp[t] <= 0f) board.Clear(at[t], t);
                     else if (modelRetreats && retreat != null) { board.Move(t, at[t], retreat); at[t] = retreat; }
                     if (hp[x] <= 0f) board.Clear(at[x], x);
@@ -146,6 +155,7 @@ namespace HexTactica.AI {
 
                 // ---- their reply: AIWorld.Evaluate's, with every moved unit where it now stands.
                 if (breakpoints) hpCertain = new Dictionary<Unit, float>(hp);
+                sup.Clear();   // their turn starts: their pips come back; ours are suppressed only by what follows
                 List<Unit> enemies = new List<Unit>(map.enemyUnits);
                 enemies.Sort((a, b) => {
                     int c = (b.Firepower * b.Strength).CompareTo(a.Firepower * a.Strength);
@@ -184,10 +194,10 @@ namespace HexTactica.AI {
                         HexTile fire = FiringFrom(e, at[e], dAt, pos, taken);
                         if (fire == null) continue;
                         int dmg, back;
-                        CombatMath.Exchange(e, AIWorld.Hp(hp[e]), fire, d, AIWorld.Hp(hp[d]), dAt, out dmg, out back);
+                        CombatMath.Exchange(e, AIWorld.Hp(hp[e]), fire, d, AIWorld.Hp(hp[d]), dAt, supOf(d), out dmg, out back);
                         if (dmg <= 0) continue;
                         bool pinned = false;
-                        if (prof.forecastPins && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !AIWorld.CanFallBack(d, dAt, fire, null, null, hp, taken)) {
+                        if (prof.forecastPins && !CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !AIWorld.CanFallBack(d, dAt, fire, null, null, hp, taken)) {
                             dmg += 1;
                             pinned = true;
                         }
@@ -209,7 +219,12 @@ namespace HexTactica.AI {
                     float dealt = Mathf.Min(hp[bestTarget], bestDamage * (breakpoints ? 1f : 1f - prof.replyDiscount));
                     bool certain = breakpoints && bestBack == 0 && bestTile.Distance(at[bestTarget]) > 1;
                     if (certain) hpCertain[bestTarget] = Mathf.Max(0f, hpCertain[bestTarget] - dealt);
+                    bool pushed = CombatMath.Pushes(e, bestBack, bestTarget, bestDamage, hp[bestTarget]);
                     hp[bestTarget] -= dealt;
+                    if (pushed && CombatMath.Suppresses(e) && hp[bestTarget] > 0f) {
+                        sup[bestTarget] = supOf(bestTarget) + CombatMath.SuppressionFrom(AIWorld.Hp(hp[bestTarget]), supOf(bestTarget));
+                        if (narrate) w.replies.Add(bestTarget.name + " suppressed " + sup[bestTarget]);
+                    }
                     float sofar;
                     w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
                     hp[e] = Mathf.Max(0f, hp[e] - bestBack);
@@ -220,7 +235,7 @@ namespace HexTactica.AI {
                         freed = at[bestTarget];
                         taken.Remove(freed);
                         board.Clear(freed, bestTarget);
-                    } else if (hp[bestTarget] > 0f && modelRetreats && !bestPinned
+                    } else if (hp[bestTarget] > 0f && modelRetreats && !bestPinned && !CombatMath.Suppresses(e)
                                && bestDamage - bestTarget.Veterancy > bestBack - e.Veterancy && bestTarget.moveRange > 0) {
                         // Driven back: it moves, and the tile it held opens.
                         HexTile rt = RetreatTile(bestTarget, at[bestTarget], bestTile, hp, taken);
@@ -353,15 +368,18 @@ namespace HexTactica.AI {
                     return c != 0 ? c : AIMap.CompareUnits(a.Key, b.Key);
                 });
                 float left = hp[t];
+                int tsup = t.suppressed;   // artillery goes first: what it suppresses does not answer the assault
                 List<PlanStep> chosen = new List<PlanStep>();
                 HashSet<HexTile> tentative = new HashSet<HexTile>();
                 foreach (KeyValuePair<Unit, HexTile> b in blows) {
                     if (left <= 0f) break;
                     if (tentative.Contains(b.Value)) continue;
                     int dmg, back;
-                    CombatMath.Exchange(b.Key, AIWorld.Hp(hp[b.Key]), b.Value, t, AIWorld.Hp(left), t.tile, out dmg, out back);
+                    CombatMath.Exchange(b.Key, AIWorld.Hp(hp[b.Key]), b.Value, t, AIWorld.Hp(left), t.tile, tsup, out dmg, out back);
                     if (dmg <= 0) continue;
+                    bool suppresses = CombatMath.Suppresses(b.Key) && CombatMath.Pushes(b.Key, back, t, dmg, left);
                     left -= dmg;
+                    if (suppresses && left > 0f) tsup += CombatMath.SuppressionFrom(AIWorld.Hp(left), tsup);
                     tentative.Add(b.Value);
                     chosen.Add(new PlanStep { unit = b.Key, stop = b.Value, target = t, kind = "strike" });
                 }
