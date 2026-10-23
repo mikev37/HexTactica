@@ -15,6 +15,11 @@ OLD="$1"; FILTER="${2:-gauntlet}"
 [ -n "$OLD" ] || { echo "usage: bash Tests/compare.sh <commit> [filter]"; exit 2; }
 OUT=$(mktemp -d)
 git -C "$REPO" worktree add -q "$OUT/old" "$OLD"
+# .meta files are not in git (ignored): the old checkout gets this checkout's, where it has none
+# of its own, so prefabs resolve the same on both sides. Existing files are never overwritten.
+(cd "$REPO" && find Assets -name "*.meta" -print0) | while IFS= read -r -d '' m; do
+    [ -e "$OUT/old/$m" ] || { [ -d "$(dirname "$OUT/old/$m")" ] && cp -n "$REPO/$m" "$OUT/old/$m"; }
+done
 echo "logs and the old checkout: $OUT"
 for f in $(ls "$HERE/Scenarios" | grep "$FILTER" | sed 's/\.dat$//'); do
   (BOARD=1 PROBE=duel FILE=$f ROUNDS=30 SCENARIOS="$HERE/Scenarios" bash "$HERE/run.sh" > "$OUT/new-$f.txt" 2>&1) &
