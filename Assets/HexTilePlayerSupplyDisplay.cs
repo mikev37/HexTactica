@@ -10,6 +10,7 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (!all.Contains(this)) all.Add(this);
         up.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f) ;
         down.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
         upright.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
@@ -25,16 +26,26 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
     }
 
     // Update is called once per frame
-    // The border is redrawn only when a supply field has been published since the last time
-    // (SupplyNetwork.Published), and an edge is switched only when it changes. (It was switched off
-    // and on again on every tile, for every player, every frame, with a fresh closure each time:
-    // thousands of SetActive calls and allocations a frame on a large map.)
-    int seen = -1;
+    // The border is redrawn only when a supply field has been published (SupplyNetwork wakes every
+    // display then), and an edge is switched only when it changes. In between the component is
+    // disabled, so Unity does not call Update at all: one call per tile per player per frame, even
+    // returning at once, was a cost of its own on a large board.
+    static readonly List<HexTilePlayerSupplyDisplay> all = new List<HexTilePlayerSupplyDisplay>();
+
+    /// <summary>Redraw every supply border on the next frame (called when a supply field is published).</summary>
+    public static void WakeAll() {
+        for (int i = all.Count - 1; i >= 0; i--) {
+            if (all[i] == null) { all.RemoveAt(i); continue; }
+            all[i].enabled = true;
+        }
+    }
+
+    void OnEnable() { if (!all.Contains(this)) all.Add(this); }
+    void OnDestroy() { all.Remove(this); }
 
     void Update()
     {
-        if (seen == SupplyNetwork.Published) return;
-        seen = SupplyNetwork.Published;
+        enabled = false;   // until the next publish wakes it
         bool u = false, d = false, ur = false, ul = false, dl = false, dr = false;
         if (myTile.isSupplied(myPlayer)) {
             List<HexTile> neighbors = myTile.neighbors;

@@ -218,6 +218,7 @@ public static class SupplyNetwork {
                 return 0;
             });
             Published++;
+            HexTilePlayerSupplyDisplay.WakeAll();
         }
 
         if (applyDrain) {
