@@ -86,6 +86,21 @@ namespace HexTactica.Testing {
             u.carries = new List<Locomotion>();
             string[] lines = text.Replace("\r", "").Split('\n');
             for (int i = 0; i < lines.Length; i++) {
+                // Unity also writes an int list as one hex string, four bytes little-endian per entry
+                // ("  carries: 00000000" is [Boots]; a trailing type letter may follow).
+                if (lines[i].StartsWith("  carries: ") && lines[i].Trim() != "carries:") {
+                    string hex = lines[i].Substring("  carries: ".Length).Trim();
+                    for (int k = 0; k + 8 <= hex.Length; k += 8) {
+                        int v = 0; bool ok = true;
+                        for (int byteI = 0; byteI < 4; byteI++) {
+                            int bv;
+                            if (!int.TryParse(hex.Substring(k + byteI * 2, 2), System.Globalization.NumberStyles.HexNumber, null, out bv)) { ok = false; break; }
+                            v |= bv << (8 * byteI);
+                        }
+                        if (ok) u.carries.Add((Locomotion)v);
+                    }
+                    break;
+                }
                 if (lines[i] != "  carries:") continue;
                 for (int j = i + 1; j < lines.Length && lines[j].StartsWith("  - "); j++) u.carries.Add((Locomotion)int.Parse(lines[j].Substring(4).Trim()));
                 break;

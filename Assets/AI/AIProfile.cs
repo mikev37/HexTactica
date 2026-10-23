@@ -400,6 +400,12 @@ namespace HexTactica.AI {
         [Tooltip("Plan with getting off costing nothing: a passenger aboard is not spent while it rides, a transport drives and drops in one action, and a passenger put down fresh moves and fights from where it lands (the ride is planned with that move). Off: drop-off waits for the next turn and the passenger's turn is spent.")]
         public bool freshUnload = true;
 
+        [Tooltip("Forecast only the theatre of the unit deciding: enemies that could strike anywhere it could move or fire this turn (move and range, plus theaterMargin), and our units they could strike. Everything else stands as it is, the same for all of its options. Off: the whole board, for every option.")]
+        public bool theaterForecast = true;
+
+        [Tooltip("Extra tiles around the theatre, for knock-on effects (an enemy driven back, a tile freed by a kill, roads that move units further than their move).")]
+        public int theaterMargin = 6;
+
         [Tooltip("With freshUnload: plan rides counting the passenger's own move after it is put down (it may be dropped up to a move short of where it is going). Off: rides are planned to a drop beside the destination, and the passenger's move after landing is a bonus.")]
         public bool freshUnloadPlanning = true;
 
