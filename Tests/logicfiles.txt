@@ -49,6 +49,9 @@ Harness/ScenarioLoader.cs
 Harness/GameLog.cs
 Harness/ScenarioMirror.cs
 UI/UnitStatusIcon.cs
+UI/UnitAlarmSprites.cs
+UI/UnitAlarmIcon.cs
+ColorObjectUnit.cs
 UI/SupplyOverlay.cs
 AI/AIScore.cs
 Units/LocomotionInference.cs
