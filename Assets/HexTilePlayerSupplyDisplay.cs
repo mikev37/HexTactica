@@ -25,38 +25,35 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
     }
 
     // Update is called once per frame
+    // The border is redrawn only when a supply field has been published since the last time
+    // (SupplyNetwork.Published), and an edge is switched only when it changes. (It was switched off
+    // and on again on every tile, for every player, every frame, with a fresh closure each time:
+    // thousands of SetActive calls and allocations a frame on a large map.)
+    int seen = -1;
+
     void Update()
     {
-        up.gameObject.SetActive(false);
-        down.gameObject.SetActive(false);
-        upright.gameObject.SetActive(false);
-        upleft.gameObject.SetActive(false);
-        downleft.gameObject.SetActive(false);
-        downright.gameObject.SetActive(false);
+        if (seen == SupplyNetwork.Published) return;
+        seen = SupplyNetwork.Published;
+        bool u = false, d = false, ur = false, ul = false, dl = false, dr = false;
         if (myTile.isSupplied(myPlayer)) {
-            myTile.neighbors.ForEach(tile => {
-                if (!tile.isSupplied(myPlayer)) {
-                    if (tile.x == myTile.x) {
-                        if (tile.z > myTile.z) {
-                            up.gameObject.SetActive(true);
-                        } else {
-                            down.gameObject.SetActive(true);
-                        }
-                    } else if (tile.x > myTile.x) {
-                        if (tile.z == myTile.z) {
-                            upright.gameObject.SetActive(true);
-                        } else {
-                            downright.gameObject.SetActive(true);
-                        }
-                    } else { //tile.x < x
-                        if (tile.y == myTile.y) {
-                            upleft.gameObject.SetActive(true);
-                        } else {
-                            downleft.gameObject.SetActive(true);
-                        }
-                    }
+            List<HexTile> neighbors = myTile.neighbors;
+            for (int i = 0; i < neighbors.Count; i++) {
+                HexTile tile = neighbors[i];
+                if (tile == null || tile.isSupplied(myPlayer)) continue;
+                if (tile.x == myTile.x) {
+                    if (tile.z > myTile.z) u = true; else d = true;
+                } else if (tile.x > myTile.x) {
+                    if (tile.z == myTile.z) ur = true; else dr = true;
+                } else { //tile.x < x
+                    if (tile.y == myTile.y) ul = true; else dl = true;
                 }
-            });
+            }
         }
+        Show(up, u); Show(down, d); Show(upright, ur); Show(upleft, ul); Show(downleft, dl); Show(downright, dr);
+    }
+
+    static void Show(SpriteRenderer r, bool on) {
+        if (r != null && r.gameObject.activeSelf != on) r.gameObject.SetActive(on);
     }
 }

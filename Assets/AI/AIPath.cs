@@ -54,11 +54,14 @@ namespace HexTactica.AI {
     /// </summary>
     public class MoveField {
 
-        public readonly Unit unit;
+        public Unit unit { get; private set; }
         readonly Dictionary<HexTile, Eta> eta = new Dictionary<HexTile, Eta>();
         readonly Dictionary<HexTile, HexTile> cameFrom = new Dictionary<HexTile, HexTile>();
 
         public MoveField(Unit unit) { this.unit = unit; }
+
+        /// <summary>Empty it for reuse by another unit (AIPath's pool).</summary>
+        internal void Reset(Unit u) { unit = u; eta.Clear(); cameFrom.Clear(); }
 
         public IEnumerable<HexTile> Tiles { get { return eta.Keys; } }
         public int Count { get { return eta.Count; } }
@@ -236,13 +239,31 @@ namespace HexTactica.AI {
             finally { AIPerf.End("path: AIPath.Compute (maxTurns " + (maxTurns <= 0 ? "0" : maxTurns <= 1 ? "1" : "2+") + ")" + AIPerf.Caller(), __p); }
         }
 
+        // Garbage: these were made afresh for every search, and the AI runs thousands of searches a
+        // turn. The heap and the closed set are scratch (a search never starts another); fields used
+        // only for a moment come back through Release and are handed out again.
+        static readonly AIHeap<HexTile> scratchOpen = new AIHeap<HexTile>();
+        static readonly HashSet<HexTile> scratchClosed = new HashSet<HexTile>();
+        static readonly Stack<MoveField> pool = new Stack<MoveField>();
+
+        /// <summary>
+        /// Give back a field nothing will read again (the AI's throwaway reach checks), so the next
+        /// search reuses its storage. Never release a field that is cached or handed on.
+        /// </summary>
+        public static void Release(MoveField f) {
+            if (f == null || pool.Count >= 64) return;
+            f.Reset(null);
+            pool.Push(f);
+        }
+
         static MoveField ComputeField(Unit mover,
                                         IEnumerable<KeyValuePair<HexTile, Eta>> sources,
                                         int maxTurns,
                                         bool ignoreEnemies,
                                         int rangeOverride) {
 
-            MoveField field = new MoveField(mover);
+            MoveField field;
+            if (pool.Count > 0) { field = pool.Pop(); field.Reset(mover); } else field = new MoveField(mover);
             if (mover == null) return field;
 
             int range = rangeOverride >= 0 ? rangeOverride : RangeThisTurn(mover);
@@ -250,7 +271,8 @@ namespace HexTactica.AI {
             int stepBudget = StepBudget(mover);
 
             // A unit with no movement at all still occupies its own tile.
-            AIHeap<HexTile> open = new AIHeap<HexTile>();
+            AIHeap<HexTile> open = scratchOpen;
+            open.Clear();
             foreach (KeyValuePair<HexTile, Eta> src in sources) {
                 if (src.Key == null) continue;
                 Eta existing = field.Get(src.Key);
@@ -260,7 +282,8 @@ namespace HexTactica.AI {
                 }
             }
 
-            HashSet<HexTile> closed = new HashSet<HexTile>();
+            HashSet<HexTile> closed = scratchClosed;
+            closed.Clear();
 
             while (open.Count > 0) {
                 HexTile current = open.Pop();
@@ -368,6 +391,40 @@ namespace HexTactica.AI {
         /// of 9,261, and this runs per candidate tile per unit.
         /// </summary>
         public static List<HexTile> TilesInRange(HexTile origin, int minRange, int maxRange) {
+            return new List<HexTile>(TilesInRangeShared(origin, minRange, maxRange));
+        }
+
+        // The tiles within a range never change: worked out once per tile and range, not for every
+        // shot the AI weighs. Keyed by the tile itself (a new board is new tiles).
+        static readonly Dictionary<HexTile, Dictionary<int, List<HexTile>>> rings = new Dictionary<HexTile, Dictionary<int, List<HexTile>>>();
+        static readonly Dictionary<HexTile, Dictionary<int, List<HexTile>>> sortedRings = new Dictionary<HexTile, Dictionary<int, List<HexTile>>>();
+        static HexGenerator ringsFor;
+
+        /// <summary>As TilesInRange, but one shared list per tile and range, never to be changed by the caller.</summary>
+        public static List<HexTile> TilesInRangeShared(HexTile origin, int minRange, int maxRange) {
+            return Ring(rings, origin, minRange, maxRange, false);
+        }
+
+        /// <summary>As TilesInRangeShared, sorted by CombatMath.CompareTiles (the order the firing-tile choices use).</summary>
+        public static List<HexTile> TilesInRangeSorted(HexTile origin, int minRange, int maxRange) {
+            return Ring(sortedRings, origin, minRange, maxRange, true);
+        }
+
+        static List<HexTile> Ring(Dictionary<HexTile, Dictionary<int, List<HexTile>>> cache, HexTile origin, int minRange, int maxRange, bool sorted) {
+            if (origin == null || maxRange < 0) return new List<HexTile>();
+            if (ringsFor != HexGenerator.hg) { rings.Clear(); sortedRings.Clear(); ringsFor = HexGenerator.hg; }
+            Dictionary<int, List<HexTile>> byRange;
+            if (!cache.TryGetValue(origin, out byRange)) { byRange = new Dictionary<int, List<HexTile>>(); cache[origin] = byRange; }
+            int key = (minRange + 2) * 1024 + maxRange;
+            List<HexTile> r;
+            if (byRange.TryGetValue(key, out r)) return r;
+            r = ComputeRing(origin, minRange, maxRange);
+            if (sorted) r.Sort(CombatMath.CompareTiles);
+            byRange[key] = r;
+            return r;
+        }
+
+        static List<HexTile> ComputeRing(HexTile origin, int minRange, int maxRange) {
             List<HexTile> result = new List<HexTile>();
             if (origin == null || maxRange < 0) return result;
 

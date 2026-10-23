@@ -312,8 +312,7 @@ namespace HexTactica.AI {
                     if (d <= e.AttackRange && d > e.MinRange) total += dmg;
                     continue;
                 }
-                List<HexTile> ring = AIPath.TilesInRange(s, e.MinRange, e.AttackRange);
-                ring.Sort(CombatMath.CompareTiles);
+                List<HexTile> ring = AIPath.TilesInRangeSorted(s, e.MinRange, e.AttackRange);
                 for (int i = 0; i < ring.Count; i++) {
                     HexTile r = ring[i];
                     if (r == s || claimed.Contains(r) || ours.Contains(r) || !pos.Contains(r)) continue;
