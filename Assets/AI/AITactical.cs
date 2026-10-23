@@ -427,7 +427,7 @@ namespace HexTactica.AI {
         /// </summary>
         static AIAction Choose(Unit unit, AIMap map, AIProfile profile,
                                Func<HexTile, float> valueOf,
-                               bool applySupply, float riskFactor, float stayFactor, string tag) {
+                               bool applySupply, float riskFactor, float stayFactor, string tag, bool screens = true) {
 
             MoveField horizon = map.ReachHorizon(unit);
             HexTile bestTile = null, bestStop = null;
@@ -473,9 +473,14 @@ namespace HexTactica.AI {
                 score -= map.CohesionCost(unit, stop);
                 // The other side of tonight's risk: the counterattack it invites and the fire it
                 // draws off friends (AIMap.FirstStrikeCredit).
-                score += map.FirstStrikeCredit(unit, stop);
-                // And the space it makes for the armour still to move (AISpace).
-                score += map.SpaceDenial(unit, stop);
+                // Not for a unit that is not there to fight (an empty transport): drawing fire and
+                // blocking the way are a fighting unit's work, and credited to an APC they drove it
+                // to the front line, where it was shot to pieces with nobody aboard.
+                if (screens) {
+                    score += map.FirstStrikeCredit(unit, stop);
+                    // And the space it makes for the armour still to move (AISpace).
+                    score += map.SpaceDenial(unit, stop);
+                }
 
                 // And the destination's exposure, since standing there is the point of going.
                 // Charging only tonight's stop made deep plans look free until the turn they
@@ -845,7 +850,7 @@ namespace HexTactica.AI {
                 }
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.2f;
                 return v;
-            }, true, 1.5f, 0.02f, "transport");
+            }, true, 1.5f, 0.02f, "transport", profile.idleTransportScreens);
         }
 
     }

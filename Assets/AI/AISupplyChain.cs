@@ -123,7 +123,11 @@ namespace HexTactica.AI {
                     if (net.DepthAt(t) <= 0) continue;                         // a link must be supplied by the links behind it
                     int s = steps(t);
                     if (s == int.MaxValue) continue;
-                    if (s < plan.frontSteps) { cappedOut = true; continue; }    // not ahead of the army
+                    // Not ahead of the army — unless no enemy can strike there for more than two
+                    // turns (profile.chainLeadsWhenClear): a link behind which the army stands
+                    // would otherwise hold in the road and the army, behind it on a narrow road,
+                    // never get past (zigzag: Red's chain stood in front of its army all game).
+                    if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) { cappedOut = true; continue; }
                     if (map.ExpectedLoss(u, t) > 0f) continue;                  // nothing can hit it tonight
                     if (best != null && !(s < bestSteps || (s == bestSteps && CombatMath.Precedes(t, best)))) continue;
                     // ...not even by a chain of blows (the enemy's reply played out, as everywhere else).

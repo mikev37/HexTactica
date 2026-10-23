@@ -392,7 +392,13 @@ namespace HexTactica.AI {
         public bool buyUnits = true;
 
         [Tooltip("Fighting units out of contact ride a free transport to the front when that gets them there sooner than walking (the same walk-or-ride planner supply units use), and get off where the ride ends.")]
-        public bool combatRides = false;
+        public bool combatRides = true;
+
+        [Tooltip("An empty transport is credited, like a fighting unit, for drawing fire off friends and blocking the enemy's way (FirstStrikeCredit, SpaceDenial). Off: it is not, and keeps out of reach.")]
+        public bool idleTransportScreens = false;
+
+        [Tooltip("A supply-chain link may stand ahead of the army where no enemy can strike for more than two turns (otherwise links never pass the frontmost fighting unit).")]
+        public bool chainLeadsWhenClear = false;
 
         [Tooltip("March: a fighting unit out of contact gains this much of a strength's worth for each step over land it ends nearer its front's objective (linear, so it pulls from any distance; supply costs still keep it inside supply).")]
         public float marchWeight = 0.05f;

@@ -24,6 +24,8 @@ public class AIPlayer : MonoBehaviour {
     public float actionInterval = 0.5f;
     [Tooltip("Longest the AI holds an action that follows up on a retreat (a shot at the retreating unit, a move onto the tile it left) for the retreat to play, in seconds. Other actions only wait actionInterval.")]
     public float maxAnimationWait = 3f;
+    [Tooltip("Hold the AI's next action while a retreat it follows up on is still playing. Off: the action goes ahead and the units' own animations wait instead (a shot is fired only once its target's sprite has reached its retreat tile; a move onto a tile being vacated starts once the retreating sprite has left it).")]
+    public bool holdForRetreats = false;
     float animationWait;
 
     float timer;
@@ -118,7 +120,7 @@ public class AIPlayer : MonoBehaviour {
             AIAction action = DecideFor(unit);
             // Following up on a unit still sliding back from a retreat (shooting it, or moving onto
             // the tile it is leaving): wait for the slide to show first. Anything else goes ahead.
-            if (!headless && WaitsOnRetreat(action)) { held = action; held.unit = unit; holding = true; animationWait = 0f; return true; }
+            if (!headless && holdForRetreats && WaitsOnRetreat(action)) { held = action; held.unit = unit; holding = true; animationWait = 0f; return true; }
             bool did = Run(unit, action, headless);
             if (GameController.gc.gameOver) return false;
             if (did) return true;
