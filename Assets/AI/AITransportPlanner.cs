@@ -100,9 +100,10 @@ namespace HexTactica.AI {
             int horizon = profile.planningHorizon;
 
             // ---- 1. On foot.
+            // (The board's cached horizon fields: the same searches, done once per board.)
             MoveField walk = cargo.trasnporter != null
                 ? null                                    // already aboard: no walking option
-                : AIPath.MultiTurn(cargo, horizon);
+                : horizon == map.profile.planningHorizon ? map.ReachHorizon(cargo) : AIPath.MultiTurn(cargo, horizon);
 
             // ---- 2/3/4. By transport.
             List<Unit> transports = CandidateTransports(cargo, map);
@@ -110,7 +111,7 @@ namespace HexTactica.AI {
             RideSolution bestRide = null;
 
             for (int i = 0; i < transports.Count; i++) {
-                RideSolution ride = BuildRide(cargo, transports[i], walk, horizon, profile);
+                RideSolution ride = BuildRide(cargo, transports[i], walk, horizon, profile, map);
                 if (ride != null) { ride.freshUnload = profile.freshUnload; ride.walkAfterDrop = profile.freshUnload && profile.freshUnloadPlanning; }
                 if (ride == null) continue;
                 if (bestRide == null || ride.IsBetterThan(bestRide)) bestRide = ride;
@@ -259,7 +260,7 @@ namespace HexTactica.AI {
         /// Steps 2-4: compute when boarding could happen at every tile, then run one
         /// multi-source search over the transport's movement seeded with those times.
         /// </summary>
-        static RideSolution BuildRide(Unit cargo, Unit transport, MoveField cargoWalk, int horizon, AIProfile profile) {
+        static RideSolution BuildRide(Unit cargo, Unit transport, MoveField cargoWalk, int horizon, AIProfile profile, AIMap map) {
             if (transport == null || transport.tile == null) return null;
             if (!Transporting.IsTransport(transport)) return null;
 
@@ -278,7 +279,7 @@ namespace HexTactica.AI {
                 loadTurnOf = null;   // aboard already: fresh if it has not acted this turn
             } else {
                 if (cargoWalk == null) return null;
-                MoveField drive = AIPath.MultiTurn(transport, horizon);
+                MoveField drive = horizon == map.profile.planningHorizon ? map.ReachHorizon(transport) : AIPath.MultiTurn(transport, horizon);
 
                 foreach (HexTile r in drive.Tiles) {
                     if (!AIPath.CanFinishTurnOn(transport, r)) continue;

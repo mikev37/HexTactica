@@ -92,6 +92,15 @@ public class AIPlayer : MonoBehaviour {
         if (timer > 0) return;
         timer = actionInterval;
 
+        // Reading the board and planning the turn is the heaviest step: it gets a frame of its
+        // own, and the first action comes on the next one (the two used to land in one frame).
+        if (!turnPrepared && player != null && !player.eliminated) {
+            PrepareTurn();
+            turnPrepared = true;
+            timer = 0f;
+            return;
+        }
+
         StepOnce(false);
     }
 
