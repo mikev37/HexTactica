@@ -121,6 +121,8 @@ namespace HexTactica.AI {
                     knocked = t; knockedFrom = was;
                 } else rt = null;
             }
+            HashSet<Unit> wasTheater = Theater;
+            Theater = map.TheaterOf(u);
             try {
                 long __p = AIPerf.Begin();
                 Outcome w = EvaluateOnBoard(u, stop, shot, map, cache, narrate, space);
@@ -128,9 +130,17 @@ namespace HexTactica.AI {
                 if (rt != null && narrate) w.replies.Insert(0, t.name + " driven back to (" + rt.x + "," + rt.y + ")");
                 return w;
             } finally {
+                Theater = wasTheater;
                 if (rt != null) { t.tile = was; rt.occupier = null; was.occupier = t; knocked = null; knockedFrom = null; }
             }
         }
+
+        /// <summary>
+        /// The units the forecast plays out (profile.theaterForecast; null: every unit). Units outside
+        /// stand and score as they are, the same for every option of the unit deciding.
+        /// </summary>
+        static HashSet<Unit> Theater;
+        static bool In(Unit x) { return Theater == null || Theater.Contains(x); }
 
         static Outcome EvaluateOnBoard(Unit u, HexTile stop, AttackAppraisal shot, AIMap map, Cache cache, bool narrate, bool space) {
             Outcome w = new Outcome();
@@ -173,6 +183,7 @@ namespace HexTactica.AI {
             //   - A defender driven back with nowhere to go takes the extra point (pinned), and an
             //     HQ cannot move, so it is always pinned.
             List<Unit> enemies = new List<Unit>(map.enemyUnits);
+            if (Theater != null) enemies.RemoveAll(e => !Theater.Contains(e));
             enemies.Sort((a, b) => {
                 int c = (b.Firepower * b.Strength).CompareTo(a.Firepower * a.Strength);
                 return c != 0 ? c : AIMap.CompareUnits(a, b);
@@ -272,7 +283,7 @@ namespace HexTactica.AI {
                 bool bestPinned = false;
                 float home = weighs ? Exposure(e, hp[e], e.tile, map, hp, ourPos) : 0f;
                 foreach (Unit d in map.ownUnits) {
-                    if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d)) continue;
+                    if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d) || (d != u && !In(d))) continue;
                     HexTile dAt = ourPos(d);
                     HexTile fire = FiringTile(e, dAt, pos, taken);
                     if (fire == null) continue;
@@ -399,12 +410,12 @@ namespace HexTactica.AI {
             Dictionary<Unit, float> ourFire = new Dictionary<Unit, float>();
             if (prof.ownStrikeWeight > 0f || prof.enemyStrikeWeight > 0f) {
                 foreach (Unit x in hp.Keys) {
-                    if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner != u.owner) continue;
+                    if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner != u.owner || (x != u && !In(x))) continue;
                     HexTile xAt = ourPos(x);
                     float best = 0f;
                     Unit bestD = null; int bestDmg = 0;
                     foreach (Unit d in hp.Keys) {
-                        if (hp[d] <= 0f || d.owner == u.owner || IsHQ(d)) continue;
+                        if (hp[d] <= 0f || d.owner == u.owner || IsHQ(d) || !In(d)) continue;
                         HexTile dAt = endsAt.ContainsKey(d) ? endsAt[d] : d.tile;
                         int dmg, back;
                         if (!InReach(x, xAt, dAt, out dmg, out back, Hp(hp[x]), d, Hp(hp[d]))) continue;
@@ -420,7 +431,7 @@ namespace HexTactica.AI {
                 }
                 if (prof.enemyStrikeWeight > 0f) {
                     foreach (Unit x in hp.Keys) {
-                        if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner == u.owner) continue;
+                        if (hp[x] <= 0f || x.Firepower <= 0 || IsHQ(x) || x.owner == u.owner || !In(x)) continue;
                         HexTile xAt = endsAt.ContainsKey(x) ? endsAt[x] : x.tile;
                         float survives = 1f;
                         float ours;
@@ -428,7 +439,7 @@ namespace HexTactica.AI {
                         if (survives <= 0f) continue;
                         float best = 0f;
                         foreach (Unit d in hp.Keys) {
-                            if (hp[d] <= 0f || d.owner != u.owner || IsHQ(d)) continue;
+                            if (hp[d] <= 0f || d.owner != u.owner || IsHQ(d) || (d != u && !In(d))) continue;
                             HexTile dAt = ourPos(d);
                             int dmg, back;
                             if (!InReach(x, xAt, dAt, out dmg, out back, Hp(hp[x]), d, Hp(hp[d]))) continue;
@@ -571,8 +582,11 @@ namespace HexTactica.AI {
             Func<Unit, HexTile> ourAt = x => x == u ? uAt : x.tile;
             float total = 0f;
             StringBuilder note = narrate ? new StringBuilder() : null;
+            int radius = Theater != null ? map.TheaterRadius(u) : int.MaxValue;
             foreach (Building b in Building.all) {
                 if (b == null || b.tile == null || !b.Capturable) continue;
+                // Outside the theatre: nothing this unit does reaches it (the same for every option).
+                if (radius != int.MaxValue && b.tile.Distance(from) > radius) continue;
                 float worth = BuildingWorth(b, map);
                 if (worth <= 0f) continue;
                 List<HexTile> fp = b.Footprint;
@@ -655,7 +669,7 @@ namespace HexTactica.AI {
             Dictionary<Unit, HashSet<HexTile>> fireOf = scratchFireOf;
             fireOf.Clear();
             foreach (Unit x in map.ownUnits) {
-                if (x == null || x.tile == null || !hp.ContainsKey(x) || hp[x] <= 0f || x.trasnporter != null) continue;
+                if (x == null || x.tile == null || !hp.ContainsKey(x) || hp[x] <= 0f || x.trasnporter != null || (x != u && !In(x))) continue;
                 // Near a unit driven back, reach is re-run on this board (the cached read is from before).
                 bool fresh = knocked != null && (x.tile.Distance(knockedFrom) <= x.moveRange + x.AttackRange + 1 || x.tile.Distance(knocked.tile) <= x.moveRange + x.AttackRange + 1);
                 HashSet<HexTile>[] s = x == u ? AIMap.SpaceFrom(u, uAt, null) : fresh ? AIMap.SpaceFrom(x, x.tile, null) : map.SpaceOf(x);
@@ -666,7 +680,7 @@ namespace HexTactica.AI {
             HashSet<HexTile> theirMove = scratchTheirMove, theirStrike = scratchTheirStrike;
             theirMove.Clear(); theirStrike.Clear();
             foreach (Unit e in map.enemyUnits) {
-                if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f || e.trasnporter != null) continue;
+                if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f || e.trasnporter != null || !In(e)) continue;
                 HashSet<HexTile> pos;
                 positions.TryGetValue(e, out pos);
                 HashSet<HexTile>[] s = map.EnemySpace(e, pos);
