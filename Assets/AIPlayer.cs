@@ -272,8 +272,11 @@ public class AIPlayer : MonoBehaviour {
             foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
         }
         // Transports act after everyone else, so the units they carry (or are to pick up) have
-        // decided first and handed them their plans.
-        if (Profile.combatRides) {
+        // decided first and handed them their plans: only when some fighting unit could ride this
+        // turn, so with nobody to carry the turn order (and the game) is what it was without rides.
+        bool anyRider = false;
+        if (Profile.combatRides) foreach (Unit u in queue) if (MayRide(u)) { anyRider = true; break; }
+        if (anyRider) {
             List<Unit> carriers = new List<Unit>();
             foreach (Unit u in queue) if (Transporting.IsTransport(u) && u.Firepower <= 1) carriers.Add(u);
             foreach (Unit u in carriers) { queue.Remove(u); queue.Add(u); }
@@ -489,6 +492,13 @@ public class AIPlayer : MonoBehaviour {
     /// given the plan; when it is a walk and the unit is aboard, it gets off. Otherwise the unit
     /// decides as usual.
     /// </summary>
+    /// <summary>Could <paramref name="unit"/> be offered a ride this turn (TryRide's first checks)?</summary>
+    bool MayRide(Unit unit) {
+        if (unit == null || unit.tile == null || unit.Firepower <= 0 || unit.GetComponent<SupplyPoint>() != null) return false;
+        if (unit.trasnporter != null) return true;
+        return map.TurnsToContact(unit) > Profile.objectiveContactTurns && Transporting.AvailableFor(player, unit).Count > 0;
+    }
+
     bool TryRide(Unit unit, Front front, out AIAction action) {
         action = default(AIAction);
         if (unit.tile == null || unit.GetComponent<SupplyPoint>() != null) return false;
