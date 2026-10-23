@@ -1544,6 +1544,15 @@ public static class Scenarios {
             bool log = side == "both" || (side == "AI") == (active == l.ai);
             AITactical.DecisionLog = log ? (Action<string>)(m => Console.WriteLine("    " + m)) : null;
             AISupplyPlanner.DebugLog = AITactical.DecisionLog;
+            // EXPLAIN=Red:APC (or Blue:Tank): every option that unit weighed, each turn it moves.
+            string explain = Environment.GetEnvironmentVariable("EXPLAIN");
+            AITactical.DebugUnit = null; AITactical.DebugLog = null;
+            if (!string.IsNullOrEmpty(explain) && explain.Contains(":")) {
+                string[] ex = explain.Split(':');
+                Player who = ex[0] == "Blue" ? l.ai : l.other;
+                if (who == active) foreach (Unit u in who.units) if (u != null && u.tile != null && u.name.StartsWith(ex[1])) { AITactical.DebugUnit = u; break; }
+                if (AITactical.DebugUnit != null) AITactical.DebugLog = m => Console.WriteLine("      | " + m);
+            }
             AIPlayer full = active.gameObject.GetComponent<AIPlayer>();
             Console.WriteLine("-- round " + gc.days + ": " + active.personal_name);
             if (full != null) {
