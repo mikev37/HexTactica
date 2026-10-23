@@ -678,7 +678,7 @@ namespace HexTactica.AI {
             // is where it shoots from next turn. Inside enemy guns' range is already priced by the
             // reply; outside it, this pulls the battery as close as it can get — no man's land, held.
             if (prof.artilleryCoverValue > 0f && !u.moveAndAttack && u.AttackRange >= 2 && u.Firepower > 0 && hp[u] > 0f) {
-                foreach (HexTile t in AIPath.TilesInRange(uAt, u.MinRange, u.AttackRange)) if (theirMove.Contains(t)) w.gunCover++;
+                foreach (HexTile t in AIPath.TilesInRangeShared(uAt, u.MinRange, u.AttackRange)) if (theirMove.Contains(t)) w.gunCover++;
                 w.score += w.gunCover * prof.artilleryCoverValue;
             }
             // Mutual cover: every tile next to one of our units that the enemy could move onto next
@@ -805,8 +805,7 @@ namespace HexTactica.AI {
                 if (d0 <= x.AttackRange && d0 > x.MinRange) options.Add(x.tile);
                 if (x.moveAndAttack) {
                     MoveField f = map.ReachThisTurn(x);
-                    List<HexTile> ring = AIPath.TilesInRange(target.tile, x.MinRange, x.AttackRange);
-                    ring.Sort(CombatMath.CompareTiles);
+                    List<HexTile> ring = AIPath.TilesInRangeSorted(target.tile, x.MinRange, x.AttackRange);
                     foreach (HexTile r in ring) {
                         if (r == exceptAt || r == x.tile) continue;
                         if (f.ReachableThisTurn(r) && AIPath.CanFinishTurnOn(x, r)) options.Add(r);
@@ -895,8 +894,7 @@ namespace HexTactica.AI {
                 int d = e.tile.Distance(target);
                 return d <= e.AttackRange && d > e.MinRange ? e.tile : null;
             }
-            List<HexTile> ring = AIPath.TilesInRange(target, e.MinRange, e.AttackRange);
-            ring.Sort(CombatMath.CompareTiles);
+            List<HexTile> ring = AIPath.TilesInRangeSorted(target, e.MinRange, e.AttackRange);
             if (ring.Contains(e.tile) && (!taken.Contains(e.tile) || e.tile.occupier == e)) return e.tile;
             foreach (HexTile r in ring) if (pos.Contains(r) && !taken.Contains(r)) return r;
             return null;
@@ -983,6 +981,7 @@ namespace HexTactica.AI {
                     // Free, or held by its own side (which can move off).
                     if (p.occupier == null || (!ownSideBlocks && p.occupier.owner == e.owner)) positions.Add(p);
                 }
+                AIPath.Release(f);
             }
             return positions;
         }

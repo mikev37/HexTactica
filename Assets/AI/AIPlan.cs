@@ -97,6 +97,7 @@ namespace HexTactica.AI {
                     if (p == origin || !f.ReachableThisTurn(p) || !e.CanEnter(p)) continue;
                     if (p.occupier == null || (!ownSideBlocks && p.occupier.owner == e.owner)) positions.Add(p);
                 }
+                AIPath.Release(f);
             }
             return positions;
         }
@@ -298,8 +299,7 @@ namespace HexTactica.AI {
                 int d = origin.Distance(target);
                 return d <= e.AttackRange && d > e.MinRange ? origin : null;
             }
-            List<HexTile> ring = AIPath.TilesInRange(target, e.MinRange, e.AttackRange);
-            ring.Sort(CombatMath.CompareTiles);
+            List<HexTile> ring = AIPath.TilesInRangeSorted(target, e.MinRange, e.AttackRange);
             if (ring.Contains(origin) && (!taken.Contains(origin) || origin.occupier == e)) return origin;
             foreach (HexTile r in ring) if (pos.Contains(r) && !taken.Contains(r)) return r;
             return null;

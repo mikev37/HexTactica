@@ -170,8 +170,7 @@ namespace HexTactica.AI {
                         if (d <= e.AttackRange && d > e.MinRange) total += dmg;
                         continue;
                     }
-                    List<HexTile> ring = AIPath.TilesInRange(hq.tile, e.MinRange, e.AttackRange);
-                    ring.Sort(CombatMath.CompareTiles);
+                    List<HexTile> ring = AIPath.TilesInRangeSorted(hq.tile, e.MinRange, e.AttackRange);
                     foreach (HexTile r in ring) {
                         if (claimed.Contains(r) || !positions[e].Contains(r)) continue;
                         if (moving && r == at) continue;
@@ -205,6 +204,7 @@ namespace HexTactica.AI {
             tiles = new HashSet<HexTile>();
             int n = 0;
             foreach (HexTile t in f.Tiles) if (!f.Get(t).IsUnreachable) { n++; tiles.Add(t); }
+            AIPath.Release(f);
             return n;
         }
 

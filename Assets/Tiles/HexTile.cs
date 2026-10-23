@@ -477,6 +477,7 @@ public class HexTile : MonoBehaviour
             t.parent = field.ParentOf(t);
             closed.Add(t);
         }
+        HexTactica.AI.AIPath.Release(field);
         this.G = 0;
         this.parent = null;
         return closed;

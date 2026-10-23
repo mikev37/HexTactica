@@ -269,7 +269,7 @@ namespace HexTactica.AI {
 
                 EnemyFire ef = new EnemyFire { unit = e, tiles = new HashSet<HexTile>(), positions = firingPositions };
                 for (int j = 0; j < firingPositions.Count; j++) {
-                    List<HexTile> hits = AIPath.TilesInRange(firingPositions[j], e.MinRange, e.AttackRange);
+                    List<HexTile> hits = AIPath.TilesInRangeShared(firingPositions[j], e.MinRange, e.AttackRange);
                     for (int k = 0; k < hits.Count; k++) ef.tiles.Add(hits[k]);
                 }
                 for (int j = 0; j < ownUnits.Count; j++) {

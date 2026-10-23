@@ -157,12 +157,13 @@ namespace HexTactica.AI {
                 if (x.moveRange > 0 && x.trasnporter == null) {
                     MoveField f = AIPath.ThisTurnFrom(x, origin, x.moveRange);
                     foreach (HexTile p in f.Tiles) if (p != origin && f.ReachableThisTurn(p) && AIPath.CanFinishTurnOn(x, p)) move.Add(p);
+                    AIPath.Release(f);
                 }
             }
             HashSet<HexTile> strike = new HashSet<HexTile>();
             if (x.Firepower > 0 && x.AttackRange > 0) {
-                if (x.moveAndAttack) { foreach (HexTile p in move) foreach (HexTile r in AIPath.TilesInRange(p, x.MinRange, x.AttackRange)) strike.Add(r); }
-                else foreach (HexTile r in AIPath.TilesInRange(origin, x.MinRange, x.AttackRange)) strike.Add(r);
+                if (x.moveAndAttack) { foreach (HexTile p in move) foreach (HexTile r in AIPath.TilesInRangeShared(p, x.MinRange, x.AttackRange)) strike.Add(r); }
+                else foreach (HexTile r in AIPath.TilesInRangeShared(origin, x.MinRange, x.AttackRange)) strike.Add(r);
             }
             return new[] { move, strike };
         }
@@ -261,7 +262,7 @@ namespace HexTactica.AI {
                     int strike = eta.turns + (e.moveAndAttack || p == e.tile ? 1 : 2);
                     if (strike > profile.enemyReachTurns) continue;
                     if (p != e.tile && !AIPath.CanFinishTurnOn(e, p)) continue;
-                    List<HexTile> ring = AIPath.TilesInRange(p, e.MinRange, e.AttackRange);
+                    List<HexTile> ring = AIPath.TilesInRangeShared(p, e.MinRange, e.AttackRange);
                     for (int k = 0; k < ring.Count; k++) {
                         int cur;
                         if (!strikeTurns.TryGetValue(ring[k], out cur) || strike < cur) strikeTurns[ring[k]] = strike;
