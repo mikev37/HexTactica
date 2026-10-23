@@ -410,6 +410,8 @@ public static class Scenarios {
                  Put("APC", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", a, -5, 1); Put("Supplies", a, -5, 0); Put("Tank", a, -3, -1); Put("Fighter", a, -6, 0);
                  Put("TransportShip", a, 3, 0); Put("Grunt", o, 6, -3); },
              "What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1) or one supply unit (weight 2), never a tank (Treads) or a fighter. A grunt cannot board a transport ship on open water beside the shore, but can at the naval yard's dock. A loaded APC can itself board the ship at the dock (it takes its own weight, 3 of the ship's 4), and everything aboard goes where the ship goes.");
+        make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
+             "Sandbox: turns go Blue, Red, Blue, Red even if a side is marked out (a file saved after it was knocked out), and the day goes up once per round.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -655,6 +657,15 @@ public static class Scenarios {
                 foreach (Unit u in l.ai.units) { string nm = u != null ? GameController.UnitName(u) : ""; if (nm != "Grunt" && nm != "Tank" && nm != "TempHQ" && nm != "HQ") bad = true; }
                 detail = "units " + before + " -> " + l.ai.units.Count + ", money " + l.ai.money + "; bought on the HQ: " + string.Join(",", got.ToArray());
                 return l.ai.units.Count > before && !bad && l.ai.money < 10000;
+            }
+            case "sandboxTurns": {
+                gc.rules = RuleSet.Sandbox;
+                l.other.eliminated = true;
+                List<string> order = new List<string>();
+                int day0 = gc.days;
+                for (int i = 0; i < 4; i++) { order.Add(gc.activePlayer.personal_name + "@" + (gc.days - day0)); gc.EndTurn(); }
+                detail = string.Join(" ", order.ToArray());
+                return order[0] != order[1].Split('@')[0] + "@" && order[0].Split('@')[0] != order[1].Split('@')[0] && order[0].Split('@')[0] == order[2].Split('@')[0] && order[1].Split('@')[0] == order[3].Split('@')[0];
             }
             case "transportLoad": {
                 Unit apc = Rig.At(-4, 0).occupier, g1 = Rig.At(-4, 1).occupier, g2 = Rig.At(-5, 1).occupier, sup = Rig.At(-5, 0).occupier;

@@ -91,7 +91,11 @@ namespace HexTactica.Harness {
                 JSONObjectEnumerator players = obj.GetField("players").GetEnumerator();
                 while (players.MoveNext()) {
                     PlayerData pd = JsonUtility.FromJson<PlayerData>(players.Current.Print());
-                    pd.load();
+                    Player loaded = pd.load();
+                    // A scenario is the start of a game: everyone is in it, whatever the file says
+                    // (a file saved after a side was knocked out keeps "eliminated":true, and that
+                    // side's turns were then skipped for the rest of the game).
+                    if (loaded != null) loaded.eliminated = false;
                 }
                 JSONObject active = obj.GetField("active");
                 if (active != null && GameController.gc != null) {
