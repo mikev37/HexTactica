@@ -54,7 +54,11 @@ namespace UnityEngine {
         public static implicit operator Vector2(Vector3 v) { return new Vector2(v.x, v.y); }
     }
 
-    public struct Vector4 { public float x, y, z, w; public Vector4(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; } }
+    public struct Vector4 { public float x, y, z, w; public Vector4(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; }
+        public static Vector4 zero { get { return new Vector4(); } }
+        public static bool operator ==(Vector4 a, Vector4 b) { return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w; }
+        public static bool operator !=(Vector4 a, Vector4 b) { return !(a == b); }
+        public override bool Equals(object o) { return o is Vector4 && (Vector4)o == this; } public override int GetHashCode() { return 0; } }
     public struct Matrix4x4 { public static Matrix4x4 identity { get { return new Matrix4x4(); } } }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) { return m.value; } }
     public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
@@ -317,6 +321,9 @@ namespace UnityEngine {
 }
 
 namespace UnityEngine {
+    public class RectTransform : Transform {
+        public Vector2 anchorMin, anchorMax, pivot, anchoredPosition, sizeDelta, offsetMin, offsetMax;
+    }
     public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }
     public class Font : Object { }
     public enum TextAnchor { UpperLeft, UpperCenter, UpperRight, MiddleLeft, MiddleCenter, MiddleRight, LowerLeft, LowerCenter, LowerRight }
@@ -326,7 +333,7 @@ namespace UnityEngine.UI {
     public class ButtonClickedEvent { public void AddListener(UnityEngine.Events.UnityAction a) { } public void RemoveAllListeners() { } }
     public class Graphic : UnityEngine.Behaviour { public UnityEngine.Color color; public bool raycastTarget; }
     public class Text : Graphic { public string text = ""; public int fontSize; public UnityEngine.Font font; public UnityEngine.TextAnchor alignment; }
-    public class Image : Graphic { public UnityEngine.Sprite sprite; public bool preserveAspect; }
+    public class Image : Graphic { public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public UnityEngine.Sprite sprite; public bool preserveAspect; public UnityEngine.RectTransform rectTransform; }
     public class Button : UnityEngine.Behaviour { public Graphic targetGraphic; public bool interactable = true; public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
 }
 

@@ -281,13 +281,18 @@ public class HexTile : MonoBehaviour
         LevelEditor.singleton.mouseDown = false;
     }
 
+    /// <summary>The tile last clicked on the board (the HUD describes it and the unit on it).</summary>
+    public static HexTile lastClicked;
+
 	public void OnMouseDown() {
         WorldEdit();
         if (LevelEditor.singleton.editing) {
             LevelEditor.singleton.mouseDown = true;
 		} else { 
-            // A click on an open menu is the menu's (neither the UI nor IMGUI stops it reaching the board).
-            if (TransportMenu.Covers(Input.mousePosition) || BuildingMenu.Covers(Input.mousePosition)) return;
+            // A click on the UI (a panel, the HUD) or an open menu is theirs: neither the UI nor IMGUI
+            // stops it reaching the board.
+            if ((TransportMenu.PointerOverUI != null && TransportMenu.PointerOverUI()) || BuildingMenu.Covers(Input.mousePosition)) return;
+            lastClicked = this;
             // Any other click closes them (the transport panel reopens below while its transport
             // stays selected); one that is not on a tile offered for unloading drops the unload.
             Unit justMoved = null;
