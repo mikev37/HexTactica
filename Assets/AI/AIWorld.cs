@@ -244,6 +244,11 @@ namespace HexTactica.AI {
             Dictionary<Unit, float> hpCertain = breakpoints ? new Dictionary<Unit, float>(hp) : null;
             // Where each of ours stands as the reply plays out (forecastRetreatChain moves those driven back).
             Dictionary<Unit, HexTile> displaced = new Dictionary<Unit, HexTile>();
+            // Our pips their indirect fire suppresses as the reply plays out: they do not fire back at
+            // the blows that follow. (Everything of ours starts their turn unsuppressed: suppression
+            // only ever comes from their fire, and ours came back at the start of our turn.)
+            Dictionary<Unit, int> sup = new Dictionary<Unit, int>();
+            Func<Unit, int> supOf = x => { int v; return sup.TryGetValue(x, out v) ? v : 0; };
             string chainNote = null;
             Func<Unit, HexTile> ourPos = x => { HexTile t; return displaced.TryGetValue(x, out t) ? t : x == u ? uAt : x.tile; };
             for (int ei = 0; ei < enemies.Count; ei++) {
@@ -261,10 +266,11 @@ namespace HexTactica.AI {
                     // The game's own exchange: cover on the defender's tile, retaliation without
                     // cover, an ambush when the defender's usable concealment allows it.
                     int dmg, back;
-                    CombatMath.Exchange(e, Hp(hp[e]), fire, d, Hp(hp[d]), dAt, out dmg, out back);
+                    CombatMath.Exchange(e, Hp(hp[e]), fire, d, Hp(hp[d]), dAt, supOf(d), out dmg, out back);
                     if (dmg <= 0) continue;
                     bool pinned = false;
-                    if (map.profile.forecastPins && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !CanFallBack(d, dAt, fire, u, uAt, hp, taken)) {
+                    // (Indirect fire never pins: it suppresses.)
+                    if (map.profile.forecastPins && !CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !CanFallBack(d, dAt, fire, u, uAt, hp, taken)) {
                         dmg += 1;
                         pinned = true;
                     }
@@ -296,11 +302,17 @@ namespace HexTactica.AI {
                         hpCertain[bestTarget] = Mathf.Max(0f, hpCertain[bestTarget] - dealt);
                     }
                 }
+                bool pushed = CombatMath.Pushes(e, bestBack, bestTarget, bestDamage, hp[bestTarget]);
                 hp[bestTarget] -= dealt;
+                // Suppressed by indirect fire: half its unsuppressed pips do not answer the blows to come.
+                if (pushed && CombatMath.Suppresses(e) && hp[bestTarget] > 0f) {
+                    sup[bestTarget] = supOf(bestTarget) + CombatMath.SuppressionFrom(Hp(hp[bestTarget]), supOf(bestTarget));
+                    if (narrate) chainNote = bestTarget.name + " suppressed " + sup[bestTarget];
+                }
                 // Driven back: for the blows still to come it stands on its retreat tile, and the tile
                 // it left is open to anyone who could step into it. (A tank knocked back by artillery,
                 // followed into the tile it left by a tank that knocks it back again, then finished.)
-                if (map.profile.forecastRetreatChain && hp[bestTarget] > 0f && !bestPinned && bestDamage - bestTarget.Veterancy > bestBack - e.Veterancy) {
+                if (map.profile.forecastRetreatChain && !CombatMath.Suppresses(e) && hp[bestTarget] > 0f && !bestPinned && bestDamage - bestTarget.Veterancy > bestBack - e.Veterancy) {
                     HexTile left = ourPos(bestTarget);
                     HexTile back = AIPlan.RetreatTile(bestTarget, left, bestTile, hp, taken);
                     if (back != null) {

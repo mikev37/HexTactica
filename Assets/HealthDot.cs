@@ -10,6 +10,8 @@ public class HealthDot : MonoBehaviour
     setOpacity opac;
     setSize size;
     public int iter;
+    [Tooltip("Saturation of a pip that is suppressed (0 grey, 1 full colour).")]
+    [Range(0, 1)] public float suppressedSaturation = 0.15f;
     // Start is called before the first frame update
     void Start()
     {
@@ -29,6 +31,8 @@ public class HealthDot : MonoBehaviour
         if(unit.Strength > iter) {
             opac.alpha = 1;
             size.sizeF = .5f;
+            // The top pips are the suppressed ones.
+            opac.saturation = iter >= unit.Strength - unit.suppressed ? suppressedSaturation : 1f;
         } else {
             opac.alpha = 0;
             size.sizeF = 1;

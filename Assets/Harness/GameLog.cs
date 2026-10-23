@@ -150,6 +150,7 @@ namespace HexTactica.Harness {
               .Append(": deals ").Append(o.damageToDefender).Append(", takes ").Append(o.damageToAttacker);
             if (o.defenderFiresFirst) sb.Append(" (ambush: defender fired first)");
             if (o.defenderDies) sb.Append(", ").Append(defender.name.Replace("(Clone)", "")).Append(" destroyed");
+            else if (o.defenderSuppressed) sb.Append(", suppressed " + o.suppressionAdded + " (" + defender.suppressed + " of " + defender.Strength + " will not fire back until its turn)");
             else if (o.defenderRetreats) sb.Append(o.defenderPinned ? ", pinned (1 of that for having nowhere to retreat)" : ", retreats");
             if (o.attackerDies) sb.Append(", attacker destroyed");
             sb.Append(" -> ").Append(attacker.Strength).Append(" v ").Append(defender.Strength);

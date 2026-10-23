@@ -410,6 +410,10 @@ public static class Scenarios {
                  Put("APC", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", a, -5, 1); Put("Supplies", a, -5, 0); Put("Tank", a, -3, -1); Put("Fighter", a, -6, 0);
                  Put("TransportShip", a, 3, 0); Put("Grunt", o, 6, -3); },
              "What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1) or one supply unit (weight 2), never a tank (Treads) or a fighter. A grunt cannot board a transport ship on open water beside the shore, but can at the naval yard's dock. A loaded APC can itself board the ship at the dock (it takes its own weight, 3 of the ship's 4), and everything aboard goes where the ship goes.");
+        make("attrition-rule-suppression", "suppression", (a, o) => {
+                 Put("Artillery", a, -4, 0); Put("Artillery", a, -4, 2); Put("Grunt", a, -1, 1); Put("Tank", a, -3, -2);
+                 Put("Tank", o, 0, 0); Put("Tank", o, 0, 3); Put("Tank", o, -1, -2); Put("Grunt", o, 2, -2); },
+             "Indirect fire suppresses instead of driving back. Artillery hits a tank hard enough that it would have retreated: it stays where it is, takes the same damage, and half its unsuppressed pips (rounded up) are suppressed. Attacked again that turn, it fires back with its strength less the suppressed pips (none at all when every pip is suppressed). A second artillery hit suppresses half of what is left. A hit too light to push it (a veteran) suppresses nothing. Its own turn starting, every pip comes back. Direct fire still drives back.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
              "Sandbox: turns go Blue, Red, Blue, Red even if a side is marked out (a file saved after it was knocked out), and the day goes up once per round.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
@@ -657,6 +661,59 @@ public static class Scenarios {
                 foreach (Unit u in l.ai.units) { string nm = u != null ? GameController.UnitName(u) : ""; if (nm != "Grunt" && nm != "Tank" && nm != "TempHQ" && nm != "HQ") bad = true; }
                 detail = "units " + before + " -> " + l.ai.units.Count + ", money " + l.ai.money + "; bought on the HQ: " + string.Join(",", got.ToArray());
                 return l.ai.units.Count > before && !bad && l.ai.money < 10000;
+            }
+            case "suppression": {
+                Unit art = Rig.At(-4, 0).occupier, art2 = Rig.At(-4, 2).occupier, ours = Rig.At(-1, 1).occupier, tank = Rig.At(-3, -2).occupier;
+                Unit g = Rig.At(0, 0).occupier, far = Rig.At(0, 3).occupier, vet = Rig.At(-1, -2).occupier, open = Rig.At(2, -2).occupier;
+                vet.Veterancy = 3;
+                List<string> r = new List<string>(); bool ok = true;
+                // 1. Artillery: same damage as ever, no retreat, half the pips left suppressed.
+                CombatOutcome pre = CombatMath.Resolve(art, g, art.tile);
+                int expectDmg = Math.Min(g.Strength, Unit.calculateDamage(art, g, g.tile, 0));
+                HexTile gAt = g.tile;
+                art.OrderAttack(g);
+                int left = g.Strength;
+                bool a1 = pre.defenderSuppressed && !pre.defenderRetreats && !pre.defenderPinned && g.tile == gAt && left == 6 - expectDmg && g.suppressed == (left + 1) / 2;
+                r.Add("artillery hit " + expectDmg + ", stays " + (g.tile == gAt) + ", suppressed " + g.suppressed + "/" + left + " " + a1); ok &= a1;
+                // 2. Attacked again: answers with strength less the suppressed pips.
+                CombatOutcome back = CombatMath.Resolve(ours, g, ours.tile);
+                int expectBack = Math.Min(ours.Strength, Unit.calculateDamage(g, ours, null, back.damageToDefender + g.suppressed));
+                int sup = g.suppressed; g.suppressed = 0;
+                CombatOutcome full = CombatMath.Resolve(ours, g, ours.tile);
+                g.suppressed = sup;
+                bool a2 = back.damageToAttacker == expectBack && (back.damageToDefender >= left || back.damageToAttacker <= full.damageToAttacker);
+                r.Add("its answer " + back.damageToAttacker + " (unsuppressed " + full.damageToAttacker + ") " + a2); ok &= a2;
+                // 3. Every pip suppressed: no answer at all.
+                g.suppressed = g.Strength;
+                CombatOutcome none = CombatMath.Resolve(ours, g, ours.tile);
+                bool a3 = none.damageToAttacker == 0;
+                r.Add("all suppressed: answer " + none.damageToAttacker + " " + a3); ok &= a3;
+                // 4. A second hit stacks on what is left.
+                Unit two = far; int s0;
+                art.OrderAttack(two); s0 = two.suppressed;
+                int st = two.Strength;
+                CombatOutcome second = CombatMath.Resolve(art2, two, art2.tile);
+                art2.OrderAttack(two);
+                bool a4 = s0 > 0 && (!second.defenderSuppressed || two.suppressed == Math.Min(two.Strength, s0 + (two.Strength - s0 + 1) / 2));
+                r.Add("second hit: " + s0 + " then " + two.suppressed + " of " + two.Strength + " " + a4); ok &= a4;
+                // 5. Too light to push (a veteran): nothing suppressed, nothing moves.
+                Unit art3 = art2; art3.attackedThisTurn = false;
+                HexTile vAt = vet.tile;
+                CombatOutcome lite = CombatMath.Resolve(tank, vet, tank.tile);
+                CombatOutcome liteArt = CombatMath.Resolve(art, vet, art.tile);
+                bool a5 = !liteArt.defenderSuppressed || liteArt.damageToDefender - vet.Veterancy > 0;
+                r.Add("veteran hit by artillery: suppressed " + liteArt.defenderSuppressed + " (damage " + liteArt.damageToDefender + ", veterancy " + vet.Veterancy + ") " + a5); ok &= a5;
+                // 6. Its own turn: every pip back.
+                l.other.StartTurn();
+                bool a6 = g.suppressed == 0 && two.suppressed == 0;
+                r.Add("Red's turn starts: suppressed " + g.suppressed + ", " + two.suppressed + " " + a6); ok &= a6;
+                // 7. Direct fire still drives back.
+                HexTile oAt = open.tile;
+                CombatOutcome d = CombatMath.Resolve(tank, open, tank.tile);
+                bool a7 = !d.defenderSuppressed && (d.defenderRetreats || d.damageToDefender - open.Veterancy <= d.damageToAttacker || d.defenderDies);
+                r.Add("tank on a grunt: retreats " + d.defenderRetreats + ", suppressed " + d.defenderSuppressed + " " + a7); ok &= a7;
+                detail = string.Join("; ", r.ToArray());
+                return ok;
             }
             case "sandboxTurns": {
                 gc.rules = RuleSet.Sandbox;
@@ -1112,6 +1169,17 @@ public static class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, "drop-and-advance.dat"), test, ai, other, ai);
             n++;
         }
+        {   // Artillery first, then the assault: the suppressed pips do not fire back.
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("Artillery", ai, -4, 0); Put("Tank", ai, -3, 1); Put("Tank", ai, -3, -1);
+            Put("HQ", other, 6, 0); Put("Tank", other, 0, 0);
+            Dictionary<string, string> test = Test("artillery-then-assault", "behaviour", "Human", 1, "suppressThenAssault",
+                "A lone enemy tank in the open, our artillery in range and two tanks that can reach it. Artillery suppresses (half the pips left do not fire back until the enemy's turn), so it should fire first and the tanks attack after it, taking the smaller answer.");
+            test["rules"] = "attrition";
+            ScenarioFile.Save(Path.Combine(Dir, "artillery-then-assault.dat"), test, ai, other, ai);
+            n++;
+        }
         {   // Infantry next to a neutral city with nothing in the way should step onto it and capture.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
@@ -1290,6 +1358,15 @@ public static class Scenarios {
                 foreach (Unit u in l.ai.units) if (u != null && u.tile != null && u.GetComponent<SupplyPoint>() == null) farthest = Math.Max(farthest, hs(u.tile));
                 detail = "steps from home after each Blue turn: " + string.Join(" | ", trail.ToArray());
                 return !broken && !ahead && farthest >= 12;
+            }
+            case "suppressThenAssault": {
+                Unit target = First(l.other, "Tank");
+                List<string> order = new List<string>();
+                Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (a, d, af, df, o) => { if (d == target) order.Add(a.name.Replace("(Clone)", "") + " " + o.damageToDefender + "/" + o.damageToAttacker + (o.defenderSuppressed ? " suppressed +" + o.suppressionAdded : "") + " (target suppressed " + d.suppressed + ")"); };
+                Unit.Attacked += hook;
+                try { ScenarioFile.PlayTurn(); } finally { Unit.Attacked -= hook; }
+                detail = order.Count == 0 ? "nobody attacked it" : string.Join(" -> ", order.ToArray());
+                return order.Count >= 2 && order[0].StartsWith("Artillery");
             }
             case "dropAndAdvance": {
                 Unit apc = First(l.ai, "APC");

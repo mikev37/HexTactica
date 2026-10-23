@@ -101,6 +101,10 @@ namespace HexTactica.AI {
 
             // Driving a defender off a tile has worth of its own even without a kill.
             if (o.defenderRetreats) value += targetWorth * 0.2f;
+            // Suppressing it has worth too: the pips it silences do not answer our blows still to
+            // come this turn (the group plans count that exactly; this is the single shot's share).
+            if (o.defenderSuppressed && o.suppressionAdded > 0)
+                value += targetWorth * 0.2f * o.suppressionAdded / Mathf.Max(1, defender.Strength - o.damageToDefender);
 
             // Posture-specific preferences, all in gold.
             if (posture == Posture.Aggressive) {
