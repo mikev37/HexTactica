@@ -181,6 +181,43 @@ namespace HexTactica.AI {
         /// </summary>
         public readonly AIWorld.Cache replyCache = new AIWorld.Cache();
 
+        /// <summary>
+        /// The units a forecast for <paramref name="u"/> plays out (profile.theaterForecast), else null
+        /// (all of them). Enemies that could strike, with a move and their range plus
+        /// profile.theaterMargin, anywhere <paramref name="u"/> could move or fire this turn; and our
+        /// units those enemies could strike, with the same margin. Per unit and board read.
+        /// </summary>
+        public HashSet<Unit> TheaterOf(Unit u) {
+            if (!profile.theaterForecast || u == null || u.tile == null) return null;
+            HashSet<Unit> th;
+            if (theaters.TryGetValue(u, out th)) return th;
+            th = new HashSet<Unit>();
+            th.Add(u);
+            int margin = Mathf.Max(0, profile.theaterMargin);
+            int reachU = Mathf.Max(0, u.moveRange) + Mathf.Max(0, u.AttackRange);
+            int deepest = 0;
+            foreach (Unit e in enemyUnits) {
+                if (e == null || e.tile == null) continue;
+                int eReach = (e.moveAndAttack ? Mathf.Max(0, e.moveRange) : 0) + Mathf.Max(0, e.AttackRange);
+                if (e.tile.Distance(u.tile) <= reachU + eReach + margin) { th.Add(e); deepest = Mathf.Max(deepest, eReach); }
+            }
+            foreach (Unit x in ownUnits) {
+                if (x == null || x.tile == null || x == u) continue;
+                if (x.tile.Distance(u.tile) <= reachU + 2 * deepest + 2 * margin) th.Add(x);
+            }
+            theaters[u] = th;
+            theaterRadius[u] = reachU + 2 * deepest + 2 * margin;
+            return th;
+        }
+        readonly Dictionary<Unit, HashSet<Unit>> theaters = new Dictionary<Unit, HashSet<Unit>>();
+        readonly Dictionary<Unit, int> theaterRadius = new Dictionary<Unit, int>();
+
+        /// <summary>How far from <paramref name="u"/> its theatre reaches (int.MaxValue: no theatre).</summary>
+        public int TheaterRadius(Unit u) {
+            int r;
+            return TheaterOf(u) != null && theaterRadius.TryGetValue(u, out r) ? r : int.MaxValue;
+        }
+
         /// <summary>Where each enemy could move to tonight on the board as it stands (AIWorld.Positions), once per board read.</summary>
         public HashSet<HexTile> BaseReach(Unit e, bool ownSideBlocks) {
             Dictionary<Unit, HashSet<HexTile>> d = ownSideBlocks ? baseReachBlocked : baseReach;
@@ -193,6 +230,8 @@ namespace HexTactica.AI {
         void Rebuild(bool recalculateThreat) {
             replyCache.positions.Clear();
             baseReach.Clear(); baseReachBlocked.Clear();
+            theaters.Clear();
+            theaterRadius.Clear();
             space = null;
             denialBaseline = null;
             thisTurnFields.Clear();
