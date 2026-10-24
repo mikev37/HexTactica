@@ -293,7 +293,7 @@ public class HexTile : MonoBehaviour
         WorldEdit();
         if (LevelEditor.singleton.editing) {
             LevelEditor.singleton.mouseDown = true;
-		} else { 
+		} else if(!LevelEditor.singleton.unit_placement && !LevelEditor.singleton.building_placement) { 
             // A click on the UI (a panel, the HUD) or an open menu is theirs: neither the UI nor IMGUI
             // stops it reaching the board.
             if ((TransportMenu.PointerOverUI != null && TransportMenu.PointerOverUI()) || BuildingMenu.Covers(Input.mousePosition)) return;

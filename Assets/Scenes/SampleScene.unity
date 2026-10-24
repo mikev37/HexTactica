@@ -3338,6 +3338,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rules: 2
   roundLimit: 30
+  fogOfWar: 1
+  fogViewer: -1
   purchasesAllowed: 1
   allowedUnits: []
   players:
