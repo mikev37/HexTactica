@@ -416,6 +416,10 @@ public static class Scenarios {
              "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
         makeFog("ai-thread-equivalence", "aiThread", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 3, 0); },
              "The AI thinking on a worker thread (on its own copy of the board) plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.", "Human");
+        makeFog("fog-rule-line-of-sight", "fogLineOfSight", (a, o) => {
+                 Put("Grunt", a, -4, 0); Put("Grunt", o, -1, 0); Put("Fighter", a, -4, 3); Put("Gunboat", a, -4, -3);
+                 Rig.At(-2, 0).terrain = T("Hills"); },
+             "Line of sight for land and sea units: ground higher than the observer's tile hides what is behind it. A grunt on grassland (vision 4) sees the hill two tiles off but not the forest, the grassland or the enemy grunt behind it; from the hill it sees the forest beside it and what is behind that (as high as the hill, no higher); a mountain on the line hides even from the hill. Where the line runs along the edge between two tiles one high tile does not hide, two do. An aircraft sees over everything; a gunboat at sea is hidden from by land higher than the water, not by shallows. An enemy behind the hill is unseen until it stands next to one of ours.", "Human");
         makeFog("fog-rule-kinds", "fogKinds", (a, o) => {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 1, 0); Put("Fighter", a, -5, 4); Put("Fighter", o, 0, -5);
                  foreach (int[] w in new[] { new[] { 4, 2 }, new[] { 5, 2 }, new[] { 4, 3 }, new[] { 5, 1 } }) Rig.At(w[0], w[1]).terrain = T("Water");
@@ -432,6 +436,10 @@ public static class Scenarios {
                  Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
                  for (int x = -1; x <= 1; x++) for (int y = -3; y <= 3; y++) { HexTile t = Rig.At(x, y); if (t != null && (x + y) % 2 == 0) t.terrain = T("Forest"); } },
              "Both sides the AI, both playing by the fog, eight rounds: after every action the board is whole (every unit on its tile and only there, nothing left concealed), attacks only ever at units their side sees, and any unit run into stops short and is fired on.", "Full");
+        make("rule-rotor-supply", "rotorSupply", (a, o) => {
+                 Rig.At(-6, 0).building.supplyRange = 3;
+                 Put("Fighter", a, -4, 0); Put("Fighter", a, 2, 3); Put("Fighter", a, -5, 1); },
+             "Helicopters (rotor) are resupplied on any tile in their side's supply, as well as at airports: one in supply at the start of Blue's turn is refuelled, rearmed and heals a strength; one out of supply burns a turn's fuel and does not starve; a jet in supply still burns fuel (it needs an airport). The AI counts every supplied tile as somewhere a helicopter can go home to, and a helicopter there as healing.");
         make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
              "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (which has no BuildingGround, the ground of every building tile) comes back as it was: building tiles keep BuildingGround and their ground under, nothing fails. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -992,6 +1000,76 @@ public static class Scenarios {
                 r.Add("AI move through a hidden grunt: stopped at " + (p.tile != null ? "(" + p.tile.x + "," + p.tile.y + ")" : "-") + ", fired on " + aiStopped);
                 detail = string.Join("; ", r.ToArray());
                 return hidden && range && stopped && fight && revealed && aiStopped;
+            }
+            case "rotorSupply": {
+                Unit inS = Rig.At(-4, 0).occupier, outS = Rig.At(2, 3).occupier, jet = Rig.At(-5, 1).occupier;
+                inS.locomotion = Locomotion.Rotor; outS.locomotion = Locomotion.Rotor;
+                List<string> r = new List<string>();
+                SupplyNetwork.Result sup = SupplyNetwork.Solve(a, false);
+                bool layout = sup.DepthAt(inS.tile) > 0 && sup.DepthAt(jet.tile) > 0 && sup.DepthAt(outS.tile) <= 0;
+                r.Add("in supply: (-4,0) " + (sup.DepthAt(inS.tile) > 0) + ", (-5,1) " + (sup.DepthAt(jet.tile) > 0) + "; (2,3) out " + (sup.DepthAt(outS.tile) <= 0));
+                // The AI's view before the turn: a supplied tile is a home for the helicopter, not for the jet.
+                HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, a.GetComponent<AIPlayer>().Profile);
+                List<HexTile> heloHomes = HexTactica.AI.AIAir.Bases(inS, m), jetHomes = HexTactica.AI.AIAir.Bases(jet, m);
+                bool ai = heloHomes.Contains(Rig.At(-4, 1)) && !jetHomes.Contains(Rig.At(-4, 1)) && m.Heals(inS, Rig.At(-4, 1)) && !m.Heals(jet, Rig.At(-4, 1)) && !m.Heals(outS, outS.tile);
+                r.Add("AI: supplied tile a home for the helicopter " + heloHomes.Contains(Rig.At(-4, 1)) + ", not the jet " + !jetHomes.Contains(Rig.At(-4, 1)) + ", heals there " + m.Heals(inS, Rig.At(-4, 1)));
+                foreach (Unit u in new[] { inS, outS, jet }) { u.fuel = 8; u.ammo = 0; u.Strength = 4; }
+                endTurn(); endTurn();   // Red's turn, then the start of Blue's
+                bool fed = inS.fuel == inS.fuelMax && inS.ammo == inS.ammoMax && inS.Strength == 5;
+                bool aloft = outS.fuel == 8 - outS.minFuelPerTurn && outS.Strength == 4 && outS.ammo == 0;
+                bool jetBurns = jet.fuel == 8 - jet.minFuelPerTurn && jet.Strength == 4;
+                r.Add("helicopter in supply: fuel " + inS.fuel + "/" + inS.fuelMax + ", ammo " + inS.ammo + ", strength " + inS.Strength + "; out of supply: fuel " + outS.fuel + ", strength " + outS.Strength + "; jet in supply: fuel " + jet.fuel + ", strength " + jet.Strength);
+                detail = string.Join("; ", r.ToArray());
+                return layout && ai && fed && aloft && jetBurns;
+            }
+            case "fogLineOfSight": {
+                Unit g = Rig.At(-4, 0).occupier, e = Rig.At(-1, 0).occupier, jet = Rig.At(-4, 3).occupier, boat = Rig.At(-4, -3).occupier;
+                g.visionRange = 4;
+                Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
+                Func<int, int, bool> sees = (x, y) => FogOfWar.TileVisible(a, Rig.At(x, y));
+                List<string> r = new List<string>();
+                // Only the grunt looks first: the others somewhere out of the way.
+                jet.TeleportTo(Rig.At(6, -6), 0); boat.TeleportTo(Rig.At(6, -5), 0);
+                Rig.At(0, 0).terrain = T("Forest");
+                moved();
+                bool flat = sees(-3, 0) && sees(-2, 0) && !sees(-1, 0) && !sees(0, 0) && !FogOfWar.Sees(a, e) && sees(-2, -2) && sees(0, -2);
+                r.Add("grunt on grassland: the hill seen " + sees(-2, 0) + ", behind it hidden: (-1,0) " + !sees(-1, 0) + ", the forest " + !sees(0, 0) + ", the enemy grunt " + !FogOfWar.Sees(a, e) + "; off the line seen " + (sees(-2, -2) && sees(0, -2)));
+                g.TeleportTo(Rig.At(-2, 0), 0); e.TeleportTo(Rig.At(2, -3), 0); moved();
+                bool hill = sees(-1, 0) && sees(0, 0) && sees(1, 0) && sees(2, 0);
+                r.Add("grunt on the hill: the forest behind " + sees(0, 0) + ", and past it (as high as the hill) " + sees(1, 0));
+                Rig.At(0, 0).terrain = T("Mountains"); moved();
+                bool mountain = sees(0, 0) && !sees(1, 0) && !sees(2, 0);
+                r.Add("a mountain there instead: the mountain seen " + sees(0, 0) + ", past it hidden " + (!sees(1, 0) && !sees(2, 0)));
+                Rig.At(0, 0).terrain = T("Grassland"); Rig.At(-2, 0).terrain = T("Grassland"); g.TeleportTo(Rig.At(-4, 0), 0);
+                // The line from (-4,0) to (-3,1) runs along the edge between (-3,0) and (-4,1).
+                Rig.At(-3, 0).terrain = T("Hills"); moved();
+                bool edgeOne = sees(-3, 1);
+                Rig.At(-4, 1).terrain = T("Hills"); moved();
+                bool edgeTwo = !sees(-3, 1);
+                r.Add("along an edge: one hill beside the line hides nothing " + edgeOne + ", two hide " + edgeTwo);
+                Rig.At(-3, 0).terrain = T("Grassland"); Rig.At(-4, 1).terrain = T("Grassland");
+                // The jet looks over a mountain wall; the grunt goes out of the way.
+                g.TeleportTo(Rig.At(-6, 6), 0); jet.TeleportTo(Rig.At(-4, 0), 0);
+                Rig.At(-3, 0).terrain = T("Mountains"); moved();
+                bool air = sees(-2, 0) && sees(-1, 0) && sees(0, 0);
+                r.Add("fighter over a mountain: sees past it " + air);
+                Rig.At(-3, 0).terrain = T("Grassland"); jet.TeleportTo(Rig.At(6, -6), 0);
+                // A gunboat on water: shallows on the line hide nothing, grassland does.
+                foreach (int[] w in new[] { new[] { -4, -3 }, new[] { -3, -3 }, new[] { -2, -3 }, new[] { -1, -3 } }) Rig.At(w[0], w[1]).terrain = T("Water");
+                Rig.At(-3, -3).terrain = T("Shallows"); boat.TeleportTo(Rig.At(-4, -3), 0); moved();
+                bool sea1 = sees(-2, -3) && sees(-1, -3);
+                Rig.At(-2, -3).terrain = T("Grassland"); moved();
+                bool sea2 = sees(-2, -3) && !sees(-1, -3);
+                r.Add("gunboat: past shallows " + sea1 + ", past a grassland tile hidden " + sea2);
+                // An enemy behind a hill, then next to one of ours.
+                boat.TeleportTo(Rig.At(6, -5), 0); g.TeleportTo(Rig.At(-4, 0), 0); Rig.At(-2, 0).terrain = T("Hills");
+                e.TeleportTo(Rig.At(-1, 0), 0); moved();
+                bool hidden = !FogOfWar.Sees(a, e);
+                e.TeleportTo(Rig.At(-3, 1), 0); moved();
+                bool adjacent = FogOfWar.Sees(a, e);
+                r.Add("enemy behind the hill unseen " + hidden + ", next to the grunt seen " + adjacent);
+                detail = string.Join("; ", r.ToArray());
+                return flat && hill && mountain && edgeOne && edgeTwo && air && sea1 && sea2 && hidden && adjacent;
             }
             case "editorLoad": {
                 // The terrains the scene's LevelEditor lists (Assets/Scenes/SampleScene.unity), and every building prefab.

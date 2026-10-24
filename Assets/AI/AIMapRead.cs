@@ -108,7 +108,10 @@ namespace HexTactica.AI {
         public bool Heals(Unit x, HexTile at) {
             if (x == null || at == null || x.owner == null) return false;
             // Aircraft and ships: only on a building of theirs that services them.
-            if (LocomotionRules.NeedsBase(x.locomotion)) return at.building != null && at.building.owner == x.owner && at.building.Services(x);
+            if (LocomotionRules.NeedsBase(x.locomotion)) {
+                if (at.building != null && at.building.owner == x.owner && at.building.Services(x)) return true;
+                if (!LocomotionRules.ResuppliedInSupply(x.locomotion)) return false;   // helicopters: on supplied tiles too (below)
+            }
             SupplyPoint sp = x.Hub;
             if (x.owner == player) {
                 if (supply == null || supply.DepthAt(at) <= 0) return false;

@@ -50,9 +50,18 @@ public static class LocomotionRules {
         return l == Locomotion.Rotor || l == Locomotion.Jet || l == Locomotion.Munition;
     }
 
-    /// <summary>Resupplied (healed, refuelled, rearmed) only on a building that services them: aircraft at airports, ships at naval yards.</summary>
+    /// <summary>Resupplied (healed, refuelled, rearmed) on a building that services them (aircraft at airports, ships at naval yards), not by the supply network (helicopters are, too: ResuppliedInSupply). Away from both they run on fuel and do not starve.</summary>
     public static bool NeedsBase(Locomotion l) {
         return l == Locomotion.Jet || l == Locomotion.Rotor || l == Locomotion.Ship;
+    }
+
+    /// <summary>
+    /// Also resupplied (healed, refuelled, rearmed) at the start of its turn on any tile in its
+    /// owner's supply, like a ground unit: helicopters. Away from supply and from a base they run on
+    /// fuel like any aircraft, and do not starve.
+    /// </summary>
+    public static bool ResuppliedInSupply(Locomotion l) {
+        return l == Locomotion.Rotor;
     }
 
     public static bool IsNaval(Locomotion l) {
