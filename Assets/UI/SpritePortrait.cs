@@ -19,11 +19,29 @@ public static class SpritePortrait {
     /// into <paramref name="target"/> (its existing child Images are reused). False if there was none.
     /// </summary>
     public static bool Compose(Transform root, RectTransform target, Func<SpriteRenderer, bool> include, float margin = 4f) {
+        return Compose(root, target, false, r => include == null || include(r) ? new Look { color = r.color } : (Look?)null, margin);
+    }
+
+    /// <summary>How a sprite is drawn in the picture: its colour, and a scale in place of its own (null: as it is).</summary>
+    public struct Look {
+        public Color color;
+        public Vector3? localScale;
+    }
+
+    /// <summary>
+    /// As above, with each sprite's look decided by <paramref name="look"/> (null: left out); with
+    /// <paramref name="inactiveToo"/>, sprites on inactive objects count too (a unit's pips, hidden
+    /// while it rides a transport, drawn from their layout).
+    /// </summary>
+    public static bool Compose(Transform root, RectTransform target, bool inactiveToo, Func<SpriteRenderer, Look?> look, float margin = 4f) {
         List<SpriteLayout.Part> parts = new List<SpriteLayout.Part>();
         List<SpriteRenderer> rs = new List<SpriteRenderer>();
-        foreach (SpriteRenderer r in root.GetComponentsInChildren<SpriteRenderer>(false)) {
-            if (r == null || r.sprite == null || !r.enabled) continue;
-            if (include != null && !include(r)) continue;
+        Dictionary<SpriteRenderer, Look> looks = new Dictionary<SpriteRenderer, Look>();
+        foreach (SpriteRenderer r in root.GetComponentsInChildren<SpriteRenderer>(inactiveToo)) {
+            if (r == null || r.sprite == null || (!r.enabled && !inactiveToo)) continue;
+            Look? l = look(r);
+            if (!l.HasValue) continue;
+            looks[r] = l.Value;
             rs.Add(r);
         }
         // Draw order as on the board: sorting layer, then order in layer, then hierarchy.
@@ -37,7 +55,13 @@ public static class SpritePortrait {
         });
         Matrix4x4 toRoot = root.worldToLocalMatrix;
         foreach (SpriteRenderer r in rs) {
+            Look l = looks[r];
             Matrix4x4 m = toRoot * r.transform.localToWorldMatrix;
+            if (l.localScale.HasValue) {
+                Transform t = r.transform;
+                Matrix4x4 parent = t.parent != null ? t.parent.localToWorldMatrix : Matrix4x4.identity;
+                m = toRoot * parent * Matrix4x4.TRS(t.localPosition, t.localRotation, l.localScale.Value);
+            }
             Bounds b = r.sprite.bounds;   // in the sprite's local units, around its pivot
             Vector3 c = b.center;
             Vector3 ax = m.MultiplyVector(Vector3.right), ay = m.MultiplyVector(Vector3.up);
@@ -45,7 +69,7 @@ public static class SpritePortrait {
             if (r.flipY) { c.y = -c.y; ay = -ay; }
             Vector3 p = m.MultiplyPoint3x4(c);
             parts.Add(new SpriteLayout.Part {
-                sprite = r.sprite, color = r.color,
+                sprite = r.sprite, color = l.color,
                 center = new Vector2(p.x, p.y),
                 axisX = new Vector2(ax.x, ax.y), axisY = new Vector2(ay.x, ay.y),
                 size = new Vector2(b.size.x, b.size.y)
@@ -113,6 +137,83 @@ public static class SpritePortrait {
             foreach (string skip in UnitSkips)
                 if (t.name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return false;
         return true;
+    }
+
+    // ---------------------------------------------------------------- pips and chevrons
+
+    /// <summary>
+    /// The unit's strength pips (its HealthCircles) as on the board, into <paramref name="target"/>:
+    /// one lit pip per strength point in its owner's colour, the suppressed ones greyed, the rest
+    /// empty outlines. False if the unit has no HealthCircles. Drawn from the pips' own layout and
+    /// colouring (HealthDot, setOpacity, setSize), so they look like the board's, even while the
+    /// unit rides a transport and its own are hidden.
+    /// </summary>
+    public static bool ComposePips(Unit u, RectTransform target, float margin = 2f) {
+        Transform root = Find(u, "HealthCircles");
+        if (root == null) return false;
+        Compose(root, target, true, r => {
+            HealthDot dot = r.GetComponent<HealthDot>();
+            if (dot == null) return new Look { color = r.color };
+            int i = Iter(r.gameObject.name);
+            bool lit = u.Strength > i;
+            bool quiet = lit && i >= u.Strength - u.suppressed;
+            Color c = OwnerTint(r, u);
+            if (quiet) c = Desaturate(c, dot.suppressedSaturation);
+            c.a = lit ? 1f : 0f;
+            setSize sz = r.GetComponent<setSize>();
+            float scale = sz != null ? (lit ? 0.5f : 1f) : r.transform.localScale.x;
+            return new Look { color = c, localScale = new Vector3(scale, scale, 1f) };
+        }, margin);
+        return true;
+    }
+
+    /// <summary>The unit's veterancy chevrons as on the board (one per level, its owner's colour). False if it has none.</summary>
+    public static bool ComposeChevrons(Unit u, RectTransform target, float margin = 2f) {
+        Transform root = Find(u, "Veterancy");
+        if (root == null) return false;
+        Compose(root, target, true, r => {
+            if (r.GetComponent<VeterancyChevron>() == null) return new Look { color = r.color };
+            Color c = OwnerTint(r, u);
+            c.a = u.Veterancy > Iter(r.gameObject.name) ? 1f : 0f;
+            return new Look { color = c };
+        }, margin);
+        return true;
+    }
+
+    /// <summary>The unit's own child of this name (not one of the units it carries).</summary>
+    static Transform Find(Unit u, string name) {
+        if (u == null) return null;
+        foreach (Transform t in u.GetComponentsInChildren<Transform>(true))
+            if (t.name == name && t.GetComponentInParent<Unit>() == u) return t;
+        return null;
+    }
+
+    /// <summary>The number in a pip's or chevron's name, as HealthDot and VeterancyChevron read it (none: 0).</summary>
+    static int Iter(string name) {
+        System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(name ?? "", @"\d+");
+        int n;
+        return m.Success && int.TryParse(m.Value, out n) ? n : 0;
+    }
+
+    /// <summary>The owner's colour as setOpacity mixes it (with its offset colour), else the sprite's own.</summary>
+    static Color OwnerTint(SpriteRenderer r, Unit u) {
+        setOpacity o = r.GetComponent<setOpacity>();
+        if (o == null || u.owner == null) return r.color;
+        Color pc = u.owner.displayColor;
+        float inv = 1f - o.offset;
+        return new Color(pc.r * inv + o.offsetColor.r * o.offset, pc.g * inv + o.offsetColor.g * o.offset, pc.b * inv + o.offsetColor.b * o.offset, 1f);
+    }
+
+    static Color Desaturate(Color c, float saturation) {
+        float grey = c.r * 0.299f + c.g * 0.587f + c.b * 0.114f;
+        return new Color(Mathf.Lerp(grey, c.r, saturation), Mathf.Lerp(grey, c.g, saturation), Mathf.Lerp(grey, c.b, saturation), c.a);
+    }
+
+    /// <summary>A building's own sprites (not its canvases, not a unit standing on it).</summary>
+    public static bool BuildingPart(Building b, SpriteRenderer r) {
+        if (r.GetComponentInParent<Canvas>() != null) return false;
+        if (r.GetComponentInParent<Unit>() != null) return false;
+        return r.GetComponentInParent<Building>() == b;
     }
 
     /// <summary>A tile's ground: its terrain sprites and roads, not its move/attack overlay, arrow or supply borders.</summary>
