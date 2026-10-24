@@ -16,7 +16,7 @@ using UnityEngine;
 ///   - when it stands on one of the player's buildings (or their runways and docks);
 ///   - after it fires on one of the player's units, until the end of that player's next turn (or of
 ///     this one, if it happened during it): a revealed unit (see <see cref="Reveal"/>).
-/// Units carried by an enemy transport are never seen, only the transport.
+/// Units carried by a transport are seen when the transport is.
 ///
 /// What fog changes in the rules:
 ///   - an attack needs a target its attacker's owner sees (Unit.validTarget);
@@ -130,7 +130,7 @@ public static class FogOfWar {
         if (KnowsAll(p)) return true;
         if (current != null && current.player == p) return current.visible.Contains(u);
         if (u.tile == null || u.Strength <= 0) return false;
-        if (u.trasnporter != null) return false;   // cargo: only its transport is seen
+        if (u.trasnporter != null && u.trasnporter != u) return Sees(p, u.trasnporter);   // cargo: as its transport
         return SeesAt(p, u, u.tile);
     }
 
@@ -390,7 +390,7 @@ public static class FogOfWar {
     public static bool ShownToViewer(Unit u) {
         Player v = Viewer;
         if (v == null || u == null || u.owner == v) return true;
-        if (u.trasnporter != null) return false;
+        if (u.trasnporter != null && u.trasnporter != u) return ShownToViewer(u.trasnporter);
         if (u.tile == null) return false;
         return SeesAt(v, u, u.ShownTile);
     }
@@ -448,7 +448,7 @@ public static class FogOfWar {
             List<Unit> toBelieve = new List<Unit>();
             foreach (Unit u in all) {
                 if (u == null || u.owner == player || u.tile == null) continue;
-                if (u.Strength > 0 && u.trasnporter == null && Sees(player, u)) { visible.Add(u); continue; }
+                if (u.Strength > 0 && Sees(player, u)) { visible.Add(u); continue; }
                 Moved m = new Moved { u = u, tile = u.tile, strength = u.Strength, occupied = u.tile.occupier == u };
                 moved.Add(m);
                 if (m.occupied) u.tile.occupier = null;
