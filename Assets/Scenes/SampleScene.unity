@@ -3336,7 +3336,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7163b8278da43249a75217da579ecb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rules: 0
+  rules: 2
   roundLimit: 30
   purchasesAllowed: 1
   allowedUnits: []
@@ -3344,7 +3344,7 @@ MonoBehaviour:
   - {fileID: 1909610619}
   - {fileID: 1811020726}
   days: 1
-  activePlayer: {fileID: 1811020726}
+  activePlayer: {fileID: 1909610619}
   activeUnit: {fileID: 0}
   gameOver: 0
   winner: {fileID: 0}
