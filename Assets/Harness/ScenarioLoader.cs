@@ -162,6 +162,9 @@ namespace HexTactica.Harness {
         /// <summary>"on", "off", or null to use the file (else the rule set's default). Set from HexTactica ▸ Purchases.</summary>
         public static string PurchasesOverride;
 
+        /// <summary>"on", "off", or null to use the file (fog of war; off when the file says nothing). Set from HexTactica ▸ Fog of War.</summary>
+        public static string FogOverride;
+
         /// <summary>A setting from the test block, else from the top of the file, else null.</summary>
         static string Setting(JSONObject obj, JSONObject test, string key) {
             JSONObject f = test != null ? test.GetField(key) : null;
@@ -196,6 +199,9 @@ namespace HexTactica.Harness {
             // Purchases: the menu's choice, else the file's, else the rule set's default; and the
             // units the scenario allows to be bought (all when it names none).
             GameController.gc.ApplyPurchaseRules(PurchasesOverride ?? Setting(obj, test, "purchases"), Setting(obj, test, "allowedUnits"));
+            // Fog of war: the menu's choice, else the file's ("fog":"on"), else off.
+            GameController.gc.fogOfWar = GameController.ParseFog(FogOverride ?? Setting(obj, test, "fog"));
+            FogOfWar.Reset();
             // The file's round count is the attrition limit (30 when it gives none).
             int limit;
             GameController.gc.roundLimit = test != null && test.GetField("rounds") != null && int.TryParse(test.GetField("rounds").stringValue, out limit) ? limit : 30;

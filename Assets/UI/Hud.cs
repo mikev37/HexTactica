@@ -65,7 +65,8 @@ public class Hud : MonoBehaviour {
 
     void Update() {
         HexTile t = HexTile.lastClicked;
-        Unit u = t != null ? t.occupier : null;
+        // Under fog of war, only a unit the viewer sees (one it does not is not there for the HUD).
+        Unit u = t != null ? FogOfWar.ApparentOccupier(t, FogOfWar.Viewer) : null;
         ShowUnit(u);
         ShowTile(t);
     }
@@ -102,8 +103,9 @@ public class Hud : MonoBehaviour {
         if (road != null) { if (td.road) road.SetText(td.elevation == 0 ? "Bridge" : "Road", positive); else road.Show(false); }
         if (building != null) {
             Building b = t.building;
-            if (b != null) building.SetText(b.name.Replace("(Clone)", "").Trim() + (b.owner != null ? "  " + b.owner.personal_name : "  neutral"),
-                                            b.owner != null ? b.owner.displayColor : text);
+            Player bo = b != null ? FogOfWar.ShownOwner(b) : null;   // under fog of war, as last seen
+            if (b != null) building.SetText(b.name.Replace("(Clone)", "").Trim() + (bo != null ? "  " + bo.personal_name : "  neutral"),
+                                            bo != null ? bo.displayColor : text);
             else building.Show(false);
         }
     }

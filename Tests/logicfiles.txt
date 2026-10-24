@@ -63,3 +63,8 @@ AI/AIAir.cs
 AI/AISupplyChain.cs
 AI/AIProduction.cs
 Units/TransportMenu.cs
+Fog/FogOfWar.cs
+Fog/FogSettings.cs
+Fog/FogFader.cs
+Fog/FogView.cs
+AI/AIFog.cs

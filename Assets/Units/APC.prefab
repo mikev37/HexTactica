@@ -491,6 +491,8 @@ MonoBehaviour:
   AttackRange: 1
   MinRange: 0
   retaliates: 1
+  visionRange: 2
+  stealthRange: 0
   move_display: {fileID: 0}
   locomotion: 1
   moveRange: 6

@@ -264,7 +264,10 @@ public class SupplyOverlay : MonoBehaviour {
         if (enemy == null || enemy.tile == null) return;
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
         List<HexTile> moves = new List<HexTile>();
-        foreach (HexTile t in enemy.tile.CheckMovementRange(enemy)) if (t != null && (t == enemy.tile || (t.G != 0 && t.CanEndTurnHere(enemy)))) moves.Add(t);
+        // Under fog of war, worked out on the board as the viewer knows it: the enemy's units the
+        // viewer does not see are not there (neither blocking nor taking a tile).
+        using (FogOfWar.Concealing(FogOfWar.Viewer))
+            foreach (HexTile t in enemy.tile.CheckMovementRange(enemy)) if (t != null && (t == enemy.tile || (t.G != 0 && t.CanEndTurnHere(enemy)))) moves.Add(t);
         if (!moves.Contains(enemy.tile)) moves.Add(enemy.tile);
         HashSet<HexTile> threat = new HashSet<HexTile>();
         if (enemy.Firepower > 0) {

@@ -56,6 +56,7 @@ namespace HexTactica.Harness {
             Unit.Attacked += OnAttack;
             Building.Captured += OnCapture;
             Unit.Ditched += OnDitch;
+            Unit.RanInto += OnRanInto;
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
             AIPlayer.Trace = Line;
@@ -76,6 +77,7 @@ namespace HexTactica.Harness {
             Building.Captured -= OnCapture;
             Unit.Ditched -= OnDitch;
             Unit.Finished -= OnFinished;
+            Unit.RanInto -= OnRanInto;
             GameController.TurnStarted -= OnTurnStarted;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
             if (AITactical.DecisionLog == (Action<string>)Line) AITactical.DecisionLog = null;
@@ -128,6 +130,11 @@ namespace HexTactica.Harness {
         static void OnDitch(Unit u) {
             if (writer == null || u == null) return;
             Line("   " + Who(u) + " ditched at " + D(u.tile) + ": out of fuel");
+        }
+
+        static void OnRanInto(Unit mover, Unit hidden, HexTile stoppedAt) {
+            if (writer == null || mover == null || hidden == null) return;
+            Line("   " + Who(mover) + " ran into " + Who(hidden) + " at " + D(hidden.tile) + " (unseen, fog of war): stopped at " + D(stoppedAt));
         }
 
         static void OnCapture(Building b, Player side, int before, int after) {

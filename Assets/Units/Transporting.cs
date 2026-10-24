@@ -81,6 +81,7 @@ public static class Transporting {
         transport.transported.Add(cargo);
         cargo.active = false;
         cargo.OnBoarded(transport);
+        FogOfWar.Changed();
         return true;
     }
 
@@ -96,7 +97,9 @@ public static class Transporting {
         List<HexTile> neighbors = at.neighbors;
         for (int i = 0; i < neighbors.Count; i++) {
             HexTile n = neighbors[i];
-            if (n == null || (n.occupier != null && n.occupier != transport)) continue;
+            // An enemy its side does not see is no obstacle as far as it knows (fog of war).
+            Unit o = n != null ? FogOfWar.ApparentOccupier(n, transport.owner) : null;
+            if (n == null || (o != null && o != transport)) continue;
             if (!cargo.CanEnter(n)) continue;
             if (!LocomotionRules.BridgeStep(at, n, cargo.locomotion)) continue;   // off a bridge only by road
             options.Add(n);
@@ -107,7 +110,19 @@ public static class Transporting {
     public static bool Unload(Unit transport, Unit cargo, HexTile onto) {
         if (transport == null || cargo == null || onto == null) return false;
         if (!transport.transported.Contains(cargo)) return false;
-        if (onto.occupier != null) return false;
+        if (onto.occupier != null) {
+            // An enemy nobody aboard saw (fog of war): the cargo cannot get off there, the enemy is
+            // revealed and fires on the transport (which answers as usual if it can).
+            Unit hidden = onto.occupier;
+            if (FogOfWar.On && hidden.owner != transport.owner && !FogOfWar.Sees(transport.owner, hidden) && transport.tile != null) {
+                FogOfWar.Reveal(hidden, transport.owner);
+                int d = hidden.tile.Distance(transport.tile);
+                if (hidden.Strength > 0 && d <= hidden.AttackRange && d > hidden.MinRange && hidden.CanAttack(transport) && GameController.Targetable(transport))
+                    hidden.OrderAttack(transport, true);
+                transport.ambushedBy = hidden;
+            }
+            return false;
+        }
         if (!cargo.CanEnter(onto)) return false;
         if (!LocomotionRules.BridgeStep(transport.tile, onto, cargo.locomotion)) return false;
         if (!transport.tile.neighbors.Contains(onto) && onto != transport.tile) return false;
@@ -119,6 +134,7 @@ public static class Transporting {
         // Getting off costs nothing: the unit is as it was aboard (one that has not acted this
         // turn can still move and fight; one that boarded this turn has already used its turn).
         cargo.OnUnloaded(transport);
+        FogOfWar.Changed();
         return true;
     }
 

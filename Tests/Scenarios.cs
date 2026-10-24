@@ -398,6 +398,33 @@ public static class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
+        // Fog of war: small boards, sight and its rules checked by hand (Red is human, so the screen shows Red's view).
+        Action<string, string, Action<Player, Player>, string, string> makeFog = (name, check, setup, question, opponent) => {
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
+            setup(ai, other);
+            Dictionary<string, string> test = Test(name, "rules", opponent, opponent == "Full" ? 12 : 4, check, question);
+            test["rules"] = "attrition";
+            test["fog"] = "on";
+            ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
+            n++;
+        };
+        makeFog("fog-rule-vision", "fogVision", (a, o) => {
+                 Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
+                 Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
+             "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red units Blue does not see. With fog off, everything is seen.", "Human");
+        makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
+             "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
+        makeFog("fog-ui-clicks", "fogClicks", (a, o) => { Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0); },
+             "The board's clicks under fog of war, Red (human, vision 1) to play: a tile with a Blue grunt Red does not see behaves exactly like an empty one — clicked with nothing selected it selects nothing and shows no enemy; with Red's grunt selected it is offered as a move, the tile beyond it too, and the path drawn across it looks like a path across empty ground. Moving through it, Red's grunt stops before it and is fired on.", "Human");
+        makeFog("fog-ai-knowledge", "fogKnowledge", (a, o) => { Put("Tank", a, -2, 0); Put("Recon", a, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 2, -5); Put("Tank", o, 5, -2); },
+             "The AI playing by the fog: thinking, it knows only what Blue sees — a hidden enemy is off the board (not in its read of the board, not targetable, not blocking) and one seen lately stands where it was last seen, unless that tile is in sight and empty; everything is put back afterwards. An ambush tile (out of the enemy's sight, in reach of an enemy) is worth something, an exposed one is not; a stop that brings unseen tiles into sight is worth more than one that does not. With fogFair off it knows everything.", "Human");
+        makeFog("fog-ai-game", "fogGame", (a, o) => {
+                 Put("Tank", a, -4, 1); Put("Grunt", a, -3, -1); Put("Grunt", a, -4, 3); Put("Recon", a, -3, 2); Put("Artillery", a, -5, 2); Put("Supplies", a, -5, 1);
+                 Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
+                 for (int x = -1; x <= 1; x++) for (int y = -3; y <= 3; y++) { HexTile t = Rig.At(x, y); if (t != null && (x + y) % 2 == 0) t.terrain = T("Forest"); } },
+             "Both sides the AI, both playing by the fog, eight rounds: after every action the board is whole (every unit on its tile and only there, nothing left concealed), attacks only ever at units their side sees, and any unit run into stops short and is fired on.", "Full");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
              "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
         makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -757,6 +784,210 @@ public static class Scenarios {
                 detail = "hull " + p[0].size.x + "x" + p[0].size.y + " at " + p[0].position.x + "," + p[0].position.y + "; turret at " + p[1].position.x + "," + p[1].position.y + " " + p[1].angle
                        + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
                 return hull && turret && flag && none;
+            }
+            case "fogVision": {
+                Unit g = Rig.At(-2, 0).occupier, r1 = Rig.At(0, 0).occupier, r2 = Rig.At(1, 0).occupier, rc = Rig.At(2, -3).occupier;
+                Unit art = Rig.At(-2, 4).occupier, apc = Rig.At(4, -4).occupier, cargo = Rig.At(4, -3).occupier;
+                Building city = Rig.At(2, 2).building;
+                List<string> r = new List<string>();
+                Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
+                moved();
+                bool v1 = FogOfWar.Sees(a, r1) && !FogOfWar.Sees(a, r2) && FogOfWar.TileVisible(a, Rig.At(0, 0)) && !FogOfWar.TileVisible(a, Rig.At(1, 0));
+                r.Add("vision 2: d2 seen, d3 not " + v1);
+                g.visionRange = 4; moved();
+                bool v2 = FogOfWar.Sees(a, r2);
+                r.Add("vision 4: d3 seen " + v2);
+                rc.TeleportTo(Rig.At(1, -1), 0); moved();
+                bool s1 = !FogOfWar.Sees(a, rc) && FogOfWar.TileVisible(a, Rig.At(1, -1));
+                rc.TeleportTo(Rig.At(0, -1), 0); moved();
+                bool s2 = FogOfWar.Sees(a, rc);
+                r.Add("stealth 3: d3 in vision unseen " + s1 + ", d2 seen " + s2);
+                g.visionRange = 0; rc.TeleportTo(Rig.At(-1, 0), 0); moved();
+                bool adj = FogOfWar.Sees(a, rc) && !FogOfWar.Sees(a, r1);
+                r.Add("vision 0: adjacent seen, d2 not " + adj);
+                rc.stealthRange = 1; rc.TeleportTo(Rig.At(2, 2), 0); moved();
+                bool onCity = FogOfWar.Sees(a, rc) && city != null && city.owner == a;
+                rc.stealthRange = 3;
+                r.Add("on our city (stealth 1, d0) seen " + onCity);
+                Transporting.Load(apc, cargo); moved();
+                g.visionRange = 2; g.TeleportTo(Rig.At(3, -4), 0); moved();
+                bool car = FogOfWar.Sees(a, apc) && FogOfWar.Sees(a, cargo);
+                g.TeleportTo(Rig.At(-2, 0), 0); moved();
+                car = car && !FogOfWar.Sees(a, apc) && !FogOfWar.Sees(a, cargo);
+                r.Add("cargo seen with its APC, hidden with it " + car);
+                g.TeleportTo(Rig.At(-2, 0), 0); moved();
+                // Fired on from out of sight during Red's turn: seen until the end of Blue's next turn.
+                gc.EndTurn();
+                bool before = !FogOfWar.Sees(a, art);
+                art.OrderAttack(g);
+                bool fired = FogOfWar.Sees(a, art);
+                gc.EndTurn();
+                bool afterRed = FogOfWar.Sees(a, art);
+                gc.EndTurn();
+                bool afterBlue = !FogOfWar.Sees(a, art);
+                r.Add("artillery: unseen " + before + ", fires: seen " + fired + ", Red's turn over: still " + afterRed + ", Blue's over: unseen " + afterBlue);
+                // The screen is Red's (the human): Blue's units Red does not see are invisible, Red's units Blue does not see half-faded.
+                moved();
+                Player viewer = FogOfWar.Viewer;
+                g.TeleportTo(Rig.At(-5, 2), 0); moved();   // out of the sight of every Red unit
+                bool gHidden = !FogOfWar.Sees(o, g);
+                float tg = FogFader.TargetFor(g), tr2 = FogFader.TargetFor(r2), tr1 = FogFader.TargetFor(r1);
+                bool r2Hidden = !FogOfWar.Sees(a, r2), r1Seen = FogOfWar.Sees(a, r1);
+                bool screen = viewer == o && gHidden && tg == 0f && (r2Hidden ? tr2 == FogSettings.Instance.ownHiddenAlpha : tr2 == 1f) && (r1Seen ? tr1 == 1f : tr1 == FogSettings.Instance.ownHiddenAlpha);
+                r.Add("screen (" + (viewer != null ? viewer.personal_name : "none") + "): hidden Blue unit " + tg + ", Red unit Blue " + (r2Hidden ? "does not see " : "sees ") + tr2 + " " + screen);
+                gc.fogOfWar = false;
+                bool off = FogOfWar.Sees(a, r2) && FogOfWar.Sees(a, cargo) && FogOfWar.Viewer == null && FogFader.TargetFor(g) == 1f;
+                gc.fogOfWar = true;
+                r.Add("fog off: all seen " + off);
+                detail = string.Join("; ", r.ToArray());
+                return v1 && v2 && s1 && s2 && adj && onCity && car && before && fired && afterRed && afterBlue && screen && off;
+            }
+            case "fogBump": {
+                Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier, p = Rig.At(0, 3).occupier, q = Rig.At(2, 3).occupier;
+                foreach (Unit u in a.units) if (u != null) u.visionRange = 1;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                List<string> r = new List<string>();
+                bool hidden = !FogOfWar.Sees(a, h) && !FogOfWar.Sees(a, q);
+                r.Add("hidden at the start " + hidden);
+                // The move range: the same as with the hidden grunt off the board.
+                HashSet<HexTile> withFog = new HashSet<HexTile>();
+                foreach (HexTile t in p.tile.CheckMovementRange(p)) if (t.G != 0 && t.CanEndTurnHere(p)) withFog.Add(t);
+                HexTile qt = q.tile, ht = h.tile; qt.occupier = null; q.tile = null; ht.occupier = null; h.tile = null; gc.fogOfWar = false;
+                HashSet<HexTile> empty = new HashSet<HexTile>();
+                foreach (HexTile t in p.tile.CheckMovementRange(p)) if (t.G != 0 && t.CanEndTurnHere(p)) empty.Add(t);
+                gc.fogOfWar = true; q.tile = qt; qt.occupier = q; h.tile = ht; ht.occupier = h;
+                bool range = withFog.SetEquals(empty) && withFog.Contains(qt);
+                r.Add("range as if not there " + range + " (" + withFog.Count + " tiles, its tile among them " + withFog.Contains(qt) + ")");
+                // Walk through it.
+                int mBefore = m.Strength, hBefore = h.Strength;
+                CombatOutcome seen = new CombatOutcome(); Unit firer = null, target = null;
+                System.Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (att, def, f, t, oc) => { firer = att; target = def; seen = oc; };
+                Unit.Attacked += hook;
+                bool arrived;
+                try { arrived = m.MoveAlong(new List<HexTile> { Rig.At(-2, 0), Rig.At(-1, 0), Rig.At(0, 0), Rig.At(1, 0) }, false, false); }
+                finally { Unit.Attacked -= hook; }
+                bool stopped = !arrived && m.ambushedBy == h && (m.tile == Rig.At(-1, 0) || (seen.defenderRetreats && m.tile != null && m.tile != Rig.At(1, 0)));
+                bool fight = firer == h && target == m && !seen.defenderFiresFirst && seen.retaliationHappens && m.Strength < mBefore && (h.Strength < hBefore || m.Strength <= 0);
+                bool revealed = FogOfWar.Sees(a, h);
+                r.Add("stopped short " + stopped + " at " + (m.tile != null ? "(" + m.tile.x + "," + m.tile.y + ")" : "-") + "; hidden grunt fired first " + fight + " (" + mBefore + "->" + m.Strength + ", it " + hBefore + "->" + h.Strength + "); seen now " + revealed);
+                // The AI's move (headless, as the harness plays it): the same, through its executor.
+                AIPlayer aip = a.GetComponent<AIPlayer>();
+                HexTactica.AI.AIMap pm;
+                using (FogOfWar.Concealing(a, true, 2)) pm = new HexTactica.AI.AIMap(a, aip.Profile);
+                bool qHidden = !FogOfWar.Sees(a, q);
+                int pBefore = p.Strength;
+                bool did = HexTactica.AI.AIExecutor.Execute(HexTactica.AI.AIAction.Move(p, Rig.At(3, 3), 0f, "test"), pm, true);
+                bool aiStopped = qHidden && did && p.tile == Rig.At(1, 3) && p.ambushedBy == q && p.Strength < pBefore && FogOfWar.Sees(a, q);
+                r.Add("AI move through a hidden grunt: stopped at " + (p.tile != null ? "(" + p.tile.x + "," + p.tile.y + ")" : "-") + ", fired on " + aiStopped);
+                detail = string.Join("; ", r.ToArray());
+                return hidden && range && stopped && fight && revealed && aiStopped;
+            }
+            case "fogClicks": {
+                Unit red = Rig.At(0, 0).occupier, blue = Rig.At(2, 0).occupier;
+                red.visionRange = 1;
+                // What the board needs to be clicked on headless: overlays, the UI pictures, the level editor (closed), damage text.
+                HexTileUIData ui = HexTileUIData.instance;
+                ui.move_possible = new Sprite(); ui.move_confirm = new Sprite(); ui.selected = new Sprite(); ui.attack_possible = new Sprite(); ui.move_arrow = new Sprite();
+                foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
+                foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
+                if (LevelEditor.singleton == null) LevelEditor.singleton = Rig.New<LevelEditor>();
+                gc.activePlayer = o;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                List<string> r = new List<string>();
+                HexTile hiddenAt = Rig.At(2, 0), emptyAt = Rig.At(1, -1), beyond = Rig.At(3, 0);
+                bool viewer = FogOfWar.Viewer == o && !FogOfWar.Sees(o, blue);
+                hiddenAt.OnMouseDown();
+                bool asEmpty1 = gc.activeUnit == null && !SupplyOverlay.enemyShown && HexTile.lastClicked == hiddenAt && FogOfWar.ApparentOccupier(hiddenAt, FogOfWar.Viewer) == null;
+                r.Add("Red's view " + viewer + "; clicked with nothing selected: nothing selected, no enemy shown " + asEmpty1);
+                Rig.At(0, 0).OnMouseDown();
+                bool offered = gc.activeUnit == red && hiddenAt.state == UIState.MOVE && emptyAt.state == UIState.MOVE && beyond.state == UIState.MOVE;
+                r.Add("Red's grunt selected: the hidden grunt's tile offered as a move " + (hiddenAt.state == UIState.MOVE) + ", and the tile beyond " + (beyond.state == UIState.MOVE));
+                beyond.OnMouseDown();
+                bool path = beyond.state == UIState.MOVE_CONFIRM && hiddenAt.state == UIState.MOVE_ARROW && hiddenAt.overlay.sprite == ui.move_possible && hiddenAt.overlay.gameObject.activeSelf;
+                r.Add("path drawn across it as across empty ground " + path);
+                beyond.OnMouseDown();
+                bool bumped = red.tile == Rig.At(1, 0) && red.ambushedBy == blue && red.Strength < 6 && FogOfWar.Sees(o, blue) && !red.active;
+                r.Add("moved: stopped at " + (red.tile != null ? "(" + red.tile.x + "," + red.tile.y + ")" : "-") + ", fired on, the Blue grunt seen now, its move over " + bumped);
+                detail = string.Join("; ", r.ToArray());
+                return viewer && asEmpty1 && offered && path && bumped;
+            }
+            case "fogKnowledge": {
+                Unit tank = Rig.At(-2, 0).occupier, recon = Rig.At(0, 0).occupier, near = Rig.At(3, 0).occupier, far = Rig.At(2, -5).occupier, etank = Rig.At(5, -2).occupier;
+                AIPlayer ai = a.GetComponent<AIPlayer>();
+                List<string> r = new List<string>();
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                bool start = FogOfWar.Sees(a, near) && !FogOfWar.Sees(a, far) && !FogOfWar.Sees(a, etank);
+                r.Add("Blue sees the near grunt only " + start);
+                // A board snapshot, to check it is put back exactly.
+                Dictionary<Unit, KeyValuePair<HexTile, int>> snap = new Dictionary<Unit, KeyValuePair<HexTile, int>>();
+                foreach (Unit u in Rig.uc.units) snap[u] = new KeyValuePair<HexTile, int>(u.tile, u.Strength);
+                // Seen a turn ago at (2,-4)?: let Blue see the far grunt, then it moves out of sight.
+                recon.TeleportTo(Rig.At(1, -3), 0); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool sawFar = FogOfWar.Sees(a, far);
+                recon.TeleportTo(Rig.At(0, 0), 0); far.TeleportTo(Rig.At(-2, -5), 0); FogOfWar.Changed(); FogOfWar.Refresh();
+                snap[recon] = new KeyValuePair<HexTile, int>(recon.tile, recon.Strength); snap[far] = new KeyValuePair<HexTile, int>(far.tile, far.Strength);
+                bool inside = false, believed = false, offBoard = false, notTarget = false, map = false, values = false;
+                float hiddenV = 0, exposedV = 0, scoutA = 0, scoutB = 0;
+                using (FogOfWar.Scope sc = FogOfWar.Conceal(a, true, 2)) {
+                    inside = sc != null;
+                    if (sc != null) {
+                        believed = far.tile == Rig.At(2, -5) && Rig.At(2, -5).occupier == far && sc.believed.Contains(far);
+                        offBoard = etank.tile == null && Rig.At(5, -2).occupier == null;
+                        notTarget = !GameController.Targetable(far) && !GameController.Targetable(etank) && GameController.Targetable(near);
+                        HexTactica.AI.AIMap am = new HexTactica.AI.AIMap(a, ai.Profile);
+                        map = !am.enemyUnits.Contains(etank) && am.enemyUnits.Contains(near) && am.enemyUnits.Contains(far);
+                        hiddenV = HexTactica.AI.AIFog.AmbushValue(tank, Rig.At(0, 2), am, ai.Profile);
+                        exposedV = HexTactica.AI.AIFog.AmbushValue(tank, Rig.At(2, 0), am, ai.Profile);
+                        scoutA = HexTactica.AI.AIFog.ScoutValue(tank, Rig.At(4, -6), ai.Profile);   // (tiles seen earlier this turn count for nothing: nothing has moved since)
+                        scoutB = HexTactica.AI.AIFog.ScoutValue(tank, Rig.At(-1, 0), ai.Profile);
+                        values = hiddenV > 0f && exposedV == 0f && scoutA > scoutB;
+                    }
+                }
+                bool restored = FogOfWar.current == null;
+                foreach (KeyValuePair<Unit, KeyValuePair<HexTile, int>> kv in snap) {
+                    Unit u = kv.Key;
+                    if (u.tile != kv.Value.Key || u.Strength != kv.Value.Value) restored = false;
+                    if (u.tile != null && u.trasnporter == null && u.tile.occupier != u) restored = false;
+                }
+                r.Add("concealed " + inside + ": far grunt where last seen " + believed + ", unseen tank off the board " + offBoard + ", only the seen targetable " + notTarget + ", board read without the unseen " + map);
+                r.Add("ambush tile " + hiddenV.ToString("0") + " vs exposed " + exposedV.ToString("0") + ", scouting " + scoutA.ToString("0") + " vs " + scoutB.ToString("0") + " " + values);
+                r.Add("board put back " + restored);
+                // Last seen tile now in sight and empty: forgotten.
+                recon.TeleportTo(Rig.At(1, -3), 0); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool forgot;
+                using (FogOfWar.Scope sc = FogOfWar.Conceal(a, true, 2)) forgot = sc != null && far.tile == null && !sc.believed.Contains(far);
+                r.Add("its last tile seen empty: forgotten " + forgot);
+                ai.Profile.fogFair = false;
+                bool all = FogOfWar.Conceal(a, true, 2) == null && FogOfWar.Sees(a, etank);
+                ai.Profile.fogFair = true;
+                r.Add("fogFair off: sees everything " + all);
+                detail = string.Join("; ", r.ToArray());
+                return start && sawFar && inside && believed && offBoard && notTarget && map && values && restored && forgot && all;
+            }
+            case "fogGame": {
+                int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;
+                string firstBroken = null;
+                System.Action<Unit, Unit, HexTile> ran = (mover, hid, at) => bumps++;
+                System.Action<Unit, Unit, bool> shot = (att, def, surprise) => { shots++; if (!surprise && !FogOfWar.Sees(att.owner, def)) blindShots++; };
+                System.Action<Unit, HexTactica.AI.AIAction, bool> check = (u, act, did) => {
+                    actions++;
+                    string why = null;
+                    if (FogOfWar.current != null) why = "left concealed";
+                    foreach (Unit x in Rig.uc.units) {
+                        if (x == null || x.Strength <= 0) continue;
+                        if (x.tile == null) { why = x.name + " off the board"; break; }
+                        if (x.trasnporter == null && x.tile.occupier != x) { why = x.name + " not on its tile"; break; }
+                    }
+                    foreach (HexTile t in Rig.hg.tiles) if (t.occupier != null && t.occupier.tile != t) { why = "tile holds a unit that is elsewhere"; break; }
+                    if (why != null) { broken++; if (firstBroken == null) firstBroken = why; }
+                };
+                Unit.Attacking += shot; Unit.RanInto += ran;
+                foreach (Player p in new[] { a, o }) { AIPlayer x = p.GetComponent<AIPlayer>(); if (x != null) x.onDecision += check; }
+                try { for (int i = 0; i < 16 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
+                finally { Unit.RanInto -= ran; Unit.Attacking -= shot; foreach (Player p in new[] { a, o }) { AIPlayer x = p.GetComponent<AIPlayer>(); if (x != null) x.onDecision -= check; } }
+                detail = actions + " actions, " + shots + " shots (" + blindShots + " at units not seen), " + bumps + " units ran into hidden ones; board broken after " + broken + " actions" + (firstBroken != null ? " (" + firstBroken + ")" : "")
+                       + "; left Blue " + a.units.Count + ", Red " + o.units.Count;
+                return actions > 20 && broken == 0 && blindShots == 0;
             }
             case "sandboxTurns": {
                 gc.rules = RuleSet.Sandbox;
@@ -1807,6 +2038,11 @@ public static class Scenarios {
         int ditchBlue = 0, ditchRed = 0; int sorties = 0, landings = 0;
         Action<Unit> dh = u => { if (u.owner == l.ai) ditchBlue++; else ditchRed++; };
         Unit.Ditched += dh;
+        int ranBlue = 0, ranRed = 0, hiddenShotsBlue = 0, hiddenShotsRed = 0;
+        Action<Unit, Unit, HexTile> rh = (m, h, t) => { if (m.owner == l.ai) ranBlue++; else ranRed++; };
+        // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
+        Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
+        Unit.RanInto += rh; Unit.Attacking += sh;
         for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
             ScenarioFile.PlayTurn();
             if (Environment.GetEnvironmentVariable("BOARD") != null) {
@@ -1820,7 +2056,8 @@ public static class Scenarios {
                 Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6}",
                     gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other)));
         }
-        Unit.Ditched -= dh;
+        Unit.Ditched -= dh; Unit.RanInto -= rh; Unit.Attacking -= sh;
+        if (gc.fogOfWar) Console.WriteLine("fog of war: ran into unseen units Blue " + ranBlue + " Red " + ranRed + "; shots fired unseen Blue " + hiddenShotsBlue + " Red " + hiddenShotsRed);
         int airBlue = 0, airRed = 0;
         foreach (Unit u in l.ai.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airBlue++;
         foreach (Unit u in l.other.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airRed++;

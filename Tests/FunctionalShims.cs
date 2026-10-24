@@ -12,6 +12,7 @@ namespace UnityEngine {
 
     public class Object {
         public string name = "";
+        public int GetInstanceID() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
         public static implicit operator bool(Object o) { return !ReferenceEquals(o, null); }
         public static void Destroy(Object o) { }
         public static void DestroyImmediate(Object o) { }
@@ -76,6 +77,9 @@ namespace UnityEngine {
     public struct Color {
         public float r, g, b, a;
         public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; }
+        public static bool operator ==(Color x, Color y) { return x.r == y.r && x.g == y.g && x.b == y.b && x.a == y.a; }
+        public static bool operator !=(Color x, Color y) { return !(x == y); }
+        public override bool Equals(object o) { return o is Color && (Color)o == this; } public override int GetHashCode() { return 0; }
         public static Color white { get { return new Color(1, 1, 1, 1); } }
         public static Color black { get { return new Color(0, 0, 0, 1); } }
         public static Color gray { get { return new Color(.5f, .5f, .5f, 1); } }
@@ -220,7 +224,9 @@ namespace UnityEngine {
         public static T CreateInstance<T>() where T : ScriptableObject, new() { return new T(); }
     }
 
-    public class Sprite : Object { public Bounds bounds; }
+    public class Sprite : Object { public Bounds bounds; public static Sprite Create(Texture2D t, Rect r, Vector2 pivot, float ppu) { return new Sprite(); } }
+    public enum TextureFormat { RGBA32 }
+    public enum TextureWrapMode { Repeat, Clamp }
     public class Shader : Object { public static Shader Find(string n) { return null; } }
     public class Material : Object {
         public Material() { }
@@ -232,7 +238,13 @@ namespace UnityEngine {
         public float GetFloat(string n) { return 0; }
     }
     public class Texture : Object { }
-    public class Texture2D : Texture { }
+    public class Texture2D : Texture {
+        public Texture2D() { }
+        public Texture2D(int w, int h, TextureFormat f, bool mips) { }
+        public TextureWrapMode wrapMode;
+        public void SetPixels(Color[] c) { }
+        public void Apply() { }
+    }
     public class Renderer : Component { public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
     public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } public static int GetLayerValueFromID(int id) { return 0; } public static string IDToName(int id) { return "Default"; } }
     public class SpriteRenderer : Renderer {
@@ -261,6 +273,7 @@ namespace UnityEngine {
         public void SetPosition(int i, Vector3 v) { }
     }
     public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; public static void ForceUpdateCanvases() { } }
+    public class CanvasGroup : Behaviour { public float alpha = 1f; public bool blocksRaycasts = true, interactable = true; }
     public class Animator : Behaviour {
         public void SetBool(string s, bool b) { }
         public void SetTrigger(string s) { }
@@ -294,6 +307,8 @@ namespace UnityEngine {
         public static float fixedDeltaTime { get { return 0.02f; } }
         public static float time { get { return 0; } }
         public static float unscaledTime { get { return 0; } }
+        public static float timeSinceLevelLoad { get { return 0; } }
+        public static int frameCount { get { return 0; } }
         public static float unscaledDeltaTime { get { return 0.016f; } }
     }
     public static class Input {
