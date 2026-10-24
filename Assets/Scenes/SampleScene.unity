@@ -2969,7 +2969,7 @@ MonoBehaviour:
   editing: 0
   unit_placement: 1
   building_placement: 0
-  ut: {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
+  ut: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
   bt: {fileID: 0}
   placeNeutral: 0
   allTerrain:
@@ -2999,6 +2999,7 @@ MonoBehaviour:
   - {fileID: 9081080694409079478, guid: 4a7ff6334a729056845bf7af9c0f02e9, type: 3}
   - {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
   - {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
+  - {fileID: 5786757235081426029, guid: ec4cacc99bc3af24c8e309edd7a8398f, type: 3}
   allBuilding:
   - {fileID: 1140000000000000001, guid: 901659d8425717b3a161e4752bed223a, type: 3}
   - {fileID: 1140000000000000001, guid: 28523e9c480d3c1037491724c322f9d2, type: 3}
