@@ -30,8 +30,10 @@ namespace HexTactica.AI {
             FogOfWar.Knowledge s = FogOfWar.current;
             if (s == null || unit == null || at == null || p.scoutTileValue <= 0f) return 0f;
             float v = 0f;
+            FogOfWar.Domain dom = FogOfWar.DomainOf(unit);
             foreach (HexTile t in AIPath.TilesInRangeShared(at, -1, FogOfWar.VisionFrom(unit, at))) {
                 if (s.visibleTiles.Contains(t)) continue;
+                if (!FogOfWar.LineOfSight(at, t, dom)) continue;
                 int last = FogOfWar.TileLastSeen(s.player, t);
                 v += (last < 0 ? 4f : Mathf.Min(4f, FogOfWar.Turn - last)) / 4f;
             }

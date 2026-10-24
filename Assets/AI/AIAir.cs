@@ -5,9 +5,10 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// Aircraft and ships: units that take nothing from the supply network and are ditched when their
-    /// fuel runs out. They are refuelled, healed and rearmed only on one of our buildings (or its
-    /// runway or dock tiles) that services their kind, and aircraft by an air tanker beside them.
+    /// Aircraft and ships: units that are ditched when their fuel runs out. They are refuelled, healed
+    /// and rearmed on one of our buildings (or its runway or dock tiles) that services their kind,
+    /// aircraft by an air tanker beside them, and helicopters also on any tile in our supply
+    /// (LocomotionRules.ResuppliedInSupply), which counts as a base for them here.
     ///
     /// Bingo fuel: a stop is safe if, after flying (or sailing) there and the turn's burn (aircraft:
     /// minFuelPerTurn at the start of each turn away from base), the fuel left still reaches a free
@@ -73,18 +74,32 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
+        /// Tiles in our supply <paramref name="u"/> could end on, if it is resupplied there (a helicopter,
+        /// LocomotionRules.ResuppliedInSupply); none otherwise.
+        /// </summary>
+        public static List<HexTile> SupplyHomes(Unit u, AIMap map) {
+            List<HexTile> list = new List<HexTile>();
+            if (u == null || !LocomotionRules.ResuppliedInSupply(u.locomotion) || u.owner != map.player || map.supply == null || HexGenerator.hg == null || HexGenerator.hg.tiles == null) return list;
+            foreach (HexTile t in HexGenerator.hg.tiles)
+                if (t != null && map.supply.DepthAt(t) > 0 && u.CanEnter(t) && (t.occupier == null || t.occupier.owner == u.owner)) list.Add(t);
+            return list;
+        }
+
+        /// <summary>
         /// Base tiles <paramref name="u"/> may plan to get back to: its reserved landing tile if it has one;
-        /// otherwise any of ours not held by the enemy.
+        /// otherwise any of ours not held by the enemy. A helicopter's include every tile in our supply.
         /// </summary>
         public static List<HexTile> Bases(Unit u, AIMap map) {
             Landing mine;
             if (map.landings != null && map.landings.TryGetValue(u, out mine)) return new List<HexTile> { mine.tile };
+            List<HexTile> homes = SupplyHomes(u, map);
             // Every base tile of ours counts as somewhere to get back to. Reservations hold a single
             // turn, and whatever stands on a tile reserved for this turn has to leave it, so neither
             // another aircraft's reservation nor an aircraft parked there closes a tile for good;
             // ending on a tile reserved for this turn is ruled out separately (MayEndOn).
             List<HexTile> list = new List<HexTile>();
             foreach (HexTile t in AllBases(u)) if (t.occupier == null || t.occupier.owner == u.owner) list.Add(t);
+            foreach (HexTile t in homes) if (!list.Contains(t)) list.Add(t);
             return list;
         }
 
@@ -117,6 +132,10 @@ namespace HexTactica.AI {
             foreach (Unit u in map.ownUnits) {
                 if (u == null || u.tile == null || u.trasnporter != null || !LocomotionRules.IsAirborne(u.locomotion) || u.fuelMax <= 0) continue;
                 if (Building.ServicingUnder(u) != null) continue;
+                // A helicopter that can make our supply in time needs no runway: no reservation.
+                bool home = false;
+                foreach (HexTile t in SupplyHomes(u, map)) if (LatestLanding(u, t) > 0) { home = true; break; }
+                if (home) continue;
                 int latest = 0;
                 foreach (HexTile t in AllBases(u)) latest = Mathf.Max(latest, LatestLanding(u, t));
                 if (latest <= 0 || latest > LandingHorizon) continue;
