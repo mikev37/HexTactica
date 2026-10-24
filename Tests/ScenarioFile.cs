@@ -245,6 +245,9 @@ public static class ScenarioFile {
         Rig.gc.ApplyPurchaseRules(Environment.GetEnvironmentVariable("PURCHASES") ?? l.meta.Get("purchases", null) ?? top("purchases"),
                                   l.meta.Get("allowedUnits", null) ?? top("allowedUnits"));
         Rig.gc.roundLimit = l.meta.GetInt("rounds", 30);
+        // Fog of war: FOG=on|off, else the file's (test block or top level), else off.
+        Rig.gc.fogOfWar = GameController.ParseFog(Environment.GetEnvironmentVariable("FOG") ?? l.meta.Get("fog", null) ?? top("fog"));
+        FogOfWar.Reset();
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
         return l;

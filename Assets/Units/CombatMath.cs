@@ -41,6 +41,14 @@ public static class CombatMath {
     /// Pure: mutates nothing.
     /// </summary>
     public static CombatOutcome Resolve(Unit attacker, Unit defender, HexTile attackerTile) {
+        return Resolve(attacker, defender, attackerTile, false);
+    }
+
+    /// <summary>
+    /// As above; <paramref name="surprise"/>: the attacker was hidden and the defender ran into it
+    /// (fog of war), so the defender never fires first, whatever the ground.
+    /// </summary>
+    public static CombatOutcome Resolve(Unit attacker, Unit defender, HexTile attackerTile, bool surprise) {
         CombatOutcome o = new CombatOutcome();
         if (attacker == null || defender == null || defender.tile == null) return o;
         if (attackerTile == null) attackerTile = attacker.tile;
@@ -59,7 +67,7 @@ public static class CombatMath {
         // strength already lost, for the answer only.
         int quiet = Mathf.Clamp(defender.suppressed, 0, defender.Strength);
 
-        o.defenderFiresFirst = o.retaliationHappens && Ambush(attacker, defender, defender.tile);
+        o.defenderFiresFirst = !surprise && o.retaliationHappens && Ambush(attacker, defender, defender.tile);
 
         if (o.defenderFiresFirst) {
             // Defender pre-empts: retaliation damage lands first and degrades the
@@ -108,6 +116,26 @@ public static class CombatMath {
             }
         }
 
+        return o;
+    }
+
+    /// <summary>
+    /// The attack as it really happens under fog of war: the defender falls back as far as its side
+    /// knows the board (it plans its retreat around what it sees), and if the tile it picks holds an
+    /// enemy it did not see, it is pinned there instead (one more strength, like any pinned retreat)
+    /// and that enemy is revealed to it. With fog off, exactly Resolve.
+    /// </summary>
+    public static CombatOutcome ResolveUnderFog(Unit attacker, Unit defender, HexTile attackerTile, bool surprise) {
+        if (!FogOfWar.On || defender == null) return Resolve(attacker, defender, attackerTile, surprise);
+        CombatOutcome o;
+        using (FogOfWar.Concealing(defender.owner)) o = Resolve(attacker, defender, attackerTile, surprise);
+        if (o.defenderRetreats && !o.defenderPinned && o.retreatTile != null && o.retreatTile.occupier != null && o.retreatTile.occupier != defender) {
+            FogOfWar.Reveal(o.retreatTile.occupier, defender.owner);
+            o.retreatTile = null;
+            o.defenderPinned = true;
+            o.damageToDefender = Cap(o.damageToDefender + 1, defender.Strength);
+            o.defenderDies = o.damageToDefender >= defender.Strength;
+        }
         return o;
     }
 

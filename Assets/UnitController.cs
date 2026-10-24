@@ -23,6 +23,7 @@ public class UnitController : MonoBehaviour
             newboy.owner = player;
             units.Add(newboy);
             player.units.Add(newboy);
+            FogOfWar.Changed();
             return newboy;
         }
         else return null;
