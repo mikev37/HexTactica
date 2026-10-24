@@ -440,6 +440,11 @@ public static class Scenarios {
                  Rig.At(-6, 0).building.supplyRange = 3;
                  Put("Fighter", a, -4, 0); Put("Fighter", a, 2, 3); Put("Fighter", a, -5, 1); },
              "Helicopters (rotor) are resupplied on any tile in their side's supply, as well as at airports: one in supply at the start of Blue's turn is refuelled, rearmed and heals a strength; one out of supply burns a turn's fuel and does not starve; a jet in supply still burns fuel (it needs an airport). The AI counts every supplied tile as somewhere a helicopter can go home to, and a helicopter there as healing.");
+        make("rule-air-not-ambushed", "airNotAmbushed", (a, o) => {
+                 Put("Fighter", a, -2, 0); Put("Tank", o, -1, 0); Put("Fighter", a, 2, 0); Put("Grunt", o, 3, 0); Put("Fighter", a, 0, 3); Put("Fighter", o, 1, 3);
+                 Put("Tank", a, 0, -3); Put("Tank", o, 1, -3);
+                 Rig.At(3, 0).terrain = T("Forest"); },
+             "Aircraft are never ambushed by land or sea units: a helicopter attacking a tank on grassland, or a veteran grunt in a forest, fires first; land units still ambush each other as before (a veteran tank on grassland fires first against a tank), and an aircraft can still be fired on first by a veteran aircraft.");
         make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
              "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (which has no BuildingGround, the ground of every building tile) comes back as it was: building tiles keep BuildingGround and their ground under, nothing fails. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -457,7 +462,7 @@ public static class Scenarios {
         make("attrition-rule-suppression", "suppression", (a, o) => {
                  Put("Artillery", a, -4, 0); Put("Artillery", a, -4, 2); Put("Grunt", a, -1, 1); Put("Tank", a, -3, -2);
                  Put("Tank", o, 0, 0); Put("Tank", o, 0, 3); Put("Tank", o, -1, -2); Put("Grunt", o, 2, -2); },
-             "Indirect fire suppresses instead of driving back. Artillery hits a tank hard enough that it would have retreated: it stays where it is, takes the same damage, and half its unsuppressed pips (rounded up) are suppressed. Attacked again that turn, it fires back with its strength less the suppressed pips (none at all when every pip is suppressed). A second artillery hit suppresses half of what is left. A hit too light to push it (a veteran) suppresses nothing. Its own turn starting, every pip comes back. Direct fire still drives back.");
+             "Indirect fire suppresses instead of driving back. Artillery hits a tank hard enough that it would have retreated: it stays where it is, takes the same damage, and half its unsuppressed pips (rounded up) are suppressed. Attacked again that turn, it fires back with its strength less the suppressed pips (none at all when every pip is suppressed). A second artillery hit suppresses half of what is left. A hit too light to push it (a veteran) suppresses nothing. Its own turn starting, every pip comes back. Direct fire still drives back. Indirect fire is any attacker with a minimum range (it cannot fire on the next tile), not one that reaches far: a tank reaching two tiles still drives back.");
         make("attrition-rule-recon-transport", "reconTransport", (a, o) => { Put("Recon", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "The recon truck (1 slot, carries Boots) takes a grunt, drives, and puts it down beside it, as the APC does.");
         make("attrition-rule-alarms", "alarms", (a, o) => { Put("Grunt", a, -5, 0); Put("Grunt", a, 5, 0); Put("Tank", a, -4, 1); Put("Grunt", o, 6, -3); },
@@ -767,6 +772,14 @@ public static class Scenarios {
                 CombatOutcome d = CombatMath.Resolve(tank, open, tank.tile);
                 bool a7 = !d.defenderSuppressed && (d.defenderRetreats || d.damageToDefender - open.Veterancy <= d.damageToAttacker || d.defenderDies);
                 r.Add("tank on a grunt: retreats " + d.defenderRetreats + ", suppressed " + d.defenderSuppressed + " " + a7); ok &= a7;
+                // 8. Indirect is having a minimum range, not a long one: a tank reaching two tiles (minimum 0) still drives back; a gun with a minimum range of 1 suppresses even at range 1.
+                int tr = tank.AttackRange, am = art.AttackRange;
+                tank.AttackRange = 2; art.AttackRange = 1;
+                CombatOutcome longTank = CombatMath.Resolve(tank, open, tank.tile);
+                bool a8 = !CombatMath.Suppresses(tank) && CombatMath.Suppresses(art) && !longTank.defenderSuppressed
+                          && (longTank.defenderRetreats || longTank.damageToDefender - open.Veterancy <= longTank.damageToAttacker || longTank.defenderDies);
+                tank.AttackRange = tr; art.AttackRange = am;
+                r.Add("tank with range 2, minimum 0: indirect " + CombatMath.Suppresses(tank) + ", retreats " + longTank.defenderRetreats + "; gun range 1 minimum 1 indirect " + CombatMath.Suppresses(art) + " " + a8); ok &= a8;
                 detail = string.Join("; ", r.ToArray());
                 return ok;
             }
@@ -1000,6 +1013,21 @@ public static class Scenarios {
                 r.Add("AI move through a hidden grunt: stopped at " + (p.tile != null ? "(" + p.tile.x + "," + p.tile.y + ")" : "-") + ", fired on " + aiStopped);
                 detail = string.Join("; ", r.ToArray());
                 return hidden && range && stopped && fight && revealed && aiStopped;
+            }
+            case "airNotAmbushed": {
+                Unit h1 = Rig.At(-2, 0).occupier, tank = Rig.At(-1, 0).occupier, h2 = Rig.At(2, 0).occupier, grunt = Rig.At(3, 0).occupier;
+                Unit f1 = Rig.At(0, 3).occupier, f2 = Rig.At(1, 3).occupier, t1 = Rig.At(0, -3).occupier, t2 = Rig.At(1, -3).occupier;
+                h1.locomotion = Locomotion.Rotor; h2.locomotion = Locomotion.Rotor;
+                h1.MinRange = 0; h1.AttackRange = 1; h2.MinRange = 0; h2.AttackRange = 1;
+                grunt.Veterancy = 3; t2.Veterancy = 2; f2.Veterancy = 2;
+                Func<Unit, Unit, bool> first = (x, y) => CombatMath.Resolve(x, y, x.tile).defenderFiresFirst;
+                bool tankGrass = !first(h1, tank) && !CombatMath.Ambush(h1, tank, tank.tile);
+                bool gruntForest = !first(h2, grunt) && !CombatMath.Ambush(h2, grunt, grunt.tile);
+                bool landStill = first(t1, t2);
+                bool airStill = CombatMath.Ambush(f1, f2, f2.tile);
+                detail = "helicopter on a tank on grassland: tank fires first " + !tankGrass + "; on a veteran grunt in forest: grunt fires first " + !gruntForest
+                       + "; veteran tank against a tank on grassland fires first " + landStill + "; veteran fighter against a fighter fires first " + airStill;
+                return tankGrass && gruntForest && landStill && airStill;
             }
             case "rotorSupply": {
                 Unit inS = Rig.At(-4, 0).occupier, outS = Rig.At(2, 3).occupier, jet = Rig.At(-5, 1).occupier;
