@@ -414,6 +414,8 @@ public static class Scenarios {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
              "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
+        makeFog("ai-thread-equivalence", "aiThread", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 3, 0); },
+             "The AI thinking on a worker thread (on its own copy of the board) plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.", "Human");
         makeFog("fog-rule-kinds", "fogKinds", (a, o) => {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 1, 0); Put("Fighter", a, -5, 4); Put("Fighter", o, 0, -5);
                  foreach (int[] w in new[] { new[] { 4, 2 }, new[] { 5, 2 }, new[] { 4, 3 }, new[] { 5, 1 } }) Rig.At(w[0], w[1]).terrain = T("Water");
@@ -860,6 +862,55 @@ public static class Scenarios {
                 r.Add("fog off: all seen " + off);
                 detail = string.Join("; ", r.ToArray());
                 return v1 && v2 && s1 && s2 && adj && onCity && car && before && fired && afterRed && afterBlue && screen && off;
+            }
+            case "aiThread": {
+                List<string> res = new List<string>();
+                bool all = true;
+                foreach (string map in new[] { "gauntlet-1-challenger-left", "air-gauntlet-1-challenger-left" }) {
+                    foreach (bool fog in new[] { false, true }) {
+                        int hammered = 0, torn = 0;
+                        Func<bool, List<string>> play = threaded => {
+                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", null, null);
+                            Rig.gc.fogOfWar = fog; FogOfWar.Reset();
+                            AIPlayer.HarnessThreads = threaded;
+                            // While the AI thinks elsewhere, the main thread does what the game does: move
+                            // ranges for clicks, sight, published supply, and checks the real board is whole.
+                            int k = 0;
+                            AIPlayer.WhileThinking = () => {
+                                hammered++;
+                                List<Unit> us = new List<Unit>(Rig.uc.units);
+                                if (us.Count == 0) return;
+                                Unit pick = us[k++ % us.Count];
+                                if (pick != null && pick.tile != null && pick.trasnporter == null) {
+                                    if (pick.tile.occupier != pick) torn++;
+                                    pick.tile.CheckMovementRange(pick);
+                                    foreach (Player pl in Rig.gc.players) { FogOfWar.Sees(pl, pick); FogOfWar.TileVisible(pl, pick.tile); pick.tile.isSupplied(pl); }
+                                }
+                            };
+                            List<string> boards = new List<string>();
+                            try {
+                                for (int turn = 0; turn < 12 && !Rig.gc.gameOver; turn++) {
+                                    ScenarioFile.PlayTurn();
+                                    List<string> b = new List<string>();
+                                    foreach (Unit u in Rig.uc.units) if (u != null && u.tile != null) b.Add(u.owner.personal_name + u.name + "@" + u.tile.x + "," + u.tile.y + "s" + u.Strength + "f" + u.fuel + "a" + u.ammo);
+                                    b.Sort(string.CompareOrdinal);
+                                    boards.Add(string.Join("|", b.ToArray()));
+                                }
+                            } finally { AIPlayer.HarnessThreads = false; AIPlayer.WhileThinking = null; }
+                            return boards;
+                        };
+                        List<string> inLine = play(false), onThread = play(true);
+                        int firstDiff = -1;
+                        for (int i = 0; i < Math.Max(inLine.Count, onThread.Count); i++)
+                            if (i >= inLine.Count || i >= onThread.Count || inLine[i] != onThread[i]) { firstDiff = i; break; }
+                        bool same = firstDiff < 0 && torn == 0 && hammered > 0;
+                        all &= same;
+                        res.Add(map + (fog ? " fog on" : " fog off") + ": " + inLine.Count + " turns, " + (firstDiff < 0 ? "same board after every turn" : "differs after turn " + firstDiff)
+                                + ", main thread read the board " + hammered + " times while the AI thought" + (torn > 0 ? ", saw it torn " + torn + " times" : ""));
+                    }
+                }
+                detail = string.Join("; ", res.ToArray());
+                return all;
             }
             case "fogKinds": {
                 Unit g = Rig.At(-2, 0).occupier, r = Rig.At(1, 0).occupier, bf = Rig.At(-5, 4).occupier, rf = Rig.At(0, -5).occupier;

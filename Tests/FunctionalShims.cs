@@ -292,6 +292,7 @@ namespace UnityEngine {
     }
 
     public static class Debug {
+        public static void LogException(System.Exception e) { System.Console.WriteLine("EXCEPTION " + e); }
         public static bool verbose = false;
         public static void Log(object o) { if (verbose) Console.WriteLine("[log] " + o); }
         public static void LogWarning(object o) { Console.WriteLine("[warn] " + o); }

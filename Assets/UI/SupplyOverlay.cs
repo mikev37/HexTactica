@@ -46,6 +46,9 @@ public class SupplyOverlay : MonoBehaviour {
     void Update() {
         GameController gc = GameController.gc;
         Unit u = gc != null ? gc.activeUnit : null;
+        // Only for a human's unit: an AI's (it selects each unit as it acts) is not the player's
+        // business, and the AI may be thinking on another thread while this would publish supply.
+        if (u != null && !FogOfWar.IsHuman(u.owner)) u = null;
         if (u != null && (u.tile == null || u.owner == null)) u = null;
         HexTile dest = Destination(u);
         if (u == shownUnit && dest == shownTile) return;
