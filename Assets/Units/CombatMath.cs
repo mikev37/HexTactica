@@ -139,9 +139,13 @@ public static class CombatMath {
         return o;
     }
 
-    /// <summary>Indirect fire: any attacker that reaches beyond the next tile (AttackRange over 1). It suppresses instead of driving back.</summary>
+    /// <summary>
+    /// Indirect fire: an attacker with a minimum range (MinRange 1 or more: it cannot fire on the
+    /// next tile). It suppresses instead of driving back or pinning. A long-reaching direct-fire
+    /// unit (MinRange 0) drives back like any other.
+    /// </summary>
     public static bool Suppresses(Unit attacker) {
-        return attacker != null && attacker.AttackRange > 1;
+        return attacker != null && attacker.MinRange >= 1;
     }
 
     /// <summary>
