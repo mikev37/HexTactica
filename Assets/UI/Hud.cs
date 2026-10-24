@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// clicked (its picture, strength, fuel, ammunition, supplies, suppression, and — expanded with the
 /// More button — every combat and movement attribute it has that is not 0); bottom left, that tile:
 /// the building on it if there is one (its picture, name and owner), else the terrain (its picture
-/// and name), with cover, move cost and road. Values with a small cap
+/// and name), with cover and move cost. Values with a small cap
 /// (<see cref="bulletLimit"/>) are bullets, green when good and red when bad; others are numbers.
 ///
 /// The prefab is built from the flat white art in Sprites/UI/Widgets, tinted here; restyle it as you
@@ -40,7 +40,9 @@ public class Hud : MonoBehaviour {
     public GameObject tilePanel;
     public Image tilePicture;
     public TMP_Text tileName;
-    public HudRow cover, moveCost, road;
+    public HudRow cover, moveCost;
+    [Tooltip("Not used any more (a road shows in the move cost): hidden if the prefab still has it.")]
+    [HideInInspector] public HudRow road;
     [Tooltip("A building's owner (shown only for a building).")]
     [FormerlySerializedAs("building")] public HudRow owner;
     [Tooltip("Not used any more (the height of the ground): hidden if the prefab still has it.")]
@@ -144,7 +146,7 @@ public class Hud : MonoBehaviour {
         if (cover != null) cover.Set(t.EffectiveCover, 3, false, this);
         if (moveCost != null) { if (td.elevation >= 0) moveCost.Set(t.EffectiveMoveability, 5, true, this); else moveCost.Show(false); }
         if (elevation != null) elevation.Show(false);
-        if (road != null) { if (td.road && b == null) road.SetText(td.elevation == 0 ? "Bridge" : "Road", positive); else road.Show(false); }
+        if (road != null) road.Show(false);
         if (owner != null) {
             if (b != null) owner.SetText(b.owner != null ? b.owner.personal_name : "Neutral", b.owner != null ? b.owner.displayColor : text);
             else owner.Show(false);
@@ -236,7 +238,6 @@ public class Hud : MonoBehaviour {
         h.tileName = Txt(th, "Name", 26f, 180f);
         h.cover = Row(tp, "Cover", A("icon_cover"), "Cover", h);
         h.moveCost = Row(tp, "MoveCost", A("icon_move"), "Move cost", h);
-        h.road = Row(tp, "Road", A("icon_road"), "Road", h);
         h.owner = Row(tp, "Owner", A("icon_building"), "Owner", h);
         return h;
     }
