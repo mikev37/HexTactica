@@ -2,11 +2,16 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using HexTactica.AI;
 
 /// <summary>
 /// Orchestrates one AI player's turn.
+///
+/// Each decision is thought on a copy of the board (BoardView: as this side knows it under fog of
+/// war), on a worker thread in the game (ThinkOnThread), and carried out on the real board on the
+/// main thread when it is ready: the game keeps drawing while the AI thinks.
 ///
 /// The structure is: build a read of the board once, segment it into fronts, order
 /// the units by how constrained they are, then ask each one's role-specific decider
@@ -71,12 +76,50 @@ public class AIPlayer : MonoBehaviour {
         if (player == null) player = GetComponent<Player>();
     }
 
+    /// <summary>
+    /// Think on another thread (in the game; the headless harness always thinks in line). The AI
+    /// plans on its own copy of the board (BoardView), so it never touches the real one while it
+    /// thinks: the game keeps drawing, animating and answering clicks, and each decision is carried
+    /// out on the main thread once it is ready. Off: every thought happens in the frame that asks.
+    /// </summary>
+#if UNITY_WEBGL && !UNITY_EDITOR
+    public static bool ThinkOnThread = false;   // WebGL has no threads
+#else
+    public static bool ThinkOnThread = true;
+#endif
+
+    /// <summary>The headless harness: think each thought on a worker thread too, and run this on the calling thread while waiting (to check that thinking elsewhere changes nothing).</summary>
+    public static bool HarnessThreads;
+    public static System.Action WhileThinking;
+
+    /// <summary>What one thought decided: the next unit to act and how, or that the turn is over.</summary>
+    struct Thought { public Unit unit; public AIAction action; public bool endTurn; }
+
+    enum Outcome { Did, NotDone, Held, TurnOver }
+
+    Task<Thought> thinking;
+    bool thinkingPrepares;
+    int thinkingGeneration, generation;
+    /// <summary>The last action changed the board: the next thought reads it again first (AIMap.RefreshAfterAction).</summary>
+    bool refreshPending;
+
     void Update() {
         if (GameController.gc == null || GameController.gc.headless) return;
         if (GameController.gc.gameOver) return;
         if (LevelEditor.singleton != null &&
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
-        if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; return; }
+        if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; Abandon(); return; }
+
+        // A thought under way: act on it once it is ready (the frame is free meanwhile).
+        if (thinking != null) {
+            if (!thinking.IsCompleted) return;
+            Thought t;
+            if (!Collect(out t)) return;
+            Outcome o = Act(t, false);
+            if (o == Outcome.NotDone) { Dispatch(); return; }   // nothing was done: the next unit thinks at once
+            timer = actionInterval;
+            return;
+        }
 
         // An action held back until a retreat it follows up on has played (see WaitsOnRetreat).
         if (holding) {
@@ -91,69 +134,130 @@ public class AIPlayer : MonoBehaviour {
         timer -= Time.deltaTime;
         if (timer > 0) return;
         timer = actionInterval;
+        if (player == null || player.eliminated) return;
+        Dispatch();
+    }
 
-        // Reading the board and planning the turn is the heaviest step: it gets a frame of its
-        // own, and the first action comes on the next one (the two used to land in one frame).
-        if (!turnPrepared && player != null && !player.eliminated) {
-            PrepareTurn();
-            turnPrepared = true;
-            timer = 0f;
-            return;
-        }
-
-        StepOnce(false);
+    /// <summary>Start the next thought (preparing the turn first, if it is new), on its own thread when ThinkOnThread.</summary>
+    void Dispatch() {
+        bool prepare = !turnPrepared;
+        if (prepare) FogOfWar.Changed();
+        bool refresh = refreshPending;
+        refreshPending = false;
+        BoardView v = NewView();   // made here, on the main thread: it reads the real board
+        thinkingPrepares = prepare;
+        thinkingGeneration = generation;
+        if (ThinkOnThread) thinking = Task.Run(() => Think(v, prepare, refresh));
+        else thinking = Task.FromResult(Think(v, prepare, refresh));
     }
 
     /// <summary>
-    /// Advance the AI by one action. Returns false when the turn is finished.
-    /// This is the single entry point for both the live game and the harness.
+    /// Take a finished thought. False if it belongs to a turn that is gone (a board was loaded).
+    /// A thought that failed is logged and thought again here, on the main thread, on a fresh copy
+    /// of the board; if that fails too, the turn ends rather than the game hanging.
+    /// </summary>
+    bool Collect(out Thought t) {
+        Task<Thought> job = thinking;
+        thinking = null;
+        t = default(Thought);
+        if (thinkingGeneration != generation) return false;
+        if (job.IsFaulted || job.IsCanceled) {
+            Debug.LogException(job.Exception != null ? job.Exception.GetBaseException() : new System.Exception("AI thought cancelled"));
+            try { t = Think(NewView(), !turnPrepared || thinkingPrepares, true); }
+            catch (System.Exception e) { Debug.LogException(e); t = new Thought { endTurn = true }; }
+        } else t = job.Result;
+        if (thinkingPrepares) { turnPrepared = true; if (map != null) map.ClearAnnotations(); }
+        return true;
+    }
+
+    /// <summary>Drop any thought under way (it is not this AI's turn any more, or a board was loaded).</summary>
+    void Abandon() {
+        if (thinking == null) return;
+        thinking = null;
+        generation++;
+    }
+
+    /// <summary>
+    /// Advance the AI by one action. Returns false when the turn is finished. The harness drives it
+    /// flat out (each thought in line, on a copy of the board, exactly as the game's thread does).
     /// </summary>
     public bool StepOnce(bool headless) {
         if (player == null || player.eliminated) return false;
-
-        if (!turnPrepared) {
-            PrepareTurn();
-            turnPrepared = true;
+        while (true) {
+            bool prepare = !turnPrepared;
+            if (prepare) FogOfWar.Changed();
+            bool refresh = refreshPending;
+            refreshPending = false;
+            BoardView v = NewView();
+            Thought t;
+            if (HarnessThreads) {
+                Task<Thought> job = Task.Run(() => Think(v, prepare, refresh));
+                while (!job.IsCompleted) { if (WhileThinking != null) WhileThinking(); }
+                t = job.Result;
+            } else t = Think(v, prepare, refresh);
+            if (prepare) { turnPrepared = true; if (map != null) map.ClearAnnotations(); }
+            Outcome o = Act(t, headless);
+            if (o == Outcome.NotDone) continue;
+            return o != Outcome.TurnOver && !GameController.gc.gameOver;
         }
+    }
 
-        // Drain the queue until somebody actually does something.
-        while (queue.Count > 0) {
-            Unit unit = queue[0];
-            queue.RemoveAt(0);
-
-            if (unit == null || unit.Strength <= 0 || unit.tile == null) continue;
-            if (!unit.active) continue;
-
-            GameController.gc.activeUnit = unit;
-
-            long __d = AIPerf.Begin();
-            AIAction action;
-            using (Think()) action = DecideFor(unit);
-            AIPerf.End("decide: " + (unit.GetComponent<SupplyPoint>() != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
-            // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
-            // still fresh, and decides again if its transport puts it down this turn (Run).
-            if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
-                if (onDecision != null) onDecision(unit, action, false);
-                if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": aboard, decides again if put down — " + action.reason);
-                continue;
+    /// <summary>
+    /// One thought, on the copy of the board <paramref name="v"/> (any thread): prepare the turn if it
+    /// is new, read the board again after the last action, then let the units in order decide until
+    /// one has something to do.
+    /// </summary>
+    Thought Think(BoardView v, bool prepare, bool refresh) {
+        using (v.Enter()) {
+            if (prepare) PrepareTurnOnBoard();
+            if (refresh && map != null) {
+                long __f = AIPerf.Begin();
+                map.RefreshAfterAction();
+                AIPerf.End("act: board re-read (RefreshAfterAction)", __f);
             }
-            // Following up on a unit still sliding back from a retreat (shooting it, or moving onto
-            // the tile it is leaving): wait for the slide to show first. Anything else goes ahead.
-            if (!headless && holdForRetreats && WaitsOnRetreat(action)) { held = action; held.unit = unit; holding = true; animationWait = 0f; return true; }
-            bool did = Run(unit, action, headless);
-            if (GameController.gc.gameOver) return false;
-            if (did) return true;
-        }
-
-        using (Think()) {
-            BuySupply();
-            if (Profile.buyUnits && map != null) {
-                List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace);
-                if (onBuy != null) foreach (Unit u in bought) onBuy(u);
+            while (queue.Count > 0) {
+                Unit unit = queue[0];
+                queue.RemoveAt(0);
+                if (unit == null || unit.Strength <= 0 || unit.tile == null) continue;
+                if (!unit.active) continue;
+                long __d = AIPerf.Begin();
+                AIAction action = DecideFor(unit);
+                AIPerf.End("decide: " + (unit.Hub != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
+                // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
+                // still fresh, and decides again if its transport puts it down this turn (Run).
+                if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
+                    if (onDecision != null) onDecision(unit, action, false);
+                    if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": aboard, decides again if put down — " + action.reason);
+                    continue;
+                }
+                return new Thought { unit = unit, action = action };
             }
+            return new Thought { endTurn = true };
         }
-        EndTurn();
-        return false;
+    }
+
+    /// <summary>Carry out a thought on the real board (main thread).</summary>
+    Outcome Act(Thought t, bool headless) {
+        if (t.endTurn) {
+            using (NewView().Enter()) {
+                BuySupply();
+                if (Profile.buyUnits && map != null) {
+                    List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace);
+                    if (onBuy != null) foreach (Unit u in bought) onBuy(u);
+                }
+            }
+            EndTurn();
+            return Outcome.TurnOver;
+        }
+        Unit unit = t.unit;
+        if (unit == null || unit.Strength <= 0 || unit.tile == null) return Outcome.NotDone;
+        GameController.gc.activeUnit = unit;
+        // Following up on a unit still sliding back from a retreat (shooting it, or moving onto
+        // the tile it is leaving): wait for the slide to show first. Anything else goes ahead.
+        if (!headless && holdForRetreats && WaitsOnRetreat(t.action)) { held = t.action; held.unit = unit; holding = true; animationWait = 0f; return Outcome.Held; }
+        bool did = Run(unit, t.action, headless);
+        if (GameController.gc.gameOver) return Outcome.TurnOver;
+        return did ? Outcome.Did : Outcome.NotDone;
     }
 
     /// <summary>An action decided but held until a retreat it follows up on has played.</summary>
@@ -190,9 +294,11 @@ public class AIPlayer : MonoBehaviour {
                 long __f = AIPerf.Begin();
                 unit.FinishActive();
                 AIPerf.End("act: FinishActive (threat, resupply)", __f);
-                __f = AIPerf.Begin();
-                using (Think()) map.RefreshAfterAction();
-                AIPerf.End("act: board re-read (RefreshAfterAction)", __f);
+                // The next thought reads the board again first (on its own copy).
+                refreshPending = true;
+                // The game's supply borders and alarms read the published supply: the AI's thoughts
+                // publish only into their copies, so publish the real fields after its action.
+                if (!headless && GameController.gc != null) foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
             }
 
             Annotate(unit, action);
@@ -225,13 +331,15 @@ public class AIPlayer : MonoBehaviour {
         Unit pick = null;
         foreach (Unit b in hq.buildable) {
             if (b == null) continue;
-            SupplyPoint sp = b.GetComponent<SupplyPoint>();
+            SupplyPoint sp = b.Hub;
             if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion) || !hq.CanBuild(b)) continue;
             if (pick == null || b.cost < pick.cost) pick = b;
         }
         if (pick == null || player.money < pick.cost) { if (Trace != null) Trace("   no supply bought: " + (pick == null ? "the HQ builds none" : "money " + player.money + " of " + pick.cost)); return; }
         AIMap m = map;
-        Unit made = BuildingController.bc.Produce(hq, pick, t => AIAir.MayBuildOn(t, m));
+        Unit made;
+        using (BoardView.Outside()) made = BuildingController.bc.Produce(hq, pick, t => AIAir.MayBuildOn(t, m));
+        if (made != null && made.tile != null) made.tile.occupier = made;
         if (made == null) { if (Trace != null) Trace("   no supply bought: no free tile at the HQ"); return; }
         if (onBuy != null) onBuy(made);
         if (Trace != null) Trace("   " + player.personal_name + " buys " + pick.name.Replace("(Clone)", "") + " at the HQ: the supply chain is stretched (" + chainPlan + ")");
@@ -239,6 +347,8 @@ public class AIPlayer : MonoBehaviour {
 
     /// <summary>Forget the turn in progress and everything remembered between turns: a new board was loaded.</summary>
     public void ResetTurn() {
+        Abandon();
+        refreshPending = false;
         turnPrepared = false;
         holding = false;
         queue.Clear();
@@ -260,13 +370,15 @@ public class AIPlayer : MonoBehaviour {
     /// side knows it — enemies it does not see are off the board, those seen lately stand where they
     /// were last seen (FogOfWar.Conceal). Actions are carried out on the real board, outside it.
     /// </summary>
-    System.IDisposable Think() {
-        return FogOfWar.Concealing(player, true, Profile.fogMemoryTurns);
-    }
-
-    void PrepareTurn() {
-        FogOfWar.Changed();
-        using (Think()) PrepareTurnOnBoard();
+    /// <summary>
+    /// The board this AI thinks on, copied now (main thread): as this side knows it under fog of war
+    /// (AIProfile.fogFair), else as it is. Its simulations change only the copy.
+    /// </summary>
+    BoardView NewView() {
+        long __v = AIPerf.Begin();
+        BoardView v = FogOfWar.Conceal(player, true, Profile.fogMemoryTurns) ?? BoardView.Snapshot();
+        AIPerf.End("main thread: copy the board", __v);
+        return v;
     }
 
     void PrepareTurnOnBoard() {
@@ -311,7 +423,7 @@ public class AIPlayer : MonoBehaviour {
         { long __p = AIPerf.Begin();
         queue = AIRoles.Order(actionable, map, Profile);
         AIPerf.End("prepare: roles", __p); }
-        map.ClearAnnotations();
+        // (Clearing last turn's notes off the tiles is done on the main thread once this is done: Collect / StepOnce.)
         chainPlan = null;
         if (Profile.supplyChain) {
             { long __p = AIPerf.Begin();
@@ -324,7 +436,7 @@ public class AIPlayer : MonoBehaviour {
             // goes ahead, and each link moves up into the supply of the links behind it.
             Dictionary<HexTile, int> toObj = chainPlan.objective != null ? map.LandSteps(chainPlan.objective) : null;
             List<Unit> hubsLast = new List<Unit>();
-            foreach (Unit u in queue) { SupplyPoint sp = u.GetComponent<SupplyPoint>(); if (sp != null && !sp.producer) hubsLast.Add(u); }
+            foreach (Unit u in queue) { SupplyPoint sp = u.Hub; if (sp != null && !sp.producer) hubsLast.Add(u); }
             System.Func<Unit, int> st = u => { int s; return toObj != null && u.tile != null && toObj.TryGetValue(u.tile, out s) ? s : int.MaxValue; };
             hubsLast.Sort((a, b) => { int c = st(b).CompareTo(st(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
             foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
@@ -456,7 +568,7 @@ public class AIPlayer : MonoBehaviour {
 
         // A fighting unit out of contact (an objective's or not): ride a transport toward the
         // objective if that is quicker than walking.
-        if (Profile.combatRides && unit.Firepower > 0 && unit.GetComponent<SupplyPoint>() == null) {
+        if (Profile.combatRides && unit.Firepower > 0 && unit.Hub == null) {
             AIAction ride;
             if (TryRide(unit, front, out ride)) return ride;
         }
@@ -468,7 +580,7 @@ public class AIPlayer : MonoBehaviour {
             if (!directed.IsNothing) return directed;
         }
 
-        SupplyPoint hub = unit.GetComponent<SupplyPoint>();
+        SupplyPoint hub = unit.Hub;
         if (hub != null) {
             if (hub.producer) return AIAction.Wait(unit, "HQ holds");
             // The real move is planned on the real board: the ghost has served its purpose.
@@ -560,14 +672,14 @@ public class AIPlayer : MonoBehaviour {
     /// </summary>
     /// <summary>Could <paramref name="unit"/> be offered a ride this turn (TryRide's first checks)?</summary>
     bool MayRide(Unit unit) {
-        if (unit == null || unit.tile == null || unit.Firepower <= 0 || unit.GetComponent<SupplyPoint>() != null) return false;
+        if (unit == null || unit.tile == null || unit.Firepower <= 0 || unit.Hub != null) return false;
         if (unit.trasnporter != null) return true;
         return map.TurnsToContact(unit) > Profile.objectiveContactTurns && Transporting.AvailableFor(player, unit).Count > 0;
     }
 
     bool TryRide(Unit unit, Front front, out AIAction action) {
         action = default(AIAction);
-        if (unit.tile == null || unit.GetComponent<SupplyPoint>() != null) return false;
+        if (unit.tile == null || unit.Hub != null) return false;
         bool aboard = unit.trasnporter != null;
         string who = unit.name.Replace("(Clone)", "");
         if (!aboard && map.TurnsToContact(unit) <= Profile.objectiveContactTurns) return false;

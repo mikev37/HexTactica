@@ -242,9 +242,14 @@ namespace HexTactica.AI {
         // Garbage: these were made afresh for every search, and the AI runs thousands of searches a
         // turn. The heap and the closed set are scratch (a search never starts another); fields used
         // only for a moment come back through Release and are handed out again.
-        static readonly AIHeap<HexTile> scratchOpen = new AIHeap<HexTile>();
-        static readonly HashSet<HexTile> scratchClosed = new HashSet<HexTile>();
-        static readonly Stack<MoveField> pool = new Stack<MoveField>();
+        // One set per thread: the AI searches on its own thread while the game searches on the main one
+        // (move ranges, sight).
+        [System.ThreadStatic] static AIHeap<HexTile> scratchOpenT;
+        [System.ThreadStatic] static HashSet<HexTile> scratchClosedT;
+        [System.ThreadStatic] static Stack<MoveField> poolT;
+        static AIHeap<HexTile> scratchOpen { get { return scratchOpenT ?? (scratchOpenT = new AIHeap<HexTile>()); } }
+        static HashSet<HexTile> scratchClosed { get { return scratchClosedT ?? (scratchClosedT = new HashSet<HexTile>()); } }
+        static Stack<MoveField> pool { get { return poolT ?? (poolT = new Stack<MoveField>()); } }
 
         /// <summary>
         /// Give back a field nothing will read again (the AI's throwaway reach checks), so the next
@@ -410,8 +415,15 @@ namespace HexTactica.AI {
             return Ring(sortedRings, origin, minRange, maxRange, true);
         }
 
+        static readonly object ringLock = new object();
+
         static List<HexTile> Ring(Dictionary<HexTile, Dictionary<int, List<HexTile>>> cache, HexTile origin, int minRange, int maxRange, bool sorted) {
             if (origin == null || maxRange < 0) return new List<HexTile>();
+            // Shared by the AI's thread and the main one: a list, once made, is never changed.
+            lock (ringLock) return RingLocked(cache, origin, minRange, maxRange, sorted);
+        }
+
+        static List<HexTile> RingLocked(Dictionary<HexTile, Dictionary<int, List<HexTile>>> cache, HexTile origin, int minRange, int maxRange, bool sorted) {
             if (ringsFor != HexGenerator.hg) { rings.Clear(); sortedRings.Clear(); ringsFor = HexGenerator.hg; }
             Dictionary<int, List<HexTile>> byRange;
             if (!cache.TryGetValue(origin, out byRange)) { byRange = new Dictionary<int, List<HexTile>>(); cache[origin] = byRange; }

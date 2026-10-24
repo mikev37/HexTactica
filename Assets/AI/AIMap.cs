@@ -260,7 +260,7 @@ namespace HexTactica.AI {
                 if (u == null || u.tile == null || u.Strength <= 0) continue;
                 if (u.owner == player) ownUnits.Add(u); else enemyUnits.Add(u);
 
-                SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                SupplyPoint sp = u.Hub;
                 if (sp != null) {
                     if (u.owner == player) ownHubs.Add(sp); else enemyHubs.Add(sp);
                 }
@@ -472,7 +472,7 @@ namespace HexTactica.AI {
                     for (int j = 0; j < ownUnits.Count; j++) {
                         Unit v = ownUnits[j];
                         if (v == null || v.tile == null || v.trasnporter != null || v.Firepower <= 0) continue;
-                        if (v.GetComponent<SupplyPoint>() != null) continue;
+                        if (v.Hub != null) continue;
                         HexTile from = v == u ? at : v.tile;
                         int d = e.moveAndAttack ? from.Distance(at) - e.AttackRange : from.Distance(e.tile);
                         int reach = v.moveAndAttack ? v.moveRange + v.AttackRange : v.AttackRange;
@@ -498,14 +498,15 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Supply depth of an enemy unit's tile in its owner's network, read from the board
-        /// (each player's field is published on their turn). Used to tell damage that will
-        /// heal from damage that will stick.
+        /// Supply depth of an enemy unit's tile in its owner's network, as this AI worked it out
+        /// (on the board as it knows it). Used to tell damage that will heal from damage that will
+        /// stick. (It used to read whatever field was last published on the tiles, which depended on
+        /// who had last worked supply out, and under fog of war was the enemy's real one.)
         /// </summary>
         public int TheirSupplyDepth(Unit enemy) {
             if (enemy == null || enemy.tile == null || enemy.owner == null) return 0;
-            int d;
-            return enemy.tile.supply != null && enemy.tile.supply.TryGetValue(enemy.owner, out d) ? d : 0;
+            SupplyNetwork.Result r;
+            return theirByPlayer.TryGetValue(enemy.owner, out r) ? r.DepthAt(enemy.tile) : 0;
         }
 
         readonly Dictionary<Unit, Dictionary<HexTile, int>> costHome = new Dictionary<Unit, Dictionary<HexTile, int>>();
@@ -567,17 +568,12 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// How deep a tile sits in the enemy's supply network, 0..1 (their published field,
-        /// saturating at the comfort depth). Standing there blocks their supply through it.
+        /// How deep a tile sits in the enemy's supply network, 0..1 (their fields as this AI worked
+        /// them out, saturating at the comfort depth). Standing there blocks their supply through it.
         /// </summary>
         public float EnemySupplyShare(HexTile t) {
-            if (t == null || t.supply == null) return 0f;
-            int deepest = 0;
-            foreach (KeyValuePair<Player, int> kv in t.supply) {
-                if (kv.Key == player) continue;
-                if (kv.Value > deepest) deepest = kv.Value;
-            }
-            return AIScore.Depth(deepest, profile);
+            if (t == null) return 0f;
+            return AIScore.Depth(theirSupply.DepthAt(t), profile);
         }
 
         /// <summary>Everything on the board, in gold: the stake of the game, and so the worth of winning it.</summary>
@@ -784,7 +780,7 @@ namespace HexTactica.AI {
             int mineBest = 99, theirsBest = 99;
             for (int i = 0; i < enemyUnits.Count; i++) {
                 Unit e = enemyUnits[i];
-                if (e == null || e.tile == null || e.Firepower <= 0 || e.GetComponent<SupplyPoint>() != null) continue;
+                if (e == null || e.tile == null || e.Firepower <= 0 || e.Hub != null) continue;
                 int d = Travel(u, u.tile, e.tile);
                 mineBest = Mathf.Min(mineBest, Turns(d - u.AttackRange, u.moveRange));
                 theirsBest = Mathf.Min(theirsBest, Turns(d - e.AttackRange, e.moveRange));
@@ -811,7 +807,7 @@ namespace HexTactica.AI {
             int n = 0;
             for (int i = 0; i < list.Count; i++) {
                 Unit e = list[i].unit;
-                if (e == null || e == except || e.GetComponent<SupplyPoint>() != null) continue;
+                if (e == null || e == except || e.Hub != null) continue;
                 n++;
             }
             return n;
@@ -891,7 +887,7 @@ namespace HexTactica.AI {
                 float volume = 1f;
                 if (u.OutOfSupplies) volume += 1f;
                 if (u.OutOfFuel) volume += 0.5f;
-                SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                SupplyPoint sp = u.Hub;
                 if (sp != null && !sp.connected) volume += 2f;
 
                 const int radius = 6;

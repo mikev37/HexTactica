@@ -97,8 +97,8 @@ public static class UnitMigration {
             problems.Add("weight is 0 — it will be treated as weight 1 when transported");
         }
 
-        if (u.GetComponent<SupplyPoint>() != null) {
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+        if (u.Hub != null) {
+            SupplyPoint sp = u.Hub;
             if (sp.range <= 0) problems.Add("is a SupplyPoint with range 0 — it supplies nothing");
             if (u.Firepower > 1) problems.Add("is a SupplyPoint with Firepower " + u.Firepower
                                             + " — it will be classified as a combat unit, not a hub");

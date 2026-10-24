@@ -72,9 +72,9 @@ namespace HexTactica.Testing {
             u.path = new List<HexTile>();
             u.transported = new List<Unit>();
 
-            foreach (FieldInfo fi in typeof(Unit).GetFields(BindingFlags.Public | BindingFlags.Instance)) {
+            foreach (FieldInfo fi in SerializedFields(typeof(Unit))) {
                 string raw;
-                if (!unitFields.TryGetValue(fi.Name, out raw)) continue;
+                if (!unitFields.TryGetValue(SerializedName(fi), out raw)) continue;
                 try {
                     if (fi.FieldType == typeof(int)) fi.SetValue(u, int.Parse(raw, CultureInfo.InvariantCulture));
                     else if (fi.FieldType == typeof(float)) fi.SetValue(u, float.Parse(raw, CultureInfo.InvariantCulture));
@@ -118,6 +118,22 @@ namespace HexTactica.Testing {
         /// A building archetype from Assets/Buildings/Prefabs/&lt;name&gt;.prefab: its Building fields,
         /// footprint, services, build list (unit prefab names) and ground terrain.
         /// </summary>
+        /// <summary>The fields Unity serializes: public ones, and private ones marked [SerializeField] (a property's backing field).</summary>
+        public static List<FieldInfo> SerializedFields(Type t) {
+            List<FieldInfo> list = new List<FieldInfo>();
+            foreach (FieldInfo fi in t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)) {
+                if (fi.IsInitOnly) continue;
+                if (fi.IsPublic || fi.GetCustomAttributes(typeof(SerializeFieldAttribute), false).Length > 0) list.Add(fi);
+            }
+            return list;
+        }
+
+        /// <summary>The name a field has in a prefab: its old name if it was renamed ([FormerlySerializedAs]).</summary>
+        public static string SerializedName(FieldInfo fi) {
+            object[] old = fi.GetCustomAttributes(typeof(UnityEngine.Serialization.FormerlySerializedAsAttribute), false);
+            return old.Length > 0 ? ((UnityEngine.Serialization.FormerlySerializedAsAttribute)old[0]).oldName : fi.Name;
+        }
+
         public static Building LoadBuilding(string name) {
             Building cached;
             if (!buildingCache.TryGetValue(name, out cached)) {
@@ -126,7 +142,7 @@ namespace HexTactica.Testing {
             }
             Building b = Rig.New<Building>();
             b.name = cached.name;
-            foreach (FieldInfo fi in typeof(Building).GetFields(BindingFlags.Public | BindingFlags.Instance)) {
+            foreach (FieldInfo fi in SerializedFields(typeof(Building))) {
                 object v = fi.GetValue(cached);
                 if (v is List<TileOffset>) v = new List<TileOffset>((List<TileOffset>)v);
                 else if (v is List<Locomotion>) v = new List<Locomotion>((List<Locomotion>)v);
@@ -149,9 +165,9 @@ namespace HexTactica.Testing {
             Dictionary<string, string> f = Fields(doc);
             Building b = Rig.New<Building>();
             b.name = name;
-            foreach (FieldInfo fi in typeof(Building).GetFields(BindingFlags.Public | BindingFlags.Instance)) {
+            foreach (FieldInfo fi in SerializedFields(typeof(Building))) {
                 string raw;
-                if (!f.TryGetValue(fi.Name, out raw)) continue;
+                if (!f.TryGetValue(SerializedName(fi), out raw)) continue;
                 try {
                     if (fi.FieldType == typeof(int)) fi.SetValue(b, int.Parse(raw, CultureInfo.InvariantCulture));
                     else if (fi.FieldType == typeof(float)) fi.SetValue(b, float.Parse(raw, CultureInfo.InvariantCulture));

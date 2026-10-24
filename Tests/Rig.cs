@@ -156,8 +156,7 @@ namespace HexTactica.Testing {
         /// <summary>Shallow field copy, so archetypes act as prefabs.</summary>
         public static Unit Clone(Unit source) {
             Unit u = New<Unit>();
-            foreach (FieldInfo f in typeof(Unit).GetFields(BindingFlags.Public | BindingFlags.Instance)) {
-                if (f.IsInitOnly) continue;
+            foreach (FieldInfo f in PrefabLoader.SerializedFields(typeof(Unit))) {
                 f.SetValue(u, f.GetValue(source));
             }
             u.carries = source.carries != null ? new List<Locomotion>(source.carries) : new List<Locomotion>();

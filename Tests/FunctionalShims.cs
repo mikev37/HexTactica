@@ -292,6 +292,7 @@ namespace UnityEngine {
     }
 
     public static class Debug {
+        public static void LogException(System.Exception e) { System.Console.WriteLine("EXCEPTION " + e); }
         public static bool verbose = false;
         public static void Log(object o) { if (verbose) Console.WriteLine("[log] " + o); }
         public static void LogWarning(object o) { Console.WriteLine("[warn] " + o); }
@@ -379,4 +380,4 @@ namespace UnityEngine.Rendering {
     public class SortingGroup : Behaviour { public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
 }
 
-namespace UnityEngine.Serialization { public class FormerlySerializedAsAttribute : System.Attribute { public FormerlySerializedAsAttribute(string old) { } } }
+namespace UnityEngine.Serialization { public class FormerlySerializedAsAttribute : System.Attribute { public readonly string oldName; public FormerlySerializedAsAttribute(string old) { oldName = old; } } }

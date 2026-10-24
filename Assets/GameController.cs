@@ -87,10 +87,10 @@ public class GameController : MonoBehaviour
         if (u == null) return false;
         // Thinking on a concealed board (fog of war): an enemy only believed to be somewhere, not
         // seen, cannot be fired on.
-        FogOfWar.Scope fog = FogOfWar.current;
+        FogOfWar.Knowledge fog = FogOfWar.current;
         if (fog != null && u.owner != fog.player && !fog.visible.Contains(u)) return false;
         if (gc != null && gc.rules == RuleSet.Attrition) {
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp.producer) return false;
         }
         return true;
@@ -113,7 +113,7 @@ public class GameController : MonoBehaviour
         for (int i = 0; i < p.units.Count; i++) {
             Unit u = p.units[i];
             if (u == null || u.Strength <= 0) continue;
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp.producer) continue;
             m += u.Strength * (float)u.cost;
         }
@@ -125,7 +125,7 @@ public class GameController : MonoBehaviour
         for (int i = 0; i < p.units.Count; i++) {
             Unit u = p.units[i];
             if (u == null || u.Strength <= 0) continue;
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp.producer) continue;
             n++;
         }
@@ -173,7 +173,8 @@ public class GameController : MonoBehaviour
                 return 0;
             });
         }
-        if (Input.GetKeyDown(KeyCode.Space)) {
+        // Space ends the turn of a human player only: an AI ends its own (and may be thinking on another thread).
+        if (Input.GetKeyDown(KeyCode.Space) && FogOfWar.IsHuman(activePlayer)) {
             EndTurn();
         }
     }
@@ -195,6 +196,16 @@ public class GameController : MonoBehaviour
         ResetTileData();
         List<Unit> snapshot = new List<Unit>(UnitController.uc.units);
         // (A unit off the board — carried, or concealed by fog of war — threatens nothing.)
+        // Each side's reach is worked out on the board as it knows it (fog of war): one copy per side.
+        if (FogOfWar.On && BoardView.Current == null && gc != null && gc.players != null) {
+            foreach (Player p in gc.players) {
+                if (p == null) continue;
+                using (FogOfWar.Concealing(p))
+                    foreach (Unit x in snapshot) if (x != null && x.owner == p && x.tile != null) x.updateThreat();
+            }
+            foreach (Unit x in snapshot) if (x != null && (x.owner == null || !gc.players.Contains(x.owner)) && x.tile != null) x.updateThreat();
+            return;
+        }
         snapshot.ForEach(x => { if (x != null && x.tile != null) x.updateThreat(); });
     }
 

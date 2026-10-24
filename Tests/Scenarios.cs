@@ -414,6 +414,13 @@ public static class Scenarios {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
              "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
+        makeFog("ai-thread-equivalence", "aiThread", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 3, 0); },
+             "The AI thinking on a worker thread (on its own copy of the board) plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.", "Human");
+        makeFog("fog-rule-kinds", "fogKinds", (a, o) => {
+                 Put("Grunt", a, -2, 0); Put("Grunt", o, 1, 0); Put("Fighter", a, -5, 4); Put("Fighter", o, 0, -5);
+                 foreach (int[] w in new[] { new[] { 4, 2 }, new[] { 5, 2 }, new[] { 4, 3 }, new[] { 5, 1 } }) Rig.At(w[0], w[1]).terrain = T("Water");
+                 Put("Gunboat", a, 4, 2); Put("Grunt", o, 2, 4); Rig.PlaceBuilding("City", a, -3, 3); },
+             "High ground and kinds of unit: a land unit sees one tile further from hills and two from mountains (an aircraft gets nothing from them). A stealthy unit is seen only by observers of its own kind (land — buildings count as land — air, sea): a stealth jet next to a grunt or over our city goes unseen, a fighter two tiles off sees it; a stealthy grunt next to a gunboat goes unseen, a grunt two tiles off sees it, and on our city it is seen.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
         makeFog("fog-ui-clicks", "fogClicks", (a, o) => { Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0); },
@@ -449,6 +456,11 @@ public static class Scenarios {
              "The UI pictures of units and tiles (SpritePortrait): every sprite of the unit is placed as on the board and the whole fitted into the box. A 2x1 hull, a 1x1 turret turned 90 degrees above its right half and a mirrored flag, fitted into 100x100 with a 4 px margin: scale 46, centred, the turret at 90 degrees, the flag flipped.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
              "Sandbox: turns go Blue, Red, Blue, Red even if a side is marked out (a file saved after it was knocked out), and the day goes up once per round.");
+        make("rule-destructible-terrain", "destructible", (a, o) => {
+                 Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0);
+                 Rig.At(3, -2).terrain = T("Bridge"); Rig.At(3, -2).road = true; Put("Grunt", a, 3, -2);
+                 Rig.PlaceBuilding("City", a, -3, 2); Put("Grunt", a, -3, 2); Put("Supplies", a, -4, 3); },
+             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit ten times, becomes water: no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it earns, supplies and builds nothing until repaired. Water takes no damage.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -851,6 +863,94 @@ public static class Scenarios {
                 detail = string.Join("; ", r.ToArray());
                 return v1 && v2 && s1 && s2 && adj && onCity && car && before && fired && afterRed && afterBlue && screen && off;
             }
+            case "aiThread": {
+                List<string> res = new List<string>();
+                bool all = true;
+                foreach (string map in new[] { "gauntlet-1-challenger-left", "air-gauntlet-1-challenger-left" }) {
+                    foreach (bool fog in new[] { false, true }) {
+                        int hammered = 0, torn = 0;
+                        Func<bool, List<string>> play = threaded => {
+                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", null, null);
+                            Rig.gc.fogOfWar = fog; FogOfWar.Reset();
+                            AIPlayer.HarnessThreads = threaded;
+                            // While the AI thinks elsewhere, the main thread does what the game does: move
+                            // ranges for clicks, sight, published supply, and checks the real board is whole.
+                            int k = 0;
+                            AIPlayer.WhileThinking = () => {
+                                hammered++;
+                                List<Unit> us = new List<Unit>(Rig.uc.units);
+                                if (us.Count == 0) return;
+                                Unit pick = us[k++ % us.Count];
+                                if (pick != null && pick.tile != null && pick.trasnporter == null) {
+                                    if (pick.tile.occupier != pick) torn++;
+                                    pick.tile.CheckMovementRange(pick);
+                                    foreach (Player pl in Rig.gc.players) { FogOfWar.Sees(pl, pick); FogOfWar.TileVisible(pl, pick.tile); pick.tile.isSupplied(pl); }
+                                }
+                            };
+                            List<string> boards = new List<string>();
+                            try {
+                                for (int turn = 0; turn < 12 && !Rig.gc.gameOver; turn++) {
+                                    ScenarioFile.PlayTurn();
+                                    List<string> b = new List<string>();
+                                    foreach (Unit u in Rig.uc.units) if (u != null && u.tile != null) b.Add(u.owner.personal_name + u.name + "@" + u.tile.x + "," + u.tile.y + "s" + u.Strength + "f" + u.fuel + "a" + u.ammo);
+                                    b.Sort(string.CompareOrdinal);
+                                    boards.Add(string.Join("|", b.ToArray()));
+                                }
+                            } finally { AIPlayer.HarnessThreads = false; AIPlayer.WhileThinking = null; }
+                            return boards;
+                        };
+                        List<string> inLine = play(false), onThread = play(true);
+                        int firstDiff = -1;
+                        for (int i = 0; i < Math.Max(inLine.Count, onThread.Count); i++)
+                            if (i >= inLine.Count || i >= onThread.Count || inLine[i] != onThread[i]) { firstDiff = i; break; }
+                        bool same = firstDiff < 0 && torn == 0 && hammered > 0;
+                        all &= same;
+                        res.Add(map + (fog ? " fog on" : " fog off") + ": " + inLine.Count + " turns, " + (firstDiff < 0 ? "same board after every turn" : "differs after turn " + firstDiff)
+                                + ", main thread read the board " + hammered + " times while the AI thought" + (torn > 0 ? ", saw it torn " + torn + " times" : ""));
+                    }
+                }
+                detail = string.Join("; ", res.ToArray());
+                return all;
+            }
+            case "fogKinds": {
+                Unit g = Rig.At(-2, 0).occupier, r = Rig.At(1, 0).occupier, bf = Rig.At(-5, 4).occupier, rf = Rig.At(0, -5).occupier;
+                Unit boat = Rig.At(4, 2).occupier, rg = Rig.At(2, 4).occupier;
+                Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
+                List<string> res = new List<string>();
+                HexTile gt = g.tile; TerrainData grass = gt.terrain;
+                moved();
+                bool flat = !FogOfWar.Sees(a, r);
+                gt.terrain = T("Hills"); moved();
+                bool hills = FogOfWar.Sees(a, r) && FogOfWar.VisionFrom(g, gt) == g.visionRange + 1;
+                gt.terrain = T("Mountains"); r.TeleportTo(Rig.At(2, 0), 0); moved();
+                bool mountains = FogOfWar.Sees(a, r) && FogOfWar.VisionFrom(g, gt) == g.visionRange + 2;
+                r.TeleportTo(Rig.At(3, -2), 0); moved();   // five off, out of the gunboat's sight too
+                bool beyond = !FogOfWar.Sees(a, r);
+                bool air = FogOfWar.VisionFrom(bf, gt) == bf.visionRange;
+                gt.terrain = grass; moved();
+                res.Add("grunt (vision " + g.visionRange + "): d3 unseen on flat " + flat + ", seen from hills " + hills + ", d4 from mountains " + mountains + ", d5 not " + beyond + "; no high ground for aircraft " + air);
+                // A stealth jet: unseen by the grunt it is next to; seen by a fighter two tiles off, not three.
+                rf.stealthRange = 3; rg.stealthRange = 3;
+                rf.TeleportTo(Rig.At(-1, 0), 0); bf.TeleportTo(Rig.At(-4, 6), 0); moved();
+                bool jetHidden = !FogOfWar.Sees(a, rf);
+                bf.TeleportTo(Rig.At(1, -1), 0); moved();
+                bool jetSeen = FogOfWar.Sees(a, rf);
+                bf.TeleportTo(Rig.At(2, -2), 0); moved();
+                bool jetFar = !FogOfWar.Sees(a, rf);
+                bf.TeleportTo(Rig.At(-4, 6), 0); rf.TeleportTo(Rig.At(-3, 3), 0); moved();
+                bool jetOverCity = !FogOfWar.Sees(a, rf);
+                res.Add("stealth jet: next to a grunt unseen " + jetHidden + ", fighter at 2 sees it " + jetSeen + ", at 3 not " + jetFar + ", over our city unseen " + jetOverCity);
+                // A stealthy grunt by the shore: the gunboat next to it does not see it; a grunt two off does; on our city it is seen.
+                rg.TeleportTo(Rig.At(3, 2), 0); rf.TeleportTo(Rig.At(0, -5), 0); moved();
+                bool boatBlind = !FogOfWar.Sees(a, rg);
+                g.TeleportTo(Rig.At(3, 0), 0); moved();
+                bool gruntSees = FogOfWar.Sees(a, rg);
+                g.TeleportTo(Rig.At(-2, 0), 0); rg.TeleportTo(Rig.At(-3, 3), 0); moved();
+                bool onCity = FogOfWar.Sees(a, rg);
+                res.Add("stealthy grunt: next to the gunboat unseen " + boatBlind + ", grunt at 2 sees it " + gruntSees + ", on our city seen " + onCity);
+                detail = string.Join("; ", res.ToArray());
+                return flat && hills && mountains && beyond && air && jetHidden && jetSeen && jetFar && jetOverCity && boatBlind && gruntSees && onCity;
+            }
             case "fogBump": {
                 Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier, p = Rig.At(0, 3).occupier, q = Rig.At(2, 3).occupier;
                 foreach (Unit u in a.units) if (u != null) u.visionRange = 1;
@@ -937,7 +1037,9 @@ public static class Scenarios {
                 snap[recon] = new KeyValuePair<HexTile, int>(recon.tile, recon.Strength); snap[far] = new KeyValuePair<HexTile, int>(far.tile, far.Strength);
                 bool inside = false, believed = false, offBoard = false, notTarget = false, map = false, values = false;
                 float hiddenV = 0, exposedV = 0, scoutA = 0, scoutB = 0;
-                using (FogOfWar.Scope sc = FogOfWar.Conceal(a, true, 2)) {
+                BoardView cv = FogOfWar.Conceal(a, true, 2);
+                using (cv != null ? cv.Enter() : null) {
+                    FogOfWar.Knowledge sc = cv != null ? cv.Fog : null;
                     inside = sc != null;
                     if (sc != null) {
                         believed = far.tile == Rig.At(2, -5) && Rig.At(2, -5).occupier == far && sc.believed.Contains(far);
@@ -964,7 +1066,8 @@ public static class Scenarios {
                 // Last seen tile now in sight and empty: forgotten.
                 recon.TeleportTo(Rig.At(1, -3), 0); FogOfWar.Changed(); FogOfWar.Refresh();
                 bool forgot;
-                using (FogOfWar.Scope sc = FogOfWar.Conceal(a, true, 2)) forgot = sc != null && far.tile == null && !sc.believed.Contains(far);
+                BoardView cv2 = FogOfWar.Conceal(a, true, 2);
+                using (cv2 != null ? cv2.Enter() : null) forgot = cv2 != null && far.tile == null && !cv2.Fog.believed.Contains(far);
                 r.Add("its last tile seen empty: forgotten " + forgot);
                 ai.Profile.fogFair = false;
                 bool all = FogOfWar.Conceal(a, true, 2) == null && FogOfWar.Sees(a, etank);
@@ -997,6 +1100,53 @@ public static class Scenarios {
                 detail = actions + " actions, " + shots + " shots (" + blindShots + " at units not seen), " + bumps + " units ran into hidden ones; board broken after " + broken + " actions" + (firstBroken != null ? " (" + firstBroken + ")" : "")
                        + "; left Blue " + a.units.Count + ", Red " + o.units.Count;
                 return actions > 20 && broken == 0 && blindShots == 0;
+            }
+            case "destructible": {
+                List<string> r = new List<string>();
+                // The parts.
+                int[] one = new int[11], two = new int[11];
+                for (int left = 10; left >= 1; left--) { one[left] = TerrainData.Stage(10, 10 - left, 1); two[left] = TerrainData.Stage(10, 10 - left, 2); }
+                bool parts = one[10] == 0 && one[6] == 0 && one[5] == 1 && one[1] == 1 && two[10] == 0 && two[7] == 0 && two[6] == 1 && two[4] == 1 && two[3] == 2 && two[1] == 2;
+                r.Add("stages: one picture " + string.Join("", Array.ConvertAll(new[] { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 }, x => one[x].ToString())) + ", two " + string.Join("", Array.ConvertAll(new[] { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 }, x => two[x].ToString())) + " " + parts);
+                // A real attack damages the defender's tile.
+                Unit g = Rig.At(0, 0).occupier, red = Rig.At(1, 0).occupier;
+                HexTile grass = Rig.At(0, 0);
+                red.OrderAttack(g);
+                bool hit = grass.damage == 1 && grass.combatCount == 1;
+                for (int i = 0; i < 9; i++) grass.RegisterCombat();
+                bool badlands = grass.terrain.name == "Badlands" && grass.damage == 0 && grass.destroyedFrom.Count == 1 && grass.destroyedFrom[0].name == "Grassland";
+                bool undo = grass.UndoDestruction() && grass.terrain.name == "Grassland" && grass.damage == 9;
+                grass.Repair(9);
+                bool repaired = grass.damage == 0 && grass.damageLevel == 0;
+                r.Add("attack damages the tile " + hit + "; ten hits: Grassland -> " + (badlands ? "Badlands" : grass.terrain.name) + " " + badlands + "; undone " + undo + ", repaired " + repaired);
+                // The bridge falls with a grunt on it.
+                HexTile bridge = Rig.At(3, -2);
+                Unit onBridge = bridge.occupier;
+                for (int i = 0; i < 10; i++) bridge.RegisterCombat();
+                bool fell = bridge.terrain.name == "Water" && !bridge.road && bridge.occupier == null && onBridge.Strength <= 0 && !a.units.Contains(onBridge);
+                r.Add("bridge: " + bridge.terrain.name + ", road " + bridge.road + ", grunt lost " + (onBridge.Strength <= 0) + " " + fell);
+                // The city takes the hits; destroyed it stops working.
+                HexTile ct = Rig.At(-3, 2);
+                Building city = ct.building;
+                TerrainData ground = ct.terrain;
+                gc.EndTurn(); gc.EndTurn();
+                for (int i = 0; i < 10; i++) ct.RegisterCombat();
+                bool destroyed = city.Destroyed && !city.Functioning && ct.terrain == ground && ct.damage == 0;
+                int m0 = a.money; gc.EndTurn(); gc.EndTurn(); int earned = a.money - m0;
+                a.Resupply();
+                int hqIncome = GameController.HQOf(a) != null ? GameController.HQOf(a).income : 0;
+                bool stopped = destroyed && earned == hqIncome && !city.HasSupplyToGive && !city.CanProduce;
+                city.Repair(1);
+                int m1 = a.money; gc.EndTurn(); gc.EndTurn(); int earnedAgain = a.money - m1;
+                bool back = !city.Destroyed && earnedAgain == hqIncome + city.income;
+                r.Add("city: ground untouched, destroyed " + destroyed + ", turn's income " + earned + " (the HQ's " + hqIncome + "), no supply or production " + stopped + "; repaired by 1: income " + earnedAgain + " " + back);
+                // Water takes nothing.
+                HexTile w = bridge;
+                w.RegisterCombat();
+                bool water = w.terrain.name == "Water" && w.damage == 0;
+                r.Add("water takes no damage " + water);
+                detail = string.Join("; ", r.ToArray());
+                return parts && hit && badlands && undo && repaired && fell && stopped && back && water;
             }
             case "sandboxTurns": {
                 gc.rules = RuleSet.Sandbox;

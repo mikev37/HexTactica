@@ -27,10 +27,10 @@ namespace HexTactica.AI {
         public static bool IsRecon(Unit u) { return u != null && u.moveRange >= 6 && u.Firepower <= 2; }
 
         public static float ScoutValue(Unit unit, HexTile at, AIProfile p) {
-            FogOfWar.Scope s = FogOfWar.current;
+            FogOfWar.Knowledge s = FogOfWar.current;
             if (s == null || unit == null || at == null || p.scoutTileValue <= 0f) return 0f;
             float v = 0f;
-            foreach (HexTile t in AIPath.TilesInRangeShared(at, -1, Mathf.Max(0, unit.visionRange))) {
+            foreach (HexTile t in AIPath.TilesInRangeShared(at, -1, FogOfWar.VisionFrom(unit, at))) {
                 if (s.visibleTiles.Contains(t)) continue;
                 int last = FogOfWar.TileLastSeen(s.player, t);
                 v += (last < 0 ? 4f : Mathf.Min(4f, FogOfWar.Turn - last)) / 4f;
@@ -39,7 +39,7 @@ namespace HexTactica.AI {
         }
 
         public static float AmbushValue(Unit unit, HexTile at, AIMap map, AIProfile p) {
-            FogOfWar.Scope s = FogOfWar.current;
+            FogOfWar.Knowledge s = FogOfWar.current;
             if (s == null || unit == null || at == null || s.EnemySees(unit, at)) return 0f;
             float v = p.hiddenRiskRelief > 0f ? AIScore.Risk(unit, at, map, p) * p.hiddenRiskRelief : 0f;
             if (p.ambushValue > 0f && unit.Firepower > 0 && unit.AttackRange >= 1 && unit.MinRange < 1) {

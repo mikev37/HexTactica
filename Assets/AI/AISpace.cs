@@ -193,7 +193,7 @@ namespace HexTactica.AI {
 
         static bool Fighter(Unit u) {
             return u != null && u.tile != null && u.trasnporter == null && u.Firepower > 0
-                && u.Strength > 0 && u.GetComponent<SupplyPoint>() == null;
+                && u.Strength > 0 && u.Hub == null;
         }
 
         static bool NearEnemy(Board b, HexTile s, int reach) {
