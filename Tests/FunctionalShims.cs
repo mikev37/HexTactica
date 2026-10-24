@@ -24,6 +24,7 @@ namespace UnityEngine {
         public Vector2(float x, float y) { this.x = x; this.y = y; }
         public static Vector2 zero { get { return new Vector2(0, 0); } }
         public static Vector2 one { get { return new Vector2(1, 1); } }
+        public float magnitude { get { return (float)Math.Sqrt(x * x + y * y); } }
         public static float Distance(Vector2 a, Vector2 b) {
             float dx = a.x - b.x, dy = a.y - b.y;
             return (float)Math.Sqrt(dx * dx + dy * dy);
@@ -42,6 +43,8 @@ namespace UnityEngine {
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero { get { return new Vector3(0, 0, 0); } }
         public static Vector3 one { get { return new Vector3(1, 1, 1); } }
+        public static Vector3 right { get { return new Vector3(1, 0, 0); } }
+        public static Vector3 up { get { return new Vector3(0, 1, 0); } }
         public static Vector3 MoveTowards(Vector3 a, Vector3 b, float d) { return b; }
         public static Vector3 Lerp(Vector3 a, Vector3 b, float t) { return new Vector3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t); }
         public static bool operator ==(Vector3 a, Vector3 b) { return a.x == b.x && a.y == b.y && a.z == b.z; }
@@ -49,15 +52,22 @@ namespace UnityEngine {
         public override bool Equals(object o) { return o is Vector3 && (Vector3)o == this; }
         public override int GetHashCode() { return x.GetHashCode() ^ y.GetHashCode() ^ z.GetHashCode(); }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
+        public static Vector3 operator -(Vector3 a) { return new Vector3(-a.x, -a.y, -a.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z); }
         public static Vector3 operator *(Vector3 a, float k) { return new Vector3(a.x * k, a.y * k, a.z * k); }
         public static implicit operator Vector2(Vector3 v) { return new Vector2(v.x, v.y); }
     }
 
-    public struct Vector4 { public float x, y, z, w; public Vector4(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; } }
-    public struct Matrix4x4 { public static Matrix4x4 identity { get { return new Matrix4x4(); } } }
+    public struct Vector4 { public float x, y, z, w; public Vector4(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; }
+        public static Vector4 zero { get { return new Vector4(); } }
+        public static bool operator ==(Vector4 a, Vector4 b) { return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w; }
+        public static bool operator !=(Vector4 a, Vector4 b) { return !(a == b); }
+        public override bool Equals(object o) { return o is Vector4 && (Vector4)o == this; } public override int GetHashCode() { return 0; } }
+    public struct Matrix4x4 { public static Matrix4x4 identity { get { return new Matrix4x4(); } }
+        public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b) { return a; }
+        public Vector3 MultiplyVector(Vector3 v) { return v; } public Vector3 MultiplyPoint3x4(Vector3 v) { return v; } }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) { return m.value; } }
-    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
+    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public Vector2 size { get { return new Vector2(width, height); } } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
     public class RectOffset { public int left, right, top, bottom; public RectOffset() { } public RectOffset(int l, int r, int t, int b) { left = l; right = r; top = t; bottom = b; } }
     public struct Quaternion {
         public static Quaternion identity { get { return new Quaternion(); } }
@@ -92,6 +102,8 @@ namespace UnityEngine {
     }
 
     public static class Mathf {
+        public static float Atan2(float y, float x) { return (float)Math.Atan2(y, x); }
+        public const float Rad2Deg = 57.29578f;
         public static float MoveTowards(float a, float b, float d) { return Math.Abs(b - a) <= d ? b : a + Math.Sign(b - a) * d; }
         public const float Infinity = float.PositiveInfinity;
         public static float Max(float a, float b) { return Math.Max(a, b); }
@@ -153,6 +165,9 @@ namespace UnityEngine {
         public Transform Find(string n) { return null; }
         public void SetParent(Transform p) { parent = p; }
         public int childCount { get { return 0; } }
+        public Transform GetChild(int i) { return null; }
+        public void SetSiblingIndex(int i) { }
+        public Matrix4x4 worldToLocalMatrix, localToWorldMatrix;
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
     }
 
@@ -219,10 +234,11 @@ namespace UnityEngine {
     public class Texture : Object { }
     public class Texture2D : Texture { }
     public class Renderer : Component { public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
-    public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } }
+    public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } public static int GetLayerValueFromID(int id) { return 0; } public static string IDToName(int id) { return "Default"; } }
     public class SpriteRenderer : Renderer {
         public Sprite sprite; public Color color;
         public int rendererPriority;
+        public bool flipX, flipY;
     }
     public class MeshRenderer : Renderer { public Material material; public Material sharedMaterial; }
     public class MeshFilter : Component { }
@@ -244,7 +260,7 @@ namespace UnityEngine {
         public bool useWorldSpace;
         public void SetPosition(int i, Vector3 v) { }
     }
-    public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; }
+    public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; public static void ForceUpdateCanvases() { } }
     public class Animator : Behaviour {
         public void SetBool(string s, bool b) { }
         public void SetTrigger(string s) { }
@@ -277,6 +293,7 @@ namespace UnityEngine {
         public static float deltaTime { get { return 0.016f; } }
         public static float fixedDeltaTime { get { return 0.02f; } }
         public static float time { get { return 0; } }
+        public static float unscaledTime { get { return 0; } }
         public static float unscaledDeltaTime { get { return 0.016f; } }
     }
     public static class Input {
@@ -317,6 +334,10 @@ namespace UnityEngine {
 }
 
 namespace UnityEngine {
+    public class RectTransform : Transform {
+        public Vector2 anchorMin, anchorMax, pivot, anchoredPosition, sizeDelta, offsetMin, offsetMax;
+        public Rect rect { get { return new Rect(0, 0, sizeDelta.x, sizeDelta.y); } }
+    }
     public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }
     public class Font : Object { }
     public enum TextAnchor { UpperLeft, UpperCenter, UpperRight, MiddleLeft, MiddleCenter, MiddleRight, LowerLeft, LowerCenter, LowerRight }
@@ -326,7 +347,7 @@ namespace UnityEngine.UI {
     public class ButtonClickedEvent { public void AddListener(UnityEngine.Events.UnityAction a) { } public void RemoveAllListeners() { } }
     public class Graphic : UnityEngine.Behaviour { public UnityEngine.Color color; public bool raycastTarget; }
     public class Text : Graphic { public string text = ""; public int fontSize; public UnityEngine.Font font; public UnityEngine.TextAnchor alignment; }
-    public class Image : Graphic { public UnityEngine.Sprite sprite; public bool preserveAspect; }
+    public class Image : Graphic { public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public UnityEngine.Sprite sprite; public bool preserveAspect; public UnityEngine.RectTransform rectTransform; }
     public class Button : UnityEngine.Behaviour { public Graphic targetGraphic; public bool interactable = true; public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
 }
 
