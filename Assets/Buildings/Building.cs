@@ -271,6 +271,30 @@ public class Building : MonoBehaviour {
     }
 
     /// <summary>0..1: how far up its pole the flag is.</summary>
+    /// <summary>
+    /// Capture progress as the screen shows it (under fog of war, as the viewer last saw it), if
+    /// there is any: a neutral building someone is taking — "Capturing", "Blue 6/10", Blue; an owned
+    /// one brought down — "Held", "4/10", its owner. False when there is none (an owned building at
+    /// full points, a neutral one nobody is taking, one that cannot be captured).
+    /// </summary>
+    public bool ShownCaptureProgress(out string what, out string value, out Player whose) {
+        what = null; value = null; whose = null;
+        if (!Capturable) return false;
+        Player capturing; int points;
+        FogOfWar.ShownCapture(this, out capturing, out points);
+        Player held = FogOfWar.ShownOwner(this);
+        int threshold = CaptureThreshold;
+        if (held == null && capturing != null && points > 0) {
+            what = "Capturing"; value = capturing.personal_name + " " + points + "/" + threshold; whose = capturing;
+            return true;
+        }
+        if (held != null && points < threshold) {
+            what = "Held"; value = Mathf.Max(0, points) + "/" + threshold; whose = held;
+            return true;
+        }
+        return false;
+    }
+
     public float FlagHeight { get { return Mathf.Clamp01(capturePoints / (float)CaptureThreshold); } }
 
     /// <summary>The flag's height as the screen shows it (under fog of war, as last seen).</summary>

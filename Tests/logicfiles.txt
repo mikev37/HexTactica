@@ -71,3 +71,4 @@ AI/AIFog.cs
 HealthDot.cs
 VeterancyChevron.cs
 AI/BoardView.cs
+UI/TurnBanner.cs
