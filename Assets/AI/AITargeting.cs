@@ -141,7 +141,7 @@ namespace HexTactica.AI {
 
             // Exploit a breakthrough: a supply hub hit from ground none of their fighting units can
             // reach tonight. We are past their line, and the hub is what keeps it standing.
-            if (defender.GetComponent<SupplyPoint>() != null && !IsHQ(defender) && map.CombatFirersAt(from, defender) == 0) {
+            if (defender.Hub != null && !IsHQ(defender) && map.CombatFirersAt(from, defender) == 0) {
                 value += map.SupplyImportance(defender) * profile.breakthroughWeight;
             }
 
@@ -199,7 +199,7 @@ namespace HexTactica.AI {
         public static bool IsHQUnit(Unit u) { return IsHQ(u); }
 
         static bool IsHQ(Unit u) {
-            SupplyPoint sp = u != null ? u.GetComponent<SupplyPoint>() : null;
+            SupplyPoint sp = u != null ? u.Hub : null;
             return sp != null && sp.producer;
         }
 

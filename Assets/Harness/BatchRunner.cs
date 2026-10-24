@@ -191,7 +191,7 @@ namespace HexTactica.Harness {
                 for (int j = 0; j < p.units.Count; j++) {
                     Unit u = p.units[j];
                     if (u == null) continue;
-                    SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                    SupplyPoint sp = u.Hub;
                     if (sp != null && !sp.connected) m.hubStrandedTurns++;
                 }
             }

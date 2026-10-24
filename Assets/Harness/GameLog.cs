@@ -257,7 +257,7 @@ namespace HexTactica.Harness {
             if (t.occupier != null) {
                 Unit u = t.occupier;
                 char c = 'U';
-                SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                SupplyPoint sp = u.Hub;
                 if (sp != null) c = sp.producer ? 'H' : 'S';
                 else if (u.name.StartsWith("Grunt")) c = 'G';
                 else if (u.name.StartsWith("Tank")) c = 'T';

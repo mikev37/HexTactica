@@ -34,7 +34,7 @@ namespace HexTactica.AI {
                     Unit pick = null; float bestScore = 0f; HexTile where = null;
                     foreach (Unit t in b.Purchasable()) {
                         if (t.cost <= 0 || t.cost > p.money) continue;
-                        if (t.GetComponent<SupplyPoint>() != null || t.Firepower <= 0) continue;
+                        if (t.Hub != null || t.Firepower <= 0) continue;
                         HexTile free = FreeTile(b, t, map);
                         if (free == null) continue;
                         int n; have.TryGetValue(GameController.UnitName(t), out n);
@@ -42,7 +42,10 @@ namespace HexTactica.AI {
                         if (score > bestScore || (score == bestScore && pick != null && string.CompareOrdinal(t.name, pick.name) < 0)) { pick = t; bestScore = score; where = free; }
                     }
                     if (pick == null) continue;
-                    Unit made = BuildingController.bc.Produce(b, pick, x => AIAir.MayBuildOn(x, map));
+                    // Bought for real (outside the board the AI thinks on), and put on that board too.
+                    Unit made;
+                    using (BoardView.Outside()) made = BuildingController.bc.Produce(b, pick, x => AIAir.MayBuildOn(x, map));
+                    if (made != null && made.tile != null) made.tile.occupier = made;
                     if (made == null) continue;
                     bought.Add(made);
                     string name = GameController.UnitName(pick);

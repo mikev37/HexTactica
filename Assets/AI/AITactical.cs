@@ -73,7 +73,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit v = map.ownUnits[i];
                 if (v == null || v == unit || v.tile == null || v.trasnporter != null) continue;
-                if (v.Firepower <= 0 || v.GetComponent<SupplyPoint>() != null || v.Strength < healthy) continue;
+                if (v.Firepower <= 0 || v.Hub != null || v.Strength < healthy) continue;
                 if (v.AttackRange >= 2 && !v.moveAndAttack) continue;      // guns do not hold a line
                 if (v.tile.Distance(unit.tile) <= v.moveRange + 1) return true;
             }
@@ -623,7 +623,7 @@ namespace HexTactica.AI {
             // the army walks up a long road to the edge of its supply instead of feeling a pull that
             // fades to nothing with distance.
             if (context.profile.marchWeight > 0f && front != null && front.objectiveTile != null && unit.tile != null
-                && unit.GetComponent<SupplyPoint>() == null && context.map.TurnsToContact(unit) > context.profile.objectiveContactTurns) {
+                && unit.Hub == null && context.map.TurnsToContact(unit) > context.profile.objectiveContactTurns) {
                 int gained = context.map.Travel(unit, unit.tile, front.objectiveTile) - context.map.Travel(unit, tile, front.objectiveTile);
                 bonus += worth * context.profile.marchWeight * gained;
             }
@@ -701,7 +701,7 @@ namespace HexTactica.AI {
                 for (int i = 0; i < map.ownUnits.Count; i++) {
                     Unit friend = map.ownUnits[i];
                     if (friend == null || friend == unit || friend.tile == null || friend.Firepower <= 0) continue;
-                    if (friend.GetComponent<SupplyPoint>() != null) continue;
+                    if (friend.Hub != null) continue;
                     int d = t.Distance(friend.tile);
                     if (d > unit.MinRange && d <= unit.AttackRange + 1) v += AIScore.Worth(friend) * profile.supportWeight;
                 }

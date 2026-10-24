@@ -87,10 +87,10 @@ public class GameController : MonoBehaviour
         if (u == null) return false;
         // Thinking on a concealed board (fog of war): an enemy only believed to be somewhere, not
         // seen, cannot be fired on.
-        FogOfWar.Scope fog = FogOfWar.current;
+        FogOfWar.Knowledge fog = FogOfWar.current;
         if (fog != null && u.owner != fog.player && !fog.visible.Contains(u)) return false;
         if (gc != null && gc.rules == RuleSet.Attrition) {
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp.producer) return false;
         }
         return true;
@@ -113,7 +113,7 @@ public class GameController : MonoBehaviour
         for (int i = 0; i < p.units.Count; i++) {
             Unit u = p.units[i];
             if (u == null || u.Strength <= 0) continue;
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp.producer) continue;
             m += u.Strength * (float)u.cost;
         }
@@ -125,7 +125,7 @@ public class GameController : MonoBehaviour
         for (int i = 0; i < p.units.Count; i++) {
             Unit u = p.units[i];
             if (u == null || u.Strength <= 0) continue;
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp.producer) continue;
             n++;
         }

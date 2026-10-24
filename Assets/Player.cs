@@ -206,7 +206,7 @@ public class Player : MonoBehaviour
             for (int i = 0; i < units.Count; i++) {
                 Unit u = units[i];
                 if (u == null || u.Strength <= 0) continue;
-                SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                SupplyPoint sp = u.Hub;
                 if (sp != null && sp.producer) return true;
             }
             return false;

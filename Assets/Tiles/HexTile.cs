@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 
@@ -36,7 +37,15 @@ public class HexTile : MonoBehaviour
     public int damageLevel;
 
 
-    public Dictionary<Player, int> supply; //how far the closest player's supply depot is
+    Dictionary<Player, int> _supply;
+    /// <summary>How far the closest player's supply depot is, per player, as last published (in a BoardView, the view's copy).</summary>
+    public Dictionary<Player, int> supply {
+        get { BoardView v = BoardView.current; return v != null ? v.SupplyOf(this, _supply) : _supply; }
+        set { _supply = value; }
+    }
+
+    /// <summary>This tile's number in board views (BoardView), once it has been in one.</summary>
+    [System.NonSerialized] internal int viewId = -1;
     public HexTilePlayerSupplyDisplay supplyDisplayPrefab;
     public Dictionary<Player, Heat> threat; // how many units can hit this tile with how much damage
 
@@ -72,7 +81,14 @@ public class HexTile : MonoBehaviour
     public AITileData aiData;
 
     [Header("Movement Variables")]
-    public Unit occupier;// unit reference
+    [SerializeField, FormerlySerializedAs("occupier")] Unit _occupier;
+    /// <summary>The unit standing here (in a BoardView, the view's: see there).</summary>
+    public Unit occupier {
+        get { BoardView v = BoardView.current; return v != null ? v.OccupierOf(this, _occupier) : _occupier; }
+        set { BoardView v = BoardView.current; if (v == null || !v.SetOccupier(this, value)) _occupier = value; }
+    }
+    /// <summary>The real occupier, whatever view is entered.</summary>
+    internal Unit RealOccupier { get { return _occupier; } }
     [Tooltip("Reference to the building in the tile, if any")]
     public Building building;
     public int G;
@@ -581,6 +597,21 @@ public class HexTile : MonoBehaviour
         // it does not see does not block the way (and running into it is MoveAlong's business).
         using (FogOfWar.Concealing(mover != null ? mover.owner : null))
             return CheckMovementRangeOnBoard(mover, distance);
+    }
+
+    /// <summary>
+    /// The tiles <paramref name="mover"/> could reach this turn from here, without leaving anything
+    /// on the tiles (CheckMovementRange leaves the path for the click-to-move flow). For the threat map,
+    /// which the AI works out on its own copy of the board, perhaps on another thread.
+    /// </summary>
+    public List<HexTile> ReachableThisTurn(Unit mover) {
+        using (FogOfWar.Concealing(mover != null ? mover.owner : null)) {
+            HexTactica.AI.MoveField field = HexTactica.AI.AIPath.ThisTurnFrom(mover, this, HexTactica.AI.AIPath.RangeThisTurn(mover));
+            List<HexTile> reach = new List<HexTile>();
+            foreach (HexTile t in field.Tiles) if (field.ReachableThisTurn(t)) reach.Add(t);
+            HexTactica.AI.AIPath.Release(field);
+            return reach;
+        }
     }
 
     List<HexTile> CheckMovementRangeOnBoard(Unit mover, int distance) {

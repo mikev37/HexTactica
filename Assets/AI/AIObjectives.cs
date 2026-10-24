@@ -141,7 +141,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
                 if (u == null || u.tile == null || u.trasnporter != null) continue;
-                if (u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) continue;
+                if (u.Firepower <= 0 || u.Hub != null) continue;
                 if (u.Strength <= profile.withdrawStrength) continue;
                 pool.Add(u);
             }
@@ -234,7 +234,7 @@ namespace HexTactica.AI {
 
         public static float Power(Unit u) {
             if (u == null || u.Firepower <= 0 || u.Strength <= 0) return 0f;
-            if (u.GetComponent<SupplyPoint>() != null) return 0f;
+            if (u.Hub != null) return 0f;
             return AIScore.Worth(u) * u.Strength;
         }
 

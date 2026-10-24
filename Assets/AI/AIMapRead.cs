@@ -30,6 +30,8 @@ namespace HexTactica.AI {
         public SupplyNetwork.Result staticSupply;
         /// <summary>The enemy's live supply, all enemy players merged.</summary>
         public readonly SupplyNetwork.Result theirSupply = new SupplyNetwork.Result();
+        /// <summary>Each enemy's own supply field, as this AI worked it out (on the board as it knows it).</summary>
+        public readonly Dictionary<Player, SupplyNetwork.Result> theirByPlayer = new Dictionary<Player, SupplyNetwork.Result>();
         readonly HashSet<HexTile> potentialSupply = new HashSet<HexTile>();
         readonly Dictionary<HexTile, int> distOurSupply = new Dictionary<HexTile, int>();
         readonly Dictionary<HexTile, int> distTheirSupply = new Dictionary<HexTile, int>();
@@ -107,7 +109,7 @@ namespace HexTactica.AI {
             if (x == null || at == null || x.owner == null) return false;
             // Aircraft and ships: only on a building of theirs that services them.
             if (LocomotionRules.NeedsBase(x.locomotion)) return at.building != null && at.building.owner == x.owner && at.building.Services(x);
-            SupplyPoint sp = x.GetComponent<SupplyPoint>();
+            SupplyPoint sp = x.Hub;
             if (x.owner == player) {
                 if (supply == null || supply.DepthAt(at) <= 0) return false;
                 return sp == null || sp.producer || supply.connectedHubs.Contains(sp);
@@ -174,7 +176,7 @@ namespace HexTactica.AI {
         /// Either side's hubs. Cached per board read.
         /// </summary>
         public float HubStake(Unit hubUnit) {
-            SupplyPoint hub = hubUnit != null ? hubUnit.GetComponent<SupplyPoint>() : null;
+            SupplyPoint hub = hubUnit != null ? hubUnit.Hub : null;
             if (hub == null || hub.producer || hubUnit.owner == null) return 0f;
             float v;
             if (hubStake.TryGetValue(hub, out v)) return v;
@@ -201,15 +203,16 @@ namespace HexTactica.AI {
                 for (int i = 0; i < mine.Count; i++) {
                     Unit u = mine[i];
                     if (u == null || u.tile == null || u.Strength <= 0) continue;
-                    SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                    SupplyPoint sp = u.Hub;
                     if (sp == null || sp.producer) continue;
                     SupplyNetwork.Result ext = SupplyNetwork.Extent(sp);
                     foreach (HexTile t in ext.depth.Keys) if (supply.DepthAt(t) <= 0) potentialSupply.Add(t);
                 }
             }
 
-            // Enemy supply: solve each enemy player (this publishes their real field, which is correct).
+            // Enemy supply: solve each enemy player, on the board as this AI knows it.
             theirSupply.depth.Clear();
+            theirByPlayer.Clear();
             theirConnected.Clear();
             enemyPlayers.Clear();
             ourSpace.Clear();
@@ -219,6 +222,7 @@ namespace HexTactica.AI {
             if (all != null) for (int i = 0; i < all.Count; i++) if (all[i] != null && all[i].owner != null && all[i].owner != player) enemies.Add(all[i].owner);
             foreach (Player o in enemies) {
                 SupplyNetwork.Result r = SupplyNetwork.Solve(o, false);
+                theirByPlayer[o] = r;
                 enemyPlayers.Add(o);
                 foreach (SupplyPoint h in r.connectedHubs) theirConnected.Add(h);
                 foreach (KeyValuePair<HexTile, int> kv in r.depth)
@@ -252,7 +256,7 @@ namespace HexTactica.AI {
             Stopwatch sw = Stopwatch.StartNew();
             for (int i = 0; i < enemyUnits.Count; i++) {
                 Unit e = enemyUnits[i];
-                if (e == null || e.tile == null || e.Firepower <= 0 || e.GetComponent<SupplyPoint>() != null) continue;
+                if (e == null || e.tile == null || e.Firepower <= 0 || e.Hub != null) continue;
                 if (e.trasnporter != null) continue;
                 MoveField f = AIPath.MultiTurn(e, profile.enemyReachTurns - 1);
                 foreach (HexTile p in f.Tiles) {

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class Unit : MonoBehaviour
@@ -31,12 +32,55 @@ public class Unit : MonoBehaviour
     public Player owner;
     [Range(0, 6)]
     [Tooltip("How much health the unit has")]
-    public int Strength;
+    [SerializeField, FormerlySerializedAs("Strength")] int _strength;
+    /// <summary>How much health the unit has (in a BoardView, the view's: see there).</summary>
+    public int Strength {
+        get { BoardView v = BoardView.current; return v != null ? v.StrengthOf(this, _strength) : _strength; }
+        set { BoardView v = BoardView.current; if (v == null || !v.SetStrength(this, value)) _strength = value; }
+    }
+    /// <summary>The real strength, whatever view is entered.</summary>
+    internal int RealStrength { get { return _strength; } }
     [Range(0, 3)]
     [Tooltip("Veteran units are stronger")]
     public int Veterancy;
     [Tooltip("Where the unit stands")]
-    public HexTile tile;
+    [SerializeField, FormerlySerializedAs("tile")] HexTile _tile;
+    /// <summary>Where the unit stands (in a BoardView, the view's: see there).</summary>
+    public HexTile tile {
+        get { BoardView v = BoardView.current; return v != null ? v.TileOf(this, _tile) : _tile; }
+        set { BoardView v = BoardView.current; if (v == null || !v.SetTile(this, value)) _tile = value; }
+    }
+    /// <summary>The real tile, whatever view is entered.</summary>
+    internal HexTile RealTile { get { return _tile; } }
+
+    /// <summary>This unit's number in board views (BoardView), once it has been in one.</summary>
+    [System.NonSerialized] internal int viewId = -1;
+    [System.NonSerialized] SupplyPoint hubCache;
+    [System.NonSerialized] bool hubKnown;
+    [System.NonSerialized] string nameCache;
+
+    /// <summary>
+    /// Its supply point, if it is a supply unit. On the main thread looked up each time (one may be
+    /// added); thinking in a BoardView (perhaps on another thread, where Unity cannot be asked), the
+    /// one it had when the view was made.
+    /// </summary>
+    public SupplyPoint Hub {
+        get {
+            if (BoardView.current != null && hubKnown) return hubCache;
+            hubCache = GetComponent<SupplyPoint>();
+            hubKnown = true;
+            return hubCache;
+        }
+    }
+
+    /// <summary>The object's name; in a BoardView, as it was when the view was made (Unity cannot be asked off the main thread).</summary>
+    public new string name {
+        get { if (BoardView.current != null && nameCache != null) return nameCache; nameCache = base.name; return nameCache; }
+        set { base.name = value; nameCache = value; }
+    }
+
+    /// <summary>Called by BoardView.Snapshot on the main thread: remember what a thought elsewhere will need to read.</summary>
+    internal void Prime() { hubCache = GetComponent<SupplyPoint>(); hubKnown = true; nameCache = base.name; }
     [Tooltip("Ground unit able to move into and through water tiles that border land")]
     public bool amphibious;
     [Tooltip("Air tanker: refuels friendly air units that start their turn beside it, one refuelStock for each")]
@@ -403,7 +447,7 @@ public class Unit : MonoBehaviour
         else if (top != null) { cargoGroup.sortingLayerID = top.sortingLayerID; cargoGroup.sortingOrder = top.sortingOrder + 1 + slot; }
         // Supplies aboard are shown like any cargo; a transport whose animator has a "CarryingSupply"
         // bool is told, in case its art wants to react.
-        if (GetComponent<SupplyPoint>() != null) transport.SetAnimatorBool("CarryingSupply", true);
+        if (Hub != null) transport.SetAnimatorBool("CarryingSupply", true);
     }
 
     public bool HasAnimatorParameter(string name) {
@@ -436,9 +480,9 @@ public class Unit : MonoBehaviour
         transform.SetParent(null, true);
         transform.rotation = Quaternion.identity;
         if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
-        if (GetComponent<SupplyPoint>() != null && transport != null) {
+        if (Hub != null && transport != null) {
             bool still = false;
-            foreach (Unit c in transport.transported) if (c != null && c != this && c.GetComponent<SupplyPoint>() != null) still = true;
+            foreach (Unit c in transport.transported) if (c != null && c != this && c.Hub != null) still = true;
             transport.SetAnimatorBool("CarryingSupply", still);
         }
     }
@@ -641,7 +685,7 @@ public class Unit : MonoBehaviour
 
     internal void updateThreat() {
         int valueGain = 0;
-        List<HexTile> moves = tile.CheckMovementRange(this);
+        List<HexTile> moves = tile.ReachableThisTurn(this);
         if (moveAndAttack) {
             HashSet<HexTile> tiles = new HashSet<HexTile>();
             
@@ -683,7 +727,7 @@ public class Unit : MonoBehaviour
         active = false;
         FogOfWar.Refresh();
         GameController.RecalculateThreat();
-        if (GetComponent<SupplyPoint>()) {
+        if (Hub) {
             owner.Resupply();
         }
         if (Finished != null) Finished(this);
@@ -886,7 +930,7 @@ public class Unit : MonoBehaviour
     private void DieActual() {
         if (dead) return;
         dead = true;
-        SupplyPoint ownHub = GetComponent<SupplyPoint>();
+        SupplyPoint ownHub = Hub;
         if (ownHub != null && ownHub.producer && owner != null) owner.hadHQ = true;
         Strength = 0;
         if (owner != null) owner.units.Remove(this);
@@ -902,7 +946,7 @@ public class Unit : MonoBehaviour
         FogOfWar.Changed();
         // Losing an HQ unit ends the game for its owner immediately, not at end of turn.
         if (GameController.gc != null) GameController.gc.CheckVictory();
-        if (GetComponent<SupplyPoint>()) {
+        if (Hub) {
             owner.Resupply();
         }
     }

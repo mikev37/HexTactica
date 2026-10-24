@@ -986,7 +986,9 @@ public static class Scenarios {
                 snap[recon] = new KeyValuePair<HexTile, int>(recon.tile, recon.Strength); snap[far] = new KeyValuePair<HexTile, int>(far.tile, far.Strength);
                 bool inside = false, believed = false, offBoard = false, notTarget = false, map = false, values = false;
                 float hiddenV = 0, exposedV = 0, scoutA = 0, scoutB = 0;
-                using (FogOfWar.Scope sc = FogOfWar.Conceal(a, true, 2)) {
+                BoardView cv = FogOfWar.Conceal(a, true, 2);
+                using (cv != null ? cv.Enter() : null) {
+                    FogOfWar.Knowledge sc = cv != null ? cv.Fog : null;
                     inside = sc != null;
                     if (sc != null) {
                         believed = far.tile == Rig.At(2, -5) && Rig.At(2, -5).occupier == far && sc.believed.Contains(far);
@@ -1013,7 +1015,8 @@ public static class Scenarios {
                 // Last seen tile now in sight and empty: forgotten.
                 recon.TeleportTo(Rig.At(1, -3), 0); FogOfWar.Changed(); FogOfWar.Refresh();
                 bool forgot;
-                using (FogOfWar.Scope sc = FogOfWar.Conceal(a, true, 2)) forgot = sc != null && far.tile == null && !sc.believed.Contains(far);
+                BoardView cv2 = FogOfWar.Conceal(a, true, 2);
+                using (cv2 != null ? cv2.Enter() : null) forgot = cv2 != null && far.tile == null && !cv2.Fog.believed.Contains(far);
                 r.Add("its last tile seen empty: forgotten " + forgot);
                 ai.Profile.fogFair = false;
                 bool all = FogOfWar.Conceal(a, true, 2) == null && FogOfWar.Sees(a, etank);

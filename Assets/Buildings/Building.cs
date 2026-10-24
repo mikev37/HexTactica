@@ -61,7 +61,27 @@ public class Building : MonoBehaviour {
     public BuildingType type = BuildingType.Village;
     [Tooltip("Anchor tile (set on placement)")]
     public HexTile tile;
-    public Player owner;
+    [SerializeField, FormerlySerializedAs("owner")] Player _owner;
+    /// <summary>Who holds it (in a BoardView, the view's: see there).</summary>
+    public Player owner {
+        get { BoardView v = BoardView.current; return v != null && v.Has(this) ? v.OwnerOf(this) : _owner; }
+        set { BoardView v = BoardView.current; if (v != null && v.Has(this)) v.SetOwner(this, value); else _owner = value; }
+    }
+    internal Player RealOwner { get { return _owner; } }
+    internal Player RealCapturingPlayer { get { return _capturingPlayer; } }
+    internal int RealCapturePoints { get { return _capturePoints; } }
+
+    /// <summary>This building's number in board views (BoardView), once it has been in one.</summary>
+    [NonSerialized] internal int viewId = -1;
+    [NonSerialized] string nameCache;
+
+    /// <summary>The object's name; in a BoardView, as it was when the view was made.</summary>
+    public new string name {
+        get { if (BoardView.current != null && nameCache != null) return nameCache; nameCache = base.name; return nameCache; }
+        set { base.name = value; nameCache = value; }
+    }
+
+    internal void Prime() { nameCache = base.name; }
 
     [Header("Footprint and ground")]
     [Tooltip("Extra tiles the building covers, relative to its anchor (cube x, y)")]
@@ -113,9 +133,17 @@ public class Building : MonoBehaviour {
 
     [Header("Capture")]
     [Tooltip("Owner's points when owned; the capturing side's progress when neutral")]
-    public int capturePoints;
+    [SerializeField, FormerlySerializedAs("capturePoints")] int _capturePoints;
+    public int capturePoints {
+        get { BoardView v = BoardView.current; return v != null && v.Has(this) ? v.PointsOf(this) : _capturePoints; }
+        set { BoardView v = BoardView.current; if (v != null && v.Has(this)) v.SetPoints(this, value); else _capturePoints = value; }
+    }
     [Tooltip("Whose progress capturePoints is, while neutral")]
-    public Player capturingPlayer;
+    [SerializeField, FormerlySerializedAs("capturingPlayer")] Player _capturingPlayer;
+    public Player capturingPlayer {
+        get { BoardView v = BoardView.current; return v != null && v.Has(this) ? v.CapturingOf(this) : _capturingPlayer; }
+        set { BoardView v = BoardView.current; if (v != null && v.Has(this)) v.SetCapturing(this, value); else _capturingPlayer = value; }
+    }
 
     [Header("Condition")]
     [Tooltip("Hits it takes before it is destroyed: every attack on a unit standing on one of its tiles is one. 0: never damaged.")]
@@ -258,7 +286,7 @@ public class Building : MonoBehaviour {
     public static bool CanCapture(Unit u) {
         return u != null
             && u.Strength > 0
-            && u.GetComponent<SupplyPoint>() == null
+            && u.Hub == null
             && u.locomotion == Locomotion.Boots;
     }
 

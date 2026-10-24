@@ -379,4 +379,4 @@ namespace UnityEngine.Rendering {
     public class SortingGroup : Behaviour { public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
 }
 
-namespace UnityEngine.Serialization { public class FormerlySerializedAsAttribute : System.Attribute { public FormerlySerializedAsAttribute(string old) { } } }
+namespace UnityEngine.Serialization { public class FormerlySerializedAsAttribute : System.Attribute { public readonly string oldName; public FormerlySerializedAsAttribute(string old) { oldName = old; } } }
