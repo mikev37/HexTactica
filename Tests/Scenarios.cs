@@ -418,6 +418,8 @@ public static class Scenarios {
              "The recon truck (1 slot, carries Boots) takes a grunt, drives, and puts it down beside it, as the APC does.");
         make("attrition-rule-alarms", "alarms", (a, o) => { Put("Grunt", a, -5, 0); Put("Grunt", a, 5, 0); Put("Tank", a, -4, 1); Put("Grunt", o, 6, -3); },
              "The alarm icon's conditions: a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo.");
+        make("attrition-rule-portrait-layout", "portraitLayout", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 4, 0); },
+             "The UI pictures of units and tiles (SpritePortrait): every sprite of the unit is placed as on the board and the whole fitted into the box. A 2x1 hull, a 1x1 turret turned 90 degrees above its right half and a mirrored flag, fitted into 100x100 with a 4 px margin: scale 46, centred, the turret at 90 degrees, the flag flipped.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
              "Sandbox: turns go Blue, Red, Blue, Red even if a side is marked out (a file saved after it was knocked out), and the day goes up once per round.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
@@ -739,6 +741,22 @@ public static class Scenarios {
                 bool a2 = tank.fuelMax > 0 && tank.fuel <= 0 && tank.ammoMax > 0 && tank.ammo <= 0;
                 detail = "grunt in supply (" + homeSupplied + ") starving " + UnitAlarmIcon.Starving(home) + "; out of supply (" + farSupplied + ") starving " + UnitAlarmIcon.Starving(far) + "; tank out of fuel and ammo " + a2;
                 return homeSupplied && !farSupplied && a1 && a2;
+            }
+            case "portraitLayout": {
+                var parts = new List<SpriteLayout.Part> {
+                    new SpriteLayout.Part { center = new Vector2(0f, 0f), axisX = new Vector2(1f, 0f), axisY = new Vector2(0f, 1f), size = new Vector2(2f, 1f) },
+                    new SpriteLayout.Part { center = new Vector2(0.5f, 0.5f), axisX = new Vector2(0f, 1f), axisY = new Vector2(-1f, 0f), size = new Vector2(1f, 1f) },
+                    new SpriteLayout.Part { center = new Vector2(-0.5f, 0f), axisX = new Vector2(-0.5f, 0f), axisY = new Vector2(0f, 0.5f), size = new Vector2(0.4f, 0.4f) },
+                };
+                var p = SpriteLayout.Layout(parts, new Vector2(100f, 100f), 4f);
+                Func<float, float, bool> near = (x, y) => Math.Abs(x - y) < 1e-3f;
+                bool hull = near(p[0].size.x, 92f) && near(p[0].size.y, 46f) && near(p[0].position.x, 0f) && near(p[0].position.y, -11.5f) && near(p[0].angle, 0f);
+                bool turret = near(p[1].position.x, 23f) && near(p[1].position.y, 11.5f) && near(p[1].angle, 90f) && near(p[1].scale.y, 1f);
+                bool flag = near(Math.Abs(p[2].angle), 180f) && near(p[2].scale.x, 0.5f) && near(p[2].scale.y, -0.5f) && near(p[2].position.x, -23f);
+                bool none = SpriteLayout.Layout(new List<SpriteLayout.Part>(), new Vector2(10f, 10f), 0f).Count == 0;
+                detail = "hull " + p[0].size.x + "x" + p[0].size.y + " at " + p[0].position.x + "," + p[0].position.y + "; turret at " + p[1].position.x + "," + p[1].position.y + " " + p[1].angle
+                       + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
+                return hull && turret && flag && none;
             }
             case "sandboxTurns": {
                 gc.rules = RuleSet.Sandbox;
