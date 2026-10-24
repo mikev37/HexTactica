@@ -31,6 +31,8 @@ public class FogFader : MonoBehaviour {
     readonly Dictionary<CanvasGroup, float> groups = new Dictionary<CanvasGroup, float>();
     readonly List<Renderer> switchedOff = new List<Renderer>();
     readonly List<Renderer> others = new List<Renderer>();
+    /// <summary>Shadow sprites (SpriteShadow's copies, the ground shadow): switched off while the unit is faded at all — at part opacity their stacked copies only darken it.</summary>
+    readonly List<SpriteRenderer> shadows = new List<SpriteRenderer>();
 
     /// <summary>Is the unit shown at all (or on its way in)? Explosions and the like are not played for one that is not.</summary>
     public bool Shown { get { return alpha > 0.01f || target > 0.01f; } }
@@ -49,7 +51,8 @@ public class FogFader : MonoBehaviour {
             // Aboard: as its transport is drawn.
             return TargetFor(u.trasnporter);
         }
-        if (u.owner == v) return FogOfWar.HiddenFromEnemies(u) ? FogSettings.Instance.ownHiddenAlpha : 1f;
+        // Our own: half-faded only a stealthy unit (stealthRange) that no enemy sees.
+        if (u.owner == v) return u.stealthRange > 0 && FogOfWar.HiddenFromEnemies(u) ? FogSettings.Instance.ownHiddenAlpha : 1f;
         return FogOfWar.ShownToViewer(u) ? 1f : 0f;
     }
 
@@ -71,8 +74,11 @@ public class FogFader : MonoBehaviour {
 
     /// <summary>Collect what draws the unit (not what draws the units it carries).</summary>
     void Scan() {
-        foreach (SpriteRenderer r in GetComponentsInChildren<SpriteRenderer>(true))
-            if (r != null && Mine(r) && !sprites.ContainsKey(r)) sprites[r] = new Tint { baseColor = r.color, applied = r.color };
+        foreach (SpriteRenderer r in GetComponentsInChildren<SpriteRenderer>(true)) {
+            if (r == null || !Mine(r)) continue;
+            if (IsShadow(r)) { if (!shadows.Contains(r)) shadows.Add(r); continue; }
+            if (!sprites.ContainsKey(r)) sprites[r] = new Tint { baseColor = r.color, applied = r.color };
+        }
         foreach (LineRenderer r in GetComponentsInChildren<LineRenderer>(true))
             if (r != null && Mine(r) && !lines.ContainsKey(r)) lines[r] = new Line { baseGradient = Copy(r.colorGradient) };
         foreach (Canvas c in GetComponentsInChildren<Canvas>(true)) {
@@ -87,6 +93,13 @@ public class FogFader : MonoBehaviour {
     }
 
     bool Mine(Component c) { return c.GetComponentInParent<Unit>() == unit; }
+
+    /// <summary>A shadow: under an object named Shadow (SpriteShadow makes them) or the unit's "shadow".</summary>
+    bool IsShadow(SpriteRenderer r) {
+        for (Transform t = r.transform; t != null && t != unit.transform; t = t.parent)
+            if (t.name.StartsWith("Shadow", System.StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
 
     void Apply(float a) {
         foreach (KeyValuePair<SpriteRenderer, Tint> kv in sprites) {
@@ -105,6 +118,13 @@ public class FogFader : MonoBehaviour {
             kv.Key.colorGradient = Faded(kv.Value.baseGradient, a);
         }
         foreach (KeyValuePair<CanvasGroup, float> kv in groups) if (kv.Key != null) kv.Key.alpha = kv.Value * a;
+        // Shadows go while it is faded at all; they come back with it.
+        bool shadowOff = a < 0.999f;
+        foreach (SpriteRenderer r in shadows) {
+            if (r == null) continue;
+            if (shadowOff && r.enabled) { r.enabled = false; if (!switchedOff.Contains(r)) switchedOff.Add(r); }
+            else if (!shadowOff && !r.enabled && switchedOff.Contains(r)) { r.enabled = true; switchedOff.Remove(r); }
+        }
         // What cannot be faded is switched off while the unit is mostly gone, and back on after.
         bool off = a < 0.05f;
         foreach (Renderer r in others) {
@@ -121,6 +141,7 @@ public class FogFader : MonoBehaviour {
         for (int i = switchedOff.Count - 1; i >= 0; i--) if (switchedOff[i] != null) switchedOff[i].enabled = true;
         switchedOff.Clear();
         others.Clear();
+        shadows.Clear();
     }
 
     static Gradient Copy(Gradient g) {

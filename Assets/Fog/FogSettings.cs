@@ -7,8 +7,12 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "HexTactica/Fog Settings", fileName = "FogSettings")]
 public class FogSettings : ScriptableObject {
 
-    [Tooltip("Laid over every tile the viewer does not see. Empty: a plain hex shaped like the terrain tiles (1024x1280 canvas at 100 pixels per unit, pivot in the middle).")]
+    [Tooltip("Laid over every tile the viewer does not see, at the tile's position like its terrain sprites. Empty: a plain hex the exact size of one grid cell (worked out from how the tiles are spaced), so neighbours meet without overlapping. (A HexTile prefab with a child named \"Fog\" that has a SpriteRenderer uses that instead, as placed there.)")]
     public Sprite tileSprite;
+    [Tooltip("The plain hex's centre, from the tile's position (the terrain art's ground sits above its pivot).")]
+    public Vector2 hexOffset = new Vector2(0f, 1.72f);
+    [Tooltip("The plain hex's size as a share of one grid cell (1: neighbours just meet; above 1 they overlap).")]
+    public float hexScale = 1f;
     [Tooltip("Tint and opacity of the fog over a tile not seen.")]
     public Color fogColor = new Color(0.16f, 0.16f, 0.18f, 0.72f);
     [Tooltip("Sorting layer of the fog: above the ground and buildings, below units and the move/attack overlays.")]
