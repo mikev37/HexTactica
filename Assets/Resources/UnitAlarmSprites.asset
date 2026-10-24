@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d82ff6c27e5f824ab230567b37830a2, type: 3}
+  m_Name: UnitAlarmSprites
+  m_EditorClassIdentifier: Assembly-CSharp::UnitAlarmSprites
+  outOfFuel: {fileID: 21300000, guid: 6e45ce5cdc50f564fb7f5d5482f72b95, type: 3}
+  outOfAmmo: {fileID: 21300000, guid: 9616af40f28249046a161f81d9e3c89a, type: 3}
+  starving: {fileID: -3560852360957142242, guid: 8b3427dbc1c88784fa77c00c1040a927, type: 3}
+  secondsEach: 1.5

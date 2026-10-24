@@ -260,7 +260,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &238203966
 SpriteRenderer:
   serializedVersion: 3
@@ -3245,6 +3245,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   td: {fileID: 11400000, guid: f2b4e2292174082468b25faa2d77b347, type: 2}
+  mouseDown: 0
   editing: 0
   unit_placement: 1
   building_placement: 0
