@@ -26,6 +26,6 @@ mcs -target:exe -out:"$WORK/tests.exe" -nowarn:0108,0168,0219,0414,0067,0649,016
   "$HERE/Tests.cs" "$HERE/ScenarioFile.cs" "$HERE/Scenarios.cs"
 # Type-check the editor menus and the camera too (Unity-only code; nothing runs).
 mcs -target:library -out:"$WORK/editor.dll" -define:UNITY_EDITOR -nowarn:0108,0168,0219,0414,0067,0649,0162,0169 \
-  $FILES "$HERE/FunctionalShims.cs" "$HERE/EditorShims.cs" "$HERE/UIShims.cs" "$WORK/Assets/UI/TransportPanel.cs" "$WORK"/Assets/Editor/*.cs "$WORK/Assets/CameraRig.cs" >/dev/null \
-  || { echo "Editor/camera scripts failed to type-check:"; mcs -target:library -out:"$WORK/editor.dll" -define:UNITY_EDITOR -nowarn:0108,0168,0219,0414,0067,0649,0162,0169 $FILES "$HERE/FunctionalShims.cs" "$HERE/EditorShims.cs" "$HERE/UIShims.cs" "$WORK/Assets/UI/TransportPanel.cs" "$WORK"/Assets/Editor/*.cs "$WORK/Assets/CameraRig.cs" | grep error; exit 1; }
+  $FILES "$HERE/FunctionalShims.cs" "$HERE/EditorShims.cs" "$HERE/UIShims.cs" "$WORK/Assets/UI/TransportPanel.cs" "$WORK/Assets/UI/Hud.cs" "$WORK/Assets/UI/HudRow.cs" "$WORK/Assets/UI/SpritePortrait.cs" "$WORK"/Assets/Editor/*.cs "$WORK/Assets/CameraRig.cs" >/dev/null \
+  || { echo "Editor/camera scripts failed to type-check:"; mcs -target:library -out:"$WORK/editor.dll" -define:UNITY_EDITOR -nowarn:0108,0168,0219,0414,0067,0649,0162,0169 $FILES "$HERE/FunctionalShims.cs" "$HERE/EditorShims.cs" "$HERE/UIShims.cs" "$WORK/Assets/UI/TransportPanel.cs" "$WORK/Assets/UI/Hud.cs" "$WORK/Assets/UI/HudRow.cs" "$WORK/Assets/UI/SpritePortrait.cs" "$WORK"/Assets/Editor/*.cs "$WORK/Assets/CameraRig.cs" | grep error; exit 1; }
 mono "$WORK/tests.exe" "$ASSETS" "${SCENARIOS:-$HERE/Scenarios}"
