@@ -197,6 +197,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ColorObjectUnit
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!1 &1000000000000000201
 GameObject:
   m_ObjectHideFlags: 0
@@ -925,8 +926,8 @@ MonoBehaviour:
   AttackRange: 1
   MinRange: 0
   retaliates: 1
-  visionRange: 4
-  stealthRange: 3
+  visionRange: 5
+  stealthRange: 0
   move_display: {fileID: 0}
   locomotion: 1
   moveRange: 8
@@ -937,6 +938,7 @@ MonoBehaviour:
   elevationMax: 2
   moveSpeed: 10
   StrengthDisplay: 0
+  suppressed: 0
   path: []
   supplies: 3
   suppliesMax: 3
@@ -2118,6 +2120,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ColorObjectUnit
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!1001 &4215237616423469721
 PrefabInstance:
   m_ObjectHideFlags: 0
