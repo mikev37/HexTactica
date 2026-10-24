@@ -65,6 +65,7 @@ public class TransportPanel : MonoBehaviour {
         slots.Clear();
         if (grid == null || slotTemplate == null) return;
         List<KeyValuePair<Unit, RectTransform>> pictures = new List<KeyValuePair<Unit, RectTransform>>();
+        List<KeyValuePair<Unit, RectTransform>> pips = new List<KeyValuePair<Unit, RectTransform>>(), chevrons = new List<KeyValuePair<Unit, RectTransform>>();
         foreach (Unit c in transport.transported.ToArray()) {
             if (c == null) continue;
             Unit cargo = c;
@@ -77,6 +78,11 @@ public class TransportPanel : MonoBehaviour {
                 if (own != null) own.enabled = false;   // the picture is made of the unit's own sprites, below it
                 pictures.Add(new KeyValuePair<Unit, RectTransform>(cargo, (RectTransform)icon));
             }
+            // Strength as the unit's own pips and veterancy as its chevrons (drawn below, once laid
+            // out); the number only for a unit without pips, or a slot without the places for them.
+            Transform pipsAt = b.transform.Find("Pips"), chevAt = b.transform.Find("Chevrons");
+            if (pipsAt != null) pips.Add(new KeyValuePair<Unit, RectTransform>(cargo, (RectTransform)pipsAt));
+            if (chevAt != null) chevrons.Add(new KeyValuePair<Unit, RectTransform>(cargo, (RectTransform)chevAt));
             Transform st = b.transform.Find("Strength");
             if (st != null) {
                 TMP_Text tmp = st.GetComponent<TMP_Text>();
@@ -97,6 +103,12 @@ public class TransportPanel : MonoBehaviour {
             Unit u = kv.Key;
             SpritePortrait.Compose(u.transform, kv.Value, r => SpritePortrait.UnitPart(u, r));
         }
+        foreach (KeyValuePair<Unit, RectTransform> kv in pips) {
+            bool drawn = SpritePortrait.ComposePips(kv.Key, kv.Value);
+            Transform st = kv.Value.parent != null ? kv.Value.parent.Find("Strength") : null;
+            if (st != null) st.gameObject.SetActive(!drawn);
+        }
+        foreach (KeyValuePair<Unit, RectTransform> kv in chevrons) SpritePortrait.ComposeChevrons(kv.Key, kv.Value);
     }
 
     /// <summary>Make an EventSystem if the scene has none (uGUI buttons need one).</summary>
@@ -189,6 +201,18 @@ public class TransportPanel : MonoBehaviour {
         iRt.offsetMin = new Vector2(10f, 10f); iRt.offsetMax = new Vector2(-10f, -10f);
         Image icon = i.AddComponent<Image>();
         icon.enabled = false; icon.raycastTarget = false;
+
+        // The unit's strength pips along the bottom, its veterancy chevrons at the top right.
+        GameObject pp = new GameObject("Pips");
+        RectTransform ppRt = pp.AddComponent<RectTransform>();
+        ppRt.SetParent(sRt, false);
+        ppRt.anchorMin = new Vector2(0f, 0f); ppRt.anchorMax = new Vector2(1f, 0f); ppRt.pivot = new Vector2(0.5f, 0f);
+        ppRt.offsetMin = new Vector2(6f, 4f); ppRt.offsetMax = new Vector2(-6f, 20f);
+        GameObject cv = new GameObject("Chevrons");
+        RectTransform cvRt = cv.AddComponent<RectTransform>();
+        cvRt.SetParent(sRt, false);
+        cvRt.anchorMin = new Vector2(1f, 1f); cvRt.anchorMax = new Vector2(1f, 1f); cvRt.pivot = new Vector2(1f, 1f);
+        cvRt.anchoredPosition = new Vector2(-4f, -4f); cvRt.sizeDelta = new Vector2(22f, 26f);
 
         GameObject n = new GameObject("Strength");
         RectTransform nRt = n.AddComponent<RectTransform>();
