@@ -81,6 +81,8 @@ public class Player : MonoBehaviour
             // Aircraft and ships take nothing from the supply network and do not starve: they run on
             // fuel. Air units burn minFuelPerTurn every turn away from base (an air tanker beside
             // them at the start of the turn fills them instead); out of fuel, they are ditched.
+            // Helicopters are also resupplied on any tile in supply, like ground units.
+            if (LocomotionRules.ResuppliedInSupply(u.locomotion) && u.tile.isSupplied(this)) { Resupplied(u, true); return Fed.Resupplied; }
             if (LocomotionRules.NeedsBase(u.locomotion)) { Aloft(u, roster); return Fed.Aloft; }
 
             if (u.tile.isSupplied(this)) {

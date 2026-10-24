@@ -11,6 +11,14 @@ using UnityEngine;
 ///
 /// High ground: a land unit sees one tile further from hills (elevation 2), two from mountains (3).
 ///
+/// Line of sight: for land and sea observers (buildings count as land), ground higher than the
+/// observer's own blocks the view of what lies behind it. A tile is seen only if no tile on the
+/// straight line to it (between, not counting either end) is higher than the tile the observer
+/// stands on: a grunt on grassland sees a hill, not the forest behind it. Elevation is the
+/// terrain's; water counts as sea level (0), so shallows do not hide deep water from a ship. Where
+/// the line runs exactly along the edge between two tiles, either side being clear is enough.
+/// Aircraft see over everything.
+///
 /// Seeing a unit. An enemy unit is seen when it stands on a tile its owner's opponent sees, unless it
 /// is stealthy (Unit.stealthRange X): then it is seen only by an observer of its own kind (land —
 /// buildings count as land — air or sea) fewer than X steps away. An enemy is also seen (a stealthy
@@ -67,6 +75,46 @@ public static class FogOfWar {
     /// <summary>How far <paramref name="u"/> sees from <paramref name="at"/>: its vision range, plus high ground for a land unit.</summary>
     public static int VisionFrom(Unit u, HexTile at) {
         return u == null ? 0 : Mathf.Max(0, u.visionRange) + HighGroundBonus(u, at);
+    }
+
+    /// <summary>Does <paramref name="dom"/>'s view stop at ground higher than the observer's? Land and sea: yes; air: no.</summary>
+    public static bool HasLineOfSight(Domain dom) { return dom != Domain.Air; }
+
+    /// <summary>A tile's height for line of sight: its terrain's elevation, water at sea level (0).</summary>
+    public static int SightLevel(HexTile t) {
+        return t == null || t.terrain == null ? 0 : Mathf.Max(0, t.terrain.elevation);
+    }
+
+    /// <summary>
+    /// Can an observer of kind <paramref name="dom"/> on <paramref name="from"/> see <paramref name="to"/>
+    /// over the ground between? (Range is not checked here.) Always for aircraft, the observer's own tile
+    /// and its neighbours.
+    /// </summary>
+    public static bool LineOfSight(HexTile from, HexTile to, Domain dom) {
+        if (!HasLineOfSight(dom) || from == null || to == null) return true;
+        int n = from.Distance(to);
+        if (n <= 1) return true;
+        int eye = SightLevel(from);
+        return ClearLine(from, to, n, eye, 1e-4f) || ClearLine(from, to, n, eye, -1e-4f);
+    }
+
+    /// <summary>The line from one tile's centre to another's, nudged by <paramref name="nudge"/> (to fall to one side of an edge it runs along): no tile on it higher than <paramref name="eye"/>?</summary>
+    static bool ClearLine(HexTile from, HexTile to, int n, int eye, float nudge) {
+        HexGenerator hg = HexGenerator.hg;
+        if (hg == null) return true;
+        float ax = from.x + nudge, ay = from.y + nudge, az = -from.x - from.y - 2f * nudge;
+        float bx = to.x + nudge, by = to.y + nudge, bz = -to.x - to.y - 2f * nudge;
+        for (int i = 1; i < n; i++) {
+            float k = i / (float)n;
+            float fx = ax + (bx - ax) * k, fy = ay + (by - ay) * k, fz = az + (bz - az) * k;
+            int rx = Mathf.RoundToInt(fx), ry = Mathf.RoundToInt(fy), rz = Mathf.RoundToInt(fz);
+            float dx = Mathf.Abs(rx - fx), dy = Mathf.Abs(ry - fy), dz = Mathf.Abs(rz - fz);
+            if (dx > dy && dx > dz) rx = -ry - rz;
+            else if (dy > dz) ry = -rx - rz;
+            HexTile t = hg.get(rx, ry, -rx - ry);
+            if (t != null && SightLevel(t) > eye) return false;
+        }
+        return true;
     }
 
     class Sight {
@@ -171,7 +219,9 @@ public static class FogOfWar {
     static void Cover(Sight s, HexTile from, int range, Domain dom) {
         if (from == null || HexGenerator.hg == null) return;
         Dictionary<HexTile, int> mine = s.byDomain[(int)dom];
+        bool los = HasLineOfSight(dom);
         foreach (HexTile t in HexTactica.AI.AIPath.TilesInRangeShared(from, -1, range)) {
+            if (los && !LineOfSight(from, t, dom)) continue;
             int d = from.Distance(t), had;
             if (!s.cover.TryGetValue(t, out had) || d < had) s.cover[t] = d;
             if (!mine.TryGetValue(t, out had) || d < had) mine[t] = d;
