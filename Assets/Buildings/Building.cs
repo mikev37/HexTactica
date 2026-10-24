@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum BuildingType {
     HQ,
@@ -117,8 +118,67 @@ public class Building : MonoBehaviour {
     public Player capturingPlayer;
 
     [Header("Condition")]
-    [Range(0, 3)]
-    public int damageLevel;
+    [Tooltip("Hits it takes before it is destroyed: every attack on a unit standing on one of its tiles is one. 0: never damaged.")]
+    public int health = 10;
+    [Tooltip("Health it has lost. At its health it is destroyed: it stops working (no income, supply, production, service or sight) until repaired.")]
+    [FormerlySerializedAs("damageLevel")] public int damage;
+    [Tooltip("Its main sprite as it wears down, in order: the health is split into this many + 1 equal parts, the first (full health) showing its own sprite.")]
+    public Sprite[] damageStates;
+    [Tooltip("Its main sprite once destroyed. Empty: the last damage picture.")]
+    public Sprite destroyedSprite;
+    Sprite intactSprite;
+
+    /// <summary>A building was destroyed (its health ran out): the building. For logs.</summary>
+    public static event Action<Building> BuildingDestroyed;
+
+    /// <summary>Destroyed: its health has run out (one with no health never is).</summary>
+    public bool Destroyed { get { return health > 0 && damage >= health; } }
+
+    /// <summary>Working: not destroyed. A destroyed building gives no income, supply, production, service or sight.</summary>
+    public bool Functioning { get { return !Destroyed; } }
+
+    /// <summary>
+    /// <paramref name="amount"/> damage (a fight on one of its tiles: HexTile.Damage). Its sprite
+    /// steps through its damage pictures; at 0 health it is destroyed and stops working.
+    /// </summary>
+    public void Damage(int amount) {
+        if (amount <= 0 || health <= 0) return;
+        bool was = Destroyed;
+        damage = Mathf.Min(health, damage + amount);
+        RefreshCondition();
+        if (Destroyed && !was) {
+            Changed();
+            if (BuildingDestroyed != null) BuildingDestroyed(this);
+        }
+    }
+
+    /// <summary>Repair: take back up to <paramref name="amount"/> damage (a destroyed building works again as soon as it has any health).</summary>
+    public void Repair(int amount) {
+        if (amount <= 0) return;
+        bool was = Destroyed;
+        damage = Mathf.Max(0, damage - amount);
+        RefreshCondition();
+        if (was && !Destroyed) Changed();
+    }
+
+    /// <summary>Supply, sight and what everyone can do changed with it.</summary>
+    void Changed() {
+        if (GameController.gc != null && GameController.gc.players != null)
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        FogOfWar.Changed();
+    }
+
+    /// <summary>The picture for the health it has left: its own, a damage picture, or the destroyed one.</summary>
+    public void RefreshCondition() {
+        if (sprite == null) return;
+        if (intactSprite == null) intactSprite = sprite.sprite;
+        int states = damageStates != null ? damageStates.Length : 0;
+        if (Destroyed) sprite.sprite = destroyedSprite != null ? destroyedSprite : states > 0 ? damageStates[states - 1] : intactSprite;
+        else {
+            int stage = TerrainData.Stage(health, damage, states);
+            sprite.sprite = stage > 0 ? damageStates[stage - 1] : intactSprite;
+        }
+    }
 
     [Header("Production")]
     public List<Unit> buildable;
@@ -141,6 +201,8 @@ public class Building : MonoBehaviour {
     }
 
     void Start() {
+        if (sprite != null && intactSprite == null) intactSprite = sprite.sprite;
+        RefreshCondition();
         RefreshFlag();
     }
 
@@ -158,7 +220,7 @@ public class Building : MonoBehaviour {
 
     public bool IsHQ { get { return type == BuildingType.HQ; } }
 
-    public bool CanProduce { get { return buildable != null && buildable.Count > 0; } }
+    public bool CanProduce { get { return Functioning && buildable != null && buildable.Count > 0; } }
 
     /// <summary>Can this building build <paramref name="u"/> now: on its list, and purchases allow it (rules and the scenario's allowed units)?</summary>
     public bool CanBuild(Unit u) { return u != null && CanProduce && buildable.Contains(u) && GameController.MayPurchase(u); }
@@ -404,7 +466,7 @@ public class Building : MonoBehaviour {
 
     /// <summary>HQs never run dry; any other supply building gives while its store lasts (or while connected).</summary>
     public bool HasSupplyToGive {
-        get { return producesSupply && (IsHQ || supplies > 0); }
+        get { return producesSupply && Functioning && (IsHQ || supplies > 0); }
     }
 
     public void SpendSupply(int amount) {
@@ -417,7 +479,7 @@ public class Building : MonoBehaviour {
     }
 
     public bool Services(Unit u) {
-        return u != null && services != null && services.Contains(u.locomotion);
+        return u != null && Functioning && services != null && services.Contains(u.locomotion);
     }
 
     /// <summary>The owner's building, if any, that services <paramref name="u"/> where it stands.</summary>

@@ -303,7 +303,7 @@ namespace HexTactica.Harness {
                 if (!first) sb.Append(',');
                 first = false;
                 sb.Append(string.Format(CultureInfo.InvariantCulture, "\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"damage\":{3},\"combatCount\":{4},\"terrain\":{5}}}",
-                    t.x, t.y, t.z, t.damageLevel, t.combatCount, Q(Under(t) != null ? Under(t).name : "Water")));
+                    t.x, t.y, t.z, t.damage, t.combatCount, Q(Under(t) != null ? Under(t).name : "Water")));
             }
             sb.Append("\n]");
 

@@ -54,18 +54,31 @@ public static class ScenarioFile {
         td = new TerrainData();
         td.name = name;
         if (File.Exists(path)) {
+            terrain[name] = td;   // before reading: a destroyedInto chain may come back here
+            string list = null; int states = 0; string into = null;
             foreach (string raw in File.ReadAllLines(path)) {
                 string line = raw.Trim();
+                if (list == "damageStates" && line.StartsWith("- ")) { states++; continue; }
+                list = null;
                 int c = line.IndexOf(':');
                 if (c < 0) continue;
                 string k = line.Substring(0, c).Trim(), v = line.Substring(c + 1).Trim();
+                if (k == "damageStates") { list = v == "[]" ? null : k; continue; }
+                if (k == "destroyedInto") { System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(v, "guid: ([0-9a-f]+)"); if (g.Success) into = g.Groups[1].Value; continue; }
                 int n;
                 if (k == "road") td.road = v == "1";
                 if (!int.TryParse(v, out n)) continue;
                 if (k == "cover") td.cover = n;
                 else if (k == "moveability") td.moveability = n;
                 else if (k == "elevation") td.elevation = n;
+                else if (k == "health") td.health = n;
             }
+            // Damage pictures: only how many there are matters here.
+            td.damageStates = new Sprite[states];
+            for (int i = 0; i < states; i++) td.damageStates[i] = new Sprite();
+            if (into != null)
+                foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.AssetsRoot, "Tiles"), "*.asset.meta"))
+                    if (File.ReadAllText(meta).Contains("guid: " + into)) { td.destroyedInto = Terrain(Path.GetFileName(meta).Replace(".asset.meta", "")); break; }
         } else {
             throw new Exception("No terrain asset " + path);
         }

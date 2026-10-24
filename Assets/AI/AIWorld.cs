@@ -550,6 +550,8 @@ namespace HexTactica.AI {
             if (b == null || !b.Capturable) return 0f;
             if (b.IsHQ) return map.BoardStake;
             AIProfile p = map.profile;
+            // A destroyed building earns, supplies and builds nothing (until it is repaired).
+            if (!b.Functioning) return p.buildingValue;
             return p.buildingValue + b.income * p.buildingIncomeTurns + (b.producesSupply ? p.buildingSupplyValue : 0f) + (b.CanProduce ? p.buildingProductionValue : 0f);
         }
 

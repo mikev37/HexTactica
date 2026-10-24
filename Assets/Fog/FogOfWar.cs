@@ -91,7 +91,7 @@ public static class FogOfWar {
         }
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
-            if (b == null || b.tile == null) continue;
+            if (b == null || b.tile == null || !b.Functioning) continue;   // a destroyed building sees nothing
             Player owner = buildingOwner != null ? buildingOwner(b) : b.owner;
             if (owner != p) continue;
             foreach (HexTile t in b.Footprint) Cover(s, t, Mathf.Max(0, b.visionRange));

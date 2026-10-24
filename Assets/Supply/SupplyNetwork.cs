@@ -119,7 +119,7 @@ public static class SupplyNetwork {
         List<Building> relayBuildings = new List<Building>();
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
-            if (b == null || b.owner != player || !b.producesSupply || b.tile == null) continue;
+            if (b == null || b.owner != player || !b.producesSupply || b.tile == null || !b.Functioning) continue;   // a destroyed building supplies nothing
             if (b.IsHQ) FloodFromBuilding(b, result);
             else relayBuildings.Add(b);
         }
