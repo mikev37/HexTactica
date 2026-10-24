@@ -192,6 +192,25 @@ public class GameController : MonoBehaviour
         });
     }
 
+    /// <summary>
+    /// A board was just loaded from a file (a scenario, a save): what is drawn from the rules is
+    /// worked out for it now rather than at the first move — every side's supply (published to the
+    /// tiles and their borders) and sight — and the fog is shown at once.
+    /// </summary>
+    public static void BoardLoaded() {
+        if (gc == null) return;
+        if (gc.players != null)
+            foreach (Player p in gc.players) {
+                if (p == null) continue;
+                if (p.HasHQ) p.hadHQ = true;
+                p.Resupply();
+            }
+        HexTilePlayerSupplyDisplay.WakeAll();
+        FogOfWar.Changed();
+        FogOfWar.Refresh();
+        FogView.BoardLoaded();
+    }
+
     public static void RecalculateThreat() {
         ResetTileData();
         List<Unit> snapshot = new List<Unit>(UnitController.uc.units);

@@ -142,6 +142,8 @@ namespace HexTactica.Harness {
                 if (cargo != null && transport != null) Transporting.Load(transport, cargo);
             }
 
+            GameController.BoardLoaded();
+
             if (RecordGames && GameController.gc != null && !GameController.gc.headless) {
                 GameLog.Start(path, redKind, null);
                 UnityEngine.Debug.Log("Recording this game to " + GameLog.Folder);

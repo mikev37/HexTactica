@@ -415,7 +415,7 @@ public static class Scenarios {
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
              "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
         makeFog("ai-thread-equivalence", "aiThread", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 3, 0); },
-             "The AI thinking on a worker thread (on its own copy of the board) plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.", "Human");
+             "The AI thinking on a worker thread (on its own copy of the board) makes no call Unity allows only on the main thread (the harness throws as Unity does), and plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.", "Human");
         makeFog("fog-rule-line-of-sight", "fogLineOfSight", (a, o) => {
                  Put("Grunt", a, -4, 0); Put("Grunt", o, -1, 0); Put("Fighter", a, -4, 3); Put("Gunboat", a, -4, -3);
                  Rig.At(-2, 0).terrain = T("Hills"); },
@@ -427,6 +427,8 @@ public static class Scenarios {
              "High ground and kinds of unit: a land unit sees one tile further from hills and two from mountains (an aircraft gets nothing from them). A stealthy unit is seen only by observers of its own kind (land — buildings count as land — air, sea): a stealth jet next to a grunt or over our city goes unseen, a fighter two tiles off sees it; a stealthy grunt next to a gunboat goes unseen, a grunt two tiles off sees it, and on our city it is seen.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
+        makeFog("fog-view-after-load", "fogViewLoad", (a, o) => { Put("Grunt", o, -3, 0); Put("Grunt", a, 3, 0); },
+             "Loading a scenario with fog of war on (Red, human, to play): every side's supply is published to the board at once (the borders are drawn), and on the first frame every tile Red does not see is covered, none it sees, without fading in. The fog reaches one cell past the edge of the board; those cells are cleared only beside a unit Red sees standing on the edge (not beside an enemy it does not see), and with fog off there are none.", "Human");
         makeFog("fog-ui-clicks", "fogClicks", (a, o) => { Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0); },
              "The board's clicks under fog of war, Red (human, vision 1) to play: a tile with a Blue grunt Red does not see behaves exactly like an empty one — clicked with nothing selected it selects nothing and shows no enemy; with Red's grunt selected it is offered as a move, the tile beyond it too, and the path drawn across it looks like a path across empty ground. Moving through it, Red's grunt stops before it and is fired on.", "Human");
         makeFog("fog-ai-knowledge", "fogKnowledge", (a, o) => { Put("Tank", a, -2, 0); Put("Recon", a, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 2, -5); Put("Tank", o, 5, -2); },
@@ -893,7 +895,9 @@ public static class Scenarios {
                     foreach (bool fog in new[] { false, true }) {
                         int hammered = 0, torn = 0;
                         Func<bool, List<string>> play = threaded => {
-                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", null, null);
+                            // As the game's profiles are by default: notes written on the board as the AI thinks.
+                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", pr => pr.annotateBoard = true, pr => pr.annotateBoard = true);
+                            foreach (HexTile t in Rig.hg.tiles) if (t.textField == null) t.textField = Rig.New<UnityEngine.UI.Text>();
                             Rig.gc.fogOfWar = fog; FogOfWar.Reset();
                             AIPlayer.HarnessThreads = threaded;
                             // While the AI thinks elsewhere, the main thread does what the game does: move
@@ -922,7 +926,13 @@ public static class Scenarios {
                             } finally { AIPlayer.HarnessThreads = false; AIPlayer.WhileThinking = null; }
                             return boards;
                         };
-                        List<string> inLine = play(false), onThread = play(true);
+                        List<string> inLine = play(false);
+                        int before = UnityEngine.MainThreadOnly.violations;
+                        List<string> onThread;
+                        try { onThread = play(true); }
+                        catch (Exception e) { onThread = new List<string>(); res.Add("thread failed: " + e.GetBaseException().Message); }
+                        int offMain = UnityEngine.MainThreadOnly.violations - before;
+                        if (offMain > 0) { all = false; res.Add(offMain + " main-thread-only Unity calls from the AI's thread, first: " + UnityEngine.MainThreadOnly.first); }
                         int firstDiff = -1;
                         for (int i = 0; i < Math.Max(inLine.Count, onThread.Count); i++)
                             if (i >= inLine.Count || i >= onThread.Count || inLine[i] != onThread[i]) { firstDiff = i; break; }
@@ -1159,6 +1169,70 @@ public static class Scenarios {
                     detail = string.Join("; ", r.ToArray());
                     return roundTrip && unknown;
                 } finally { LevelEditor.singleton = was; }
+            }
+            case "fogViewLoad": {
+                gc.activePlayer = o;
+                Unit red = Rig.At(-3, 0).occupier, blue = Rig.At(3, 0).occupier;
+                List<string> r = new List<string>();
+                // The scene started with fog off and nothing published; the scenario turns fog on.
+                gc.fogOfWar = false; FogOfWar.Reset();
+                foreach (HexTile t in Rig.hg.tiles) foreach (Player pl in gc.players) t.supply[pl] = 0;
+                FogView fv = Rig.New<FogView>();
+                System.Reflection.BindingFlags inst = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                System.Reflection.MethodInfo late = typeof(FogView).GetMethod("LateUpdate", inst);
+                late.Invoke(fv, null);
+                gc.fogOfWar = true; FogOfWar.Reset();
+                int published = SupplyNetwork.Published;
+                GameController.BoardLoaded();
+                bool supplied = Rig.At(6, 0).isSupplied(o) && Rig.At(-6, 0).isSupplied(a) && SupplyNetwork.Published > published;
+                r.Add("supply published on load " + supplied);
+                late.Invoke(fv, null);   // one frame: the fog is there at once
+                System.Collections.IDictionary covers = (System.Collections.IDictionary)typeof(FogView).GetField("covers", inst).GetValue(fv);
+                Func<object, bool> shown = c => c != null && ((SpriteRenderer)c.GetType().GetField("sr").GetValue(c)).enabled && (float)c.GetType().GetField("alpha").GetValue(c) >= 0.999f;
+                Func<int[]> count = () => {
+                    int hidden = 0, covered = 0, wrong = 0;
+                    foreach (HexTile t in Rig.hg.tiles) {
+                        bool vis = FogOfWar.TileVisible(o, t);
+                        bool on = shown(covers.Contains(t) ? covers[t] : null);
+                        if (!vis) hidden++; if (on) covered++; if (on == vis) wrong++;
+                    }
+                    return new[] { hidden, covered, wrong };
+                };
+                int[] n0 = count();
+                bool atOnce = FogOfWar.Viewer == o && n0[0] > 0 && n0[2] == 0;
+                r.Add("first frame after the load: tiles hidden " + n0[0] + ", covered " + n0[1] + ", wrong " + n0[2]);
+                // Beyond the edge: every cell off the board beside it is fogged...
+                System.Collections.IList ring = (System.Collections.IList)typeof(FogView).GetField("beyond", inst).GetValue(fv);
+                Func<object, bool> beyondShown = b => shown(b.GetType().GetField("cover").GetValue(b));
+                Func<object, List<HexTile>> nextOf = b => (List<HexTile>)b.GetType().GetField("next").GetValue(b);
+                int fogged = 0; foreach (object b in ring) if (beyondShown(b)) fogged++;
+                bool ringAll = ring.Count > 0 && fogged == ring.Count;
+                r.Add("cells past the edge: " + ring.Count + ", fogged " + fogged);
+                // ... until a unit Red sees stands beside one: Red's grunt on the edge clears the cells beside it, no others.
+                HexTile edge = null, far = null;
+                foreach (object b in ring) { HexTile t = nextOf(b)[0]; if (t.occupier == null && t.x < 0 && edge == null) edge = t; }
+                foreach (object b in ring) { HexTile t = nextOf(b)[0]; if (t.occupier == null && t.x > 3 && t.Distance(edge) > 6 && far == null) far = t; }
+                red.TeleportTo(edge, 0); blue.TeleportTo(far, 0); FogOfWar.Changed();
+                for (int i = 0; i < 100; i++) late.Invoke(fv, null);
+                int clearedNear = 0, near = 0, foggedElse = 0, elsewhere = 0, foggedBlue = 0, besideBlue = 0;
+                foreach (object b in ring) {
+                    List<HexTile> nx = nextOf(b);
+                    if (nx.Contains(edge)) { near++; if (!beyondShown(b)) clearedNear++; }
+                    else { elsewhere++; if (beyondShown(b)) foggedElse++; }
+                    if (nx.Contains(far) && !nx.Contains(edge)) { besideBlue++; if (beyondShown(b)) foggedBlue++; }
+                }
+                bool hiddenBlue = !FogOfWar.ShownToViewer(blue);
+                bool ringUnit = near > 0 && clearedNear == near && foggedElse == elsewhere && besideBlue > 0 && foggedBlue == besideBlue && hiddenBlue;
+                r.Add("Red's grunt on the edge at (" + edge.x + "," + edge.y + "): " + clearedNear + " of " + near + " cells beside it cleared, " + foggedElse + " of " + elsewhere + " others fogged; beside the Blue grunt Red does not see: " + foggedBlue + " of " + besideBlue + " fogged");
+                int[] n1 = count();
+                r.Add("tiles after: hidden " + n1[0] + ", wrong " + n1[2]);
+                // Fog off: nothing past the edge either.
+                gc.fogOfWar = false;
+                for (int i = 0; i < 100; i++) late.Invoke(fv, null);
+                int left = 0; foreach (object b in ring) if (beyondShown(b)) left++;
+                r.Add("fog off: cells past the edge fogged " + left);
+                detail = string.Join("; ", r.ToArray());
+                return supplied && atOnce && ringAll && ringUnit && n1[2] == 0 && left == 0;
             }
             case "fogClicks": {
                 Unit red = Rig.At(0, 0).occupier, blue = Rig.At(2, 0).occupier;
