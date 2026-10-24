@@ -63,9 +63,9 @@ MonoBehaviour:
   personal_name: 
   active: 1
   owner: {fileID: 0}
-  Strength: 6
+  _strength: 6
   Veterancy: 0
-  tile: {fileID: 0}
+  _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
   refuelStock: 0
@@ -103,7 +103,7 @@ MonoBehaviour:
   ammoMax: 6
   transportSlots: 0
   maxWeight: 0
-  weight: 2
+  weight: 1
   carries: 
   transported: []
   trasnporter: {fileID: 0}
@@ -586,6 +586,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!114 &8777576111846775000
 MonoBehaviour:
   m_ObjectHideFlags: 0
