@@ -121,7 +121,7 @@ public class FogView : MonoBehaviour {
             }
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
-            if (b != null) h = h * 31 + (b.owner != null ? b.owner.GetInstanceID() : 3);
+            if (b != null) h = h * 31 + (b.owner != null ? 5 + (GameController.gc != null ? GameController.gc.players.IndexOf(b.owner) : 0) : 3);
         }
         if (GameController.gc != null) h = h * 31 + (GameController.gc.fogOfWar ? 1 : 0) + GameController.gc.days * 7;
         return h;
