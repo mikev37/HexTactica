@@ -183,7 +183,7 @@ public static class FogOfWar {
         return Sees(p, o) ? o : null;
     }
 
-    /// <summary>Is <paramref name="u"/> unseen by every enemy still in the game (its owner's units show it half-faded)?</summary>
+    /// <summary>Is <paramref name="u"/> unseen by every enemy still in the game (its owner sees a stealthy one half-faded)?</summary>
     public static bool HiddenFromEnemies(Unit u) {
         if (!On || u == null || u.owner == null || GameController.gc == null) return false;
         bool any = false;

@@ -413,7 +413,7 @@ public static class Scenarios {
         makeFog("fog-rule-vision", "fogVision", (a, o) => {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
-             "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red units Blue does not see. With fog off, everything is seen.", "Human");
+             "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
         makeFog("fog-ui-clicks", "fogClicks", (a, o) => { Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0); },
@@ -838,8 +838,12 @@ public static class Scenarios {
                 bool gHidden = !FogOfWar.Sees(o, g);
                 float tg = FogFader.TargetFor(g), tr2 = FogFader.TargetFor(r2), tr1 = FogFader.TargetFor(r1);
                 bool r2Hidden = !FogOfWar.Sees(a, r2), r1Seen = FogOfWar.Sees(a, r1);
-                bool screen = viewer == o && gHidden && tg == 0f && (r2Hidden ? tr2 == FogSettings.Instance.ownHiddenAlpha : tr2 == 1f) && (r1Seen ? tr1 == 1f : tr1 == FogSettings.Instance.ownHiddenAlpha);
-                r.Add("screen (" + (viewer != null ? viewer.personal_name : "none") + "): hidden Blue unit " + tg + ", Red unit Blue " + (r2Hidden ? "does not see " : "sees ") + tr2 + " " + screen);
+                // Red's own: only a stealthy unit (the recon) Blue does not see is half-faded; a grunt Blue does not see is drawn as it is.
+                rc.TeleportTo(Rig.At(4, -6), 0); moved();   // off Blue's city, out of Blue's sight
+                bool rcHidden = !FogOfWar.Sees(a, rc);
+                float trc = FogFader.TargetFor(rc);
+                bool screen = viewer == o && gHidden && tg == 0f && r2Hidden && tr2 == 1f && tr1 == 1f && rcHidden && trc == FogSettings.Instance.ownHiddenAlpha;
+                r.Add("screen (" + (viewer != null ? viewer.personal_name : "none") + "): hidden Blue unit " + tg + ", Red grunt Blue does not see " + tr2 + ", Red recon Blue does not see " + trc + " " + screen);
                 gc.fogOfWar = false;
                 bool off = FogOfWar.Sees(a, r2) && FogOfWar.Sees(a, cargo) && FogOfWar.Viewer == null && FogFader.TargetFor(g) == 1f;
                 gc.fogOfWar = true;
