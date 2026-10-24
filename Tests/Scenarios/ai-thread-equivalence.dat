@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"ai-thread-equivalence","kind":"rules","opponent":"Human","rounds":"4","check":"aiThread","question":"The AI thinking on a worker thread (on its own copy of the board) plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.","rules":"attrition","fog":"on"},
+"test":{"name":"ai-thread-equivalence","kind":"rules","opponent":"Human","rounds":"4","check":"aiThread","question":"The AI thinking on a worker thread (on its own copy of the board) makes no call Unity allows only on the main thread (the harness throws as Unity does), and plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.","rules":"attrition","fog":"on"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
