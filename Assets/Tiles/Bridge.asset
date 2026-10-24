@@ -23,3 +23,6 @@ MonoBehaviour:
   moveability: 0
   elevation: 0
   road: 1
+  health: 10
+  damageStates: []
+  destroyedInto: {fileID: 11400000, guid: f2b4e2292174082468b25faa2d77b347, type: 2}

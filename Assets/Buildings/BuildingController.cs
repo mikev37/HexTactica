@@ -98,6 +98,7 @@ public struct BuildingData {
     public int supplyRange;
     public int supplies;
     public int suppliesMax;
+    /// <summary>Health the building has lost (older saves: always 0).</summary>
     public int damageLevel;
     public int capturePoints;
     public long capturingPlayerId;
@@ -115,7 +116,7 @@ public struct BuildingData {
         supplyRange = b.supplyRange;
         supplies = b.supplies;
         suppliesMax = b.suppliesMax;
-        damageLevel = b.damageLevel;
+        damageLevel = b.damage;
         capturePoints = b.capturePoints;
         capturingPlayerId = b.capturingPlayer != null ? b.capturingPlayer.id : -1;
     }
@@ -139,7 +140,8 @@ public struct BuildingData {
 
         if (!string.IsNullOrEmpty(personal_name)) b.personal_name = personal_name;
         b.supplies = supplies;
-        b.damageLevel = damageLevel;
+        b.damage = Mathf.Max(0, damageLevel);
+        b.RefreshCondition();
         // An owned building saved with no points (an older save) is fully held.
         b.capturePoints = owner != null && capturePoints <= 0 ? b.CaptureThreshold : capturePoints;
         b.capturingPlayer = capturing;

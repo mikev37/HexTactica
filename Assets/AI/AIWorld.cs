@@ -508,7 +508,7 @@ namespace HexTactica.AI {
             AIProfile prof = map.profile;
             if (prof.hubDependentsWeight > 0f) {
                 foreach (KeyValuePair<Unit, float> kv in hp) {
-                    if (kv.Value > 0f || IsHQ(kv.Key) || kv.Key.GetComponent<SupplyPoint>() == null) continue;
+                    if (kv.Value > 0f || IsHQ(kv.Key) || kv.Key.Hub == null) continue;
                     // With supplyForecastValue the enemy's loss is the supply forecast's (Space).
                     if (kv.Key.owner != us && prof.supplyForecastValue > 0f) continue;
                     float dep = map.HubStake(kv.Key) * prof.hubDependentsWeight;
@@ -550,6 +550,8 @@ namespace HexTactica.AI {
             if (b == null || !b.Capturable) return 0f;
             if (b.IsHQ) return map.BoardStake;
             AIProfile p = map.profile;
+            // A destroyed building earns, supplies and builds nothing (until it is repaired).
+            if (!b.Functioning) return p.buildingValue;
             return p.buildingValue + b.income * p.buildingIncomeTurns + (b.producesSupply ? p.buildingSupplyValue : 0f) + (b.CanProduce ? p.buildingProductionValue : 0f);
         }
 
@@ -675,7 +677,7 @@ namespace HexTactica.AI {
                 HashSet<HexTile>[] s = x == u ? AIMap.SpaceFrom(u, uAt, null) : fresh ? AIMap.SpaceFrom(x, x.tile, null) : map.SpaceOf(x);
                 ourMove.UnionWith(s[0]);
                 ourStrike.UnionWith(s[1]);
-                if (x.Firepower > 0 && x.GetComponent<SupplyPoint>() == null) fireOf[x] = s[1];
+                if (x.Firepower > 0 && x.Hub == null) fireOf[x] = s[1];
             }
             HashSet<HexTile> theirMove = scratchTheirMove, theirStrike = scratchTheirStrike;
             theirMove.Clear(); theirStrike.Clear();
@@ -727,7 +729,7 @@ namespace HexTactica.AI {
             Unit deadHub = null;
             if (prof.supplyForecastValue > 0f)
                 foreach (Unit e in map.enemyUnits)
-                    if (e != null && hp.ContainsKey(e) && hp[e] <= 0f && !IsHQ(e) && e.GetComponent<SupplyPoint>() != null) deadHub = e;
+                    if (e != null && hp.ContainsKey(e) && hp[e] <= 0f && !IsHQ(e) && e.Hub != null) deadHub = e;
             bool near = moving && map.DistanceToTheirSupply(uAt) <= 1;
             if ((prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.supplyForecastValue > 0f) && (near || deadHub != null)) {
                 Unit was = uAt.occupier;
@@ -736,7 +738,7 @@ namespace HexTactica.AI {
                     after = new SupplyNetwork.Result();
                     foreach (Player o in map.enemyPlayers) {
                         SupplyNetwork.Result r = deadHub != null && deadHub.owner == o
-                            ? SupplyNetwork.SolveWithout(o, deadHub.GetComponent<SupplyPoint>())
+                            ? SupplyNetwork.SolveWithout(o, deadHub.Hub)
                             : SupplyNetwork.SolveMoved(o, new Dictionary<SupplyPoint, HexTile>());
                         foreach (KeyValuePair<HexTile, int> kv in r.depth)
                             if (kv.Value > after.DepthAt(kv.Key)) after.depth[kv.Key] = kv.Value;
@@ -779,7 +781,7 @@ namespace HexTactica.AI {
             List<string> names = new List<string>();
             foreach (Unit x in map.ownUnits) {
                 if (x == null || x == except || x.tile == null || !x.active || x.Firepower <= 0) continue;
-                if (x.GetComponent<SupplyPoint>() != null || x.trasnporter != null) continue;
+                if (x.Hub != null || x.trasnporter != null) continue;
                 int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
                 if (x.tile.Distance(target.tile) > reach) continue;
                 if (!x.moveAndAttack && x.tile.Distance(target.tile) <= x.MinRange) continue;
@@ -811,7 +813,7 @@ namespace HexTactica.AI {
             Dictionary<Unit, float> blow = new Dictionary<Unit, float>();
             foreach (Unit x in map.ownUnits) {
                 if (x == null || x == except || x.tile == null || !x.active || x.Firepower <= 0) continue;
-                if (x.GetComponent<SupplyPoint>() != null || x.trasnporter != null || !x.CanAttack(x.tile)) continue;
+                if (x.Hub != null || x.trasnporter != null || !x.CanAttack(x.tile)) continue;
                 float dmg = Unit.calculateDamage(x, target, target.tile, 0);
                 if (dmg <= 0f) continue;
                 List<HexTile> options = new List<HexTile>();
@@ -899,7 +901,7 @@ namespace HexTactica.AI {
         internal static int Hp(float h) { return h <= 0f ? 0 : Mathf.Max(1, Mathf.RoundToInt(h)); }
 
         internal static bool IsHQ(Unit x) {
-            SupplyPoint sp = x != null ? x.GetComponent<SupplyPoint>() : null;
+            SupplyPoint sp = x != null ? x.Hub : null;
             return sp != null && sp.producer;
         }
 

@@ -176,7 +176,7 @@ public class Player : MonoBehaviour
     void CollectIncome() {
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
-            if (b != null && b.owner == this) money += b.income;
+            if (b != null && b.owner == this && b.Functioning) money += b.income;   // a destroyed building earns nothing
         }
     }
 
@@ -206,7 +206,7 @@ public class Player : MonoBehaviour
             for (int i = 0; i < units.Count; i++) {
                 Unit u = units[i];
                 if (u == null || u.Strength <= 0) continue;
-                SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                SupplyPoint sp = u.Hub;
                 if (sp != null && sp.producer) return true;
             }
             return false;

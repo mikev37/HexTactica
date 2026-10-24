@@ -257,7 +257,7 @@ namespace HexTactica.Harness {
             if (t.occupier != null) {
                 Unit u = t.occupier;
                 char c = 'U';
-                SupplyPoint sp = u.GetComponent<SupplyPoint>();
+                SupplyPoint sp = u.Hub;
                 if (sp != null) c = sp.producer ? 'H' : 'S';
                 else if (u.name.StartsWith("Grunt")) c = 'G';
                 else if (u.name.StartsWith("Tank")) c = 'T';
@@ -303,7 +303,7 @@ namespace HexTactica.Harness {
                 if (!first) sb.Append(',');
                 first = false;
                 sb.Append(string.Format(CultureInfo.InvariantCulture, "\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"damage\":{3},\"combatCount\":{4},\"terrain\":{5}}}",
-                    t.x, t.y, t.z, t.damageLevel, t.combatCount, Q(Under(t) != null ? Under(t).name : "Water")));
+                    t.x, t.y, t.z, t.damage, t.combatCount, Q(Under(t) != null ? Under(t).name : "Water")));
             }
             sb.Append("\n]");
 

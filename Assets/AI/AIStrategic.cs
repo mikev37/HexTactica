@@ -392,7 +392,7 @@ namespace HexTactica.AI {
                 foreach (Front f in group) {
                     for (int i = 0; i < f.assigned.Count; i++) {
                         Unit u = f.assigned[i];
-                        if (u == null || u.tile == null || u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) continue;
+                        if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                         float w = AIScore.Worth(u);
                         full += w * MAX_STRENGTH;
                         if (u.Strength >= healthy && map.Travel(u, u.tile, staging) <= profile.stagingRadius) gathered += w * u.Strength;
@@ -436,7 +436,7 @@ namespace HexTactica.AI {
                 if (!f.assault || f.objectiveTile == null) continue;
                 for (int j = 0; j < f.assigned.Count; j++) {
                     Unit u = f.assigned[j];
-                    if (u == null || u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) continue;
+                    if (u == null || u.Firepower <= 0 || u.Hub != null) continue;
                     result[u] = f.objectiveTile;
                 }
             }

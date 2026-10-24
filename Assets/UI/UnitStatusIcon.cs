@@ -52,7 +52,7 @@ public class UnitStatusIcon : MonoBehaviour {
         opac = GetComponent<setOpacity>();
         size = GetComponent<setSize>();
         if (render == null) render = GetComponent<SpriteRenderer>();
-        if (unit != null) hub = unit.GetComponent<SupplyPoint>();
+        if (unit != null) hub = unit.Hub;
     }
 
     void Update() {
