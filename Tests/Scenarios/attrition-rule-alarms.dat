@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"attrition-rule-alarms","kind":"rules","opponent":"Human","rounds":"4","check":"alarms","question":"The alarm icon's conditions: a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo.","rules":"standard"},
+"test":{"name":"attrition-rule-alarms","kind":"rules","opponent":"Human","rounds":"4","check":"alarms","question":"The alarm icon's conditions (fuel and ammo alarms from a third of a full load down): a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
