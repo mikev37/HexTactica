@@ -91,7 +91,7 @@ namespace UnityEngine {
         public static Matrix4x4 TRS(Vector3 p, Quaternion r, Vector3 s) { return new Matrix4x4(); }
         public Vector3 MultiplyVector(Vector3 v) { return v; } public Vector3 MultiplyPoint3x4(Vector3 v) { return v; } }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) { return m.value; } }
-    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public Vector2 size { get { return new Vector2(width, height); } } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
+    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public Vector2 size { get { return new Vector2(width, height); } } public float yMax { get { return y + height; } } public float xMax { get { return x + width; } } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
     public class RectOffset { public int left, right, top, bottom; public RectOffset() { } public RectOffset(int l, int r, int t, int b) { left = l; right = r; top = t; bottom = b; } }
     public struct Quaternion {
         public static Quaternion identity { get { return new Quaternion(); } }
@@ -195,6 +195,7 @@ namespace UnityEngine {
         public int childCount { get { return 0; } }
         public Transform GetChild(int i) { return null; }
         public void SetSiblingIndex(int i) { }
+        public int GetSiblingIndex() { return 0; }
         public Matrix4x4 worldToLocalMatrix, localToWorldMatrix;
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
     }
@@ -268,6 +269,7 @@ namespace UnityEngine {
     public class Texture2D : Texture {
         public Texture2D() { }
         public Texture2D(int w, int h, TextureFormat f, bool mips) { }
+        public static Texture2D whiteTexture { get { return new Texture2D(); } }
         public TextureWrapMode wrapMode;
         public void SetPixels(Color[] c) { }
         public void Apply() { }
@@ -326,10 +328,25 @@ namespace UnityEngine {
     public static class Screen { public static int width { get { return 1920; } } public static int height { get { return 1080; } } }
     public static class GUI {
         public static bool enabled = true;
+        public static Color color = Color.white;
+        public static GUISkin skin = new GUISkin();
         public static void Box(Rect r, string s) { }
         public static void Label(Rect r, string s) { }
+        public static void Label(Rect r, string s, GUIStyle st) { }
+        public static void DrawTexture(Rect r, Texture t) { }
         public static bool Button(Rect r, string s) { return false; }
     }
+    public enum FontStyle { Normal, Bold, Italic, BoldAndItalic }
+    public class GUIStyleState { public Color textColor; }
+    public class GUIStyle {
+        public GUIStyle() { } public GUIStyle(GUIStyle o) { }
+        public int fontSize; public FontStyle fontStyle; public TextAnchor alignment; public bool wordWrap;
+        public GUIStyleState normal = new GUIStyleState();
+        public Vector2 CalcSize(GUIContent c) { return new Vector2(100, 20); }
+    }
+    public class GUIContent { public GUIContent(string s) { } }
+    public class GUISkin { public GUIStyle label = new GUIStyle(), box = new GUIStyle(); }
+
     public static class Time {
         public static float deltaTime { get { MainThreadOnly.Check("get_deltaTime"); return 0.016f; } }
         public static float fixedDeltaTime { get { MainThreadOnly.Check("get_fixedDeltaTime"); return 0.02f; } }
