@@ -59,7 +59,7 @@ namespace HexTactica.AI {
 
         static bool Eligible(Unit u, AIMap map) {
             if (u == null || u.tile == null || u.Strength <= 0 || !u.active || u.trasnporter != null) return false;
-            if (u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) return false;
+            if (u.Firepower <= 0 || u.Hub != null) return false;
             return map.TurnsToContact(u) <= 1;
         }
 

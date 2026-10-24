@@ -44,7 +44,7 @@ namespace HexTactica.AI {
             float army = 0f;
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
-                if (u == null || u == hubUnit || u.GetComponent<SupplyPoint>() != null) continue;
+                if (u == null || u == hubUnit || u.Hub != null) continue;
                 army += AIScore.Worth(u);
             }
             return gained / totalHold * army * profile.forwardSupplyWeight;
@@ -67,7 +67,7 @@ namespace HexTactica.AI {
                 Unit u = kv.Key;
                 HexTile dest = kv.Value;
                 if (u == null || dest == null || u == hubUnit || u.Strength <= 0 || u.owner != map.player) continue;
-                if (u.GetComponent<SupplyPoint>() != null) continue;
+                if (u.Hub != null) continue;
                 int before = AIMap.GapToSupply(dest, map.SupplyDepth, cap);
                 if (before == 0) continue;
                 int after = AIMap.GapToSupply(dest, depthAfter, cap);
@@ -157,7 +157,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
                 if (u == null || u.tile == null || u == hub.myUnit) continue;
-                SupplyPoint otherHub = u.GetComponent<SupplyPoint>();
+                SupplyPoint otherHub = u.Hub;
                 if (otherHub != null && otherHub.producer) continue;
 
                 int before = map.SupplyDepth(u.tile);
@@ -255,7 +255,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
                 if (u == null || u.tile == null || u == hub.myUnit) continue;
-                SupplyPoint other = u.GetComponent<SupplyPoint>();
+                SupplyPoint other = u.Hub;
                 if (other != null && other.producer) continue;
                 float worth = AIScore.Worth(u);           // one strength = a sixth of the unit
                 if (other != null) {

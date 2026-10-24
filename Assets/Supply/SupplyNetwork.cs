@@ -131,7 +131,7 @@ public static class SupplyNetwork {
         for (int i = 0; i < player.units.Count; i++) {
             Unit u = player.units[i];
             if (u == null) continue;
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp != excluded && (!staticOnly || sp.producer) && (!onlyMoved || sp.producer || moved.ContainsKey(sp))) hubs.Add(sp);
         }
         hubs.Sort((a, b) => StableId(a).CompareTo(StableId(b)));
@@ -217,8 +217,11 @@ public static class SupplyNetwork {
                 if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
                 return 0;
             });
-            Published++;
-            HexTilePlayerSupplyDisplay.WakeAll();
+            // (Into a board copy, if one is entered: only it changes. The displays are woken for the real board only.)
+            if (BoardView.current == null) {
+                Published++;
+                HexTilePlayerSupplyDisplay.WakeAll();
+            }
         }
 
         if (applyDrain) {

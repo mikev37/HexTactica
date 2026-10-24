@@ -138,7 +138,7 @@ namespace HexTactica.AI {
                 List<Unit> attackers = new List<Unit>();
                 for (int i = 0; i < map.enemyUnits.Count; i++) {
                     Unit e = map.enemyUnits[i];
-                    if (e == null || e.tile == null || e.Firepower <= 0 || e.GetComponent<SupplyPoint>() != null) continue;
+                    if (e == null || e.tile == null || e.Firepower <= 0 || e.Hub != null) continue;
                     if (e == target && damage >= e.Strength) continue;
                     int reach = (e.moveAndAttack ? e.moveRange : 0) + e.AttackRange;
                     if (e.tile.Distance(hq.tile) <= reach) attackers.Add(e);

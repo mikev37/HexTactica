@@ -129,7 +129,7 @@ public class AIPlayer : MonoBehaviour {
             long __d = AIPerf.Begin();
             AIAction action;
             using (Think()) action = DecideFor(unit);
-            AIPerf.End("decide: " + (unit.GetComponent<SupplyPoint>() != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
+            AIPerf.End("decide: " + (unit.Hub != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
             // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
             // still fresh, and decides again if its transport puts it down this turn (Run).
             if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
@@ -225,13 +225,15 @@ public class AIPlayer : MonoBehaviour {
         Unit pick = null;
         foreach (Unit b in hq.buildable) {
             if (b == null) continue;
-            SupplyPoint sp = b.GetComponent<SupplyPoint>();
+            SupplyPoint sp = b.Hub;
             if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion) || !hq.CanBuild(b)) continue;
             if (pick == null || b.cost < pick.cost) pick = b;
         }
         if (pick == null || player.money < pick.cost) { if (Trace != null) Trace("   no supply bought: " + (pick == null ? "the HQ builds none" : "money " + player.money + " of " + pick.cost)); return; }
         AIMap m = map;
-        Unit made = BuildingController.bc.Produce(hq, pick, t => AIAir.MayBuildOn(t, m));
+        Unit made;
+        using (BoardView.Outside()) made = BuildingController.bc.Produce(hq, pick, t => AIAir.MayBuildOn(t, m));
+        if (made != null && made.tile != null) made.tile.occupier = made;
         if (made == null) { if (Trace != null) Trace("   no supply bought: no free tile at the HQ"); return; }
         if (onBuy != null) onBuy(made);
         if (Trace != null) Trace("   " + player.personal_name + " buys " + pick.name.Replace("(Clone)", "") + " at the HQ: the supply chain is stretched (" + chainPlan + ")");
@@ -261,7 +263,17 @@ public class AIPlayer : MonoBehaviour {
     /// were last seen (FogOfWar.Conceal). Actions are carried out on the real board, outside it.
     /// </summary>
     System.IDisposable Think() {
-        return FogOfWar.Concealing(player, true, Profile.fogMemoryTurns);
+        return NewView().Enter();
+    }
+
+    /// <summary>
+    /// The board this AI thinks on, copied now (main thread): as this side knows it under fog of war
+    /// (AIProfile.fogFair), else as it is. Its simulations change only the copy.
+    /// </summary>
+    BoardView NewView() {
+        if (Profile == null) { }
+        BoardView v = FogOfWar.Conceal(player, true, Profile.fogMemoryTurns);
+        return v ?? BoardView.Snapshot();
     }
 
     void PrepareTurn() {
@@ -324,7 +336,7 @@ public class AIPlayer : MonoBehaviour {
             // goes ahead, and each link moves up into the supply of the links behind it.
             Dictionary<HexTile, int> toObj = chainPlan.objective != null ? map.LandSteps(chainPlan.objective) : null;
             List<Unit> hubsLast = new List<Unit>();
-            foreach (Unit u in queue) { SupplyPoint sp = u.GetComponent<SupplyPoint>(); if (sp != null && !sp.producer) hubsLast.Add(u); }
+            foreach (Unit u in queue) { SupplyPoint sp = u.Hub; if (sp != null && !sp.producer) hubsLast.Add(u); }
             System.Func<Unit, int> st = u => { int s; return toObj != null && u.tile != null && toObj.TryGetValue(u.tile, out s) ? s : int.MaxValue; };
             hubsLast.Sort((a, b) => { int c = st(b).CompareTo(st(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
             foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
@@ -456,7 +468,7 @@ public class AIPlayer : MonoBehaviour {
 
         // A fighting unit out of contact (an objective's or not): ride a transport toward the
         // objective if that is quicker than walking.
-        if (Profile.combatRides && unit.Firepower > 0 && unit.GetComponent<SupplyPoint>() == null) {
+        if (Profile.combatRides && unit.Firepower > 0 && unit.Hub == null) {
             AIAction ride;
             if (TryRide(unit, front, out ride)) return ride;
         }
@@ -468,7 +480,7 @@ public class AIPlayer : MonoBehaviour {
             if (!directed.IsNothing) return directed;
         }
 
-        SupplyPoint hub = unit.GetComponent<SupplyPoint>();
+        SupplyPoint hub = unit.Hub;
         if (hub != null) {
             if (hub.producer) return AIAction.Wait(unit, "HQ holds");
             // The real move is planned on the real board: the ghost has served its purpose.
@@ -560,14 +572,14 @@ public class AIPlayer : MonoBehaviour {
     /// </summary>
     /// <summary>Could <paramref name="unit"/> be offered a ride this turn (TryRide's first checks)?</summary>
     bool MayRide(Unit unit) {
-        if (unit == null || unit.tile == null || unit.Firepower <= 0 || unit.GetComponent<SupplyPoint>() != null) return false;
+        if (unit == null || unit.tile == null || unit.Firepower <= 0 || unit.Hub != null) return false;
         if (unit.trasnporter != null) return true;
         return map.TurnsToContact(unit) > Profile.objectiveContactTurns && Transporting.AvailableFor(player, unit).Count > 0;
     }
 
     bool TryRide(Unit unit, Front front, out AIAction action) {
         action = default(AIAction);
-        if (unit.tile == null || unit.GetComponent<SupplyPoint>() != null) return false;
+        if (unit.tile == null || unit.Hub != null) return false;
         bool aboard = unit.trasnporter != null;
         string who = unit.name.Replace("(Clone)", "");
         if (!aboard && map.TurnsToContact(unit) <= Profile.objectiveContactTurns) return false;

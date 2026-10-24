@@ -82,10 +82,10 @@ namespace HexTactica.AI {
         public static AIRole Classify(Unit u, AIProfile profile) {
             if (u == null) return AIRole.Line;
 
-            if (u.Strength <= profile.withdrawStrength && u.GetComponent<SupplyPoint>() == null) {
+            if (u.Strength <= profile.withdrawStrength && u.Hub == null) {
                 return AIRole.Wounded;
             }
-            if (u.GetComponent<SupplyPoint>() != null) return AIRole.Supply;
+            if (u.Hub != null) return AIRole.Supply;
             if (u.transportSlots > 0 && u.Firepower <= 1) return AIRole.Transport;
             if (u.Targeting >= 4 && u.Firepower > 0) return AIRole.AntiAir;
             if (u.AttackRange >= 2 && !u.moveAndAttack) return AIRole.Artillery;

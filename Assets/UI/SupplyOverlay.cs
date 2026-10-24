@@ -74,10 +74,10 @@ public class SupplyOverlay : MonoBehaviour {
 
     /// <summary>The supply unit that moves when <paramref name="u"/> does: itself, or one it carries.</summary>
     static SupplyPoint CarriedSupply(Unit u) {
-        SupplyPoint own = u.GetComponent<SupplyPoint>();
+        SupplyPoint own = u.Hub;
         if (own != null) return own.producer ? null : own;
         foreach (Unit c in u.transported) {
-            SupplyPoint sp = c != null ? c.GetComponent<SupplyPoint>() : null;
+            SupplyPoint sp = c != null ? c.Hub : null;
             if (sp != null && !sp.producer) return sp;
         }
         return null;
@@ -154,7 +154,7 @@ public class SupplyOverlay : MonoBehaviour {
     static SupplyNetwork.Result SolveWithout(Player p, SupplyPoint without, SupplyPoint moved, HexTile movedTo) {
         Dictionary<SupplyPoint, HexTile> at = new Dictionary<SupplyPoint, HexTile>();
         foreach (Unit u in p.units) {
-            SupplyPoint sp = u != null ? u.GetComponent<SupplyPoint>() : null;
+            SupplyPoint sp = u != null ? u.Hub : null;
             if (sp == null || sp == without || u.tile == null) continue;
             at[sp] = sp == moved ? movedTo : u.tile;
         }
@@ -193,7 +193,7 @@ public class SupplyOverlay : MonoBehaviour {
         if (moved != null && t == movedTo) return moved;
         foreach (Unit u in p.units) {
             if (u == null || u.tile != t) continue;
-            SupplyPoint sp = u.GetComponent<SupplyPoint>();
+            SupplyPoint sp = u.Hub;
             if (sp != null && sp != moved) return sp;
         }
         return null;

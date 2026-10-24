@@ -92,7 +92,7 @@ namespace HexTactica.AI {
 
             // The army's front: the fighting unit nearest the objective over land.
             foreach (Unit u in map.ownUnits) {
-                if (u == null || u.tile == null || u.Firepower <= 0 || u.GetComponent<SupplyPoint>() != null) continue;
+                if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                 if (LocomotionRules.NeedsBase(u.locomotion)) continue;
                 plan.frontSteps = Mathf.Min(plan.frontSteps, steps(u.tile));
             }
@@ -118,7 +118,7 @@ namespace HexTactica.AI {
                 foreach (HexTile t in field.Tiles) {
                     if (t != u.tile && (!field.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
                     if (taken.Contains(t)) continue;
-                    if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.GetComponent<SupplyPoint>() != null)) continue;
+                    if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
                     if (!AIAir.MayEndOn(u, t, map)) continue;
                     if (net.DepthAt(t) <= 0) continue;                         // a link must be supplied by the links behind it
                     int s = steps(t);
