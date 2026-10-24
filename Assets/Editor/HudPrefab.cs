@@ -10,7 +10,7 @@ using UnityEngine;
 [InitializeOnLoad]
 static class HudPrefab {
     const string Path_ = "Assets/Resources/Hud.prefab";
-    const string Art = "Assets/Sprites/UI/Widgets/";
+    internal const string Art = "Assets/Sprites/UI/Widgets/";
 
     static HudPrefab() { EditorApplication.delayCall += () => Create(false); }
 
@@ -34,7 +34,7 @@ static class HudPrefab {
     }
 
     /// <summary>The widget art as sprites; the panel background with 24-pixel borders for 9-slicing.</summary>
-    static void PrepareArt() {
+    internal static void PrepareArt() {
         if (!Directory.Exists(Art)) return;
         foreach (string f in Directory.GetFiles(Art, "*.png")) {
             string path = f.Replace('\\', '/');

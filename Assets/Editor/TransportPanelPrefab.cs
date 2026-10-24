@@ -24,10 +24,11 @@ static class TransportPanelPrefab {
         if (EditorApplication.isPlayingOrWillChangePlaymode) return;
         if (!replace && File.Exists(Path_)) return;
         Directory.CreateDirectory(Path.GetDirectoryName(Path_));
-        TransportPanel panel = TransportPanel.Build();
+        HudPrefab.PrepareArt();
+        TransportPanel panel = TransportPanel.Build(name => AssetDatabase.LoadAssetAtPath<Sprite>(HudPrefab.Art + name + ".png"));
         PrefabUtility.SaveAsPrefabAsset(panel.gameObject, Path_);
         Object.DestroyImmediate(panel.gameObject);
         AssetDatabase.Refresh();
-        Debug.Log("Created " + Path_ + " (the transport unload panel): edit it as you like.");
+        Debug.Log("Created " + Path_ + " (the transport unload panel): edit it as you like. TextMeshPro may ask to import its essentials once.");
     }
 }

@@ -51,6 +51,18 @@ public class Hud : MonoBehaviour {
         TransportPanel.EnsureEventSystem();
     }
 
+    [Tooltip("Seconds between redraws of the pictures while the same unit or tile is shown (it may turn, load cargo or change terrain).")]
+    public float pictureRefresh = 0.5f;
+    UnityEngine.Object shownUnit, shownTile;
+    float unitDrawn, tileDrawn;
+
+    /// <summary>Redraw a picture when it shows something else, or every pictureRefresh seconds.</summary>
+    bool Due(UnityEngine.Object o, ref UnityEngine.Object shown, ref float drawn) {
+        if (o == shown && Time.unscaledTime - drawn < pictureRefresh) return false;
+        shown = o; drawn = Time.unscaledTime;
+        return true;
+    }
+
     void Update() {
         HexTile t = HexTile.lastClicked;
         Unit u = t != null ? t.occupier : null;
@@ -61,7 +73,10 @@ public class Hud : MonoBehaviour {
     void ShowUnit(Unit u) {
         if (unitPanel != null && unitPanel.activeSelf != (u != null)) unitPanel.SetActive(u != null);
         if (u == null) return;
-        if (unitPortrait != null) { Sprite s = TransportPanel.IconOf(u); unitPortrait.sprite = s; unitPortrait.enabled = s != null; unitPortrait.preserveAspect = true; }
+        if (unitPortrait != null && Due(u, ref shownUnit, ref unitDrawn)) {
+            unitPortrait.enabled = false;   // the picture is the unit's own sprites, composed under it
+            SpritePortrait.Compose(u.transform, unitPortrait.rectTransform, r => SpritePortrait.UnitPart(u, r));
+        }
         if (unitBadge != null) unitBadge.color = u.owner != null ? u.owner.displayColor : empty;
         if (unitName != null) unitName.text = u.name.Replace("(Clone)", "").Trim();
         if (strength != null) strength.Set(u.Strength, 6, false, this);
@@ -76,7 +91,10 @@ public class Hud : MonoBehaviour {
         if (tilePanel != null && tilePanel.activeSelf != on) tilePanel.SetActive(on);
         if (!on) return;
         TerrainData td = t.terrain;
-        if (tilePicture != null) { Sprite s = td.upper_normal != null ? td.upper_normal : td.lower != null ? td.lower : td.water; tilePicture.sprite = s; tilePicture.enabled = s != null; tilePicture.preserveAspect = true; }
+        if (tilePicture != null && Due(t, ref shownTile, ref tileDrawn)) {
+            tilePicture.enabled = false;    // the picture is the tile's ground, water and roads, composed under it
+            SpritePortrait.Compose(t.transform, tilePicture.rectTransform, r => SpritePortrait.TilePart(t, r));
+        }
         if (tileName != null) tileName.text = TerrainName(td);
         if (cover != null) cover.Set(t.EffectiveCover, 3, false, this);
         if (moveCost != null) { if (td.elevation >= 0) moveCost.Set(t.EffectiveMoveability, 5, true, this); else moveCost.Show(false); }
