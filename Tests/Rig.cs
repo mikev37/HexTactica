@@ -19,6 +19,7 @@ namespace HexTactica.Testing {
 
         public static void NewGame(int radius) {
             Building.all.Clear();
+            FogOfWar.Reset();
 
             gc = New<GameController>();
             gc.players = new List<Player>();
@@ -127,6 +128,7 @@ namespace HexTactica.Testing {
             u.active = true;
             uc.units.Add(u);
             owner.units.Add(u);
+            FogOfWar.Changed();
             return u;
         }
 

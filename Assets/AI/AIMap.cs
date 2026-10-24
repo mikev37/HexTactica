@@ -1035,7 +1035,10 @@ namespace HexTactica.AI {
         public void Annotate(HexTile t, string tag) {
             if (t == null || !profile.annotateBoard) return;
             t.aiData.debugTag = tag;
-            if (t.textField != null) t.textField.text = tag;
+            // Under fog of war the reasoning is written only for whoever is looking through this
+            // side's eyes: on anyone else's screen it would show where this side's units are going.
+            Player viewer = FogOfWar.Viewer;
+            if (t.textField != null && (viewer == null || viewer == player)) t.textField.text = tag;
         }
 
         public void ClearAnnotations() {

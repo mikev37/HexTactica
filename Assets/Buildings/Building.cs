@@ -84,6 +84,11 @@ public class Building : MonoBehaviour {
     public SpriteRenderer flagSprite;
     public float flagBottom = 0f, flagTop = 1.2f;
 
+    [Header("Vision (fog of war)")]
+    [Range(0, 10)]
+    [Tooltip("Tiles its owner sees around each of its tiles when fog of war is on.")]
+    public int visionRange = 1;
+
     [Header("Economy")]
     [Tooltip("Cash gathered per turn for the owner")]
     public int income;
@@ -140,9 +145,11 @@ public class Building : MonoBehaviour {
     }
 
     void Update() {
+        // Under fog of war the owner and flag shown are those last seen (FogOfWar.ShownOwner).
+        if (FogOfWar.On) RefreshFlag();
         // The flag climbs (or drops) to where the points are, rather than jumping.
         if (flag == null) return;
-        float target = FlagHeight;
+        float target = ShownFlagHeight;
         flagShown = flagShown < 0f ? target : Mathf.MoveTowards(flagShown, target, Time.deltaTime * 0.8f);
         Vector3 p = flag.localPosition;
         p.y = flagBottom + (flagTop - flagBottom) * flagShown;
@@ -175,6 +182,15 @@ public class Building : MonoBehaviour {
 
     /// <summary>0..1: how far up its pole the flag is.</summary>
     public float FlagHeight { get { return Mathf.Clamp01(capturePoints / (float)CaptureThreshold); } }
+
+    /// <summary>The flag's height as the screen shows it (under fog of war, as last seen).</summary>
+    float ShownFlagHeight {
+        get {
+            Player capturing; int points;
+            FogOfWar.ShownCapture(this, out capturing, out points);
+            return Mathf.Clamp01(points / (float)CaptureThreshold);
+        }
+    }
 
     /// <summary>Only infantry take ground. Vehicles can sit on a building but not flip it.</summary>
     public static bool CanCapture(Unit u) {
@@ -341,6 +357,7 @@ public class Building : MonoBehaviour {
             RefreshFlag();
         }
         if (owner != prevOwner) {
+            FogOfWar.Changed();
             if (OwnerChanged != null) OwnerChanged(this, prevOwner);
             if (IsHQ && prevOwner != null && GameController.gc != null) GameController.gc.OnHQCaptured(this, prevOwner);
         }
@@ -372,10 +389,13 @@ public class Building : MonoBehaviour {
     }
 
     public void RefreshFlag() {
-        Color c = owner != null ? owner.displayColor : new Color(0.6f, 0.6f, 0.6f, 1f);
+        // As the screen shows it: under fog of war, as the viewer last saw it.
+        Player shownOwner = FogOfWar.ShownOwner(this), capturing; int points;
+        FogOfWar.ShownCapture(this, out capturing, out points);
+        Color c = shownOwner != null ? shownOwner.displayColor : new Color(0.6f, 0.6f, 0.6f, 1f);
         if (ownerFlag != null) ownerFlag.color = c;
         if (flagSprite != null) {
-            Player shown = owner ?? capturingPlayer;
+            Player shown = shownOwner ?? capturing;
             flagSprite.color = shown != null ? shown.displayColor : new Color(0.6f, 0.6f, 0.6f, 1f);
         }
     }

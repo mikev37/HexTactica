@@ -127,7 +127,8 @@ public class AIPlayer : MonoBehaviour {
             GameController.gc.activeUnit = unit;
 
             long __d = AIPerf.Begin();
-            AIAction action = DecideFor(unit);
+            AIAction action;
+            using (Think()) action = DecideFor(unit);
             AIPerf.End("decide: " + (unit.GetComponent<SupplyPoint>() != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
             // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
             // still fresh, and decides again if its transport puts it down this turn (Run).
@@ -144,10 +145,12 @@ public class AIPlayer : MonoBehaviour {
             if (did) return true;
         }
 
-        BuySupply();
-        if (Profile.buyUnits && map != null) {
-            List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace);
-            if (onBuy != null) foreach (Unit u in bought) onBuy(u);
+        using (Think()) {
+            BuySupply();
+            if (Profile.buyUnits && map != null) {
+                List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace);
+                if (onBuy != null) foreach (Unit u in bought) onBuy(u);
+            }
         }
         EndTurn();
         return false;
@@ -188,7 +191,7 @@ public class AIPlayer : MonoBehaviour {
                 unit.FinishActive();
                 AIPerf.End("act: FinishActive (threat, resupply)", __f);
                 __f = AIPerf.Begin();
-                map.RefreshAfterAction();
+                using (Think()) map.RefreshAfterAction();
                 AIPerf.End("act: board re-read (RefreshAfterAction)", __f);
             }
 
@@ -252,7 +255,21 @@ public class AIPlayer : MonoBehaviour {
         if (guard >= 4096) UnityEngine.Debug.LogWarning("AIPlayer: turn guard tripped");
     }
 
+    /// <summary>
+    /// Fog of war, playing by it (AIProfile.fogFair): every decision is made on the board as this
+    /// side knows it — enemies it does not see are off the board, those seen lately stand where they
+    /// were last seen (FogOfWar.Conceal). Actions are carried out on the real board, outside it.
+    /// </summary>
+    System.IDisposable Think() {
+        return FogOfWar.Concealing(player, true, Profile.fogMemoryTurns);
+    }
+
     void PrepareTurn() {
+        FogOfWar.Changed();
+        using (Think()) PrepareTurnOnBoard();
+    }
+
+    void PrepareTurnOnBoard() {
         { long __p = AIPerf.Begin();
         map = new AIMap(player, Profile);
         AIPerf.End("prepare: board read (AIMap)", __p); }

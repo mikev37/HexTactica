@@ -70,8 +70,15 @@ public class TransportMenu : MonoBehaviour {
             // Move first: the path is read from the tiles' parent chain, which the pick cleared.
             HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
             transport.tile.CheckMovementRange(transport);
-            transport.CompleteMove(anchor);
+            bool arrived = transport.CompleteMove(anchor);
             transport.FinishActive();
+            // Stopped on the way by an enemy it did not see (fog of war): nobody gets off.
+            if (!arrived) {
+                HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+                GameController.gc.activeUnit = null;
+                Close();
+                return;
+            }
         }
         Transporting.Unload(transport, cargo, onto);
         HexGenerator.forAllTiles(x => { x.Reset(); return 0; });

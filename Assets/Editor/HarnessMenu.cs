@@ -71,6 +71,7 @@ public static class HarnessMenu {
         ScenarioLoader.PurchasesOverride = string.IsNullOrEmpty(BuyChoice()) ? null : BuyChoice();
         string rules = EditorPrefs.GetString(RulesKey, "");
         ScenarioLoader.RulesOverride = string.IsNullOrEmpty(rules) ? null : rules;
+        ScenarioLoader.FogOverride = string.IsNullOrEmpty(FogChoice()) ? null : FogChoice();
         if (ScenarioLoader.LoadBoardFromPath(path)) UnityEngine.Debug.Log("Loaded scenario " + path);
     }
 
@@ -115,6 +116,7 @@ public static class HarnessMenu {
             ScenarioLoader.PurchasesOverride = string.IsNullOrEmpty(BuyChoice()) ? null : BuyChoice();
             string rules = EditorPrefs.GetString(RulesKey, "");
             ScenarioLoader.RulesOverride = string.IsNullOrEmpty(rules) ? null : rules;
+            ScenarioLoader.FogOverride = string.IsNullOrEmpty(FogChoice()) ? null : FogChoice();
             if (ScenarioLoader.LoadBoardFromPath(outPath)) UnityEngine.Debug.Log("Loaded scenario " + outPath);
         }
     }
@@ -134,6 +136,22 @@ public static class HarnessMenu {
     [MenuItem(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", true)] static bool RulesAttCheck() { Menu.SetChecked(RulesMenu + "Attrition (no HQ attacks, 30 rounds)", RulesChoice() == "attrition"); return true; }
     [MenuItem(RulesMenu + "Sandbox (never ends)", false, 3)] static void RulesSandbox() { SetRules("sandbox"); }
     [MenuItem(RulesMenu + "Sandbox (never ends)", true)] static bool RulesSandboxCheck() { Menu.SetChecked(RulesMenu + "Sandbox (never ends)", RulesChoice() == "sandbox"); return true; }
+
+    // ---- Fog of war for loaded scenarios: as the file says (off when it says nothing), on, or off.
+    const string FogKey = "HexTactica.Fog";
+    const string FogMenu = "HexTactica/Fog of War/";
+    static string FogChoice() { return EditorPrefs.GetString(FogKey, ""); }
+    static void SetFog(string v) {
+        EditorPrefs.SetString(FogKey, v ?? "");
+        ScenarioLoader.FogOverride = string.IsNullOrEmpty(v) ? null : v;
+        UnityEngine.Debug.Log("Fog of war for loaded scenarios: " + (string.IsNullOrEmpty(v) ? "as the file says" : v) + ". Applies the next time you load a scenario file (or set GameController.fogOfWar in play mode).");
+    }
+    [MenuItem(FogMenu + "As the File Says", false, 0)] static void FogFile() { SetFog(null); }
+    [MenuItem(FogMenu + "As the File Says", true)] static bool FogFileCheck() { Menu.SetChecked(FogMenu + "As the File Says", FogChoice() == ""); return true; }
+    [MenuItem(FogMenu + "On", false, 1)] static void FogOn() { SetFog("on"); }
+    [MenuItem(FogMenu + "On", true)] static bool FogOnCheck() { Menu.SetChecked(FogMenu + "On", FogChoice() == "on"); return true; }
+    [MenuItem(FogMenu + "Off", false, 2)] static void FogOff() { SetFog("off"); }
+    [MenuItem(FogMenu + "Off", true)] static bool FogOffCheck() { Menu.SetChecked(FogMenu + "Off", FogChoice() == "off"); return true; }
 
     // ---- Purchases for loaded scenarios: as the file says (else the rules' default), on, or off.
     const string BuyKey = "HexTactica.Purchases";

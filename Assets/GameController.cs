@@ -19,6 +19,20 @@ public class GameController : MonoBehaviour
     [Tooltip("Attrition: rounds before the game is decided on what is left.")]
     public int roundLimit = 30;
 
+    [Header("Fog of war")]
+    [Tooltip("Fog of war: each side sees only what its units and buildings see (FogOfWar). A scenario sets this (\"fog\": \"on\").")]
+    public bool fogOfWar;
+    [Tooltip("Whose view the screen shows under fog of war: -1 the human player (the one whose turn it is when several share the screen); 0, 1, ... always that player's (to watch an AI game through one side's eyes).")]
+    public int fogViewer = -1;
+
+    /// <summary>"on" / "off" from a scenario (anything else: off).</summary>
+    public static bool ParseFog(string s) {
+        string v = (s ?? "").Trim().ToLowerInvariant();
+        return v == "on" || v == "true" || v == "yes";
+    }
+
+    public string FogSetting { get { return fogOfWar ? "on" : "off"; } }
+
     [Header("Purchases")]
     [Tooltip("Can units be bought at buildings? (A scenario sets this; when it does not, Standard and Sandbox allow purchases and Attrition does not.)")]
     public bool purchasesAllowed = true;
@@ -71,6 +85,10 @@ public class GameController : MonoBehaviour
     /// <summary>Can this unit be attacked under the current rules? (Attrition: HQs cannot.)</summary>
     public static bool Targetable(Unit u) {
         if (u == null) return false;
+        // Thinking on a concealed board (fog of war): an enemy only believed to be somewhere, not
+        // seen, cannot be fired on.
+        FogOfWar.Scope fog = FogOfWar.current;
+        if (fog != null && u.owner != fog.player && !fog.visible.Contains(u)) return false;
         if (gc != null && gc.rules == RuleSet.Attrition) {
             SupplyPoint sp = u.GetComponent<SupplyPoint>();
             if (sp != null && sp.producer) return false;
@@ -148,7 +166,7 @@ public class GameController : MonoBehaviour
 
     public void Update() {
         if (headless) return;
-        if (Input.GetKeyDown("t")) {
+        if (Input.GetKeyDown("t") && !fogOfWar) {   // a debug read-out of every unit's reach: not under fog
             RecalculateThreat();
             HexGenerator.forAllTiles(x => {
                 x.textField.text = x.threat[GameController.gc.activePlayer].firepower + "";
@@ -176,7 +194,8 @@ public class GameController : MonoBehaviour
     public static void RecalculateThreat() {
         ResetTileData();
         List<Unit> snapshot = new List<Unit>(UnitController.uc.units);
-        snapshot.ForEach(x => { if (x != null) x.updateThreat(); });
+        // (A unit off the board — carried, or concealed by fog of war — threatens nothing.)
+        snapshot.ForEach(x => { if (x != null && x.tile != null) x.updateThreat(); });
     }
 
     public void EndTurn() {
@@ -186,6 +205,7 @@ public class GameController : MonoBehaviour
         if (gameOver) return;
 
         activePlayer.EndTurn();
+        FogOfWar.OnTurnEnded(activePlayer);
 
         int index = players.IndexOf(activePlayer);
         int guard = 0;
@@ -200,6 +220,8 @@ public class GameController : MonoBehaviour
         } while (activePlayer.eliminated && rules != RuleSet.Sandbox && guard++ < players.Count);   // Sandbox: nobody is ever out
 
         activePlayer.StartTurn();
+        FogOfWar.Changed();
+        FogOfWar.Refresh();
         CheckVictory();
         // Attrition: after roundLimit full rounds, the most left standing wins (equal: a draw).
         if (!gameOver && rules == RuleSet.Attrition && days >= roundLimit) {
