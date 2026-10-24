@@ -9,9 +9,12 @@ using UnityEngine;
 /// player sees every tile within that many steps of one of its units on the board (not cargo) or of
 /// one of its buildings' tiles. Its own units' tiles are always seen.
 ///
+/// High ground: a land unit sees one tile further from hills (elevation 2), two from mountains (3).
+///
 /// Seeing a unit. An enemy unit is seen when it stands on a tile its owner's opponent sees, unless it
-/// is stealthy (Unit.stealthRange X): then it is seen only by an observer fewer than X steps away
-/// (a unit or building whose vision covers its tile). Whatever the ranges, an enemy is always seen:
+/// is stealthy (Unit.stealthRange X): then it is seen only by an observer of its own kind (land —
+/// buildings count as land — air or sea) fewer than X steps away. An enemy is also seen (a stealthy
+/// one only by its own kind, as above):
 ///   - when one of the player's units stands next to it;
 ///   - when it stands on one of the player's buildings (or their runways and docks);
 ///   - after it fires on one of the player's units, until the end of that player's next turn (or of
@@ -44,9 +47,66 @@ public static class FogOfWar {
 
     // ------------------------------------------------------------------ sight
 
+    /// <summary>What a unit is, for sight: on the ground (buildings count as ground), in the air, or at sea.</summary>
+    public enum Domain { Land, Air, Sea }
+
+    public static Domain DomainOf(Unit u) {
+        if (u == null) return Domain.Land;
+        if (LocomotionRules.IsAirborne(u.locomotion)) return Domain.Air;
+        if (u.locomotion == Locomotion.Ship) return Domain.Sea;
+        return Domain.Land;
+    }
+
+    /// <summary>Extra vision for a land unit on high ground: +1 on hills (elevation 2), +2 on mountains (3 and up).</summary>
+    public static int HighGroundBonus(Unit u, HexTile at) {
+        if (u == null || at == null || at.terrain == null || DomainOf(u) != Domain.Land) return 0;
+        int e = at.terrain.elevation;
+        return e >= 3 ? 2 : e == 2 ? 1 : 0;
+    }
+
+    /// <summary>How far <paramref name="u"/> sees from <paramref name="at"/>: its vision range, plus high ground for a land unit.</summary>
+    public static int VisionFrom(Unit u, HexTile at) {
+        return u == null ? 0 : Mathf.Max(0, u.visionRange) + HighGroundBonus(u, at);
+    }
+
     class Sight {
         /// <summary>Each tile seen, and the distance to the nearest observer whose vision covers it.</summary>
         public readonly Dictionary<HexTile, int> cover = new Dictionary<HexTile, int>();
+        /// <summary>The same, counting only observers of one kind (land — buildings too — air, sea): only they can spot a stealthy unit of their kind.</summary>
+        public readonly Dictionary<HexTile, int>[] byDomain = { new Dictionary<HexTile, int>(), new Dictionary<HexTile, int>(), new Dictionary<HexTile, int>() };
+
+        public int Distance(HexTile t) { int d; return t != null && cover.TryGetValue(t, out d) ? d : -1; }
+        public int Distance(HexTile t, Domain dom) { int d; return t != null && byDomain[(int)dom].TryGetValue(t, out d) ? d : -1; }
+
+        public void Merge(Sight o) {
+            Add(cover, o.cover);
+            for (int i = 0; i < 3; i++) Add(byDomain[i], o.byDomain[i]);
+        }
+        static void Add(Dictionary<HexTile, int> into, Dictionary<HexTile, int> from) {
+            foreach (KeyValuePair<HexTile, int> kv in from) { int had; if (!into.TryGetValue(kv.Key, out had) || kv.Value < had) into[kv.Key] = kv.Value; }
+        }
+    }
+
+    /// <summary>
+    /// Would the side whose observers <paramref name="s"/> sums up (its units: <paramref name="ours"/>;
+    /// its buildings' owners as <paramref name="ownerOf"/> says) see <paramref name="u"/> on
+    /// <paramref name="at"/>? A unit next to one of theirs, on one of their buildings, or inside
+    /// their sight is seen — but a stealthy one only by observers of its own kind (a grunt does not
+    /// see a stealth jet, a boat does not see a guerrilla; buildings count as ground), and only from
+    /// fewer than its stealthRange tiles away.
+    /// </summary>
+    static bool Spotted(Sight s, Unit u, HexTile at, Func<Player, bool> ours, Func<Building, Player> ownerOf) {
+        bool stealthy = u.stealthRange > 0;
+        Domain dom = DomainOf(u);
+        if (at.building != null && ours(ownerOf(at.building)) && (!stealthy || dom == Domain.Land)) return true;
+        List<HexTile> n = at.neighbors;
+        if (n != null) for (int i = 0; i < n.Count; i++) {
+            Unit o = n[i] != null ? n[i].occupier : null;
+            if (o != null && o.Strength > 0 && ours(o.owner) && (!stealthy || DomainOf(o) == dom)) return true;
+        }
+        if (!stealthy) return s.Distance(at) >= 0;
+        int d = s.Distance(at, dom);
+        return d >= 0 && d < u.stealthRange;
     }
 
     static readonly Dictionary<Player, Sight> sights = new Dictionary<Player, Sight>();
@@ -87,23 +147,25 @@ public static class FogOfWar {
         if (p == null) return s;
         foreach (Unit u in p.units) {
             if (u == null || u.tile == null || u.Strength <= 0 || u.trasnporter != null) continue;
-            Cover(s, u.tile, Mathf.Max(0, u.visionRange));
+            Cover(s, u.tile, VisionFrom(u, u.tile), DomainOf(u));
         }
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
             if (b == null || b.tile == null) continue;
             Player owner = buildingOwner != null ? buildingOwner(b) : b.owner;
             if (owner != p) continue;
-            foreach (HexTile t in b.Footprint) Cover(s, t, Mathf.Max(0, b.visionRange));
+            foreach (HexTile t in b.Footprint) Cover(s, t, Mathf.Max(0, b.visionRange), Domain.Land);
         }
         return s;
     }
 
-    static void Cover(Sight s, HexTile from, int range) {
+    static void Cover(Sight s, HexTile from, int range, Domain dom) {
         if (from == null || HexGenerator.hg == null) return;
+        Dictionary<HexTile, int> mine = s.byDomain[(int)dom];
         foreach (HexTile t in HexTactica.AI.AIPath.TilesInRangeShared(from, -1, range)) {
             int d = from.Distance(t), had;
             if (!s.cover.TryGetValue(t, out had) || d < had) s.cover[t] = d;
+            if (!mine.TryGetValue(t, out had) || d < had) mine[t] = d;
         }
     }
 
@@ -143,18 +205,8 @@ public static class FogOfWar {
         if (u.owner == p) return true;
         if (at == null) return false;
         if (Revealed(u, p)) return true;
-        // On one of p's buildings, runways or docks.
-        if (at.building != null && at.building.owner == p) return true;
-        // Next to one of p's units.
-        List<HexTile> n = at.neighbors;
-        if (n != null) for (int i = 0; i < n.Count; i++) {
-            Unit o = n[i] != null ? n[i].occupier : null;
-            if (o != null && o.owner == p && o.Strength > 0) return true;
-        }
-        int d = CoverDistance(p, at);
-        if (d < 0) return false;
-        if (u.stealthRange > 0 && d >= u.stealthRange) return false;
-        return true;
+        Sight s = SightOf(p);
+        return s != null && Spotted(s, u, at, o => o == p, b => b.owner);
     }
 
     /// <summary>
@@ -429,8 +481,8 @@ public static class FogOfWar {
         public readonly HashSet<Unit> believed = new HashSet<Unit>();
         /// <summary>Tiles seen at the start.</summary>
         public readonly HashSet<HexTile> visibleTiles = new HashSet<HexTile>();
-        /// <summary>What the enemy is thought to see: the nearest enemy observer to each tile it covers (from the units as known, and the buildings as last seen).</summary>
-        public readonly Dictionary<HexTile, int> enemyCover = new Dictionary<HexTile, int>();
+        /// <summary>What the enemy is thought to see: its units where they are thought to be, its buildings as last seen.</summary>
+        Sight enemySight = new Sight();
 
         struct Moved { public Unit u; public HexTile tile; public int strength; public bool occupied; }
         readonly List<Moved> moved = new List<Moved>();
@@ -469,11 +521,7 @@ public static class FogOfWar {
             foreach (Player q in GameController.gc.players) {
                 if (q == null || q == player) continue;
                 Player me = player;
-                Sight s = Compute(q, b => OwnerAsSeen(me, b));
-                foreach (KeyValuePair<HexTile, int> kv in s.cover) {
-                    int had;
-                    if (!enemyCover.TryGetValue(kv.Key, out had) || kv.Value < had) enemyCover[kv.Key] = kv.Value;
-                }
+                enemySight.Merge(Compute(q, b => OwnerAsSeen(me, b)));
             }
         }
 
@@ -483,15 +531,8 @@ public static class FogOfWar {
         /// </summary>
         public bool EnemySees(Unit u, HexTile at) {
             if (u == null || at == null) return true;
-            if (at.building != null) { Player o = OwnerAsSeen(player, at.building); if (o != null && o != player) return true; }
-            List<HexTile> n = at.neighbors;
-            if (n != null) for (int i = 0; i < n.Count; i++) {
-                Unit o = n[i] != null ? n[i].occupier : null;
-                if (o != null && o.owner != player && o.Strength > 0) return true;
-            }
-            int d;
-            if (!enemyCover.TryGetValue(at, out d)) return false;
-            return !(u.stealthRange > 0 && d >= u.stealthRange);
+            Player me = player;
+            return Spotted(enemySight, u, at, o => o != null && o != me, b => OwnerAsSeen(me, b));
         }
 
         public void Dispose() {

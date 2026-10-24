@@ -414,6 +414,11 @@ public static class Scenarios {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
              "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
+        makeFog("fog-rule-kinds", "fogKinds", (a, o) => {
+                 Put("Grunt", a, -2, 0); Put("Grunt", o, 1, 0); Put("Fighter", a, -5, 4); Put("Fighter", o, 0, -5);
+                 foreach (int[] w in new[] { new[] { 4, 2 }, new[] { 5, 2 }, new[] { 4, 3 }, new[] { 5, 1 } }) Rig.At(w[0], w[1]).terrain = T("Water");
+                 Put("Gunboat", a, 4, 2); Put("Grunt", o, 2, 4); Rig.PlaceBuilding("City", a, -3, 3); },
+             "High ground and kinds of unit: a land unit sees one tile further from hills and two from mountains (an aircraft gets nothing from them). A stealthy unit is seen only by observers of its own kind (land — buildings count as land — air, sea): a stealth jet next to a grunt or over our city goes unseen, a fighter two tiles off sees it; a stealthy grunt next to a gunboat goes unseen, a grunt two tiles off sees it, and on our city it is seen.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
         makeFog("fog-ui-clicks", "fogClicks", (a, o) => { Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0); },
@@ -850,6 +855,45 @@ public static class Scenarios {
                 r.Add("fog off: all seen " + off);
                 detail = string.Join("; ", r.ToArray());
                 return v1 && v2 && s1 && s2 && adj && onCity && car && before && fired && afterRed && afterBlue && screen && off;
+            }
+            case "fogKinds": {
+                Unit g = Rig.At(-2, 0).occupier, r = Rig.At(1, 0).occupier, bf = Rig.At(-5, 4).occupier, rf = Rig.At(0, -5).occupier;
+                Unit boat = Rig.At(4, 2).occupier, rg = Rig.At(2, 4).occupier;
+                Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
+                List<string> res = new List<string>();
+                HexTile gt = g.tile; TerrainData grass = gt.terrain;
+                moved();
+                bool flat = !FogOfWar.Sees(a, r);
+                gt.terrain = T("Hills"); moved();
+                bool hills = FogOfWar.Sees(a, r) && FogOfWar.VisionFrom(g, gt) == g.visionRange + 1;
+                gt.terrain = T("Mountains"); r.TeleportTo(Rig.At(2, 0), 0); moved();
+                bool mountains = FogOfWar.Sees(a, r) && FogOfWar.VisionFrom(g, gt) == g.visionRange + 2;
+                r.TeleportTo(Rig.At(3, -2), 0); moved();   // five off, out of the gunboat's sight too
+                bool beyond = !FogOfWar.Sees(a, r);
+                bool air = FogOfWar.VisionFrom(bf, gt) == bf.visionRange;
+                gt.terrain = grass; moved();
+                res.Add("grunt (vision " + g.visionRange + "): d3 unseen on flat " + flat + ", seen from hills " + hills + ", d4 from mountains " + mountains + ", d5 not " + beyond + "; no high ground for aircraft " + air);
+                // A stealth jet: unseen by the grunt it is next to; seen by a fighter two tiles off, not three.
+                rf.stealthRange = 3; rg.stealthRange = 3;
+                rf.TeleportTo(Rig.At(-1, 0), 0); bf.TeleportTo(Rig.At(-4, 6), 0); moved();
+                bool jetHidden = !FogOfWar.Sees(a, rf);
+                bf.TeleportTo(Rig.At(1, -1), 0); moved();
+                bool jetSeen = FogOfWar.Sees(a, rf);
+                bf.TeleportTo(Rig.At(2, -2), 0); moved();
+                bool jetFar = !FogOfWar.Sees(a, rf);
+                bf.TeleportTo(Rig.At(-4, 6), 0); rf.TeleportTo(Rig.At(-3, 3), 0); moved();
+                bool jetOverCity = !FogOfWar.Sees(a, rf);
+                res.Add("stealth jet: next to a grunt unseen " + jetHidden + ", fighter at 2 sees it " + jetSeen + ", at 3 not " + jetFar + ", over our city unseen " + jetOverCity);
+                // A stealthy grunt by the shore: the gunboat next to it does not see it; a grunt two off does; on our city it is seen.
+                rg.TeleportTo(Rig.At(3, 2), 0); rf.TeleportTo(Rig.At(0, -5), 0); moved();
+                bool boatBlind = !FogOfWar.Sees(a, rg);
+                g.TeleportTo(Rig.At(3, 0), 0); moved();
+                bool gruntSees = FogOfWar.Sees(a, rg);
+                g.TeleportTo(Rig.At(-2, 0), 0); rg.TeleportTo(Rig.At(-3, 3), 0); moved();
+                bool onCity = FogOfWar.Sees(a, rg);
+                res.Add("stealthy grunt: next to the gunboat unseen " + boatBlind + ", grunt at 2 sees it " + gruntSees + ", on our city seen " + onCity);
+                detail = string.Join("; ", res.ToArray());
+                return flat && hills && mountains && beyond && air && jetHidden && jetSeen && jetFar && jetOverCity && boatBlind && gruntSees && onCity;
             }
             case "fogBump": {
                 Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier, p = Rig.At(0, 3).occupier, q = Rig.At(2, 3).occupier;
