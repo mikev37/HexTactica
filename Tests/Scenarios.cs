@@ -462,7 +462,7 @@ public static class Scenarios {
         make("attrition-rule-suppression", "suppression", (a, o) => {
                  Put("Artillery", a, -4, 0); Put("Artillery", a, -4, 2); Put("Grunt", a, -1, 1); Put("Tank", a, -3, -2);
                  Put("Tank", o, 0, 0); Put("Tank", o, 0, 3); Put("Tank", o, -1, -2); Put("Grunt", o, 2, -2); },
-             "Indirect fire suppresses instead of driving back. Artillery hits a tank hard enough that it would have retreated: it stays where it is, takes the same damage, and half its unsuppressed pips (rounded up) are suppressed. Attacked again that turn, it fires back with its strength less the suppressed pips (none at all when every pip is suppressed). A second artillery hit suppresses half of what is left. A hit too light to push it (a veteran) suppresses nothing. Its own turn starting, every pip comes back. Direct fire still drives back.");
+             "Indirect fire suppresses instead of driving back. Artillery hits a tank hard enough that it would have retreated: it stays where it is, takes the same damage, and half its unsuppressed pips (rounded up) are suppressed. Attacked again that turn, it fires back with its strength less the suppressed pips (none at all when every pip is suppressed). A second artillery hit suppresses half of what is left. A hit too light to push it (a veteran) suppresses nothing. Its own turn starting, every pip comes back. Direct fire still drives back. Indirect fire is any attacker with a minimum range (it cannot fire on the next tile), not one that reaches far: a tank reaching two tiles still drives back.");
         make("attrition-rule-recon-transport", "reconTransport", (a, o) => { Put("Recon", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "The recon truck (1 slot, carries Boots) takes a grunt, drives, and puts it down beside it, as the APC does.");
         make("attrition-rule-alarms", "alarms", (a, o) => { Put("Grunt", a, -5, 0); Put("Grunt", a, 5, 0); Put("Tank", a, -4, 1); Put("Grunt", o, 6, -3); },
@@ -772,6 +772,14 @@ public static class Scenarios {
                 CombatOutcome d = CombatMath.Resolve(tank, open, tank.tile);
                 bool a7 = !d.defenderSuppressed && (d.defenderRetreats || d.damageToDefender - open.Veterancy <= d.damageToAttacker || d.defenderDies);
                 r.Add("tank on a grunt: retreats " + d.defenderRetreats + ", suppressed " + d.defenderSuppressed + " " + a7); ok &= a7;
+                // 8. Indirect is having a minimum range, not a long one: a tank reaching two tiles (minimum 0) still drives back; a gun with a minimum range of 1 suppresses even at range 1.
+                int tr = tank.AttackRange, am = art.AttackRange;
+                tank.AttackRange = 2; art.AttackRange = 1;
+                CombatOutcome longTank = CombatMath.Resolve(tank, open, tank.tile);
+                bool a8 = !CombatMath.Suppresses(tank) && CombatMath.Suppresses(art) && !longTank.defenderSuppressed
+                          && (longTank.defenderRetreats || longTank.damageToDefender - open.Veterancy <= longTank.damageToAttacker || longTank.defenderDies);
+                tank.AttackRange = tr; art.AttackRange = am;
+                r.Add("tank with range 2, minimum 0: indirect " + CombatMath.Suppresses(tank) + ", retreats " + longTank.defenderRetreats + "; gun range 1 minimum 1 indirect " + CombatMath.Suppresses(art) + " " + a8); ok &= a8;
                 detail = string.Join("; ", r.ToArray());
                 return ok;
             }
