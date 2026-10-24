@@ -14,7 +14,7 @@ using UnityEngine;
 /// sprites (shadows, pips, team colours — the opacity multiplies the colour other scripts give them,
 /// each frame), lines (treads), its canvases (through a CanvasGroup: damage numbers, alarms), and
 /// anything else that renders (smoke): those are switched off while it is hidden. Units it carries
-/// fade with their own fader (as their transport does: cargo is never seen on its own).
+/// fade with their own fader, as their transport does.
 /// </summary>
 public class FogFader : MonoBehaviour {
 
@@ -46,8 +46,8 @@ public class FogFader : MonoBehaviour {
         Player v = FogOfWar.Viewer;
         if (v == null) return 1f;
         if (u.trasnporter != null && u.trasnporter != u) {
-            // Aboard: as its transport is drawn; an enemy's cargo is never shown.
-            return u.owner == v ? TargetFor(u.trasnporter) : 0f;
+            // Aboard: as its transport is drawn.
+            return TargetFor(u.trasnporter);
         }
         if (u.owner == v) return FogOfWar.HiddenFromEnemies(u) ? FogSettings.Instance.ownHiddenAlpha : 1f;
         return FogOfWar.ShownToViewer(u) ? 1f : 0f;
