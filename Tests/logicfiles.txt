@@ -63,3 +63,5 @@ AI/AIAir.cs
 AI/AISupplyChain.cs
 AI/AIProduction.cs
 Units/TransportMenu.cs
+HealthDot.cs
+VeterancyChevron.cs

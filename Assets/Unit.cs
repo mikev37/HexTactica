@@ -108,6 +108,16 @@ public class Unit : MonoBehaviour
         Destroy(gameObject);
     }
 
+    /// <summary>
+    /// Lost without a shot (starved, ditched): off the board at once, like any death, and on screen
+    /// it plays its death as if shot (the explosion and the "Die" animation, whose end removes it).
+    /// </summary>
+    internal void Perish() {
+        DieActual();
+        if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
+        Die();
+    }
+
     public List<HexTile> path;//path for following when moving
 
     [Header("Supply Variables")]
@@ -179,6 +189,15 @@ public class Unit : MonoBehaviour
                 else boardingWalk.RemoveAt(0);
                 return;
             }
+        }
+        // Put down at the end of its transport's move: it rides along until the transport has
+        // stopped, then gets off and walks to its tile.
+        if (disembarkFrom != null) {
+            if (disembarkFrom.Strength > 0 && disembarkFrom.path != null && disembarkFrom.path.Count > 0) {
+                transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
+                return;
+            }
+            FinishDisembark();
         }
         // Aboard: shrink into the transport's slot; nothing else moves this sprite.
         if (trasnporter != null) {
@@ -301,6 +320,7 @@ public class Unit : MonoBehaviour
     /// not shown: the transport's own animator gets CarryingSupply (its hand-made supply form).
     /// </summary>
     public void OnBoarded(Unit transport) {
+        disembarkFrom = null;
         if (!scaleKnown) { homeScale = transform.localScale; scaleKnown = true; }
         // Its own UI goes: strength, veterancy and warnings are not shown for a unit aboard.
         hiddenUI.Clear();
@@ -357,15 +377,31 @@ public class Unit : MonoBehaviour
         return false;
     }
 
-    /// <summary>Unloading (Transporting.Unload calls this): everything OnBoarded did, undone; the unit walks to its tile.</summary>
+    /// <summary>The transport this unit was put down from, while its sprite still rides it to the end of its move (animation only).</summary>
+    [System.NonSerialized] Unit disembarkFrom;
+
+    /// <summary>
+    /// Unloading (Transporting.Unload calls this): everything OnBoarded did, undone; the unit walks to
+    /// its tile. The rules have it on its tile at once; on screen, if the transport is still driving
+    /// to where it unloads, the unit rides in it until it stops, and only then gets off.
+    /// </summary>
     public void OnUnloaded(Unit transport) {
         boardingWalk.Clear();
+        disembarkFrom = transport;
+        if (transport != null && transport.path != null && transport.path.Count > 0 && transport.Strength > 0) return;
+        FinishDisembark();
+    }
+
+    /// <summary>The getting off, on screen: back on the board at full size, walking to its tile.</summary>
+    void FinishDisembark() {
+        Unit transport = disembarkFrom;
+        disembarkFrom = null;
         foreach (GameObject g in hiddenUI) if (g != null) g.SetActive(true);
         hiddenUI.Clear();
         transform.SetParent(null, true);
         transform.rotation = Quaternion.identity;
         if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
-        if (GetComponent<SupplyPoint>() != null) {
+        if (GetComponent<SupplyPoint>() != null && transport != null) {
             bool still = false;
             foreach (Unit c in transport.transported) if (c != null && c != this && c.GetComponent<SupplyPoint>() != null) still = true;
             transport.SetAnimatorBool("CarryingSupply", still);
@@ -389,11 +425,11 @@ public class Unit : MonoBehaviour
         if (dead) return;
         if (Ditched != null) Ditched(this);
         DieActual();
-        if (animator != null) {
-            bool hasDitch = false;
-            foreach (AnimatorControllerParameter p in animator.parameters) if (p.name == "Ditch") hasDitch = true;
-            animator.SetTrigger(hasDitch ? "Ditch" : "Die");
-        }
+        if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
+        // Its own "Ditch" animation if it has one, else its death as if shot.
+        bool hasDitch = false;
+        if (animator != null) foreach (AnimatorControllerParameter p in animator.parameters) if (p.name == "Ditch") hasDitch = true;
+        Die(hasDitch ? "Ditch" : "Die");
     }
 
     internal void CompleteMove(HexTile hexTile, bool thenAttacks = false) {
@@ -819,9 +855,15 @@ public class Unit : MonoBehaviour
         shooter = false;
     }
     //Just aniamtions
-    private void Die() {
-        animator.SetTrigger("Die");
-        GameObject.Instantiate(deathExplosion, transform.position, transform.rotation);
+    bool deathPlayed;
+
+    /// <summary>The death on screen, once: the explosion and the animation trigger (whose end, DeathResolve, removes the unit). Removed anyway after a few seconds, in case the animation never ends.</summary>
+    private void Die(string trigger = "Die") {
+        if (deathPlayed) return;
+        deathPlayed = true;
+        if (animator != null) animator.SetTrigger(trigger);
+        if (deathExplosion != null) GameObject.Instantiate(deathExplosion, transform.position, transform.rotation);
+        Destroy(gameObject, 6f);
     }
 
     public void DeathResolve() {
