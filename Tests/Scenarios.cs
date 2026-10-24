@@ -413,7 +413,7 @@ public static class Scenarios {
         makeFog("fog-rule-vision", "fogVision", (a, o) => {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
-             "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red units Blue does not see. With fog off, everything is seen.", "Human");
+             "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
         makeFog("fog-ui-clicks", "fogClicks", (a, o) => { Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0); },
@@ -444,7 +444,7 @@ public static class Scenarios {
         make("attrition-rule-recon-transport", "reconTransport", (a, o) => { Put("Recon", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "The recon truck (1 slot, carries Boots) takes a grunt, drives, and puts it down beside it, as the APC does.");
         make("attrition-rule-alarms", "alarms", (a, o) => { Put("Grunt", a, -5, 0); Put("Grunt", a, 5, 0); Put("Tank", a, -4, 1); Put("Grunt", o, 6, -3); },
-             "The alarm icon's conditions: a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo.");
+             "The alarm icon's conditions (fuel and ammo alarms from a third of a full load down): a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo.");
         make("attrition-rule-portrait-layout", "portraitLayout", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 4, 0); },
              "The UI pictures of units and tiles (SpritePortrait): every sprite of the unit is placed as on the board and the whole fitted into the box. A 2x1 hull, a 1x1 turret turned 90 degrees above its right half and a mirrored flag, fitted into 100x100 with a 4 px margin: scale 46, centred, the turret at 90 degrees, the flag flipped.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -765,9 +765,14 @@ public static class Scenarios {
                 home.supplies = 0; far.supplies = 0; tank.fuel = 0; tank.ammo = 0;
                 bool homeSupplied = home.tile.isSupplied(l.ai), farSupplied = far.tile.isSupplied(l.ai);
                 bool a1 = !UnitAlarmIcon.Starving(home) && UnitAlarmIcon.Starving(far);
-                bool a2 = tank.fuelMax > 0 && tank.fuel <= 0 && tank.ammoMax > 0 && tank.ammo <= 0;
-                detail = "grunt in supply (" + homeSupplied + ") starving " + UnitAlarmIcon.Starving(home) + "; out of supply (" + farSupplied + ") starving " + UnitAlarmIcon.Starving(far) + "; tank out of fuel and ammo " + a2;
-                return homeSupplied && !farSupplied && a1 && a2;
+                float share = UnitAlarmSprites.Instance.lowShare;
+                bool a2 = UnitAlarmIcon.Low(0, tank.fuelMax, share) && UnitAlarmIcon.Low(0, tank.ammoMax, share);
+                int third = tank.ammoMax / 3;
+                bool a3 = UnitAlarmIcon.Low(third, tank.ammoMax, share) && !UnitAlarmIcon.Low(third + 1, tank.ammoMax, share) && !UnitAlarmIcon.Low(tank.fuelMax, tank.fuelMax, share)
+                       && !UnitAlarmIcon.Low(0, 0, share);
+                detail = "grunt in supply (" + homeSupplied + ") starving " + UnitAlarmIcon.Starving(home) + "; out of supply (" + farSupplied + ") starving " + UnitAlarmIcon.Starving(far)
+                       + "; tank empty: fuel and ammo alarms " + a2 + "; ammo " + third + "/" + tank.ammoMax + " alarm, " + (third + 1) + " not, full fuel not, a unit carrying none never " + a3;
+                return homeSupplied && !farSupplied && a1 && a2 && a3;
             }
             case "portraitLayout": {
                 var parts = new List<SpriteLayout.Part> {
@@ -833,8 +838,12 @@ public static class Scenarios {
                 bool gHidden = !FogOfWar.Sees(o, g);
                 float tg = FogFader.TargetFor(g), tr2 = FogFader.TargetFor(r2), tr1 = FogFader.TargetFor(r1);
                 bool r2Hidden = !FogOfWar.Sees(a, r2), r1Seen = FogOfWar.Sees(a, r1);
-                bool screen = viewer == o && gHidden && tg == 0f && (r2Hidden ? tr2 == FogSettings.Instance.ownHiddenAlpha : tr2 == 1f) && (r1Seen ? tr1 == 1f : tr1 == FogSettings.Instance.ownHiddenAlpha);
-                r.Add("screen (" + (viewer != null ? viewer.personal_name : "none") + "): hidden Blue unit " + tg + ", Red unit Blue " + (r2Hidden ? "does not see " : "sees ") + tr2 + " " + screen);
+                // Red's own: only a stealthy unit (the recon) Blue does not see is half-faded; a grunt Blue does not see is drawn as it is.
+                rc.TeleportTo(Rig.At(4, -6), 0); moved();   // off Blue's city, out of Blue's sight
+                bool rcHidden = !FogOfWar.Sees(a, rc);
+                float trc = FogFader.TargetFor(rc);
+                bool screen = viewer == o && gHidden && tg == 0f && r2Hidden && tr2 == 1f && tr1 == 1f && rcHidden && trc == FogSettings.Instance.ownHiddenAlpha;
+                r.Add("screen (" + (viewer != null ? viewer.personal_name : "none") + "): hidden Blue unit " + tg + ", Red grunt Blue does not see " + tr2 + ", Red recon Blue does not see " + trc + " " + screen);
                 gc.fogOfWar = false;
                 bool off = FogOfWar.Sees(a, r2) && FogOfWar.Sees(a, cargo) && FogOfWar.Viewer == null && FogFader.TargetFor(g) == 1f;
                 gc.fogOfWar = true;

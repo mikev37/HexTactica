@@ -68,3 +68,5 @@ Fog/FogSettings.cs
 Fog/FogFader.cs
 Fog/FogView.cs
 AI/AIFog.cs
+HealthDot.cs
+VeterancyChevron.cs
