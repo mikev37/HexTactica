@@ -432,6 +432,8 @@ public static class Scenarios {
                  Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
                  for (int x = -1; x <= 1; x++) for (int y = -3; y <= 3; y++) { HexTile t = Rig.At(x, y); if (t != null && (x + y) % 2 == 0) t.terrain = T("Forest"); } },
              "Both sides the AI, both playing by the fog, eight rounds: after every action the board is whole (every unit on its tile and only there, nothing left concealed), attacks only ever at units their side sees, and any unit run into stops short and is fired on.", "Full");
+        make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
+             "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (which has no BuildingGround, the ground of every building tile) comes back as it was: building tiles keep BuildingGround and their ground under, nothing fails. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
              "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
         makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -990,6 +992,67 @@ public static class Scenarios {
                 r.Add("AI move through a hidden grunt: stopped at " + (p.tile != null ? "(" + p.tile.x + "," + p.tile.y + ")" : "-") + ", fired on " + aiStopped);
                 detail = string.Join("; ", r.ToArray());
                 return hidden && range && stopped && fight && revealed && aiStopped;
+            }
+            case "editorLoad": {
+                // The terrains the scene's LevelEditor lists (Assets/Scenes/SampleScene.unity), and every building prefab.
+                string root = PrefabLoader.AssetsRoot;
+                List<string> sceneTerrain = new List<string>();
+                bool inList = false;
+                foreach (string line in File.ReadAllLines(Path.Combine(root, "Scenes", "SampleScene.unity"))) {
+                    if (line.StartsWith("  allTerrain:")) { inList = true; continue; }
+                    if (!inList) continue;
+                    System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(line, "^  - .*guid: ([0-9a-f]+)");
+                    if (!g.Success) break;
+                    foreach (string meta in Directory.GetFiles(Path.Combine(root, "Tiles"), "*.asset.meta"))
+                        if (File.ReadAllText(meta).Contains("guid: " + g.Groups[1].Value)) sceneTerrain.Add(Path.GetFileName(meta).Replace(".asset.meta", ""));
+                }
+                LevelEditor was = LevelEditor.singleton;
+                LevelEditor ed = Rig.New<LevelEditor>();
+                ed.allTerrain = new List<TerrainData>();
+                foreach (string t in sceneTerrain) ed.allTerrain.Add(ScenarioFile.Terrain(t));
+                ed.allBuilding = new List<Building>();
+                foreach (string f in Directory.GetFiles(Path.Combine(root, "Buildings", "Prefabs"), "*.prefab"))
+                    try { ed.allBuilding.Add(PrefabLoader.LoadBuilding(Path.GetFileNameWithoutExtension(f))); } catch (Exception) { }
+                ed.allUnit = new List<Unit>();
+                LevelEditor.singleton = ed;
+                try {
+                    // What a tile needs to be loaded into headless: its pictures, overlay and roads.
+                    HexTileUIData ui = HexTileUIData.instance;
+                    foreach (HexTile t in Rig.hg.tiles) {
+                        t.upper = Rig.New<SpriteRenderer>(); t.lower = Rig.New<SpriteRenderer>(); t.water = Rig.New<SpriteRenderer>(); t.floor = Rig.New<SpriteRenderer>();
+                        t.road_up = Rig.New<SpriteRenderer>(); t.road_dn = Rig.New<SpriteRenderer>(); t.road_ru = Rig.New<SpriteRenderer>();
+                        t.road_rd = Rig.New<SpriteRenderer>(); t.road_lu = Rig.New<SpriteRenderer>(); t.road_ld = Rig.New<SpriteRenderer>();
+                        if (t.overlay == null) t.overlay = Rig.New<SpriteRenderer>();
+                        if (t.arrow == null) t.arrow = Rig.New<SpriteRenderer>();
+                        if (t.uiData == null) t.uiData = ui;
+                    }
+                    List<string> r = new List<string>();
+                    r.Add("scene list: " + string.Join(",", sceneTerrain.ToArray()) + (sceneTerrain.Contains("BuildingGround") ? "" : " (no BuildingGround)"));
+                    HexTile hq = Rig.At(-6, 0), city = Rig.At(0, 0);
+                    List<TileData> saved = new List<TileData>();
+                    foreach (HexTile t in Rig.hg.tiles) saved.Add(new TileData(t));
+                    Dictionary<HexTile, string> before = new Dictionary<HexTile, string>();
+                    foreach (HexTile t in Rig.hg.tiles) before[t] = t.terrain.name;
+                    string hqWas = hq.terrain.name, cityWas = city.terrain.name;
+                    int failed = 0, changed = 0;
+                    string firstError = null;
+                    foreach (TileData d in saved) {
+                        try { d.load(); } catch (Exception e) { failed++; if (firstError == null) firstError = e.GetType().Name + " at (" + d.x + "," + d.y + ") '" + d.terrain + "'"; }
+                    }
+                    foreach (HexTile t in Rig.hg.tiles) if (t.terrain == null || t.terrain.name != before[t]) changed++;
+                    r.Add("HQ tile " + hqWas + " → " + (hq.terrain != null ? hq.terrain.name : "null") + ", city tile " + cityWas + " → " + (city.terrain != null ? city.terrain.name : "null"));
+                    r.Add(saved.Count + " tiles loaded, " + failed + " failed" + (firstError != null ? " (" + firstError + ")" : "") + ", " + changed + " changed");
+                    bool roundTrip = failed == 0 && changed == 0 && hqWas == "BuildingGround" && !sceneTerrain.Contains("BuildingGround");
+                    // A terrain the game never had: the ground under, else grassland.
+                    TileData odd = new TileData(Rig.At(2, 0)); odd.terrain = "Swampland"; odd.under = "";
+                    TileData oddUnder = new TileData(Rig.At(3, 0)); oddUnder.terrain = "Swampland"; oddUnder.under = "Forest";
+                    bool unknown = false;
+                    try { odd.load(); oddUnder.load(); unknown = Rig.At(2, 0).terrain.name == "Grassland" && Rig.At(3, 0).terrain.name == "Forest"; }
+                    catch (Exception e) { r.Add("unknown terrain: " + e.GetType().Name); }
+                    r.Add("unknown terrain loads as grassland / the ground under " + unknown);
+                    detail = string.Join("; ", r.ToArray());
+                    return roundTrip && unknown;
+                } finally { LevelEditor.singleton = was; }
             }
             case "fogClicks": {
                 Unit red = Rig.At(0, 0).occupier, blue = Rig.At(2, 0).occupier;

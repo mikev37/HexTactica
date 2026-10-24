@@ -706,7 +706,16 @@ public struct TileData {
         if (city != null && grass != null && BuildingController.bc != null) {
             t.loadData(grass);
             if (t.building == null) BuildingController.bc.Place(null, city, t);
-        } else t.loadData(LevelEditor.loadTerrain(terrain));
+        } else {
+            TerrainData td = LevelEditor.loadTerrain(terrain);
+            if (td == null) {
+                // A terrain this game does not have (renamed or removed since the save): the ground
+                // under a building if the save kept it, else grassland, rather than failing the load.
+                td = (!string.IsNullOrEmpty(under) ? LevelEditor.loadTerrain(under) : null) ?? grass;
+                Debug.LogWarning("Tile (" + x + "," + y + "," + z + "): no terrain named '" + terrain + "'; loaded as " + (td != null ? td.name : "nothing") + ".");
+            }
+            if (td != null) t.loadData(td);
+        }
         // A building's tile, saved with its ground as shown: the building keeps it (see Building.Occupy).
         t.pendingUnder = !string.IsNullOrEmpty(under) ? LevelEditor.loadTerrain(under) : null;
         t.damage = Mathf.Max(0, damage);
