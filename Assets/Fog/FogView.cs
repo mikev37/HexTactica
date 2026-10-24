@@ -65,11 +65,15 @@ public class FogView : MonoBehaviour {
     }
 
     SpriteRenderer Make(HexTile t, FogSettings set) {
+        // The tile prefab's own fog, if it has one (a child named "Fog" with a SpriteRenderer).
+        Transform own = t.transform.Find("Fog");
+        SpriteRenderer mine = own != null ? own.GetComponent<SpriteRenderer>() : null;
+        if (mine != null) { mine.color = new Color(0f, 0f, 0f, 0f); return mine; }
         GameObject g = new GameObject("Fog");
         g.transform.SetParent(t.transform, false);
-        g.transform.localPosition = Vector3.zero;
         SpriteRenderer sr = g.AddComponent<SpriteRenderer>();
-        sr.sprite = set.tileSprite != null ? set.tileSprite : BuiltIn();
+        if (set.tileSprite != null) { g.transform.localPosition = Vector3.zero; sr.sprite = set.tileSprite; }
+        else { g.transform.localPosition = new Vector3(set.hexOffset.x, set.hexOffset.y, 0f); sr.sprite = BuiltIn(t, set); }
         if (!string.IsNullOrEmpty(set.sortingLayer)) sr.sortingLayerName = set.sortingLayer;
         sr.sortingOrder = set.sortingOrder;
         sr.color = new Color(0f, 0f, 0f, 0f);
@@ -77,35 +81,37 @@ public class FogView : MonoBehaviour {
     }
 
     /// <summary>
-    /// A flat-topped hex on the terrain tiles' canvas (1024x1280 at 100 pixels per unit, pivot in the
-    /// middle), drawn at a quarter of the size: it covers a tile's ground exactly as its sprites do,
-    /// a little larger so neighbouring hexes meet.
+    /// A flat-topped hex the size of one grid cell, measured from how the tiles are laid out: the
+    /// step to the next tile in the same column is the cell's height, the step across to the next
+    /// column three quarters of its width. Neighbours meet edge to edge (FogSettings.hexScale).
     /// </summary>
-    Sprite BuiltIn() {
+    Sprite BuiltIn(HexTile any, FogSettings set) {
         if (builtIn != null) return builtIn;
-        const int W = 256, H = 320;
+        float h = 6.5f, w = 16f / 3f * 4f / 3f;   // HexGenerator's spacing, if it cannot be measured
+        foreach (HexTile n in any.neighbors) {
+            if (n == null) continue;
+            Vector3 d = n.transform.position - any.transform.position;
+            if (n.x == any.x) h = Mathf.Abs(d.y);
+            else if (Mathf.Abs(d.x) > 0.01f) w = Mathf.Abs(d.x) * 4f / 3f;
+        }
+        w *= set.hexScale; h *= set.hexScale;
+        const float ppu = 32f;
+        int W = Mathf.CeilToInt(w * ppu), H = Mathf.CeilToInt(h * ppu);
         Texture2D tex = new Texture2D(W, H, TextureFormat.RGBA32, false);
         tex.wrapMode = TextureWrapMode.Clamp;
-        // The ground's hex in the terrain art: x 44..980, y 107..829 from the top of 1280 (quartered).
-        float left = 11f - 2f, right = 245f + 2f, top = H - 27f + 2f, bottom = H - 207f - 2f;
-        float midY = (top + bottom) * 0.5f, inset = (right - left) * 0.25f;
+        float cx = W * 0.5f, cy = H * 0.5f, hw = w * ppu * 0.5f, hh = h * ppu * 0.5f;
         Color[] px = new Color[W * H];
         for (int y = 0; y < H; y++) {
             for (int x = 0; x < W; x++) {
-                float fx = x + 0.5f, fy = y + 0.5f;
-                bool inside = fy >= bottom && fy <= top;
-                if (inside) {
-                    // The slanted sides: from the left and right points at mid height to the corners.
-                    float k = Mathf.Abs(fy - midY) / Mathf.Max(1f, top - midY);
-                    float l = left + inset * k, r = right - inset * k;
-                    inside = fx >= l && fx <= r;
-                }
+                float fx = Mathf.Abs(x + 0.5f - cx), fy = Mathf.Abs(y + 0.5f - cy);
+                // Flat top and bottom; the sides slant in from the points at mid height.
+                bool inside = fy <= hh && fx <= hw - (hw * 0.5f) * (fy / hh);
                 px[y * W + x] = inside ? Color.white : new Color(1f, 1f, 1f, 0f);
             }
         }
         tex.SetPixels(px);
         tex.Apply();
-        builtIn = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), 25f);
+        builtIn = Sprite.Create(tex, new Rect(0, 0, W, H), new Vector2(0.5f, 0.5f), ppu);
         builtIn.name = "FogHex";
         return builtIn;
     }

@@ -21,6 +21,6 @@ namespace UnityEngine.UI {
 }
 namespace TMPro {
     public enum TextAlignmentOptions { Left, Center, Right, MidlineLeft, Midline, MidlineRight }
-    public class TMP_Text : UnityEngine.UI.Graphic { public string text = ""; public float fontSize; public TextAlignmentOptions alignment; }
+    public class TMP_Text : UnityEngine.UI.Graphic { public string text = ""; public float fontSize; public TextAlignmentOptions alignment; public UnityEngine.RectTransform rectTransform; }
     public class TextMeshProUGUI : TMP_Text { }
 }

@@ -15,6 +15,7 @@ namespace UnityEngine {
         public int GetInstanceID() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
         public static implicit operator bool(Object o) { return !ReferenceEquals(o, null); }
         public static void Destroy(Object o) { }
+        public static void Destroy(Object o, float t) { }
         public static void DestroyImmediate(Object o) { }
         public static T FindObjectOfType<T>() where T : class { return null; }
         public static T FindAnyObjectByType<T>() where T : class { return null; }
@@ -66,6 +67,7 @@ namespace UnityEngine {
         public override bool Equals(object o) { return o is Vector4 && (Vector4)o == this; } public override int GetHashCode() { return 0; } }
     public struct Matrix4x4 { public static Matrix4x4 identity { get { return new Matrix4x4(); } }
         public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b) { return a; }
+        public static Matrix4x4 TRS(Vector3 p, Quaternion r, Vector3 s) { return new Matrix4x4(); }
         public Vector3 MultiplyVector(Vector3 v) { return v; } public Vector3 MultiplyPoint3x4(Vector3 v) { return v; } }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) { return m.value; } }
     public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public Vector2 size { get { return new Vector2(width, height); } } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
@@ -376,3 +378,5 @@ namespace UnityEditor {
 namespace UnityEngine.Rendering {
     public class SortingGroup : Behaviour { public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
 }
+
+namespace UnityEngine.Serialization { public class FormerlySerializedAsAttribute : System.Attribute { public FormerlySerializedAsAttribute(string old) { } } }

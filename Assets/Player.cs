@@ -115,7 +115,7 @@ public class Player : MonoBehaviour
             if (u.supplies > 0) u.supplies--;
             else {
                 u.Strength = Mathf.Max(0, u.Strength - 1);
-                if (u.Strength <= 0) { unitsLostToAttrition++; u.Delete(); return; }
+                if (u.Strength <= 0) { unitsLostToAttrition++; u.Perish(); return; }
             }
         }
         if (LocomotionRules.IsAirborne(u.locomotion) && u.fuelMax > 0) {
@@ -160,7 +160,7 @@ public class Player : MonoBehaviour
                 u.Strength = Mathf.Max(0, u.Strength - 1);
                 if (u.Strength <= 0) {
                     unitsLostToAttrition++;
-                    u.Delete();
+                    u.Perish();
                     return;
                 }
             }
