@@ -293,6 +293,9 @@ MonoBehaviour:
   capturePoints: 0
   capturingPlayer: {fileID: 0}
   damageLevel: 0
+  health: 10
+  damageStates: []
+  destroyedSprite: {fileID: 0}
   buildable:
   - {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
   - {fileID: 9081080694409079478, guid: d4647588f393cbbac1e0144614333098, type: 3}

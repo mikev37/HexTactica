@@ -449,6 +449,11 @@ public static class Scenarios {
              "The UI pictures of units and tiles (SpritePortrait): every sprite of the unit is placed as on the board and the whole fitted into the box. A 2x1 hull, a 1x1 turret turned 90 degrees above its right half and a mirrored flag, fitted into 100x100 with a 4 px margin: scale 46, centred, the turret at 90 degrees, the flag flipped.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
              "Sandbox: turns go Blue, Red, Blue, Red even if a side is marked out (a file saved after it was knocked out), and the day goes up once per round.");
+        make("rule-destructible-terrain", "destructible", (a, o) => {
+                 Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0);
+                 Rig.At(3, -2).terrain = T("Bridge"); Rig.At(3, -2).road = true; Put("Grunt", a, 3, -2);
+                 Rig.PlaceBuilding("City", a, -3, 2); Put("Grunt", a, -3, 2); Put("Supplies", a, -4, 3); },
+             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit ten times, becomes water: no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it earns, supplies and builds nothing until repaired. Water takes no damage.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -997,6 +1002,53 @@ public static class Scenarios {
                 detail = actions + " actions, " + shots + " shots (" + blindShots + " at units not seen), " + bumps + " units ran into hidden ones; board broken after " + broken + " actions" + (firstBroken != null ? " (" + firstBroken + ")" : "")
                        + "; left Blue " + a.units.Count + ", Red " + o.units.Count;
                 return actions > 20 && broken == 0 && blindShots == 0;
+            }
+            case "destructible": {
+                List<string> r = new List<string>();
+                // The parts.
+                int[] one = new int[11], two = new int[11];
+                for (int left = 10; left >= 1; left--) { one[left] = TerrainData.Stage(10, 10 - left, 1); two[left] = TerrainData.Stage(10, 10 - left, 2); }
+                bool parts = one[10] == 0 && one[6] == 0 && one[5] == 1 && one[1] == 1 && two[10] == 0 && two[7] == 0 && two[6] == 1 && two[4] == 1 && two[3] == 2 && two[1] == 2;
+                r.Add("stages: one picture " + string.Join("", Array.ConvertAll(new[] { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 }, x => one[x].ToString())) + ", two " + string.Join("", Array.ConvertAll(new[] { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 }, x => two[x].ToString())) + " " + parts);
+                // A real attack damages the defender's tile.
+                Unit g = Rig.At(0, 0).occupier, red = Rig.At(1, 0).occupier;
+                HexTile grass = Rig.At(0, 0);
+                red.OrderAttack(g);
+                bool hit = grass.damage == 1 && grass.combatCount == 1;
+                for (int i = 0; i < 9; i++) grass.RegisterCombat();
+                bool badlands = grass.terrain.name == "Badlands" && grass.damage == 0 && grass.destroyedFrom.Count == 1 && grass.destroyedFrom[0].name == "Grassland";
+                bool undo = grass.UndoDestruction() && grass.terrain.name == "Grassland" && grass.damage == 9;
+                grass.Repair(9);
+                bool repaired = grass.damage == 0 && grass.damageLevel == 0;
+                r.Add("attack damages the tile " + hit + "; ten hits: Grassland -> " + (badlands ? "Badlands" : grass.terrain.name) + " " + badlands + "; undone " + undo + ", repaired " + repaired);
+                // The bridge falls with a grunt on it.
+                HexTile bridge = Rig.At(3, -2);
+                Unit onBridge = bridge.occupier;
+                for (int i = 0; i < 10; i++) bridge.RegisterCombat();
+                bool fell = bridge.terrain.name == "Water" && !bridge.road && bridge.occupier == null && onBridge.Strength <= 0 && !a.units.Contains(onBridge);
+                r.Add("bridge: " + bridge.terrain.name + ", road " + bridge.road + ", grunt lost " + (onBridge.Strength <= 0) + " " + fell);
+                // The city takes the hits; destroyed it stops working.
+                HexTile ct = Rig.At(-3, 2);
+                Building city = ct.building;
+                TerrainData ground = ct.terrain;
+                gc.EndTurn(); gc.EndTurn();
+                for (int i = 0; i < 10; i++) ct.RegisterCombat();
+                bool destroyed = city.Destroyed && !city.Functioning && ct.terrain == ground && ct.damage == 0;
+                int m0 = a.money; gc.EndTurn(); gc.EndTurn(); int earned = a.money - m0;
+                a.Resupply();
+                int hqIncome = GameController.HQOf(a) != null ? GameController.HQOf(a).income : 0;
+                bool stopped = destroyed && earned == hqIncome && !city.HasSupplyToGive && !city.CanProduce;
+                city.Repair(1);
+                int m1 = a.money; gc.EndTurn(); gc.EndTurn(); int earnedAgain = a.money - m1;
+                bool back = !city.Destroyed && earnedAgain == hqIncome + city.income;
+                r.Add("city: ground untouched, destroyed " + destroyed + ", turn's income " + earned + " (the HQ's " + hqIncome + "), no supply or production " + stopped + "; repaired by 1: income " + earnedAgain + " " + back);
+                // Water takes nothing.
+                HexTile w = bridge;
+                w.RegisterCombat();
+                bool water = w.terrain.name == "Water" && w.damage == 0;
+                r.Add("water takes no damage " + water);
+                detail = string.Join("; ", r.ToArray());
+                return parts && hit && badlands && undo && repaired && fell && stopped && back && water;
             }
             case "sandboxTurns": {
                 gc.rules = RuleSet.Sandbox;

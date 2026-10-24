@@ -32,6 +32,7 @@ public class HexTile : MonoBehaviour
     public SpriteRenderer road_up, road_lu, road_ld, road_ru, road_rd, road_dn;
 
     [Header("Personal Variables")]
+    [Tooltip("The damage picture showing (0: none), from the terrain's health left. Set by RefreshDamageSprite.")]
     public int damageLevel;
 
 
@@ -96,6 +97,8 @@ public class HexTile : MonoBehaviour
 
     public void loadData(TerrainData td) {
         terrain = td;
+        damage = 0;
+        damageLevel = 0;
         upper.sprite = td.upper_normal;
         lower.sprite = td.lower;
         water.sprite = td.water;
@@ -217,43 +220,123 @@ public class HexTile : MonoBehaviour
         return FogOfWar.ApparentOccupier(this, unit != null ? unit.owner : null) == null;
     }
 
-    [Tooltip("Fights resolved on this tile; every 10 raises destruction one tier, to a max of 3")]
+    [Tooltip("Fights resolved on this tile (every attack on a unit standing on it).")]
     public int combatCount;
+    [Tooltip("Health this tile's terrain has lost (TerrainData.health): every attack on a unit standing on it takes one.")]
+    public int damage;
+    /// <summary>The terrains this tile was before it was destroyed, the latest last (to put it back: UndoDestruction).</summary>
+    [System.NonSerialized] public List<TerrainData> destroyedFrom = new List<TerrainData>();
+
+    /// <summary>A tile's terrain was destroyed and replaced: the tile, what it was. For logs.</summary>
+    public static event System.Action<HexTile, TerrainData> TerrainDestroyed;
 
     /// <summary>
-    /// "Destruction increases the more a zone is bombarded or attacked in. For every
-    /// 10 times combat is had in a zone, the sprite changes up to level 3 - maximum
-    /// devastation. It affects movability and defense."
+    /// A fight on this tile (a unit standing here was attacked): one point of damage to the ground,
+    /// or to the building standing on it or owning it as a runway or dock (Building.Damage), which
+    /// takes the hits instead.
     /// </summary>
     public void RegisterCombat() {
         combatCount++;
-        int tier = Mathf.Min(3, combatCount / 10);
-        if (tier != damageLevel) {
-            damageLevel = tier;
-            RefreshDamageSprite();
-        }
+        Damage(1);
     }
 
+    /// <summary>
+    /// <paramref name="amount"/> damage to what stands here: the building if there is one, else the
+    /// terrain. The terrain's top sprite steps through its damage pictures as its health goes
+    /// (TerrainData.Stage); at 0 it is destroyed (<see cref="DestroyTerrain"/>). Terrain with no
+    /// health (water, mountains) takes none.
+    /// </summary>
+    public void Damage(int amount) {
+        if (amount <= 0) return;
+        if (building != null) { building.Damage(amount); return; }   // its runways and docks too
+        if (terrain == null || terrain.health <= 0) return;
+        damage = Mathf.Min(terrain.health, damage + amount);
+        RefreshDamageSprite();
+        if (damage >= terrain.health && terrain.destroyedInto != null) DestroyTerrain();
+    }
+
+    /// <summary>
+    /// The terrain is gone: the tile becomes its destroyedInto terrain at full health, exactly as if
+    /// painted (roads redrawn on it and its neighbours: a destroyed bridge leaves its shores' roads
+    /// ending at the water). A unit that cannot stand on the new ground is lost with what it carries
+    /// (a grunt on a bridge that falls). Supply is worked out again for everyone (it runs over terrain).
+    /// What it was is kept (<see cref="destroyedFrom"/>) so it can be put back (UndoDestruction).
+    /// </summary>
+    public void DestroyTerrain() {
+        if (terrain == null || terrain.destroyedInto == null) return;
+        TerrainData was = terrain;
+        destroyedFrom.Add(was);
+        SetTerrain(terrain.destroyedInto);
+        AfterTerrainChange();
+        if (TerrainDestroyed != null) TerrainDestroyed(this, was);
+    }
+
+    /// <summary>
+    /// Repair: take back up to <paramref name="amount"/> damage from the terrain (or the building
+    /// standing here). The damage pictures step back as it heals. Does not undo a destruction (see
+    /// <see cref="UndoDestruction"/>).
+    /// </summary>
+    public void Repair(int amount) {
+        if (amount <= 0) return;
+        if (building != null) { building.Repair(amount); return; }
+        damage = Mathf.Max(0, damage - amount);
+        RefreshDamageSprite();
+    }
+
+    /// <summary>
+    /// Put back the terrain this tile was before its last destruction (a rebuilt bridge, regrown
+    /// forest), with <paramref name="damageLeft"/> damage on it (default: one short of destroyed,
+    /// as it was the moment before). False if it was never destroyed. A unit standing here that
+    /// cannot stand on it (a boat under a rebuilt bridge) is lost.
+    /// </summary>
+    public bool UndoDestruction(int damageLeft = -1) {
+        if (destroyedFrom.Count == 0) return false;
+        TerrainData back = destroyedFrom[destroyedFrom.Count - 1];
+        destroyedFrom.RemoveAt(destroyedFrom.Count - 1);
+        SetTerrain(back);
+        damage = damageLeft < 0 ? Mathf.Max(0, back.health - 1) : Mathf.Clamp(damageLeft, 0, Mathf.Max(0, back.health));
+        RefreshDamageSprite();
+        AfterTerrainChange();
+        return true;
+    }
+
+    /// <summary>The terrain changed under whatever stands here: units that cannot be on it are lost; supply and sight are worked out again.</summary>
+    void AfterTerrainChange() {
+        if (occupier != null && occupier.Strength > 0 && !occupier.CanEnter(this)) occupier.Perish();
+        if (GameController.gc != null && GameController.gc.players != null)
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        FogOfWar.Changed();
+    }
+
+    /// <summary>Lay new terrain on the tile, as painting does (the headless harness has no sprites: just the data). Damage starts again from 0.</summary>
+    void SetTerrain(TerrainData td) {
+        if (upper != null) loadData(td);
+        else { terrain = td; road = td.road; damage = 0; }
+    }
+
+    /// <summary>The terrain's damage picture for the health it has left (TerrainData.Stage), or its normal top sprite.</summary>
     public void RefreshDamageSprite() {
-        if (terrain == null || upper == null) return;
-        if (damageLevel >= 3 && terrain.upper_destroyed != null) upper.sprite = terrain.upper_destroyed;
-        else if (damageLevel >= 1 && terrain.upper_damaged != null) upper.sprite = terrain.upper_damaged;
-        else upper.sprite = terrain.upper_normal;
+        if (terrain == null) return;
+        Sprite[] states = terrain.DamageStates;
+        int stage = TerrainData.Stage(terrain.health, damage, states.Length);
+        damageLevel = stage;
+        if (upper == null) return;
+        upper.sprite = stage > 0 ? states[stage - 1] : terrain.upper_normal;
     }
 
-    /// <summary>Cover after destruction. Bombarded ground stops protecting anyone.</summary>
+    /// <summary>Cover: the terrain's. (Damage changes the picture; the ground itself changes only when it is destroyed into something else.)</summary>
     public int EffectiveCover {
         get {
             if (terrain == null) return 0;
-            return Mathf.Max(0, terrain.cover - damageLevel);
+            return Mathf.Max(0, terrain.cover);
         }
     }
 
-    /// <summary>Movement resistance after destruction. Cratered ground is harder to cross.</summary>
+    /// <summary>Movement resistance: the terrain's (it changes when the terrain is destroyed into something else).</summary>
     public int EffectiveMoveability {
         get {
             if (terrain == null) return 0;
-            return Mathf.Max(0, terrain.moveability + (damageLevel > 0 ? 1 : 0));
+            return Mathf.Max(0, terrain.moveability);
         }
     }
 
@@ -556,9 +639,12 @@ public class AITileData {
 
 public struct TileData {
     public int x, y, z;
+    /// <summary>Health the terrain has lost (older saves: a destruction tier, read as that much damage).</summary>
     public int damage;
     public int combatCount;
     public string terrain;
+    /// <summary>The terrains this tile was before it was destroyed, oldest first, comma-separated (for repair). Empty if never.</summary>
+    public string destroyedFrom;
     /// <summary>
     /// A building's tile: the terrain under the building (what the tile gets back if the building
     /// goes), while <see cref="terrain"/> is the ground shown, which the editor can paint. Empty
@@ -570,16 +656,17 @@ public struct TileData {
         x = t.x;
         y = t.y;
         z = t.z;
-        damage = t.damageLevel;
+        damage = t.damage;
         combatCount = t.combatCount;
         terrain = t.terrain.name;
+        destroyedFrom = "";
+        foreach (TerrainData d in t.destroyedFrom) if (d != null) destroyedFrom += (destroyedFrom.Length > 0 ? "," : "") + d.name;
         under = t.building != null ? t.building.Underlying(t).name : "";
     }
 
     public HexTile load() {
         HexTile t = HexGenerator.hg.get(x, y, z);
         if (t == null) return null;   // a save written for a bigger board: skip what this one lacks
-        t.damageLevel = damage;
         t.combatCount = combatCount;
         // City was a terrain; it is a building now. A City tile in an older map becomes a neutral
         // City building on grassland.
@@ -591,6 +678,10 @@ public struct TileData {
         } else t.loadData(LevelEditor.loadTerrain(terrain));
         // A building's tile, saved with its ground as shown: the building keeps it (see Building.Occupy).
         t.pendingUnder = !string.IsNullOrEmpty(under) ? LevelEditor.loadTerrain(under) : null;
+        t.damage = Mathf.Max(0, damage);
+        t.destroyedFrom.Clear();
+        if (!string.IsNullOrEmpty(destroyedFrom))
+            foreach (string n in destroyedFrom.Split(',')) { TerrainData d = LevelEditor.loadTerrain(n.Trim()); if (d != null) t.destroyedFrom.Add(d); }
         t.RefreshDamageSprite();
         t.changeState(UIState.FREE);
         return t;
