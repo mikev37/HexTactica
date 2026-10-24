@@ -76,6 +76,8 @@ MonoBehaviour:
   AttackRange: 0
   MinRange: 0
   retaliates: 0
+  visionRange: 2
+  stealthRange: 0
   move_display: {fileID: 0}
   moveRange: 0
   terrainScramble: 0

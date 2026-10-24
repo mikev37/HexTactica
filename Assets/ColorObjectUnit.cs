@@ -26,7 +26,8 @@ public class ColorObjectUnit : MonoBehaviour
     void Update()
     {
         if (render == null) return;
-        Player owner = unit != null ? unit.owner : building != null ? building.owner : null;
+        // A building's owner as the screen shows it (under fog of war, as last seen).
+        Player owner = unit != null ? unit.owner : building != null ? FogOfWar.ShownOwner(building) : null;
         Color pc = owner != null ? owner.displayColor : neutral;
         render.color = new Color(pc.r, pc.g, pc.b, alpha);
     }

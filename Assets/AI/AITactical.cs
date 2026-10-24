@@ -327,6 +327,8 @@ namespace HexTactica.AI {
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
                 // Runways and docks are kept clear for the aircraft and ships that land there.
                 o.world.score -= AIAir.RunwayBlockCost(unit, o.stop, map);
+                // Fog of war (played by): seeing from there, and not being seen there.
+                o.world.score += AIFog.StopValue(unit, o.stop, map, profile);
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
             if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });
@@ -494,6 +496,8 @@ namespace HexTactica.AI {
                 // Whether it can get home before it starves.
                 if (applySupply) score -= AIScore.StrandingCost(unit, t, eta.turns, map);
                 score += AIScore.CoverPreference(unit, stop, map, profile);
+                // Fog of war (played by): what the stop brings into sight, and an ambush from it.
+                score += AIFog.StopValue(unit, stop, map, profile);
                 // And tonight's supply: camping outside it every night en route is a real cost
                 // even when the destination itself is supplied.
                 if (applySupply) score -= AIScore.OutOfSupplyCost(unit, stop, map);
@@ -754,6 +758,8 @@ namespace HexTactica.AI {
                 if (objective != null && objective.tile != null) v += worth * 0.6f / (1 + t.Distance(objective.tile));
                 if (t.building != null && t.building.owner != unit.owner) v += worth * 0.4f;
                 v += StrategicBonus(unit, t, posture) * 0.6f;
+                // Fog of war: going to look at what nobody has seen lately.
+                v += AIFog.ScoutValue(unit, t, profile);
                 return v;
             }, true, 1.5f, 0.01f, "recon");
             if (stopCapture != null) {

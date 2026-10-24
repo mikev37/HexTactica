@@ -47,7 +47,11 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
     {
         enabled = false;   // until the next publish wakes it
         bool u = false, d = false, ur = false, ul = false, dl = false, dr = false;
-        if (myTile.isSupplied(myPlayer)) {
+        // Under fog of war only the viewer's own supply is drawn: an enemy's would show where its
+        // hidden supply units and buildings are.
+        Player viewer = FogOfWar.Viewer;
+        bool shown = viewer == null || viewer == myPlayer;
+        if (shown && myTile.isSupplied(myPlayer)) {
             List<HexTile> neighbors = myTile.neighbors;
             for (int i = 0; i < neighbors.Count; i++) {
                 HexTile tile = neighbors[i];

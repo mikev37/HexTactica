@@ -48,6 +48,7 @@ public class BuildingController : MonoBehaviour {
         made.Occupy(tile);
         if (!buildings.Contains(made)) buildings.Add(made);
         if (!Building.all.Contains(made)) Building.all.Add(made);
+        FogOfWar.Changed();
         made.RefreshFlag();
         return made;
     }

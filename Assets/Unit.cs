@@ -72,6 +72,14 @@ public class Unit : MonoBehaviour
     public int MinRange;
     public bool retaliates = true;
 
+    [Header("Vision (fog of war)")]
+    [Range(0, 10)]
+    [Tooltip("Tiles it sees around it when fog of war is on: everything within this many steps.")]
+    public int visionRange = 2;
+    [Range(0, 10)]
+    [Tooltip("Stealth: an enemy observer this many steps away or more does not see it, even inside its vision (0: no stealth). A unit next to an enemy unit, or on an enemy building, is always seen.")]
+    public int stealthRange = 0;
+
 
     [Header("Movement Variables")]
     public Sprite move_display;
@@ -150,6 +158,8 @@ public class Unit : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        // Fades the unit in and out of sight under fog of war (does nothing with fog off).
+        if (GetComponent<FogFader>() == null) gameObject.AddComponent<FogFader>();
         /*
         animator.ResetTrigger("Fire!");
         animator.ResetTrigger("Die");
@@ -176,7 +186,7 @@ public class Unit : MonoBehaviour
                 Vector3 to = next.unitPlacement != null ? next.unitPlacement.position : next.transform.position;
                 transform.rotation = to.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
                 if (Vector2.Distance(transform.position, to) > .1f) transform.position = Vector2.MoveTowards(transform.position, to, Time.deltaTime * moveSpeed);
-                else boardingWalk.RemoveAt(0);
+                else { spriteTile = next; boardingWalk.RemoveAt(0); }
                 return;
             }
         }
@@ -211,6 +221,7 @@ public class Unit : MonoBehaviour
             if(Vector2.Distance(transform.position, ht.unitPlacement.position) > .1f) {
                 transform.position = Vector2.MoveTowards(transform.position, ht.unitPlacement.position, Time.deltaTime * moveSpeed);
             } else {
+                spriteTile = ht;
                 path.RemoveAt(0);
             }
         } else {
@@ -232,8 +243,10 @@ public class Unit : MonoBehaviour
                 if (Vector2.Distance(transform.position, slideFirst.Value) <= 0.05f) slideFirst = null;
             }
             else if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
-            else if(tile && retreatHold <= 0f)
+            else if(tile && retreatHold <= 0f) {
                 transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed);
+                if (Vector2.Distance(transform.position, tile.unitPlacement.position) <= 0.2f) spriteTile = tile;
+            }
             else {
 
             }
@@ -262,6 +275,28 @@ public class Unit : MonoBehaviour
             if (firing && Time.time - firedAt < 2.5f) return true;
             if (trasnporter == null && tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f) return true;
             return false;
+        }
+    }
+
+    /// <summary>The tile the sprite was last on, while it is still walking or sliding (animation only).</summary>
+    [System.NonSerialized] HexTile spriteTile;
+
+    /// <summary>
+    /// Where the unit is drawn, as a tile: the tile its sprite last reached while it walks or slides
+    /// there, else the tile it stands on; aboard, its transport's. Fog of war shows an enemy by this,
+    /// so it appears as it walks into sight and fades as it walks out (FogOfWar.ShownToViewer).
+    /// </summary>
+    public HexTile ShownTile {
+        get {
+            if (trasnporter != null && trasnporter != this) return trasnporter.ShownTile;
+            if (spriteTile == null || spriteTile == tile) return tile;
+            // Not moving any more (or never drawn): where it stands.
+            if (path.Count == 0 && boardingWalk.Count == 0 && retreatHold <= 0f && !slideFirst.HasValue && !RetreatPlaying
+                && (tile == null || tile.unitPlacement == null || Vector2.Distance(transform.position, tile.unitPlacement.position) <= 0.2f)) {
+                spriteTile = null;
+                return tile;
+            }
+            return spriteTile;
         }
     }
 
@@ -396,27 +431,84 @@ public class Unit : MonoBehaviour
         }
     }
 
-    internal void CompleteMove(HexTile hexTile, bool thenAttacks = false) {
+    /// <summary>
+    /// Move to <paramref name="hexTile"/> along the path the tiles' parent chain gives (left there by
+    /// CheckMovementRange), walking it on screen. False if the unit did not get there: it ran into an
+    /// enemy it did not see (fog of war; see <see cref="MoveAlong"/>), which ends its move.
+    /// </summary>
+    internal bool CompleteMove(HexTile hexTile, bool thenAttacks = false) {
         tile.parent = null;
         List<HexTile> path = hexTile.buildpath();
+        bool arrived = MoveAlong(path, thenAttacks, true);
+        HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+        return arrived;
+    }
 
-        int tilesEntered = Mathf.Max(0, path.Count - 1);
+    /// <summary>The enemy that stopped this unit's last move (fog of war), if any. For logs and tests.</summary>
+    [System.NonSerialized] public Unit ambushedBy;
+
+    /// <summary>
+    /// Move along <paramref name="steps"/> (its first tile the unit's own), animated or not. Fuel is
+    /// burnt per tile entered.
+    ///
+    /// Fog of war: an enemy on the way that this unit's side did not see (the path was planned as if
+    /// it were not there) stops it on the last tile before it that is free (a friend's tile cannot be
+    /// ended on: it stops short of that too, or does not move at all). The move is over, a planned
+    /// attack is off, the enemy is revealed to the mover's side and fires on the mover if it can reach
+    /// it — the mover answering as usual (OrderAttack with surprise: the hidden unit always fires
+    /// first). Returns true if the unit reached the end of the path.
+    /// </summary>
+    internal bool MoveAlong(List<HexTile> steps, bool thenAttacks, bool animate) {
+        ambushedBy = null;
+        if (steps == null || steps.Count == 0 || tile == null) return false;
+        HexTile start = tile;
+        int stop = steps.Count - 1;
+        Unit ambusher = null;
+        if (FogOfWar.On) {
+            for (int i = 1; i < steps.Count; i++) {
+                Unit o = steps[i] != null ? steps[i].occupier : null;
+                if (o != null && o != this && o.owner != owner) { ambusher = o; stop = i - 1; break; }
+            }
+            if (ambusher != null) while (stop > 0 && steps[stop].occupier != null && steps[stop].occupier != this) stop--;
+        }
+        HexTile dest = steps[stop];
+        int tilesEntered = Mathf.Max(0, stop);
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
         // they are away from base (Player.StartTurn).
         if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
 
-        tile.occupier = null;
-        tile = hexTile;
-        tile.occupier = this;
-        this.path = path;
-        if (!thenAttacks) ServiceOnLanding();
+        if (dest != start) {
+            if (spriteTile == null) spriteTile = start;
+            if (tile.occupier == this) tile.occupier = null;
+            tile = dest;
+            tile.occupier = this;
+        }
+        if (animate) {
+            path = steps.GetRange(0, stop + 1);
+            if (animator != null) animator.SetBool("Moving", true);
+        }
+        // A move that was to end in an attack and was stopped is a plain move.
+        if (!thenAttacks || ambusher != null) ServiceOnLanding();
 
         // Carried units ride along rather than being left behind on the old tile.
-        SetCargoTile(hexTile);
+        SetCargoTile(dest);
+        FogOfWar.Changed();
 
-        animator.SetBool("Moving", true);
-        HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+        if (ambusher != null) {
+            ambushedBy = ambusher;
+            FogOfWar.Reveal(ambusher, owner);
+            int d = ambusher.tile != null ? ambusher.tile.Distance(dest) : int.MaxValue;
+            if (ambusher.Strength > 0 && d <= ambusher.AttackRange && d > ambusher.MinRange
+                && ambusher.CanAttack(this) && GameController.Targetable(this))
+                ambusher.OrderAttack(this, true);
+            if (RanInto != null) RanInto(this, ambusher, dest);
+            return false;
+        }
+        return dest == steps[steps.Count - 1];
     }
+
+    /// <summary>A unit ran into an enemy it did not see (fog of war): mover, the hidden unit, where the mover stopped. For logs.</summary>
+    public static event System.Action<Unit, Unit, HexTile> RanInto;
 
     /// <summary>How long the visual hop to an air tanker and back takes, in seconds.</summary>
     public const float RefuelHopSeconds = 1f;
@@ -480,6 +572,7 @@ public class Unit : MonoBehaviour
         if (hexTile != null) hexTile.occupier = this;
         if (!thenAttacks) ServiceOnLanding();
         SetCargoTile(hexTile);
+        FogOfWar.Changed();
     }
 
     /// <summary>
@@ -552,6 +645,7 @@ public class Unit : MonoBehaviour
     internal void FinishActive() {
         GameController.gc.activeUnit = null;
         active = false;
+        FogOfWar.Refresh();
         GameController.RecalculateThreat();
         if (GetComponent<SupplyPoint>()) {
             owner.Resupply();
@@ -569,10 +663,17 @@ public class Unit : MonoBehaviour
     /// </summary>
     /// <summary>Every attack, by anyone, after it resolves: attacker, defender, attacker's tile, defender's tile, outcome. For logs.</summary>
     public static event System.Action<Unit, Unit, HexTile, HexTile, CombatOutcome> Attacked;
+    /// <summary>An attack is about to be resolved: attacker, defender, and whether it is a surprise (a hidden unit run into, fog of war). For logs and tests.</summary>
+    public static event System.Action<Unit, Unit, bool> Attacking;
     /// <summary>A unit finished its action (moved, attacked, or both). For logs.</summary>
     public static event System.Action<Unit> Finished;
 
-    internal CombatOutcome OrderAttack(Unit defender) {
+    /// <summary>
+    /// Attack <paramref name="defender"/>. <paramref name="surprise"/>: an enemy that was run into
+    /// under fog of war fires first whatever the ground (no ambush by the unit it surprised).
+    /// </summary>
+    internal CombatOutcome OrderAttack(Unit defender, bool surprise = false) {
+        if (Attacking != null) Attacking(this, defender, surprise);
         // The defender's sprite is still sliding back from an earlier retreat: the shot waits until
         // it has arrived where the defender now is (the tile it stands on as this attack begins).
         waitForSlide = null;
@@ -587,7 +688,9 @@ public class Unit : MonoBehaviour
         // Capture before resolving: a kill nulls defender.tile and a retreat moves it,
         // and either way destruction belongs to the ground that was fought over.
         HexTile fought = defender.tile;
-        CombatOutcome o = CombatMath.Resolve(this, defender, tile);
+        CombatOutcome o = CombatMath.ResolveUnderFog(this, defender, tile, surprise);
+        // Firing gives a unit away to the side it fires on (fog of war).
+        FogOfWar.Reveal(this, defender.owner);
 
         if (ammoMax > 0) ammo = Mathf.Max(0, ammo - Mathf.Max(1, ammoPerShot));
         if (o.retaliationHappens && defender.ammoMax > 0) {
@@ -638,6 +741,7 @@ public class Unit : MonoBehaviour
         // Combat degrades the ground it is fought over.
         if (fought != null) fought.RegisterCombat();
 
+        FogOfWar.Changed();
         if (Attacked != null) Attacked(this, defender, firedFrom, fought, o);
         return o;
     }
@@ -719,12 +823,16 @@ public class Unit : MonoBehaviour
         if (to.occupier != null) return;
         if (!CanEnter(to)) return;
 
+        if (spriteTile == null) spriteTile = tile;
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = to;
         to.occupier = this;
         SetCargoTile(to);
-        // Empty path: Update() glides the sprite to the new tile at moveSpeed.
-        path.Clear();
+        FogOfWar.Changed();
+        // Empty path: Update() glides the sprite to the new tile at moveSpeed. Still walking (run
+        // into a hidden enemy and driven back by its fire, under fog of war): it finishes the walk
+        // first, is hit where it stopped, and then slides back.
+        if (!FogOfWar.On) path.Clear();
     }
 
     /// <summary>Direct damage application, used by scripted events and the harness.</summary>
@@ -755,6 +863,7 @@ public class Unit : MonoBehaviour
         if (trasnporter != null) { trasnporter.transported.Remove(this); trasnporter = null; }
         if (tile != null && tile.occupier == this) tile.occupier = null;
         tile = null;
+        FogOfWar.Changed();
         // Losing an HQ unit ends the game for its owner immediately, not at end of turn.
         if (GameController.gc != null) GameController.gc.CheckVictory();
         if (GetComponent<SupplyPoint>()) {
@@ -821,7 +930,9 @@ public class Unit : MonoBehaviour
     //Just aniamtions
     private void Die() {
         animator.SetTrigger("Die");
-        GameObject.Instantiate(deathExplosion, transform.position, transform.rotation);
+        // Not where anyone watching can see it (fog of war): no explosion to give it away.
+        FogFader fader = GetComponent<FogFader>();
+        if (fader == null || fader.Shown) GameObject.Instantiate(deathExplosion, transform.position, transform.rotation);
     }
 
     public void DeathResolve() {
@@ -870,7 +981,8 @@ public class Unit : MonoBehaviour
     }
 
     internal bool validTarget(HexTile position) {
-        return position.occupier != null && position.occupier.owner != owner && GameController.Targetable(position.occupier);
+        return position.occupier != null && position.occupier.owner != owner && GameController.Targetable(position.occupier)
+            && FogOfWar.CanTarget(owner, position.occupier);
     }
 }
 

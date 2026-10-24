@@ -477,6 +477,18 @@ namespace HexTactica.AI {
         [Tooltip("How much more cautious a transport is while carrying cargo. Losing a transport loses its cargo too.")]
         public float loadedTransportRisk = 2.5f;
 
+        [Header("Fog of war")]
+        [Tooltip("Under fog of war, play by it: decide on the board as this side knows it (unseen enemies off the board, those seen lately where they were last seen). Off: the AI sees everything.")]
+        public bool fogFair = true;
+        [Tooltip("Turns an enemy unit is remembered where it was last seen (fog of war, fogFair).")]
+        public int fogMemoryTurns = 2;
+        [Tooltip("Gold per tile a stop would bring into sight that is not seen now (more the longer it has gone unseen, up to 4 turns). Recon units count it double.")]
+        public float scoutTileValue = 15f;
+        [Tooltip("An ambush: ending where the enemy (as known) would not see this unit, within reach of an enemy that may run into it. Fraction of the unit's worth per enemy in reach (up to three).")]
+        public float ambushValue = 0.3f;
+        [Tooltip("Share of tonight's risk taken back for a stop the enemy (as known) would not see this unit on: it can only be fired on by what stumbles into it.")]
+        public float hiddenRiskRelief = 0.5f;
+
         [Header("Debug")]
         [Tooltip("Write decision reasoning onto the tiles as text.")]
         public bool annotateBoard = true;

@@ -193,6 +193,7 @@ MonoBehaviour:
   flagSprite: {fileID: 2120000000000000003}
   flagBottom: 0
   flagTop: 2.5
+  visionRange: 1
   income: 1000
   producesSupply: 1
   supplyRange: 3

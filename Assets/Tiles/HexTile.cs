@@ -142,7 +142,8 @@ public class HexTile : MonoBehaviour
                     arrow.gameObject.SetActive(true);
                     arrow.transform.up = parent.transform.position - transform.position;
                     arrow.sprite = uiData.move_arrow;
-                    if(occupier == null)
+                    // (Under fog of war, a unit the viewer does not see is not there as far as the path shows.)
+                    if(FogOfWar.ApparentOccupier(this, FogOfWar.Viewer) == null)
                         overlay.sprite = uiData.move_possible;
                     else
                         overlay.gameObject.SetActive(false);
@@ -208,8 +209,12 @@ public class HexTile : MonoBehaviour
             }
         });
     }
+    /// <summary>
+    /// Can <paramref name="unit"/> end its move here, as far as its side knows? Under fog of war an
+    /// enemy it does not see is not there for this (ending on it means running into it).
+    /// </summary>
     public bool CanEndTurnHere(Unit unit) {
-        return occupier == null;
+        return FogOfWar.ApparentOccupier(this, unit != null ? unit.owner : null) == null;
     }
 
     [Tooltip("Fights resolved on this tile; every 10 raises destruction one tier, to a max of 3")]
@@ -293,6 +298,10 @@ public class HexTile : MonoBehaviour
             // stops it reaching the board.
             if ((TransportMenu.PointerOverUI != null && TransportMenu.PointerOverUI()) || BuildingMenu.Covers(Input.mousePosition)) return;
             lastClicked = this;
+            // The unit here as the player at the screen knows it: under fog of war, one it does not
+            // see is not there, so the click does what it would on an empty tile and gives nothing away.
+            Player knower = FogOfWar.Viewer ?? GameController.gc.activePlayer;
+            Unit seen = FogOfWar.ApparentOccupier(this, knower);
             // Any other click closes them (the transport panel reopens below while its transport
             // stays selected); one that is not on a tile offered for unloading drops the unload.
             Unit justMoved = null;
@@ -302,43 +311,45 @@ public class HexTile : MonoBehaviour
             // An enemy's move and threat on show: any click clears it first.
             SupplyOverlay.HideEnemy();
             UnitController.uc.units.ForEach(x => x.clearDisplay());
-            if (occupier == null && building != null && state == UIState.FREE && GameController.gc.activeUnit == null
+            if (seen == null && building != null && state == UIState.FREE && GameController.gc.activeUnit == null
                      && building.owner != null && building.owner == GameController.gc.activePlayer && BuildingMenu.IsHumanTurn() && building.Purchasable().Count > 0) {
                 // A building is clickable only with no unit on it: its build list.
                 BuildingMenu.Open(building);
             } else if (unloading) {
                 // The tile picked for the unit being unloaded (the transport moves to its picked tile first, if it unloads from there).
                 TransportMenu.UnloadOnto(this);
-            } else if (occupier != null && Transporting.IsTransport(occupier) && occupier.transported.Count > 0 && occupier.owner == GameController.gc.activePlayer
-                       && (state == UIState.SELECTED || (state == UIState.FREE && !occupier.active))) {
+            } else if (seen != null && Transporting.IsTransport(seen) && seen.transported.Count > 0 && seen.owner == GameController.gc.activePlayer
+                       && (state == UIState.SELECTED || (state == UIState.FREE && !seen.active))) {
                 // A transport clicked again once selected, or after its turn is over (units can still
                 // be put down then): what is aboard.
-                TransportMenu.Open(occupier);
+                TransportMenu.Open(seen);
             } else if (state == UIState.LOAD_CONFIRM) {
                 // Board: walk beside the transport if not already there, then get in.
                 Unit mover = GameController.gc.activeUnit;
-                Unit transport = occupier;
+                Unit transport = seen;
                 if (mover != null && transport != null) {
                     if (!(neighbors.Contains(mover.tile) && Transporting.CanBoardOnto(mover, mover.tile, this, transport)) && mover.tile != this) {
                         HexTile beside = null;
-                        foreach (HexTile n in neighbors) if (n != null && n.state == UIState.MOVE && n.occupier == null && Transporting.CanBoardOnto(mover, n, this, transport) && (beside == null || n.G < beside.G)) beside = n;
-                        if (beside != null) mover.CompleteMove(beside);
+                        foreach (HexTile n in neighbors) if (n != null && n.state == UIState.MOVE && FogOfWar.ApparentOccupier(n, mover.owner) == null && Transporting.CanBoardOnto(mover, n, this, transport) && (beside == null || n.G < beside.G)) beside = n;
+                        // Stopped on the way by an enemy it did not see (fog of war): no boarding, its move is over.
+                        if (beside != null && !mover.CompleteMove(beside)) { mover.FinishActive(); transport = null; }
                     }
-                    if (Transporting.Load(transport, mover)) mover.FinishActive();
+                    if (transport != null && Transporting.Load(transport, mover)) mover.FinishActive();
                 }
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
             } else {
-                if (occupier != null && (state == UIState.FREE || state == UIState.RANGE) && occupier.active && occupier.owner.Equals(GameController.gc.activePlayer)) {
-                    GameController.gc.activeUnit = occupier;
+                if (seen != null && (state == UIState.FREE || state == UIState.RANGE) && seen.active && seen.owner.Equals(GameController.gc.activePlayer)) {
+                    Unit sel = seen;
+                    GameController.gc.activeUnit = sel;
                     HexGenerator.forAllTiles(x => { x.G = 0; x.Reset(); return 0; });
-                    CheckMovementRange(occupier).ForEach(x => { if (x.G != 0 && x.CanEndTurnHere(occupier)) x.changeState(UIState.MOVE); });
-                    CheckAttackRange(occupier).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
+                    CheckMovementRange(sel).ForEach(x => { if (x.G != 0 && x.CanEndTurnHere(sel)) x.changeState(UIState.MOVE); });
+                    CheckAttackRange(sel).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
                     // A unit that cannot move and fire (artillery): its whole range, not only what it can hit now.
-                    if (!occupier.moveAndAttack)
-                        foreach (HexTile t in AllInAttackRange(occupier)) if (t.state == UIState.FREE) t.ShowRange(occupier.owner);
+                    if (!sel.moveAndAttack)
+                        foreach (HexTile t in AllInAttackRange(sel)) if (t.state == UIState.FREE) t.ShowRange(sel.owner);
                     changeState(UIState.SELECTED);
                     // Our transports it can board: beside it now, or beside a tile it can move to.
-                    Unit cargo = occupier;
+                    Unit cargo = sel;
                     foreach (Unit tr in cargo.owner.units) {
                         if (tr == null || tr == cargo || tr.tile == null || !Transporting.CanCarry(tr, cargo)) continue;
                         // From here or from a tile it can move to beside the transport, and able to step aboard from there.
@@ -384,18 +395,18 @@ public class HexTile : MonoBehaviour
                     HexTile move_confirm = parent;
                     Unit attacker = GameController.gc.activeUnit;
                     Unit defender = occupier;
+                    bool arrived = true;
                     if (attacker.tile != move_confirm) {
-                        //firing on the move
-                        attacker.CompleteMove(move_confirm, true);
+                        //firing on the move (stopped on the way by an enemy it did not see: no attack)
+                        arrived = attacker.CompleteMove(move_confirm, true);
                     }
-                    //TODO Attack
-                    attacker.OrderAttack(defender);
+                    if (arrived && attacker.Strength > 0 && defender != null && defender.tile != null) attacker.OrderAttack(defender);
                     attacker.FinishActive();
                     HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
-                } else if (occupier != null && (state == UIState.FREE || state == UIState.RANGE) && occupier.owner != GameController.gc.activePlayer) {
+                } else if (seen != null && (state == UIState.FREE || state == UIState.RANGE) && seen.owner != GameController.gc.activePlayer) {
                     // An enemy we are not attacking: where it can go and what it can hit (any selection is dropped).
                     GameController.gc.activeUnit = null;
-                    SupplyOverlay.ShowEnemy(occupier);
+                    SupplyOverlay.ShowEnemy(seen);
                 } else {
                     // Anywhere else: clear the board and the selection.
                     GameController.gc.activeUnit = null;
@@ -483,6 +494,13 @@ public class HexTile : MonoBehaviour
     /// the way.
     /// </summary>
     public List<HexTile> CheckMovementRange(Unit mover, int distance) {
+        // Under fog of war the move is planned on the board as the mover's side knows it: an enemy
+        // it does not see does not block the way (and running into it is MoveAlong's business).
+        using (FogOfWar.Concealing(mover != null ? mover.owner : null))
+            return CheckMovementRangeOnBoard(mover, distance);
+    }
+
+    List<HexTile> CheckMovementRangeOnBoard(Unit mover, int distance) {
         HexTactica.AI.MoveField field = HexTactica.AI.AIPath.ThisTurnFrom(mover, this, distance);
         List<HexTile> closed = new List<HexTile>();
         foreach (HexTile t in field.Tiles) {
