@@ -165,7 +165,17 @@ public class LevelEditor : MonoBehaviour
     /// and serviceGround, such as BuildingGround) or what a terrain becomes when destroyed
     /// (TerrainData.destroyedInto). Null if none has that name.
     /// </summary>
+    /// <summary>Terrains renamed since saves were written: old name, new name.</summary>
+    static readonly System.Collections.Generic.Dictionary<string, string> renamed = new System.Collections.Generic.Dictionary<string, string> { { "BuildingGround", "Urban" } };
+
     public static TerrainData loadTerrain(string name) {
+        TerrainData td = FindTerrain(name);
+        string now;
+        if (td == null && name != null && renamed.TryGetValue(name, out now)) td = FindTerrain(now);
+        return td;
+    }
+
+    static TerrainData FindTerrain(string name) {
         if (singleton == null || string.IsNullOrEmpty(name)) return null;
         if (singleton.allTerrain != null)
             foreach (TerrainData t in singleton.allTerrain)
