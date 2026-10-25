@@ -430,7 +430,7 @@ Transform:
   m_GameObject: {fileID: 6444644859025238251}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.093, z: 3.8188934}
+  m_LocalPosition: {x: 0, y: 1.093, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -745,11 +745,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: Targeting
-      value: 4
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: AttackRange
       value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: Concealment
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: weaponImpact
