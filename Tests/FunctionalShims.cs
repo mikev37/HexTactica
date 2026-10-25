@@ -287,8 +287,11 @@ namespace UnityEngine {
     public struct GradientColorKey { public Color color; public float time; public GradientColorKey(Color c, float t) { color = c; time = t; } }
     public struct GradientAlphaKey { public float alpha; public float time; public GradientAlphaKey(float a, float t) { alpha = a; time = t; } }
     public class Gradient {
-        public GradientColorKey[] colorKeys = new GradientColorKey[0];
-        public GradientAlphaKey[] alphaKeys = new GradientAlphaKey[0];
+        GradientColorKey[] _c = new GradientColorKey[0];
+        GradientAlphaKey[] _a = new GradientAlphaKey[0];
+        // As in Unity: the keys come back as copies.
+        public GradientColorKey[] colorKeys { get { return (GradientColorKey[])_c.Clone(); } set { _c = (GradientColorKey[])value.Clone(); } }
+        public GradientAlphaKey[] alphaKeys { get { return (GradientAlphaKey[])_a.Clone(); } set { _a = (GradientAlphaKey[])value.Clone(); } }
         public void SetKeys(GradientColorKey[] c, GradientAlphaKey[] a) { colorKeys = c; alphaKeys = a; }
     }
     public static class Resources { public static T Load<T>(string path) where T : class { return null; } public static T GetBuiltinResource<T>(string path) where T : class { return null; } }
