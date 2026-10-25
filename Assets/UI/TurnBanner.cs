@@ -1,8 +1,9 @@
 using UnityEngine;
 
 /// <summary>
-/// Whose turn it is, on the screen: a line at the top centre all game ("Red — your turn, day 3",
-/// or "Blue is moving…" while an AI plays), and, as a human player's turn begins, a banner across
+/// Whose turn it is, on the screen: a line at the top centre all game ("Red — your turn, day 3";
+/// while an AI plays, "Blue is thinking..." as it works out its next move and "Blue is moving..."
+/// as it carries it out, the dots going round), and, as a human player's turn begins, a banner across
 /// the middle of the screen in that player's colour that is gone after a second. Under fog of
 /// war the board alone does not show when the other side has finished.
 ///
@@ -29,10 +30,31 @@ public class TurnBanner : MonoBehaviour {
     Color bannerColour;
     GUIStyle big, small;
 
-    /// <summary>The line at the top for <paramref name="p"/>'s turn (<paramref name="day"/> counted from 0).</summary>
-    public static string Line(Player p, int day, bool human) {
+    /// <summary>
+    /// The line at the top for <paramref name="p"/>'s turn (<paramref name="day"/> counted from 0): yours,
+    /// or an AI's — thinking (working out its next move) or moving (carrying one out).
+    /// </summary>
+    public static string Line(Player p, int day, bool human, bool thinking = false) {
         if (p == null) return "";
-        return human ? p.personal_name + " \u2014 your turn, day " + (day + 1) : p.personal_name + " is moving\u2026";
+        if (human) return p.personal_name + " \u2014 your turn, day " + (day + 1);
+        return p.personal_name + (thinking ? " is thinking" : " is moving");
+    }
+
+    [Tooltip("An AI's thought must run this long (seconds) before the line says it is thinking: the quick ones between moves do not flicker it.")]
+    public float thinkingAfter = 0.25f;
+    [Tooltip("Seconds the line keeps saying thinking after a thought ends, unless it is acting.")]
+    public float thinkingLinger = 0.4f;
+    float lastThinking = -100f;
+
+    /// <summary>Is <paramref name="p"/> (an AI) thinking, as the line should say it?</summary>
+    bool Thinking(Player p) {
+        AIPlayer ai = p.GetComponent<AIPlayer>();
+        float f = ai != null && ai.enabled ? ai.ThinkingFor : -1f;
+        // A unit of its still on the way: moving, whatever it is working out meanwhile.
+        bool acting = GameController.gc != null && GameController.gc.activeUnit != null && GameController.gc.activeUnit.path != null && GameController.gc.activeUnit.path.Count > 0;
+        if (acting) return false;
+        if (f >= thinkingAfter) lastThinking = Time.unscaledTime;
+        return Time.unscaledTime - lastThinking < thinkingLinger;
     }
 
     void Update() {
@@ -62,7 +84,9 @@ public class TurnBanner : MonoBehaviour {
         bool human = FogOfWar.IsHuman(p);
 
         // The line at the top, all the time.
-        string line = Line(p, gc.days, human);
+        string line = Line(p, gc.days, human, !human && Thinking(p));
+        // An AI's line ends in dots that keep going, so it never looks stuck.
+        if (!human) line += new string('.', 1 + (int)(Time.unscaledTime * 3f) % 3);
         Rect top = new Rect(Screen.width * 0.5f - 220f, 10f, 440f, 34f);
         GUI.color = new Color(0.07f, 0.08f, 0.1f, 0.78f);
         GUI.DrawTexture(top, Texture2D.whiteTexture);
