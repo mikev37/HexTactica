@@ -781,7 +781,7 @@ namespace HexTactica.AI {
                 if (t.building != null && t.building.owner != unit.owner) v += worth * 0.4f;
                 v += StrategicBonus(unit, t, posture) * 0.6f;
                 // Fog of war: going to look at what nobody has seen lately.
-                v += AIFog.ScoutValue(unit, t, profile);
+                v += AIFog.ScoutValue(unit, t, profile, map);
                 return v;
             }, true, 1.5f, 0.01f, "recon");
             if (stopCapture != null) {

@@ -213,6 +213,7 @@ public class AIPlayer : MonoBehaviour {
     /// one has something to do.
     /// </summary>
     Thought Think(BoardView v, bool prepare, bool refresh) {
+        SupplyNetwork.PutDownHypothetical = Profile.hubLinkPenalty > 0f;
         using (v.Enter()) {
             if (prepare) PrepareTurnOnBoard();
             if (refresh && map != null) {
@@ -228,6 +229,7 @@ public class AIPlayer : MonoBehaviour {
                 long __d = AIPerf.Begin();
                 AIAction action = DecideFor(unit);
                 AIPerf.End("decide: " + (unit.Hub != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
+                action = KeepLinks(action);
                 // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
                 // still fresh, and decides again if its transport puts it down this turn (Run).
                 if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
@@ -239,6 +241,41 @@ public class AIPlayer : MonoBehaviour {
             }
             return new Thought { endTurn = true };
         }
+    }
+
+    /// <summary>
+    /// A transport carrying supply units (profile.hubLinkPenalty) does not move, or put one down,
+    /// where fewer of our supply units would be connected than now: it is kept where it is.
+    /// Aboard, a supply unit links while its transport is within a move of supplied ground, so the
+    /// root of a whole network could ride in a truck — and a truck that put it down one tile off
+    /// supplied ground, or drove off with it, cut off every supply unit beyond it.
+    /// Worked out on the thinking copy of the board (the transport moved there and put back).
+    /// </summary>
+    AIAction KeepLinks(AIAction a) {
+        if (Profile.hubLinkPenalty <= 0f || a.unit == null || a.unit.tile == null) return a;
+        if (a.kind != AIActionKind.Unload && a.kind != AIActionKind.Move && a.kind != AIActionKind.MoveAndAttack) return a;
+        Unit tr = a.unit;
+        bool carriesHub = false;
+        foreach (Unit c in tr.transported) if (c != null && c.Hub != null && !c.Hub.producer) carriesHub = true;
+        if (!carriesHub) return a;
+        int before = Connected(SupplyNetwork.SolveMoved(player, new Dictionary<SupplyPoint, HexTile>()));
+        HexTile from = tr.tile;
+        HexTile to = a.kind == AIActionKind.Unload ? (a.via ?? from) : a.destination;
+        Dictionary<SupplyPoint, HexTile> moved = new Dictionary<SupplyPoint, HexTile>();
+        if (a.kind == AIActionKind.Unload && a.target != null && a.target.Hub != null && a.destination != null) moved[a.target.Hub] = a.destination;
+        int after;
+        bool shift = to != null && to != from && to.occupier == null;
+        if (shift) { from.occupier = null; to.occupier = tr; tr.tile = to; foreach (Unit c in tr.transported) if (c != null) c.tile = to; }
+        try { after = Connected(SupplyNetwork.SolveMoved(player, moved)); }
+        finally { if (shift) { to.occupier = null; tr.tile = from; from.occupier = tr; foreach (Unit c in tr.transported) if (c != null) c.tile = from; } }
+        if (after >= before) return a;
+        return AIAction.Wait(tr, a.reason + "; held: that would cut off " + (before - after) + " supply units");
+    }
+
+    int Connected(SupplyNetwork.Result r) {
+        int n = 0;
+        foreach (Unit u in player.units) if (u != null && u.Hub != null && !u.Hub.producer && u.tile != null && r.connectedHubs.Contains(u.Hub)) n++;
+        return n;
     }
 
     /// <summary>Carry out a thought on the real board (main thread).</summary>
