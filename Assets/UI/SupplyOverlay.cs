@@ -26,7 +26,7 @@ public class SupplyOverlay : MonoBehaviour {
     // What is shown now, to redo it only when something changes.
     Unit shownUnit;
     HexTile shownTile;
-    SupplyPoint previewHub;
+    Player previewPlayer;
     HexTile warnedTile;
     Color warnedColour;
     bool warnedText;
@@ -58,12 +58,15 @@ public class SupplyOverlay : MonoBehaviour {
         if (u == null) return;
 
         Player p = u.owner;
-        SupplyPoint hub = CarriedSupply(u);
-        bool movingHub = hub != null && dest != null;
-        // The field to read: a supply unit being moved shows the supply it would give from there
-        // (published, so the board's supply edges show it); anything else reads the real one.
-        SupplyNetwork.Result field = movingHub ? SupplyNetwork.Solve(p, false, hub, dest) : SupplyNetwork.Solve(p, false);
-        if (movingHub) previewHub = hub;
+        List<SupplyPoint> carried = CarriedSupplies(u);
+        bool movingHub = carried.Count > 0 && dest != null;
+        // The field to read: supply units being moved (itself, or all a transport carries) show the
+        // supply they would give from there (published, so the board's supply edges show it);
+        // anything else reads the real one.
+        Dictionary<SupplyPoint, HexTile> preview = null;
+        if (movingHub) { preview = new Dictionary<SupplyPoint, HexTile>(); foreach (SupplyPoint sp in carried) preview[sp] = dest; }
+        SupplyNetwork.Result field = movingHub ? SupplyNetwork.SolvePreview(p, preview) : SupplyNetwork.Solve(p, false);
+        if (movingHub) previewPlayer = p;
 
         HexTile from = dest ?? u.tile;
         // Leaving supply: supplied where it stands, not where it is going.
@@ -72,24 +75,25 @@ public class SupplyOverlay : MonoBehaviour {
             if (u.textArea != null) { u.textArea.text = "Leaves supply"; warnedText = true; }
         }
         // The line is for supply units (and what carries them): where their supply comes from.
-        if (hub != null) DrawSupplyLine(p, from, field, movingHub ? hub : null, dest);
+        if (carried.Count > 0) DrawSupplyLine(p, from, field, preview);
     }
 
-    /// <summary>The supply unit that moves when <paramref name="u"/> does: itself, or one it carries.</summary>
-    static SupplyPoint CarriedSupply(Unit u) {
+    /// <summary>The supply units that move when <paramref name="u"/> does: itself, or all it carries (and what they carry).</summary>
+    public static List<SupplyPoint> CarriedSupplies(Unit u) {
+        List<SupplyPoint> list = new List<SupplyPoint>();
         SupplyPoint own = u.Hub;
-        if (own != null) return own.producer ? null : own;
+        if (own != null) { if (!own.producer) list.Add(own); return list; }
         foreach (Unit c in u.transported) {
-            SupplyPoint sp = c != null ? c.Hub : null;
-            if (sp != null && !sp.producer) return sp;
+            if (c == null) continue;
+            foreach (SupplyPoint sp in CarriedSupplies(c)) if (!list.Contains(sp)) list.Add(sp);
         }
-        return null;
+        return list;
     }
 
     void Clear() {
         foreach (LineRenderer l in lines) if (l != null) l.gameObject.SetActive(false);
-        if (previewHub != null && previewHub.myUnit != null) SupplyNetwork.Solve(previewHub.myUnit.owner, false);   // the real field back
-        previewHub = null;
+        if (previewPlayer != null) SupplyNetwork.Solve(previewPlayer, false);   // the real field back
+        previewPlayer = null;
         if (warnedTile != null && warnedTile.overlay != null) warnedTile.overlay.color = warnedColour;
         warnedTile = null;
         if (warnedText && shownUnit != null && shownUnit.textArea != null) shownUnit.textArea.text = "";
@@ -101,8 +105,8 @@ public class SupplyOverlay : MonoBehaviour {
     /// field falls by distance from each source, so the steepest way up is the way supply came);
     /// from a supply unit, on to whatever feeds it (the field without it); and so on to the HQ.
     /// </summary>
-    void DrawSupplyLine(Player p, HexTile from, SupplyNetwork.Result field, SupplyPoint moved, HexTile movedTo) {
-        List<HexTile> path = SourcePath(p, from, field, moved, movedTo);
+    void DrawSupplyLine(Player p, HexTile from, SupplyNetwork.Result field, Dictionary<SupplyPoint, HexTile> preview) {
+        List<HexTile> path = SourcePath(p, from, field, preview);
         List<Vector3> points = new List<Vector3>();
         foreach (HexTile t in path) Add(points, t);
         if (points.Count < 2) return;
@@ -120,6 +124,13 @@ public class SupplyOverlay : MonoBehaviour {
     /// (a move being previewed), if given. Leaves the real field (or that preview) on the board.
     /// </summary>
     public static List<HexTile> SourcePath(Player p, HexTile from, SupplyNetwork.Result field, SupplyPoint moved, HexTile movedTo) {
+        Dictionary<SupplyPoint, HexTile> preview = null;
+        if (moved != null && movedTo != null) preview = new Dictionary<SupplyPoint, HexTile> { { moved, movedTo } };
+        return SourcePath(p, from, field, preview);
+    }
+
+    /// <summary>As above, with the supply units in <paramref name="preview"/> standing where it says (a move being previewed), if given.</summary>
+    public static List<HexTile> SourcePath(Player p, HexTile from, SupplyNetwork.Result field, Dictionary<SupplyPoint, HexTile> preview) {
         List<HexTile> points = new List<HexTile>();
         if (from == null || field.DepthAt(from) <= 0) return points;
         HashSet<SupplyPoint> seen = new HashSet<SupplyPoint>();
@@ -128,13 +139,14 @@ public class SupplyOverlay : MonoBehaviour {
         int guard = 0;
         while (at != null && guard++ < 16) {
             HexTile top = Climb(at, f, points);
-            SupplyPoint source = HubOn(p, top, moved, movedTo);
-            if (source == null || source.producer || seen.Contains(source)) break;   // a building or the HQ: the root
+            // Several supply units can share a tile (all aboard one transport): each in turn.
+            SupplyPoint source = HubOn(p, top, preview, seen);
+            if (source == null || source.producer) break;   // a building or the HQ: the root
             seen.Add(source);
             // What feeds it: the network without it and without every hub already on the line
             // (else the next hub's field, which reaches back over this one, would lead the line
             // back to it: two hubs drawn feeding each other, neither reaching the HQ).
-            f = SolveWithout(p, seen, moved, movedTo);
+            f = SolveWithout(p, seen, preview);
             if (f.DepthAt(top) <= 0) {
                 // Aboard a transport it links over the transport's move (SupplyNetwork): the line
                 // jumps to the nearest supplied ground and carries on from there.
@@ -142,28 +154,29 @@ public class SupplyOverlay : MonoBehaviour {
                 if (source.myUnit != null && source.myUnit.trasnporter != null)
                     foreach (KeyValuePair<HexTile, int> kv in f.depth)
                         if (kv.Value > 0 && (near == null || kv.Key.Distance(top) < near.Distance(top) || (kv.Key.Distance(top) == near.Distance(top) && CombatMath.Precedes(kv.Key, near)))) near = kv.Key;
-                if (near == null || !Linked(p, source, moved, movedTo)) break;   // stranded: it feeds itself
+                if (near == null || !Linked(p, source, preview)) break;   // stranded: it feeds itself
                 top = near;
             }
             at = top;
         }
-        if (moved != null) SupplyNetwork.Solve(p, false, moved, movedTo);   // the preview stays on the board
+        if (preview != null) SupplyNetwork.SolvePreview(p, preview);   // the preview stays on the board
         else SupplyNetwork.Solve(p, false);
         return points;
     }
 
-    static bool Linked(Player p, SupplyPoint hub, SupplyPoint moved, HexTile movedTo) {
-        SupplyNetwork.Result r = moved != null ? SupplyNetwork.Solve(p, false, moved, movedTo) : SupplyNetwork.Solve(p, false);
+    static bool Linked(Player p, SupplyPoint hub, Dictionary<SupplyPoint, HexTile> preview) {
+        SupplyNetwork.Result r = preview != null ? SupplyNetwork.SolveMoved(p, preview) : SupplyNetwork.Solve(p, false);
         return r.connectedHubs.Contains(hub);
     }
 
-    /// <summary>The network without the hubs in <paramref name="without"/> (and with <paramref name="moved"/> on <paramref name="movedTo"/>, if given).</summary>
-    public static SupplyNetwork.Result SolveWithout(Player p, HashSet<SupplyPoint> without, SupplyPoint moved, HexTile movedTo) {
+    /// <summary>The network without the hubs in <paramref name="without"/> (and with those in <paramref name="preview"/> where it says, if given).</summary>
+    public static SupplyNetwork.Result SolveWithout(Player p, HashSet<SupplyPoint> without, Dictionary<SupplyPoint, HexTile> preview) {
         Dictionary<SupplyPoint, HexTile> at = new Dictionary<SupplyPoint, HexTile>();
         foreach (Unit u in p.units) {
             SupplyPoint sp = u != null ? u.Hub : null;
             if (sp == null || without.Contains(sp) || u.tile == null) continue;
-            at[sp] = sp == moved ? movedTo : u.tile;
+            HexTile to;
+            at[sp] = preview != null && preview.TryGetValue(sp, out to) ? to : u.tile;
         }
         return SupplyNetwork.SolvePlanned(p, at);
     }
@@ -194,14 +207,18 @@ public class SupplyOverlay : MonoBehaviour {
         if (points.Count == 0 || points[points.Count - 1] != v) points.Add(v);
     }
 
-    /// <summary>The supply unit standing on <paramref name="t"/> (or being moved to it), if any.</summary>
-    static SupplyPoint HubOn(Player p, HexTile t, SupplyPoint moved, HexTile movedTo) {
+    /// <summary>
+    /// A supply unit standing on <paramref name="t"/> (or being moved to it in <paramref name="preview"/>)
+    /// not already on the line (<paramref name="seen"/>), if any. Several can share a tile: all aboard
+    /// one transport.
+    /// </summary>
+    static SupplyPoint HubOn(Player p, HexTile t, Dictionary<SupplyPoint, HexTile> preview, HashSet<SupplyPoint> seen) {
         if (t == null) return null;
-        if (moved != null && t == movedTo) return moved;
+        if (preview != null) foreach (KeyValuePair<SupplyPoint, HexTile> kv in preview) if (kv.Value == t && !seen.Contains(kv.Key)) return kv.Key;
         foreach (Unit u in p.units) {
             if (u == null || u.tile != t) continue;
             SupplyPoint sp = u.Hub;
-            if (sp != null && sp != moved) return sp;
+            if (sp != null && (preview == null || !preview.ContainsKey(sp)) && !seen.Contains(sp)) return sp;
         }
         return null;
     }

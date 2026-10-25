@@ -98,7 +98,11 @@ public class AIPlayer : MonoBehaviour {
     enum Outcome { Did, NotDone, Held, TurnOver }
 
     Task<Thought> thinking;
+    float thinkingSince;
     bool thinkingPrepares;
+
+    /// <summary>Seconds the thought under way has been running, or -1 when none is (the AI is acting, or it is not its turn). For the screen (TurnBanner).</summary>
+    public float ThinkingFor { get { return thinking != null && !thinking.IsCompleted ? Time.unscaledTime - thinkingSince : -1f; } }
     int thinkingGeneration, generation;
     /// <summary>The last action changed the board: the next thought reads it again first (AIMap.RefreshAfterAction).</summary>
     bool refreshPending;
@@ -147,6 +151,7 @@ public class AIPlayer : MonoBehaviour {
         BoardView v = NewView();   // made here, on the main thread: it reads the real board
         thinkingPrepares = prepare;
         thinkingGeneration = generation;
+        thinkingSince = Time.unscaledTime;
         if (ThinkOnThread) thinking = Task.Run(() => Think(v, prepare, refresh));
         else thinking = Task.FromResult(Think(v, prepare, refresh));
     }
