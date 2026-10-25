@@ -74,7 +74,7 @@ namespace HexTactica.Testing {
 
             foreach (FieldInfo fi in SerializedFields(typeof(Unit))) {
                 string raw;
-                if (!unitFields.TryGetValue(SerializedName(fi), out raw)) continue;
+                if (!unitFields.TryGetValue(fi.Name, out raw) && !unitFields.TryGetValue(SerializedName(fi), out raw)) continue;
                 try {
                     if (fi.FieldType == typeof(int)) fi.SetValue(u, int.Parse(raw, CultureInfo.InvariantCulture));
                     else if (fi.FieldType == typeof(float)) fi.SetValue(u, float.Parse(raw, CultureInfo.InvariantCulture));
@@ -128,7 +128,10 @@ namespace HexTactica.Testing {
             return list;
         }
 
-        /// <summary>The name a field has in a prefab: its old name if it was renamed ([FormerlySerializedAs]).</summary>
+        /// <summary>
+    /// A field's old name if it was renamed ([FormerlySerializedAs]): a prefab saved before the rename
+    /// has it under that name, one saved since under the field's own (both are read, as Unity does).
+    /// </summary>
         public static string SerializedName(FieldInfo fi) {
             object[] old = fi.GetCustomAttributes(typeof(UnityEngine.Serialization.FormerlySerializedAsAttribute), false);
             return old.Length > 0 ? ((UnityEngine.Serialization.FormerlySerializedAsAttribute)old[0]).oldName : fi.Name;
@@ -167,7 +170,7 @@ namespace HexTactica.Testing {
             b.name = name;
             foreach (FieldInfo fi in SerializedFields(typeof(Building))) {
                 string raw;
-                if (!f.TryGetValue(SerializedName(fi), out raw)) continue;
+                if (!f.TryGetValue(fi.Name, out raw) && !f.TryGetValue(SerializedName(fi), out raw)) continue;
                 try {
                     if (fi.FieldType == typeof(int)) fi.SetValue(b, int.Parse(raw, CultureInfo.InvariantCulture));
                     else if (fi.FieldType == typeof(float)) fi.SetValue(b, float.Parse(raw, CultureInfo.InvariantCulture));

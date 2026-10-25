@@ -179,7 +179,7 @@
 ],
 "units":[
 {"x":-2,"y":0,"z":2,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":0,"y":0,"z":0,"Strength":0,"Veterancy":0,"personalName":"Recon","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Recon","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":0,"y":0,"z":0,"Strength":6,"Veterancy":0,"personalName":"Recon","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Recon","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":3,"y":0,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":2,"y":-5,"z":3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":5,"y":-2,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
