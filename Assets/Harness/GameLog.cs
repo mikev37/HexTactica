@@ -62,6 +62,8 @@ namespace HexTactica.Harness {
             AIPlayer.Trace = Line;
             AITactical.DecisionLog = Line;
             AISupplyPlanner.DebugLog = Line;
+            HexTactica.AI.AISupplyChain.DebugLog = Line;
+            HexTactica.AI.AISupplyTree.DebugLog = Line;
 
             Line("HexTactica game log, " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
             Line("source: " + (source.Length > 0 ? source : "board as it was"));
@@ -82,6 +84,8 @@ namespace HexTactica.Harness {
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
             if (AITactical.DecisionLog == (Action<string>)Line) AITactical.DecisionLog = null;
             if (AISupplyPlanner.DebugLog == (Action<string>)Line) AISupplyPlanner.DebugLog = null;
+            if (HexTactica.AI.AISupplyChain.DebugLog == (Action<string>)Line) HexTactica.AI.AISupplyChain.DebugLog = null;
+            if (HexTactica.AI.AISupplyTree.DebugLog == (Action<string>)Line) HexTactica.AI.AISupplyTree.DebugLog = null;
             Line("-- recording stopped");
             writer.Dispose();
             writer = null;

@@ -67,6 +67,16 @@ public static class Tests {
                              Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
             return 0;
         }
+        if (probe == "bench") {
+            Scenarios.Bench(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
+                            Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
+            return 0;
+        }
+        if (probe == "tree") { Scenarios.Tree(Environment.GetEnvironmentVariable("FILE"), Environment.GetEnvironmentVariable("SIDE") ?? "Blue"); return 0; }
+        if (probe == "analyze") {
+            Scenarios.Analyze(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"));
+            return 0;
+        }
         if (probe == "perf") {
             // PROBE=perf FILE=<path or name> [ROUNDS=r]: time every AI step (one Update's worth of work in the game).
             string f = Environment.GetEnvironmentVariable("FILE");

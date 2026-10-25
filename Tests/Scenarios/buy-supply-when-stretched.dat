@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"buy-supply-when-stretched","kind":"behaviour","opponent":"Human","rounds":"1","check":"buySupply","question":"Blue's one supply unit stands at the far edge of the HQ's supply, its grunts beyond it: the chain cannot reach further. With 25,000 (a supply unit's price) Blue should buy a supply unit at the HQ.","rules":"attrition","purchases":"on"},
+"test":{"name":"buy-supply-when-stretched","kind":"behaviour","opponent":"Human","rounds":"1","check":"buySupply","question":"Blue's one supply unit stands at the far edge of the HQ's supply, its grunts up the road beyond what it can reach: supply cannot get to them with what Blue has. With 25,000 (a supply unit's price) Blue should buy a supply unit at the HQ.","rules":"attrition","purchases":"on"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Water"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Water"},
@@ -179,8 +179,8 @@
 ],
 "units":[
 {"x":-1,"y":-3,"z":4,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":1,"y":-3,"z":2,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":2,"y":-3,"z":1,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":6,"y":-3,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":5,"y":-2,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":-5,"y":3,"z":2,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

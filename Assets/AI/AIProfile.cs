@@ -412,6 +412,16 @@ namespace HexTactica.AI {
         [Tooltip("A supply-chain link may stand ahead of the army where no enemy can strike for more than two turns (otherwise links never pass the frontmost fighting unit).")]
         public bool chainLeadsWhenClear = false;
 
+        [Tooltip("Supply units as a tree grown out from the HQ to every fighting unit out of supply, nearest the edge of supply first, a link at a time (AISupplyTree), instead of one chain toward the enemy HQ (supplyChain). Units the tree does not need are placed by the ordinary supply planner. Off: it lost the benchmark against the chain (PROBE=bench, ChanceMeeting from both sides and the campaign maps, fog off and on: -70,000 material over 12 games, better in 5, worse in 7).")]
+        public bool supplyTree = false;
+        [Tooltip("Strength a supply-tree link may be expected to lose tonight (the share of enemy fire that can reach its tile) and still stand there.")]
+        public float supplyTreeRisk = 1f;
+        [Tooltip("A supply-tree link must also survive the enemy's reply played out (AIWorld) within supplyTreeRisk, not only the expected share of fire. The reply is pessimistic (it lets every enemy pick its best target), so links form less readily.")]
+        public bool supplyTreeReply = false;
+
+        [Tooltip("Strength a supply-chain link may be forecast to lose tonight (the enemy's reply, or the expected share of its fire) and still stand there. 0: only where nothing can hit it — with fast units about (gunships, recon), nothing forward qualifies, the chain stops forming, and the supply units ahead of it are cut off while the ones behind sit by the HQ.")]
+        public float chainRiskTolerance = 0f;
+
         [Tooltip("March: a fighting unit out of contact gains this much of a strength's worth for each step over land it ends nearer its front's objective (linear, so it pulls from any distance; supply costs still keep it inside supply).")]
         public float marchWeight = 0.05f;
 

@@ -13,7 +13,8 @@ namespace HexTactica.AI {
     /// so the chain at the end of the turn is whole even though every link moved. Only the end of
     /// the turn matters: supply is worked out when the next turn starts.
     ///
-    /// A link stands only where nothing can hit it tonight, never past the frontmost of our
+    /// A link stands only where nothing can hit it tonight (or little: profile.chainRiskTolerance),
+    /// the least exposed of the tiles that reach furthest, never past the frontmost of our
     /// fighting units (the army leads, the supply follows), and only where it pushes the supplied
     /// ground further toward the objective than the links behind it already do. A supply unit with
     /// nothing to add is spare: the ordinary supply planner (AISupplyPlanner) places it.
@@ -22,6 +23,9 @@ namespace HexTactica.AI {
     /// followed rather than cut across.
     /// </summary>
     public static class AISupplyChain {
+
+        /// <summary>Diagnostic: why each supply unit does or does not take a place in the chain.</summary>
+        public static System.Action<string> DebugLog;
 
         public class Plan {
             /// <summary>Where each link of the chain should end this turn (its own tile if it holds).</summary>
@@ -113,28 +117,38 @@ namespace HexTactica.AI {
                 if (placed.ContainsKey(h)) continue;
                 Unit u = h.myUnit;
                 MoveField field = map.ReachThisTurn(u);
-                HexTile best = null; int bestSteps = int.MaxValue, bestReach = reach;
+                HexTile best = null; int bestSteps = int.MaxValue, bestReach = reach; float bestRisk = float.MaxValue;
                 bool cappedOut = false;
+                int nUnsupplied = 0, nAhead = 0, nRisky = 0, nTiles = 0;
                 foreach (HexTile t in field.Tiles) {
                     if (t != u.tile && (!field.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
                     if (taken.Contains(t)) continue;
                     if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
                     if (!AIAir.MayEndOn(u, t, map)) continue;
-                    if (net.DepthAt(t) <= 0) continue;                         // a link must be supplied by the links behind it
+                    nTiles++;
+                    if (net.DepthAt(t) <= 0) { nUnsupplied++; continue; }       // a link must be supplied by the links behind it
                     int s = steps(t);
                     if (s == int.MaxValue) continue;
+                    if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) nAhead++;
                     // Not ahead of the army — unless no enemy can strike there for more than two
                     // turns (profile.chainLeadsWhenClear): a link behind which the army stands
                     // would otherwise hold in the road and the army, behind it on a narrow road,
                     // never get past (zigzag: Red's chain stood in front of its army all game).
                     if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) { cappedOut = true; continue; }
-                    if (map.ExpectedLoss(u, t) > 0f) continue;                  // nothing can hit it tonight
-                    if (best != null && !(s < bestSteps || (s == bestSteps && CombatMath.Precedes(t, best)))) continue;
+                    // Little or nothing can hit it tonight (profile.chainRiskTolerance strength at most)...
+                    float tolerance = Mathf.Max(0f, map.profile.chainRiskTolerance);
+                    float expected = map.ExpectedLoss(u, t);
+                    if (expected > tolerance) { nRisky++; continue; }
+                    if (best != null && !(s < bestSteps || (s == bestSteps && (expected < bestRisk || expected == bestRisk && CombatMath.Precedes(t, best))))) continue;
                     // ...not even by a chain of blows (the enemy's reply played out, as everywhere else).
                     float lost;
-                    if (AIWorld.Evaluate(u, t, new AttackAppraisal(), map, map.replyCache, false).lost.TryGetValue(u, out lost) && lost > 0f) continue;
-                    best = t; bestSteps = s;
+                    if (!AIWorld.Evaluate(u, t, new AttackAppraisal(), map, map.replyCache, false).lost.TryGetValue(u, out lost)) lost = 0f;
+                    if (lost > tolerance) { nRisky++; continue; }
+                    best = t; bestSteps = s; bestRisk = Mathf.Max(expected, lost);
                 }
+                if (DebugLog != null)
+                    DebugLog("   chain: supply unit at (" + u.tile.x + "," + u.tile.y + ", " + steps(u.tile) + " steps): " + nTiles + " tiles, " + nUnsupplied + " not supplied by the links behind, "
+                             + nAhead + " ahead of the army, " + nRisky + " in reach of the enemy; best " + (best != null ? "(" + best.x + "," + best.y + ", " + bestSteps + " steps)" : "none") + "; reach now " + reach);
                 if (best != null) {
                     Dictionary<SupplyPoint, HexTile> trial = new Dictionary<SupplyPoint, HexTile>(placed);
                     trial[h] = best;
