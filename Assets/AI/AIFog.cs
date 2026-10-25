@@ -21,12 +21,23 @@ namespace HexTactica.AI {
 
         public static float StopValue(Unit unit, HexTile stop, AIMap map, AIProfile p) {
             if (FogOfWar.current == null || unit == null || stop == null) return 0f;
-            return ScoutValue(unit, stop, p) + AmbushValue(unit, stop, map, p);
+            return ScoutValue(unit, stop, p, map) + AmbushValue(unit, stop, map, p);
+        }
+
+        /// <summary>
+        /// What the fog may hide (AISigint), in gold. The reply forecast (AIWorld) plays only the
+        /// enemies seen or believed, so a choice by forecast adds this; the risk the other choices
+        /// price (AIScore.Risk, AIMap.ExpectedLoss) has it already.
+        /// </summary>
+        public static float FogRisk(Unit unit, HexTile stop, AIMap map, AIProfile p) {
+            return map.FogLoss(unit, stop) * AIScore.Worth(unit) * p.riskWeight;
         }
 
         public static bool IsRecon(Unit u) { return u != null && u.moveRange >= 6 && u.Firepower <= 2; }
 
-        public static float ScoutValue(Unit unit, HexTile at, AIProfile p) {
+        public static float ScoutValue(Unit unit, HexTile at, AIProfile p) { return ScoutValue(unit, at, p, null); }
+
+        public static float ScoutValue(Unit unit, HexTile at, AIProfile p, AIMap map) {
             FogOfWar.Knowledge s = FogOfWar.current;
             if (s == null || unit == null || at == null || p.scoutTileValue <= 0f) return 0f;
             float v = 0f;
@@ -35,7 +46,9 @@ namespace HexTactica.AI {
                 if (s.visibleTiles.Contains(t)) continue;
                 if (!FogOfWar.LineOfSight(at, t, dom)) continue;
                 int last = FogOfWar.TileLastSeen(s.player, t);
-                v += (last < 0 ? 4f : Mathf.Min(4f, FogOfWar.Turn - last)) / 4f;
+                float tv = (last < 0 ? 4f : Mathf.Min(4f, FogOfWar.Turn - last)) / 4f;
+                if (map != null && map.sigint != null && p.scoutThreatBonus > 0f) tv *= 1f + p.scoutThreatBonus * map.sigint.Presence(t);
+                v += tv;
             }
             return v * p.scoutTileValue * (IsRecon(unit) ? 2f : 1f);
         }

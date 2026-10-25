@@ -51,6 +51,9 @@ public static class ScenarioFile {
         TerrainData td;
         if (terrain.TryGetValue(name, out td)) return td;
         string path = Path.Combine(PrefabLoader.AssetsRoot, "Tiles", name + ".asset");
+        string now;
+        // A terrain renamed since the file was saved loads as the game loads it (LevelEditor.loadTerrain).
+        if (!File.Exists(path) && LevelEditor.renamed.TryGetValue(name, out now)) { td = Terrain(now); terrain[name] = td; return td; }
         td = new TerrainData();
         td.name = name;
         if (File.Exists(path)) {

@@ -329,6 +329,8 @@ namespace HexTactica.AI {
                 o.world.score -= AIAir.RunwayBlockCost(unit, o.stop, map);
                 // Fog of war (played by): seeing from there, and not being seen there.
                 o.world.score += AIFog.StopValue(unit, o.stop, map, profile);
+                // ... and what the fog may hide there, which the forecast does not play (AISigint).
+                o.world.score -= AIFog.FogRisk(unit, o.stop, map, profile);
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
             if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });
@@ -345,6 +347,7 @@ namespace HexTactica.AI {
                 o.denial = d;
                 float positional = float.IsNegativeInfinity(o.positional) ? 0f : o.positional;
                 o.rest = o.denial.gold + positional;
+                if (profile.noiseSeed != 0 && profile.decisionNoise > 0f) o.rest += Noise(profile.noiseSeed, unit, o.stop) * profile.decisionNoise * worth;
                 // Same tile, same position: the better simulated world (shoot or not, and at whom) decides.
                 if (best == null || o.rest > best.rest
                     || (o.rest == best.rest && o.world.score > best.world.score)
@@ -386,6 +389,21 @@ namespace HexTactica.AI {
         }
 
         static string D(HexTile t) { return t == null ? "-" : "(" + t.x + "," + t.y + ")"; }
+
+        /// <summary>
+        /// A deterministic number in [-1, 1) for this seed, unit (by where it stands and whose it
+        /// is), stop and day (AIProfile.noiseSeed): the same game every time for one seed, a
+        /// different one for another, so the harness can measure over many games on a few maps.
+        /// </summary>
+        static float Noise(int seed, Unit unit, HexTile stop) {
+            unchecked {
+                uint h = 2166136261u;
+                int[] parts = { seed, unit.tile != null ? unit.tile.x : 99, unit.tile != null ? unit.tile.y : 99, stop != null ? stop.x : 99, stop != null ? stop.y : 99,
+                                GameController.gc != null ? GameController.gc.days : 0, unit.owner != null ? (int)unit.owner.id : 0, unit.Strength };
+                foreach (int p in parts) { h ^= (uint)p; h *= 16777619u; h ^= h >> 13; }
+                return (h & 0xFFFFFF) / (float)0x800000 - 1f;
+            }
+        }
 
         static void LogTiers(Unit unit, string tag, Posture posture, List<Option> all, List<Option> t1, List<Option> t2,
                              Option best, float bestAttack, float least, AIProfile profile) {
@@ -587,7 +605,11 @@ namespace HexTactica.AI {
             // tie-breaker on top of everything else, evaluated last.
             Objective job;
             if (Assignments != null && Assignments.TryGetValue(unit, out job) && job.tile != null) {
-                bonus += worth * context.profile.assignmentPull / (1 + context.map.Travel(unit, tile, job.tile));
+                if (job.kind == ObjectiveKind.Scout && unit.tile != null) {
+                    // A scout: every step toward where it will look counts (AIObjectives.AssignScouts).
+                    int gained = context.map.Travel(unit, unit.tile, job.tile) - context.map.Travel(unit, tile, job.tile);
+                    bonus += worth * context.profile.scoutPull * gained;
+                } else bonus += worth * context.profile.assignmentPull / (1 + context.map.Travel(unit, tile, job.tile));
             }
 
             Front front = context.front;

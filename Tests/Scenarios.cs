@@ -433,6 +433,8 @@ public static class Scenarios {
              "The board's clicks under fog of war, Red (human, vision 1) to play: a tile with a Blue grunt Red does not see behaves exactly like an empty one — clicked with nothing selected it selects nothing and shows no enemy; with Red's grunt selected it is offered as a move, the tile beyond it too, and the path drawn across it looks like a path across empty ground. Moving through it, Red's grunt stops before it and is fired on.", "Human");
         makeFog("fog-ai-knowledge", "fogKnowledge", (a, o) => { Put("Tank", a, -2, 0); Put("Recon", a, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 2, -5); Put("Tank", o, 5, -2); },
              "The AI playing by the fog: thinking, it knows only what Blue sees — a hidden enemy is off the board (not in its read of the board, not targetable, not blocking) and one seen lately stands where it was last seen, unless that tile is in sight and empty; everything is put back afterwards. An ambush tile (out of the enemy's sight, in reach of an enemy) is worth something, an exposed one is not; a stop that brings unseen tiles into sight is worth more than one that does not. With fogFair off it knows everything.", "Human");
+        makeFog("fog-ai-sigint", "fogSigint", (a, o) => { Put("Gunship Variant", a, -3, 0); Put("Grunt", a, -4, 2); Put("Recon", a, -1, 0); Put("Grunt", o, 1, 0); Put("Tank", o, 5, -4); },
+             "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a gunship ending its turn where that unit could reach it tonight (from anywhere it could have gone, not seen now) expects a loss, less the more moves it has had, and none once it has had more than sigintMoves; a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
                  Put("Tank", a, -4, 1); Put("Grunt", a, -3, -1); Put("Grunt", a, -4, 3); Put("Recon", a, -3, 2); Put("Artillery", a, -5, 2); Put("Supplies", a, -5, 1);
                  Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
@@ -1509,6 +1511,75 @@ public static class Scenarios {
                 r.Add("fogFair off: sees everything " + all);
                 detail = string.Join("; ", r.ToArray());
                 return start && sawFar && inside && believed && offBoard && notTarget && map && values && restored && forgot && all;
+            }
+            case "fogSigint": {
+                PinVision();
+                Unit gun = Rig.At(-3, 0).occupier, grunt = Rig.At(-4, 2).occupier, recon = Rig.At(-1, 0).occupier, aa = Rig.At(1, 0).occupier, etank = Rig.At(5, -4).occupier;
+                // (aa: the Red grunt Blue loses track of.)
+                AIPlayer ai = a.GetComponent<AIPlayer>();
+                AIProfile prof = ai.Profile;
+                List<string> r = new List<string>();
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                bool saw = FogOfWar.Sees(a, aa) && !FogOfWar.Sees(a, etank);
+                // A round later the anti-air unit has gone (out of sight), and its tile is seen empty.
+                aa.TeleportTo(Rig.At(4, 1), 0);
+                FogOfWar.Turn += 2; FogOfWar.Changed(); FogOfWar.Refresh();
+                bool lost = !FogOfWar.Sees(a, aa) && FogOfWar.TileVisible(a, Rig.At(1, 0));
+                r.Add("saw the Red grunt " + saw + ", lost it with its tile in sight " + lost);
+                HexTile near = Rig.At(1, -1), far = Rig.At(-5, 1);
+                Func<Action<AIProfile>, Func<HexTactica.AI.AIMap, float>, float> with = (tweak, f) => {
+                    AIProfile c = ScriptableObject.CreateInstance<AIProfile>();
+                    foreach (System.Reflection.FieldInfo fi in typeof(AIProfile).GetFields()) if (!fi.IsStatic) fi.SetValue(c, fi.GetValue(prof));
+                    if (tweak != null) tweak(c);
+                    float v = float.NaN;
+                    BoardView cv = FogOfWar.Conceal(a, true, c.fogMemoryTurns);
+                    using (cv != null ? cv.Enter() : null) if (cv != null) v = f(new HexTactica.AI.AIMap(a, c));
+                    return v;
+                };
+                bool phantom = false, notBelieved = false;
+                BoardView pv = FogOfWar.Conceal(a, true, prof.fogMemoryTurns);
+                using (pv != null ? pv.Enter() : null) if (pv != null) {
+                    phantom = pv.Fog.phantoms.Exists(x => x.unit == aa && x.moves == 1);
+                    notBelieved = !pv.Fog.believed.Contains(aa) && aa.tile == null;
+                }
+                r.Add("not believed where it was " + notBelieved + ", known to be about " + phantom);
+                if (Environment.GetEnvironmentVariable("SIGDBG") != null) with(null, m => { if (m.sigint != null) foreach (string line in m.sigint.Describe()) r.Add(line); return 0f; });
+                Action<AIProfile> calm = c => { c.fogAggression = 1f; };
+                float nearLoss = with(calm, m => m.FogLoss(gun, near)), farLoss = with(calm, m => m.FogLoss(gun, far));
+                float inRisk = with(calm, m => m.ExpectedLoss(gun, near));
+                FogOfWar.Turn += 2; FogOfWar.Refresh();
+                float later = with(calm, m => m.FogLoss(gun, near));
+                FogOfWar.Turn += 2 * prof.sigintMoves; FogOfWar.Refresh();
+                float forgotten = with(calm, m => m.FogLoss(gun, near));
+                FogOfWar.Turn -= 2 + 2 * prof.sigintMoves; FogOfWar.Refresh();
+                r.Add(string.Format("gunship's loss to it next to where it may be {0:0.00}, a move later {1:0.00}, after {2} moves {3:0.00}; out of its reach {4:0.00}; in the risk priced {5}",
+                    nearLoss, later, prof.sigintMoves + 2, forgotten, farLoss, inRisk >= nearLoss && nearLoss > 0f));
+                bool zones = nearLoss > 0f && later > 0f && later < nearLoss && forgotten == 0f && farLoss == 0f && inRisk >= nearLoss;
+                // Unknown ground (lost units left out: sigintMoves 0): Red's tank was never seen, nor the ground far east.
+                HexTile edge = Rig.At(2, 3), home = Rig.At(-6, 1);
+                float u0 = with(c => { c.fogAggression = 0f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, edge));
+                float uHalf = with(c => { c.fogAggression = 0.5f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, edge));
+                float u1 = with(c => { c.fogAggression = 1f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, edge));
+                float uHome = with(c => { c.fogAggression = 0f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, home));
+                r.Add(string.Format("grunt by unknown ground: fogAggression 0 {0:0.00}, 0.5 {1:0.00}, 1 {2:0.00}; at home {3:0.00}", u0, uHalf, u1, uHome));
+                bool unknown = u0 > 0f && Mathf.Abs(uHalf - u0 / 2f) < 0.01f + u0 * 0.01f && u1 == 0f && uHome < u0;
+                // Scouting where it may be.
+                float scoutWith = with(c => { c.fogAggression = 1f; }, m => HexTactica.AI.AIFog.ScoutValue(recon, Rig.At(1, 1), m.profile, m));
+                float scoutWithout = with(c => { c.fogAggression = 1f; c.scoutThreatBonus = 0f; }, m => HexTactica.AI.AIFog.ScoutValue(recon, Rig.At(1, 1), m.profile, m));
+                r.Add(string.Format("scouting where it may be {0:0} vs without the bonus {1:0}", scoutWith, scoutWithout));
+                bool scout = scoutWith > scoutWithout && scoutWithout > 0f;
+                // The damage priced is the game's.
+                int pairs = 0, wrong = 0;
+                foreach (Unit x in Rig.uc.units) foreach (Unit y in Rig.uc.units) {
+                    if (x == y || x.Hub != null || y.tile == null) continue;
+                    pairs++;
+                    if (FogOfWar.Kind.Of(x).Damage(x.Strength, y, y.tile) != Unit.calculateDamage(x, y, y.tile, 0)) wrong++;
+                }
+                r.Add("damage as the game's for " + (pairs - wrong) + " of " + pairs + " pairs");
+                float off = with(c => { c.fogThreat = false; }, m => m.sigint == null ? 0f : 1f);
+                r.Add("fogThreat off: nothing " + (off == 0f));
+                detail = string.Join("; ", r.ToArray());
+                return saw && lost && phantom && notBelieved && zones && unknown && scout && wrong == 0 && pairs > 0 && off == 0f;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;
@@ -2843,6 +2914,8 @@ public static class Scenarios {
                     AIProfile prof = ai != null ? ai.Profile : ScriptableObject.CreateInstance<AIProfile>();
                     using (FogOfWar.Concealing(prof.fogFair ? mover : null, true, prof.fogMemoryTurns)) {
                         AIMap m = new AIMap(mover, prof);
+                        if (m.sigint != null && Environment.GetEnvironmentVariable("SIGINT") != null)
+                            foreach (string line in m.sigint.Describe()) Console.WriteLine("  " + mover.personal_name + " fog: " + line);
                         Unit any = null;
                         foreach (Unit u in m.ownUnits) if (u != null && u.tile != null && u.Strength > 0) { any = u; break; }
                         if (any != null) {
@@ -2956,20 +3029,37 @@ public static class Scenarios {
         }
         int rounds = int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30");
         float total = 0f; int better = 0, worse = 0;
+        string[] seeds = (Environment.GetEnvironmentVariable("SEEDS") ?? "0").Split(',');
+        Action<AIProfile> chal0 = challenger, champ0 = champion;
+        foreach (string seedText in seeds)
         foreach (string fog in (Environment.GetEnvironmentVariable("FOGS") ?? "off,on").Split(',')) {
+            int seed = int.Parse(seedText);
+            challenger = p => { if (chal0 != null) chal0(p); p.noiseSeed = seed; };
+            champion = p => { if (champ0 != null) champ0(p); p.noiseSeed = seed; };
             foreach (string map in maps) {
                 float[] lead = new float[2];
-                for (int k = 0; k < 2; k++) {
+                // The champion's own game (k = 1) is the same every time: kept in BENCH_CACHE, if given.
+                string cacheFile = Environment.GetEnvironmentVariable("BENCH_CACHE");
+                string key = fog + "|" + Path.GetFullPath(Find(map)) + "|" + rounds + "|" + chName + (seed != 0 ? "|seed " + seed : "");
+                bool cached = false;
+                if (!string.IsNullOrEmpty(cacheFile) && File.Exists(cacheFile))
+                    foreach (string line in File.ReadAllLines(cacheFile)) {
+                        int tab = line.LastIndexOf('\t');
+                        if (tab > 0 && line.Substring(0, tab) == key) { lead[1] = float.Parse(line.Substring(tab + 1), System.Globalization.CultureInfo.InvariantCulture); cached = true; }
+                    }
+                for (int k = 0; k < (cached ? 1 : 2); k++) {
                     ScenarioFile.Loaded l = ScenarioFile.Load(Find(map), "Full", k == 0 ? challenger : champion, champion);
                     Rig.gc.fogOfWar = fog == "on"; FogOfWar.Reset();
                     GameController gc = Rig.gc;
                     for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
                     lead[k] = ScenarioFile.Material(l.ai) - ScenarioFile.Material(l.other);
                     if (gc.winner == l.ai) lead[k] += 100000f; else if (gc.winner == l.other) lead[k] -= 100000f;
+                    if (k == 1 && !string.IsNullOrEmpty(cacheFile))
+                        File.AppendAllText(cacheFile, key + "\t" + lead[1].ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n");
                 }
                 float d = lead[0] - lead[1];
                 total += d; if (d > 0) better++; else if (d < 0) worse++;
-                Console.WriteLine(string.Format("  fog {0,-3} {1,-44} challenger lead {2,8:0}, champion's {3,8:0}: {4,8:+0;-0}", fog, Path.GetFileNameWithoutExtension(map), lead[0], lead[1], d));
+                Console.WriteLine(string.Format("  fog {0,-3} {1,-44}" + (seed != 0 ? " seed " + seed : "") + " challenger lead {2,8:0}, champion's {3,8:0}: {4,8:+0;-0}", fog, Path.GetFileNameWithoutExtension(map), lead[0], lead[1], d));
             }
         }
         Console.WriteLine(string.Format("  total {0:+0;-0}: better in {1}, worse in {2}", total, better, worse));

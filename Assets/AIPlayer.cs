@@ -411,6 +411,9 @@ public class AIPlayer : MonoBehaviour {
         objectives = AIObjectives.Build(map, Profile);
         AIPerf.End("prepare: objectives", __p); }
         assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
+        AIObjectives.AssignScouts(assignments, map, Profile);
+        if (Trace != null) foreach (KeyValuePair<Unit, Objective> kv in assignments)
+            if (kv.Value.kind == ObjectiveKind.Scout) Trace("   scout " + kv.Key.name.Replace("(Clone)", "") + " (" + kv.Key.tile.x + "," + kv.Key.tile.y + ") -> (" + kv.Value.tile.x + "," + kv.Value.tile.y + ") sees " + kv.Value.value.ToString("0.0"));
         objectivePulls += assignments.Count;
         turnsPlayed++;
         // Objectives are structure: they add a pull to units out of contact and nothing else.

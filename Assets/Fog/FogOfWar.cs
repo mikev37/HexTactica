@@ -346,7 +346,70 @@ public static class FogOfWar {
         public HexTile tile;
         public int strength;
         public int turn;
+        /// <summary>What it is (its stats as seen).</summary>
+        public Kind kind;
+        /// <summary>Its tile has been seen since without it: it has moved on, to somewhere unseen.</summary>
+        public bool gone;
     }
+
+    /// <summary>
+    /// A kind of unit as an observer knows it — what it fights with, how far it moves and on what
+    /// ground — copied when one is seen, so it stays known whatever becomes of the unit.
+    /// </summary>
+    public sealed class Kind {
+        public string name;
+        public int cost, firepower, veterancy, piercing, targeting;
+        public int moveRange, attackRange, minRange, visionRange, elevationMin, elevationMax, terrainScramble;
+        public bool moveAndAttack, amphibious, airborne;
+        public Locomotion locomotion;
+
+        public static Kind Of(Unit u) {
+            string n = u.name ?? "";
+            int c = n.IndexOf("(Clone)", StringComparison.Ordinal);
+            if (c >= 0) n = n.Substring(0, c);
+            return new Kind {
+                name = n.Trim(), cost = u.cost, firepower = u.Firepower, veterancy = u.Veterancy, piercing = u.Piercing, targeting = u.Targeting,
+                moveRange = u.moveRange, attackRange = u.AttackRange, minRange = u.MinRange, visionRange = u.visionRange,
+                elevationMin = u.elevationMin, elevationMax = u.elevationMax, moveAndAttack = u.moveAndAttack, amphibious = u.amphibious,
+                airborne = LocomotionRules.IsAirborne(u.locomotion), locomotion = u.locomotion, terrainScramble = u.terrainScramble
+            };
+        }
+
+        /// <summary>Can it stand on <paramref name="t"/> (Unit.CanEnter)?</summary>
+        public bool CanEnter(HexTile t) {
+            if (t == null || t.terrain == null) return false;
+            int e = t.terrain.elevation;
+            if (e >= elevationMin && e <= elevationMax) return true;
+            return amphibious && e < 0 && Unit.BordersLand(t);
+        }
+
+        /// <summary>Movement points to enter <paramref name="to"/> from <paramref name="from"/> (AIPath.StepCost for this kind); int.MaxValue: it cannot.</summary>
+        public int StepCost(HexTile from, HexTile to) {
+            if (to == null || to.terrain == null || !CanEnter(to)) return int.MaxValue;
+            if (LocomotionRules.IgnoresTerrain(locomotion)) return 1;
+            if (!LocomotionRules.BridgeStep(from, to, locomotion)) return int.MaxValue;
+            if (LocomotionRules.UsesRoads(locomotion) && from != null && from.terrain != null && from.terrain.road && to.terrain.road) return 1;
+            return 1 + Mathf.Max(0, to.EffectiveMoveability - terrainScramble);
+        }
+
+        /// <summary>
+        /// Unit.calculateDamage for this kind at <paramref name="strength"/> against
+        /// <paramref name="defender"/> on <paramref name="tile"/>: the same formula, on the stats as seen.
+        /// </summary>
+        public int Damage(int strength, Unit defender, HexTile tile) {
+            if (strength <= 0 || firepower <= 0 || defender == null) return 0;
+            float cover = 0;
+            float destruction = firepower + veterancy;
+            float penetration = Mathf.Max(1, defender.Armor - piercing);
+            float acquire = Mathf.Max(1, defender.Evasion - targeting);
+            if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion))
+                cover = Math.Min(defender.Concealment, tile.EffectiveCover);
+            return (int)Mathf.Max(1, Mathf.Floor((destruction / penetration / acquire - cover) * strength / 6f));
+        }
+    }
+
+    /// <summary>Every kind of enemy unit each player has ever seen (by name), for guessing what the fog hides.</summary>
+    static readonly Dictionary<Player, Dictionary<string, Kind>> kindsSeen = new Dictionary<Player, Dictionary<string, Kind>>();
 
     /// <summary>A building as it was last seen.</summary>
     public class BuildingSighting {
@@ -376,15 +439,19 @@ public static class FogOfWar {
                 if (!Sees(p, u)) continue;
                 Sighting g;
                 if (!mem.TryGetValue(u, out g)) { g = new Sighting(); mem[u] = g; }
-                g.tile = u.tile; g.strength = u.Strength; g.turn = Turn;
+                g.tile = u.tile; g.strength = u.Strength; g.turn = Turn; g.gone = false;
+                if (g.kind == null) g.kind = Kind.Of(u);
+                Dictionary<string, Kind> ks = For(kindsSeen, p);
+                if (!ks.ContainsKey(g.kind.name)) ks[g.kind.name] = g.kind;
             }
         }
-        // Forget the dead, and anyone seen not to be where they were last seen.
+        // Forget the dead. Anyone seen not to be where they were last seen has moved on: it is
+        // no longer believed there, but still known to be about (Knowledge.phantoms).
         List<Unit> drop = new List<Unit>();
         foreach (KeyValuePair<Unit, Sighting> kv in mem) {
             Unit u = kv.Key;
-            if (u == null || u.Strength <= 0 || u.tile == null) { drop.Add(u); continue; }
-            if (kv.Value.turn != Turn && s.cover.ContainsKey(kv.Value.tile) && !(kv.Value.tile.occupier == u && Sees(p, u))) drop.Add(u);
+            if (u == null || u.Strength <= 0 || (u.tile == null && u.trasnporter == null)) { drop.Add(u); continue; }
+            if (kv.Value.turn != Turn && s.cover.ContainsKey(kv.Value.tile) && !(kv.Value.tile.occupier == u && Sees(p, u))) kv.Value.gone = true;
         }
         foreach (Unit u in drop) mem.Remove(u);
 
@@ -452,7 +519,7 @@ public static class FogOfWar {
 
     /// <summary>A new game: forget everything (memory, reveals, the turn count).</summary>
     public static void Reset() {
-        sights = new Dictionary<Player, Sight>(); revealed.Clear(); units.Clear(); tilesSeen.Clear(); buildings.Clear();
+        sights = new Dictionary<Player, Sight>(); revealed.Clear(); units.Clear(); tilesSeen.Clear(); buildings.Clear(); kindsSeen.Clear();
         Turn = 0; lastHuman = null; viewerChanges++;
         Changed();
     }
@@ -567,6 +634,21 @@ public static class FogOfWar {
         internal Dictionary<Building, Player> ownerSeen;
         /// <summary>What the enemy is thought to see: its units where they are thought to be, its buildings as last seen.</summary>
         readonly Sight enemySight = new Sight();
+        /// <summary>
+        /// Enemy units seen before and not seen now, nor believed where they were (with beliefs only):
+        /// each somewhere within reach of where it was last seen, for the turns it has had to move
+        /// since. Hidden from the copy like every unit not seen; AISigint prices the threat.
+        /// </summary>
+        public readonly List<Phantom> phantoms = new List<Phantom>();
+        /// <summary>Every kind of enemy unit this side has ever seen (with beliefs only).</summary>
+        public readonly List<Kind> enemyKinds = new List<Kind>();
+        /// <summary>The enemy's moves since <see cref="Turn"/> - <paramref name="turns"/>: one a round.</summary>
+        public int MovesSince(int turnSeen) {
+            int n = 0;
+            foreach (Player q in GameController.gc.players) if (q != null && !q.eliminated) n++;
+            n = Mathf.Max(1, n);
+            return Mathf.Max(1, (Turn - turnSeen + n - 1) / n);
+        }
 
         internal Knowledge(Player p) { player = p; }
 
@@ -591,12 +673,23 @@ public static class FogOfWar {
             }
             foreach (Unit u in toBelieve) {
                 Sighting g = LastSeen(player, u);
-                if (g == null || g.tile == null || Turn - g.turn > memoryTurns) continue;
-                if (visibleTiles.Contains(g.tile) || g.tile.occupier != null) continue;
+                if (g == null || g.tile == null) continue;
+                if (g.gone || Turn - g.turn > memoryTurns || visibleTiles.Contains(g.tile) || g.tile.occupier != null) {
+                    if (g.kind != null) phantoms.Add(new Phantom { unit = u, kind = g.kind, last = g.tile, strength = Mathf.Max(1, g.strength), moves = MovesSince(g.turn) });
+                    continue;
+                }
                 g.tile.occupier = u;
                 u.tile = g.tile;
                 u.Strength = Mathf.Max(1, g.strength);
                 believed.Add(u);
+            }
+            if (beliefs) {
+                Dictionary<string, Kind> ks;
+                if (kindsSeen.TryGetValue(player, out ks)) {
+                    List<string> names = new List<string>(ks.Keys);
+                    names.Sort(StringComparer.Ordinal);
+                    foreach (string n in names) enemyKinds.Add(ks[n]);
+                }
             }
             // The enemy's sight as known: its units where they are thought to be, its buildings as last seen.
             foreach (Player q in GameController.gc.players) {
@@ -615,6 +708,15 @@ public static class FogOfWar {
             Player me = player;
             return Spotted(enemySight, u, at, o => o != null && o != me, b => OwnerAsSeen(me, b));
         }
+    }
+
+    /// <summary>An enemy unit known to be about, but not where (Knowledge.phantoms).</summary>
+    public sealed class Phantom {
+        public Unit unit;
+        public Kind kind;
+        /// <summary>Where it was last seen, at what strength, and the enemy moves it has had since (at least one).</summary>
+        public HexTile last;
+        public int strength, moves;
     }
 
     /// <summary>OwnerAsSeen from the shared memory (main thread), whatever copy is entered.</summary>

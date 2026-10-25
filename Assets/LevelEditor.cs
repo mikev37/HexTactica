@@ -157,6 +157,10 @@ public class LevelEditor : MonoBehaviour
             }
         }
         GameController.BoardLoaded();
+        if (HexTactica.Harness.ScenarioLoader.RecordGames && GameController.gc != null && !GameController.gc.headless) {
+            HexTactica.Harness.GameLog.Start(destination, null, null);
+            Debug.Log("Recording this game to " + HexTactica.Harness.GameLog.Folder);
+        }
     }
 
     /// <summary>
@@ -166,7 +170,7 @@ public class LevelEditor : MonoBehaviour
     /// (TerrainData.destroyedInto). Null if none has that name.
     /// </summary>
     /// <summary>Terrains renamed since saves were written: old name, new name.</summary>
-    static readonly System.Collections.Generic.Dictionary<string, string> renamed = new System.Collections.Generic.Dictionary<string, string> { { "BuildingGround", "Urban" } };
+    public static readonly System.Collections.Generic.Dictionary<string, string> renamed = new System.Collections.Generic.Dictionary<string, string> { { "BuildingGround", "Urban" } };
 
     public static TerrainData loadTerrain(string name) {
         TerrainData td = FindTerrain(name);
