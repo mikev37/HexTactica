@@ -2872,6 +2872,24 @@ public static class Scenarios {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", Tests.Tweak(Environment.GetEnvironmentVariable("SET_BLUE")), Tests.Tweak(Environment.GetEnvironmentVariable("SET_RED")));
         GameController gc = Rig.gc;
         Console.WriteLine("analyze " + name + " (rules " + gc.rules + ", fog " + (gc.fogOfWar ? "on" : "off") + ")");
+        // CUTS: every action of the AI's after which fewer of its supply units are connected.
+        if (Environment.GetEnvironmentVariable("CUTS") != null) {
+            AIPlayer bai = l.ai.GetComponent<AIPlayer>();
+            Func<int> connected = () => { SupplyNetwork.Result r = SupplyNetwork.Solve(l.ai, false); int c = 0; foreach (Unit u in l.ai.units) if (u != null && u.Hub != null && !u.Hub.producer && r.connectedHubs.Contains(u.Hub)) c++; return c; };
+            int lastConnected = -1;
+            bai.onDecision += (u, act, did) => {
+                int c = connected();
+                if (lastConnected >= 0 && c < lastConnected && c == 0) {
+                    SupplyNetwork.Result r0 = SupplyNetwork.Solve(l.ai, false);
+                    Building hqb = GameController.HQOf(l.ai);
+                    Console.WriteLine("      [debug] supplied tiles " + r0.depth.Count + ", HQ " + (hqb != null ? hqb.name + " functioning " + hqb.Functioning + " produces " + hqb.producesSupply + " owner " + (hqb.owner != null ? hqb.owner.personal_name : "-") : "none") + ", active " + gc.activePlayer.personal_name);
+                }
+                if (lastConnected >= 0 && c < lastConnected)
+                    Console.WriteLine("    day " + gc.days + ": " + lastConnected + " -> " + c + " connected after " + (u != null ? u.name.Replace("(Clone)", "") : "?") + " " + act.kind + " to " + (act.destination != null ? "(" + act.destination.x + "," + act.destination.y + ")" : "-") + ": " + act.reason);
+                lastConnected = c;
+            };
+            GameController.TurnStarted += pl => { if (pl == l.ai) lastConnected = connected(); };
+        }
         Dictionary<Player, int[]> fire = new Dictionary<Player, int[]> { { l.ai, new int[4] }, { l.other, new int[4] } };   // shots, dealt, taken, losing
         Dictionary<Player, int> killed = new Dictionary<Player, int> { { l.ai, 0 }, { l.other, 0 } };
         Action<Unit, Unit, HexTile, HexTile, CombatOutcome> onAttack = (att, def, at, dt, o) => {
@@ -2908,6 +2926,16 @@ public static class Scenarios {
                     forecastFor = null;
                 }
                 // This side's turn is over: its forecast for the enemy's reply.
+                if (!gc.gameOver && gc.activePlayer != mover && eye.ContainsKey(mover) && Environment.GetEnvironmentVariable("CUTS") != null) {
+                    SupplyNetwork.Result endNet = SupplyNetwork.Solve(mover, false);
+                    int nh = 0, nc = 0, ue = 0, uc = 0;
+                    foreach (Unit u in mover.units) {
+                        if (u == null || u.tile == null || u.Strength <= 0) continue;
+                        if (u.Hub != null && !u.Hub.producer) { nh++; if (!endNet.connectedHubs.Contains(u.Hub)) nc++; }
+                        else if (u.Hub == null && u.Firepower > 0) { ue++; if (endNet.DepthAt(u.tile) <= 0) uc++; }
+                    }
+                    Console.WriteLine("  " + mover.personal_name + " ends its turn with " + nc + " of " + nh + " supply units cut, " + uc + " of " + ue + " fighting units out of supply");
+                }
                 if (!gc.gameOver && gc.activePlayer != mover && eye.ContainsKey(mover)) {
                     predicted.Clear(); before.Clear();
                     AIPlayer ai = mover.GetComponent<AIPlayer>();
@@ -2965,16 +2993,24 @@ public static class Scenarios {
                     }
                     // DETAIL=round: where each supply unit and each engaged unit out of supply stands, that round.
                     string detailRound = Environment.GetEnvironmentVariable("DETAIL");
-                    if (detailRound != null && detailRound == gc.days.ToString()) {
+                    if (detailRound != null && Array.IndexOf(detailRound.Split(','), gc.days.ToString()) >= 0) {
                         List<string> hs = new List<string>(), cs = new List<string>();
                         foreach (Unit u in p.units) {
                             if (u == null || u.tile == null || u.Strength <= 0) continue;
                             string at = "(" + u.tile.x + "," + u.tile.y + ")";
                             if (u.Hub != null && !u.Hub.producer) hs.Add(u.name.Replace(" Variant", "") + at + (u.trasnporter != null ? " aboard " + u.trasnporter.name : "") + (net.connectedHubs.Contains(u.Hub) ? "" : " CUT") + " hq" + (hq != null ? hq.Distance(u.tile) : 99) + " e" + toEnemy(u.tile));
-                            else if (u.Hub == null && u.Firepower > 0 && toEnemy(u.tile) <= 6 && !LocomotionRules.NeedsBase(u.locomotion) && net.DepthAt(u.tile) <= 0) cs.Add(u.name.Replace(" Variant", "") + at + " s" + u.Strength + " p" + u.supplies + " a" + u.ammo + " hq" + (hq != null ? hq.Distance(u.tile) : 99));
+                            else if (u.Hub == null && u.Firepower > 0 && toEnemy(u.tile) <= 6 && !LocomotionRules.NeedsBase(u.locomotion) && net.DepthAt(u.tile) <= 0) { int gap = HexTactica.AI.AIMap.GapToSupply(u.tile, net.DepthAt, 12); cs.Add(u.name.Replace(" Variant", "") + at + " s" + u.Strength + " p" + u.supplies + " a" + u.ammo + " hq" + (hq != null ? hq.Distance(u.tile) : 99) + " gap" + gap); }
                         }
                         Console.WriteLine("    " + p.personal_name + " supply units: " + string.Join("; ", hs.ToArray()));
                         Console.WriteLine("    " + p.personal_name + " engaged and cut off: " + string.Join("; ", cs.ToArray()));
+                    }
+                    if (Environment.GetEnvironmentVariable("HQWATCH") != null && hq != null) {
+                        Building hb = GameController.HQOf(p);
+                        List<string> near = new List<string>();
+                        foreach (Unit x in enemies) if (x.tile.Distance(hq) <= 4) near.Add(x.name.Replace(" Variant", "").Replace("(Clone)", "") + "(" + x.tile.x + "," + x.tile.y + ")s" + x.Strength + (FogOfWar.On && !FogOfWar.Sees(p, x) ? " unseen" : ""));
+                        int mine = 0; foreach (Unit x in p.units) if (x != null && x.tile != null && x.Strength > 0 && x.tile.Distance(hq) <= 4) mine++;
+                        if (near.Count > 0 || (hb != null && hb.capturingPlayer != null))
+                            Console.WriteLine("    " + p.personal_name + " HQ: capture " + (hb != null && hb.capturingPlayer != null ? hb.capturingPlayer.personal_name + " " + hb.capturePoints : "none") + "; enemies within 4: " + string.Join(", ", near.ToArray()) + "; ours within 4: " + mine);
                     }
                     hubHq.Sort(); hubEnemy.Sort();
                     Func<List<int>, string> med = xs => xs.Count == 0 ? "-" : xs[xs.Count / 2].ToString();
