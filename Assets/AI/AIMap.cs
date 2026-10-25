@@ -274,7 +274,14 @@ namespace HexTactica.AI {
             { long __p = AIPerf.Begin(); ScoreSupplyImportance(); AIPerf.End("map: supply importance", __p); }
             { long __p = AIPerf.Begin(); ComputeHQDanger(); AIPerf.End("map: HQ danger", __p); }
             { long __p = AIPerf.Begin(); ComputeEnemyFire(); AIPerf.End("map: enemy fire", __p); }
+            { long __p = AIPerf.Begin(); sigint = AISigint.Build(this); AIPerf.End("map: fog threat", __p); }
         }
+
+        /// <summary>What the fog may hide (AISigint), or null: nothing to price.</summary>
+        public AISigint sigint;
+
+        /// <summary>Strength <paramref name="u"/> should expect to lose on <paramref name="at"/> to enemies the fog may hide (AISigint).</summary>
+        public float FogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at) : 0f; }
 
         /// <summary>
         /// Model of tonight's enemy fire, one enemy unit at a time.
@@ -367,8 +374,9 @@ namespace HexTactica.AI {
         public float ExpectedLoss(Unit u, HexTile at, Unit exclude) {
             if (u == null || at == null) return 0f;
             List<EnemyFire> list;
-            if (!firersAt.TryGetValue(at, out list)) return 0f;
-            float loss = 0f;
+            float fog = FogLoss(u, at);
+            if (!firersAt.TryGetValue(at, out list)) return Mathf.Min(u.Strength, fog);
+            float loss = fog;
             for (int i = 0; i < list.Count; i++) {
                 EnemyFire ef = list[i];
                 if (ef.unit == exclude) continue;

@@ -499,7 +499,33 @@ namespace HexTactica.AI {
         [Tooltip("Share of tonight's risk taken back for a stop the enemy (as known) would not see this unit on: it can only be fired on by what stumbles into it.")]
         public float hiddenRiskRelief = 0.5f;
 
+        [Tooltip("Price what the fog may hide (AISigint): enemies seen before and lost track of, somewhere within reach of where they were last seen, and ground not seen lately, which may hide anything the enemy fields.")]
+        public bool fogThreat = true;
+        [Tooltip("Enemy moves an enemy unit lost track of is still counted as about (fogThreat).")]
+        [Range(1, 12)]
+        public int sigintMoves = 6;
+        [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen (fogThreat): it may have gone anywhere, or elsewhere.")]
+        [Range(0f, 1f)]
+        public float sigintDecay = 0.7f;
+        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields; 1: unknown ground is empty, as before.")]
+        [Range(0f, 1f)]
+        public float fogAggression = 0.5f;
+        [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
+        [Range(1, 20)]
+        public int fogUnknownTurns = 6;
+        [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]
+        [Range(0, 4)]
+        public int scoutUnits = 0;
+        [Tooltip("A scout's pull toward where it will look: a fraction of its worth for every step closer.")]
+        public float scoutPull = 0.3f;
+        [Tooltip("Extra worth of a scouting tile where an enemy we lost track of may be standing, or that is unknown (times its confidence): looking there tells us where it is.")]
+        public float scoutThreatBonus = 1f;
+
         [Header("Debug")]
+        [Tooltip("Harness only: a seed for small deterministic noise in close choices (decisionNoise), so one map can be played many different ways. 0: none.")]
+        public int noiseSeed = 0;
+        [Tooltip("Harness only: the size of that noise, as a fraction of the acting unit's worth per strength point.")]
+        public float decisionNoise = 0.15f;
         [Tooltip("Write decision reasoning onto the tiles as text.")]
         public bool annotateBoard = true;
 

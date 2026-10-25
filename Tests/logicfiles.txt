@@ -68,6 +68,7 @@ Fog/FogSettings.cs
 Fog/FogFader.cs
 Fog/FogView.cs
 AI/AIFog.cs
+AI/AISigint.cs
 HealthDot.cs
 VeterancyChevron.cs
 AI/BoardView.cs

@@ -162,6 +162,19 @@ public class GameController : MonoBehaviour
             if (p.HasHQ) p.hadHQ = true;
             p.Resupply();
         }
+        if (!headless && HexTactica.Harness.ScenarioLoader.RecordGames) StartCoroutine(RecordFromStart());
+    }
+
+    /// <summary>
+    /// Every game played in play mode is recorded (GameLog) without asking: the board in the
+    /// scene from the first frame, unless a scenario or a save was loaded meanwhile (which
+    /// starts its own recording). HexTactica ▸ Game Log ▸ Record Loaded Scenarios turns it off.
+    /// </summary>
+    System.Collections.IEnumerator RecordFromStart() {
+        yield return null;
+        if (HexTactica.Harness.GameLog.Recording) yield break;
+        HexTactica.Harness.GameLog.Start("board in the scene", null, null);
+        Debug.Log("Recording this game to " + HexTactica.Harness.GameLog.Folder);
     }
 
     public void Update() {
