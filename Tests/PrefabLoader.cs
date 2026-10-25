@@ -52,18 +52,89 @@ namespace HexTactica.Testing {
             return sp;
         }
 
-        static Unit Parse(string name) {
-            string text = File.ReadAllText(PathFor(name));
-            string[] docs = text.Split(new[] { "\n--- " }, StringSplitOptions.None);
+        /// <summary>A unit prefab's serialized Unit and SupplyPoint fields (and their documents' ids), and its carries list.</summary>
+        class Doc {
+            public Dictionary<string, string> unit, hub;
+            public string unitId, hubId;
+            public List<Locomotion> carries = new List<Locomotion>();
+        }
 
-            Dictionary<string, string> unitFields = null;
-            Dictionary<string, string> hubFields = null;
+        /// <summary>
+        /// Read a unit prefab. A prefab variant (Truck Variant, say) has no Unit document of its own:
+        /// it is its base prefab with the changes listed on the instance of it at its root, applied here
+        /// (scalar fields, and the carries list).
+        /// </summary>
+        static Doc Read(string name, int depth = 0) {
+            string text = File.ReadAllText(PathFor(name)).Replace("\r", "");
+            string[] docs = text.Split(new[] { "\n--- " }, StringSplitOptions.None);
+            Doc d = new Doc();
             foreach (string doc in docs) {
                 Dictionary<string, string> f = Fields(doc);
-                if (f.ContainsKey("Firepower")) unitFields = f;
-                else if (f.ContainsKey("producer")) hubFields = f;
+                string id = DocId(doc);
+                if (f.ContainsKey("Firepower")) { d.unit = f; d.unitId = id; }
+                else if (f.ContainsKey("producer")) { d.hub = f; d.hubId = id; }
             }
-            if (unitFields == null) throw new Exception("no Unit component in " + name);
+            if (d.unit != null) { d.carries = Carries(text); return d; }
+            if (depth > 4) throw new Exception("no Unit component in " + name);
+            // A variant: the root instance's source prefab, then its changes.
+            foreach (string doc in docs) {
+                if (!doc.StartsWith("!u!1001 ")) continue;
+                if (!doc.Contains("m_TransformParent: {fileID: 0}")) continue;
+                int sp = doc.IndexOf("m_SourcePrefab:");
+                int spEnd = sp >= 0 ? doc.IndexOf('\n', sp) : -1;
+                string guid = sp >= 0 ? GuidIn(spEnd >= 0 ? doc.Substring(sp, spEnd - sp) : doc.Substring(sp)) : null;
+                string baseName = guid != null ? AssetByGuid(Path.Combine(AssetsRoot, "Units"), "*.prefab.meta", guid) : null;
+                if (baseName == null || baseName == name) continue;
+                Doc b = Read(baseName, depth + 1);
+                Doc v = new Doc { unit = new Dictionary<string, string>(b.unit), unitId = b.unitId, hub = b.hub != null ? new Dictionary<string, string>(b.hub) : null, hubId = b.hubId, carries = new List<Locomotion>(b.carries) };
+                string[] lines = doc.Split('\n');
+                int carriesSize = -1;
+                Dictionary<int, int> carriesAt = new Dictionary<int, int>();
+                for (int i = 0; i + 2 < lines.Length; i++) {
+                    if (!lines[i].TrimStart().StartsWith("- target:")) continue;
+                    int fi = lines[i].IndexOf("fileID: ");
+                    if (fi < 0) continue;
+                    int te = fi + 8;
+                    while (te < lines[i].Length && char.IsDigit(lines[i][te])) te++;
+                    string target = lines[i].Substring(fi + 8, te - fi - 8);
+                    string path = lines[i + 1].Trim().StartsWith("propertyPath:") ? lines[i + 1].Trim().Substring("propertyPath:".Length).Trim().Trim('\'') : null;
+                    string value = lines[i + 2].Trim().StartsWith("value:") ? lines[i + 2].Trim().Substring("value:".Length).Trim() : null;
+                    if (path == null || value == null) continue;
+                    Dictionary<string, string> into = target == v.unitId ? v.unit : target == v.hubId ? v.hub : null;
+                    if (into == null) continue;
+                    if (into == v.unit && path == "carries.Array.size") { int n; if (int.TryParse(value, out n)) carriesSize = n; continue; }
+                    if (into == v.unit && path.StartsWith("carries.Array.data[")) {
+                        int k, val;
+                        if (int.TryParse(path.Substring(19).TrimEnd(']'), out k) && int.TryParse(value, out val)) carriesAt[k] = val;
+                        continue;
+                    }
+                    if (path.Contains(".") || value.Length == 0) continue;
+                    into[path] = value;
+                }
+                if (carriesSize >= 0) {
+                    List<Locomotion> c = new List<Locomotion>();
+                    for (int k = 0; k < carriesSize; k++) c.Add(carriesAt.ContainsKey(k) ? (Locomotion)carriesAt[k] : (k < v.carries.Count ? v.carries[k] : Locomotion.Boots));
+                    v.carries = c;
+                } else foreach (KeyValuePair<int, int> kv in carriesAt) if (kv.Key < v.carries.Count) v.carries[kv.Key] = (Locomotion)kv.Value;
+                return v;
+            }
+            throw new Exception("no Unit component in " + name);
+        }
+
+        /// <summary>The id of a YAML document ("!u!114 &amp;9081080694409079478" gives 9081080694409079478).</summary>
+        static string DocId(string doc) {
+            int amp = doc.IndexOf('&');
+            int nl = doc.IndexOf('\n');
+            if (amp < 0 || (nl >= 0 && amp > nl)) return null;
+            int end = amp + 1;
+            while (end < doc.Length && char.IsDigit(doc[end])) end++;
+            return doc.Substring(amp + 1, end - amp - 1);
+        }
+
+        static Unit Parse(string name) {
+            Doc d = Read(name);
+            Dictionary<string, string> unitFields = d.unit;
+            Dictionary<string, string> hubFields = d.hub;
             hubCache[name] = hubFields;
 
             Unit u = Rig.New<Unit>();
@@ -83,11 +154,15 @@ namespace HexTactica.Testing {
                 } catch (FormatException) { /* complex value: skip */ }
             }
             // Lists: the locomotion types a transport carries.
-            u.carries = new List<Locomotion>();
-            string[] lines = text.Replace("\r", "").Split('\n');
+            u.carries = new List<Locomotion>(d.carries);
+            return u;
+        }
+
+        /// <summary>The carries list of a prefab's Unit (as a YAML list, or as Unity's hex string of little-endian ints).</summary>
+        static List<Locomotion> Carries(string text) {
+            List<Locomotion> carries = new List<Locomotion>();
+            string[] lines = text.Split('\n');
             for (int i = 0; i < lines.Length; i++) {
-                // Unity also writes an int list as one hex string, four bytes little-endian per entry
-                // ("  carries: 00000000" is [Boots]; a trailing type letter may follow).
                 if (lines[i].StartsWith("  carries: ") && lines[i].Trim() != "carries:") {
                     string hex = lines[i].Substring("  carries: ".Length).Trim();
                     for (int k = 0; k + 8 <= hex.Length; k += 8) {
@@ -97,15 +172,15 @@ namespace HexTactica.Testing {
                             if (!int.TryParse(hex.Substring(k + byteI * 2, 2), System.Globalization.NumberStyles.HexNumber, null, out bv)) { ok = false; break; }
                             v |= bv << (8 * byteI);
                         }
-                        if (ok) u.carries.Add((Locomotion)v);
+                        if (ok) carries.Add((Locomotion)v);
                     }
                     break;
                 }
                 if (lines[i] != "  carries:") continue;
-                for (int j = i + 1; j < lines.Length && lines[j].StartsWith("  - "); j++) u.carries.Add((Locomotion)int.Parse(lines[j].Substring(4).Trim()));
+                for (int j = i + 1; j < lines.Length && lines[j].StartsWith("  - "); j++) carries.Add((Locomotion)int.Parse(lines[j].Substring(4).Trim()));
                 break;
             }
-            return u;
+            return carries;
         }
 
         static readonly Dictionary<string, Building> buildingCache = new Dictionary<string, Building>();
@@ -145,6 +220,7 @@ namespace HexTactica.Testing {
             }
             Building b = Rig.New<Building>();
             b.name = cached.name;
+            b.gameObject.name = cached.name;   // what a save writes for it (GameLog, LevelEditor), as in Unity
             foreach (FieldInfo fi in SerializedFields(typeof(Building))) {
                 object v = fi.GetValue(cached);
                 if (v is List<TileOffset>) v = new List<TileOffset>((List<TileOffset>)v);

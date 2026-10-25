@@ -51,6 +51,9 @@ public static class ScenarioFile {
         TerrainData td;
         if (terrain.TryGetValue(name, out td)) return td;
         string path = Path.Combine(PrefabLoader.AssetsRoot, "Tiles", name + ".asset");
+        string now;
+        // A terrain renamed since the file was saved loads as the game loads it (LevelEditor.loadTerrain).
+        if (!File.Exists(path) && LevelEditor.renamed.TryGetValue(name, out now)) { td = Terrain(now); terrain[name] = td; return td; }
         td = new TerrainData();
         td.name = name;
         if (File.Exists(path)) {
@@ -220,13 +223,26 @@ public static class ScenarioFile {
             made.capturingPlayer = cid == AI_ID ? l.ai : cid == OTHER_ID ? l.other : null;
         }
         foreach (HexTile c in cities) if (c.building == null) Rig.PlaceBuilding("City", null, c.x, c.y);
+        // Units by their place in the file (null: none made); cargo (transporterIndexPlusOne, as the
+        // game writes it) goes aboard its transport once every unit exists.
+        List<Unit> byIndex = new List<Unit>();
+        List<KeyValuePair<Unit, int>> aboard = new List<KeyValuePair<Unit, int>>();
         foreach (Dictionary<string, string> u in Array(json, "units")) {
             Player owner = long.Parse(u["owner_id"]) == AI_ID ? l.ai : l.other;
             string prefab = u["gameobject_name"].Replace("(Clone)", "").Trim();
             HexTile at = Rig.hg.get(int.Parse(u["x"]), int.Parse(u["y"]), int.Parse(u["z"]));
             // TempHQ is retired: an HQ unit in an older file becomes the HQ building.
-            if (prefab == "TempHQ") { if (at.building == null) Rig.PlaceBuilding("HQ", owner, at.x, at.y); continue; }
-            Unit unit = Rig.Spawn(PrefabLoader.Load(prefab), owner, at.x, at.y);
+            if (prefab == "TempHQ") { if (at.building == null) Rig.PlaceBuilding("HQ", owner, at.x, at.y); byIndex.Add(null); continue; }
+            int carriedBy;
+            bool cargo = u.ContainsKey("transporterIndexPlusOne") && int.TryParse(u["transporterIndexPlusOne"], out carriedBy) && carriedBy > 0;
+            Unit unit;
+            if (cargo) {
+                unit = Rig.Clone(PrefabLoader.Load(prefab));
+                unit.owner = owner; unit.tile = at; unit.path = new List<HexTile>(); unit.transported = new List<Unit>(); unit.active = true;
+                Rig.uc.units.Add(unit); owner.units.Add(unit);
+                aboard.Add(new KeyValuePair<Unit, int>(unit, int.Parse(u["transporterIndexPlusOne"]) - 1));
+            } else unit = Rig.Spawn(PrefabLoader.Load(prefab), owner, at.x, at.y);
+            byIndex.Add(unit);
             PrefabLoader.AttachHubIfAny(prefab, unit);
             int n;
             if (u.ContainsKey("Strength") && int.TryParse(u["Strength"], out n)) unit.Strength = n;
@@ -235,6 +251,13 @@ public static class ScenarioFile {
             if (u.ContainsKey("fuel") && int.TryParse(u["fuel"], out n)) unit.fuel = n;
             if (u.ContainsKey("suppressed") && int.TryParse(u["suppressed"], out n)) unit.suppressed = Math.Min(n, unit.Strength);
             if (u.ContainsKey("refuelStockPlusOne") && int.TryParse(u["refuelStockPlusOne"], out n) && n > 0) unit.refuelStock = n - 1;
+        }
+        foreach (KeyValuePair<Unit, int> kv in aboard) {
+            Unit transport = kv.Value >= 0 && kv.Value < byIndex.Count ? byIndex[kv.Value] : null;
+            if (transport == null) continue;
+            kv.Key.tile = transport.tile;
+            kv.Key.trasnporter = transport;
+            transport.transported.Add(kv.Key);
         }
 
         AIProfile profile = ScriptableObject.CreateInstance<AIProfile>();

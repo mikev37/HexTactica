@@ -25,6 +25,9 @@ public static class SupplyNetwork {
     /// <summary>Goes up every time a supply field is published onto the board (displays redraw only then).</summary>
     public static int Published;
 
+    /// <summary>Record Result.linked in the solves made on this thread while set (AISupplyTree).</summary>
+    [System.ThreadStatic] public static bool RecordLinked;
+
 
     /// <summary>Result of a solve, for the AI and the harness to inspect.</summary>
     public class Result {
@@ -36,6 +39,18 @@ public static class SupplyNetwork {
         public readonly List<Building> connectedBuildings = new List<Building>();
         public readonly List<Building> strandedBuildings = new List<Building>();
         public int mobileHubs;
+        /// <summary>
+        /// With RecordLinked set when it was solved: the field before cut-off supply buildings gave
+        /// out of their stores, i.e. the ground a supply unit standing there would link to the network
+        /// from. (Ground supplied only by a cut-off building's store supplies the units on it, but a
+        /// supply unit there is cut off too.) Null otherwise.
+        /// </summary>
+        public Dictionary<HexTile, int> linked;
+        public int LinkedAt(HexTile t) {
+            if (linked == null) return DepthAt(t);
+            int d;
+            return (t != null && linked.TryGetValue(t, out d)) ? d : 0;
+        }
 
         public int DepthAt(HexTile t) {
             int d;
@@ -191,6 +206,7 @@ public static class SupplyNetwork {
             }
         }
 
+        if (RecordLinked) result.linked = new Dictionary<HexTile, int>(result.depth);
         // Cut-off supply buildings give out of their store while it lasts.
         if (!staticOnly) {
             for (int i = 0; i < relayBuildings.Count; i++) {

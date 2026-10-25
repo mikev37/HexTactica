@@ -247,7 +247,7 @@ namespace HexTactica.Harness {
             return kind;
         }
 
-        /// <summary>Record games started by loading a scenario file (GameLog). On by default.</summary>
+        /// <summary>Record every game played in play mode (GameLog): the scene's board, a loaded scenario, or a loaded save. On by default.</summary>
         public static bool RecordGames = true;
 
         /// <summary>Build a Scenario descriptor for a save file, for reporting purposes.</summary>

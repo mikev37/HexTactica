@@ -212,10 +212,10 @@ public static class HarnessMenu {
         UnityEngine.Debug.Log("Recording stopped" + (folder != null ? ": " + folder : "."));
     }
 
-    [MenuItem("HexTactica/Game Log/Record Loaded Scenarios")]
+    [MenuItem("HexTactica/Game Log/Record Every Game")]
     static void ToggleRecord() { ScenarioLoader.RecordGames = !ScenarioLoader.RecordGames; }
-    [MenuItem("HexTactica/Game Log/Record Loaded Scenarios", true)]
-    static bool ToggleRecordCheck() { Menu.SetChecked("HexTactica/Game Log/Record Loaded Scenarios", ScenarioLoader.RecordGames); return true; }
+    [MenuItem("HexTactica/Game Log/Record Every Game", true)]
+    static bool ToggleRecordCheck() { Menu.SetChecked("HexTactica/Game Log/Record Every Game", ScenarioLoader.RecordGames); return true; }
 
     [MenuItem("HexTactica/Game Log/Open Logs Folder")]
     public static void OpenLogs() {
