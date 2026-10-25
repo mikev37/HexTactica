@@ -412,6 +412,16 @@ namespace HexTactica.AI {
         [Tooltip("A supply-chain link may stand ahead of the army where no enemy can strike for more than two turns (otherwise links never pass the frontmost fighting unit).")]
         public bool chainLeadsWhenClear = false;
 
+        [Tooltip("Supply units as a tree grown out from the HQ to every fighting unit out of supply, nearest the edge of supply first, a link at a time (AISupplyTree), instead of one chain toward the enemy HQ (supplyChain). Units the tree does not need are placed by the ordinary supply planner. Off: it lost the benchmark against the chain (PROBE=bench, ChanceMeeting from both sides and the campaign maps, fog off and on: -70,000 material over 12 games, better in 5, worse in 7).")]
+        public bool supplyTree = false;
+        [Tooltip("Strength a supply-tree link may be expected to lose tonight (the share of enemy fire that can reach its tile) and still stand there.")]
+        public float supplyTreeRisk = 1f;
+        [Tooltip("A supply-tree link must also survive the enemy's reply played out (AIWorld) within supplyTreeRisk, not only the expected share of fire. The reply is pessimistic (it lets every enemy pick its best target), so links form less readily.")]
+        public bool supplyTreeReply = false;
+
+        [Tooltip("Strength a supply-chain link may be forecast to lose tonight (the enemy's reply, or the expected share of its fire) and still stand there. 0: only where nothing can hit it — with fast units about (gunships, recon), nothing forward qualifies, the chain stops forming, and the supply units ahead of it are cut off while the ones behind sit by the HQ.")]
+        public float chainRiskTolerance = 0f;
+
         [Tooltip("March: a fighting unit out of contact gains this much of a strength's worth for each step over land it ends nearer its front's objective (linear, so it pulls from any distance; supply costs still keep it inside supply).")]
         public float marchWeight = 0.05f;
 
@@ -489,7 +499,33 @@ namespace HexTactica.AI {
         [Tooltip("Share of tonight's risk taken back for a stop the enemy (as known) would not see this unit on: it can only be fired on by what stumbles into it.")]
         public float hiddenRiskRelief = 0.5f;
 
+        [Tooltip("Price what the fog may hide (AISigint): enemies seen before and lost track of, somewhere within reach of where they were last seen, and ground not seen lately, which may hide anything the enemy fields.")]
+        public bool fogThreat = true;
+        [Tooltip("Enemy moves an enemy unit lost track of is still counted as about (fogThreat).")]
+        [Range(1, 12)]
+        public int sigintMoves = 6;
+        [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen (fogThreat): it may have gone anywhere, or elsewhere.")]
+        [Range(0f, 1f)]
+        public float sigintDecay = 0.7f;
+        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields; 1: unknown ground is empty, as before.")]
+        [Range(0f, 1f)]
+        public float fogAggression = 0.5f;
+        [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
+        [Range(1, 20)]
+        public int fogUnknownTurns = 6;
+        [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]
+        [Range(0, 4)]
+        public int scoutUnits = 0;
+        [Tooltip("A scout's pull toward where it will look: a fraction of its worth for every step closer.")]
+        public float scoutPull = 0.3f;
+        [Tooltip("Extra worth of a scouting tile where an enemy we lost track of may be standing, or that is unknown (times its confidence): looking there tells us where it is.")]
+        public float scoutThreatBonus = 1f;
+
         [Header("Debug")]
+        [Tooltip("Harness only: a seed for small deterministic noise in close choices (decisionNoise), so one map can be played many different ways. 0: none.")]
+        public int noiseSeed = 0;
+        [Tooltip("Harness only: the size of that noise, as a fraction of the acting unit's worth per strength point.")]
+        public float decisionNoise = 0.15f;
         [Tooltip("Write decision reasoning onto the tiles as text.")]
         public bool annotateBoard = true;
 
