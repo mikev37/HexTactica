@@ -442,7 +442,7 @@ public static class Scenarios {
                  Rig.At(-6, 0).building.supplyRange = 3;
                  Put("Supplies", a, -3, 0); Put("Supplies", a, 0, 0); Put("Grunt", a, 3, 0);
                  Put("Supplies", a, 3, 3); Put("Supplies", a, 4, 3); Put("APC", a, 2, -6); Put("APC", a, 0, -6); },
-             "Supply through a chain of two supply units (the HQ feeds A, A feeds B, B feeds a grunt): both are linked, and the line drawn from the grunt runs through B, then A, to the HQ, each once (it used to turn back from A to B: two hubs drawn feeding each other). Two supply units next to each other far from any supply are not linked, supply nothing (not even each other), and have no line. And for every placement of two supply units near the HQ, every one-tile move of one of them previewed, and every placement with both aboard transports, the line from each linked one ends at the HQ, passing each once.");
+             "Supply through a chain of two supply units (the HQ feeds A, A feeds B, B feeds a grunt): both are linked, and the line drawn from the grunt runs through B, then A, to the HQ, each once (it used to turn back from A to B: two hubs drawn feeding each other). Two supply units next to each other far from any supply are not linked, supply nothing (not even each other), and have no line. And for every placement of two supply units near the HQ, every one-tile move of one of them previewed, every placement with both aboard transports, and with both aboard one transport (and its moves previewed), the line from each linked one is drawn and ends at the HQ, passing each once.");
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
@@ -698,10 +698,38 @@ public static class Scenarios {
                         if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "both aboard, APCs at " + Pos(ta) + " " + Pos(tb) + ", from " + Pos(h.tile) + ": " + string.Join(" ", sh.ToArray()); } }
                     }
                 }
+                // Both aboard ONE transport (room for two): the line from it, and from where a previewed move would take it.
+                apc1.TeleportTo(Rig.At(2, -6), 0); apc1.SetCargoTile(apc1.tile); apc2.TeleportTo(Rig.At(0, -6), 0); apc2.SetCargoTile(apc2.tile);
+                apc1.transportSlots = 4;
+                bool moved2 = Transporting.Unload(apc2, hubB, Rig.At(1, -6)) && Transporting.Load(apc1, hubB);
+                bool both = moved2 && SupplyOverlay.CarriedSupplies(apc1).Count == 2;
+                int one = 0, onePreview = 0;
+                if (both) foreach (HexTile ta in near) {
+                    apc1.TeleportTo(Rig.At(2, -6), 0); apc1.SetCargoTile(apc1.tile);
+                    if (ta.occupier != null) continue;
+                    apc1.TeleportTo(ta, 0); apc1.SetCargoTile(ta);
+                    SupplyNetwork.Result n4 = SupplyNetwork.Solve(l.ai, false);
+                    if (n4.connectedHubs.Contains(hubA.Hub)) {
+                        one++;
+                        List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, ta, n4, (Dictionary<SupplyPoint, HexTile>)null);
+                        bool ok = pth.Count >= 2 && pth[0] == ta && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count == 1;
+                        if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "both aboard one APC at " + Pos(ta) + ": " + string.Join(" ", sh.ToArray()); } }
+                    }
+                    foreach (HexTile dest in ta.neighbors) {
+                        if (dest == null || dest.occupier != null || dest.building != null) continue;
+                        Dictionary<SupplyPoint, HexTile> pvm = new Dictionary<SupplyPoint, HexTile> { { hubA.Hub, dest }, { hubB.Hub, dest } };
+                        SupplyNetwork.Result pv = SupplyNetwork.SolvePreview(l.ai, pvm);
+                        if (!pv.connectedHubs.Contains(hubA.Hub)) continue;
+                        onePreview++;
+                        List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, dest, pv, pvm);
+                        bool ok = pth.Count >= 2 && pth[0] == dest && pth[pth.Count - 1] == hq && pth.FindAll(t => t == dest).Count == 1;
+                        if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "both aboard one APC at " + Pos(ta) + ", previewed to " + Pos(dest) + ": " + string.Join(" ", sh.ToArray()); } }
+                    }
+                }
                 SupplyNetwork.Solve(l.ai, false);
-                detail += "; " + aboard + " placements with both aboard APCs" + (boarded ? "" : " (could not board)");
+                detail += "; " + aboard + " placements with both aboard APCs" + (boarded ? "" : " (could not board)") + ", " + one + " with both aboard one (and " + onePreview + " previewed moves)" + (both ? "" : " (could not put both in one)");
                 detail += "; " + placements + " placements of two supply units and " + previews + " previewed moves, " + bad + " lines not ending at the HQ" + (firstBad != null ? " (first: " + firstBad + ")" : "");
-                return linked && viaBoth && line && strandedOk && placements > 0 && aboard > 0 && bad == 0;
+                return linked && viaBoth && line && strandedOk && placements > 0 && aboard > 0 && one > 0 && onePreview > 0 && bad == 0;
             }
             case "attritionSupplyLine": {
                 Unit g = Rig.At(-2, 0).occupier, sup = Rig.At(-3, 0).occupier;

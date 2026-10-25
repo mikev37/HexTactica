@@ -212,17 +212,7 @@ public static class SupplyNetwork {
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null && !staticOnly && moved == null && !onlyMoved) {
-            HexGenerator.forAllTiles(t => {
-                if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
-                return 0;
-            });
-            // (Into a board copy, if one is entered: only it changes. The displays are woken for the real board only.)
-            if (BoardView.current == null) {
-                Published++;
-                HexTilePlayerSupplyDisplay.WakeAll();
-            }
-        }
+        if (excluded == null && !staticOnly && moved == null && !onlyMoved) Publish(player, result);
 
         if (applyDrain) {
             for (int i = 0; i < result.strandedHubs.Count; i++) result.strandedHubs[i].connected = false;
@@ -235,6 +225,29 @@ public static class SupplyNetwork {
         }
 
         return result;
+    }
+
+    /// <summary>Put <paramref name="result"/> on the board as <paramref name="player"/>'s supply (the tiles' fields and their borders).</summary>
+    static void Publish(Player player, Result result) {
+        HexGenerator.forAllTiles(t => {
+            if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
+            return 0;
+        });
+        // (Into a board copy, if one is entered: only it changes. The displays are woken for the real board only.)
+        if (BoardView.current == null) {
+            Published++;
+            HexTilePlayerSupplyDisplay.WakeAll();
+        }
+    }
+
+    /// <summary>
+    /// The network with some hubs standing on other tiles, published on the board: a move being
+    /// previewed (a transport carrying several supply units, say) shows the supply it would give.
+    /// </summary>
+    public static Result SolvePreview(Player player, Dictionary<SupplyPoint, HexTile> moved) {
+        Result r = Solve(player, false, null, null, null, false, moved);
+        Publish(player, r);
+        return r;
     }
 
     static HexTile TileOf(SupplyPoint hub, SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
