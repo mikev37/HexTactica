@@ -665,7 +665,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sprite: {fileID: 0}
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
-  distance: 0.2
+  distance: 0.1
   renderQueue: 9
 --- !u!1001 &3335139603527638747
 PrefabInstance:

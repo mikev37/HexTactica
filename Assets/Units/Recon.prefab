@@ -908,9 +908,9 @@ MonoBehaviour:
   personal_name: 
   active: 1
   owner: {fileID: 0}
-  Strength: 6
+  _strength: 6
   Veterancy: 0
-  tile: {fileID: 0}
+  _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
   refuelStock: 0
@@ -930,7 +930,7 @@ MonoBehaviour:
   stealthRange: 0
   move_display: {fileID: 0}
   locomotion: 1
-  moveRange: 8
+  moveRange: 9
   terrainScramble: 0
   minFuelPerTurn: 0
   minFuelPerTile: 1
@@ -2060,9 +2060,15 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -5095973623288123107, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3660260960442408696}
+    - targetCorrespondingSourceObject: {fileID: -5095973623288123107, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1897342808900610425}
     - targetCorrespondingSourceObject: {fileID: 1427574353143859388, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5664071064723823788}
+    - targetCorrespondingSourceObject: {fileID: 1427574353143859388, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3117837189318352118}
   m_SourcePrefab: {fileID: 4843985084834002234, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
 --- !u!1 &1961255097892738897 stripped
 GameObject:
@@ -2081,6 +2087,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 82898072534d72443b56ce65c7bba79c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DarkenIfExhausted
+--- !u!114 &3117837189318352118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1961255097892738897}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61fdfdd9566278d4ebf863df5f4823ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteShadow
+  sprite: {fileID: 0}
+  color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
+  distance: 0.1
+  renderQueue: 9
 --- !u!4 &2294533820505843251 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -7552582706839291426, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
@@ -2103,6 +2125,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 82898072534d72443b56ce65c7bba79c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DarkenIfExhausted
+--- !u!114 &1897342808900610425
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3584709913373159152}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61fdfdd9566278d4ebf863df5f4823ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpriteShadow
+  sprite: {fileID: 0}
+  color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
+  distance: 0.1
+  renderQueue: 9
 --- !u!1 &4796897189842535476 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5362103550743239641, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
