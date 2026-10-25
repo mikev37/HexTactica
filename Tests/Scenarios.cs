@@ -458,7 +458,7 @@ public static class Scenarios {
                  Rig.At(3, 0).terrain = T("Forest"); },
              "Aircraft are never ambushed by land or sea units: a helicopter attacking a tank on grassland, or a veteran grunt in a forest, fires first; land units still ambush each other as before (a veteran tank on grassland fires first against a tank), and an aircraft can still be fired on first by a veteran aircraft.");
         make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
-             "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (which has no BuildingGround, the ground of every building tile) comes back as it was: building tiles keep BuildingGround and their ground under, nothing fails. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
+             "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (the ground every building lays, Urban, once BuildingGround, found whether the list has it or not) comes back as it was: building tiles keep that ground and the ground under, nothing fails; a save naming it BuildingGround gets Urban. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
              "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
         makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -953,7 +953,9 @@ public static class Scenarios {
                 return hull && turret && flag && none;
             }
             case "fogVision": {
+                PinVision();
                 Unit g = Rig.At(-2, 0).occupier, r1 = Rig.At(0, 0).occupier, r2 = Rig.At(1, 0).occupier, rc = Rig.At(2, -3).occupier;
+                rc.stealthRange = 3;   // the stealthy recon this check was written for (the prefab's own may be rebalanced)
                 Unit art = Rig.At(-2, 4).occupier, apc = Rig.At(4, -4).occupier, cargo = Rig.At(4, -3).occupier;
                 Building city = Rig.At(2, 2).building;
                 List<string> r = new List<string>();
@@ -1071,6 +1073,7 @@ public static class Scenarios {
                 return all;
             }
             case "fogKinds": {
+                PinVision();
                 Unit g = Rig.At(-2, 0).occupier, r = Rig.At(1, 0).occupier, bf = Rig.At(-5, 4).occupier, rf = Rig.At(0, -5).occupier;
                 Unit boat = Rig.At(4, 2).occupier, rg = Rig.At(2, 4).occupier;
                 Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
@@ -1237,6 +1240,7 @@ public static class Scenarios {
                 return layout && ai && fed && aloft && jetBurns;
             }
             case "fogLineOfSight": {
+                PinVision();
                 Unit g = Rig.At(-4, 0).occupier, e = Rig.At(-1, 0).occupier, jet = Rig.At(-4, 3).occupier, boat = Rig.At(-4, -3).occupier;
                 g.visionRange = 4;
                 Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
@@ -1319,7 +1323,7 @@ public static class Scenarios {
                         if (t.uiData == null) t.uiData = ui;
                     }
                     List<string> r = new List<string>();
-                    r.Add("scene list: " + string.Join(",", sceneTerrain.ToArray()) + (sceneTerrain.Contains("BuildingGround") ? "" : " (no BuildingGround)"));
+                    r.Add("scene list: " + string.Join(",", sceneTerrain.ToArray()));
                     HexTile hq = Rig.At(-6, 0), city = Rig.At(0, 0);
                     List<TileData> saved = new List<TileData>();
                     foreach (HexTile t in Rig.hg.tiles) saved.Add(new TileData(t));
@@ -1334,7 +1338,17 @@ public static class Scenarios {
                     foreach (HexTile t in Rig.hg.tiles) if (t.terrain == null || t.terrain.name != before[t]) changed++;
                     r.Add("HQ tile " + hqWas + " → " + (hq.terrain != null ? hq.terrain.name : "null") + ", city tile " + cityWas + " → " + (city.terrain != null ? city.terrain.name : "null"));
                     r.Add(saved.Count + " tiles loaded, " + failed + " failed" + (firstError != null ? " (" + firstError + ")" : "") + ", " + changed + " changed");
-                    bool roundTrip = failed == 0 && changed == 0 && hqWas == "BuildingGround" && !sceneTerrain.Contains("BuildingGround");
+                    // The ground buildings lay (BuildingGround, renamed Urban; the scene's list has it now, older ones did not).
+                    Building hqB = hq.building;
+                    string groundName = hqB != null && hqB.ground != null ? hqB.ground.name : null;
+                    bool roundTrip = failed == 0 && changed == 0 && groundName != null && hqWas == groundName;
+                    r.Add("the buildings' ground: " + (groundName ?? "none (its asset's .meta file is missing, so the prefabs' reference to it is broken)"));
+                    // An older save naming the ground by its old name.
+                    TileData oldName = new TileData(city); oldName.terrain = "BuildingGround"; oldName.under = "Grassland";
+                    try { oldName.load(); } catch (Exception e) { r.Add("old name: " + e.GetType().Name); }
+                    bool renamed = groundName == null || city.terrain.name == groundName;
+                    r.Add("a save naming BuildingGround loads " + city.terrain.name);
+                    roundTrip &= renamed;
                     // A terrain the game never had: the ground under, else grassland.
                     TileData odd = new TileData(Rig.At(2, 0)); odd.terrain = "Swampland"; odd.under = "";
                     TileData oddUnder = new TileData(Rig.At(3, 0)); oddUnder.terrain = "Swampland"; oddUnder.under = "Forest";
@@ -1440,6 +1454,7 @@ public static class Scenarios {
                 return viewer && asEmpty1 && offered && path && bumped;
             }
             case "fogKnowledge": {
+                PinVision();
                 Unit tank = Rig.At(-2, 0).occupier, recon = Rig.At(0, 0).occupier, near = Rig.At(3, 0).occupier, far = Rig.At(2, -5).occupier, etank = Rig.At(5, -2).occupier;
                 AIPlayer ai = a.GetComponent<AIPlayer>();
                 List<string> r = new List<string>();
@@ -2455,6 +2470,20 @@ public static class Scenarios {
     }
 
     // ================================================================ narration
+
+    /// <summary>
+    /// The sight rule checks were written for these vision ranges; the prefabs' own may be rebalanced
+    /// (Grunt 3, Fighter 6... since). Pinned on every unit on the board, so a check tests the rule,
+    /// not the balance of the day.
+    /// </summary>
+    static void PinVision() {
+        Dictionary<string, int> v = new Dictionary<string, int> { { "Grunt", 2 }, { "Marine", 2 }, { "Fighter", 4 }, { "Recon", 4 }, { "AirTanker", 3 }, { "Tank", 2 }, { "APC", 2 }, { "Artillery", 2 }, { "Gunboat", 3 }, { "Supplies", 1 } };
+        foreach (Unit u in Rig.uc.units) {
+            int r;
+            if (u != null && v.TryGetValue(u.name.Replace("(Clone)", "").Trim(), out r)) u.visionRange = r;
+        }
+        FogOfWar.Changed();
+    }
 
     /// <summary>The board as text: . grass, f forest, ^ mountain, ~ water; Blue (AI) upper case, Red lower.</summary>
     public static string Draw() {
