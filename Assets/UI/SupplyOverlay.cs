@@ -129,9 +129,12 @@ public class SupplyOverlay : MonoBehaviour {
         while (at != null && guard++ < 16) {
             HexTile top = Climb(at, f, points);
             SupplyPoint source = HubOn(p, top, moved, movedTo);
-            if (source == null || source.producer || seen.Contains(source)) break;   // a building or the HQ: the root (or a loop)
+            if (source == null || source.producer || seen.Contains(source)) break;   // a building or the HQ: the root
             seen.Add(source);
-            f = moved != null && source != moved ? SolveWithout(p, source, moved, movedTo) : SupplyNetwork.SolveWithout(p, source);
+            // What feeds it: the network without it and without every hub already on the line
+            // (else the next hub's field, which reaches back over this one, would lead the line
+            // back to it: two hubs drawn feeding each other, neither reaching the HQ).
+            f = SolveWithout(p, seen, moved, movedTo);
             if (f.DepthAt(top) <= 0) {
                 // Aboard a transport it links over the transport's move (SupplyNetwork): the line
                 // jumps to the nearest supplied ground and carries on from there.
@@ -154,11 +157,12 @@ public class SupplyOverlay : MonoBehaviour {
         return r.connectedHubs.Contains(hub);
     }
 
-    static SupplyNetwork.Result SolveWithout(Player p, SupplyPoint without, SupplyPoint moved, HexTile movedTo) {
+    /// <summary>The network without the hubs in <paramref name="without"/> (and with <paramref name="moved"/> on <paramref name="movedTo"/>, if given).</summary>
+    public static SupplyNetwork.Result SolveWithout(Player p, HashSet<SupplyPoint> without, SupplyPoint moved, HexTile movedTo) {
         Dictionary<SupplyPoint, HexTile> at = new Dictionary<SupplyPoint, HexTile>();
         foreach (Unit u in p.units) {
             SupplyPoint sp = u != null ? u.Hub : null;
-            if (sp == null || sp == without || u.tile == null) continue;
+            if (sp == null || without.Contains(sp) || u.tile == null) continue;
             at[sp] = sp == moved ? movedTo : u.tile;
         }
         return SupplyNetwork.SolvePlanned(p, at);

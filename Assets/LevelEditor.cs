@@ -156,6 +156,7 @@ public class LevelEditor : MonoBehaviour
                 ud.load();
             }
         }
+        GameController.BoardLoaded();
     }
 
     /// <summary>
