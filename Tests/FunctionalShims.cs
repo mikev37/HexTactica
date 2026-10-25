@@ -187,6 +187,7 @@ namespace UnityEngine {
 
     public class Transform : Component {
         public Vector3 position, localPosition, localScale, up, right;
+        public Vector3 lossyScale { get { return localScale; } }
         public Quaternion rotation, localRotation;
         public Transform parent;
         public void SetParent(Transform p, bool worldPositionStays) { parent = p; }

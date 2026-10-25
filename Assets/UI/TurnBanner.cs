@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Whose turn it is, on the screen: a line at the top centre all game ("Red — your turn, day 3",
 /// or "Blue is moving…" while an AI plays), and, as a human player's turn begins, a banner across
-/// the middle of the screen in that player's colour that fades out after a moment. Under fog of
+/// the middle of the screen in that player's colour that is gone after a second. Under fog of
 /// war the board alone does not show when the other side has finished.
 ///
 /// Spawned when a scene starts (not in the headless harness); not shown in the level editor.
@@ -11,9 +11,9 @@ using UnityEngine;
 public class TurnBanner : MonoBehaviour {
 
     [Tooltip("Seconds the banner stays fully shown before fading.")]
-    public float hold = 1.6f;
-    [Tooltip("Seconds to fade in and out.")]
-    public float fadeIn = 0.2f, fadeOut = 0.6f;
+    public float hold = 0.6f;
+    [Tooltip("Seconds to fade in and out (with hold: one second in all).")]
+    public float fadeIn = 0.15f, fadeOut = 0.25f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Spawn() {
