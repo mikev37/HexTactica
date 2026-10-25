@@ -179,7 +179,7 @@
 ],
 "units":[
 {"x":1,"y":0,"z":-1,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":2,"y":0,"z":-2,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":2,"y":0,"z":-2,"Strength":0,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":6,"y":-3,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"editor-load-building-ground","kind":"rules","opponent":"Human","rounds":"4","check":"editorLoad","question":"Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (which has no BuildingGround, the ground of every building tile) comes back as it was: building tiles keep BuildingGround and their ground under, nothing fails. A tile naming a terrain the game has never had loads as the ground under it, or grassland.","rules":"standard"},
+"test":{"name":"editor-load-building-ground","kind":"rules","opponent":"Human","rounds":"4","check":"editorLoad","question":"Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (the ground every building lays, Urban, once BuildingGround, found whether the list has it or not) comes back as it was: building tiles keep that ground and the ground under, nothing fails; a save naming it BuildingGround gets Urban. A tile naming a terrain the game has never had loads as the ground under it, or grassland.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
