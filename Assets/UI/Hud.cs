@@ -168,6 +168,7 @@ public class Hud : MonoBehaviour {
     void ShowCapture(Building b) {
         if (capture == null && !captureMade) MakeCaptureRow();
         if (capture == null) return;
+        if (owner != null && (capture == owner || (capture.label != null && capture.label == owner.label) || (capture.value != null && capture.value == owner.value))) return;
         if (b == null) { capture.Show(false); return; }
         string what, value; Player whose;
         if (!b.ShownCaptureProgress(out what, out value, out whose)) { capture.Show(false); return; }
@@ -176,15 +177,26 @@ public class Hud : MonoBehaviour {
         capture.SetText(value, colour);
     }
 
-    /// <summary>A prefab made before the capture row: copy the Owner row for it, just below.</summary>
+    /// <summary>
+    /// A prefab made before the capture row: a new row just below the Owner row, built like the
+    /// default prefab's rows and styled like the Owner row (its icon, fonts and colours). Built rather
+    /// than copied: a copy of a row whose texts are not its own children would write into the Owner
+    /// row's texts (the owner's name gave way to the capture line).
+    /// </summary>
     void MakeCaptureRow() {
         captureMade = true;
-        if (owner == null) return;
-        GameObject g = GameObject.Instantiate(owner.gameObject, owner.transform.parent);
-        g.name = "Capture";
-        g.transform.SetSiblingIndex(owner.transform.GetSiblingIndex() + 1);
-        capture = g.GetComponent<HudRow>();
-        if (capture != null && capture.label != null) capture.label.text = "Capture";
+        if (owner == null || owner.transform.parent == null) return;
+        capture = Row(owner.transform.parent, "Capture", owner.icon != null ? owner.icon.sprite : null, "Capture", this);
+        capture.transform.SetSiblingIndex(owner.transform.GetSiblingIndex() + 1);
+        if (owner.icon != null && capture.icon != null) capture.icon.color = owner.icon.color;
+        Restyle(capture.label, owner.label);
+        Restyle(capture.value, owner.value);
+        capture.gameObject.SetActive(false);
+    }
+
+    static void Restyle(TMP_Text to, TMP_Text from) {
+        if (to == null || from == null) return;
+        to.font = from.font; to.fontSize = from.fontSize; to.color = from.color;
     }
 
     /// <summary>The terrain's name: its asset's name (Grassland, Forest...).</summary>
