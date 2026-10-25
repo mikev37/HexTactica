@@ -435,6 +435,8 @@ public static class Scenarios {
              "The AI playing by the fog: thinking, it knows only what Blue sees — a hidden enemy is off the board (not in its read of the board, not targetable, not blocking) and one seen lately stands where it was last seen, unless that tile is in sight and empty; everything is put back afterwards. An ambush tile (out of the enemy's sight, in reach of an enemy) is worth something, an exposed one is not; a stop that brings unseen tiles into sight is worth more than one that does not. With fogFair off it knows everything.", "Human");
         makeFog("fog-ai-sigint", "fogSigint", (a, o) => { Put("Gunship Variant", a, -3, 0); Put("Grunt", a, -4, 2); Put("Recon", a, -1, 0); Put("Grunt", o, 1, 0); Put("Tank", o, 5, -4); },
              "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a gunship ending its turn where that unit could reach it tonight (from anywhere it could have gone, not seen now) expects a loss, less the more moves it has had, and none once it has had more than sigintMoves; a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
+        makeFog("game-log-replay", "gameLogReplay", (a, o) => { Put("Grunt", a, -3, 0); Put("Tank", a, -4, 2); Put("Grunt", o, 3, 0); Put("Tank", o, 4, -2); },
+             "Replaying a recorded game: three rounds of the AI against itself are recorded (game.log and a board for every turn), then replayed. The replay has a turn for every board saved, each with its round, its side and what the log says happened in it; it shows each board exactly as it was at the start of that turn, forward and back; nobody plays (every AI off, clicks on the board and the recording ignored); it can be seen as either side sees it (that side's fog) or with everything shown; closing it puts the fog as it was.", "Full");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
                  Put("Tank", a, -4, 1); Put("Grunt", a, -3, -1); Put("Grunt", a, -4, 3); Put("Recon", a, -3, 2); Put("Artillery", a, -5, 2); Put("Supplies", a, -5, 1);
                  Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
@@ -449,7 +451,7 @@ public static class Scenarios {
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
-             "The board's overlays. Selecting Blue's artillery marks only the enemies it can fire on now (not its whole range, not the Blue grunt in range, not empty tiles). Clicking an enemy tank shows its move and reach at half opacity, the move tiles at half its colour's saturation (the reach in its full colour). The tile panel's capture line: a neutral city a Blue grunt is taking shows \"Capturing: Blue 6/10\"; a Red city it is bringing down shows \"Held: 4/10\" in Red; a city at full points shows none. The line at the top says whose turn it is, and for an AI whether it is thinking or moving.");
+             "The board's overlays. Selecting Blue's artillery marks only the enemies it can fire on now (not its whole range, not the Blue grunt in range, not empty tiles). Clicking an enemy tank shows its move and reach at half opacity, the move tiles at half its colour's saturation (the reach in its full colour). The tile panel's capture line: a neutral city a Blue grunt is taking shows \"Capturing: Blue 6/10\"; a Red city it is bringing down shows \"Held: 4/10\" in Red; a city at full points shows none. The line at the top says whose turn it is, and for an AI whether it is thinking or moving; when the game ends the banner and the line say who won (\"Red wins\"), or \"Draw\".");
         make("rule-rotor-supply", "rotorSupply", (a, o) => {
                  Rig.At(-6, 0).building.supplyRange = 3;
                  Put("Fighter", a, -4, 0); Put("Fighter", a, 2, 3); Put("Fighter", a, -5, 1); },
@@ -1217,6 +1219,9 @@ public static class Scenarios {
                 string top = TurnBanner.Line(o, 2, true) + " | " + TurnBanner.Line(a, 2, false) + " | " + TurnBanner.Line(a, 2, false, true);
                 bool line = top == "Red \u2014 your turn, day 3 | Blue is moving | Blue is thinking";
                 r.Add("top line: " + top);
+                string end = TurnBanner.EndLine(o) + " | " + TurnBanner.EndLine(null);
+                line = line && end == "Red wins | Draw";
+                r.Add("game over: " + end);
                 detail = string.Join("; ", r.ToArray());
                 return arty && overlays && capture && line;
             }
@@ -1580,6 +1585,54 @@ public static class Scenarios {
                 r.Add("fogThreat off: nothing " + (off == 0f));
                 detail = string.Join("; ", r.ToArray());
                 return saw && lost && phantom && notBelieved && zones && unknown && scout && wrong == 0 && pairs > 0 && off == 0f;
+            }
+            case "gameLogReplay": {
+                List<string> r = new List<string>();
+                string root = Path.Combine(Path.GetTempPath(), "hextactica-replay-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                List<string> boards = new List<string>();
+                Action<Player> onTurn = p => { if (!gc.gameOver) boards.Add(Draw()); };
+                boards.Add(Draw());
+                HexTactica.Harness.GameLog.Start("replay check", "Full", root);
+                GameController.TurnStarted += onTurn;
+                try { for (int i = 0; i < 6 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
+                finally { GameController.TurnStarted -= onTurn; }
+                string folder = HexTactica.Harness.GameLog.Folder;
+                HexTactica.Harness.GameLog.Stop();
+                HexTactica.Harness.Replay.Loader = f => { ScenarioFile.Load(f, "Full", null); return true; };
+                bool opened = HexTactica.Harness.Replay.Open(folder);
+                List<HexTactica.Harness.Replay.Turn> turns = HexTactica.Harness.Replay.turns;
+                int withEvents = 0, withRound = 0;
+                foreach (HexTactica.Harness.Replay.Turn t in turns) { if (t.events.Count > 0) withEvents++; if (t.round >= 0) withRound++; }
+                bool read = opened && turns.Count == boards.Count && withRound == turns.Count && withEvents >= turns.Count - 1
+                    && turns.Count > 1 && turns[1].side != turns[0].side;
+                r.Add("recorded " + boards.Count + " turns; replay read " + turns.Count + ", " + withRound + " with their round, " + withEvents + " with events; first " + HexTactica.Harness.Replay.Title());
+                bool frozen = HexTactica.Harness.Replay.Active && !HexTactica.Harness.GameLog.Recording;
+                foreach (Player p in GameController.gc.players) { AIPlayer x = p.GetComponent<AIPlayer>(); if (x != null && x.enabled) frozen = false; }
+                int same = 0;
+                for (int i = 0; i < turns.Count && i < boards.Count; i++) { HexTactica.Harness.Replay.Show(i); if (Draw() == boards[i]) same++; }
+                HexTactica.Harness.Replay.Show(turns.Count - 1); HexTactica.Harness.Replay.Previous();
+                bool back = HexTactica.Harness.Replay.Index == turns.Count - 2 && Draw() == boards[turns.Count - 2];
+                HexTactica.Harness.Replay.Next(); HexTactica.Harness.Replay.Next();
+                bool clamp = HexTactica.Harness.Replay.Index == turns.Count - 1;
+                r.Add("boards as recorded " + same + " of " + turns.Count + "; back " + back + ", stops at the last " + clamp + "; nobody plays " + frozen);
+                HexTile clickedWas = HexTile.lastClicked;
+                Rig.At(0, 0).OnMouseDown();
+                bool noClick = HexTile.lastClicked == clickedWas;
+                HexTactica.Harness.Replay.View(0);
+                bool asFirst = GameController.gc.fogOfWar && FogOfWar.Viewer == GameController.gc.players[0] && HexTactica.Harness.Replay.ViewName() == "as " + GameController.gc.players[0].personal_name + " sees it";
+                HexTactica.Harness.Replay.CycleView();
+                bool asSecond = FogOfWar.Viewer == GameController.gc.players[1];
+                HexTactica.Harness.Replay.CycleView();
+                bool all = !GameController.gc.fogOfWar && HexTactica.Harness.Replay.ViewAs == -1;
+                r.Add("clicks ignored " + noClick + "; seen as " + GameController.gc.players[0].personal_name + " " + asFirst + ", as " + GameController.gc.players[1].personal_name + " " + asSecond + ", everything " + all);
+                HexTactica.Harness.Replay.View(1);
+                HexTactica.Harness.Replay.Close();
+                bool closed = !HexTactica.Harness.Replay.Active && GameController.gc.fogOfWar && GameController.gc.fogViewer == -1;
+                r.Add("closed, fog as it was " + closed);
+                try { Directory.Delete(root, true); } catch (Exception) { }
+                HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
+                detail = string.Join("; ", r.ToArray());
+                return read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;

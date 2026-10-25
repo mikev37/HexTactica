@@ -340,6 +340,17 @@ namespace UnityEngine {
         public static void DrawTexture(Rect r, Texture t) { }
         public static bool Button(Rect r, string s) { return false; }
     }
+    public static class GUILayout {
+        public static void Label(string s, GUIStyle st) { }
+        public static void Label(string s) { }
+        public static bool Button(string s) { return false; }
+        public static void BeginHorizontal() { }
+        public static void EndHorizontal() { }
+        public static void BeginArea(Rect r) { }
+        public static void EndArea() { }
+        public static Vector2 BeginScrollView(Vector2 v) { return v; }
+        public static void EndScrollView() { }
+    }
     public enum FontStyle { Normal, Bold, Italic, BoldAndItalic }
     public class GUIStyleState { public Color textColor; }
     public class GUIStyle {
@@ -369,7 +380,7 @@ namespace UnityEngine {
         public static Vector3 mousePosition { get { return new Vector3(); } }
         public static Vector2 mouseScrollDelta { get { return new Vector2(); } }
     }
-    public enum KeyCode { None, Space, Escape, Return, Tab, Home, LeftArrow, RightArrow, UpArrow, DownArrow, Equals, Minus, KeypadPlus, KeypadMinus, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
+    public enum KeyCode { None, Space, Escape, Return, Tab, Home, End, LeftArrow, RightArrow, UpArrow, DownArrow, Equals, Minus, KeypadPlus, KeypadMinus, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
     public static class Application {
         public static string persistentDataPath { get { return "/tmp/hextactica"; } }
         public static string dataPath { get { return "/tmp/hextactica"; } }

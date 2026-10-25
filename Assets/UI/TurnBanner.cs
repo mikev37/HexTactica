@@ -7,6 +7,9 @@ using UnityEngine;
 /// the middle of the screen in that player's colour that is gone after a second. Under fog of
 /// war the board alone does not show when the other side has finished.
 ///
+/// When the game ends, a banner in the winner's colour says who won ("Red wins", or "Draw" when
+/// nobody did), held for endHold seconds, and the line at the top says so from then on.
+///
 /// Spawned when a scene starts (not in the headless harness); not shown in the level editor.
 /// </summary>
 public class TurnBanner : MonoBehaviour {
@@ -23,8 +26,13 @@ public class TurnBanner : MonoBehaviour {
         new GameObject("TurnBanner").AddComponent<TurnBanner>();
     }
 
+    [Tooltip("Seconds the end-of-game banner stays fully shown before fading.")]
+    public float endHold = 4f;
+
     Player lastPlayer;
     int lastDay = -1;
+    bool wasOver;
+    float bannerHold;
     float bannerAt = -100f;
     string bannerText;
     Color bannerColour;
@@ -34,6 +42,11 @@ public class TurnBanner : MonoBehaviour {
     /// The line at the top for <paramref name="p"/>'s turn (<paramref name="day"/> counted from 0): yours,
     /// or an AI's — thinking (working out its next move) or moving (carrying one out).
     /// </summary>
+    /// <summary>What the end of the game says: "<paramref name="winner"/> wins", or "Draw" (no winner).</summary>
+    public static string EndLine(Player winner) {
+        return winner != null ? winner.personal_name + " wins" : "Draw";
+    }
+
     public static string Line(Player p, int day, bool human, bool thinking = false) {
         if (p == null) return "";
         if (human) return p.personal_name + " \u2014 your turn, day " + (day + 1);
@@ -61,18 +74,27 @@ public class TurnBanner : MonoBehaviour {
         GameController gc = GameController.gc;
         if (gc == null) return;
         Player p = gc.activePlayer;
+        if (gc.gameOver && !wasOver) {
+            bannerAt = Time.unscaledTime;
+            bannerHold = endHold;
+            bannerText = EndLine(gc.winner);
+            bannerColour = gc.winner != null ? gc.winner.displayColor : Color.white;
+        }
+        wasOver = gc.gameOver;
+        if (gc.gameOver) return;
         if (p == lastPlayer && gc.days == lastDay) return;
         lastPlayer = p; lastDay = gc.days;
         if (p != null && FogOfWar.IsHuman(p) && !gc.gameOver) {
             bannerAt = Time.unscaledTime;
             bannerText = p.personal_name + "'s turn";
             bannerColour = p.displayColor;
+            bannerHold = hold;
         }
     }
 
     void OnGUI() {
         GameController gc = GameController.gc;
-        if (gc == null || gc.activePlayer == null || gc.gameOver) return;
+        if (gc == null || (gc.activePlayer == null && !gc.gameOver)) return;
         LevelEditor le = LevelEditor.singleton;
         if (le != null && (le.editing || le.unit_placement || le.building_placement)) return;
         if (big == null) {
@@ -80,17 +102,22 @@ public class TurnBanner : MonoBehaviour {
             small = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         }
         Color was = GUI.color;
-        Player p = gc.activePlayer;
-        bool human = FogOfWar.IsHuman(p);
+        Player p = gc.gameOver ? gc.winner : gc.activePlayer;
+        bool human = p != null && FogOfWar.IsHuman(p);
 
-        // The line at the top, all the time.
-        string line = Line(p, gc.days, human, !human && Thinking(p));
-        // An AI's line ends in dots that keep going, so it never looks stuck.
-        if (!human) line += new string('.', 1 + (int)(Time.unscaledTime * 3f) % 3);
+        // The line at the top, all the time: whose turn, or who won.
+        string line;
+        if (gc.gameOver) line = EndLine(gc.winner);
+        else {
+            line = Line(p, gc.days, human, !human && Thinking(p));
+            // An AI's line ends in dots that keep going, so it never looks stuck.
+            if (!human) line += new string('.', 1 + (int)(Time.unscaledTime * 3f) % 3);
+        }
+        Color stripe = p != null ? p.displayColor : Color.white;
         Rect top = new Rect(Screen.width * 0.5f - 220f, 10f, 440f, 34f);
         GUI.color = new Color(0.07f, 0.08f, 0.1f, 0.78f);
         GUI.DrawTexture(top, Texture2D.whiteTexture);
-        GUI.color = new Color(p.displayColor.r, p.displayColor.g, p.displayColor.b, 1f);
+        GUI.color = new Color(stripe.r, stripe.g, stripe.b, 1f);
         GUI.DrawTexture(new Rect(top.x, top.y, 6f, top.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
         small.normal.textColor = Color.white;
@@ -98,7 +125,7 @@ public class TurnBanner : MonoBehaviour {
 
         // The banner as a human's turn begins.
         float t = Time.unscaledTime - bannerAt;
-        float a = t < 0f ? 0f : t < fadeIn ? t / fadeIn : t < fadeIn + hold ? 1f : 1f - (t - fadeIn - hold) / fadeOut;
+        float a = t < 0f ? 0f : t < fadeIn ? t / fadeIn : t < fadeIn + bannerHold ? 1f : 1f - (t - fadeIn - bannerHold) / fadeOut;
         if (a > 0f && bannerText != null) {
             Rect band = new Rect(0f, Screen.height * 0.5f - 55f, Screen.width, 110f);
             GUI.color = new Color(0.05f, 0.06f, 0.08f, 0.72f * a);

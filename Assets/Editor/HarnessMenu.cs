@@ -205,6 +205,14 @@ public static class HarnessMenu {
         UnityEngine.Debug.Log("Recording to " + GameLog.Folder);
     }
 
+    [MenuItem("HexTactica/Game Log/Replay a Recording...")]
+    public static void ReplayRecording() {
+        if (!Application.isPlaying) { UnityEngine.Debug.LogError("Enter play mode first."); return; }
+        string folder = EditorUtility.OpenFolderPanel("Replay a recorded game (a folder with game.log and turn-*.dat)", GameLog.DefaultRoot, "");
+        if (string.IsNullOrEmpty(folder)) return;
+        if (Replay.Open(folder)) UnityEngine.Debug.Log("Replaying " + folder + ": " + Replay.turns.Count + " turns (arrow keys to step, V to change whose eyes)");
+    }
+
     [MenuItem("HexTactica/Game Log/Stop Recording")]
     public static void StopRecording() {
         string folder = GameLog.Folder;

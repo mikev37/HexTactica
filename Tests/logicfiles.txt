@@ -47,6 +47,8 @@ Harness/BaselineAI.cs
 Harness/BatchRunner.cs
 Harness/ScenarioLoader.cs
 Harness/GameLog.cs
+Harness/Replay.cs
+Harness/ReplayPanel.cs
 Harness/ScenarioMirror.cs
 UI/UnitStatusIcon.cs
 UI/UnitAlarmSprites.cs
