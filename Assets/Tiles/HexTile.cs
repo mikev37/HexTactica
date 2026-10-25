@@ -136,7 +136,22 @@ public class HexTile : MonoBehaviour
     public void ShowEnemy(UIState s, Player enemy) {
         changeState(s);
         Color c = enemy != null ? enemy.displayColor : Color.red;
-        overlay.color = new Color(c.r, c.g, c.b, s == UIState.ENEMY_MOVE ? 0.85f : 0.6f);
+        // Both at half opacity; where it can move at half the colour's saturation, so where it can
+        // fire stands out.
+        if (s == UIState.ENEMY_MOVE) c = Desaturate(c, EnemyMoveSaturation);
+        overlay.color = new Color(c.r, c.g, c.b, EnemyOverlayAlpha);
+    }
+
+    /// <summary>Opacity of an enemy's move and reach on the board (clicking an enemy unit).</summary>
+    public const float EnemyOverlayAlpha = 0.5f;
+    /// <summary>Saturation of an enemy's move tiles, as a share of its colour's (its reach keeps the full colour).</summary>
+    public const float EnemyMoveSaturation = 0.5f;
+
+    /// <summary><paramref name="c"/> with its saturation (HSV) scaled by <paramref name="share"/>, hue and value kept.</summary>
+    public static Color Desaturate(Color c, float share) {
+        float max = Mathf.Max(c.r, Mathf.Max(c.g, c.b));
+        // In HSV, scaling saturation by k moves each channel toward the value (the largest) by 1 - k.
+        return new Color(max + (c.r - max) * share, max + (c.g - max) * share, max + (c.b - max) * share, c.a);
     }
 
 
@@ -442,10 +457,8 @@ public class HexTile : MonoBehaviour
                     GameController.gc.activeUnit = sel;
                     HexGenerator.forAllTiles(x => { x.G = 0; x.Reset(); return 0; });
                     CheckMovementRange(sel).ForEach(x => { if (x.G != 0 && x.CanEndTurnHere(sel)) x.changeState(UIState.MOVE); });
+                    // Only what it can fire on now: enemies it sees in range (not its whole range, not friends or empty tiles).
                     CheckAttackRange(sel).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
-                    // A unit that cannot move and fire (artillery): its whole range, not only what it can hit now.
-                    if (!sel.moveAndAttack)
-                        foreach (HexTile t in AllInAttackRange(sel)) if (t.state == UIState.FREE) t.ShowRange(sel.owner);
                     changeState(UIState.SELECTED);
                     // Our transports it can board: beside it now, or beside a tile it can move to.
                     Unit cargo = sel;

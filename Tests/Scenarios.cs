@@ -415,7 +415,7 @@ public static class Scenarios {
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
              "Sight: a grunt (vision 2) sees an enemy two tiles away, not three; with vision 4 it sees three. A stealthy recon (stealth 3) inside its vision is unseen three tiles off and seen two off; next to a unit it is always seen, and on one of our buildings too. Cargo is seen when its transport is. Artillery firing from out of sight is seen from then until the end of the side it hit's next turn. The screen (Red's view) hides Blue units Red does not see and half-fades Red's stealthy units Blue does not see (not the others). With fog off, everything is seen.", "Human");
         makeFog("ai-thread-equivalence", "aiThread", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 3, 0); },
-             "The AI thinking on a worker thread (on its own copy of the board) plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.", "Human");
+             "The AI thinking on a worker thread (on its own copy of the board) makes no call Unity allows only on the main thread (the harness throws as Unity does), and plays exactly as thinking in line, with fog of war off and on, while the main thread keeps reading the board (move ranges, sight, supply) as the game does: the board after every turn is the same, and the real board is never seen half-changed. Played on gauntlet-1 and air-gauntlet-1, both sides the AI, six rounds each way.", "Human");
         makeFog("fog-rule-line-of-sight", "fogLineOfSight", (a, o) => {
                  Put("Grunt", a, -4, 0); Put("Grunt", o, -1, 0); Put("Fighter", a, -4, 3); Put("Gunboat", a, -4, -3);
                  Rig.At(-2, 0).terrain = T("Hills"); },
@@ -427,6 +427,8 @@ public static class Scenarios {
              "High ground and kinds of unit: a land unit sees one tile further from hills and two from mountains (an aircraft gets nothing from them). A stealthy unit is seen only by observers of its own kind (land — buildings count as land — air, sea): a stealth jet next to a grunt or over our city goes unseen, a fighter two tiles off sees it; a stealthy grunt next to a gunboat goes unseen, a grunt two tiles off sees it, and on our city it is seen.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
+        makeFog("fog-view-after-load", "fogViewLoad", (a, o) => { Put("Grunt", o, -3, 0); Put("Grunt", a, 3, 0); },
+             "Loading a scenario with fog of war on (Red, human, to play): every side's supply is published to the board at once (the borders are drawn), and on the first frame every tile Red does not see is covered, none it sees, without fading in. The fog reaches one cell past the edge of the board; those cells are cleared only beside a unit Red sees standing on the edge (not beside an enemy it does not see), and with fog off there are none.", "Human");
         makeFog("fog-ui-clicks", "fogClicks", (a, o) => { Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0); },
              "The board's clicks under fog of war, Red (human, vision 1) to play: a tile with a Blue grunt Red does not see behaves exactly like an empty one — clicked with nothing selected it selects nothing and shows no enemy; with Red's grunt selected it is offered as a move, the tile beyond it too, and the path drawn across it looks like a path across empty ground. Moving through it, Red's grunt stops before it and is fired on.", "Human");
         makeFog("fog-ai-knowledge", "fogKnowledge", (a, o) => { Put("Tank", a, -2, 0); Put("Recon", a, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 2, -5); Put("Tank", o, 5, -2); },
@@ -436,6 +438,15 @@ public static class Scenarios {
                  Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
                  for (int x = -1; x <= 1; x++) for (int y = -3; y <= 3; y++) { HexTile t = Rig.At(x, y); if (t != null && (x + y) % 2 == 0) t.terrain = T("Forest"); } },
              "Both sides the AI, both playing by the fog, eight rounds: after every action the board is whole (every unit on its tile and only there, nothing left concealed), attacks only ever at units their side sees, and any unit run into stops short and is fired on.", "Full");
+        make("attrition-rule-supply-chain-line", "attritionSupplyChainLine", (a, o) => {
+                 Rig.At(-6, 0).building.supplyRange = 3;
+                 Put("Supplies", a, -3, 0); Put("Supplies", a, 0, 0); Put("Grunt", a, 3, 0);
+                 Put("Supplies", a, 3, 3); Put("Supplies", a, 4, 3); Put("APC", a, 2, -6); Put("APC", a, 0, -6); },
+             "Supply through a chain of two supply units (the HQ feeds A, A feeds B, B feeds a grunt): both are linked, and the line drawn from the grunt runs through B, then A, to the HQ, each once (it used to turn back from A to B: two hubs drawn feeding each other). Two supply units next to each other far from any supply are not linked, supply nothing (not even each other), and have no line. And for every placement of two supply units near the HQ, every one-tile move of one of them previewed, and every placement with both aboard transports, the line from each linked one ends at the HQ, passing each once.");
+        make("ui-selection-overlays", "uiOverlays", (a, o) => {
+                 Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
+                 Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
+             "The board's overlays. Selecting Blue's artillery marks only the enemies it can fire on now (not its whole range, not the Blue grunt in range, not empty tiles). Clicking an enemy tank shows its move and reach at half opacity, the move tiles at half its colour's saturation (the reach in its full colour). The tile panel's capture line: a neutral city a Blue grunt is taking shows \"Capturing: Blue 6/10\"; a Red city it is bringing down shows \"Held: 4/10\" in Red; a city at full points shows none. The line at the top says whose turn it is.");
         make("rule-rotor-supply", "rotorSupply", (a, o) => {
                  Rig.At(-6, 0).building.supplyRange = 3;
                  Put("Fighter", a, -4, 0); Put("Fighter", a, 2, 3); Put("Fighter", a, -5, 1); },
@@ -620,6 +631,77 @@ public static class Scenarios {
                 SupplyNetwork.Solve(l.ai, false);
                 detail = "loaded " + loaded + "; HQ supply " + gap + " tiles from the APC; linked " + linked + "; spreads up to " + far + " tiles from the APC (range " + hub.range + "); with 1 move, cut off " + cut;
                 return loaded && gap > 1 && gap <= moves && linked && far <= hub.range && far > 0 && cut;
+            }
+            case "attritionSupplyChainLine": {
+                Unit hubA = Rig.At(-3, 0).occupier, hubB = Rig.At(0, 0).occupier, g = Rig.At(3, 0).occupier, c = Rig.At(3, 3).occupier, d = Rig.At(4, 3).occupier;
+                SupplyPoint A = hubA.Hub, B = hubB.Hub, C = c.Hub, D = d.Hub;
+                HexTile hq = GameController.HQOf(l.ai).tile;
+                SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                bool linked = net.connectedHubs.Contains(A) && net.connectedHubs.Contains(B);
+                bool viaBoth = SupplyNetwork.SolveWithout(l.ai, B).DepthAt(g.tile) <= 0 && SupplyNetwork.SolveWithout(l.ai, A).DepthAt(hubB.tile) <= 0;
+                List<HexTile> path = SupplyOverlay.SourcePath(l.ai, g.tile, net, null, null);
+                List<string> shown = new List<string>(); foreach (HexTile t in path) shown.Add(Pos(t));
+                int bAt = path.IndexOf(hubB.tile), aAt = path.IndexOf(hubA.tile);
+                bool once = path.FindAll(t => t == hubA.tile).Count == 1 && path.FindAll(t => t == hubB.tile).Count == 1;
+                bool line = path.Count > 2 && path[0] == g.tile && bAt > 0 && aAt > bAt && path[path.Count - 1] == hq && once;
+                bool strandedOk = !net.connectedHubs.Contains(C) && !net.connectedHubs.Contains(D) && net.DepthAt(c.tile) <= 0 && net.DepthAt(d.tile) <= 0
+                                  && SupplyOverlay.SourcePath(l.ai, c.tile, net, null, null).Count == 0;
+                detail = "A and B linked " + linked + ", the grunt fed only through both " + viaBoth + "; line " + string.Join(" ", shown.ToArray())
+                       + "; two cut-off supply units side by side: linked " + (net.connectedHubs.Contains(C) || net.connectedHubs.Contains(D)) + ", supplied " + (net.DepthAt(c.tile) > 0 || net.DepthAt(d.tile) > 0);
+                // Every placement of two supply units near the HQ: the line from each linked one ends at the HQ, passing each supply unit once.
+                c.TeleportTo(Rig.At(6, -6), 0); d.TeleportTo(Rig.At(5, -6), 0); g.TeleportTo(Rig.At(-1, 6), 0);
+                List<HexTile> near = new List<HexTile>();
+                foreach (HexTile t in Rig.hg.tiles) if (t.Distance(hq) >= 1 && t.Distance(hq) <= 7 && t.occupier == null && t.building == null) near.Add(t);
+                int placements = 0, previews = 0, bad = 0; string firstBad = null;
+                HexTile parkA = Rig.At(4, -6), parkB = Rig.At(3, -6);
+                foreach (HexTile ta in near) foreach (HexTile tb in near) {
+                    if (ta == tb || ta.Distance(tb) > 5) continue;
+                    hubA.TeleportTo(parkA, 0); hubB.TeleportTo(parkB, 0);
+                    if (ta.occupier != null || tb.occupier != null) continue;
+                    hubA.TeleportTo(ta, 0); hubB.TeleportTo(tb, 0);
+                    SupplyNetwork.Result n2 = SupplyNetwork.Solve(l.ai, false);
+                    placements++;
+                    foreach (Unit h in new[] { hubA, hubB }) {
+                        if (!n2.connectedHubs.Contains(h.Hub)) continue;
+                        List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, h.tile, n2, null, null);
+                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1;
+                        if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "hubs at " + Pos(ta) + " " + Pos(tb) + ", from " + Pos(h.tile) + ": " + string.Join(" ", sh.ToArray()); } }
+                    }
+                    // A move of A being previewed (a tile picked for it): the line from where it would stand.
+                    if (ta.Distance(tb) > 3) continue;
+                    foreach (HexTile dest in ta.neighbors) {
+                        if (dest == null || dest.occupier != null || dest.building != null) continue;
+                        SupplyNetwork.Result pv = SupplyNetwork.Solve(l.ai, false, A, dest);
+                        if (!pv.connectedHubs.Contains(A)) continue;
+                        previews++;
+                        List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, dest, pv, A, dest);
+                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == dest).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1;
+                        if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "A previewed moving from " + Pos(ta) + " to " + Pos(dest) + ", B at " + Pos(tb) + ": " + string.Join(" ", sh.ToArray()); } }
+                    }
+                }
+                // Both supply units aboard transports (two APCs), for every placement of the two.
+                Unit apc1 = Rig.At(2, -6).occupier, apc2 = Rig.At(0, -6).occupier;
+                hubA.TeleportTo(Rig.At(2, -5), 0); hubB.TeleportTo(Rig.At(0, -5), 0);
+                bool boarded = Transporting.Load(apc1, hubA) && Transporting.Load(apc2, hubB);
+                int aboard = 0;
+                if (boarded) foreach (HexTile ta in near) foreach (HexTile tb in near) {
+                    if (ta == tb || ta.Distance(tb) > 5) continue;
+                    apc1.TeleportTo(Rig.At(2, -6), 0); apc2.TeleportTo(Rig.At(0, -6), 0);
+                    if (ta.occupier != null || tb.occupier != null) continue;
+                    apc1.TeleportTo(ta, 0); apc1.SetCargoTile(ta); apc2.TeleportTo(tb, 0); apc2.SetCargoTile(tb);
+                    SupplyNetwork.Result n3 = SupplyNetwork.Solve(l.ai, false);
+                    aboard++;
+                    foreach (Unit h in new[] { hubA, hubB }) {
+                        if (!n3.connectedHubs.Contains(h.Hub)) continue;
+                        List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, h.tile, n3, null, null);
+                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1;
+                        if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "both aboard, APCs at " + Pos(ta) + " " + Pos(tb) + ", from " + Pos(h.tile) + ": " + string.Join(" ", sh.ToArray()); } }
+                    }
+                }
+                SupplyNetwork.Solve(l.ai, false);
+                detail += "; " + aboard + " placements with both aboard APCs" + (boarded ? "" : " (could not board)");
+                detail += "; " + placements + " placements of two supply units and " + previews + " previewed moves, " + bad + " lines not ending at the HQ" + (firstBad != null ? " (first: " + firstBad + ")" : "");
+                return linked && viaBoth && line && strandedOk && placements > 0 && aboard > 0 && bad == 0;
             }
             case "attritionSupplyLine": {
                 Unit g = Rig.At(-2, 0).occupier, sup = Rig.At(-3, 0).occupier;
@@ -893,7 +975,9 @@ public static class Scenarios {
                     foreach (bool fog in new[] { false, true }) {
                         int hammered = 0, torn = 0;
                         Func<bool, List<string>> play = threaded => {
-                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", null, null);
+                            // As the game's profiles are by default: notes written on the board as the AI thinks.
+                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", pr => pr.annotateBoard = true, pr => pr.annotateBoard = true);
+                            foreach (HexTile t in Rig.hg.tiles) if (t.textField == null) t.textField = Rig.New<UnityEngine.UI.Text>();
                             Rig.gc.fogOfWar = fog; FogOfWar.Reset();
                             AIPlayer.HarnessThreads = threaded;
                             // While the AI thinks elsewhere, the main thread does what the game does: move
@@ -922,7 +1006,13 @@ public static class Scenarios {
                             } finally { AIPlayer.HarnessThreads = false; AIPlayer.WhileThinking = null; }
                             return boards;
                         };
-                        List<string> inLine = play(false), onThread = play(true);
+                        List<string> inLine = play(false);
+                        int before = UnityEngine.MainThreadOnly.violations;
+                        List<string> onThread;
+                        try { onThread = play(true); }
+                        catch (Exception e) { onThread = new List<string>(); res.Add("thread failed: " + e.GetBaseException().Message); }
+                        int offMain = UnityEngine.MainThreadOnly.violations - before;
+                        if (offMain > 0) { all = false; res.Add(offMain + " main-thread-only Unity calls from the AI's thread, first: " + UnityEngine.MainThreadOnly.first); }
                         int firstDiff = -1;
                         for (int i = 0; i < Math.Max(inLine.Count, onThread.Count); i++)
                             if (i >= inLine.Count || i >= onThread.Count || inLine[i] != onThread[i]) { firstDiff = i; break; }
@@ -1028,6 +1118,57 @@ public static class Scenarios {
                 detail = "helicopter on a tank on grassland: tank fires first " + !tankGrass + "; on a veteran grunt in forest: grunt fires first " + !gruntForest
                        + "; veteran tank against a tank on grassland fires first " + landStill + "; veteran fighter against a fighter fires first " + airStill;
                 return tankGrass && gruntForest && landStill && airStill;
+            }
+            case "uiOverlays": {
+                Unit art = Rig.At(-3, 0).occupier, friend = Rig.At(-1, 0).occupier, enemy = Rig.At(0, 0).occupier, tank = Rig.At(2, -2).occupier;
+                HexTileUIData ui = HexTileUIData.instance;
+                ui.move_possible = new Sprite(); ui.move_confirm = new Sprite(); ui.selected = new Sprite(); ui.attack_possible = new Sprite(); ui.move_arrow = new Sprite();
+                foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
+                foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
+                if (LevelEditor.singleton == null) LevelEditor.singleton = Rig.New<LevelEditor>();
+                gc.activePlayer = a;
+                List<string> r = new List<string>();
+                art.tile.OnMouseDown();
+                int marked = 0, wrong = 0;
+                foreach (HexTile t in Rig.hg.tiles) {
+                    if (t.state != UIState.ATTACK && t.state != UIState.RANGE) continue;
+                    marked++;
+                    if (t.occupier == null || t.occupier.owner == a || t.state == UIState.RANGE) wrong++;
+                }
+                bool inRange = art.tile.Distance(enemy.tile) <= art.AttackRange && art.tile.Distance(enemy.tile) > art.MinRange && art.tile.Distance(friend.tile) > art.MinRange;
+                bool arty = gc.activeUnit == art && enemy.tile.state == UIState.ATTACK && friend.tile.state != UIState.ATTACK && friend.tile.state != UIState.RANGE && wrong == 0 && inRange;
+                r.Add("artillery selected: " + marked + " tiles marked, " + wrong + " not an enemy; the enemy grunt " + enemy.tile.state + ", the Blue grunt in range " + friend.tile.state);
+                HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+                gc.activeUnit = null;
+                o.displayColor = new Color(0.9f, 0.2f, 0.25f, 1f);
+                SupplyOverlay.ShowEnemy(tank);
+                Color red = o.displayColor;
+                float sat = Math.Max(red.r, Math.Max(red.g, red.b)) <= 0f ? 0f : (Math.Max(red.r, Math.Max(red.g, red.b)) - Math.Min(red.r, Math.Min(red.g, red.b))) / Math.Max(red.r, Math.Max(red.g, red.b));
+                int moveTiles = 0, reachTiles = 0, badMove = 0, badReach = 0;
+                foreach (HexTile t in Rig.hg.tiles) {
+                    Color c = t.overlay.color;
+                    float mx = Math.Max(c.r, Math.Max(c.g, c.b)), mn = Math.Min(c.r, Math.Min(c.g, c.b));
+                    float s2 = mx <= 0f ? 0f : (mx - mn) / mx;
+                    if (t.state == UIState.ENEMY_MOVE) { moveTiles++; if (Math.Abs(c.a - 0.5f) > 1e-4 || Math.Abs(s2 - sat * 0.5f) > 1e-3) badMove++; }
+                    if (t.state == UIState.ENEMY_THREAT) { reachTiles++; if (Math.Abs(c.a - 0.5f) > 1e-4 || Math.Abs(s2 - sat) > 1e-3) badReach++; }
+                }
+                bool overlays = moveTiles > 0 && reachTiles > 0 && badMove == 0 && badReach == 0 && sat > 0f;
+                r.Add("enemy tank shown: " + moveTiles + " move tiles (" + badMove + " not at half opacity and half saturation), " + reachTiles + " reach tiles (" + badReach + " not at half opacity, full colour)");
+                SupplyOverlay.HideEnemy();
+                // Capture: one Blue turn on each city.
+                Building neutral = Rig.At(-2, 3).building, theirs = Rig.At(3, 3).building;
+                string w0, v0; Player p0;
+                bool fullNone = !theirs.ShownCaptureProgress(out w0, out v0, out p0);
+                endTurn();
+                string w1, v1, w2, v2; Player p1, p2;
+                bool n1 = neutral.ShownCaptureProgress(out w1, out v1, out p1), n2 = theirs.ShownCaptureProgress(out w2, out v2, out p2);
+                bool capture = fullNone && n1 && w1 == "Capturing" && v1 == "Blue 6/10" && p1 == a && n2 && w2 == "Held" && v2 == "4/10" && p2 == o;
+                r.Add("capture line: Red city at full points shows none " + fullNone + "; neutral city " + w1 + ": " + v1 + "; Red city " + w2 + ": " + v2);
+                string top = TurnBanner.Line(o, 2, true) + " | " + TurnBanner.Line(a, 2, false);
+                bool line = top == "Red \u2014 your turn, day 3 | Blue is moving\u2026";
+                r.Add("top line: " + top);
+                detail = string.Join("; ", r.ToArray());
+                return arty && overlays && capture && line;
             }
             case "rotorSupply": {
                 Unit inS = Rig.At(-4, 0).occupier, outS = Rig.At(2, 3).occupier, jet = Rig.At(-5, 1).occupier;
@@ -1159,6 +1300,70 @@ public static class Scenarios {
                     detail = string.Join("; ", r.ToArray());
                     return roundTrip && unknown;
                 } finally { LevelEditor.singleton = was; }
+            }
+            case "fogViewLoad": {
+                gc.activePlayer = o;
+                Unit red = Rig.At(-3, 0).occupier, blue = Rig.At(3, 0).occupier;
+                List<string> r = new List<string>();
+                // The scene started with fog off and nothing published; the scenario turns fog on.
+                gc.fogOfWar = false; FogOfWar.Reset();
+                foreach (HexTile t in Rig.hg.tiles) foreach (Player pl in gc.players) t.supply[pl] = 0;
+                FogView fv = Rig.New<FogView>();
+                System.Reflection.BindingFlags inst = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                System.Reflection.MethodInfo late = typeof(FogView).GetMethod("LateUpdate", inst);
+                late.Invoke(fv, null);
+                gc.fogOfWar = true; FogOfWar.Reset();
+                int published = SupplyNetwork.Published;
+                GameController.BoardLoaded();
+                bool supplied = Rig.At(6, 0).isSupplied(o) && Rig.At(-6, 0).isSupplied(a) && SupplyNetwork.Published > published;
+                r.Add("supply published on load " + supplied);
+                late.Invoke(fv, null);   // one frame: the fog is there at once
+                System.Collections.IDictionary covers = (System.Collections.IDictionary)typeof(FogView).GetField("covers", inst).GetValue(fv);
+                Func<object, bool> shown = c => c != null && ((SpriteRenderer)c.GetType().GetField("sr").GetValue(c)).enabled && (float)c.GetType().GetField("alpha").GetValue(c) >= 0.999f;
+                Func<int[]> count = () => {
+                    int hidden = 0, covered = 0, wrong = 0;
+                    foreach (HexTile t in Rig.hg.tiles) {
+                        bool vis = FogOfWar.TileVisible(o, t);
+                        bool on = shown(covers.Contains(t) ? covers[t] : null);
+                        if (!vis) hidden++; if (on) covered++; if (on == vis) wrong++;
+                    }
+                    return new[] { hidden, covered, wrong };
+                };
+                int[] n0 = count();
+                bool atOnce = FogOfWar.Viewer == o && n0[0] > 0 && n0[2] == 0;
+                r.Add("first frame after the load: tiles hidden " + n0[0] + ", covered " + n0[1] + ", wrong " + n0[2]);
+                // Beyond the edge: every cell off the board beside it is fogged...
+                System.Collections.IList ring = (System.Collections.IList)typeof(FogView).GetField("beyond", inst).GetValue(fv);
+                Func<object, bool> beyondShown = b => shown(b.GetType().GetField("cover").GetValue(b));
+                Func<object, List<HexTile>> nextOf = b => (List<HexTile>)b.GetType().GetField("next").GetValue(b);
+                int fogged = 0; foreach (object b in ring) if (beyondShown(b)) fogged++;
+                bool ringAll = ring.Count > 0 && fogged == ring.Count;
+                r.Add("cells past the edge: " + ring.Count + ", fogged " + fogged);
+                // ... until a unit Red sees stands beside one: Red's grunt on the edge clears the cells beside it, no others.
+                HexTile edge = null, far = null;
+                foreach (object b in ring) { HexTile t = nextOf(b)[0]; if (t.occupier == null && t.x < 0 && edge == null) edge = t; }
+                foreach (object b in ring) { HexTile t = nextOf(b)[0]; if (t.occupier == null && t.x > 3 && t.Distance(edge) > 6 && far == null) far = t; }
+                red.TeleportTo(edge, 0); blue.TeleportTo(far, 0); FogOfWar.Changed();
+                for (int i = 0; i < 100; i++) late.Invoke(fv, null);
+                int clearedNear = 0, near = 0, foggedElse = 0, elsewhere = 0, foggedBlue = 0, besideBlue = 0;
+                foreach (object b in ring) {
+                    List<HexTile> nx = nextOf(b);
+                    if (nx.Contains(edge)) { near++; if (!beyondShown(b)) clearedNear++; }
+                    else { elsewhere++; if (beyondShown(b)) foggedElse++; }
+                    if (nx.Contains(far) && !nx.Contains(edge)) { besideBlue++; if (beyondShown(b)) foggedBlue++; }
+                }
+                bool hiddenBlue = !FogOfWar.ShownToViewer(blue);
+                bool ringUnit = near > 0 && clearedNear == near && foggedElse == elsewhere && besideBlue > 0 && foggedBlue == besideBlue && hiddenBlue;
+                r.Add("Red's grunt on the edge at (" + edge.x + "," + edge.y + "): " + clearedNear + " of " + near + " cells beside it cleared, " + foggedElse + " of " + elsewhere + " others fogged; beside the Blue grunt Red does not see: " + foggedBlue + " of " + besideBlue + " fogged");
+                int[] n1 = count();
+                r.Add("tiles after: hidden " + n1[0] + ", wrong " + n1[2]);
+                // Fog off: nothing past the edge either.
+                gc.fogOfWar = false;
+                for (int i = 0; i < 100; i++) late.Invoke(fv, null);
+                int left = 0; foreach (object b in ring) if (beyondShown(b)) left++;
+                r.Add("fog off: cells past the edge fogged " + left);
+                detail = string.Join("; ", r.ToArray());
+                return supplied && atOnce && ringAll && ringUnit && n1[2] == 0 && left == 0;
             }
             case "fogClicks": {
                 Unit red = Rig.At(0, 0).occupier, blue = Rig.At(2, 0).occupier;

@@ -47,6 +47,8 @@ public class Hud : MonoBehaviour {
     [FormerlySerializedAs("building")] public HudRow owner;
     [Tooltip("Not used any more (the height of the ground): hidden if the prefab still has it.")]
     [HideInInspector] public HudRow elevation;
+    [Tooltip("A building's capture progress, shown only while there is some: a neutral building being taken (\"Capturing\": who, and their points of the threshold), or an owned one brought down (\"Held\": the points it has left). Left unset in an older prefab, it is made as a copy of the Owner row.")]
+    public HudRow capture;
 
     [Header("Look")]
     [Tooltip("Values whose cap is below this are drawn as bullets; the rest as numbers.")]
@@ -153,6 +155,36 @@ public class Hud : MonoBehaviour {
             if (b != null) owner.SetText(bo != null ? bo.personal_name : "Neutral", bo != null ? bo.displayColor : text);
             else owner.Show(false);
         }
+        ShowCapture(b);
+    }
+
+    bool captureMade;
+
+    /// <summary>
+    /// The building's capture progress, if there is any (as the viewer last saw it, under fog of war):
+    /// a neutral building someone is taking — "Capturing: Blue 6/10"; an owned one brought down —
+    /// "Held: 4/10". Hidden otherwise.
+    /// </summary>
+    void ShowCapture(Building b) {
+        if (capture == null && !captureMade) MakeCaptureRow();
+        if (capture == null) return;
+        if (b == null) { capture.Show(false); return; }
+        string what, value; Player whose;
+        if (!b.ShownCaptureProgress(out what, out value, out whose)) { capture.Show(false); return; }
+        Color colour = whose != null ? whose.displayColor : text;
+        if (capture.label != null && capture.label.text != what) capture.label.text = what;
+        capture.SetText(value, colour);
+    }
+
+    /// <summary>A prefab made before the capture row: copy the Owner row for it, just below.</summary>
+    void MakeCaptureRow() {
+        captureMade = true;
+        if (owner == null) return;
+        GameObject g = GameObject.Instantiate(owner.gameObject, owner.transform.parent);
+        g.name = "Capture";
+        g.transform.SetSiblingIndex(owner.transform.GetSiblingIndex() + 1);
+        capture = g.GetComponent<HudRow>();
+        if (capture != null && capture.label != null) capture.label.text = "Capture";
     }
 
     /// <summary>The terrain's name: its asset's name (Grassland, Forest...).</summary>
@@ -241,6 +273,8 @@ public class Hud : MonoBehaviour {
         h.cover = Row(tp, "Cover", A("icon_cover"), "Cover", h);
         h.moveCost = Row(tp, "MoveCost", A("icon_move"), "Move cost", h);
         h.owner = Row(tp, "Owner", A("icon_building"), "Owner", h);
+        h.capture = Row(tp, "Capture", A("icon_building"), "Capture", h);
+        h.capture.gameObject.SetActive(false);
         return h;
     }
 

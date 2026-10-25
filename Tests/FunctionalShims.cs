@@ -10,13 +10,34 @@ using System.Collections.Generic;
 
 namespace UnityEngine {
 
+    /// <summary>
+    /// What Unity allows only on the main thread throws on any other here as it does in Unity
+    /// (UnityException "... can only be called from the main thread"): the AI thinking on a worker
+    /// thread (AIPlayer.ThinkOnThread) is held to it in the harness. Main is the thread the harness
+    /// started on.
+    /// </summary>
+    public static class MainThreadOnly {
+        public static int mainId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+        public static int violations;
+        public static string first;
+        public static void Check(string what) {
+            if (System.Threading.Thread.CurrentThread.ManagedThreadId == mainId) return;
+            System.Threading.Interlocked.Increment(ref violations);
+            string msg = what + " can only be called from the main thread.";
+            if (first == null) first = msg + "\n" + Environment.StackTrace;
+            throw new UnityException(msg);
+        }
+    }
+    public class UnityException : Exception { public UnityException(string m) : base(m) { } }
+
     public class Object {
-        public string name = "";
+        string _name = "";
+        public string name { get { MainThreadOnly.Check("get_name"); return _name; } set { MainThreadOnly.Check("set_name"); _name = value; } }
         public int GetInstanceID() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
         public static implicit operator bool(Object o) { return !ReferenceEquals(o, null); }
-        public static void Destroy(Object o) { }
-        public static void Destroy(Object o, float t) { }
-        public static void DestroyImmediate(Object o) { }
+        public static void Destroy(Object o) { MainThreadOnly.Check("Destroy"); }
+        public static void Destroy(Object o, float t) { MainThreadOnly.Check("Destroy"); }
+        public static void DestroyImmediate(Object o) { MainThreadOnly.Check("DestroyImmediate"); }
         public static T FindObjectOfType<T>() where T : class { return null; }
         public static T FindAnyObjectByType<T>() where T : class { return null; }
     }
@@ -70,7 +91,7 @@ namespace UnityEngine {
         public static Matrix4x4 TRS(Vector3 p, Quaternion r, Vector3 s) { return new Matrix4x4(); }
         public Vector3 MultiplyVector(Vector3 v) { return v; } public Vector3 MultiplyPoint3x4(Vector3 v) { return v; } }
     public struct LayerMask { public int value; public static implicit operator int(LayerMask m) { return m.value; } }
-    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public Vector2 size { get { return new Vector2(width, height); } } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
+    public struct Rect { public float x, y, width, height; public Rect(float x, float y, float w, float h) { this.x = x; this.y = y; width = w; height = h; } public Vector2 size { get { return new Vector2(width, height); } } public float yMax { get { return y + height; } } public float xMax { get { return x + width; } } public bool Contains(Vector2 p) { return p.x >= x && p.x < x + width && p.y >= y && p.y < y + height; } }
     public class RectOffset { public int left, right, top, bottom; public RectOffset() { } public RectOffset(int l, int r, int t, int b) { left = l; right = r; top = t; bottom = b; } }
     public struct Quaternion {
         public static Quaternion identity { get { return new Quaternion(); } }
@@ -140,6 +161,7 @@ namespace UnityEngine {
         internal GameObject _go;
         public GameObject gameObject {
             get {
+                MainThreadOnly.Check("get_gameObject");
                 if (_go == null) { _go = new GameObject(name); _go.Attach(this); }
                 return _go;
             }
@@ -165,6 +187,7 @@ namespace UnityEngine {
 
     public class Transform : Component {
         public Vector3 position, localPosition, localScale, up, right;
+        public Vector3 lossyScale { get { return localScale; } }
         public Quaternion rotation, localRotation;
         public Transform parent;
         public void SetParent(Transform p, bool worldPositionStays) { parent = p; }
@@ -173,6 +196,7 @@ namespace UnityEngine {
         public int childCount { get { return 0; } }
         public Transform GetChild(int i) { return null; }
         public void SetSiblingIndex(int i) { }
+        public int GetSiblingIndex() { return 0; }
         public Matrix4x4 worldToLocalMatrix, localToWorldMatrix;
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
     }
@@ -186,19 +210,21 @@ namespace UnityEngine {
 
         public Transform transform {
             get {
+                MainThreadOnly.Check("get_transform");
                 if (_transform == null) { _transform = new Transform(); _transform._go = this; }
                 return _transform;
             }
         }
 
-        public bool activeSelf { get { return true; } }
-        public void SetActive(bool b) { }
+        public bool activeSelf { get { MainThreadOnly.Check("get_activeSelf"); return true; } }
+        public void SetActive(bool b) { MainThreadOnly.Check("SetActive"); }
 
         internal void Attach(Component c) {
             if (!components.Contains(c)) { components.Add(c); c._go = this; }
         }
 
         public T GetComponent<T>() where T : class {
+            MainThreadOnly.Check("GetComponent");
             for (int i = 0; i < components.Count; i++) {
                 T t = components[i] as T;
                 if (t != null) return t;
@@ -207,6 +233,7 @@ namespace UnityEngine {
         }
 
         public T AddComponent<T>() where T : class, new() {
+            MainThreadOnly.Check("AddComponent");
             T made = new T();
             Component c = made as Component;
             if (c != null) Attach(c);
@@ -243,6 +270,7 @@ namespace UnityEngine {
     public class Texture2D : Texture {
         public Texture2D() { }
         public Texture2D(int w, int h, TextureFormat f, bool mips) { }
+        public static Texture2D whiteTexture { get { return new Texture2D(); } }
         public TextureWrapMode wrapMode;
         public void SetPixels(Color[] c) { }
         public void Apply() { }
@@ -301,18 +329,33 @@ namespace UnityEngine {
     public static class Screen { public static int width { get { return 1920; } } public static int height { get { return 1080; } } }
     public static class GUI {
         public static bool enabled = true;
+        public static Color color = Color.white;
+        public static GUISkin skin = new GUISkin();
         public static void Box(Rect r, string s) { }
         public static void Label(Rect r, string s) { }
+        public static void Label(Rect r, string s, GUIStyle st) { }
+        public static void DrawTexture(Rect r, Texture t) { }
         public static bool Button(Rect r, string s) { return false; }
     }
+    public enum FontStyle { Normal, Bold, Italic, BoldAndItalic }
+    public class GUIStyleState { public Color textColor; }
+    public class GUIStyle {
+        public GUIStyle() { } public GUIStyle(GUIStyle o) { }
+        public int fontSize; public FontStyle fontStyle; public TextAnchor alignment; public bool wordWrap;
+        public GUIStyleState normal = new GUIStyleState();
+        public Vector2 CalcSize(GUIContent c) { return new Vector2(100, 20); }
+    }
+    public class GUIContent { public GUIContent(string s) { } }
+    public class GUISkin { public GUIStyle label = new GUIStyle(), box = new GUIStyle(); }
+
     public static class Time {
-        public static float deltaTime { get { return 0.016f; } }
-        public static float fixedDeltaTime { get { return 0.02f; } }
-        public static float time { get { return 0; } }
-        public static float unscaledTime { get { return 0; } }
-        public static float timeSinceLevelLoad { get { return 0; } }
-        public static int frameCount { get { return 0; } }
-        public static float unscaledDeltaTime { get { return 0.016f; } }
+        public static float deltaTime { get { MainThreadOnly.Check("get_deltaTime"); return 0.016f; } }
+        public static float fixedDeltaTime { get { MainThreadOnly.Check("get_fixedDeltaTime"); return 0.02f; } }
+        public static float time { get { MainThreadOnly.Check("get_time"); return 0; } }
+        public static float unscaledTime { get { MainThreadOnly.Check("get_unscaledTime"); return 0; } }
+        public static float timeSinceLevelLoad { get { MainThreadOnly.Check("get_timeSinceLevelLoad"); return 0; } }
+        public static int frameCount { get { MainThreadOnly.Check("get_frameCount"); return 0; } }
+        public static float unscaledDeltaTime { get { MainThreadOnly.Check("get_unscaledDeltaTime"); return 0.016f; } }
     }
     public static class Input {
         public static bool GetKeyDown(string s) { return false; }
@@ -364,7 +407,7 @@ namespace UnityEngine.Events { public delegate void UnityAction(); }
 namespace UnityEngine.UI {
     public class ButtonClickedEvent { public void AddListener(UnityEngine.Events.UnityAction a) { } public void RemoveAllListeners() { } }
     public class Graphic : UnityEngine.Behaviour { public UnityEngine.Color color; public bool raycastTarget; }
-    public class Text : Graphic { public string text = ""; public int fontSize; public UnityEngine.Font font; public UnityEngine.TextAnchor alignment; }
+    public class Text : Graphic { string _text = ""; public string text { get { UnityEngine.MainThreadOnly.Check("Text.get_text"); return _text; } set { UnityEngine.MainThreadOnly.Check("Text.set_text"); _text = value; } } public int fontSize; public UnityEngine.Font font; public UnityEngine.TextAnchor alignment; }
     public class Image : Graphic { public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public UnityEngine.Sprite sprite; public bool preserveAspect; public UnityEngine.RectTransform rectTransform; }
     public class Button : UnityEngine.Behaviour { public Graphic targetGraphic; public bool interactable = true; public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
 }
