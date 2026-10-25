@@ -800,7 +800,7 @@ MonoBehaviour:
   AttackRange: 1
   MinRange: 0
   retaliates: 1
-  visionRange: 2
+  visionRange: 3
   stealthRange: 0
   move_display: {fileID: 0}
   locomotion: 0
@@ -812,6 +812,7 @@ MonoBehaviour:
   elevationMax: 3
   moveSpeed: 8
   StrengthDisplay: 0
+  suppressed: 0
   path: []
   supplies: 3
   suppliesMax: 3
@@ -961,6 +962,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!1 &4953837287708223852
 GameObject:
   m_ObjectHideFlags: 0
@@ -1066,6 +1068,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!1 &5011545958592799884
 GameObject:
   m_ObjectHideFlags: 0

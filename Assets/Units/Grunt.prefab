@@ -644,7 +644,7 @@ MonoBehaviour:
   AttackRange: 1
   MinRange: 0
   retaliates: 1
-  visionRange: 2
+  visionRange: 3
   stealthRange: 0
   move_display: {fileID: 0}
   locomotion: 0
@@ -656,6 +656,7 @@ MonoBehaviour:
   elevationMax: 3
   moveSpeed: 8
   StrengthDisplay: 0
+  suppressed: 0
   path: []
   supplies: 3
   suppliesMax: 3
@@ -666,6 +667,7 @@ MonoBehaviour:
   transportSlots: 0
   maxWeight: 0
   weight: 1
+  carries: 
   transported: []
   trasnporter: {fileID: 0}
   cargoSlots: []
@@ -674,6 +676,7 @@ MonoBehaviour:
   attacking: 0
   target: {fileID: 0}
   pendingRetreat: {fileID: 0}
+  retreatPause: 0.1
   shooter: 0
   answeredBy: {fileID: 0}
 --- !u!95 &1922176808774982529
@@ -803,6 +806,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!1 &4953837287708223852
 GameObject:
   m_ObjectHideFlags: 0
@@ -908,6 +912,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!1 &5903399727374385537
 GameObject:
   m_ObjectHideFlags: 0
