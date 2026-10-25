@@ -7,8 +7,6 @@ Logs/
 
 obj/
 
-*.meta
-
 UserSettings/
 
 *.csproj
