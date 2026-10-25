@@ -404,6 +404,7 @@ public class HexTile : MonoBehaviour
     public static HexTile lastClicked;
 
 	public void OnMouseDown() {
+        if (HexTactica.Harness.Replay.Active) return;   // a replay: the board is only watched
         WorldEdit();
         if (LevelEditor.singleton.editing) {
             LevelEditor.singleton.mouseDown = true;
