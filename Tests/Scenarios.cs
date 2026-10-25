@@ -441,8 +441,9 @@ public static class Scenarios {
         make("attrition-rule-supply-chain-line", "attritionSupplyChainLine", (a, o) => {
                  Rig.At(-6, 0).building.supplyRange = 3;
                  Put("Supplies", a, -3, 0); Put("Supplies", a, 0, 0); Put("Grunt", a, 3, 0);
-                 Put("Supplies", a, 3, 3); Put("Supplies", a, 4, 3); Put("APC", a, 2, -6); Put("APC", a, 0, -6); },
-             "Supply through a chain of two supply units (the HQ feeds A, A feeds B, B feeds a grunt): both are linked, and the line drawn from the grunt runs through B, then A, to the HQ, each once (it used to turn back from A to B: two hubs drawn feeding each other). Two supply units next to each other far from any supply are not linked, supply nothing (not even each other), and have no line. And for every placement of two supply units near the HQ, every one-tile move of one of them previewed, every placement with both aboard transports, and with both aboard one transport (and its moves previewed), the line from each linked one is drawn and ends at the HQ, passing each once.");
+                 Put("Supplies", a, 3, 3); Put("Supplies", a, 4, 3); Put("APC", a, 2, -6); Put("APC", a, 0, -6);
+                 Put("Grunt", o, -4, 4); Put("Grunt", o, -3, 4); Put("Grunt", o, -2, 4); },
+             "Supply through a chain of two supply units (the HQ feeds A, A feeds B, B feeds a grunt): both are linked, and the line drawn from the grunt runs through B, then A, to the HQ, each once (it used to turn back from A to B: two hubs drawn feeding each other). Two supply units next to each other far from any supply are not linked, supply nothing (not even each other), and have no line. And for every placement of two supply units near the HQ, every one-tile move of one of them previewed, every placement with both aboard transports, and with both aboard one transport (and its moves previewed), the line from each linked one is drawn and ends at the HQ, passing each once, tile to tile and never over an enemy (from a transport it follows the way the transport would drive to supplied ground). Selecting A also shows what depends on it: B, with its line back to A; nothing depends on B.");
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
@@ -457,7 +458,7 @@ public static class Scenarios {
                  Rig.At(3, 0).terrain = T("Forest"); },
              "Aircraft are never ambushed by land or sea units: a helicopter attacking a tank on grassland, or a veteran grunt in a forest, fires first; land units still ambush each other as before (a veteran tank on grassland fires first against a tank), and an aircraft can still be fired on first by a veteran aircraft.");
         make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
-             "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (which has no BuildingGround, the ground of every building tile) comes back as it was: building tiles keep BuildingGround and their ground under, nothing fails. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
+             "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (the ground every building lays, Urban, once BuildingGround, found whether the list has it or not) comes back as it was: building tiles keep that ground and the ground under, nothing fails; a save naming it BuildingGround gets Urban. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
              "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
         makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -644,15 +645,31 @@ public static class Scenarios {
                 int bAt = path.IndexOf(hubB.tile), aAt = path.IndexOf(hubA.tile);
                 bool once = path.FindAll(t => t == hubA.tile).Count == 1 && path.FindAll(t => t == hubB.tile).Count == 1;
                 bool line = path.Count > 2 && path[0] == g.tile && bAt > 0 && aAt > bAt && path[path.Count - 1] == hq && once;
+                // What hangs on A: B (linked only through it), with its line back to A; nothing hangs on B.
+                Dictionary<SupplyPoint, List<HexTile>> depA = SupplyOverlay.Dependents(l.ai, new List<SupplyPoint> { A }, hubA.tile, net, null);
+                Dictionary<SupplyPoint, List<HexTile>> depB = SupplyOverlay.Dependents(l.ai, new List<SupplyPoint> { B }, hubB.tile, net, null);
+                List<HexTile> bLine = depA.ContainsKey(B) ? depA[B] : new List<HexTile>();
+                bool deps = depA.Count == 1 && bLine.Count >= 2 && bLine[0] == hubB.tile && bLine[bLine.Count - 1] == hubA.tile && depB.Count == 0;
+                List<string> bl = new List<string>(); foreach (HexTile t in bLine) bl.Add(Pos(t));
+                detail = "depending on A: " + depA.Count + " (B, line " + string.Join(" ", bl.ToArray()) + "), on B: " + depB.Count + "; ";
                 bool strandedOk = !net.connectedHubs.Contains(C) && !net.connectedHubs.Contains(D) && net.DepthAt(c.tile) <= 0 && net.DepthAt(d.tile) <= 0
                                   && SupplyOverlay.SourcePath(l.ai, c.tile, net, null, null).Count == 0;
-                detail = "A and B linked " + linked + ", the grunt fed only through both " + viaBoth + "; line " + string.Join(" ", shown.ToArray())
+                detail += "A and B linked " + linked + ", the grunt fed only through both " + viaBoth + "; line " + string.Join(" ", shown.ToArray())
                        + "; two cut-off supply units side by side: linked " + (net.connectedHubs.Contains(C) || net.connectedHubs.Contains(D)) + ", supplied " + (net.DepthAt(c.tile) > 0 || net.DepthAt(d.tile) > 0);
                 // Every placement of two supply units near the HQ: the line from each linked one ends at the HQ, passing each supply unit once.
                 c.TeleportTo(Rig.At(6, -6), 0); d.TeleportTo(Rig.At(5, -6), 0); g.TeleportTo(Rig.At(-1, 6), 0);
                 List<HexTile> near = new List<HexTile>();
                 foreach (HexTile t in Rig.hg.tiles) if (t.Distance(hq) >= 1 && t.Distance(hq) <= 7 && t.occupier == null && t.building == null) near.Add(t);
                 int placements = 0, previews = 0, bad = 0; string firstBad = null;
+                // A line goes tile to tile (no jumps) and never over an enemy.
+                Func<List<HexTile>, bool> walkable = pth => {
+                    for (int i = 0; i < pth.Count; i++) {
+                        if (pth[i].occupier != null && pth[i].occupier.owner != l.ai) return false;
+                        if (i > 0 && pth[i].Distance(pth[i - 1]) != 1) return false;
+                        if (i > 1 && pth[i] == pth[i - 2]) return false;   // straight back where it came from
+                    }
+                    return true;
+                };
                 HexTile parkA = Rig.At(4, -6), parkB = Rig.At(3, -6);
                 foreach (HexTile ta in near) foreach (HexTile tb in near) {
                     if (ta == tb || ta.Distance(tb) > 5) continue;
@@ -664,7 +681,7 @@ public static class Scenarios {
                     foreach (Unit h in new[] { hubA, hubB }) {
                         if (!n2.connectedHubs.Contains(h.Hub)) continue;
                         List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, h.tile, n2, null, null);
-                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1;
+                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1 && walkable(pth);
                         if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "hubs at " + Pos(ta) + " " + Pos(tb) + ", from " + Pos(h.tile) + ": " + string.Join(" ", sh.ToArray()); } }
                     }
                     // A move of A being previewed (a tile picked for it): the line from where it would stand.
@@ -675,7 +692,7 @@ public static class Scenarios {
                         if (!pv.connectedHubs.Contains(A)) continue;
                         previews++;
                         List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, dest, pv, A, dest);
-                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == dest).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1;
+                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == dest).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1 && walkable(pth);
                         if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "A previewed moving from " + Pos(ta) + " to " + Pos(dest) + ", B at " + Pos(tb) + ": " + string.Join(" ", sh.ToArray()); } }
                     }
                 }
@@ -694,7 +711,7 @@ public static class Scenarios {
                     foreach (Unit h in new[] { hubA, hubB }) {
                         if (!n3.connectedHubs.Contains(h.Hub)) continue;
                         List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, h.tile, n3, null, null);
-                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1;
+                        bool ok = pth.Count > 0 && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count <= 1 && pth.FindAll(t => t == tb).Count <= 1 && walkable(pth);
                         if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "both aboard, APCs at " + Pos(ta) + " " + Pos(tb) + ", from " + Pos(h.tile) + ": " + string.Join(" ", sh.ToArray()); } }
                     }
                 }
@@ -712,7 +729,7 @@ public static class Scenarios {
                     if (n4.connectedHubs.Contains(hubA.Hub)) {
                         one++;
                         List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, ta, n4, (Dictionary<SupplyPoint, HexTile>)null);
-                        bool ok = pth.Count >= 2 && pth[0] == ta && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count == 1;
+                        bool ok = pth.Count >= 2 && pth[0] == ta && pth[pth.Count - 1] == hq && pth.FindAll(t => t == ta).Count == 1 && walkable(pth);
                         if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "both aboard one APC at " + Pos(ta) + ": " + string.Join(" ", sh.ToArray()); } }
                     }
                     foreach (HexTile dest in ta.neighbors) {
@@ -722,14 +739,14 @@ public static class Scenarios {
                         if (!pv.connectedHubs.Contains(hubA.Hub)) continue;
                         onePreview++;
                         List<HexTile> pth = SupplyOverlay.SourcePath(l.ai, dest, pv, pvm);
-                        bool ok = pth.Count >= 2 && pth[0] == dest && pth[pth.Count - 1] == hq && pth.FindAll(t => t == dest).Count == 1;
+                        bool ok = pth.Count >= 2 && pth[0] == dest && pth[pth.Count - 1] == hq && pth.FindAll(t => t == dest).Count == 1 && walkable(pth);
                         if (!ok) { bad++; if (firstBad == null) { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); firstBad = "both aboard one APC at " + Pos(ta) + ", previewed to " + Pos(dest) + ": " + string.Join(" ", sh.ToArray()); } }
                     }
                 }
                 SupplyNetwork.Solve(l.ai, false);
                 detail += "; " + aboard + " placements with both aboard APCs" + (boarded ? "" : " (could not board)") + ", " + one + " with both aboard one (and " + onePreview + " previewed moves)" + (both ? "" : " (could not put both in one)");
                 detail += "; " + placements + " placements of two supply units and " + previews + " previewed moves, " + bad + " lines not ending at the HQ" + (firstBad != null ? " (first: " + firstBad + ")" : "");
-                return linked && viaBoth && line && strandedOk && placements > 0 && aboard > 0 && one > 0 && onePreview > 0 && bad == 0;
+                return deps && linked && viaBoth && line && strandedOk && placements > 0 && aboard > 0 && one > 0 && onePreview > 0 && bad == 0;
             }
             case "attritionSupplyLine": {
                 Unit g = Rig.At(-2, 0).occupier, sup = Rig.At(-3, 0).occupier;
@@ -936,7 +953,9 @@ public static class Scenarios {
                 return hull && turret && flag && none;
             }
             case "fogVision": {
+                PinVision();
                 Unit g = Rig.At(-2, 0).occupier, r1 = Rig.At(0, 0).occupier, r2 = Rig.At(1, 0).occupier, rc = Rig.At(2, -3).occupier;
+                rc.stealthRange = 3;   // the stealthy recon this check was written for (the prefab's own may be rebalanced)
                 Unit art = Rig.At(-2, 4).occupier, apc = Rig.At(4, -4).occupier, cargo = Rig.At(4, -3).occupier;
                 Building city = Rig.At(2, 2).building;
                 List<string> r = new List<string>();
@@ -1054,6 +1073,7 @@ public static class Scenarios {
                 return all;
             }
             case "fogKinds": {
+                PinVision();
                 Unit g = Rig.At(-2, 0).occupier, r = Rig.At(1, 0).occupier, bf = Rig.At(-5, 4).occupier, rf = Rig.At(0, -5).occupier;
                 Unit boat = Rig.At(4, 2).occupier, rg = Rig.At(2, 4).occupier;
                 Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
@@ -1220,6 +1240,7 @@ public static class Scenarios {
                 return layout && ai && fed && aloft && jetBurns;
             }
             case "fogLineOfSight": {
+                PinVision();
                 Unit g = Rig.At(-4, 0).occupier, e = Rig.At(-1, 0).occupier, jet = Rig.At(-4, 3).occupier, boat = Rig.At(-4, -3).occupier;
                 g.visionRange = 4;
                 Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
@@ -1302,7 +1323,7 @@ public static class Scenarios {
                         if (t.uiData == null) t.uiData = ui;
                     }
                     List<string> r = new List<string>();
-                    r.Add("scene list: " + string.Join(",", sceneTerrain.ToArray()) + (sceneTerrain.Contains("BuildingGround") ? "" : " (no BuildingGround)"));
+                    r.Add("scene list: " + string.Join(",", sceneTerrain.ToArray()));
                     HexTile hq = Rig.At(-6, 0), city = Rig.At(0, 0);
                     List<TileData> saved = new List<TileData>();
                     foreach (HexTile t in Rig.hg.tiles) saved.Add(new TileData(t));
@@ -1317,7 +1338,17 @@ public static class Scenarios {
                     foreach (HexTile t in Rig.hg.tiles) if (t.terrain == null || t.terrain.name != before[t]) changed++;
                     r.Add("HQ tile " + hqWas + " → " + (hq.terrain != null ? hq.terrain.name : "null") + ", city tile " + cityWas + " → " + (city.terrain != null ? city.terrain.name : "null"));
                     r.Add(saved.Count + " tiles loaded, " + failed + " failed" + (firstError != null ? " (" + firstError + ")" : "") + ", " + changed + " changed");
-                    bool roundTrip = failed == 0 && changed == 0 && hqWas == "BuildingGround" && !sceneTerrain.Contains("BuildingGround");
+                    // The ground buildings lay (BuildingGround, renamed Urban; the scene's list has it now, older ones did not).
+                    Building hqB = hq.building;
+                    string groundName = hqB != null && hqB.ground != null ? hqB.ground.name : null;
+                    bool roundTrip = failed == 0 && changed == 0 && groundName != null && hqWas == groundName;
+                    r.Add("the buildings' ground: " + (groundName ?? "none (its asset's .meta file is missing, so the prefabs' reference to it is broken)"));
+                    // An older save naming the ground by its old name.
+                    TileData oldName = new TileData(city); oldName.terrain = "BuildingGround"; oldName.under = "Grassland";
+                    try { oldName.load(); } catch (Exception e) { r.Add("old name: " + e.GetType().Name); }
+                    bool renamed = groundName == null || city.terrain.name == groundName;
+                    r.Add("a save naming BuildingGround loads " + city.terrain.name);
+                    roundTrip &= renamed;
                     // A terrain the game never had: the ground under, else grassland.
                     TileData odd = new TileData(Rig.At(2, 0)); odd.terrain = "Swampland"; odd.under = "";
                     TileData oddUnder = new TileData(Rig.At(3, 0)); oddUnder.terrain = "Swampland"; oddUnder.under = "Forest";
@@ -1423,6 +1454,7 @@ public static class Scenarios {
                 return viewer && asEmpty1 && offered && path && bumped;
             }
             case "fogKnowledge": {
+                PinVision();
                 Unit tank = Rig.At(-2, 0).occupier, recon = Rig.At(0, 0).occupier, near = Rig.At(3, 0).occupier, far = Rig.At(2, -5).occupier, etank = Rig.At(5, -2).occupier;
                 AIPlayer ai = a.GetComponent<AIPlayer>();
                 List<string> r = new List<string>();
@@ -2438,6 +2470,20 @@ public static class Scenarios {
     }
 
     // ================================================================ narration
+
+    /// <summary>
+    /// The sight rule checks were written for these vision ranges; the prefabs' own may be rebalanced
+    /// (Grunt 3, Fighter 6... since). Pinned on every unit on the board, so a check tests the rule,
+    /// not the balance of the day.
+    /// </summary>
+    static void PinVision() {
+        Dictionary<string, int> v = new Dictionary<string, int> { { "Grunt", 2 }, { "Marine", 2 }, { "Fighter", 4 }, { "Recon", 4 }, { "AirTanker", 3 }, { "Tank", 2 }, { "APC", 2 }, { "Artillery", 2 }, { "Gunboat", 3 }, { "Supplies", 1 } };
+        foreach (Unit u in Rig.uc.units) {
+            int r;
+            if (u != null && v.TryGetValue(u.name.Replace("(Clone)", "").Trim(), out r)) u.visionRange = r;
+        }
+        FogOfWar.Changed();
+    }
 
     /// <summary>The board as text: . grass, f forest, ^ mountain, ~ water; Blue (AI) upper case, Red lower.</summary>
     public static string Draw() {
