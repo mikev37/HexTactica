@@ -178,11 +178,11 @@
 {"x":6,"y":0,"z":-6,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":0,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1}
 ],
 "units":[
-{"x":-3,"y":0,"z":3,"Strength":0,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":0,"y":0,"z":0,"Strength":0,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-3,"y":0,"z":3,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":0,"y":0,"z":0,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":3,"y":0,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":3,"y":3,"z":-6,"Strength":0,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":4,"y":3,"z":-7,"Strength":0,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":3,"y":3,"z":-6,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":4,"y":3,"z":-7,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":2,"y":-6,"z":4,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":0,"y":-6,"z":6,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":-4,"y":4,"z":0,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
