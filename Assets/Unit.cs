@@ -255,6 +255,7 @@ public class Unit : MonoBehaviour
         }
         // Aboard: shrink into the transport's slot; nothing else moves this sprite.
         if (trasnporter != null) {
+            if (!Finite(transform.localPosition)) transform.localPosition = Vector3.zero;
             transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
             transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale * cargoScale, Time.deltaTime * 2f);
             return;
@@ -437,7 +438,13 @@ public class Unit : MonoBehaviour
         int slot = Mathf.Max(0, transport.transported.IndexOf(this));
         Transform at = transport.cargoSlots != null && slot < transport.cargoSlots.Count && transport.cargoSlots[slot] != null
                      ? transport.cargoSlots[slot] : transport.transform;
-        transform.SetParent(at, true);
+        // Into the slot, sliding there from where it stands (Update). A slot (or transport) scaled to
+        // nothing on some axis at that moment (an animation, a 2D prefab with z scale 0) has no inverse:
+        // keeping the world position would give a NaN local position, so it goes straight into the slot.
+        Vector3 ls = at.lossyScale;
+        bool degenerate = Mathf.Abs(ls.x) < 1e-4f || Mathf.Abs(ls.y) < 1e-4f || Mathf.Abs(ls.z) < 1e-4f;
+        transform.SetParent(at, !degenerate);
+        if (degenerate || !Finite(transform.localPosition)) transform.localPosition = Vector3.zero;
         transform.rotation = at.rotation;
         if (cargoGroup == null) cargoGroup = gameObject.AddComponent<UnityEngine.Rendering.SortingGroup>();
         int layer = SortingLayer.NameToID("Transported");
@@ -448,6 +455,10 @@ public class Unit : MonoBehaviour
         // Supplies aboard are shown like any cargo; a transport whose animator has a "CarryingSupply"
         // bool is told, in case its art wants to react.
         if (Hub != null) transport.SetAnimatorBool("CarryingSupply", true);
+    }
+
+    static bool Finite(Vector3 v) {
+        return !(float.IsNaN(v.x) || float.IsNaN(v.y) || float.IsNaN(v.z) || float.IsInfinity(v.x) || float.IsInfinity(v.y) || float.IsInfinity(v.z));
     }
 
     public bool HasAnimatorParameter(string name) {
