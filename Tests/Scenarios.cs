@@ -446,7 +446,7 @@ public static class Scenarios {
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
-             "The board's overlays. Selecting Blue's artillery marks only the enemies it can fire on now (not its whole range, not the Blue grunt in range, not empty tiles). Clicking an enemy tank shows its move and reach at half opacity, the move tiles at half its colour's saturation (the reach in its full colour). The tile panel's capture line: a neutral city a Blue grunt is taking shows \"Capturing: Blue 6/10\"; a Red city it is bringing down shows \"Held: 4/10\" in Red; a city at full points shows none. The line at the top says whose turn it is.");
+             "The board's overlays. Selecting Blue's artillery marks only the enemies it can fire on now (not its whole range, not the Blue grunt in range, not empty tiles). Clicking an enemy tank shows its move and reach at half opacity, the move tiles at half its colour's saturation (the reach in its full colour). The tile panel's capture line: a neutral city a Blue grunt is taking shows \"Capturing: Blue 6/10\"; a Red city it is bringing down shows \"Held: 4/10\" in Red; a city at full points shows none. The line at the top says whose turn it is, and for an AI whether it is thinking or moving.");
         make("rule-rotor-supply", "rotorSupply", (a, o) => {
                  Rig.At(-6, 0).building.supplyRange = 3;
                  Put("Fighter", a, -4, 0); Put("Fighter", a, 2, 3); Put("Fighter", a, -5, 1); },
@@ -1192,8 +1192,8 @@ public static class Scenarios {
                 bool n1 = neutral.ShownCaptureProgress(out w1, out v1, out p1), n2 = theirs.ShownCaptureProgress(out w2, out v2, out p2);
                 bool capture = fullNone && n1 && w1 == "Capturing" && v1 == "Blue 6/10" && p1 == a && n2 && w2 == "Held" && v2 == "4/10" && p2 == o;
                 r.Add("capture line: Red city at full points shows none " + fullNone + "; neutral city " + w1 + ": " + v1 + "; Red city " + w2 + ": " + v2);
-                string top = TurnBanner.Line(o, 2, true) + " | " + TurnBanner.Line(a, 2, false);
-                bool line = top == "Red \u2014 your turn, day 3 | Blue is moving\u2026";
+                string top = TurnBanner.Line(o, 2, true) + " | " + TurnBanner.Line(a, 2, false) + " | " + TurnBanner.Line(a, 2, false, true);
+                bool line = top == "Red \u2014 your turn, day 3 | Blue is moving | Blue is thinking";
                 r.Add("top line: " + top);
                 detail = string.Join("; ", r.ToArray());
                 return arty && overlays && capture && line;
