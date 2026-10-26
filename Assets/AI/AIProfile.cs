@@ -116,6 +116,10 @@ namespace HexTactica.AI {
         [Range(0f, 6f)]
         public float intentSupplyWeight = 2f;
 
+        [Tooltip("Hubs: worth of holding ground — each tile of land newly supplied by us and not by the enemy, as strength points of an average fighting unit. Spreads the network over the map instead of only after the army.")]
+        [Range(0f, 1f)]
+        public float groundSupplyWeight = 0f;
+
         [Tooltip("Multiplier on a hub's target worth for the units it sustains (base: a quarter of their combined value).")]
         public float enemySupplyTargetWeight = 1f;
 

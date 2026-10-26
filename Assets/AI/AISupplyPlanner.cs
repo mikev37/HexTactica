@@ -51,6 +51,30 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
+        /// Value of holding ground (groundSupplyWeight), in gold: each tile of land supplied with the
+        /// hub at the place being scored and not without it, and not supplied by the enemy, at that
+        /// fraction of a strength point of an average fighting unit. A human spreads supply to claim
+        /// the map; without this a supply unit only went where the army already was.
+        /// </summary>
+        static float GroundCoverage(AIMap map, AIProfile profile, HexTile at, int reach, Func<HexTile, int> before, Func<HexTile, int> after) {
+            if (profile.groundSupplyWeight <= 0f || at == null) return 0f;
+            float worth = 0f; int n = 0;
+            for (int i = 0; i < map.ownUnits.Count; i++) {
+                Unit u = map.ownUnits[i];
+                if (u == null || u.Hub != null || u.Firepower <= 0) continue;
+                worth += AIScore.Worth(u); n++;
+            }
+            if (n == 0) return 0f;
+            int gained = 0;
+            foreach (HexTile t in AIPath.TilesInRangeShared(at, 0, reach)) {
+                if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
+                if (before(t) > 0 || after(t) <= 0 || map.EnemySupplyShare(t) > 0f) continue;
+                gained++;
+            }
+            return gained * worth / n * profile.groundSupplyWeight;
+        }
+
+        /// <summary>
         /// Value of bringing the network closer to where friendly units are heading, in gold
         /// per turn: for each unit with a destination outside supply, a strength's worth per
         /// tile the gap closes, scaled by intentSupplyWeight and capped at the gap.
@@ -117,6 +141,7 @@ namespace HexTactica.AI {
             if (connected) {
                 score += IntentCoverage(map, map.profile, hub.myUnit,
                                         t => Mathf.Max(without.DepthAt(t), range - at.Distance(t)));
+                score += GroundCoverage(map, map.profile, at, range, t => without.DepthAt(t), t => Mathf.Max(without.DepthAt(t), range - at.Distance(t)));
             }
 
             score -= AIScore.Risk(hub.myUnit, at, map, map.profile);
@@ -250,7 +275,7 @@ namespace HexTactica.AI {
         /// </summary>
         static float ValueAdded(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile, SupplyNetwork.Result hypothetical) {
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(map.player, hub);
-            float resupply = 0f, heal = 0f, spared = 0f, relays = 0f, forward = 0f, intent = 0f, stranded = 0f;
+            float resupply = 0f, heal = 0f, spared = 0f, relays = 0f, forward = 0f, intent = 0f, ground = 0f, stranded = 0f;
             int supplied = 0;
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
@@ -289,9 +314,11 @@ namespace HexTactica.AI {
             float total = resupply + heal + spared + relays - cutLinks;
             if (profile.hubPricingForward) {
                 forward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                if (hypothetical.connectedHubs.Contains(hub))
+                if (hypothetical.connectedHubs.Contains(hub)) {
                     intent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                total += forward + intent;
+                    ground = GroundCoverage(map, profile, at, hub.range, t => without.DepthAt(t), t => hypothetical.DepthAt(t));
+                }
+                total += forward + intent + ground;
             }
             float hubWorth = AIScore.Worth(hub.myUnit);
             if (!hypothetical.connectedHubs.Contains(hub)) {
@@ -306,8 +333,8 @@ namespace HexTactica.AI {
             float risk = simulated * hubWorth;
             total -= risk;
             if (DebugLog != null)
-                breakdown[at] = string.Format("({0},{1}) total {2:0} = resupply {3:0} + heal {4:0} + spared {5:0} ({6} units) + relays {7:0} + forward {8:0} + intent {9:0} - stranded {10:0} - hit {11:0} ({12:0.0} strength) [{13}]",
-                    at.x, at.y, total, resupply, heal, spared, supplied, relays, forward, intent, stranded, risk, simulated, map.TileRead(at));
+                breakdown[at] = string.Format("({0},{1}) total {2:0} = resupply {3:0} + heal {4:0} + spared {5:0} ({6} units) + relays {7:0} + forward {8:0} + intent {9:0} + ground {14:0} - stranded {10:0} - hit {11:0} ({12:0.0} strength) [{13}]",
+                    at.x, at.y, total, resupply, heal, spared, supplied, relays, forward, intent, stranded, risk, simulated, map.TileRead(at), ground);
             SupplyNetwork.Solve(map.player, false);
             return total;
         }
