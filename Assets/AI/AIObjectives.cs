@@ -226,6 +226,7 @@ namespace HexTactica.AI {
                 Objective job;
                 if (result.TryGetValue(u, out job) && job.kind == ObjectiveKind.DefendHQ) continue;
                 if (LocomotionRules.NeedsAirfield(u.locomotion)) continue;   // fuel: not for wandering
+                if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;   // decides as a transport (AIPlayer.DecideFor)
                 pool.Add(u);
             }
             System.Func<Unit, float> eye = u => (u.visionRange + 1f) * u.moveRange / AIScore.Worth(u);
