@@ -49,7 +49,6 @@ public class BuildingController : MonoBehaviour {
         if (!buildings.Contains(made)) buildings.Add(made);
         if (!Building.all.Contains(made)) Building.all.Add(made);
         FogOfWar.Changed();
-        made.RefreshFlag();
         return made;
     }
 
@@ -145,7 +144,6 @@ public struct BuildingData {
         // An owned building saved with no points (an older save) is fully held.
         b.capturePoints = owner != null && capturePoints <= 0 ? b.CaptureThreshold : capturePoints;
         b.capturingPlayer = capturing;
-        b.RefreshFlag();
         return b;
     }
 }
