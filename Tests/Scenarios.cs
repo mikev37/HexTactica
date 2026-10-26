@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -3326,6 +3327,112 @@ public static class Scenarios {
             }
         }
         Console.WriteLine(string.Format("  total {0:+0;-0}: better in {1}, worse in {2}", total, better, worse));
+    }
+
+    /// <summary>
+    /// PROBE=suite SET_A=... [SET_B=...]: the scenario suite, no randomness. The challenger (A) against
+    /// the champion (B) on every map (MAPS, default the five scenarios and the two campaign maps),
+    /// from each side (SIDES=Blue,Red), fog off and on (FOGS), standard and attrition rules (RULESETS),
+    /// with purchases on and off (BUILDS); and the champion against itself on the same games (kept in
+    /// BENCH_CACHE). Each game is scored for the side under test, at the end:
+    ///   material — its share of the material left on the board (strength x cost);
+    ///   board    — the share of the board's land only it supplies;
+    ///   income   — its share of all the buildings' income (what it has captured and kept);
+    /// and 100% on all three if it won (by the HQ or on attrition), 0% if it lost. The game's score is
+    /// the mean of the three. BENCH_LOGS: each game recorded (GameLog) with a final.txt.
+    /// </summary>
+    public static void Suite(Action<AIProfile> challenger, Action<AIProfile> champion, string cName, string chName) {
+        Console.WriteLine("challenger = " + cName + "\nchampion   = " + chName);
+        Func<string, string, string[]> list = (k, d) => (Environment.GetEnvironmentVariable(k) ?? d).Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        string[] maps = list("MAPS", "ChanceMeeting,BushWar,MountainPass,RiverCrossing,LogisticsZigzag,campaign-rough-legacy-ai-left,campaign-std-legacy-ai-left");
+        // A scenario's name is looked for in Assets/Scenarios, then as the harness's own.
+        for (int i = 0; i < maps.Length; i++) {
+            string game = Path.Combine(PrefabLoader.AssetsRoot, "Scenarios", maps[i] + ".dat");
+            if (!File.Exists(maps[i]) && File.Exists(game)) maps[i] = game;
+        }
+        string[] sides = list("SIDES", "Blue,Red"), fogs = list("FOGS", "off,on"), rulesets = list("RULESETS", "standard,attrition"), builds = list("BUILDS", "on,off");
+        string cacheFile = Environment.GetEnvironmentVariable("BENCH_CACHE");
+        string logs = Environment.GetEnvironmentVariable("BENCH_LOGS");
+        int rounds = int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30");
+        float sumC = 0f, sumB = 0f; int n = 0, better = 0, worse = 0, wonC = 0, lostC = 0, wonB = 0, lostB = 0;
+        string rulesWas = Environment.GetEnvironmentVariable("RULES"), purchasesWas = Environment.GetEnvironmentVariable("PURCHASES");
+        try {
+        foreach (string rules in rulesets) foreach (string build in builds) foreach (string fog in fogs) foreach (string map in maps) foreach (string side in sides) {
+            Environment.SetEnvironmentVariable("RULES", rules);
+            Environment.SetEnvironmentVariable("PURCHASES", build);
+            string game = Path.GetFileNameWithoutExtension(map) + " as " + side + ", " + rules + ", build " + build + ", fog " + fog;
+            float[][] score = new float[2][];
+            string[] result = new string[2];
+            string key = "suite|" + game + "|" + rounds + "|" + chName;
+            if (!string.IsNullOrEmpty(cacheFile) && File.Exists(cacheFile))
+                foreach (string line in File.ReadAllLines(cacheFile)) {
+                    int tab = line.LastIndexOf('\t');
+                    if (tab <= 0 || line.Substring(0, tab) != key) continue;
+                    string[] v = line.Substring(tab + 1).Split(';');
+                    if (v.Length < 4) continue;
+                    score[1] = new float[3];
+                    for (int i = 0; i < 3; i++) score[1][i] = float.Parse(v[i], System.Globalization.CultureInfo.InvariantCulture);
+                    result[1] = v[3];
+                }
+            for (int k = 0; k < 2; k++) {
+                if (score[k] != null) continue;
+                Action<AIProfile> tested = k == 0 ? challenger : champion;
+                bool red = side == "Red";
+                ScenarioFile.Loaded l = ScenarioFile.Load(Find(map), "Full", red ? champion : tested, red ? tested : champion);
+                Rig.gc.fogOfWar = fog == "on"; FogOfWar.Reset();
+                GameController gc = Rig.gc;
+                Player us = red ? l.other : l.ai, them = red ? l.ai : l.other;
+                string folder = null;
+                if (!string.IsNullOrEmpty(logs)) {
+                    string name = (Path.GetFileNameWithoutExtension(map) + "-" + side + "-" + rules + "-build-" + build + "-fog-" + fog + (k == 0 ? "-challenger" : "-champion"));
+                    HexTactica.Harness.GameLog.Start(map + " (" + (k == 0 ? cName : chName) + " as " + side + ")", "Full", Path.Combine(logs, name));
+                    AITactical.DecisionLog = null;
+                    if (Environment.GetEnvironmentVariable("BENCH_TRACE") == null) AIPlayer.Trace = null;
+                    folder = HexTactica.Harness.GameLog.Folder;
+                }
+                for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
+                float[] sc = Score(us, them, gc);
+                score[k] = sc;
+                result[k] = gc.winner == us ? "won" : gc.winner == them ? "lost" : "round " + gc.days;
+                if (folder != null) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine("final board after round " + gc.days + (gc.gameOver ? ", winner " + (gc.winner != null ? gc.winner.personal_name : "none") : ""));
+                    sb.Append(HexTactica.Harness.GameLog.Draw());
+                    sb.AppendLine(string.Format("{0}: material {1:0%}, board {2:0%}, income {3:0%} ({4})", side, sc[0], sc[1], sc[2], result[k]));
+                    File.WriteAllText(Path.Combine(folder, "final.txt"), sb.ToString());
+                    HexTactica.Harness.GameLog.Stop();
+                }
+                if (k == 1 && !string.IsNullOrEmpty(cacheFile))
+                    File.AppendAllText(cacheFile, key + "\t" + string.Join(";", new[] { sc[0], sc[1], sc[2] }.Select(x => x.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray()) + ";" + result[1] + "\n");
+            }
+            float c = (score[0][0] + score[0][1] + score[0][2]) / 3f, b = (score[1][0] + score[1][1] + score[1][2]) / 3f;
+            sumC += c; sumB += b; n++;
+            if (c > b + 0.005f) better++; else if (c < b - 0.005f) worse++;
+            if (result[0] == "won") wonC++; else if (result[0] == "lost") lostC++;
+            if (result[1] == "won") wonB++; else if (result[1] == "lost") lostB++;
+            Console.WriteLine(string.Format("  {0,-62} challenger {1,4:0%} (material {2,4:0%} board {3,4:0%} income {4,4:0%}, {5,-8}) | champion {6,4:0%} (material {7,4:0%} board {8,4:0%} income {9,4:0%}, {10,-8}) | {11:+0;-0} pts",
+                game, c, score[0][0], score[0][1], score[0][2], result[0], b, score[1][0], score[1][1], score[1][2], result[1], (c - b) * 100f));
+        }
+        } finally { Environment.SetEnvironmentVariable("RULES", rulesWas); Environment.SetEnvironmentVariable("PURCHASES", purchasesWas); }
+        if (n > 0) Console.WriteLine(string.Format("  SUITE over {0} games: challenger {1:0.0%} (won {2}, lost {3}), champion {4:0.0%} (won {5}, lost {6}); better in {7}, worse in {8}",
+            n, sumC / n, wonC, lostC, sumB / n, wonB, lostB, better, worse));
+    }
+
+    /// <summary>The suite's three measures for <paramref name="us"/> at the end: material share, share of the land only it supplies, share of the buildings' income; all 1 if it won, 0 if it lost.</summary>
+    static float[] Score(Player us, Player them, GameController gc) {
+        if (gc.gameOver && gc.winner == us) return new[] { 1f, 1f, 1f };
+        if (gc.gameOver && gc.winner == them) return new[] { 0f, 0f, 0f };
+        float ma = ScenarioFile.Material(us), mo = ScenarioFile.Material(them);
+        SupplyNetwork.Result ra = SupplyNetwork.Solve(us, false), ro = SupplyNetwork.Solve(them, false);
+        int land = 0, ours = 0;
+        foreach (HexTile t in Rig.hg.tiles) {
+            if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
+            land++;
+            if (ra.DepthAt(t) > 0 && ro.DepthAt(t) <= 0) ours++;
+        }
+        float ia = 0f, all = 0f;
+        foreach (Building b in Building.all) { if (b == null) continue; all += b.income; if (b.owner == us) ia += b.income; }
+        return new[] { ma + mo > 0f ? ma / (ma + mo) : 0.5f, land > 0 ? (float)ours / land : 0f, all > 0f ? ia / all : 0f };
     }
 
     /// <summary>Tiles only each side supplies, and the buildings each owns (HQs included).</summary>
