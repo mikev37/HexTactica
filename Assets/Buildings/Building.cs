@@ -123,8 +123,19 @@ public class Building : MonoBehaviour {
     public int chargePerTurn = 1;
 
     [Header("Service")]
-    [Tooltip("Locomotion types healed, refuelled and rearmed while standing on this building")]
+    [Tooltip("Locomotion types this building services while standing on it (what it gives: below)")]
     public List<Locomotion> services = new List<Locomotion>();
+    [Tooltip("Strength a serviced unit heals each turn (0: none). Capped at full strength.")]
+    [Range(0, 6)]
+    public int healPerTurn = 1;
+    [Tooltip("A serviced unit's ammunition is filled each turn.")]
+    public bool rearm = true;
+    [Tooltip("A serviced unit's fuel (and an air tanker's refuelling stock) is filled each turn.")]
+    public bool refuel = true;
+    [Tooltip("A serviced unit's supplies (rations: what it starves without) are filled each turn.")]
+    public bool resupply = true;
+    [Tooltip("The heal is on top of the supply network's (a unit in supply on it heals 1 + healPerTurn); off: whichever is more.")]
+    public bool healStacksWithSupply = false;
 
     [Header("Capture")]
     [Tooltip("Owner's points when owned; the capturing side's progress when neutral")]
