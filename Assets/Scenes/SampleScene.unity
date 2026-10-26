@@ -2966,8 +2966,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   td: {fileID: 11400000, guid: f2b4e2292174082468b25faa2d77b347, type: 2}
   mouseDown: 0
-  editing: 0
-  unit_placement: 1
+  editing: 1
+  unit_placement: 0
   building_placement: 0
   ut: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
   bt: {fileID: 0}

@@ -915,7 +915,7 @@ MonoBehaviour:
   airTanker: 0
   refuelStock: 0
   refuelStockMax: 0
-  Firepower: 1
+  Firepower: 4
   Evasion: 0
   Targeting: 0
   Armor: 1
