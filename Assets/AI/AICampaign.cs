@@ -572,6 +572,7 @@ namespace HexTactica.AI {
                 f.armyRatio = p.useArmyRatio ? army : 0f;
                 f.campaignStaging = o.kind == CampaignKind.DefendHQ ? null : o.staging;
                 f.campaignReady = o.assignedPower >= o.needPower && o.kind != CampaignKind.DefendHQ;
+                f.campaignNeed = o.needPower;
                 f.assigned.AddRange(o.units);
                 foreach (SupplyPoint h in o.hubs) if (h.myUnit != null) f.assigned.Add(h.myUnit);
                 if (o.kind == CampaignKind.DefendHQ) { f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = 0f; }

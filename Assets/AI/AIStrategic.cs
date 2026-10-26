@@ -43,6 +43,8 @@ namespace HexTactica.AI {
         public HexTile campaignStaging;
         /// <summary>A campaign task force with the power its objective needs: it goes (aggressive), gathering first as any attack does.</summary>
         public bool campaignReady;
+        /// <summary>The combat power the campaign objective needs (AICampaign: the enemy there times objectiveForceRatio).</summary>
+        public float campaignNeed;
 
         /// <summary>Whole-army combat power ratio, own over enemy (set by BuildFronts).</summary>
         public float armyRatio = 1f;
@@ -362,31 +364,35 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// A campaign task force (AICampaign) gathers before it goes: it holds at its staging tile
-        /// (short of the objective, out of the enemy's reach next turn) until it has the power its
-        /// objective needs and enough of that power is there and healthy (assaultReadiness; units
-        /// already further forward count as there) — then the whole of it goes in together
-        /// (aggressive, assaulting), and keeps going until its power falls below assaultBreakoff.
-        /// Without this each unit walked to the objective at its own speed: the tank arrived alone.
+        /// (short of the objective, out of the enemy's reach next turn) until the healthy power
+        /// gathered within a move of it (or already past it) meets what the objective needs — then
+        /// the whole of it goes in together (aggressive, assaulting), and keeps going while what is
+        /// left is assaultBreakoff of that need. Without this each unit walked to the objective at its
+        /// own speed: the tank arrived alone. (Gating on a share of the whole force instead held a
+        /// force at its staging tile for good, with five times what it needed, because the last few
+        /// units never got there.)
         /// </summary>
         static void GatherThenGo(Front f, AIMap map, AIProfile profile, HashSet<HexTile> wasAssaulting) {
             HexTile staging = f.campaignStaging, objective = f.objectiveTile;
             if (staging == null || objective == null) return;
             int healthy = Mathf.CeilToInt(MAX_STRENGTH * profile.readyStrength);
             int stagingToGo = map.Travel(null, staging, objective);
-            float full = 0f, gathered = 0f, committed = 0f;
+            // Gathered: healthy, and within one move of the staging tile (or already past it).
+            float gathered = 0f, committed = 0f;
             foreach (Unit u in f.assigned) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                 float w = AIScore.Worth(u);
-                full += w * MAX_STRENGTH;
-                bool there = map.Travel(u, u.tile, staging) <= profile.stagingRadius || map.Travel(u, u.tile, objective) < stagingToGo;
+                bool there = map.Travel(u, u.tile, staging) <= Mathf.Max(profile.stagingRadius, u.moveRange) || map.Travel(u, u.tile, objective) < stagingToGo;
                 if (there && u.Strength >= healthy) gathered += w * u.Strength;
                 if (u.Strength > profile.withdrawStrength) committed += w * u.Strength;
             }
-            if (full <= 0f) return;
+            float need = Mathf.Max(1f, f.campaignNeed);
             bool going = wasAssaulting.Contains(objective);
-            f.readiness = going ? committed / full : gathered / full;
+            // It goes once what is gathered meets the objective's need, and keeps going while what
+            // is left can still fight for it (assaultBreakoff of the need).
+            f.readiness = (going ? committed : gathered) / need;
             bool go = going ? f.readiness >= profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
-                            : f.campaignReady && f.readiness >= Mathf.Min(0.95f, profile.assaultReadiness * profile.Aggro(1.25f, 0.7f));
+                            : f.readiness >= profile.Aggro(1.1f, 0.85f);
             f.stagingTile = staging;
             if (go) {
                 f.staging = false; f.posture = Posture.Aggressive; f.assault = true; f.gatedAssault = true;
