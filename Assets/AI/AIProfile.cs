@@ -58,6 +58,8 @@ namespace HexTactica.AI {
         [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]
         public int scoutRadius = 3;
         public int scoutAreas = 2;
+        [Tooltip("Campaign task forces gather at their staging tile before going in (AIStrategic.GatherThenGo). Off: aggressive as soon as they are given what they need.")]
+        public bool campaignGather = true;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
