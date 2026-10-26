@@ -83,17 +83,26 @@ public class HexGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Grow the board to <paramref name="newWidth"/> (a map saved on a bigger board): the tiles there
-    /// stay as they are and where they are, the new ones around them are made as the scene makes its
-    /// own, and every tile's neighbours are worked out again. False if it is already that big.
+    /// Make the board <paramref name="newWidth"/> wide (the size a map was saved on), bigger or smaller:
+    /// tiles that still fit stay as they are and where they are, those that no longer fit are
+    /// removed, new ones around them are made as the scene makes its own, and every tile's
+    /// neighbours are worked out again. Units and buildings should be cleared first (a load does).
+    /// False if it is that size already.
     /// </summary>
-    public bool EnsureWidth(int newWidth) {
-        if (newWidth <= width) return false;
-        List<HexTile> kept = new List<HexTile>(tiles);
+    public bool SetWidth(int newWidth) {
+        if (newWidth <= 0 || newWidth == width) return false;
+        int half = newWidth / 2;
+        List<HexTile> kept = new List<HexTile>();
+        foreach (HexTile t in tiles) {
+            if (t == null) continue;
+            bool fits = t.x + half >= 0 && t.y + half >= 0 && t.z + half >= 0 && t.x + half < newWidth && t.y + half < newWidth && t.z + half < newWidth;
+            if (fits) kept.Add(t);
+            else Destroy(t.gameObject);
+        }
         width = newWidth;
+        tiles = kept;
         Grid = new HexTile[width, width, width];
         foreach (HexTile t in kept) {
-            if (t == null) continue;
             Grid[t.x + width / 2, t.y + width / 2, t.z + width / 2] = t;
             t.neighbors.Clear();
         }

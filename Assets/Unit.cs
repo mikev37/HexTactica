@@ -155,6 +155,26 @@ public class Unit : MonoBehaviour
     /// <summary>Strength that fires back when this unit is attacked: Strength less the suppressed pips (not below 0).</summary>
     public int RetaliationStrength { get { return Mathf.Max(0, Strength - Mathf.Clamp(suppressed, 0, Strength)); } }
 
+    /// <summary>
+    /// Destroyed some other way than by dying (deleted in the editor's Hierarchy, the scene closing):
+    /// off every list and off its tile, so nothing reads it afterwards.
+    /// </summary>
+    void OnDestroy() {
+        if (dead) return;
+        dead = true;
+        if (owner != null && owner.units != null) owner.units.Remove(this);
+        if (UnitController.uc != null) UnitController.uc.units.Remove(this);
+        if (transported != null) {
+            foreach (Unit c in transported) if (c != null && c.trasnporter == this) c.trasnporter = null;
+            transported.Clear();
+        }
+        if (trasnporter != null && trasnporter.transported != null) trasnporter.transported.Remove(this);
+        trasnporter = null;
+        if (tile != null && tile.occupier == this) tile.occupier = null;
+        tile = null;
+        FogOfWar.Changed();
+    }
+
     internal void Delete() {
         DieActual();
         Destroy(gameObject);
