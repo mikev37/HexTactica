@@ -46,6 +46,8 @@ namespace HexTactica.AI {
         /// <summary>The combat power the campaign objective needs (AICampaign: the enemy there times objectiveForceRatio).</summary>
         public float campaignNeed;
         /// <summary>How strongly this front's objective, staging and march pull its units (AIProfile.campaignPull for a campaign's; 1 otherwise).</summary>
+        /// <summary>A campaign task force's front (AICampaign): its units move toward its goal in the world comparison too (AIProfile.campaignStep).</summary>
+        public bool campaign;
         public float pullScale = 1f;
         /// <summary>How large the staging ground is (hexes around the staging tile).</summary>
         public int campaignStagingRadius;

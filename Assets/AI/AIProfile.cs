@@ -62,6 +62,14 @@ namespace HexTactica.AI {
         public bool campaignGather = true;
         [Tooltip("How strongly campaign fronts pull their units toward their objectives and staging grounds, as a multiple of an ordinary front's pull. The units still choose their own moves: this only weighs where they would rather be.")]
         public float campaignPull = 1f;
+        /// <summary>
+        /// How much the campaign's plan weighs against the fight in front of a unit: each step a move
+        /// takes toward its task force's goal (its staging ground while gathering, else its objective;
+        /// no further than the force's pace) is worth this many of the unit's strength points in the
+        /// simulated outcome the tactical layer chooses by. 0: the plan only breaks ties (campaignPull).
+        /// The units choose their own moves either way; this is how hard the plan leans on them.
+        /// </summary>
+        public float campaignStep = 1f;
         [Tooltip("A task force goes once this share of its healthy power is on its staging ground (or what is there meets its need): so 90% does not wait for the last 10%.")]
         [Range(0f, 1f)]
         public float campaignGatherShare = 0.6f;
