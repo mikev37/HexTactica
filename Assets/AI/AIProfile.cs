@@ -89,9 +89,9 @@ namespace HexTactica.AI {
         [Tooltip("Bonus multiplier when an attack finishes the target.")]
         public float killBonus = 1.35f;
 
-        [Tooltip("Forecast boldness: the enemy's reply in the forecast lands this fraction lighter (0 = full worst case, 0.5 = half). The enemy still picks its targets on full damage; only what it costs us is discounted. Real opponents attack less than the forecast's all-out reply.")]
+        [Tooltip("Forecast boldness: the enemy's reply in the forecast lands this fraction lighter (0 = full worst case, 0.5 = half). The enemy still picks its targets on full damage; only what it costs us is discounted. Real opponents attack less than the forecast's all-out reply. 0.5 beat 0.3 in 18 of 32 big-map games (+737k; ChanceMeeting 6 of 8, BushWar 2 of 8).")]
         [Range(0f, 0.5f)]
-        public float replyDiscount = 0.3f;
+        public float replyDiscount = 0.5f;
 
         [Tooltip("The forecast's enemy weighs its own risk: an attack counts only if it is worth more than what our counterattack would cost the attacker on its firing tile (beyond what it risks staying put), times enemyCaution.")]
         public bool enemyWeighsRisk = true;
