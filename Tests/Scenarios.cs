@@ -3129,7 +3129,7 @@ public static class Scenarios {
                 float[] lead = new float[2];
                 // The champion's own game (k = 1) is the same every time: kept in BENCH_CACHE, if given.
                 string cacheFile = Environment.GetEnvironmentVariable("BENCH_CACHE");
-                string key = fog + "|" + Path.GetFullPath(Find(map)) + "|" + rounds + "|" + chName + (seed != 0 ? "|seed " + seed : "");
+                string key = fog + "|" + Path.GetFileName(Find(map)) + "|" + rounds + "|" + chName + (seed != 0 ? "|seed " + seed : "");
                 bool cached = false;
                 if (!string.IsNullOrEmpty(cacheFile) && File.Exists(cacheFile))
                     foreach (string line in File.ReadAllLines(cacheFile)) {

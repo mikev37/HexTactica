@@ -150,7 +150,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < map.enemyUnits.Count; i++) enemyArmy += CombatPower(map.enemyUnits[i]);
             float army = enemyArmy <= 0.01f ? 99f : ownArmy / enemyArmy;
             foreach (Front f in fronts) { f.armyRatio = profile.useArmyRatio ? army : 0f; Appraise(f, map, profile); }
-            AssignUnits(fronts, map);
+            if (profile.frontBalance > 0f) AssignBalanced(fronts, map, profile.frontBalance); else AssignUnits(fronts, map);
             foreach (Front f in fronts) DecidePosture(f, map, profile, memory);
             DecideStaging(fronts, map, profile, assaulting);
             if (memory != null) {
@@ -283,6 +283,55 @@ namespace HexTactica.AI {
                 float bestScore = float.NegativeInfinity;
                 for (int j = 0; j < fronts.Count; j++) {
                     Front f = fronts[j];
+                    if (f.center == null) continue;
+                    float score = f.priority / (1f + map.Travel(u, u.tile, f.center));
+                    if (score > bestScore) { bestScore = score; best = f; }
+                }
+                if (best != null) best.assigned.Add(u);
+            }
+        }
+
+        /// <summary>
+        /// Every front is met (profile.frontBalance): fighting units are handed out so that each
+        /// front gets combat power to match the enemy's there, times frontBalance, nearest first —
+        /// the closest pairing of a unit and a front still short of it, again and again — and what
+        /// is left over goes by priority as before. By priority alone the front at home took the
+        /// whole army: on ChanceMeeting, 35 units to one front and none to the north, where the
+        /// enemy had sent 18.
+        /// </summary>
+        static void AssignBalanced(List<Front> fronts, AIMap map, float balance) {
+            if (fronts.Count == 0) return;
+            Dictionary<Front, float> need = new Dictionary<Front, float>();
+            foreach (Front f in fronts) if (f.center != null) need[f] = f.enemyStrength * balance;
+            List<Unit> free = new List<Unit>();
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null) free.Add(u);
+            // Units that do not fight (supply, transports) follow the old rule.
+            List<Unit> fighters = free.FindAll(u => CombatPower(u) > 0f);
+            HashSet<Unit> done = new HashSet<Unit>();
+            Dictionary<Unit, Dictionary<Front, int>> travel = new Dictionary<Unit, Dictionary<Front, int>>();
+            foreach (Unit u in fighters) {
+                Dictionary<Front, int> d = new Dictionary<Front, int>();
+                foreach (Front f in need.Keys) d[f] = map.Travel(u, u.tile, f.center);
+                travel[u] = d;
+            }
+            while (true) {
+                Unit bu = null; Front bf = null; int bt = int.MaxValue;
+                foreach (Unit u in fighters) {
+                    if (done.Contains(u)) continue;
+                    foreach (KeyValuePair<Front, int> kv in travel[u]) {
+                        if (need[kv.Key] <= 0f) continue;
+                        if (kv.Value < bt || (kv.Value == bt && bf != null && kv.Key.priority > bf.priority)) { bt = kv.Value; bu = u; bf = kv.Key; }
+                    }
+                }
+                if (bu == null) break;
+                bf.assigned.Add(bu); done.Add(bu);
+                need[bf] -= CombatPower(bu);
+            }
+            foreach (Unit u in free) {
+                if (done.Contains(u)) continue;
+                Front best = null;
+                float bestScore = float.NegativeInfinity;
+                foreach (Front f in fronts) {
                     if (f.center == null) continue;
                     float score = f.priority / (1f + map.Travel(u, u.tile, f.center));
                     if (score > bestScore) { bestScore = score; best = f; }

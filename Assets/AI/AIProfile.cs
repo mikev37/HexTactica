@@ -40,6 +40,9 @@ namespace HexTactica.AI {
         [Range(0, 2)]
         public int choiceMode = 2;
 
+        [Tooltip("Fronts: hand out fighting units so each front gets this many times the enemy's combat power there, nearest first, before the rest go by priority. 0: by priority alone (the front at home takes nearly everything).")]
+        public float frontBalance = 0f;
+
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
         public float worldTie = 0.25f;
