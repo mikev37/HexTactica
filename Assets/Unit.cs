@@ -1025,6 +1025,10 @@ public class Unit : MonoBehaviour
     private void Die(string trigger = "Die") {
         if (deathPlayed) return;
         deathPlayed = true;
+        // Off the board and out of every list first, whatever brought it here (a unit whose strength
+        // reached 0 some other way was destroyed while still listed, and saving the board then
+        // read a destroyed unit).
+        DieActual();
         if (animator != null) animator.SetTrigger(trigger);
         // Not where anyone watching can see it (fog of war): no explosion to give it away.
         FogFader fader = GetComponent<FogFader>();
