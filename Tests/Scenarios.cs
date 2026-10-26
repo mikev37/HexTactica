@@ -392,6 +392,11 @@ public static class Scenarios {
              "A river with one bridge, a road tile at each end and grass beside them. A bridge joins only those roads: no stepping onto it from the grass beside it, or off it onto the grass across; a unit driven back off it goes onto the road.");
         make("rule-swap-sides", "swapSides", (a, o) => { Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Artillery", o, 3, 0); Building c = Rig.PlaceBuilding("City", o, 2, 2); c.capturingPlayer = a; },
              "HexTactica > Swap Sides of Scenario File on this file: every unit and building changes to the other side (the HQs too, and who was capturing what); the player list and terrain are unchanged.");
+        make("rule-building-service", "buildingService", (a, o) => {
+                 Rig.PlaceBuilding("City", a, 4, -4); Put("Grunt", a, 4, -4);
+                 Rig.PlaceBuilding("City", a, -5, 1); Put("Grunt", a, -5, 1);
+                 Put("Grunt", o, 6, -2); },
+             "Two of Blue's cities that service infantry, each with a wounded grunt (strength 3, no ammunition, 2 supplies) on it. Far beyond supply, a city that heals 1 and gives rations but no ammunition: the grunt heals to 4, is fed, and is still out of ammunition. Inside the HQ's supply, a city whose heal of 1 stacks with the network's: the grunt heals to 5 and is refilled.");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
         Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
@@ -829,6 +834,20 @@ public static class Scenarios {
                 bool capturer = city != null && city.capturingPlayer != null && beforeCapturer != null && (city.capturingPlayer.id == aiId) != (beforeCapturer.id == aiId);
                 detail = units + " units, " + flipped + " changed side; " + bFlipped + " of " + bBefore.Count + " buildings changed side; capture progress changed side " + capturer;
                 return units == before.Count && flipped == units && bFlipped == bBefore.Count && capturer;
+            }
+            case "buildingService": {
+                Building far = Rig.At(4, -4).building, near = Rig.At(-5, 1).building;
+                Unit gf = Rig.At(4, -4).occupier, gn = Rig.At(-5, 1).occupier;
+                foreach (Building b in new[] { far, near }) { b.services = new List<Locomotion> { Locomotion.Boots }; b.producesSupply = false; b.healPerTurn = 1; }
+                far.rearm = false; far.refuel = false; far.resupply = true;
+                near.healStacksWithSupply = true;
+                foreach (Unit g in new[] { gf, gn }) { g.Strength = 3; g.ammo = 0; g.supplies = 2; }
+                SupplyNetwork.Result sn = SupplyNetwork.Solve(l.ai, false);
+                bool farOut = !sn.IsSupplied(Rig.At(4, -4)), nearIn = sn.IsSupplied(Rig.At(-5, 1));
+                endTurn(); endTurn();
+                detail = "far city (out of supply " + farOut + "): strength " + gf.Strength + ", ammo " + gf.ammo + ", supplies " + gf.supplies + "/" + gf.suppliesMax
+                       + "; near city (in supply " + nearIn + ", heal stacks): strength " + gn.Strength + ", ammo " + gn.ammo + "/" + gn.ammoMax;
+                return farOut && nearIn && gf.Strength == 4 && gf.ammo == 0 && gf.supplies == gf.suppliesMax && gn.Strength == 5 && gn.ammo == gn.ammoMax;
             }
             case "attritionCutOff": {
                 Unit hub = Rig.At(4, 0).occupier, g = Rig.At(4, 1).occupier;
