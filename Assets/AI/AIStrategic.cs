@@ -434,7 +434,9 @@ namespace HexTactica.AI {
             // going while what is left is assaultBreakoff of that need.
             f.readiness = going ? committed / need : Mathf.Max(gathered / Mathf.Max(1f, force), gathered / need);
             bool go = going ? committed >= need * profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
-                            : gathered >= need || gathered >= force * Mathf.Clamp01(profile.campaignGatherShare);
+                            : gathered >= need || (f.campaignReady && gathered >= force * Mathf.Clamp01(profile.campaignGatherShare));
+            // (The share is of a force that meets the need: a task force short of it went in once 60% of
+            // too little had gathered, fell back outmatched, and went in again the next turn.)
             f.stagingTile = staging;
             if (go) {
                 f.staging = false; f.posture = Posture.Aggressive; f.assault = true; f.gatedAssault = true;
