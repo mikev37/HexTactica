@@ -461,6 +461,8 @@ public static class Scenarios {
                  Put("Tank", a, 0, -3); Put("Tank", o, 1, -3);
                  Rig.At(3, 0).terrain = T("Forest"); },
              "Aircraft are never ambushed by land or sea units: a helicopter attacking a tank on grassland, or a veteran grunt in a forest, fires first; land units still ambush each other as before (a veteran tank on grassland fires first against a tank), and an aircraft can still be fired on first by a veteran aircraft.");
+        make("editor-board-grows", "boardGrows", (a, o) => { Put("Grunt", a, -3, 0); },
+             "Loading a map made on a bigger board than the scene's: the board grows to fit it (the file's width, or wide enough for its farthest tile) rather than leaving the outer tiles off. The tiles already there stay where they are, with what is on them; every tile has its neighbours again (an old edge tile now six); the cached rings of tiles are worked out again; a board already big enough is left alone.");
         make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
              "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (the ground every building lays, Urban, once BuildingGround, found whether the list has it or not) comes back as it was: building tiles keep that ground and the ground under, nothing fails; a save naming it BuildingGround gets Urban. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -1295,6 +1297,42 @@ public static class Scenarios {
                 r.Add("enemy behind the hill unseen " + hidden + ", next to the grunt seen " + adjacent);
                 detail = string.Join("; ", r.ToArray());
                 return flat && hill && mountain && edgeOne && edgeTwo && air && sea1 && sea2 && hidden && adjacent;
+            }
+            case "boardGrows": {
+                HexGenerator hg = HexGenerator.hg;
+                List<string> r = new List<string>();
+                hg.makeTile = at => {
+                    HexTile t = Rig.New<HexTile>();
+                    t.neighbors = new List<HexTile>(); t.aiData = new AITileData();
+                    t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>();
+                    t.terrain = ScenarioFile.Terrain("Grassland");
+                    return t;
+                };
+                try {
+                    int w0 = hg.width, n0 = hg.tiles.Count;
+                    HexTile centre = Rig.At(0, 0), edge = Rig.At(7, 0);
+                    Unit g = Rig.At(-3, 0).occupier;
+                    int edgeRing = HexTactica.AI.AIPath.TilesInRangeShared(edge, 0, 1).Count;
+                    bool same = !hg.EnsureWidth(w0) && hg.width == w0;
+                    int need = w0 + 6;
+                    Defective.JSON.JSONObject file = new Defective.JSON.JSONObject("{\"width\":" + need + ",\"tiles\":[]}");
+                    bool grew = HexTactica.Harness.ScenarioLoader.FitBoard(file) && hg.width == need;
+                    bool kept = Rig.At(0, 0) == centre && Rig.At(7, 0) == edge && Rig.At(-3, 0).occupier == g && g.tile == Rig.At(-3, 0);
+                    int bad = 0, interior = 0, six = 0;
+                    HashSet<long> coords = new HashSet<long>();
+                    foreach (HexTile t in hg.tiles) {
+                        if (hg.get(t.x, t.y, t.z) != t || t.x + t.y + t.z != 0 || !coords.Add(t.x * 100000L + t.y)) bad++;
+                        foreach (HexTile n in t.neighbors) if (!n.neighbors.Contains(t) || t.Distance(n) != 1) bad++;
+                        if (t.neighbors.Count > 6) bad++;
+                        if (Mathf.Max(Mathf.Abs(t.x), Mathf.Max(Mathf.Abs(t.y), Mathf.Abs(t.z))) < 10) { interior++; if (t.neighbors.Count == 6) six++; }
+                    }
+                    int edgeNow = HexTactica.AI.AIPath.TilesInRangeShared(edge, 0, 1).Count;
+                    bool far = hg.get(10, -10, 0) != null;
+                    r.Add("board " + w0 + " wide, " + n0 + " tiles; asked for its own width: left alone " + same + "; a file " + need + " wide: grew " + grew + " to " + hg.tiles.Count + " tiles");
+                    r.Add("tiles there kept, the grunt on its tile " + kept + "; tiles wrong " + bad + "; tiles within 9 of the centre with six neighbours " + six + " of " + interior + "; old edge tile (7,0): ring of " + edgeRing + " then " + edgeNow + "; (10,-10) exists " + far);
+                    detail = string.Join("; ", r.ToArray());
+                    return same && grew && kept && bad == 0 && six == interior && edgeRing == 3 && edgeNow == 6 && far;
+                } finally { hg.makeTile = null; }
             }
             case "editorLoad": {
                 // The terrains the scene's LevelEditor lists (Assets/Scenes/SampleScene.unity), and every building prefab.

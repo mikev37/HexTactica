@@ -77,6 +77,8 @@ namespace HexTactica.Harness {
                 });
             }
 
+            // A map made on a bigger board than the scene's: the board grows to fit it.
+            FitBoard(obj);
             // A file covers only its own map; the rest of the scene's board is water. Without this a
             // radius-7 scenario on the radius-15 board would leave a ring of unedited land around it.
             FloodWater();
@@ -288,6 +290,27 @@ namespace HexTactica.Harness {
         }
     
         /// <summary>Every tile of the board to Water, before a file's tiles are applied.</summary>
+        /// <summary>
+        /// Grow the scene's board (HexGenerator.EnsureWidth) to the file's: its "width", or wide enough
+        /// for its farthest tile. True if it grew.
+        /// </summary>
+        public static bool FitBoard(JSONObject obj) {
+            if (HexGenerator.hg == null || obj == null) return false;
+            int need = obj.GetField("width") != null ? (int)obj.GetField("width").intValue : 0;
+            JSONObject tiles = obj.GetField("tiles");
+            if (tiles != null) {
+                JSONObjectEnumerator e = tiles.GetEnumerator();
+                while (e.MoveNext()) {
+                    TileData td = JsonUtility.FromJson<TileData>(e.Current.Print());
+                    int far = Mathf.Max(Mathf.Abs(td.x), Mathf.Max(Mathf.Abs(td.y), Mathf.Abs(td.z)));
+                    need = Mathf.Max(need, 2 * far + 1);
+                }
+            }
+            if (!HexGenerator.hg.EnsureWidth(need)) return false;
+            UnityEngine.Debug.Log("Scenario: the board grew to width " + need + " to fit this map.");
+            return true;
+        }
+
         public static void FloodWater() {
             if (HexGenerator.hg == null || LevelEditor.singleton == null) return;
             TerrainData water = LevelEditor.loadTerrain("Water");

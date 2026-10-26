@@ -96,8 +96,12 @@ public class HexTile : MonoBehaviour
     public Transform unitPlacement;
 
     // Start is called before the first frame update
-    void Start()
+    void Start() { Init(); }
+
+    /// <summary>Per-player state and supply borders (Start; HexGenerator.EnsureWidth calls it at once for tiles it makes).</summary>
+    public void Init()
     {
+        if (threat != null) return;
         aiData = new AITileData();
         threat = new Dictionary<Player, Heat>();
         supply = new Dictionary<Player, int>();
