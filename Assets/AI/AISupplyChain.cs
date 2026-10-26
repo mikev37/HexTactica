@@ -87,22 +87,29 @@ namespace HexTactica.AI {
         /// turn, which stay where they are. Tiles other units of ours stand on count as free (they
         /// move first); a supply unit's own tile and tiles another link takes do not.
         /// </summary>
-        public static Plan Make(AIMap map, ICollection<Unit> fixedHubs) {
+        public static Plan Make(AIMap map, ICollection<Unit> fixedHubs) { return Make(map, fixedHubs, null, null, null); }
+
+        /// <summary>
+        /// A chain for one task force (AICampaign): toward <paramref name="objective"/>, of only the
+        /// supply units in <paramref name="only"/>, never ahead of <paramref name="army"/>. Nulls: the
+        /// whole army's chain toward the nearest enemy HQ.
+        /// </summary>
+        public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
             Plan plan = new Plan();
-            plan.objective = Objective(map);
+            plan.objective = objective ?? Objective(map);
             if (plan.objective == null) return plan;
             Dictionary<HexTile, int> toObj = map.LandSteps(plan.objective);
             System.Func<HexTile, int> steps = t => { int s; return t != null && toObj.TryGetValue(t, out s) ? s : int.MaxValue; };
 
             // The army's front: the fighting unit nearest the objective over land.
-            foreach (Unit u in map.ownUnits) {
+            foreach (Unit u in (IEnumerable<Unit>)army ?? map.ownUnits) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                 if (LocomotionRules.NeedsBase(u.locomotion)) continue;
                 plan.frontSteps = Mathf.Min(plan.frontSteps, steps(u.tile));
             }
 
             List<SupplyPoint> hubs = new List<SupplyPoint>();
-            foreach (SupplyPoint h in map.ownHubs) if (IsLink(h)) hubs.Add(h);
+            foreach (SupplyPoint h in map.ownHubs) if (IsLink(h) && (only == null || only.Contains(h))) hubs.Add(h);
             // Rearmost first.
             hubs.Sort((a, b) => { int c = steps(b.myUnit.tile).CompareTo(steps(a.myUnit.tile)); return c != 0 ? c : AIMap.CompareUnits(a.myUnit, b.myUnit); });
 

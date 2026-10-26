@@ -2798,6 +2798,7 @@ public static class Scenarios {
                         foreach (Unit x in m.ownUnits) contact += " " + x.name.Substring(0, 2) + D(x.tile) + "=" + m.TurnsToContact(x);
                         Console.WriteLine("    turns to contact:" + contact);
                         foreach (Objective o in full.CurrentObjectives) Console.WriteLine("    objective " + o);
+                        if (full.CurrentCampaign != null) foreach (string line in full.CurrentCampaign.Describe()) Console.WriteLine("    " + line);
                         Console.WriteLine("    objective pulls this turn: " + full.CurrentAssignments.Count);
                         foreach (Front f in full.CurrentFronts)
                             Console.WriteLine("    front " + f + (f.objectiveTile != null ? " objective " + D(f.objectiveTile) + " value " + f.objectiveValue.ToString("0") : "")
