@@ -2837,7 +2837,7 @@ public static class Scenarios {
 
     /// <summary>One scenario, narrated: the board after every turn and every decision's reasoning.</summary>
     public static void Narrate(string name, int rounds, Action<AIProfile> tweak) {
-        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), Environment.GetEnvironmentVariable("OPPONENT"), tweak);
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), Environment.GetEnvironmentVariable("OPPONENT"), tweak, Tests.Tweak(Environment.GetEnvironmentVariable("SET_RED")));
         Console.WriteLine(l.meta.Name + ": " + l.meta.Get("question", ""));
         Console.WriteLine("Blue (upper case) is this AI; Red (lower case) is " + l.meta.Get("opponent", "?") + ".");
         Console.Write(Draw());

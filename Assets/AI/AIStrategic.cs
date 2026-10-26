@@ -166,7 +166,10 @@ namespace HexTactica.AI {
             foreach (Front f in fronts) DecidePosture(f, map, profile, memory);
             HashSet<HexTile> wasAssaulting = assaulting != null ? new HashSet<HexTile>(assaulting) : new HashSet<HexTile>();
             DecideStaging(fronts, map, profile, assaulting);
-            foreach (Front f in fronts) if (f.campaignStaging != null) GatherThenGo(f, map, profile, wasAssaulting);
+            foreach (Front f in fronts) if (f.campaignStaging != null) {
+                if (profile.campaignGather) GatherThenGo(f, map, profile, wasAssaulting);
+                else if (f.campaignReady) f.posture = Posture.Aggressive;   // as first built: goes once given what it needs
+            }
             if (memory != null) {
                 // Staging is a pause in an attack, not a change of mind: remember it as aggressive.
                 foreach (Front f in fronts) if (f.objectiveTile != null) memory[f.objectiveTile] = f.staging ? Posture.Aggressive : f.posture;
