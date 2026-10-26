@@ -57,6 +57,18 @@ namespace HexTactica.AI {
             return bought;
         }
 
+        /// <summary>For diagnostics: each unit <paramref name="b"/> can build, with its value against the enemy now, its cost, and value per cost.</summary>
+        public static List<string> Rank(Player p, Building b, AIMap map) {
+            List<string> r = new List<string>();
+            foreach (Unit t in b.Purchasable()) {
+                if (t.cost <= 0 || t.Hub != null || t.Firepower <= 0) continue;
+                HexTile at = b.tile;
+                float v = Value(t, at, map);
+                r.Add(string.Format("{0,-24} cost {1,6} value {2,7:0} per 1000 gold {3,6:0.0}", GameController.UnitName(t), t.cost, v, v / t.cost * 1000f));
+            }
+            return r;
+        }
+
         /// <summary>A footprint tile of <paramref name="b"/> where <paramref name="t"/> could be built now.</summary>
         static HexTile FreeTile(Building b, Unit t, AIMap map) {
             foreach (HexTile x in b.Footprint) if (x.occupier == null && t.CanEnter(x) && AIAir.MayBuildOn(x, map)) return x;

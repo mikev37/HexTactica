@@ -67,6 +67,17 @@ public static class Tests {
                              Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
             return 0;
         }
+        if (probe == "buyvalue") {
+            // PROBE=buyvalue FILE=<board> [SIDE=Red]: what that side's buildings can build, valued as AIProduction values them.
+            ScenarioFile.Loaded l = ScenarioFile.Load(Scenarios.Find(Environment.GetEnvironmentVariable("FILE")), "Full", null, null);
+            Player p = Environment.GetEnvironmentVariable("SIDE") == "Red" ? l.other : l.ai;
+            HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(p, p.GetComponent<AIPlayer>().Profile);
+            foreach (Building b in Building.all) if (b != null && b.owner == p && b.Purchasable().Count > 0) {
+                Console.WriteLine(b.name + " at (" + b.tile.x + "," + b.tile.y + "), money " + p.money + ":");
+                foreach (string line in HexTactica.AI.AIProduction.Rank(p, b, m)) Console.WriteLine("  " + line);
+            }
+            return 0;
+        }
         if (probe == "suite") {
             Scenarios.Suite(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
                             Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
