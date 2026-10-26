@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"editor-board-grows","kind":"rules","opponent":"Human","rounds":"4","check":"boardGrows","question":"Loading a map made on a bigger board than the scene's: the board grows to fit it (the file's width, or wide enough for its farthest tile) rather than leaving the outer tiles off. The tiles already there stay where they are, with what is on them; every tile has its neighbours again (an old edge tile now six); the cached rings of tiles are worked out again; a board already big enough is left alone.","rules":"standard"},
+"test":{"name":"editor-board-grows","kind":"rules","opponent":"Human","rounds":"4","check":"boardGrows","question":"Loading a map: the board is made the size the map was made on (the file's width, never too small for its farthest tile), bigger or smaller, rather than leaving outer tiles off or a ring of water around it. The tiles already there stay where they are, with what is on them; every tile has its neighbours again (an old edge tile now six); the cached rings of tiles are worked out again; a board already that size is left alone; made smaller, the tiles beyond it go and no tile keeps a neighbour that has gone.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},

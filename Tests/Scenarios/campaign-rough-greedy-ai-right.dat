@@ -1,7 +1,7 @@
 {
 "width":27,
 "active":0,
-"test":{"name":"campaign-rough-greedy-ai-right","kind":"campaign","opponent":"Greedy","rounds":"60","check":"report","question":"Radius-13 map campaign-rough (mountain 0.15, water 0.15, forest 0.3), sixteen units a side, three supply units. The left side moves first."},
+"test":{"name":"campaign-rough-greedy-ai-right","kind":"campaign","opponent":"Greedy","rounds":"60","check":"report","question":"Radius-13 map campaign-rough (mountain 0.15, water 0.15, forest 0.3), twenty-five units a side: six supply units, two APCs, two trucks, two recons. The left side moves first."},
 "tiles":[
 {"x":-13,"y":0,"z":13,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-13,"y":1,"z":12,"damage":0,"combatCount":0,"terrain":"Grassland"},
@@ -572,6 +572,15 @@
 {"x":9,"y":0,"z":-9,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":9,"y":1,"z":-10,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":10,"y":-1,"z":-9,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":9,"y":2,"z":-11,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":11,"y":-2,"z":-9,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":9,"y":3,"z":-12,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":12,"y":-3,"z":-9,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":10,"y":3,"z":-13,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":13,"y":-3,"z":-10,"Strength":6,"Veterancy":0,"personalName":"Truck Variant","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Truck Variant","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":8,"y":0,"z":-8,"Strength":6,"Veterancy":0,"personalName":"Truck Variant","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Truck Variant","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":8,"y":1,"z":-9,"Strength":6,"Veterancy":0,"personalName":"Recon","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Recon","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":9,"y":-1,"z":-8,"Strength":6,"Veterancy":0,"personalName":"Recon","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Recon","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":-11,"y":0,"z":11,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":-12,"y":1,"z":11,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":-11,"y":-1,"z":12,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
@@ -587,6 +596,15 @@
 {"x":-11,"y":-2,"z":13,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":-9,"y":0,"z":9,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":-10,"y":1,"z":9,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":-9,"y":-1,"z":10,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
+{"x":-9,"y":-1,"z":10,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-11,"y":2,"z":9,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-9,"y":-2,"z":11,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-12,"y":3,"z":9,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-9,"y":-3,"z":12,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-13,"y":3,"z":10,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-10,"y":-3,"z":13,"Strength":6,"Veterancy":0,"personalName":"Truck Variant","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Truck Variant","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-8,"y":0,"z":8,"Strength":6,"Veterancy":0,"personalName":"Truck Variant","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Truck Variant","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-9,"y":1,"z":8,"Strength":6,"Veterancy":0,"personalName":"Recon","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Recon","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":-8,"y":-1,"z":9,"Strength":6,"Veterancy":0,"personalName":"Recon","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Recon","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

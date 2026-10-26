@@ -244,7 +244,9 @@ public class LevelEditor : MonoBehaviour
         BuildingController.bc.Place(singleton.placeNeutral ? null : GameController.gc.activePlayer, singleton.bt, t);
     }
 
+    /// <summary>Placing units: on an empty tile, a new one; clicking a unit again removes it (as with buildings).</summary>
     public static void PlaceNewUnit(HexTile t) {
+        if (t.occupier != null) { t.occupier.Delete(); return; }
         PlaceNewUnit(GameController.gc.activePlayer, singleton.ut,t);
     }
 }

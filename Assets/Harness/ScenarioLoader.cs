@@ -291,8 +291,8 @@ namespace HexTactica.Harness {
     
         /// <summary>Every tile of the board to Water, before a file's tiles are applied.</summary>
         /// <summary>
-        /// Grow the scene's board (HexGenerator.EnsureWidth) to the file's: its "width", or wide enough
-        /// for its farthest tile. True if it grew.
+        /// Make the scene's board the file's size (HexGenerator.SetWidth), bigger or smaller: its
+        /// "width", and never too small for its farthest tile. True if the board changed.
         /// </summary>
         public static bool FitBoard(JSONObject obj) {
             if (HexGenerator.hg == null || obj == null) return false;
@@ -306,8 +306,10 @@ namespace HexTactica.Harness {
                     need = Mathf.Max(need, 2 * far + 1);
                 }
             }
-            if (!HexGenerator.hg.EnsureWidth(need)) return false;
-            UnityEngine.Debug.Log("Scenario: the board grew to width " + need + " to fit this map.");
+            if (need <= 0) return false;
+            int was = HexGenerator.hg.width;
+            if (!HexGenerator.hg.SetWidth(need)) return false;
+            UnityEngine.Debug.Log("Scenario: the board is now " + need + " wide (was " + was + "), as this map was made.");
             return true;
         }
 

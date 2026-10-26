@@ -462,7 +462,9 @@ public static class Scenarios {
                  Rig.At(3, 0).terrain = T("Forest"); },
              "Aircraft are never ambushed by land or sea units: a helicopter attacking a tank on grassland, or a veteran grunt in a forest, fires first; land units still ambush each other as before (a veteran tank on grassland fires first against a tank), and an aircraft can still be fired on first by a veteran aircraft.");
         make("editor-board-grows", "boardGrows", (a, o) => { Put("Grunt", a, -3, 0); },
-             "Loading a map made on a bigger board than the scene's: the board grows to fit it (the file's width, or wide enough for its farthest tile) rather than leaving the outer tiles off. The tiles already there stay where they are, with what is on them; every tile has its neighbours again (an old edge tile now six); the cached rings of tiles are worked out again; a board already big enough is left alone.");
+             "Loading a map: the board is made the size the map was made on (the file's width, never too small for its farthest tile), bigger or smaller, rather than leaving outer tiles off or a ring of water around it. The tiles already there stay where they are, with what is on them; every tile has its neighbours again (an old edge tile now six); the cached rings of tiles are worked out again; a board already that size is left alone; made smaller, the tiles beyond it go and no tile keeps a neighbour that has gone.");
+        make("editor-delete-safely", "deleteSafely", (a, o) => { Put("Grunt", a, -3, 0); Put("APC", a, -2, 1); Put("Grunt", a, -1, 1); Rig.PlaceBuilding("City", a, 2, 2); },
+             "Deleting a unit or building in the editor (its object destroyed in the Hierarchy, not killed in play): it leaves every list and its tile at once, so nothing reads it afterwards (saving the board threw MissingReferenceException). A transport deleted with cargo aboard leaves the cargo unattached.");
         make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
              "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (the ground every building lays, Urban, once BuildingGround, found whether the list has it or not) comes back as it was: building tiles keep that ground and the ground under, nothing fails; a save naming it BuildingGround gets Urban. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -1298,6 +1300,19 @@ public static class Scenarios {
                 detail = string.Join("; ", r.ToArray());
                 return flat && hill && mountain && edgeOne && edgeTwo && air && sea1 && sea2 && hidden && adjacent;
             }
+            case "deleteSafely": {
+                Unit g = Rig.At(-3, 0).occupier, apc = Rig.At(-2, 1).occupier, rider = Rig.At(-1, 1).occupier;
+                Building city = Rig.At(2, 2).building;
+                Transporting.Load(apc, rider);
+                System.Reflection.MethodInfo ud = typeof(Unit).GetMethod("OnDestroy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                System.Reflection.MethodInfo bd = typeof(Building).GetMethod("OnDestroy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                ud.Invoke(g, null); ud.Invoke(apc, null); bd.Invoke(city, null);
+                bool unitGone = !Rig.uc.units.Contains(g) && !a.units.Contains(g) && Rig.At(-3, 0).occupier == null && g.tile == null;
+                bool apcGone = !Rig.uc.units.Contains(apc) && Rig.At(-2, 1).occupier == null && rider.trasnporter == null;
+                bool cityGone = !Building.all.Contains(city) && Rig.At(2, 2).building == null && (BuildingController.bc == null || !BuildingController.bc.buildings.Contains(city));
+                detail = "deleted grunt off the lists and its tile " + unitGone + "; transport too, its cargo unattached " + apcGone + "; city off the lists and its tile " + cityGone;
+                return unitGone && apcGone && cityGone;
+            }
             case "boardGrows": {
                 HexGenerator hg = HexGenerator.hg;
                 List<string> r = new List<string>();
@@ -1313,7 +1328,7 @@ public static class Scenarios {
                     HexTile centre = Rig.At(0, 0), edge = Rig.At(7, 0);
                     Unit g = Rig.At(-3, 0).occupier;
                     int edgeRing = HexTactica.AI.AIPath.TilesInRangeShared(edge, 0, 1).Count;
-                    bool same = !hg.EnsureWidth(w0) && hg.width == w0;
+                    bool same = !hg.SetWidth(w0) && hg.width == w0;
                     int need = w0 + 6;
                     Defective.JSON.JSONObject file = new Defective.JSON.JSONObject("{\"width\":" + need + ",\"tiles\":[]}");
                     bool grew = HexTactica.Harness.ScenarioLoader.FitBoard(file) && hg.width == need;
@@ -1330,8 +1345,19 @@ public static class Scenarios {
                     bool far = hg.get(10, -10, 0) != null;
                     r.Add("board " + w0 + " wide, " + n0 + " tiles; asked for its own width: left alone " + same + "; a file " + need + " wide: grew " + grew + " to " + hg.tiles.Count + " tiles");
                     r.Add("tiles there kept, the grunt on its tile " + kept + "; tiles wrong " + bad + "; tiles within 9 of the centre with six neighbours " + six + " of " + interior + "; old edge tile (7,0): ring of " + edgeRing + " then " + edgeNow + "; (10,-10) exists " + far);
+                    // And smaller: a file made 15 wide.
+                    Defective.JSON.JSONObject small = new Defective.JSON.JSONObject("{\"width\":15,\"tiles\":[]}");
+                    bool shrank = HexTactica.Harness.ScenarioLoader.FitBoard(small) && hg.width == 15;
+                    int outside = 0, bad2 = 0;
+                    foreach (HexTile t in hg.tiles) {
+                        if (Mathf.Max(Mathf.Abs(t.x), Mathf.Max(Mathf.Abs(t.y), Mathf.Abs(t.z))) > 7) outside++;
+                        if (hg.get(t.x, t.y, t.z) != t) bad2++;
+                        foreach (HexTile n in t.neighbors) if (!hg.tiles.Contains(n) || !n.neighbors.Contains(t)) bad2++;
+                    }
+                    bool kept2 = Rig.At(0, 0) == centre && Rig.At(-3, 0).occupier == g && hg.get(10, -10, 0) == null;
+                    r.Add("a file 15 wide: shrank " + shrank + " to " + hg.tiles.Count + " tiles, " + outside + " beyond radius 7, wrong " + bad2 + ", the centre and the grunt kept " + kept2);
                     detail = string.Join("; ", r.ToArray());
-                    return same && grew && kept && bad == 0 && six == interior && edgeRing == 3 && edgeNow == 6 && far;
+                    return same && grew && kept && bad == 0 && six == interior && edgeRing == 3 && edgeNow == 6 && far && shrank && outside == 0 && bad2 == 0 && kept2 && hg.tiles.Count == 169;
                 } finally { hg.makeTile = null; }
             }
             case "editorLoad": {
@@ -2047,8 +2073,9 @@ public static class Scenarios {
 
         n += ExportMatches(CampaignMaps, "campaign", 60,
             new[] { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Grunt", "Grunt", "Tank", "Grunt", "Supplies",
-                    "Artillery", "Grunt", "Tank", "Supplies", "Grunt" },
-            new[] { "Tank", "Grunt", "Tank", "Grunt" }, "sixteen units a side, three supply units");
+                    "Artillery", "Grunt", "Tank", "Supplies", "Grunt", "Supplies", "Supplies", "Supplies",
+                    "APC", "APC", "Truck Variant", "Truck Variant", "Recon", "Recon" },
+            new[] { "Tank", "Grunt", "Tank", "Grunt" }, "twenty-five units a side: six supply units, two APCs, two trucks, two recons");
 
         // ---- behaviour scenarios: one question each.
         {   // The supply unit must not end its turn where the enemy can hit it.
