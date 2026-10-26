@@ -39,6 +39,10 @@ namespace HexTactica.AI {
         /// </summary>
         public float objectiveValue;
         public readonly List<Unit> assigned = new List<Unit>();
+        /// <summary>A campaign objective's own place to gather (AICampaign: on the way that avoids the enemy's fire), instead of the supplied tile nearest the objective.</summary>
+        public HexTile campaignStaging;
+        /// <summary>A campaign task force with the power its objective needs: it goes (aggressive), gathering first as any attack does.</summary>
+        public bool campaignReady;
 
         /// <summary>Whole-army combat power ratio, own over enemy (set by BuildFronts).</summary>
         public float armyRatio = 1f;
@@ -151,7 +155,16 @@ namespace HexTactica.AI {
             float army = enemyArmy <= 0.01f ? 99f : ownArmy / enemyArmy;
             foreach (Front f in fronts) { f.armyRatio = profile.useArmyRatio ? army : 0f; Appraise(f, map, profile); }
             AssignUnits(fronts, map);
-            foreach (Front f in fronts) DecidePosture(f, map, profile, memory);
+            Finish(fronts, map, profile, memory, assaulting);
+            return fronts;
+        }
+
+        /// <summary>Posture, staging and the memories of both, for fronts whose units are assigned (BuildFronts; AICampaign).</summary>
+        public static void Finish(List<Front> fronts, AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory, HashSet<HexTile> assaulting) {
+            foreach (Front f in fronts) {
+                DecidePosture(f, map, profile, memory);
+                if (f.campaignReady) f.posture = Posture.Aggressive;
+            }
             DecideStaging(fronts, map, profile, assaulting);
             if (memory != null) {
                 // Staging is a pause in an attack, not a change of mind: remember it as aggressive.
@@ -161,8 +174,6 @@ namespace HexTactica.AI {
                 assaulting.Clear();
                 foreach (Front f in fronts) if (f.gatedAssault && f.objectiveTile != null) assaulting.Add(f.objectiveTile);
             }
-
-            return fronts;
         }
 
         static HexTile HomeTile(AIMap map) {
@@ -385,7 +396,9 @@ namespace HexTactica.AI {
             int healthy = Mathf.CeilToInt(MAX_STRENGTH * profile.readyStrength);
             foreach (HexTile objective in order) {
                 List<Front> group = byObjective[objective];
-                HexTile staging = StagingTile(map, objective);
+                HexTile staging = null;
+                foreach (Front f in group) if (f.campaignStaging != null) { staging = f.campaignStaging; break; }
+                if (staging == null) staging = StagingTile(map, objective);
                 if (staging == null) continue;
 
                 float full = 0f, gathered = 0f, committedPower = 0f;

@@ -47,6 +47,8 @@ public class AIPlayer : MonoBehaviour {
 
     AIMap map;
     List<Front> fronts = new List<Front>();
+    /// <summary>This turn's campaign (AIProfile.campaign), kept for the next turn's.</summary>
+    AICampaign campaign;
     List<Unit> queue = new List<Unit>();
     readonly Dictionary<Unit, TransportPlan> transportAssignments = new Dictionary<Unit, TransportPlan>();
     readonly HashSet<Unit> reservedTransports = new HashSet<Unit>();
@@ -439,7 +441,14 @@ public class AIPlayer : MonoBehaviour {
         }
         for (int i = 0; i < stale.Count; i++) intents.Remove(stale[i]);
         { long __p = AIPerf.Begin();
-        fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
+        if (Profile.campaign) {
+            campaign = AICampaign.Plan(map, Profile, campaign);
+            fronts = campaign.Fronts(map, Profile, postureMemory, assaultMemory);
+            if (Trace != null) foreach (string line in campaign.Describe()) Trace("   " + line);
+        } else {
+            campaign = null;
+            fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
+        }
         AIPerf.End("prepare: fronts", __p); }
         if (Trace != null) foreach (Front f in fronts)
             Trace("   front " + f + (f.objectiveTile != null ? " objective (" + f.objectiveTile.x + "," + f.objectiveTile.y + ") value " + f.objectiveValue.ToString("0") : "")
@@ -448,7 +457,11 @@ public class AIPlayer : MonoBehaviour {
         objectives = AIObjectives.Build(map, Profile);
         AIPerf.End("prepare: objectives", __p); }
         assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
-        AIObjectives.AssignScouts(assignments, map, Profile);
+        if (campaign != null) {
+            // The campaign's scouts are pulled to the ground they are to look at.
+            foreach (CampaignObjective o in campaign.objectives)
+                if (o.kind == CampaignKind.Scout) foreach (Unit u in o.units) assignments[u] = new Objective { kind = ObjectiveKind.Scout, tile = o.target, value = o.value, committed = true };
+        } else AIObjectives.AssignScouts(assignments, map, Profile);
         if (Trace != null) foreach (KeyValuePair<Unit, Objective> kv in assignments)
             if (kv.Value.kind == ObjectiveKind.Scout) Trace("   scout " + kv.Key.name.Replace("(Clone)", "") + " (" + kv.Key.tile.x + "," + kv.Key.tile.y + ") -> (" + kv.Value.tile.x + "," + kv.Value.tile.y + ") sees " + kv.Value.value.ToString("0.0"));
         objectivePulls += assignments.Count;
@@ -667,10 +680,24 @@ public class AIPlayer : MonoBehaviour {
             }
             // A link of the supply chain: planned again now, with the supply units that have
             // already moved where they are and the army where it went.
-            if (Profile.supplyChain && !Profile.supplyTree && unit.trasnporter == null) {
+            CampaignObjective job = campaign != null ? campaign.ObjectiveOf(hub) : null;
+            if (job != null && unit.trasnporter == null) {
+                // A task force's supply: its own chain toward where it gathers, never ahead of its army.
+                List<Unit> moved = new List<Unit>();
+                foreach (SupplyPoint h in job.hubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
+                AISupplyChain.Plan now = AISupplyChain.Make(map, moved, job.staging ?? job.target, job.hubs, job.units);
+                HexTile link;
+                if (now.links.TryGetValue(hub, out link)) {
+                    if (link == unit.tile) return AIAction.Wait(unit, "supply for " + job.Id + ": holds this link");
+                    return AIAction.Move(unit, link, 0f, "supply for " + job.Id + ": link moves up (" + now.reachSteps + " steps short)");
+                }
+            }
+            if (Profile.supplyChain && !Profile.supplyTree && unit.trasnporter == null && job == null) {
                 List<Unit> moved = new List<Unit>();
                 foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
-                AISupplyChain.Plan now = AISupplyChain.Make(map, moved);
+                List<SupplyPoint> free = null;
+                if (campaign != null) { free = new List<SupplyPoint>(); foreach (SupplyPoint h in map.ownHubs) if (campaign.ObjectiveOf(h) == null) free.Add(h); }
+                AISupplyChain.Plan now = AISupplyChain.Make(map, moved, null, free, null);
                 HexTile link;
                 if (now.links.TryGetValue(hub, out link)) {
                     if (link == unit.tile) return AIAction.Wait(unit, "supply chain: holds this link");
@@ -820,5 +847,6 @@ public class AIPlayer : MonoBehaviour {
     public AIMap CurrentMap { get { return map; } }
     public List<Front> CurrentFronts { get { return fronts; } }
     public List<Objective> CurrentObjectives { get { return objectives; } }
+    public AICampaign CurrentCampaign { get { return campaign; } }
     public Dictionary<Unit, Objective> CurrentAssignments { get { return assignments; } }
 }

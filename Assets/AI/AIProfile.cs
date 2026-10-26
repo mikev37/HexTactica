@@ -40,6 +40,25 @@ namespace HexTactica.AI {
         [Range(0, 2)]
         public int choiceMode = 2;
 
+        [Header("Campaign (objectives and task forces)")]
+        [Tooltip("Plan the war as objectives read from the map — defend our HQ, secure a building, clear an enemy group, scout what the fog hides — each with a task force and supply fit to achieve it, and fight fronts made from them (AICampaign). Off: fronts where the fighting is (AIStrategic).")]
+        public bool campaign = false;
+        [Tooltip("How evenly the campaign spreads the army. 0: all in — enough at home not to be overrun, everything else on the single best objective. 1: every objective it can meet, and what is left spread over all of them.")]
+        [Range(0f, 1f)]
+        public float objectiveSpread = 0.5f;
+        [Tooltip("A task force needs this many times the enemy combat power that could fight where it is going.")]
+        public float objectiveForceRatio = 1.5f;
+        [Tooltip("Turns of a building's income its capture is worth.")]
+        public int objectiveHorizonTurns = 10;
+        [Tooltip("A task force reduced below this share of the power it was formed with sends the campaign back to planning.")]
+        [Range(0f, 1f)]
+        public float objectiveReplanLoss = 0.5f;
+        [Tooltip("The way to an objective: steps of detour worth taking to avoid one tile the enemy can strike next turn (so a middle held in strength is gone round).")]
+        public float routeDanger = 3f;
+        [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]
+        public int scoutRadius = 3;
+        public int scoutAreas = 2;
+
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
         public float worldTie = 0.25f;

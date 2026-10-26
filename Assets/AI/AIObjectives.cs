@@ -307,7 +307,7 @@ namespace HexTactica.AI {
             return total;
         }
 
-        static List<List<Unit>> Clusters(AIMap map) {
+        internal static List<List<Unit>> Clusters(AIMap map) {
             List<Unit> units = new List<Unit>();
             for (int i = 0; i < map.enemyUnits.Count; i++) {
                 Unit e = map.enemyUnits[i];
