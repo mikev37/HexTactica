@@ -76,8 +76,19 @@ public class Player : MonoBehaviour
     Fed UpkeepOne(Unit u, List<Unit> roster, HashSet<Unit> selfSupplying) {
         {
 
-            // On one of our buildings that services its kind (an airport, a naval yard): full service.
-            if (Building.ServicingUnder(u) != null) { Resupplied(u, true); return Fed.Resupplied; }
+            // On one of our buildings that services its kind (an airport, a naval yard, a city): what
+            // that building gives (Building.healPerTurn, rearm, refuel, resupply), together with what
+            // the supply network gives where it reaches (land units, helicopters).
+            Building service = Building.ServicingUnder(u);
+            if (service != null) {
+                bool network = (LocomotionRules.ResuppliedInSupply(u.locomotion) || !LocomotionRules.NeedsBase(u.locomotion)) && u.tile.isSupplied(this);
+                Serviced(u, service, network, true);
+                if (network || service.resupply) return Fed.Resupplied;
+                // Healed or rearmed but given no rations: it lives on its own, as anywhere else.
+                if (LocomotionRules.NeedsBase(u.locomotion)) { Aloft(u, roster); return Fed.Aloft; }
+                Starve(u);
+                return Fed.Starved;
+            }
             // Aircraft and ships take nothing from the supply network and do not starve: they run on
             // fuel. Air units burn minFuelPerTurn every turn away from base (an air tanker beside
             // them at the start of the turn fills them instead); out of fuel, they are ditched.
@@ -107,6 +118,20 @@ public class Player : MonoBehaviour
         u.fuel = u.fuelMax;
         u.supplies = u.suppliesMax;
         u.refuelStock = u.refuelStockMax;
+    }
+
+    /// <summary>
+    /// A turn on a building that services <paramref name="u"/>: the building's heal, ammunition,
+    /// fuel and supplies as it gives them, and — when <paramref name="network"/>, the unit being in
+    /// supply too — the network's full refill and heal of 1 (the larger heal of the two, or both
+    /// when the building's stacks).
+    /// </summary>
+    void Serviced(Unit u, Building b, bool network, bool mayHeal) {
+        int heal = network ? (b.healStacksWithSupply ? 1 + b.healPerTurn : Mathf.Max(1, b.healPerTurn)) : b.healPerTurn;
+        if (mayHeal && heal > 0) u.Strength = Mathf.Min(6, u.Strength + heal);
+        if (network || b.rearm) u.ammo = u.ammoMax;
+        if (network || b.refuel) { u.fuel = u.fuelMax; u.refuelStock = u.refuelStockMax; }
+        if (network || b.resupply) u.supplies = u.suppliesMax;
     }
 
     /// <summary>Upkeep of an aircraft or ship away from its base (see StartTurn).</summary>
