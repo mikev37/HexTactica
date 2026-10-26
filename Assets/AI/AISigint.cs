@@ -190,6 +190,9 @@ namespace HexTactica.AI {
             return d;
         }
 
+        /// <summary>Ground that may hide anything: never seen, or not for fogUnknownTurns turns.</summary>
+        public bool Unknown(HexTile t) { return t != null && unknown.Contains(t); }
+
         /// <summary>Could an enemy we have lost track of be standing on <paramref name="t"/>? (Its confidence, the highest.)</summary>
         public float Presence(HexTile t) {
             float best = 0f;

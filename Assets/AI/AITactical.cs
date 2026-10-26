@@ -347,7 +347,20 @@ namespace HexTactica.AI {
                 o.denial = d;
                 float positional = float.IsNegativeInfinity(o.positional) ? 0f : o.positional;
                 o.rest = o.denial.gold + positional;
-                if (profile.noiseSeed != 0 && profile.decisionNoise > 0f) o.rest += Noise(profile.noiseSeed, unit, o.stop) * profile.decisionNoise * worth;
+                // A campaign task force (AICampaign) moves as one, without forcing anyone's move: a move with
+                // no shot that leaves this unit ahead of its force's pace (Front.paceLimit), or — while the
+                // force gathers — further off its staging ground than it already is, costs a strength point
+                // a step. (The tanks took the forward chokepoints for their denial value on turn one, far from
+                // where their force was gathering, and were destroyed there, alone.)
+                Front pf = context.front;
+                if (pf != null && !o.shot.valid && o.stop != unit.tile && (pf.paceLimit >= 0 || (pf.staging && pf.campaignStaging != null && pf.stagingTile != null))) {
+                    int ahead = 0;
+                    if (pf.staging && pf.campaignStaging != null && pf.stagingTile != null) {
+                        int now = map.Travel(unit, unit.tile, pf.stagingTile), then = map.Travel(unit, o.stop, pf.stagingTile);
+                        ahead = then - Mathf.Max(pf.campaignStagingRadius, now);
+                    } else if (pf.objectiveTile != null) ahead = pf.paceLimit - map.Travel(unit, o.stop, pf.objectiveTile);
+                    if (ahead > 0) o.rest = positional - ahead * worth;
+                }
                 // Same tile, same position: the better simulated world (shoot or not, and at whom) decides.
                 if (best == null || o.rest > best.rest
                     || (o.rest == best.rest && o.world.score > best.world.score)
@@ -618,8 +631,10 @@ namespace HexTactica.AI {
             float scale = front != null ? front.pullScale : 1f;
             HexTile goal = front != null && front.campaignStaging != null && front.staging && front.stagingTile != null ? front.stagingTile : (front != null ? front.objectiveTile : null);
             float before = bonus;
+            // Keeping together: a tile closer than the task force's pace counts as far as it is ahead.
+            System.Func<int, int> paced = dd => front != null && front.paceLimit >= 0 && dd < front.paceLimit ? 2 * front.paceLimit - dd : dd;
             if (front != null && front.objectiveTile != null) {
-                int d = context.map.Travel(unit, tile, goal);
+                int d = paced(context.map.Travel(unit, tile, goal));
                 bool building = front.objective != null;
                 bool canTake = building && Building.CanCapture(unit);
 
@@ -651,7 +666,7 @@ namespace HexTactica.AI {
             // fades to nothing with distance.
             if (context.profile.marchWeight > 0f && front != null && front.objectiveTile != null && unit.tile != null
                 && unit.Hub == null && context.map.TurnsToContact(unit) > context.profile.objectiveContactTurns) {
-                int gained = context.map.Travel(unit, unit.tile, goal) - context.map.Travel(unit, tile, goal);
+                int gained = paced(context.map.Travel(unit, unit.tile, goal)) - paced(context.map.Travel(unit, tile, goal));
                 // Gathering on the staging ground: no step further is worth anything once on it.
                 if (front.campaignStaging != null && front.staging && context.map.Travel(unit, unit.tile, goal) <= front.campaignStagingRadius) gained = 0;
                 bonus += worth * context.profile.marchWeight * gained;
