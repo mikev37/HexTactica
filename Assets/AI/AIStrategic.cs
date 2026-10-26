@@ -49,6 +49,8 @@ namespace HexTactica.AI {
         public float pullScale = 1f;
         /// <summary>How large the staging ground is (hexes around the staging tile).</summary>
         public int campaignStagingRadius;
+        /// <summary>A campaign task force keeps together: no reward for ending closer to its goal than this (by travel), and a cost for each step beyond. -1: none.</summary>
+        public int paceLimit = -1;
 
         /// <summary>Whole-army combat power ratio, own over enemy (set by BuildFronts).</summary>
         public float armyRatio = 1f;
@@ -174,6 +176,8 @@ namespace HexTactica.AI {
                 if (profile.campaignGather) GatherThenGo(f, map, profile, wasAssaulting);
                 else if (f.campaignReady) f.posture = Posture.Aggressive;   // as first built: goes once given what it needs
             }
+            // A campaign task force on the move keeps together toward wherever it is going now.
+            foreach (Front f in fronts) if (f.pullScale != 1f || f.campaignStaging != null) f.paceLimit = f.staging ? -1 : Pace(f, map);
             if (memory != null) {
                 // Staging is a pause in an attack, not a change of mind: remember it as aggressive.
                 foreach (Front f in fronts) if (f.objectiveTile != null) memory[f.objectiveTile] = f.staging ? Posture.Aggressive : f.posture;
@@ -368,6 +372,32 @@ namespace HexTactica.AI {
         }
 
         const int MAX_STRENGTH = 6;
+
+        /// <summary>
+        /// How close to its objective a task force's units may end (AITactical: no reward for closer,
+        /// and a cost for each step closer): one move short of where its main body — the middle of its
+        /// power — already is, at the pace of its slower half. So the tanks keep pace with the infantry
+        /// instead of arriving alone. -1: nothing to keep together.
+        /// </summary>
+        static int Pace(Front f, AIMap map) {
+            HexTile goal = f.objectiveTile;
+            if (goal == null) return -1;
+            List<KeyValuePair<int, float>> d = new List<KeyValuePair<int, float>>();
+            List<int> moves = new List<int>();
+            float total = 0f;
+            foreach (Unit u in f.assigned) {
+                if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
+                float w = CombatPower(u);
+                d.Add(new KeyValuePair<int, float>(map.Travel(u, u.tile, goal), w)); total += w;
+                if (u.moveRange > 0) moves.Add(u.moveRange);
+            }
+            if (d.Count < 2 || moves.Count == 0) return -1;
+            d.Sort((a, b) => a.Key.CompareTo(b.Key));
+            float acc = 0f; int body = d[d.Count - 1].Key;
+            foreach (KeyValuePair<int, float> kv in d) { acc += kv.Value; if (acc >= total * 0.5f) { body = kv.Key; break; } }
+            moves.Sort();
+            return Mathf.Max(0, body - moves[moves.Count / 2]);
+        }
 
         /// <summary>
         /// A campaign task force (AICampaign) gathers before it goes: it holds at its staging tile

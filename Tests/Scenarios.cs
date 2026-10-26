@@ -2858,6 +2858,7 @@ public static class Scenarios {
                 Player who = ex[0] == "Blue" ? l.ai : l.other;
                 if (who == active) foreach (Unit u in who.units) if (u != null && u.tile != null && u.name.StartsWith(ex[1])) { AITactical.DebugUnit = u; break; }
                 if (AITactical.DebugUnit != null) AITactical.DebugLog = m => Console.WriteLine("      | " + m);
+                AITactical.DebugBreakdown = Environment.GetEnvironmentVariable("BREAKDOWN") != null;
             }
             AIPlayer full = active.gameObject.GetComponent<AIPlayer>();
             Console.WriteLine("-- round " + gc.days + ": " + active.personal_name);
@@ -3295,7 +3296,9 @@ public static class Scenarios {
                         string name = Path.GetFileNameWithoutExtension(map) + "-fog-" + fog + (seed != 0 ? "-seed-" + seed : "") + (k == 0 ? "-challenger" : "-champion");
                         HexTactica.Harness.GameLog.Start(map + " (" + (k == 0 ? cName : chName) + " as Blue)", "Full", Path.Combine(logs, name));
                         // Moves, fights and boards; not every decision's reasoning (that is PROBE=game's).
-                        AITactical.DecisionLog = null; AIPlayer.Trace = null;
+                        AITactical.DecisionLog = null;
+                        // BENCH_TRACE: keep the AI's turn trace (each unit's action and why, the campaign's objectives).
+                        if (Environment.GetEnvironmentVariable("BENCH_TRACE") == null) AIPlayer.Trace = null;
                         folder = HexTactica.Harness.GameLog.Folder;
                     }
                     for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
