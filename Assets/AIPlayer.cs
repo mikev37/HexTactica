@@ -47,6 +47,8 @@ public class AIPlayer : MonoBehaviour {
 
     AIMap map;
     List<Front> fronts = new List<Front>();
+    /// <summary>This turn's campaign (AIProfile.campaign), kept for the next turn's.</summary>
+    AICampaign campaign;
     List<Unit> queue = new List<Unit>();
     readonly Dictionary<Unit, TransportPlan> transportAssignments = new Dictionary<Unit, TransportPlan>();
     readonly HashSet<Unit> reservedTransports = new HashSet<Unit>();
@@ -213,6 +215,7 @@ public class AIPlayer : MonoBehaviour {
     /// one has something to do.
     /// </summary>
     Thought Think(BoardView v, bool prepare, bool refresh) {
+        SupplyNetwork.PutDownHypothetical = Profile.hubLinkPenalty > 0f;
         using (v.Enter()) {
             if (prepare) PrepareTurnOnBoard();
             if (refresh && map != null) {
@@ -228,6 +231,7 @@ public class AIPlayer : MonoBehaviour {
                 long __d = AIPerf.Begin();
                 AIAction action = DecideFor(unit);
                 AIPerf.End("decide: " + (unit.Hub != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
+                action = KeepLinks(action);
                 // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
                 // still fresh, and decides again if its transport puts it down this turn (Run).
                 if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
@@ -239,6 +243,41 @@ public class AIPlayer : MonoBehaviour {
             }
             return new Thought { endTurn = true };
         }
+    }
+
+    /// <summary>
+    /// A transport carrying supply units (profile.hubLinkPenalty) does not move, or put one down,
+    /// where fewer of our supply units would be connected than now: it is kept where it is.
+    /// Aboard, a supply unit links while its transport is within a move of supplied ground, so the
+    /// root of a whole network could ride in a truck — and a truck that put it down one tile off
+    /// supplied ground, or drove off with it, cut off every supply unit beyond it.
+    /// Worked out on the thinking copy of the board (the transport moved there and put back).
+    /// </summary>
+    AIAction KeepLinks(AIAction a) {
+        if (Profile.hubLinkPenalty <= 0f || a.unit == null || a.unit.tile == null) return a;
+        if (a.kind != AIActionKind.Unload && a.kind != AIActionKind.Move && a.kind != AIActionKind.MoveAndAttack) return a;
+        Unit tr = a.unit;
+        bool carriesHub = false;
+        foreach (Unit c in tr.transported) if (c != null && c.Hub != null && !c.Hub.producer) carriesHub = true;
+        if (!carriesHub) return a;
+        int before = Connected(SupplyNetwork.SolveMoved(player, new Dictionary<SupplyPoint, HexTile>()));
+        HexTile from = tr.tile;
+        HexTile to = a.kind == AIActionKind.Unload ? (a.via ?? from) : a.destination;
+        Dictionary<SupplyPoint, HexTile> moved = new Dictionary<SupplyPoint, HexTile>();
+        if (a.kind == AIActionKind.Unload && a.target != null && a.target.Hub != null && a.destination != null) moved[a.target.Hub] = a.destination;
+        int after;
+        bool shift = to != null && to != from && to.occupier == null;
+        if (shift) { from.occupier = null; to.occupier = tr; tr.tile = to; foreach (Unit c in tr.transported) if (c != null) c.tile = to; }
+        try { after = Connected(SupplyNetwork.SolveMoved(player, moved)); }
+        finally { if (shift) { to.occupier = null; tr.tile = from; from.occupier = tr; foreach (Unit c in tr.transported) if (c != null) c.tile = from; } }
+        if (after >= before) return a;
+        return AIAction.Wait(tr, a.reason + "; held: that would cut off " + (before - after) + " supply units");
+    }
+
+    int Connected(SupplyNetwork.Result r) {
+        int n = 0;
+        foreach (Unit u in player.units) if (u != null && u.Hub != null && !u.Hub.producer && u.tile != null && r.connectedHubs.Contains(u.Hub)) n++;
+        return n;
     }
 
     /// <summary>Carry out a thought on the real board (main thread).</summary>
@@ -402,7 +441,14 @@ public class AIPlayer : MonoBehaviour {
         }
         for (int i = 0; i < stale.Count; i++) intents.Remove(stale[i]);
         { long __p = AIPerf.Begin();
-        fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
+        if (Profile.campaign) {
+            campaign = AICampaign.Plan(map, Profile, campaign);
+            fronts = campaign.Fronts(map, Profile, postureMemory, assaultMemory);
+            if (Trace != null) foreach (string line in campaign.Describe()) Trace("   " + line);
+        } else {
+            campaign = null;
+            fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
+        }
         AIPerf.End("prepare: fronts", __p); }
         if (Trace != null) foreach (Front f in fronts)
             Trace("   front " + f + (f.objectiveTile != null ? " objective (" + f.objectiveTile.x + "," + f.objectiveTile.y + ") value " + f.objectiveValue.ToString("0") : "")
@@ -411,7 +457,11 @@ public class AIPlayer : MonoBehaviour {
         objectives = AIObjectives.Build(map, Profile);
         AIPerf.End("prepare: objectives", __p); }
         assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>();
-        AIObjectives.AssignScouts(assignments, map, Profile);
+        if (campaign != null) {
+            // The campaign's scouts are pulled to the ground they are to look at.
+            foreach (CampaignObjective o in campaign.objectives)
+                if (o.kind == CampaignKind.Scout) foreach (Unit u in o.units) assignments[u] = new Objective { kind = ObjectiveKind.Scout, tile = o.target, value = o.value, committed = true };
+        } else AIObjectives.AssignScouts(assignments, map, Profile);
         if (Trace != null) foreach (KeyValuePair<Unit, Objective> kv in assignments)
             if (kv.Value.kind == ObjectiveKind.Scout) Trace("   scout " + kv.Key.name.Replace("(Clone)", "") + " (" + kv.Key.tile.x + "," + kv.Key.tile.y + ") -> (" + kv.Value.tile.x + "," + kv.Value.tile.y + ") sees " + kv.Value.value.ToString("0.0"));
         objectivePulls += assignments.Count;
@@ -630,10 +680,24 @@ public class AIPlayer : MonoBehaviour {
             }
             // A link of the supply chain: planned again now, with the supply units that have
             // already moved where they are and the army where it went.
-            if (Profile.supplyChain && !Profile.supplyTree && unit.trasnporter == null) {
+            CampaignObjective job = campaign != null ? campaign.ObjectiveOf(hub) : null;
+            if (job != null && unit.trasnporter == null) {
+                // A task force's supply: its own chain toward where it gathers, never ahead of its army.
+                List<Unit> moved = new List<Unit>();
+                foreach (SupplyPoint h in job.hubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
+                AISupplyChain.Plan now = AISupplyChain.Make(map, moved, job.staging ?? job.target, job.hubs, job.units);
+                HexTile link;
+                if (now.links.TryGetValue(hub, out link)) {
+                    if (link == unit.tile) return AIAction.Wait(unit, "supply for " + job.Id + ": holds this link");
+                    return AIAction.Move(unit, link, 0f, "supply for " + job.Id + ": link moves up (" + now.reachSteps + " steps short)");
+                }
+            }
+            if (Profile.supplyChain && !Profile.supplyTree && unit.trasnporter == null && job == null) {
                 List<Unit> moved = new List<Unit>();
                 foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
-                AISupplyChain.Plan now = AISupplyChain.Make(map, moved);
+                List<SupplyPoint> free = null;
+                if (campaign != null) { free = new List<SupplyPoint>(); foreach (SupplyPoint h in map.ownHubs) if (campaign.ObjectiveOf(h) == null) free.Add(h); }
+                AISupplyChain.Plan now = AISupplyChain.Make(map, moved, null, free, null);
                 HexTile link;
                 if (now.links.TryGetValue(hub, out link)) {
                     if (link == unit.tile) return AIAction.Wait(unit, "supply chain: holds this link");
@@ -783,5 +847,6 @@ public class AIPlayer : MonoBehaviour {
     public AIMap CurrentMap { get { return map; } }
     public List<Front> CurrentFronts { get { return fronts; } }
     public List<Objective> CurrentObjectives { get { return objectives; } }
+    public AICampaign CurrentCampaign { get { return campaign; } }
     public Dictionary<Unit, Objective> CurrentAssignments { get { return assignments; } }
 }

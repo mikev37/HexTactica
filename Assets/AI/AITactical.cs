@@ -613,8 +613,13 @@ namespace HexTactica.AI {
             }
 
             Front front = context.front;
+            // A campaign front's pulls are scaled (AIProfile.campaignPull), and while its task force
+            // gathers they lead to the staging ground rather than the objective.
+            float scale = front != null ? front.pullScale : 1f;
+            HexTile goal = front != null && front.campaignStaging != null && front.staging && front.stagingTile != null ? front.stagingTile : (front != null ? front.objectiveTile : null);
+            float before = bonus;
             if (front != null && front.objectiveTile != null) {
-                int d = context.map.Travel(unit, tile, front.objectiveTile);
+                int d = context.map.Travel(unit, tile, goal);
                 bool building = front.objective != null;
                 bool canTake = building && Building.CanCapture(unit);
 
@@ -646,13 +651,16 @@ namespace HexTactica.AI {
             // fades to nothing with distance.
             if (context.profile.marchWeight > 0f && front != null && front.objectiveTile != null && unit.tile != null
                 && unit.Hub == null && context.map.TurnsToContact(unit) > context.profile.objectiveContactTurns) {
-                int gained = context.map.Travel(unit, unit.tile, front.objectiveTile) - context.map.Travel(unit, tile, front.objectiveTile);
+                int gained = context.map.Travel(unit, unit.tile, goal) - context.map.Travel(unit, tile, goal);
+                // Gathering on the staging ground: no step further is worth anything once on it.
+                if (front.campaignStaging != null && front.staging && context.map.Travel(unit, unit.tile, goal) <= front.campaignStagingRadius) gained = 0;
                 bonus += worth * context.profile.marchWeight * gained;
             }
             // Regrouping for an attack: gather on the edge of our supply nearest the objective.
             if (front != null && front.staging && front.stagingTile != null) {
                 bonus += worth * context.profile.stagingPull / (1 + context.map.Travel(unit, tile, front.stagingTile));
             }
+            if (scale != 1f) bonus = before + (bonus - before) * scale;
             return bonus;
         }
 
@@ -781,7 +789,7 @@ namespace HexTactica.AI {
                 if (t.building != null && t.building.owner != unit.owner) v += worth * 0.4f;
                 v += StrategicBonus(unit, t, posture) * 0.6f;
                 // Fog of war: going to look at what nobody has seen lately.
-                v += AIFog.ScoutValue(unit, t, profile);
+                v += AIFog.ScoutValue(unit, t, profile, map);
                 return v;
             }, true, 1.5f, 0.01f, "recon");
             if (stopCapture != null) {

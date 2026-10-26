@@ -183,7 +183,7 @@ public static class SupplyNetwork {
                     // A supply boat links to a friendly dock in supply, or to a linked supply boat,
                     // over water within its range; it supplies only the land it borders.
                     if (!NavalLinked(hub, at, player, result, activated, movedHub, hypotheticalTile, moved)) continue;
-                } else if (hub.myUnit != null && hub.myUnit.trasnporter != null) {
+                } else if (hub.myUnit != null && hub.myUnit.trasnporter != null && !PutDown(hub, at)) {
                     // Aboard: linked if the transport could carry it onto supplied ground in one move.
                     if (!WithinMoveOfSupply(hub.myUnit.trasnporter, at, result)) continue;
                 } else if (!result.IsSupplied(at)) continue;
@@ -264,6 +264,21 @@ public static class SupplyNetwork {
         Result r = Solve(player, false, null, null, null, false, moved);
         Publish(player, r);
         return r;
+    }
+
+    /// <summary>Set (per thread) by an AI that plans this way (AIProfile.hubLinkPenalty): see PutDown.</summary>
+    [System.ThreadStatic] public static bool PutDownHypothetical;
+
+    /// <summary>
+    /// A supply unit aboard a transport that a hypothetical network puts on a tile other than its
+    /// transport's: it is put down there, so it links as one on the ground does. (The planner asking
+    /// "what if it were dropped there" was told it would still be linked as cargo — the transport
+    /// within a move of supply — and a truck cut off a whole network putting its root down.)
+    /// </summary>
+    static bool PutDown(SupplyPoint hub, HexTile at) {
+        if (!PutDownHypothetical) return false;
+        Unit carrier = hub.myUnit != null ? hub.myUnit.trasnporter : null;
+        return carrier != null && at != null && carrier.tile != null && at != carrier.tile;
     }
 
     static HexTile TileOf(SupplyPoint hub, SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {

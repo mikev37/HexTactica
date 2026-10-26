@@ -417,6 +417,11 @@ namespace HexTactica.AI {
 
         static readonly object ringLock = new object();
 
+        /// <summary>Forget the cached rings of tiles (the board changed size: neighbours are new).</summary>
+        public static void ClearCaches() {
+            lock (ringLock) { rings.Clear(); sortedRings.Clear(); }
+        }
+
         static List<HexTile> Ring(Dictionary<HexTile, Dictionary<int, List<HexTile>>> cache, HexTile origin, int minRange, int maxRange, bool sorted) {
             if (origin == null || maxRange < 0) return new List<HexTile>();
             // Shared by the AI's thread and the main one: a list, once made, is never changed.

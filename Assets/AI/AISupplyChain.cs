@@ -87,22 +87,29 @@ namespace HexTactica.AI {
         /// turn, which stay where they are. Tiles other units of ours stand on count as free (they
         /// move first); a supply unit's own tile and tiles another link takes do not.
         /// </summary>
-        public static Plan Make(AIMap map, ICollection<Unit> fixedHubs) {
+        public static Plan Make(AIMap map, ICollection<Unit> fixedHubs) { return Make(map, fixedHubs, null, null, null); }
+
+        /// <summary>
+        /// A chain for one task force (AICampaign): toward <paramref name="objective"/>, of only the
+        /// supply units in <paramref name="only"/>, never ahead of <paramref name="army"/>. Nulls: the
+        /// whole army's chain toward the nearest enemy HQ.
+        /// </summary>
+        public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
             Plan plan = new Plan();
-            plan.objective = Objective(map);
+            plan.objective = objective ?? Objective(map);
             if (plan.objective == null) return plan;
             Dictionary<HexTile, int> toObj = map.LandSteps(plan.objective);
             System.Func<HexTile, int> steps = t => { int s; return t != null && toObj.TryGetValue(t, out s) ? s : int.MaxValue; };
 
             // The army's front: the fighting unit nearest the objective over land.
-            foreach (Unit u in map.ownUnits) {
+            foreach (Unit u in (IEnumerable<Unit>)army ?? map.ownUnits) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                 if (LocomotionRules.NeedsBase(u.locomotion)) continue;
                 plan.frontSteps = Mathf.Min(plan.frontSteps, steps(u.tile));
             }
 
             List<SupplyPoint> hubs = new List<SupplyPoint>();
-            foreach (SupplyPoint h in map.ownHubs) if (IsLink(h)) hubs.Add(h);
+            foreach (SupplyPoint h in map.ownHubs) if (IsLink(h) && (only == null || only.Contains(h))) hubs.Add(h);
             // Rearmost first.
             hubs.Sort((a, b) => { int c = steps(b.myUnit.tile).CompareTo(steps(a.myUnit.tile)); return c != 0 ? c : AIMap.CompareUnits(a.myUnit, b.myUnit); });
 
@@ -149,12 +156,40 @@ namespace HexTactica.AI {
                 if (DebugLog != null)
                     DebugLog("   chain: supply unit at (" + u.tile.x + "," + u.tile.y + ", " + steps(u.tile) + " steps): " + nTiles + " tiles, " + nUnsupplied + " not supplied by the links behind, "
                              + nAhead + " ahead of the army, " + nRisky + " in reach of the enemy; best " + (best != null ? "(" + best.x + "," + best.y + ", " + bestSteps + " steps)" : "none") + "; reach now " + reach);
+                // Reconnecting first (profile.chainReconnects): of the tiles a link could take, the one
+                // that connects the most of our cut-off supply units again, if any does — a link held
+                // in the rear only for its reach toward the enemy HQ left five supply units cut off
+                // for three turns after the one joining them to the HQ was killed.
+                if (map.profile.chainReconnects && Cut(net, map) > 0) {
+                    HexTile fix = null; int fixCut = Cut(net, map); int fixSteps = int.MaxValue;
+                    foreach (HexTile t in field.Tiles) {
+                        if (t != u.tile && (!field.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
+                        if (taken.Contains(t) || net.DepthAt(t) <= 0 || !AIAir.MayEndOn(u, t, map)) continue;
+                        if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
+                        if (map.ExpectedLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
+                        int ahead = steps(t);
+                        if (ahead < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) continue;   // not ahead of the army
+                        Dictionary<SupplyPoint, HexTile> tr = new Dictionary<SupplyPoint, HexTile>(placed);
+                        tr[h] = t;
+                        int c = Cut(SupplyNetwork.SolvePlanned(map.player, tr), map);
+                        int st = steps(t);
+                        if (c < fixCut || (c == fixCut && fix != null && (st < fixSteps || st == fixSteps && CombatMath.Precedes(t, fix)))) { fix = t; fixCut = c; fixSteps = st; }
+                    }
+                    if (fix != null) {
+                        placed[h] = fix; taken.Add(fix);
+                        net = SupplyNetwork.SolvePlanned(map.player, placed); reach = Reach(net, toObj);
+                        plan.links[h] = fix;
+                        if (DebugLog != null) DebugLog("   chain: supply unit at (" + u.tile.x + "," + u.tile.y + ") reconnects: to (" + fix.x + "," + fix.y + "), " + fixCut + " left cut off");
+                        continue;
+                    }
+                }
                 if (best != null) {
                     Dictionary<SupplyPoint, HexTile> trial = new Dictionary<SupplyPoint, HexTile>(placed);
                     trial[h] = best;
                     SupplyNetwork.Result after = SupplyNetwork.SolvePlanned(map.player, trial);
                     bestReach = Reach(after, toObj);
-                    if (bestReach < reach) {
+                    // Never a move that cuts off more of our supply units than are cut off now.
+                    if (bestReach < reach && (!map.profile.chainReconnects || Cut(after, map) <= Cut(net, map))) {
                         placed[h] = best; taken.Add(best);
                         net = after; reach = bestReach;
                         plan.links[h] = best;
@@ -169,6 +204,14 @@ namespace HexTactica.AI {
             plan.reachSteps = reach;
             plan.short_ = hubs.Count == 0 || (plan.spare.Count == 0 && !anyAdvance && !anyCapped && reach > 0);
             return plan;
+        }
+
+        /// <summary>Our supply units (not producers, not aboard) the network leaves cut off.</summary>
+        static int Cut(SupplyNetwork.Result net, AIMap map) {
+            int n = 0;
+            foreach (SupplyPoint h in map.ownHubs)
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && h.myUnit.trasnporter == null && !net.connectedHubs.Contains(h)) n++;
+            return n;
         }
 
         /// <summary>Steps over land from the objective to the nearest supplied tile.</summary>

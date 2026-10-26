@@ -226,6 +226,7 @@ namespace HexTactica.AI {
                 Objective job;
                 if (result.TryGetValue(u, out job) && job.kind == ObjectiveKind.DefendHQ) continue;
                 if (LocomotionRules.NeedsAirfield(u.locomotion)) continue;   // fuel: not for wandering
+                if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;   // decides as a transport (AIPlayer.DecideFor)
                 pool.Add(u);
             }
             System.Func<Unit, float> eye = u => (u.visionRange + 1f) * u.moveRange / AIScore.Worth(u);
@@ -306,7 +307,7 @@ namespace HexTactica.AI {
             return total;
         }
 
-        static List<List<Unit>> Clusters(AIMap map) {
+        internal static List<List<Unit>> Clusters(AIMap map) {
             List<Unit> units = new List<Unit>();
             for (int i = 0; i < map.enemyUnits.Count; i++) {
                 Unit e = map.enemyUnits[i];

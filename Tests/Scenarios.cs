@@ -340,6 +340,13 @@ public static class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
+        make("ai-campaign-objectives", "campaignObjectives", (a, o) => {
+                 for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(0, y); if (w != null && Math.Abs(y) != 4 && y != 0) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("City", null, -1, -5); Rig.PlaceBuilding("City", null, 2, 3);
+                 foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
+                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
+                 Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
+             "The campaign (AIProfile.campaign) on a board cut by a river with three crossings, the middle one held by Red tanks: objectives are read from the map — each city, Red's HQ, the Red group by the middle crossing (it can reach our HQ next turn, so dealing with it is defending the HQ); each with a force need (what can fight there, times objectiveForceRatio; a building needs someone who can take it, and gets one) and, beyond our supply, supply units to carry supply there; its staging tile is out of the enemy's reach next turn and short of the objective, and a task force gathers there until campaignGatherShare of it (or what its objective needs) has arrived, then goes in together. Nothing is held back at home while the enemy cannot reach our HQ next turn. An objective is taken on only if what is left can give it all it needs: none is left short. All in (objectiveSpread 0) pursues one objective besides our HQ; spread (1) pursues several. Planned again with the same board, the same units stay on the same objectives; with the Red group gone, it is planned afresh. Fronts come one per task force, with the rest at home.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -435,6 +442,8 @@ public static class Scenarios {
              "The AI playing by the fog: thinking, it knows only what Blue sees — a hidden enemy is off the board (not in its read of the board, not targetable, not blocking) and one seen lately stands where it was last seen, unless that tile is in sight and empty; everything is put back afterwards. An ambush tile (out of the enemy's sight, in reach of an enemy) is worth something, an exposed one is not; a stop that brings unseen tiles into sight is worth more than one that does not. With fogFair off it knows everything.", "Human");
         makeFog("fog-ai-sigint", "fogSigint", (a, o) => { Put("Gunship Variant", a, -3, 0); Put("Grunt", a, -4, 2); Put("Recon", a, -1, 0); Put("Grunt", o, 1, 0); Put("Tank", o, 5, -4); },
              "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a gunship ending its turn where that unit could reach it tonight (from anywhere it could have gone, not seen now) expects a loss, less the more moves it has had, and none once it has had more than sigintMoves; a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
+        makeFog("game-log-replay", "gameLogReplay", (a, o) => { Put("Grunt", a, -3, 0); Put("Tank", a, -4, 2); Put("Grunt", o, 3, 0); Put("Tank", o, 4, -2); },
+             "Replaying a recorded game: three rounds of the AI against itself are recorded (game.log and a board for every turn), then replayed. The replay has a turn for every board saved, each with its round, its side and what the log says happened in it; it shows each board exactly as it was at the start of that turn, forward and back; nobody plays (every AI off, clicks on the board and the recording ignored); it can be seen as either side sees it (that side's fog) or with everything shown; closing it puts the fog as it was.", "Full");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
                  Put("Tank", a, -4, 1); Put("Grunt", a, -3, -1); Put("Grunt", a, -4, 3); Put("Recon", a, -3, 2); Put("Artillery", a, -5, 2); Put("Supplies", a, -5, 1);
                  Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
@@ -449,7 +458,7 @@ public static class Scenarios {
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
-             "The board's overlays. Selecting Blue's artillery marks only the enemies it can fire on now (not its whole range, not the Blue grunt in range, not empty tiles). Clicking an enemy tank shows its move and reach at half opacity, the move tiles at half its colour's saturation (the reach in its full colour). The tile panel's capture line: a neutral city a Blue grunt is taking shows \"Capturing: Blue 6/10\"; a Red city it is bringing down shows \"Held: 4/10\" in Red; a city at full points shows none. The line at the top says whose turn it is, and for an AI whether it is thinking or moving.");
+             "The board's overlays. Selecting Blue's artillery marks only the enemies it can fire on now (not its whole range, not the Blue grunt in range, not empty tiles). Clicking an enemy tank shows its move and reach at half opacity, the move tiles at half its colour's saturation (the reach in its full colour). The tile panel's capture line: a neutral city a Blue grunt is taking shows \"Capturing: Blue 6/10\"; a Red city it is bringing down shows \"Held: 4/10\" in Red; a city at full points shows none. The line at the top says whose turn it is, and for an AI whether it is thinking or moving; when the game ends the banner and the line say who won (\"Red wins\"), or \"Draw\".");
         make("rule-rotor-supply", "rotorSupply", (a, o) => {
                  Rig.At(-6, 0).building.supplyRange = 3;
                  Put("Fighter", a, -4, 0); Put("Fighter", a, 2, 3); Put("Fighter", a, -5, 1); },
@@ -459,6 +468,10 @@ public static class Scenarios {
                  Put("Tank", a, 0, -3); Put("Tank", o, 1, -3);
                  Rig.At(3, 0).terrain = T("Forest"); },
              "Aircraft are never ambushed by land or sea units: a helicopter attacking a tank on grassland, or a veteran grunt in a forest, fires first; land units still ambush each other as before (a veteran tank on grassland fires first against a tank), and an aircraft can still be fired on first by a veteran aircraft.");
+        make("editor-board-grows", "boardGrows", (a, o) => { Put("Grunt", a, -3, 0); },
+             "Loading a map: the board is made the size the map was made on (the file's width, never too small for its farthest tile), bigger or smaller, rather than leaving outer tiles off or a ring of water around it. The tiles already there stay where they are, with what is on them; every tile has its neighbours again (an old edge tile now six); the cached rings of tiles are worked out again; a board already that size is left alone; made smaller, the tiles beyond it go and no tile keeps a neighbour that has gone.");
+        make("editor-delete-safely", "deleteSafely", (a, o) => { Put("Grunt", a, -3, 0); Put("APC", a, -2, 1); Put("Grunt", a, -1, 1); Rig.PlaceBuilding("City", a, 2, 2); },
+             "Deleting a unit or building in the editor (its object destroyed in the Hierarchy, not killed in play): it leaves every list and its tile at once, so nothing reads it afterwards (saving the board threw MissingReferenceException). A transport deleted with cargo aboard leaves the cargo unattached.");
         make("editor-load-building-ground", "editorLoad", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 0); },
              "Saving and loading the board in Unity: every tile written as the editor and the save menu write it (terrain as shown, the ground under a building) and read back with only the terrains in the scene's LevelEditor list (the ground every building lays, Urban, once BuildingGround, found whether the list has it or not) comes back as it was: building tiles keep that ground and the ground under, nothing fails; a save naming it BuildingGround gets Urban. A tile naming a terrain the game has never had loads as the ground under it, or grassland.");
         makeBuy("rule-purchases-off", "purchasesOff", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -1217,6 +1230,9 @@ public static class Scenarios {
                 string top = TurnBanner.Line(o, 2, true) + " | " + TurnBanner.Line(a, 2, false) + " | " + TurnBanner.Line(a, 2, false, true);
                 bool line = top == "Red \u2014 your turn, day 3 | Blue is moving | Blue is thinking";
                 r.Add("top line: " + top);
+                string end = TurnBanner.EndLine(o) + " | " + TurnBanner.EndLine(null);
+                line = line && end == "Red wins | Draw";
+                r.Add("game over: " + end);
                 detail = string.Join("; ", r.ToArray());
                 return arty && overlays && capture && line;
             }
@@ -1290,6 +1306,134 @@ public static class Scenarios {
                 r.Add("enemy behind the hill unseen " + hidden + ", next to the grunt seen " + adjacent);
                 detail = string.Join("; ", r.ToArray());
                 return flat && hill && mountain && edgeOne && edgeTwo && air && sea1 && sea2 && hidden && adjacent;
+            }
+            case "deleteSafely": {
+                Unit g = Rig.At(-3, 0).occupier, apc = Rig.At(-2, 1).occupier, rider = Rig.At(-1, 1).occupier;
+                Building city = Rig.At(2, 2).building;
+                Transporting.Load(apc, rider);
+                System.Reflection.MethodInfo ud = typeof(Unit).GetMethod("OnDestroy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                System.Reflection.MethodInfo bd = typeof(Building).GetMethod("OnDestroy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                ud.Invoke(g, null); ud.Invoke(apc, null); bd.Invoke(city, null);
+                bool unitGone = !Rig.uc.units.Contains(g) && !a.units.Contains(g) && Rig.At(-3, 0).occupier == null && g.tile == null;
+                bool apcGone = !Rig.uc.units.Contains(apc) && Rig.At(-2, 1).occupier == null && rider.trasnporter == null;
+                bool cityGone = !Building.all.Contains(city) && Rig.At(2, 2).building == null && (BuildingController.bc == null || !BuildingController.bc.buildings.Contains(city));
+                detail = "deleted grunt off the lists and its tile " + unitGone + "; transport too, its cargo unattached " + apcGone + "; city off the lists and its tile " + cityGone;
+                return unitGone && apcGone && cityGone;
+            }
+            case "campaignObjectives": {
+                List<string> r = new List<string>();
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                prof.campaign = true;
+                if (Environment.GetEnvironmentVariable("CAMPDBG") != null) HexTactica.AI.AICampaign.Debug = x => Console.WriteLine("      " + x);
+                HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, prof);
+                HexTactica.AI.AICampaign c = HexTactica.AI.AICampaign.Plan(m, prof, null);
+                Func<HexTactica.AI.CampaignKind, HexTile, HexTactica.AI.CampaignObjective> find = (k, t) => c.objectives.Find(x => x.kind == k && (t == null || x.target == t));
+                // Candidates and needs: replan with everything pursued to see them all.
+                prof.objectiveSpread = 1f;
+                HexTactica.AI.AICampaign all = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, null);
+                HexTactica.AI.CampaignObjective cityN = all.objectives.Find(x => x.kind == HexTactica.AI.CampaignKind.Secure && x.units.Count > 0);
+                // The Red group can reach our HQ next turn: dealing with it is defending the HQ.
+                HexTactica.AI.CampaignObjective group = all.considered.Find(x => x.kind == HexTactica.AI.CampaignKind.Clear || x.kind == HexTactica.AI.CampaignKind.DefendHQ);
+                HexTactica.AI.CampaignObjective hq = all.considered.Find(x => x.kind == HexTactica.AI.CampaignKind.Secure && x.building != null && x.building.IsHQ);
+                bool read = cityN != null && group != null && hq != null;
+                r.Add("objectives (spread 1): " + all.objectives.Count + ", none short of its need " + !all.objectives.Exists(x => x.units.Count > 0 && x.assignedPower < x.needPower - 0.5f) + "; a building to take " + (cityN != null) + ", Red group " + (group != null) + ", Red HQ " + (hq != null));
+                bool needs = read && group.needPower >= group.enemyPower - 1f && group.enemyPower > 0f
+                             && cityN.units.Exists(Building.CanCapture) && cityN.needPower > 0f
+                             && !all.objectives.Exists(x => x.units.Count > 0 && x.assignedPower < x.needPower - 0.5f);
+                bool supply = read && hq.needHubs >= 1 && hq.hubs.Count <= hq.needHubs;
+                bool staged = read && hq.staging != null && m.EnemyStrikeTurns(hq.staging) > 1;
+                if (read) r.Add("Red group: enemy " + group.enemyPower.ToString("0") + ", need " + group.needPower.ToString("0") + "; the building: need " + cityN.needPower.ToString("0") + ", a capturer " + cityN.units.Exists(Building.CanCapture)
+                                + "; Red HQ: supply " + hq.hubs.Count + "/" + hq.needHubs + ", staging " + (hq.staging != null ? "(" + hq.staging.x + "," + hq.staging.y + ") strike in " + m.EnemyStrikeTurns(hq.staging) : "none"));
+                int pursuedAll = all.objectives.FindAll(x => x.kind != HexTactica.AI.CampaignKind.DefendHQ && x.units.Count > 0).Count;
+                prof.objectiveSpread = 0f;
+                HexTactica.AI.AICampaign allIn = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, null);
+                int pursuedOne = allIn.objectives.FindAll(x => x.kind != HexTactica.AI.CampaignKind.DefendHQ && x.units.Count > 0).Count;
+                r.Add("pursued: all in " + pursuedOne + ", spread " + pursuedAll);
+                bool spread = pursuedOne == 1 && pursuedAll >= 2;
+                // Kept from turn to turn.
+                prof.objectiveSpread = 0.5f;
+                HexTactica.AI.AICampaign t1 = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, null);
+                HexTactica.AI.AICampaign t2 = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, t1);
+                // Red can reach our HQ only in two turns: nothing is held back for it.
+                bool noDefence = !t1.objectives.Exists(x => x.kind == HexTactica.AI.CampaignKind.DefendHQ);
+                // Far from where they gather, the task forces hold there first, none goes in alone.
+                List<Front> early = t1.Fronts(new HexTactica.AI.AIMap(a, prof), prof, null, new HashSet<HexTile>());
+                bool gather = true; int gathering = 0;
+                foreach (Front f in early) {
+                    if (f.campaignStaging == null) continue;
+                    gathering++;
+                    // On its staging ground or going because enough of it is there (campaignGatherShare), and that ground safe.
+                    if (Environment.GetEnvironmentVariable("CAMPDBG") != null) r.Add("front " + f + " staging " + f.staging + " assault " + f.assault + " at " + f.campaignStaging.x + "," + f.campaignStaging.y + " objective " + (f.objectiveTile != null ? f.objectiveTile.x + "," + f.objectiveTile.y : "-"));
+                    if (f.staging == f.assault) gather = false;
+                    if (m.EnemyStrikeTurns(f.campaignStaging) <= 1) gather = false;   // a safe staging ground
+                }
+                r.Add("no HQ defence with Red two turns off " + noDefence + "; " + gathering + " task forces each gathering short of its objective or going with enough there " + (gather && gathering > 0));
+                bool kept = t2.replanned == null;
+                foreach (HexTactica.AI.CampaignObjective x in t1.objectives) {
+                    HexTactica.AI.CampaignObjective y = t2.objectives.Find(z => z.Id == x.Id);
+                    if (y == null) { kept = false; continue; }
+                    foreach (Unit u in x.units) if (!y.units.Contains(u)) kept = false;
+                }
+                // The Red group destroyed: planned afresh.
+                foreach (Unit e in new[] { Rig.At(2, 0).occupier, Rig.At(3, 0).occupier, Rig.At(2, 1).occupier, Rig.At(5, 0).occupier }) if (e != null) e.Delete();
+                HexTactica.AI.AICampaign t3 = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, t2);
+                bool replanned = t3.replanned != null;
+                r.Add("planned again: kept " + kept + "; Red group gone: replanned " + replanned + " (" + t3.replanned + ")");
+                // Fronts.
+                List<Front> fronts = t3.Fronts(new HexTactica.AI.AIMap(a, prof), prof, null, null);
+                int withUnits = fronts.FindAll(f => f.assigned.Count > 0).Count;
+                int placed = 0; foreach (Front f in fronts) placed += f.assigned.Count;
+                bool frontsOk = withUnits >= 2 && placed == a.units.FindAll(u => u != null && u.tile != null).Count;
+                r.Add("fronts " + fronts.Count + " (" + withUnits + " with units), every unit on one " + frontsOk);
+                detail = string.Join("; ", r.ToArray());
+                return read && needs && supply && staged && spread && kept && replanned && frontsOk && noDefence && gather && gathering > 0;
+            }
+            case "boardGrows": {
+                HexGenerator hg = HexGenerator.hg;
+                List<string> r = new List<string>();
+                hg.makeTile = at => {
+                    HexTile t = Rig.New<HexTile>();
+                    t.neighbors = new List<HexTile>(); t.aiData = new AITileData();
+                    t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>();
+                    t.terrain = ScenarioFile.Terrain("Grassland");
+                    return t;
+                };
+                try {
+                    int w0 = hg.width, n0 = hg.tiles.Count;
+                    HexTile centre = Rig.At(0, 0), edge = Rig.At(7, 0);
+                    Unit g = Rig.At(-3, 0).occupier;
+                    int edgeRing = HexTactica.AI.AIPath.TilesInRangeShared(edge, 0, 1).Count;
+                    bool same = !hg.SetWidth(w0) && hg.width == w0;
+                    int need = w0 + 6;
+                    Defective.JSON.JSONObject file = new Defective.JSON.JSONObject("{\"width\":" + need + ",\"tiles\":[]}");
+                    bool grew = HexTactica.Harness.ScenarioLoader.FitBoard(file) && hg.width == need;
+                    bool kept = Rig.At(0, 0) == centre && Rig.At(7, 0) == edge && Rig.At(-3, 0).occupier == g && g.tile == Rig.At(-3, 0);
+                    int bad = 0, interior = 0, six = 0;
+                    HashSet<long> coords = new HashSet<long>();
+                    foreach (HexTile t in hg.tiles) {
+                        if (hg.get(t.x, t.y, t.z) != t || t.x + t.y + t.z != 0 || !coords.Add(t.x * 100000L + t.y)) bad++;
+                        foreach (HexTile n in t.neighbors) if (!n.neighbors.Contains(t) || t.Distance(n) != 1) bad++;
+                        if (t.neighbors.Count > 6) bad++;
+                        if (Mathf.Max(Mathf.Abs(t.x), Mathf.Max(Mathf.Abs(t.y), Mathf.Abs(t.z))) < 10) { interior++; if (t.neighbors.Count == 6) six++; }
+                    }
+                    int edgeNow = HexTactica.AI.AIPath.TilesInRangeShared(edge, 0, 1).Count;
+                    bool far = hg.get(10, -10, 0) != null;
+                    r.Add("board " + w0 + " wide, " + n0 + " tiles; asked for its own width: left alone " + same + "; a file " + need + " wide: grew " + grew + " to " + hg.tiles.Count + " tiles");
+                    r.Add("tiles there kept, the grunt on its tile " + kept + "; tiles wrong " + bad + "; tiles within 9 of the centre with six neighbours " + six + " of " + interior + "; old edge tile (7,0): ring of " + edgeRing + " then " + edgeNow + "; (10,-10) exists " + far);
+                    // And smaller: a file made 15 wide.
+                    Defective.JSON.JSONObject small = new Defective.JSON.JSONObject("{\"width\":15,\"tiles\":[]}");
+                    bool shrank = HexTactica.Harness.ScenarioLoader.FitBoard(small) && hg.width == 15;
+                    int outside = 0, bad2 = 0;
+                    foreach (HexTile t in hg.tiles) {
+                        if (Mathf.Max(Mathf.Abs(t.x), Mathf.Max(Mathf.Abs(t.y), Mathf.Abs(t.z))) > 7) outside++;
+                        if (hg.get(t.x, t.y, t.z) != t) bad2++;
+                        foreach (HexTile n in t.neighbors) if (!hg.tiles.Contains(n) || !n.neighbors.Contains(t)) bad2++;
+                    }
+                    bool kept2 = Rig.At(0, 0) == centre && Rig.At(-3, 0).occupier == g && hg.get(10, -10, 0) == null;
+                    r.Add("a file 15 wide: shrank " + shrank + " to " + hg.tiles.Count + " tiles, " + outside + " beyond radius 7, wrong " + bad2 + ", the centre and the grunt kept " + kept2);
+                    detail = string.Join("; ", r.ToArray());
+                    return same && grew && kept && bad == 0 && six == interior && edgeRing == 3 && edgeNow == 6 && far && shrank && outside == 0 && bad2 == 0 && kept2 && hg.tiles.Count == 169;
+                } finally { hg.makeTile = null; }
             }
             case "editorLoad": {
                 // The terrains the scene's LevelEditor lists (Assets/Scenes/SampleScene.unity), and every building prefab.
@@ -1580,6 +1724,54 @@ public static class Scenarios {
                 r.Add("fogThreat off: nothing " + (off == 0f));
                 detail = string.Join("; ", r.ToArray());
                 return saw && lost && phantom && notBelieved && zones && unknown && scout && wrong == 0 && pairs > 0 && off == 0f;
+            }
+            case "gameLogReplay": {
+                List<string> r = new List<string>();
+                string root = Path.Combine(Path.GetTempPath(), "hextactica-replay-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                List<string> boards = new List<string>();
+                Action<Player> onTurn = p => { if (!gc.gameOver) boards.Add(Draw()); };
+                boards.Add(Draw());
+                HexTactica.Harness.GameLog.Start("replay check", "Full", root);
+                GameController.TurnStarted += onTurn;
+                try { for (int i = 0; i < 6 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
+                finally { GameController.TurnStarted -= onTurn; }
+                string folder = HexTactica.Harness.GameLog.Folder;
+                HexTactica.Harness.GameLog.Stop();
+                HexTactica.Harness.Replay.Loader = f => { ScenarioFile.Load(f, "Full", null); return true; };
+                bool opened = HexTactica.Harness.Replay.Open(folder);
+                List<HexTactica.Harness.Replay.Turn> turns = HexTactica.Harness.Replay.turns;
+                int withEvents = 0, withRound = 0;
+                foreach (HexTactica.Harness.Replay.Turn t in turns) { if (t.events.Count > 0) withEvents++; if (t.round >= 0) withRound++; }
+                bool read = opened && turns.Count == boards.Count && withRound == turns.Count && withEvents >= turns.Count - 1
+                    && turns.Count > 1 && turns[1].side != turns[0].side;
+                r.Add("recorded " + boards.Count + " turns; replay read " + turns.Count + ", " + withRound + " with their round, " + withEvents + " with events; first " + HexTactica.Harness.Replay.Title());
+                bool frozen = HexTactica.Harness.Replay.Active && !HexTactica.Harness.GameLog.Recording;
+                foreach (Player p in GameController.gc.players) { AIPlayer x = p.GetComponent<AIPlayer>(); if (x != null && x.enabled) frozen = false; }
+                int same = 0;
+                for (int i = 0; i < turns.Count && i < boards.Count; i++) { HexTactica.Harness.Replay.Show(i); if (Draw() == boards[i]) same++; }
+                HexTactica.Harness.Replay.Show(turns.Count - 1); HexTactica.Harness.Replay.Previous();
+                bool back = HexTactica.Harness.Replay.Index == turns.Count - 2 && Draw() == boards[turns.Count - 2];
+                HexTactica.Harness.Replay.Next(); HexTactica.Harness.Replay.Next();
+                bool clamp = HexTactica.Harness.Replay.Index == turns.Count - 1;
+                r.Add("boards as recorded " + same + " of " + turns.Count + "; back " + back + ", stops at the last " + clamp + "; nobody plays " + frozen);
+                HexTile clickedWas = HexTile.lastClicked;
+                Rig.At(0, 0).OnMouseDown();
+                bool noClick = HexTile.lastClicked == clickedWas;
+                HexTactica.Harness.Replay.View(0);
+                bool asFirst = GameController.gc.fogOfWar && FogOfWar.Viewer == GameController.gc.players[0] && HexTactica.Harness.Replay.ViewName() == "as " + GameController.gc.players[0].personal_name + " sees it";
+                HexTactica.Harness.Replay.CycleView();
+                bool asSecond = FogOfWar.Viewer == GameController.gc.players[1];
+                HexTactica.Harness.Replay.CycleView();
+                bool all = !GameController.gc.fogOfWar && HexTactica.Harness.Replay.ViewAs == -1;
+                r.Add("clicks ignored " + noClick + "; seen as " + GameController.gc.players[0].personal_name + " " + asFirst + ", as " + GameController.gc.players[1].personal_name + " " + asSecond + ", everything " + all);
+                HexTactica.Harness.Replay.View(1);
+                HexTactica.Harness.Replay.Close();
+                bool closed = !HexTactica.Harness.Replay.Active && GameController.gc.fogOfWar && GameController.gc.fogViewer == -1;
+                r.Add("closed, fog as it was " + closed);
+                try { Directory.Delete(root, true); } catch (Exception) { }
+                HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
+                detail = string.Join("; ", r.ToArray());
+                return read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;
@@ -1956,8 +2148,9 @@ public static class Scenarios {
 
         n += ExportMatches(CampaignMaps, "campaign", 60,
             new[] { "Grunt", "Grunt", "Tank", "Grunt", "Supplies", "Artillery", "Grunt", "Grunt", "Tank", "Grunt", "Supplies",
-                    "Artillery", "Grunt", "Tank", "Supplies", "Grunt" },
-            new[] { "Tank", "Grunt", "Tank", "Grunt" }, "sixteen units a side, three supply units");
+                    "Artillery", "Grunt", "Tank", "Supplies", "Grunt", "Supplies", "Supplies", "Supplies",
+                    "APC", "APC", "Truck Variant", "Truck Variant", "Recon", "Recon" },
+            new[] { "Tank", "Grunt", "Tank", "Grunt" }, "twenty-five units a side: six supply units, two APCs, two trucks, two recons");
 
         // ---- behaviour scenarios: one question each.
         {   // The supply unit must not end its turn where the enemy can hit it.
@@ -2646,7 +2839,7 @@ public static class Scenarios {
 
     /// <summary>One scenario, narrated: the board after every turn and every decision's reasoning.</summary>
     public static void Narrate(string name, int rounds, Action<AIProfile> tweak) {
-        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), Environment.GetEnvironmentVariable("OPPONENT"), tweak);
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), Environment.GetEnvironmentVariable("OPPONENT"), tweak, Tests.Tweak(Environment.GetEnvironmentVariable("SET_RED")));
         Console.WriteLine(l.meta.Name + ": " + l.meta.Get("question", ""));
         Console.WriteLine("Blue (upper case) is this AI; Red (lower case) is " + l.meta.Get("opponent", "?") + ".");
         Console.Write(Draw());
@@ -2680,6 +2873,7 @@ public static class Scenarios {
                         foreach (Unit x in m.ownUnits) contact += " " + x.name.Substring(0, 2) + D(x.tile) + "=" + m.TurnsToContact(x);
                         Console.WriteLine("    turns to contact:" + contact);
                         foreach (Objective o in full.CurrentObjectives) Console.WriteLine("    objective " + o);
+                        if (full.CurrentCampaign != null) foreach (string line in full.CurrentCampaign.Describe()) Console.WriteLine("    " + line);
                         Console.WriteLine("    objective pulls this turn: " + full.CurrentAssignments.Count);
                         foreach (Front f in full.CurrentFronts)
                             Console.WriteLine("    front " + f + (f.objectiveTile != null ? " objective " + D(f.objectiveTile) + " value " + f.objectiveValue.ToString("0") : "")
@@ -2872,6 +3066,24 @@ public static class Scenarios {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", Tests.Tweak(Environment.GetEnvironmentVariable("SET_BLUE")), Tests.Tweak(Environment.GetEnvironmentVariable("SET_RED")));
         GameController gc = Rig.gc;
         Console.WriteLine("analyze " + name + " (rules " + gc.rules + ", fog " + (gc.fogOfWar ? "on" : "off") + ")");
+        // CUTS: every action of the AI's after which fewer of its supply units are connected.
+        if (Environment.GetEnvironmentVariable("CUTS") != null) {
+            AIPlayer bai = l.ai.GetComponent<AIPlayer>();
+            Func<int> connected = () => { SupplyNetwork.Result r = SupplyNetwork.Solve(l.ai, false); int c = 0; foreach (Unit u in l.ai.units) if (u != null && u.Hub != null && !u.Hub.producer && r.connectedHubs.Contains(u.Hub)) c++; return c; };
+            int lastConnected = -1;
+            bai.onDecision += (u, act, did) => {
+                int c = connected();
+                if (lastConnected >= 0 && c < lastConnected && c == 0) {
+                    SupplyNetwork.Result r0 = SupplyNetwork.Solve(l.ai, false);
+                    Building hqb = GameController.HQOf(l.ai);
+                    Console.WriteLine("      [debug] supplied tiles " + r0.depth.Count + ", HQ " + (hqb != null ? hqb.name + " functioning " + hqb.Functioning + " produces " + hqb.producesSupply + " owner " + (hqb.owner != null ? hqb.owner.personal_name : "-") : "none") + ", active " + gc.activePlayer.personal_name);
+                }
+                if (lastConnected >= 0 && c < lastConnected)
+                    Console.WriteLine("    day " + gc.days + ": " + lastConnected + " -> " + c + " connected after " + (u != null ? u.name.Replace("(Clone)", "") : "?") + " " + act.kind + " to " + (act.destination != null ? "(" + act.destination.x + "," + act.destination.y + ")" : "-") + ": " + act.reason);
+                lastConnected = c;
+            };
+            GameController.TurnStarted += pl => { if (pl == l.ai) lastConnected = connected(); };
+        }
         Dictionary<Player, int[]> fire = new Dictionary<Player, int[]> { { l.ai, new int[4] }, { l.other, new int[4] } };   // shots, dealt, taken, losing
         Dictionary<Player, int> killed = new Dictionary<Player, int> { { l.ai, 0 }, { l.other, 0 } };
         Action<Unit, Unit, HexTile, HexTile, CombatOutcome> onAttack = (att, def, at, dt, o) => {
@@ -2908,6 +3120,16 @@ public static class Scenarios {
                     forecastFor = null;
                 }
                 // This side's turn is over: its forecast for the enemy's reply.
+                if (!gc.gameOver && gc.activePlayer != mover && eye.ContainsKey(mover) && Environment.GetEnvironmentVariable("CUTS") != null) {
+                    SupplyNetwork.Result endNet = SupplyNetwork.Solve(mover, false);
+                    int nh = 0, nc = 0, ue = 0, uc = 0;
+                    foreach (Unit u in mover.units) {
+                        if (u == null || u.tile == null || u.Strength <= 0) continue;
+                        if (u.Hub != null && !u.Hub.producer) { nh++; if (!endNet.connectedHubs.Contains(u.Hub)) nc++; }
+                        else if (u.Hub == null && u.Firepower > 0) { ue++; if (endNet.DepthAt(u.tile) <= 0) uc++; }
+                    }
+                    Console.WriteLine("  " + mover.personal_name + " ends its turn with " + nc + " of " + nh + " supply units cut, " + uc + " of " + ue + " fighting units out of supply");
+                }
                 if (!gc.gameOver && gc.activePlayer != mover && eye.ContainsKey(mover)) {
                     predicted.Clear(); before.Clear();
                     AIPlayer ai = mover.GetComponent<AIPlayer>();
@@ -2965,16 +3187,24 @@ public static class Scenarios {
                     }
                     // DETAIL=round: where each supply unit and each engaged unit out of supply stands, that round.
                     string detailRound = Environment.GetEnvironmentVariable("DETAIL");
-                    if (detailRound != null && detailRound == gc.days.ToString()) {
+                    if (detailRound != null && Array.IndexOf(detailRound.Split(','), gc.days.ToString()) >= 0) {
                         List<string> hs = new List<string>(), cs = new List<string>();
                         foreach (Unit u in p.units) {
                             if (u == null || u.tile == null || u.Strength <= 0) continue;
                             string at = "(" + u.tile.x + "," + u.tile.y + ")";
                             if (u.Hub != null && !u.Hub.producer) hs.Add(u.name.Replace(" Variant", "") + at + (u.trasnporter != null ? " aboard " + u.trasnporter.name : "") + (net.connectedHubs.Contains(u.Hub) ? "" : " CUT") + " hq" + (hq != null ? hq.Distance(u.tile) : 99) + " e" + toEnemy(u.tile));
-                            else if (u.Hub == null && u.Firepower > 0 && toEnemy(u.tile) <= 6 && !LocomotionRules.NeedsBase(u.locomotion) && net.DepthAt(u.tile) <= 0) cs.Add(u.name.Replace(" Variant", "") + at + " s" + u.Strength + " p" + u.supplies + " a" + u.ammo + " hq" + (hq != null ? hq.Distance(u.tile) : 99));
+                            else if (u.Hub == null && u.Firepower > 0 && toEnemy(u.tile) <= 6 && !LocomotionRules.NeedsBase(u.locomotion) && net.DepthAt(u.tile) <= 0) { int gap = HexTactica.AI.AIMap.GapToSupply(u.tile, net.DepthAt, 12); cs.Add(u.name.Replace(" Variant", "") + at + " s" + u.Strength + " p" + u.supplies + " a" + u.ammo + " hq" + (hq != null ? hq.Distance(u.tile) : 99) + " gap" + gap); }
                         }
                         Console.WriteLine("    " + p.personal_name + " supply units: " + string.Join("; ", hs.ToArray()));
                         Console.WriteLine("    " + p.personal_name + " engaged and cut off: " + string.Join("; ", cs.ToArray()));
+                    }
+                    if (Environment.GetEnvironmentVariable("HQWATCH") != null && hq != null) {
+                        Building hb = GameController.HQOf(p);
+                        List<string> near = new List<string>();
+                        foreach (Unit x in enemies) if (x.tile.Distance(hq) <= 4) near.Add(x.name.Replace(" Variant", "").Replace("(Clone)", "") + "(" + x.tile.x + "," + x.tile.y + ")s" + x.Strength + (FogOfWar.On && !FogOfWar.Sees(p, x) ? " unseen" : ""));
+                        int mine = 0; foreach (Unit x in p.units) if (x != null && x.tile != null && x.Strength > 0 && x.tile.Distance(hq) <= 4) mine++;
+                        if (near.Count > 0 || (hb != null && hb.capturingPlayer != null))
+                            Console.WriteLine("    " + p.personal_name + " HQ: capture " + (hb != null && hb.capturingPlayer != null ? hb.capturingPlayer.personal_name + " " + hb.capturePoints : "none") + "; enemies within 4: " + string.Join(", ", near.ToArray()) + "; ours within 4: " + mine);
                     }
                     hubHq.Sort(); hubEnemy.Sort();
                     Func<List<int>, string> med = xs => xs.Count == 0 ? "-" : xs[xs.Count / 2].ToString();
@@ -3038,31 +3268,72 @@ public static class Scenarios {
             champion = p => { if (champ0 != null) champ0(p); p.noiseSeed = seed; };
             foreach (string map in maps) {
                 float[] lead = new float[2];
+                int[] ground = new int[2], held = new int[2];
                 // The champion's own game (k = 1) is the same every time: kept in BENCH_CACHE, if given.
                 string cacheFile = Environment.GetEnvironmentVariable("BENCH_CACHE");
-                string key = fog + "|" + Path.GetFullPath(Find(map)) + "|" + rounds + "|" + chName + (seed != 0 ? "|seed " + seed : "");
+                string key = fog + "|" + Path.GetFileName(Find(map)) + "|" + rounds + "|" + chName + (seed != 0 ? "|seed " + seed : "");
                 bool cached = false;
                 if (!string.IsNullOrEmpty(cacheFile) && File.Exists(cacheFile))
                     foreach (string line in File.ReadAllLines(cacheFile)) {
                         int tab = line.LastIndexOf('\t');
-                        if (tab > 0 && line.Substring(0, tab) == key) { lead[1] = float.Parse(line.Substring(tab + 1), System.Globalization.CultureInfo.InvariantCulture); cached = true; }
+                        if (tab <= 0 || line.Substring(0, tab) != key) continue;
+                        string[] v = line.Substring(tab + 1).Split(';');
+                        if (v.Length < 3) continue;   // an entry from before ground was kept: play it again
+                        lead[1] = float.Parse(v[0], System.Globalization.CultureInfo.InvariantCulture);
+                        ground[1] = int.Parse(v[1]); held[1] = int.Parse(v[2]);
+                        cached = true;
                     }
+                // BENCH_LOGS: every game played is recorded (GameLog: a board every turn, the moves and the fights),
+                // and its last board, material, ground and buildings written to final.txt.
+                string logs = Environment.GetEnvironmentVariable("BENCH_LOGS");
                 for (int k = 0; k < (cached ? 1 : 2); k++) {
                     ScenarioFile.Loaded l = ScenarioFile.Load(Find(map), "Full", k == 0 ? challenger : champion, champion);
                     Rig.gc.fogOfWar = fog == "on"; FogOfWar.Reset();
                     GameController gc = Rig.gc;
+                    string folder = null;
+                    if (!string.IsNullOrEmpty(logs)) {
+                        string name = Path.GetFileNameWithoutExtension(map) + "-fog-" + fog + (seed != 0 ? "-seed-" + seed : "") + (k == 0 ? "-challenger" : "-champion");
+                        HexTactica.Harness.GameLog.Start(map + " (" + (k == 0 ? cName : chName) + " as Blue)", "Full", Path.Combine(logs, name));
+                        // Moves, fights and boards; not every decision's reasoning (that is PROBE=game's).
+                        AITactical.DecisionLog = null; AIPlayer.Trace = null;
+                        folder = HexTactica.Harness.GameLog.Folder;
+                    }
                     for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
                     lead[k] = ScenarioFile.Material(l.ai) - ScenarioFile.Material(l.other);
                     if (gc.winner == l.ai) lead[k] += 100000f; else if (gc.winner == l.other) lead[k] -= 100000f;
+                    int ga, go, ha, ho;
+                    Ground(l.ai, l.other, out ga, out go, out ha, out ho);
+                    ground[k] = ga - go; held[k] = ha - ho;
+                    if (folder != null) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendLine("final board after round " + gc.days + (gc.gameOver ? ", winner " + (gc.winner != null ? gc.winner.personal_name : "none") : ""));
+                        sb.Append(HexTactica.Harness.GameLog.Draw());
+                        sb.AppendLine("material: Blue " + ScenarioFile.Material(l.ai) + ", Red " + ScenarioFile.Material(l.other) + "; lead " + lead[k].ToString("0"));
+                        sb.AppendLine("ground (tiles only that side supplies): Blue " + ga + ", Red " + go + "; buildings: Blue " + ha + ", Red " + ho);
+                        File.WriteAllText(Path.Combine(folder, "final.txt"), sb.ToString());
+                        HexTactica.Harness.GameLog.Stop();
+                    }
                     if (k == 1 && !string.IsNullOrEmpty(cacheFile))
-                        File.AppendAllText(cacheFile, key + "\t" + lead[1].ToString(System.Globalization.CultureInfo.InvariantCulture) + "\n");
+                        File.AppendAllText(cacheFile, key + "\t" + lead[1].ToString(System.Globalization.CultureInfo.InvariantCulture) + ";" + ground[1] + ";" + held[1] + "\n");
                 }
                 float d = lead[0] - lead[1];
                 total += d; if (d > 0) better++; else if (d < 0) worse++;
-                Console.WriteLine(string.Format("  fog {0,-3} {1,-44}" + (seed != 0 ? " seed " + seed : "") + " challenger lead {2,8:0}, champion's {3,8:0}: {4,8:+0;-0}", fog, Path.GetFileNameWithoutExtension(map), lead[0], lead[1], d));
+                Console.WriteLine(string.Format("  fog {0,-3} {1,-44}" + (seed != 0 ? " seed " + seed : "") + " challenger lead {2,8:0}, champion's {3,8:0}: {4,8:+0;-0} | ground {5:+0;-0} vs {6:+0;-0}, buildings {7:+0;-0} vs {8:+0;-0}",
+                    fog, Path.GetFileNameWithoutExtension(map), lead[0], lead[1], d, ground[0], ground[1], held[0], held[1]));
             }
         }
         Console.WriteLine(string.Format("  total {0:+0;-0}: better in {1}, worse in {2}", total, better, worse));
+    }
+
+    /// <summary>Tiles only each side supplies, and the buildings each owns (HQs included).</summary>
+    static void Ground(Player a, Player o, out int groundA, out int groundO, out int heldA, out int heldO) {
+        SupplyNetwork.Result ra = SupplyNetwork.Solve(a, false), ro = SupplyNetwork.Solve(o, false);
+        groundA = groundO = heldA = heldO = 0;
+        foreach (HexTile t in Rig.hg.tiles) {
+            bool sa = ra.DepthAt(t) > 0, so = ro.DepthAt(t) > 0;
+            if (sa && !so) groundA++; else if (so && !sa) groundO++;
+        }
+        foreach (Building b in Building.all) { if (b == null) continue; if (b.owner == a) heldA++; else if (b.owner == o) heldO++; }
     }
 
     /// <summary>Where up the winding road the buy-supply check puts Blue's grunts (road tiles from Blue's HQ).</summary>

@@ -224,8 +224,11 @@ public class Building : MonoBehaviour {
         if (!all.Contains(this)) all.Add(this);
     }
 
+    /// <summary>Destroyed (removed in the editor, deleted in the Hierarchy): off every list and off its tiles.</summary>
     void OnDestroy() {
         all.Remove(this);
+        if (BuildingController.bc != null) BuildingController.bc.buildings.Remove(this);
+        foreach (KeyValuePair<HexTile, TerrainData> kv in underlying) if (kv.Key != null && kv.Key.building == this) kv.Key.building = null;
     }
 
     void Start() {
