@@ -141,7 +141,9 @@ namespace HexTactica.AI {
             // Our HQ, when anything can reach it.
             if (home != null && home.tile != null) {
                 CampaignObjective d = new CampaignObjective { kind = CampaignKind.DefendHQ, target = home.tile, building = home };
-                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && Power(e) > 0f && CanArrive(e, home.tile, Mathf.Max(1, p.frontReachTurns), map)) d.enemies.Add(e);
+                // Only what can strike or reach it on its next turn: a threat two turns off is met
+                // by the campaign's fighting, not by units held back at home.
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && Power(e) > 0f && CanArrive(e, home.tile, 1, map)) d.enemies.Add(e);
                 if (d.enemies.Count > 0) list.Add(d);
             }
 
@@ -154,11 +156,9 @@ namespace HexTactica.AI {
                 list.Add(new CampaignObjective { kind = CampaignKind.Secure, target = b.tile, building = b, lasting = true });
             }
 
-            // Enemy groups (one already threatening our HQ is what defending it means).
-            CampaignObjective defend = list.Find(x => x.kind == CampaignKind.DefendHQ);
+            // Enemy groups (one that can reach our HQ too: holding it off at home is not beating it).
             foreach (List<Unit> group in AIObjectives.Clusters(map)) {
                 if (group.Count == 0) continue;
-                if (defend != null && group.Exists(e => defend.enemies.Contains(e))) continue;
                 CampaignObjective o = new CampaignObjective { kind = CampaignKind.Clear, lasting = true };
                 o.enemies.AddRange(group);
                 o.target = Nearest(group, home != null ? home.tile : null);
@@ -218,7 +218,7 @@ namespace HexTactica.AI {
                 }
             }
             o.routeLength = from != null ? best : 99;
-            o.staging = from != null ? Staging(from, route, map) : null;
+            o.staging = from != null ? Staging(from, route, map, o.target) : null;
             if (o.kind != CampaignKind.DefendHQ) turns += Mathf.CeilToInt(Mathf.Min(o.routeLength, 30) / (float)Mathf.Max(1, TypicalMove(map)));
             int units = map.ownUnits.Count + map.enemyUnits.Count;
             float average = units > 0 ? board / units : 0f;
@@ -240,7 +240,9 @@ namespace HexTactica.AI {
             switch (o.kind) {
                 case CampaignKind.DefendHQ:
                     o.value = board * p.hqDefenseWeight;
-                    o.needPower = o.enemyPower * p.objectiveForceRatio;
+                    // All in: just enough not to lose it (as strong as what threatens it); spread: the
+                    // margin every objective gets.
+                    o.needPower = o.enemyPower * Mathf.Lerp(1f, p.objectiveForceRatio, Mathf.Clamp01(p.objectiveSpread));
                     break;
                 case CampaignKind.Secure: {
                     Building b = o.building;
@@ -317,8 +319,13 @@ namespace HexTactica.AI {
             return d;
         }
 
-        /// <summary>Walking the route from <paramref name="from"/> toward the target: the last tile the enemy cannot strike next turn.</summary>
-        static HexTile Staging(HexTile from, Dictionary<HexTile, int> route, AIMap map) {
+        /// <summary>
+        /// Walking the route from <paramref name="from"/> toward the target: the last tile the enemy
+        /// cannot strike next turn, and no nearer the target than one move of our army (from there the
+        /// force goes in together, in one bound).
+        /// </summary>
+        static HexTile Staging(HexTile from, Dictionary<HexTile, int> route, AIMap map, HexTile target) {
+            int bound = TypicalMove(map);
             HexTile at = from, last = from;
             for (int guard = 0; guard < 200; guard++) {
                 int here;
@@ -330,6 +337,7 @@ namespace HexTactica.AI {
                 }
                 if (next == null || nd >= here) break;
                 at = next;
+                if (target != null && at.Distance(target) < bound) break;
                 if (map.EnemyStrikeTurns(at) > 1) last = at; else break;
             }
             return last;
@@ -404,25 +412,22 @@ namespace HexTactica.AI {
             float poolPower = 0f;
             foreach (Unit u in pool) poolPower += Power(u);
 
-            // Then the best that can be achieved — each needing no more than we have — as many as the
-            // spread allows (one when all in, every one when spread), in order of priority.
-            List<CampaignObjective> chosen = new List<CampaignObjective>();
-            List<CampaignObjective> feasible = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ && (o.assignedPower > 0f || o.needPower - o.assignedPower <= poolPower));
-            int maxPursued = 1 + Mathf.RoundToInt(spread * Mathf.Max(0, feasible.Count - 1));
-            foreach (CampaignObjective o in feasible) { if (chosen.Count >= maxPursued) break; chosen.Add(o); }
-
-            // How much each gets: all in, each its need in order while it lasts; spread, the army in
-            // proportion to need; in between, the mix.
-            float needSum0 = 0f; foreach (CampaignObjective o in chosen) needSum0 += Mathf.Max(1f, o.needPower - o.assignedPower);
-            float remaining = poolPower;
-            foreach (CampaignObjective o in chosen) {
-                float still = Mathf.Max(1f, o.needPower - o.assignedPower);
-                float seq = Mathf.Min(still, remaining); remaining -= seq;
-                float prop = poolPower * still / Mathf.Max(1f, needSum0);
-                float share = spread * prop + (1f - spread) * seq;
-                Fill(o, pool, map, p, o.assignedPower + share);
+            // Then the best that can be achieved, in order of priority: each taken on only if what is left
+            // could still give it all it needs (a task force short of its need is how armies are lost
+            // piecemeal), and no more of them than the spread allows (one when all in, every one that
+            // fits when spread). Each gets its need, nearest and best-fitting units first.
+            int candidatesLeft = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ).Count;
+            int maxPursued = 1 + Mathf.RoundToInt(spread * Mathf.Max(0, candidatesLeft - 1));
+            int pursued = 0;
+            foreach (CampaignObjective o in candidates) {
+                if (o.kind == CampaignKind.DefendHQ) continue;
+                if (pursued >= maxPursued || pool.Count == 0) break;
+                float still = Mathf.Max(0f, o.needPower - o.assignedPower);
+                if (still > poolPower && o.assignedPower <= 0f) continue;
+                Fill(o, pool, map, p, o.needPower);
                 if (!objectives.Contains(o)) objectives.Add(o);
-                if (pool.Count == 0) break;
+                pursued++;
+                poolPower = 0f; foreach (Unit u in pool) poolPower += Power(u);
             }
 
             // What is left: (1 - spread) of it to the best objective, the rest over all in proportion to need.
