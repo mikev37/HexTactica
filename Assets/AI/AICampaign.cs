@@ -98,6 +98,8 @@ namespace HexTactica.AI {
     public class AICampaign {
 
         public readonly List<CampaignObjective> objectives = new List<CampaignObjective>();
+        /// <summary>Diagnostics: every candidate objective as appraised.</summary>
+        public static System.Action<string> Debug;
         readonly Dictionary<Unit, CampaignObjective> unitOf = new Dictionary<Unit, CampaignObjective>();
         readonly Dictionary<SupplyPoint, CampaignObjective> hubOf = new Dictionary<SupplyPoint, CampaignObjective>();
         /// <summary>Why the last plan was made from scratch, if it was.</summary>
@@ -124,6 +126,7 @@ namespace HexTactica.AI {
                     if (was != null) o.inherited = was.Id;
                 }
             c.replanned = last == null ? "first plan" : last.ReplanReason(candidates, map, p);
+            if (Debug != null) foreach (CampaignObjective o in candidates) Debug("candidate " + o);
             c.Allocate(candidates, map, p, c.replanned == null ? last : null);
             return c;
         }
@@ -151,9 +154,11 @@ namespace HexTactica.AI {
                 list.Add(new CampaignObjective { kind = CampaignKind.Secure, target = b.tile, building = b, lasting = true });
             }
 
-            // Enemy groups.
+            // Enemy groups (one already threatening our HQ is what defending it means).
+            CampaignObjective defend = list.Find(x => x.kind == CampaignKind.DefendHQ);
             foreach (List<Unit> group in AIObjectives.Clusters(map)) {
                 if (group.Count == 0) continue;
+                if (defend != null && group.Exists(e => defend.enemies.Contains(e))) continue;
                 CampaignObjective o = new CampaignObjective { kind = CampaignKind.Clear, lasting = true };
                 o.enemies.AddRange(group);
                 o.target = Nearest(group, home != null ? home.tile : null);
@@ -390,27 +395,33 @@ namespace HexTactica.AI {
                 }
             }
 
+            // Our HQ first, whatever the odds.
+            foreach (CampaignObjective o in candidates) {
+                if (o.kind != CampaignKind.DefendHQ) continue;
+                Fill(o, pool, map, p, o.needPower);
+                if (!objectives.Contains(o)) objectives.Add(o);
+            }
             float poolPower = 0f;
             foreach (Unit u in pool) poolPower += Power(u);
 
-            // Our HQ first, whatever the odds; then the best objectives that can be met.
-            int pursued = 0;
-            List<CampaignObjective> feasible = new List<CampaignObjective>();
-            foreach (CampaignObjective o in candidates) {
-                if (o.kind == CampaignKind.DefendHQ) { feasible.Add(o); continue; }
-                float still = Mathf.Max(0f, o.needPower - o.assignedPower);
-                if (still <= poolPower || o.assignedPower > 0f) feasible.Add(o);
-            }
-            int others = 0;
-            foreach (CampaignObjective o in feasible) if (o.kind != CampaignKind.DefendHQ) others++;
-            int maxPursued = 1 + Mathf.RoundToInt(spread * Mathf.Max(0, others - 1));
-            foreach (CampaignObjective o in feasible) {
-                bool home = o.kind == CampaignKind.DefendHQ;
-                if (!home && pursued >= maxPursued) break;
-                Fill(o, pool, map, p);
+            // Then the best that can be achieved — each needing no more than we have — as many as the
+            // spread allows (one when all in, every one when spread), in order of priority.
+            List<CampaignObjective> chosen = new List<CampaignObjective>();
+            List<CampaignObjective> feasible = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ && (o.assignedPower > 0f || o.needPower - o.assignedPower <= poolPower));
+            int maxPursued = 1 + Mathf.RoundToInt(spread * Mathf.Max(0, feasible.Count - 1));
+            foreach (CampaignObjective o in feasible) { if (chosen.Count >= maxPursued) break; chosen.Add(o); }
+
+            // How much each gets: all in, each its need in order while it lasts; spread, the army in
+            // proportion to need; in between, the mix.
+            float needSum0 = 0f; foreach (CampaignObjective o in chosen) needSum0 += Mathf.Max(1f, o.needPower - o.assignedPower);
+            float remaining = poolPower;
+            foreach (CampaignObjective o in chosen) {
+                float still = Mathf.Max(1f, o.needPower - o.assignedPower);
+                float seq = Mathf.Min(still, remaining); remaining -= seq;
+                float prop = poolPower * still / Mathf.Max(1f, needSum0);
+                float share = spread * prop + (1f - spread) * seq;
+                Fill(o, pool, map, p, o.assignedPower + share);
                 if (!objectives.Contains(o)) objectives.Add(o);
-                if (!home) pursued++;
-                poolPower = 0f; foreach (Unit u in pool) poolPower += Power(u);
                 if (pool.Count == 0) break;
             }
 
@@ -468,8 +479,8 @@ namespace HexTactica.AI {
             o.assignedPower += Power(u);
         }
 
-        /// <summary>Give <paramref name="o"/> the units that fit it best until its need is met.</summary>
-        static void Fill(CampaignObjective o, List<Unit> pool, AIMap map, AIProfile p) {
+        /// <summary>Give <paramref name="o"/> the units that fit it best until it has <paramref name="upTo"/> combat power (someone to capture, or to scout, first).</summary>
+        static void Fill(CampaignObjective o, List<Unit> pool, AIMap map, AIProfile p, float upTo) {
             // A building needs someone who can take it.
             if (o.kind == CampaignKind.Secure && !o.units.Exists(Building.CanCapture)) {
                 Unit c = null; int ct = int.MaxValue;
@@ -490,7 +501,7 @@ namespace HexTactica.AI {
                 }
                 if (s != null) { Give(o, s); pool.Remove(s); }
             }
-            while (o.assignedPower < o.needPower && pool.Count > 0) {
+            while (o.assignedPower < upTo && pool.Count > 0) {
                 Unit best = null; float bestScore = float.NegativeInfinity;
                 foreach (Unit u in pool) {
                     float s = Fit(u, o, map) - Turns(u, o, map);

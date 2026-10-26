@@ -340,6 +340,13 @@ public static class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
+        make("ai-campaign-objectives", "campaignObjectives", (a, o) => {
+                 for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(0, y); if (w != null && Math.Abs(y) != 4 && y != 0) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("City", null, -1, -5); Rig.PlaceBuilding("City", null, 2, 3);
+                 foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
+                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
+                 Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
+             "The campaign (AIProfile.campaign) on a board cut by a river with three crossings, the middle one held by Red tanks: objectives are read from the map — each city, Red's HQ, the Red group by the middle crossing (it can reach our HQ next turn, so dealing with it is defending the HQ); each with a force need (what can fight there, times objectiveForceRatio; a city nobody defends needs only someone who can take it, and gets one) and, beyond our supply, supply units to carry supply there; its staging tile is out of the enemy's reach next turn. All in (objectiveSpread 0) pursues one objective besides our HQ; spread (1) pursues several. Planned again with the same board, the same units stay on the same objectives; with the Red group gone, it is planned afresh. Fronts come one per task force, with the rest at home.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -1312,6 +1319,59 @@ public static class Scenarios {
                 bool cityGone = !Building.all.Contains(city) && Rig.At(2, 2).building == null && (BuildingController.bc == null || !BuildingController.bc.buildings.Contains(city));
                 detail = "deleted grunt off the lists and its tile " + unitGone + "; transport too, its cargo unattached " + apcGone + "; city off the lists and its tile " + cityGone;
                 return unitGone && apcGone && cityGone;
+            }
+            case "campaignObjectives": {
+                List<string> r = new List<string>();
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                prof.campaign = true;
+                if (Environment.GetEnvironmentVariable("CAMPDBG") != null) HexTactica.AI.AICampaign.Debug = x => Console.WriteLine("      " + x);
+                HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, prof);
+                HexTactica.AI.AICampaign c = HexTactica.AI.AICampaign.Plan(m, prof, null);
+                Func<HexTactica.AI.CampaignKind, HexTile, HexTactica.AI.CampaignObjective> find = (k, t) => c.objectives.Find(x => x.kind == k && (t == null || x.target == t));
+                // Candidates and needs: replan with everything pursued to see them all.
+                prof.objectiveSpread = 1f;
+                HexTactica.AI.AICampaign all = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, null);
+                HexTactica.AI.CampaignObjective cityN = all.objectives.Find(x => x.kind == HexTactica.AI.CampaignKind.Secure && x.target == Rig.At(-1, -5));
+                // The Red group can reach our HQ next turn: dealing with it is defending the HQ.
+                HexTactica.AI.CampaignObjective group = all.objectives.Find(x => x.kind == HexTactica.AI.CampaignKind.Clear || x.kind == HexTactica.AI.CampaignKind.DefendHQ);
+                HexTactica.AI.CampaignObjective hq = all.objectives.Find(x => x.kind == HexTactica.AI.CampaignKind.Secure && x.building != null && x.building.IsHQ);
+                bool read = cityN != null && group != null && hq != null;
+                r.Add("objectives (all pursued): " + all.objectives.Count + "; north city " + (cityN != null) + ", Red group " + (group != null) + ", Red HQ " + (hq != null));
+                bool needs = read && group.needPower >= group.enemyPower * prof.objectiveForceRatio - 1f && group.enemyPower > 0f
+                             && cityN.units.Exists(Building.CanCapture) && cityN.needPower > 0f;
+                bool supply = read && hq.needHubs >= 1 && hq.hubs.Count <= hq.needHubs;
+                bool staged = read && hq.staging != null && m.EnemyStrikeTurns(hq.staging) > 1;
+                if (read) r.Add("Red group: enemy " + group.enemyPower.ToString("0") + ", need " + group.needPower.ToString("0") + "; north city: need " + cityN.needPower.ToString("0") + ", a capturer " + cityN.units.Exists(Building.CanCapture)
+                                + "; Red HQ: supply " + hq.hubs.Count + "/" + hq.needHubs + ", staging " + (hq.staging != null ? "(" + hq.staging.x + "," + hq.staging.y + ") strike in " + m.EnemyStrikeTurns(hq.staging) : "none"));
+                int pursuedAll = all.objectives.FindAll(x => x.kind != HexTactica.AI.CampaignKind.DefendHQ && x.units.Count > 0).Count;
+                prof.objectiveSpread = 0f;
+                HexTactica.AI.AICampaign allIn = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, null);
+                int pursuedOne = allIn.objectives.FindAll(x => x.kind != HexTactica.AI.CampaignKind.DefendHQ && x.units.Count > 0).Count;
+                r.Add("pursued: all in " + pursuedOne + ", spread " + pursuedAll);
+                bool spread = pursuedOne == 1 && pursuedAll >= 2;
+                // Kept from turn to turn.
+                prof.objectiveSpread = 0.5f;
+                HexTactica.AI.AICampaign t1 = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, null);
+                HexTactica.AI.AICampaign t2 = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, t1);
+                bool kept = t2.replanned == null;
+                foreach (HexTactica.AI.CampaignObjective x in t1.objectives) {
+                    HexTactica.AI.CampaignObjective y = t2.objectives.Find(z => z.Id == x.Id);
+                    if (y == null) { kept = false; continue; }
+                    foreach (Unit u in x.units) if (!y.units.Contains(u)) kept = false;
+                }
+                // The Red group destroyed: planned afresh.
+                foreach (Unit e in new[] { Rig.At(2, 0).occupier, Rig.At(3, 0).occupier, Rig.At(2, 1).occupier, Rig.At(5, 0).occupier }) if (e != null) e.Delete();
+                HexTactica.AI.AICampaign t3 = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, t2);
+                bool replanned = t3.replanned != null;
+                r.Add("planned again: kept " + kept + "; Red group gone: replanned " + replanned + " (" + t3.replanned + ")");
+                // Fronts.
+                List<Front> fronts = t3.Fronts(new HexTactica.AI.AIMap(a, prof), prof, null, null);
+                int withUnits = fronts.FindAll(f => f.assigned.Count > 0).Count;
+                int placed = 0; foreach (Front f in fronts) placed += f.assigned.Count;
+                bool frontsOk = withUnits >= 2 && placed == a.units.FindAll(u => u != null && u.tile != null).Count;
+                r.Add("fronts " + fronts.Count + " (" + withUnits + " with units), every unit on one " + frontsOk);
+                detail = string.Join("; ", r.ToArray());
+                return read && needs && supply && staged && spread && kept && replanned && frontsOk;
             }
             case "boardGrows": {
                 HexGenerator hg = HexGenerator.hg;
