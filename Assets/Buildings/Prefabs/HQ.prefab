@@ -116,11 +116,6 @@ MonoBehaviour:
   serviceTiles: []
   serviceGround: {fileID: 0}
   sprite: {fileID: 2120000000000000001}
-  ownerFlag: {fileID: 0}
-  flag: {fileID: 4000000000000000003}
-  flagSprite: {fileID: 2120000000000000003}
-  flagBottom: 0
-  flagTop: 2.5
   visionRange: 3
   income: 2000
   producesSupply: 1
@@ -169,6 +164,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4000000000000000003}
   - component: {fileID: 2120000000000000003}
+  - component: {fileID: 1140000000000000021}
   m_Layer: 0
   m_Name: CaptureFlag
   m_TagString: Untagged
@@ -251,3 +247,19 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &1140000000000000021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000000000000000003}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a7bc5b2935d47938a178c8d07961875, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bottom: 0
+  top: 2.5
+  speed: 0.8
+  neutral: {r: 0.6, g: 0.6, b: 0.6, a: 1}
