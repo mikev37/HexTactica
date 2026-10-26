@@ -179,6 +179,7 @@ public class GameController : MonoBehaviour
 
     public void Update() {
         if (headless) return;
+        if (HexTactica.Harness.Replay.Active) return;   // a replay: nobody plays
         if (Input.GetKeyDown("t") && !fogOfWar) {   // a debug read-out of every unit's reach: not under fog
             RecalculateThreat();
             HexGenerator.forAllTiles(x => {

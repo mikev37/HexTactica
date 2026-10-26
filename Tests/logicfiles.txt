@@ -35,6 +35,7 @@ AI/AISupplyPlanner.cs
 AI/AITargeting.cs
 AI/AITactical.cs
 AI/AIStrategic.cs
+AI/AICampaign.cs
 AI/AIObjectives.cs
 AI/AISpace.cs
 AI/AIDenial.cs
@@ -47,6 +48,8 @@ Harness/BaselineAI.cs
 Harness/BatchRunner.cs
 Harness/ScenarioLoader.cs
 Harness/GameLog.cs
+Harness/Replay.cs
+Harness/ReplayPanel.cs
 Harness/ScenarioMirror.cs
 UI/UnitStatusIcon.cs
 UI/UnitAlarmSprites.cs

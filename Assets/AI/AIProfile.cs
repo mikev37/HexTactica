@@ -40,6 +40,34 @@ namespace HexTactica.AI {
         [Range(0, 2)]
         public int choiceMode = 2;
 
+        [Header("Campaign (objectives and task forces)")]
+        [Tooltip("Plan the war as objectives read from the map — defend our HQ, secure a building, clear an enemy group, scout what the fog hides — each with a task force and supply fit to achieve it, and fight fronts made from them (AICampaign). Off: fronts where the fighting is (AIStrategic).")]
+        public bool campaign = false;
+        [Tooltip("How evenly the campaign spreads the army. 0: all in — enough at home not to be overrun, everything else on the single best objective. 1: every objective it can meet, and what is left spread over all of them.")]
+        [Range(0f, 1f)]
+        public float objectiveSpread = 0.5f;
+        [Tooltip("A task force needs this many times the enemy combat power that could fight where it is going.")]
+        public float objectiveForceRatio = 1.5f;
+        [Tooltip("Turns of a building's income its capture is worth.")]
+        public int objectiveHorizonTurns = 10;
+        [Tooltip("A task force reduced below this share of the power it was formed with sends the campaign back to planning.")]
+        [Range(0f, 1f)]
+        public float objectiveReplanLoss = 0.5f;
+        [Tooltip("The way to an objective: steps of detour worth taking to avoid one tile the enemy can strike next turn (so a middle held in strength is gone round).")]
+        public float routeDanger = 3f;
+        [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]
+        public int scoutRadius = 3;
+        public int scoutAreas = 2;
+        [Tooltip("Campaign task forces gather at their staging tile before going in (AIStrategic.GatherThenGo). Off: aggressive as soon as they are given what they need.")]
+        public bool campaignGather = true;
+        [Tooltip("How strongly campaign fronts pull their units toward their objectives and staging grounds, as a multiple of an ordinary front's pull. The units still choose their own moves: this only weighs where they would rather be.")]
+        public float campaignPull = 1f;
+        [Tooltip("A task force goes once this share of its healthy power is on its staging ground (or what is there meets its need): so 90% does not wait for the last 10%.")]
+        [Range(0f, 1f)]
+        public float campaignGatherShare = 0.6f;
+        [Tooltip("How large a staging ground is: hexes around the staging tile. 0: one move of our typical unit.")]
+        public int campaignStagingRadius = 0;
+
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
         public float worldTie = 0.25f;
@@ -89,9 +117,9 @@ namespace HexTactica.AI {
         [Tooltip("Bonus multiplier when an attack finishes the target.")]
         public float killBonus = 1.35f;
 
-        [Tooltip("Forecast boldness: the enemy's reply in the forecast lands this fraction lighter (0 = full worst case, 0.5 = half). The enemy still picks its targets on full damage; only what it costs us is discounted. Real opponents attack less than the forecast's all-out reply.")]
+        [Tooltip("Forecast boldness: the enemy's reply in the forecast lands this fraction lighter (0 = full worst case, 0.5 = half). The enemy still picks its targets on full damage; only what it costs us is discounted. Real opponents attack less than the forecast's all-out reply. 0.5 beat 0.3 in 18 of 32 big-map games (+737k; ChanceMeeting 6 of 8, BushWar 2 of 8).")]
         [Range(0f, 0.5f)]
-        public float replyDiscount = 0.3f;
+        public float replyDiscount = 0.5f;
 
         [Tooltip("The forecast's enemy weighs its own risk: an attack counts only if it is worth more than what our counterattack would cost the attacker on its firing tile (beyond what it risks staying put), times enemyCaution.")]
         public bool enemyWeighsRisk = true;
@@ -384,6 +412,8 @@ namespace HexTactica.AI {
 
         [Tooltip("Supply units form a chain along the road from the HQ toward the objective, moved rear to front so the chain never breaks (AISupplyChain).")]
         public bool supplyChain = true;
+        [Tooltip("Supply chain: while any of our supply units is cut off, a link goes where it connects the most of them again (still supplied and safe), and no link moves to cut off more.")]
+        public bool chainReconnects = true;
 
         [Tooltip("Buy a supply unit at the HQ when the chain cannot reach as far as the army needs it to.")]
         public bool buySupply = true;
@@ -473,6 +503,9 @@ namespace HexTactica.AI {
         [Range(0, 1)]
         public int hubPricing = 1;
 
+        [Tooltip("With value-added pricing: a move that cuts off another supply unit, connected where this one stands now, costs this fraction of that unit's whole worth (one it reconnects earns as much), and a transport carrying supply units is held rather than cut the network. 0: only a strength, as a relay. With chainReconnects, 1 beat 0 in 19 of 32 big-map games (ChanceMeeting 6 of 8, by large margins).")]
+        public float hubLinkPenalty = 1f;
+
         [Tooltip("With value-added pricing, still credit coverage of contested ground and of where units are heading.")]
         public bool hubPricingForward = true;
 
@@ -507,9 +540,9 @@ namespace HexTactica.AI {
         [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen (fogThreat): it may have gone anywhere, or elsewhere.")]
         [Range(0f, 1f)]
         public float sigintDecay = 0.7f;
-        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields; 1: unknown ground is empty, as before.")]
+        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields; 1: unknown ground is empty, as before. 0.2 beat fogThreat off on the big maps in 18 of 24 games (0.5: 4 of 8, 1: 4 of 8).")]
         [Range(0f, 1f)]
-        public float fogAggression = 0.5f;
+        public float fogAggression = 0.2f;
         [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
         [Range(1, 20)]
         public int fogUnknownTurns = 6;

@@ -96,8 +96,12 @@ public class HexTile : MonoBehaviour
     public Transform unitPlacement;
 
     // Start is called before the first frame update
-    void Start()
+    void Start() { Init(); }
+
+    /// <summary>Per-player state and supply borders (Start; HexGenerator.EnsureWidth calls it at once for tiles it makes).</summary>
+    public void Init()
     {
+        if (threat != null) return;
         aiData = new AITileData();
         threat = new Dictionary<Player, Heat>();
         supply = new Dictionary<Player, int>();
@@ -404,6 +408,7 @@ public class HexTile : MonoBehaviour
     public static HexTile lastClicked;
 
 	public void OnMouseDown() {
+        if (HexTactica.Harness.Replay.Active) return;   // a replay: the board is only watched
         WorldEdit();
         if (LevelEditor.singleton.editing) {
             LevelEditor.singleton.mouseDown = true;

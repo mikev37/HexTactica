@@ -155,6 +155,26 @@ public class Unit : MonoBehaviour
     /// <summary>Strength that fires back when this unit is attacked: Strength less the suppressed pips (not below 0).</summary>
     public int RetaliationStrength { get { return Mathf.Max(0, Strength - Mathf.Clamp(suppressed, 0, Strength)); } }
 
+    /// <summary>
+    /// Destroyed some other way than by dying (deleted in the editor's Hierarchy, the scene closing):
+    /// off every list and off its tile, so nothing reads it afterwards.
+    /// </summary>
+    void OnDestroy() {
+        if (dead) return;
+        dead = true;
+        if (owner != null && owner.units != null) owner.units.Remove(this);
+        if (UnitController.uc != null) UnitController.uc.units.Remove(this);
+        if (transported != null) {
+            foreach (Unit c in transported) if (c != null && c.trasnporter == this) c.trasnporter = null;
+            transported.Clear();
+        }
+        if (trasnporter != null && trasnporter.transported != null) trasnporter.transported.Remove(this);
+        trasnporter = null;
+        if (tile != null && tile.occupier == this) tile.occupier = null;
+        tile = null;
+        FogOfWar.Changed();
+    }
+
     internal void Delete() {
         DieActual();
         Destroy(gameObject);
@@ -1025,6 +1045,10 @@ public class Unit : MonoBehaviour
     private void Die(string trigger = "Die") {
         if (deathPlayed) return;
         deathPlayed = true;
+        // Off the board and out of every list first, whatever brought it here (a unit whose strength
+        // reached 0 some other way was destroyed while still listed, and saving the board then
+        // read a destroyed unit).
+        DieActual();
         if (animator != null) animator.SetTrigger(trigger);
         // Not where anyone watching can see it (fog of war): no explosion to give it away.
         FogFader fader = GetComponent<FogFader>();

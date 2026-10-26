@@ -270,7 +270,23 @@ namespace HexTactica.AI {
                 if (u.suppliesMax > 0) spared += u.supplies <= 1 ? worth : worth * 0.25f;
                 if (u.ammoMax > 0 && u.ammo <= 0) spared += worth;
             }
-            float total = resupply + heal + spared + relays;
+            // Supply units this move would cut off that are connected where it stands now
+            // (hubLinkPenalty): each costs that much of its whole worth. Pricing a relay at one
+            // strength let the root of the network step aside for a little forward coverage and
+            // strand everything beyond it (on ChanceMeeting a truck put the root down one tile off
+            // supplied ground and cut off five of seven), and when the enemy cut the network a
+            // supply unit gained little from reconnecting the ones beyond it.
+            float cutLinks = 0f;
+            if (profile.hubLinkPenalty > 0f && hub.myUnit.tile != null && at != hub.myUnit.tile) {
+                SupplyNetwork.Result here = SupplyNetwork.Solve(map.player, false);
+                foreach (SupplyPoint other in map.ownHubs) {
+                    if (other == null || other == hub || other.producer || other.myUnit == null) continue;
+                    bool now = here.connectedHubs.Contains(other), then = hypothetical.connectedHubs.Contains(other);
+                    // ...and one it would connect again earns as much.
+                    if (now != then) cutLinks += (now ? 1f : -1f) * AIScore.Worth(other.myUnit) * 6f * profile.hubLinkPenalty;
+                }
+            }
+            float total = resupply + heal + spared + relays - cutLinks;
             if (profile.hubPricingForward) {
                 forward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
                 if (hypothetical.connectedHubs.Contains(hub))

@@ -19,6 +19,9 @@ public class HexGenerator : MonoBehaviour
 
     public static HexGenerator hg;
 
+    /// <summary>Makes a tile at a position (the harness's board makes its own); null: the scene's prefab.</summary>
+    public System.Func<Vector2, HexTile> makeTile;
+
     public static void forAllTiles(Func<HexTile,int> func) {
         foreach(HexTile t in hg.tiles) {
             func(t);
@@ -79,11 +82,50 @@ public class HexGenerator : MonoBehaviour
         Grid = null;
     }
 
+    /// <summary>
+    /// Make the board <paramref name="newWidth"/> wide (the size a map was saved on), bigger or smaller:
+    /// tiles that still fit stay as they are and where they are, those that no longer fit are
+    /// removed, new ones around them are made as the scene makes its own, and every tile's
+    /// neighbours are worked out again. Units and buildings should be cleared first (a load does).
+    /// False if it is that size already.
+    /// </summary>
+    public bool SetWidth(int newWidth) {
+        if (newWidth <= 0 || newWidth == width) return false;
+        int half = newWidth / 2;
+        List<HexTile> kept = new List<HexTile>();
+        foreach (HexTile t in tiles) {
+            if (t == null) continue;
+            bool fits = t.x + half >= 0 && t.y + half >= 0 && t.z + half >= 0 && t.x + half < newWidth && t.y + half < newWidth && t.z + half < newWidth;
+            if (fits) kept.Add(t);
+            else Destroy(t.gameObject);
+        }
+        width = newWidth;
+        tiles = kept;
+        Grid = new HexTile[width, width, width];
+        foreach (HexTile t in kept) {
+            Grid[t.x + width / 2, t.y + width / 2, t.z + width / 2] = t;
+            t.neighbors.Clear();
+        }
+        int before = tiles.Count;
+        Build();
+        neighborup();
+        // Made at run time: set up now (HexTile.Start would come only next frame, after the load).
+        for (int i = before; i < tiles.Count; i++) if (tiles[i] != null) tiles[i].Init();
+        HexTactica.AI.AIPath.ClearCaches();
+        return true;
+    }
+
     void Awake()
     {
         hg = this;
         Grid = new HexTile[width, width,width];
-         
+        Build();
+        neighborup();
+    }
+
+    /// <summary>Make every tile of a board <see cref="width"/> wide that is not there yet.</summary>
+    void Build()
+    {
         for (int i = -width; i < width; i++)
         {
             for (int j = -width; j < width; j++)
@@ -106,8 +148,8 @@ public class HexGenerator : MonoBehaviour
                             //float lat = 3 / 2f * extentsx * x;
                             //float lon = -Mathf.Sqrt(3) * extentsy * (y / 2 + z);
 
-                            go =
-                                GameObject.Instantiate(hextile, (Vector2)transform.position + new Vector2(i * extentsx * 2 * 1 / 1.5f, j * extentsy * 2 - offset), Quaternion.identity, transform);
+                            Vector2 at = (Vector2)transform.position + new Vector2(i * extentsx * 2 * 1 / 1.5f, j * extentsy * 2 - offset);
+                            go = makeTile != null ? makeTile(at) : GameObject.Instantiate(hextile, at, Quaternion.identity, transform);
                             Grid[x + width / 2, y + width / 2, z + width / 2] = go;
                             Grid[x + width / 2, y + width / 2, z + width / 2].x = x;
                             Grid[x + width / 2, y + width / 2, z + width / 2].y = y;
@@ -122,7 +164,6 @@ public class HexGenerator : MonoBehaviour
                 //}
             }
         }
-        neighborup();
     }
 
     void neighborup()

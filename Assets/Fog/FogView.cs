@@ -137,6 +137,9 @@ public class FogView : MonoBehaviour {
                 if (!by.Contains(b)) by.Add(b);
             }
         }
+        // Cells that are on the board now (it grew): their covers go.
+        foreach (KeyValuePair<long, Beyond> kv in at)
+            if (!kept.Contains(kv.Key) && kv.Value.cover != null && kv.Value.cover.sr != null) Destroy(kv.Value.cover.sr.gameObject);
     }
 
     static long Key(int x, int y) { return ((long)x << 32) ^ (uint)y; }

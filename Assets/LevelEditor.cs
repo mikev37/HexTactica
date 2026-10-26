@@ -85,6 +85,8 @@ public class LevelEditor : MonoBehaviour
             });
             json = json.Substring(0, json.Length - 1) + "\n]";
         }
+        // A unit destroyed without leaving the list (Unity: == null) is not on the board.
+        UnitController.uc.units.RemoveAll(u => u == null);
         if (UnitController.uc.units.Count > 0) {
             json += ",\n";
             json += "\n\"units\":[";
@@ -111,6 +113,7 @@ public class LevelEditor : MonoBehaviour
         JSONObject obj = new JSONObject(json);
         if (BuildingController.bc != null) BuildingController.bc.Clear();
         Debug.Log(obj.GetField("tiles"));
+        HexTactica.Harness.ScenarioLoader.FitBoard(obj);    // a save for a bigger board: the board grows
         HexTactica.Harness.ScenarioLoader.FloodWater();   // a save for a smaller board: the rest is water
         JSONObjectEnumerator numobj =
             obj.GetField("tiles").GetEnumerator();
@@ -241,7 +244,9 @@ public class LevelEditor : MonoBehaviour
         BuildingController.bc.Place(singleton.placeNeutral ? null : GameController.gc.activePlayer, singleton.bt, t);
     }
 
+    /// <summary>Placing units: on an empty tile, a new one; clicking a unit again removes it (as with buildings).</summary>
     public static void PlaceNewUnit(HexTile t) {
+        if (t.occupier != null) { t.occupier.Delete(); return; }
         PlaceNewUnit(GameController.gc.activePlayer, singleton.ut,t);
     }
 }
