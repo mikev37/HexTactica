@@ -3332,8 +3332,8 @@ public static class Scenarios {
     /// <summary>
     /// PROBE=suite SET_A=... [SET_B=...]: the scenario suite, no randomness. The challenger (A) against
     /// the champion (B) on every map (MAPS, default the five scenarios and the two campaign maps),
-    /// from each side (SIDES=Blue,Red), fog off and on (FOGS), standard and attrition rules (RULESETS),
-    /// with purchases on and off (BUILDS); and the champion against itself on the same games (kept in
+    /// from each side (SIDES=Blue,Red), standard rules, no purchases, each map once with fog and once
+    /// without (FOGS=alt; or FOGS=on,off for both on every game; RULESETS, BUILDS likewise); and the champion against itself on the same games (kept in
     /// BENCH_CACHE). Each game is scored for the side under test, at the end:
     ///   material — its share of the material left on the board (strength x cost);
     ///   board    — the share of the board's land only it supplies;
@@ -3350,14 +3350,17 @@ public static class Scenarios {
             string game = Path.Combine(PrefabLoader.AssetsRoot, "Scenarios", maps[i] + ".dat");
             if (!File.Exists(maps[i]) && File.Exists(game)) maps[i] = game;
         }
-        string[] sides = list("SIDES", "Blue,Red"), fogs = list("FOGS", "off,on"), rulesets = list("RULESETS", "standard,attrition"), builds = list("BUILDS", "on,off");
+        string[] sides = list("SIDES", "Blue,Red"), fogs = list("FOGS", "alt"), rulesets = list("RULESETS", "standard"), builds = list("BUILDS", "off");
         string cacheFile = Environment.GetEnvironmentVariable("BENCH_CACHE");
         string logs = Environment.GetEnvironmentVariable("BENCH_LOGS");
         int rounds = int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30");
         float sumC = 0f, sumB = 0f; int n = 0, better = 0, worse = 0, wonC = 0, lostC = 0, wonB = 0, lostB = 0;
         string rulesWas = Environment.GetEnvironmentVariable("RULES"), purchasesWas = Environment.GetEnvironmentVariable("PURCHASES");
         try {
-        foreach (string rules in rulesets) foreach (string build in builds) foreach (string fog in fogs) foreach (string map in maps) foreach (string side in sides) {
+        foreach (string rules in rulesets) foreach (string build in builds) foreach (string fogSet in fogs) for (int mi = 0; mi < maps.Length; mi++) for (int si = 0; si < sides.Length; si++) {
+            string map = maps[mi], side = sides[si];
+            // "alt": half the games with fog, half without — each map once each way, the side with fog alternating from map to map.
+            string fog = fogSet == "alt" ? ((mi + si) % 2 == 0 ? "on" : "off") : fogSet;
             Environment.SetEnvironmentVariable("RULES", rules);
             Environment.SetEnvironmentVariable("PURCHASES", build);
             string game = Path.GetFileNameWithoutExtension(map) + " as " + side + ", " + rules + ", build " + build + ", fog " + fog;
