@@ -318,6 +318,22 @@ namespace HexTactica.AI {
         /// <summary>When set, the world-score decider adds every option it scored here (AICoordinator's first pass).</summary>
         public static List<AICoordinator.Candidate> Capture;
 
+        /// <summary>
+        /// Steps toward a campaign task force's goal a move to <paramref name="stop"/> gains, times
+        /// campaignStep: its staging ground while it gathers (nothing more once on it), else its
+        /// objective, no closer than the force's pace. 0 off a campaign front, and for supply units.
+        /// </summary>
+        static float CampaignStep(Unit unit, HexTile stop, AIMap map, AIProfile profile) {
+            Front f = context.front;
+            if (f == null || !f.campaign || profile.campaignStep <= 0f || unit.tile == null || unit.Hub != null || stop == null) return 0f;
+            bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
+            HexTile goal = gathering ? f.stagingTile : f.objectiveTile;
+            if (goal == null) return 0f;
+            int now = map.Travel(unit, unit.tile, goal), then = map.Travel(unit, stop, goal);
+            int floor = gathering ? f.campaignStagingRadius : Mathf.Max(0, f.paceLimit);
+            return profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
+        }
+
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = map.replyCache;
@@ -331,6 +347,8 @@ namespace HexTactica.AI {
                 o.world.score += AIFog.StopValue(unit, o.stop, map, profile);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
                 o.world.score -= AIFog.FogRisk(unit, o.stop, map, profile);
+                // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal.
+                o.world.score += CampaignStep(unit, o.stop, map, profile) * worth;
                 bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
             if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });

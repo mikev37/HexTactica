@@ -65,6 +65,10 @@ namespace HexTactica.AI {
               .Append(" have ").Append(assignedPower.ToString("0")).Append(", ").Append(units.Count).Append(" units, ")
               .Append(hubs.Count).Append('/').Append(needHubs).Append(" supply");
             if (staging != null) sb.Append(" via (").Append(staging.x).Append(',').Append(staging.y).Append(")");
+            if (units.Count > 0) {
+                sb.Append(":");
+                foreach (Unit u in units) if (u != null && u.tile != null) sb.Append(' ').Append(u.name.Replace("(Clone)", "").Replace(" Variant", "")).Append('(').Append(u.tile.x).Append(',').Append(u.tile.y).Append(")s").Append(u.Strength);
+            }
             return sb.ToString();
         }
     }
@@ -476,6 +480,8 @@ namespace HexTactica.AI {
                 foreach (CampaignObjective now in candidates) {
                     CampaignObjective was = keep.objectives.Find(x => x.Id == now.Id);
                     if (was == null) continue;
+                    // Not the HQ's defence: whoever can get there soonest, chosen afresh every turn.
+                    if (now.kind == CampaignKind.DefendHQ) continue;
                     foreach (Unit u in was.units) if (pool.Contains(u)) { Give(now, u); pool.Remove(u); }
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
@@ -679,6 +685,7 @@ namespace HexTactica.AI {
                 f.campaignReady = o.assignedPower >= o.needPower && o.kind != CampaignKind.DefendHQ;
                 f.campaignNeed = o.needPower;
                 f.pullScale = p.campaignPull;
+                f.campaign = true;
                 f.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
                 // Outmatched where it stands (campaignFallbackRatio): the enemy that can strike its units
                 // next turn is more than it can take. It falls back to its staging ground and the campaign
@@ -695,7 +702,10 @@ namespace HexTactica.AI {
                 }
                 f.assigned.AddRange(o.units);
                 foreach (SupplyPoint h in o.hubs) if (h.myUnit != null) f.assigned.Add(h.myUnit);
-                if (o.kind == CampaignKind.DefendHQ) { f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = 0f; }
+                // Defending the HQ: no building to take, but the HQ's worth pulls its task force home. (With
+                // no pull at all, the five units given to it fought on where they were, 15 tiles away, while
+                // the enemy took the HQ.)
+                if (o.kind == CampaignKind.DefendHQ) { f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = o.value; }
                 fronts.Add(f);
             }
             Building homeB = GameController.HQOf(map.player);
