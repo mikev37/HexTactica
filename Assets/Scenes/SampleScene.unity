@@ -3107,7 +3107,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hextile: {fileID: 1846999963862011126, guid: 2c71dd49a7631da40909807c380fc021, type: 3}
   off: 0
-  width: 25
+  width: 27
   tiles: []
 --- !u!4 &601518213
 Transform:
