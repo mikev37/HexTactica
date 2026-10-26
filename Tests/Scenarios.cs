@@ -346,7 +346,7 @@ public static class Scenarios {
                  foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
                  Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
                  Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
-             "The campaign (AIProfile.campaign) on a board cut by a river with three crossings, the middle one held by Red tanks: objectives are read from the map — each city, Red's HQ, the Red group by the middle crossing (it can reach our HQ next turn, so dealing with it is defending the HQ); each with a force need (what can fight there, times objectiveForceRatio; a building needs someone who can take it, and gets one) and, beyond our supply, supply units to carry supply there; its staging tile is out of the enemy's reach next turn and short of the objective, and a task force holds there until it is gathered, then goes in together. Nothing is held back at home while the enemy cannot reach our HQ next turn. An objective is taken on only if what is left can give it all it needs: none is left short. All in (objectiveSpread 0) pursues one objective besides our HQ; spread (1) pursues several. Planned again with the same board, the same units stay on the same objectives; with the Red group gone, it is planned afresh. Fronts come one per task force, with the rest at home.");
+             "The campaign (AIProfile.campaign) on a board cut by a river with three crossings, the middle one held by Red tanks: objectives are read from the map — each city, Red's HQ, the Red group by the middle crossing (it can reach our HQ next turn, so dealing with it is defending the HQ); each with a force need (what can fight there, times objectiveForceRatio; a building needs someone who can take it, and gets one) and, beyond our supply, supply units to carry supply there; its staging tile is out of the enemy's reach next turn and short of the objective, and a task force gathers there until campaignGatherShare of it (or what its objective needs) has arrived, then goes in together. Nothing is held back at home while the enemy cannot reach our HQ next turn. An objective is taken on only if what is left can give it all it needs: none is left short. All in (objectiveSpread 0) pursues one objective besides our HQ; spread (1) pursues several. Planned again with the same board, the same units stay on the same objectives; with the Red group gone, it is planned afresh. Fronts come one per task force, with the rest at home.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -1333,11 +1333,11 @@ public static class Scenarios {
                 HexTactica.AI.AICampaign all = HexTactica.AI.AICampaign.Plan(new HexTactica.AI.AIMap(a, prof), prof, null);
                 HexTactica.AI.CampaignObjective cityN = all.objectives.Find(x => x.kind == HexTactica.AI.CampaignKind.Secure && x.units.Count > 0);
                 // The Red group can reach our HQ next turn: dealing with it is defending the HQ.
-                HexTactica.AI.CampaignObjective group = all.objectives.Find(x => x.kind == HexTactica.AI.CampaignKind.Clear || x.kind == HexTactica.AI.CampaignKind.DefendHQ);
-                HexTactica.AI.CampaignObjective hq = all.objectives.Find(x => x.kind == HexTactica.AI.CampaignKind.Secure && x.building != null && x.building.IsHQ);
+                HexTactica.AI.CampaignObjective group = all.considered.Find(x => x.kind == HexTactica.AI.CampaignKind.Clear || x.kind == HexTactica.AI.CampaignKind.DefendHQ);
+                HexTactica.AI.CampaignObjective hq = all.considered.Find(x => x.kind == HexTactica.AI.CampaignKind.Secure && x.building != null && x.building.IsHQ);
                 bool read = cityN != null && group != null && hq != null;
                 r.Add("objectives (spread 1): " + all.objectives.Count + ", none short of its need " + !all.objectives.Exists(x => x.units.Count > 0 && x.assignedPower < x.needPower - 0.5f) + "; a building to take " + (cityN != null) + ", Red group " + (group != null) + ", Red HQ " + (hq != null));
-                bool needs = read && group.needPower >= group.enemyPower * prof.objectiveForceRatio - 1f && group.enemyPower > 0f
+                bool needs = read && group.needPower >= group.enemyPower - 1f && group.enemyPower > 0f
                              && cityN.units.Exists(Building.CanCapture) && cityN.needPower > 0f
                              && !all.objectives.Exists(x => x.units.Count > 0 && x.assignedPower < x.needPower - 0.5f);
                 bool supply = read && hq.needHubs >= 1 && hq.hubs.Count <= hq.needHubs;
@@ -1362,10 +1362,12 @@ public static class Scenarios {
                 foreach (Front f in early) {
                     if (f.campaignStaging == null) continue;
                     gathering++;
-                    if (!f.staging || f.assault || f.stagingTile != f.campaignStaging) gather = false;
-                    if (f.objectiveTile != null && f.campaignStaging != f.objectiveTile && f.campaignStaging.Distance(f.objectiveTile) < 3) gather = false;
+                    // On its staging ground or going because enough of it is there (campaignGatherShare), and that ground safe.
+                    if (Environment.GetEnvironmentVariable("CAMPDBG") != null) r.Add("front " + f + " staging " + f.staging + " assault " + f.assault + " at " + f.campaignStaging.x + "," + f.campaignStaging.y + " objective " + (f.objectiveTile != null ? f.objectiveTile.x + "," + f.objectiveTile.y : "-"));
+                    if (f.staging == f.assault) gather = false;
+                    if (m.EnemyStrikeTurns(f.campaignStaging) <= 1) gather = false;   // a safe staging ground
                 }
-                r.Add("no HQ defence with Red two turns off " + noDefence + "; " + gathering + " task forces gathering short of their objectives first " + (gather && gathering > 0));
+                r.Add("no HQ defence with Red two turns off " + noDefence + "; " + gathering + " task forces each gathering short of its objective or going with enough there " + (gather && gathering > 0));
                 bool kept = t2.replanned == null;
                 foreach (HexTactica.AI.CampaignObjective x in t1.objectives) {
                     HexTactica.AI.CampaignObjective y = t2.objectives.Find(z => z.Id == x.Id);

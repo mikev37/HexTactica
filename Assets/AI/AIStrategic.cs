@@ -45,6 +45,10 @@ namespace HexTactica.AI {
         public bool campaignReady;
         /// <summary>The combat power the campaign objective needs (AICampaign: the enemy there times objectiveForceRatio).</summary>
         public float campaignNeed;
+        /// <summary>How strongly this front's objective, staging and march pull its units (AIProfile.campaignPull for a campaign's; 1 otherwise).</summary>
+        public float pullScale = 1f;
+        /// <summary>How large the staging ground is (hexes around the staging tile).</summary>
+        public int campaignStagingRadius;
 
         /// <summary>Whole-army combat power ratio, own over enemy (set by BuildFronts).</summary>
         public float armyRatio = 1f;
@@ -380,27 +384,31 @@ namespace HexTactica.AI {
             if (staging == null || objective == null) return;
             int healthy = Mathf.CeilToInt(MAX_STRENGTH * profile.readyStrength);
             int stagingToGo = map.Travel(null, staging, objective);
-            // Gathered: healthy, and within one move of the staging tile (or already past it).
-            float gathered = 0f, committed = 0f;
+            int radius = Mathf.Max(1, f.campaignStagingRadius);
+            // Gathered: healthy, on the staging ground (within its radius of the staging tile) or already past it.
+            float gathered = 0f, committed = 0f, force = 0f;
             foreach (Unit u in f.assigned) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                 float w = AIScore.Worth(u);
-                bool there = map.Travel(u, u.tile, staging) <= Mathf.Max(profile.stagingRadius, u.moveRange) || map.Travel(u, u.tile, objective) < stagingToGo;
+                if (u.Strength >= healthy) force += w * u.Strength;
+                bool there = map.Travel(u, u.tile, staging) <= radius || map.Travel(u, u.tile, objective) < stagingToGo;
                 if (there && u.Strength >= healthy) gathered += w * u.Strength;
                 if (u.Strength > profile.withdrawStrength) committed += w * u.Strength;
             }
             float need = Mathf.Max(1f, f.campaignNeed);
             bool going = wasAssaulting.Contains(objective);
-            // It goes once what is gathered meets the objective's need, and keeps going while what
-            // is left can still fight for it (assaultBreakoff of the need).
-            f.readiness = (going ? committed : gathered) / need;
-            bool go = going ? f.readiness >= profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
-                            : f.readiness >= profile.Aggro(1.1f, 0.85f);
+            // It goes once campaignGatherShare of its healthy force is on the staging ground (90% does
+            // not wait for the last 10%), or what is there already meets the objective's need; and keeps
+            // going while what is left is assaultBreakoff of that need.
+            f.readiness = going ? committed / need : Mathf.Max(gathered / Mathf.Max(1f, force), gathered / need);
+            bool go = going ? committed >= need * profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
+                            : gathered >= need || gathered >= force * Mathf.Clamp01(profile.campaignGatherShare);
             f.stagingTile = staging;
             if (go) {
                 f.staging = false; f.posture = Posture.Aggressive; f.assault = true; f.gatedAssault = true;
             } else {
-                f.staging = true; f.posture = Posture.Defensive; f.assault = false; f.gatedAssault = false;
+                // Gathering is not defending: the force is moving up, its units still fight as they see fit.
+                f.staging = true; f.assault = false; f.gatedAssault = false;
             }
         }
 
