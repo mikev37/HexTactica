@@ -385,7 +385,7 @@ namespace HexTactica.AI {
         [Tooltip("Supply units form a chain along the road from the HQ toward the objective, moved rear to front so the chain never breaks (AISupplyChain).")]
         public bool supplyChain = true;
         [Tooltip("Supply chain: while any of our supply units is cut off, a link goes where it connects the most of them again (still supplied and safe), and no link moves to cut off more.")]
-        public bool chainReconnects = false;
+        public bool chainReconnects = true;
 
         [Tooltip("Buy a supply unit at the HQ when the chain cannot reach as far as the army needs it to.")]
         public bool buySupply = true;
@@ -475,8 +475,8 @@ namespace HexTactica.AI {
         [Range(0, 1)]
         public int hubPricing = 1;
 
-        [Tooltip("With value-added pricing: a move that cuts off another supply unit, connected where this one stands now, costs this fraction of that unit's whole worth. 0: only a strength, as a relay.")]
-        public float hubLinkPenalty = 0f;
+        [Tooltip("With value-added pricing: a move that cuts off another supply unit, connected where this one stands now, costs this fraction of that unit's whole worth (one it reconnects earns as much), and a transport carrying supply units is held rather than cut the network. 0: only a strength, as a relay. With chainReconnects, 1 beat 0 in 19 of 32 big-map games (ChanceMeeting 6 of 8, by large margins).")]
+        public float hubLinkPenalty = 1f;
 
         [Tooltip("With value-added pricing, still credit coverage of contested ground and of where units are heading.")]
         public bool hubPricingForward = true;

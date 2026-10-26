@@ -160,6 +160,8 @@ namespace HexTactica.AI {
                         if (taken.Contains(t) || net.DepthAt(t) <= 0 || !AIAir.MayEndOn(u, t, map)) continue;
                         if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
                         if (map.ExpectedLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
+                        int ahead = steps(t);
+                        if (ahead < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) continue;   // not ahead of the army
                         Dictionary<SupplyPoint, HexTile> tr = new Dictionary<SupplyPoint, HexTile>(placed);
                         tr[h] = t;
                         int c = Cut(SupplyNetwork.SolvePlanned(map.player, tr), map);
