@@ -3330,16 +3330,16 @@ public static class Scenarios {
     }
 
     /// <summary>
-    /// PROBE=suite SET_A=... [SET_B=...]: the scenario suite, no randomness. The challenger (A) against
-    /// the champion (B) on every map (MAPS, default the five scenarios and the two campaign maps),
-    /// from each side (SIDES=Blue,Red), standard rules, no purchases, each map once with fog and once
-    /// without (FOGS=alt; or FOGS=on,off for both on every game; RULESETS, BUILDS likewise); and the champion against itself on the same games (kept in
-    /// BENCH_CACHE). Each game is scored for the side under test, at the end:
+    /// PROBE=suite SET_A=... [SET_B=...]: the scenario suite, no randomness, head to head. Every map
+    /// (MAPS, default the five scenarios and the two campaign maps) is one game of two runs: the
+    /// challenger (A) as Blue against the champion (B) as Red, then the sides swapped. Standard rules,
+    /// no purchases; fog on or off for both runs, alternating from map to map (FOGS=alt; or FOGS=on
+    /// or off for every map). Each run is scored for each side at the end:
     ///   material — its share of the material left on the board (strength x cost);
     ///   board    — the share of the board's land only it supplies;
     ///   income   — its share of all the buildings' income (what it has captured and kept);
-    /// and 100% on all three if it won (by the HQ or on attrition), 0% if it lost. The game's score is
-    /// the mean of the three. BENCH_LOGS: each game recorded (GameLog) with a final.txt.
+    /// 100% on all three if it won (by the HQ or on attrition), 0% if it lost. A run's score is the
+    /// mean of the three; the game's, the mean of its two runs. BENCH_LOGS: each run recorded.
     /// </summary>
     public static void Suite(Action<AIProfile> challenger, Action<AIProfile> champion, string cName, string chName) {
         Console.WriteLine("challenger = " + cName + "\nchampion   = " + chName);
@@ -3350,75 +3350,57 @@ public static class Scenarios {
             string game = Path.Combine(PrefabLoader.AssetsRoot, "Scenarios", maps[i] + ".dat");
             if (!File.Exists(maps[i]) && File.Exists(game)) maps[i] = game;
         }
-        string[] sides = list("SIDES", "Blue,Red"), fogs = list("FOGS", "alt"), rulesets = list("RULESETS", "standard"), builds = list("BUILDS", "off");
-        string cacheFile = Environment.GetEnvironmentVariable("BENCH_CACHE");
+        string fogSet = Environment.GetEnvironmentVariable("FOGS") ?? "alt";
+        // MAPINDEX: this map's place in the full list, for which way the fog alternates when maps are run one at a time.
+        int first = int.Parse(Environment.GetEnvironmentVariable("MAPINDEX") ?? "0");
         string logs = Environment.GetEnvironmentVariable("BENCH_LOGS");
         int rounds = int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30");
-        float sumC = 0f, sumB = 0f; int n = 0, better = 0, worse = 0, wonC = 0, lostC = 0, wonB = 0, lostB = 0;
+        float sumC = 0f, sumB = 0f; int n = 0, wonC = 0, wonB = 0;
         string rulesWas = Environment.GetEnvironmentVariable("RULES"), purchasesWas = Environment.GetEnvironmentVariable("PURCHASES");
         try {
-        foreach (string rules in rulesets) foreach (string build in builds) foreach (string fogSet in fogs) for (int mi = 0; mi < maps.Length; mi++) for (int si = 0; si < sides.Length; si++) {
-            string map = maps[mi], side = sides[si];
-            // "alt": half the games with fog, half without — each map once each way, the side with fog alternating from map to map.
-            string fog = fogSet == "alt" ? ((mi + si) % 2 == 0 ? "on" : "off") : fogSet;
-            Environment.SetEnvironmentVariable("RULES", rules);
-            Environment.SetEnvironmentVariable("PURCHASES", build);
-            string game = Path.GetFileNameWithoutExtension(map) + " as " + side + ", " + rules + ", build " + build + ", fog " + fog;
-            float[][] score = new float[2][];
-            string[] result = new string[2];
-            string key = "suite|" + game + "|" + rounds + "|" + chName;
-            if (!string.IsNullOrEmpty(cacheFile) && File.Exists(cacheFile))
-                foreach (string line in File.ReadAllLines(cacheFile)) {
-                    int tab = line.LastIndexOf('\t');
-                    if (tab <= 0 || line.Substring(0, tab) != key) continue;
-                    string[] v = line.Substring(tab + 1).Split(';');
-                    if (v.Length < 4) continue;
-                    score[1] = new float[3];
-                    for (int i = 0; i < 3; i++) score[1][i] = float.Parse(v[i], System.Globalization.CultureInfo.InvariantCulture);
-                    result[1] = v[3];
+            Environment.SetEnvironmentVariable("RULES", "standard");
+            Environment.SetEnvironmentVariable("PURCHASES", "off");
+            for (int mi = 0; mi < maps.Length; mi++) {
+                string map = maps[mi];
+                string fog = fogSet == "alt" ? ((first + mi) % 2 == 0 ? "on" : "off") : fogSet;
+                float[] c = new float[2], b = new float[2];
+                string[] how = new string[2];
+                for (int k = 0; k < 2; k++) {
+                    bool challengerRed = k == 1;
+                    ScenarioFile.Loaded l = ScenarioFile.Load(Find(map), "Full", challengerRed ? champion : challenger, challengerRed ? challenger : champion);
+                    Rig.gc.fogOfWar = fog == "on"; FogOfWar.Reset();
+                    GameController gc = Rig.gc;
+                    Player us = challengerRed ? l.other : l.ai, them = challengerRed ? l.ai : l.other;
+                    string folder = null;
+                    if (!string.IsNullOrEmpty(logs)) {
+                        string name = Path.GetFileNameWithoutExtension(map) + "-fog-" + fog + "-challenger-" + (challengerRed ? "Red" : "Blue");
+                        HexTactica.Harness.GameLog.Start(map + " (" + cName + " as " + (challengerRed ? "Red" : "Blue") + ", " + chName + " the other)", "Full", Path.Combine(logs, name));
+                        AITactical.DecisionLog = null;
+                        if (Environment.GetEnvironmentVariable("BENCH_TRACE") == null) AIPlayer.Trace = null;
+                        folder = HexTactica.Harness.GameLog.Folder;
+                    }
+                    for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
+                    float[] sc = Score(us, them, gc), so = Score(them, us, gc);
+                    c[k] = (sc[0] + sc[1] + sc[2]) / 3f; b[k] = (so[0] + so[1] + so[2]) / 3f;
+                    how[k] = string.Format("as {0}: {1,4:0%} (material {2,4:0%} board {3,4:0%} income {4,4:0%}) v {5,4:0%}, {6}",
+                        challengerRed ? "Red " : "Blue", c[k], sc[0], sc[1], sc[2], b[k], gc.winner == us ? "won" : gc.winner == them ? "lost" : "round " + gc.days);
+                    if (gc.winner == us) wonC++; else if (gc.winner == them) wonB++;
+                    if (folder != null) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendLine("final board after round " + gc.days + (gc.gameOver ? ", winner " + (gc.winner != null ? gc.winner.personal_name : "none") : ""));
+                        sb.Append(HexTactica.Harness.GameLog.Draw());
+                        sb.AppendLine("challenger " + how[k]);
+                        File.WriteAllText(Path.Combine(folder, "final.txt"), sb.ToString());
+                        HexTactica.Harness.GameLog.Stop();
+                    }
                 }
-            for (int k = 0; k < 2; k++) {
-                if (score[k] != null) continue;
-                Action<AIProfile> tested = k == 0 ? challenger : champion;
-                bool red = side == "Red";
-                ScenarioFile.Loaded l = ScenarioFile.Load(Find(map), "Full", red ? champion : tested, red ? tested : champion);
-                Rig.gc.fogOfWar = fog == "on"; FogOfWar.Reset();
-                GameController gc = Rig.gc;
-                Player us = red ? l.other : l.ai, them = red ? l.ai : l.other;
-                string folder = null;
-                if (!string.IsNullOrEmpty(logs)) {
-                    string name = (Path.GetFileNameWithoutExtension(map) + "-" + side + "-" + rules + "-build-" + build + "-fog-" + fog + (k == 0 ? "-challenger" : "-champion"));
-                    HexTactica.Harness.GameLog.Start(map + " (" + (k == 0 ? cName : chName) + " as " + side + ")", "Full", Path.Combine(logs, name));
-                    AITactical.DecisionLog = null;
-                    if (Environment.GetEnvironmentVariable("BENCH_TRACE") == null) AIPlayer.Trace = null;
-                    folder = HexTactica.Harness.GameLog.Folder;
-                }
-                for (int t = 0; t < rounds * 2 && !gc.gameOver; t++) ScenarioFile.PlayTurn();
-                float[] sc = Score(us, them, gc);
-                score[k] = sc;
-                result[k] = gc.winner == us ? "won" : gc.winner == them ? "lost" : "round " + gc.days;
-                if (folder != null) {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("final board after round " + gc.days + (gc.gameOver ? ", winner " + (gc.winner != null ? gc.winner.personal_name : "none") : ""));
-                    sb.Append(HexTactica.Harness.GameLog.Draw());
-                    sb.AppendLine(string.Format("{0}: material {1:0%}, board {2:0%}, income {3:0%} ({4})", side, sc[0], sc[1], sc[2], result[k]));
-                    File.WriteAllText(Path.Combine(folder, "final.txt"), sb.ToString());
-                    HexTactica.Harness.GameLog.Stop();
-                }
-                if (k == 1 && !string.IsNullOrEmpty(cacheFile))
-                    File.AppendAllText(cacheFile, key + "\t" + string.Join(";", new[] { sc[0], sc[1], sc[2] }.Select(x => x.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray()) + ";" + result[1] + "\n");
+                float gcScore = (c[0] + c[1]) / 2f, gbScore = (b[0] + b[1]) / 2f;
+                sumC += gcScore; sumB += gbScore; n++;
+                Console.WriteLine(string.Format("  {0,-30} fog {1,-3} challenger {2,4:0%} v champion {3,4:0%} | {4} | {5} | GAME",
+                    Path.GetFileNameWithoutExtension(map), fog, gcScore, gbScore, how[0], how[1]));
             }
-            float c = (score[0][0] + score[0][1] + score[0][2]) / 3f, b = (score[1][0] + score[1][1] + score[1][2]) / 3f;
-            sumC += c; sumB += b; n++;
-            if (c > b + 0.005f) better++; else if (c < b - 0.005f) worse++;
-            if (result[0] == "won") wonC++; else if (result[0] == "lost") lostC++;
-            if (result[1] == "won") wonB++; else if (result[1] == "lost") lostB++;
-            Console.WriteLine(string.Format("  {0,-62} challenger {1,4:0%} (material {2,4:0%} board {3,4:0%} income {4,4:0%}, {5,-8}) | champion {6,4:0%} (material {7,4:0%} board {8,4:0%} income {9,4:0%}, {10,-8}) | {11:+0;-0} pts",
-                game, c, score[0][0], score[0][1], score[0][2], result[0], b, score[1][0], score[1][1], score[1][2], result[1], (c - b) * 100f));
-        }
         } finally { Environment.SetEnvironmentVariable("RULES", rulesWas); Environment.SetEnvironmentVariable("PURCHASES", purchasesWas); }
-        if (n > 0) Console.WriteLine(string.Format("  SUITE over {0} games: challenger {1:0.0%} (won {2}, lost {3}), champion {4:0.0%} (won {5}, lost {6}); better in {7}, worse in {8}",
-            n, sumC / n, wonC, lostC, sumB / n, wonB, lostB, better, worse));
+        if (n > 0) Console.WriteLine(string.Format("  SUITE over {0} games: challenger {1:0.0%} (runs won {2}), champion {3:0.0%} (runs won {4})", n, sumC / n, wonC, sumB / n, wonB));
     }
 
     /// <summary>The suite's three measures for <paramref name="us"/> at the end: material share, share of the land only it supplies, share of the buildings' income; all 1 if it won, 0 if it lost.</summary>
