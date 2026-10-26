@@ -161,11 +161,10 @@ namespace HexTactica.AI {
 
         /// <summary>Posture, staging and the memories of both, for fronts whose units are assigned (BuildFronts; AICampaign).</summary>
         public static void Finish(List<Front> fronts, AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory, HashSet<HexTile> assaulting) {
-            foreach (Front f in fronts) {
-                DecidePosture(f, map, profile, memory);
-                if (f.campaignReady) f.posture = Posture.Aggressive;
-            }
+            foreach (Front f in fronts) DecidePosture(f, map, profile, memory);
+            HashSet<HexTile> wasAssaulting = assaulting != null ? new HashSet<HexTile>(assaulting) : new HashSet<HexTile>();
             DecideStaging(fronts, map, profile, assaulting);
+            foreach (Front f in fronts) if (f.campaignStaging != null) GatherThenGo(f, map, profile, wasAssaulting);
             if (memory != null) {
                 // Staging is a pause in an attack, not a change of mind: remember it as aggressive.
                 foreach (Front f in fronts) if (f.objectiveTile != null) memory[f.objectiveTile] = f.staging ? Posture.Aggressive : f.posture;
@@ -362,6 +361,41 @@ namespace HexTactica.AI {
         const int MAX_STRENGTH = 6;
 
         /// <summary>
+        /// A campaign task force (AICampaign) gathers before it goes: it holds at its staging tile
+        /// (short of the objective, out of the enemy's reach next turn) until it has the power its
+        /// objective needs and enough of that power is there and healthy (assaultReadiness; units
+        /// already further forward count as there) — then the whole of it goes in together
+        /// (aggressive, assaulting), and keeps going until its power falls below assaultBreakoff.
+        /// Without this each unit walked to the objective at its own speed: the tank arrived alone.
+        /// </summary>
+        static void GatherThenGo(Front f, AIMap map, AIProfile profile, HashSet<HexTile> wasAssaulting) {
+            HexTile staging = f.campaignStaging, objective = f.objectiveTile;
+            if (staging == null || objective == null) return;
+            int healthy = Mathf.CeilToInt(MAX_STRENGTH * profile.readyStrength);
+            int stagingToGo = map.Travel(null, staging, objective);
+            float full = 0f, gathered = 0f, committed = 0f;
+            foreach (Unit u in f.assigned) {
+                if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
+                float w = AIScore.Worth(u);
+                full += w * MAX_STRENGTH;
+                bool there = map.Travel(u, u.tile, staging) <= profile.stagingRadius || map.Travel(u, u.tile, objective) < stagingToGo;
+                if (there && u.Strength >= healthy) gathered += w * u.Strength;
+                if (u.Strength > profile.withdrawStrength) committed += w * u.Strength;
+            }
+            if (full <= 0f) return;
+            bool going = wasAssaulting.Contains(objective);
+            f.readiness = going ? committed / full : gathered / full;
+            bool go = going ? f.readiness >= profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
+                            : f.campaignReady && f.readiness >= Mathf.Min(0.95f, profile.assaultReadiness * profile.Aggro(1.25f, 0.7f));
+            f.stagingTile = staging;
+            if (go) {
+                f.staging = false; f.posture = Posture.Aggressive; f.assault = true; f.gatedAssault = true;
+            } else {
+                f.staging = true; f.posture = Posture.Defensive; f.assault = false; f.gatedAssault = false;
+            }
+        }
+
+        /// <summary>
         /// Gate an attack beyond our supply on the force being gathered and healthy.
         ///
         /// Against an opponent who holds, the contact point is beyond our supply and theirs
@@ -381,6 +415,7 @@ namespace HexTactica.AI {
             for (int i = 0; i < fronts.Count; i++) {
                 Front f = fronts[i];
                 if (f.posture != Posture.Aggressive || f.objectiveTile == null || f.center == null) continue;
+                if (f.campaignStaging != null) continue;   // a campaign task force gathers its own way (GatherThenGo)
                 // A fight already inside our supply is not an attack to stage: it is a defence.
                 if (map.SupplyDepth(f.center) > 0) continue;
                 List<Front> group;
