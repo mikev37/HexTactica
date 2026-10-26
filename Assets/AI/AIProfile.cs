@@ -67,6 +67,8 @@ namespace HexTactica.AI {
         public float campaignGatherShare = 0.6f;
         [Tooltip("How large a staging ground is: hexes around the staging tile. 0: one move of our typical unit.")]
         public int campaignStagingRadius = 0;
+        [Tooltip("A task force falls back to its staging ground (and the campaign plans again) when the enemy that can strike its units next turn is more than its power over this. 0: never.")]
+        public float campaignFallbackRatio = 1f;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]

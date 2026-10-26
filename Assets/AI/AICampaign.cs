@@ -33,6 +33,8 @@ namespace HexTactica.AI {
         public bool lasting;
         /// <summary>Contact: an enemy group already on our ground (in our supply) — met first, whatever else is planned.</summary>
         public bool respond;
+        /// <summary>Its task force fell back this turn, outmatched.</summary>
+        public bool fellBack;
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
@@ -413,6 +415,7 @@ namespace HexTactica.AI {
                 float power = 0f;
                 foreach (Unit u in o.units) if (u != null && u.tile != null && u.Strength > 0) power += Power(u);
                 if (o.formedPower > 0f && power < o.formedPower * p.objectiveReplanLoss) return o.Id + " task force broken (" + power.ToString("0") + " of " + o.formedPower.ToString("0") + ")";
+                if (o.fellBack) return o.Id + " task force fell back, outmatched";
             }
             return null;
         }
@@ -635,6 +638,15 @@ namespace HexTactica.AI {
                 f.campaignNeed = o.needPower;
                 f.pullScale = p.campaignPull;
                 f.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                // Outmatched where it stands (campaignFallbackRatio): the enemy that can strike its units
+                // next turn is more than it can take. It falls back to its staging ground and the campaign
+                // plans again, rather than being destroyed in detail — the south task force on ChanceMeeting
+                // lost its tanks one by one to the enemy's whole army.
+                if (o.kind != CampaignKind.DefendHQ && o.staging != null && Outmatched(o, map, p)) {
+                    f.objectiveTile = o.staging; f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = o.value * 0.5f;
+                    f.campaignStaging = null; f.campaignReady = false; f.posture = Posture.Defensive;
+                    o.fellBack = true;
+                }
                 // A look, not a fight: a scouting task force in contact falls back to where it gathered.
                 if (o.kind == CampaignKind.Scout && o.staging != null && o.units.Exists(u => u != null && u.tile != null && map.TurnsToContact(u) <= 1)) {
                     f.objectiveTile = o.staging; f.objective = null; f.objectiveValue = o.value * 0.5f; f.campaignStaging = null; f.campaignReady = false;
@@ -655,6 +667,20 @@ namespace HexTactica.AI {
             if (home.center != null) fronts.Add(home);
             AIStrategic.Finish(fronts, map, p, memory, assaulting);
             return fronts;
+        }
+
+        /// <summary>Is the enemy that can strike <paramref name="o"/>'s units next turn more than campaignFallbackRatio of their power?</summary>
+        static bool Outmatched(CampaignObjective o, AIMap map, AIProfile p) {
+            if (p.campaignFallbackRatio <= 0f) return false;
+            float ours = 0f, theirs = 0f;
+            HashSet<Unit> near = new HashSet<Unit>();
+            foreach (Unit u in o.units) {
+                if (u == null || u.tile == null) continue;
+                ours += Power(u);
+                foreach (Unit e in map.enemyUnits)
+                    if (e != null && e.tile != null && !near.Contains(e) && CanArrive(e, u.tile, 1, map)) { near.Add(e); theirs += Power(e); }
+            }
+            return theirs > 0f && ours < theirs * p.campaignFallbackRatio;
         }
 
         public IEnumerable<string> Describe() {
