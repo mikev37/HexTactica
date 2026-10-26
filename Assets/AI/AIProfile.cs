@@ -60,6 +60,13 @@ namespace HexTactica.AI {
         public int scoutAreas = 2;
         [Tooltip("Campaign task forces gather at their staging tile before going in (AIStrategic.GatherThenGo). Off: aggressive as soon as they are given what they need.")]
         public bool campaignGather = true;
+        [Tooltip("How strongly campaign fronts pull their units toward their objectives and staging grounds, as a multiple of an ordinary front's pull. The units still choose their own moves: this only weighs where they would rather be.")]
+        public float campaignPull = 1f;
+        [Tooltip("A task force goes once this share of its healthy power is on its staging ground (or what is there meets its need): so 90% does not wait for the last 10%.")]
+        [Range(0f, 1f)]
+        public float campaignGatherShare = 0.6f;
+        [Tooltip("How large a staging ground is: hexes around the staging tile. 0: one move of our typical unit.")]
+        public int campaignStagingRadius = 0;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
