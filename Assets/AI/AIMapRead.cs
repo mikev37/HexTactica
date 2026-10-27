@@ -105,6 +105,28 @@ namespace HexTactica.AI {
         /// strength at the start of its owner's turn on any supplied tile — except a supply unit
         /// cut off from the network, which is spending its own health.
         /// </summary>
+        /// <summary>
+        /// Strength <paramref name="x"/> heals by its next turn standing on <paramref name="at"/>, as the
+        /// game gives it (Player.UpkeepOne): a building of its owner's that services its kind heals
+        /// Building.healPerTurn — on top of the supply network's 1 where the building stacks it and the
+        /// tile is supplied, else the more of the two — and otherwise the network heals 1 (healedPerTurn).
+        /// </summary>
+        public float HealAt(Unit x, HexTile at) {
+            if (x == null || at == null || x.owner == null) return 0f;
+            Building b = at.building;
+            if (b != null && b.owner == x.owner && b.Services(x)) {
+                bool inNet = (LocomotionRules.ResuppliedInSupply(x.locomotion) || !LocomotionRules.NeedsBase(x.locomotion)) && SuppliedFor(x, at);
+                if (!inNet) return b.healPerTurn;
+                return b.healStacksWithSupply ? profile.healedPerTurn + b.healPerTurn : Mathf.Max(profile.healedPerTurn, b.healPerTurn);
+            }
+            return Heals(x, at) ? profile.healedPerTurn : 0f;
+        }
+
+        bool SuppliedFor(Unit x, HexTile at) {
+            if (x.owner == player) return supply != null && supply.DepthAt(at) > 0;
+            return theirSupply != null && theirSupply.DepthAt(at) > 0;
+        }
+
         public bool Heals(Unit x, HexTile at) {
             if (x == null || at == null || x.owner == null) return false;
             // Aircraft and ships: only on a building of theirs that services them.
