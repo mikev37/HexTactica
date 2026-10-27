@@ -106,7 +106,7 @@ namespace HexTactica.AI {
                 if (sx == int.MaxValue || sx > bestSteps || (sx == bestSteps && !CombatMath.Precedes(x, best))) continue;
                 // Supply serves the army: never ahead of it. (Carried out in front where nothing could strike
                 // it yet, it fed itself to the enemy and left the army behind a gap it would not cross.)
-                if (sx < front) { nAhead++; continue; }
+                if (sx < front && !(map.profile.leapsAheadWhenClear && map.EnemyStrikeTurns(x) > 2)) { nAhead++; continue; }
                 float loss = map.ExpectedLoss(truck, x);
                 if (loss * caution >= truck.Strength || loss > tolerance) { nRisk++; continue; }
                 if (!SupplyNetwork.WithinMoveOfSupply(truck, x, net)) { nUnlinked++; continue; }
