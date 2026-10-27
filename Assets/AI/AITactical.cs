@@ -917,8 +917,24 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction DecideIdleTransport(Unit unit, AIMap map, AIProfile profile) {
             float worth = AIScore.Worth(unit);
+            // Supply leaps (supplyLeaps): an idle truck goes to stand beside the nearest supply unit on
+            // foot that no other truck stands beside, so the chain can put it aboard and carry it on.
+            HexTile pickup = null;
+            if (profile.supplyLeaps && unit.tile != null && unit.transported.Count == 0) {
+                int best = int.MaxValue;
+                foreach (SupplyPoint sp in map.ownHubs) {
+                    if (sp == null || sp.producer || sp.myUnit == null || sp.myUnit.tile == null || sp.myUnit.trasnporter != null || !Transporting.CanCarry(unit, sp.myUnit)) continue;
+                    bool served = false;
+                    foreach (HexTile n in sp.myUnit.tile.neighbors) if (n != null && n.occupier != null && n.occupier != unit && n.occupier.owner == unit.owner && Transporting.IsTransport(n.occupier) && n.occupier.transported.Count == 0) served = true;
+                    if (served) continue;
+                    int d = map.Travel(unit, unit.tile, sp.myUnit.tile);
+                    if (d < best || (d == best && pickup != null && CombatMath.Precedes(sp.myUnit.tile, pickup))) { best = d; pickup = sp.myUnit.tile; }
+                }
+                if (best >= 99) pickup = null;
+            }
             return Choose(unit, map, profile, t => {
                 float v = 0f;
+                if (pickup != null) v += worth * 2f / (1 + map.Travel(unit, t, pickup));
                 for (int i = 0; i < map.ownHubs.Count; i++) {
                     SupplyPoint sp = map.ownHubs[i];
                     if (sp == null || sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;
