@@ -349,8 +349,18 @@ namespace HexTactica.AI {
                 o.world.score -= AIFog.FogRisk(unit, o.stop, map, profile);
                 // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal.
                 o.world.score += CampaignStep(unit, o.stop, map, profile) * worth;
-                bestWorld = Mathf.Max(bestWorld, o.world.score);
             }
+            // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
+            // an attack open to it, standing on a building to take it earns it nothing.
+            // (A capture move is held below the best attack; anything else — falling back, say — is judged as usual.)
+            if (profile.fightBeforeCapture && options.Exists(o => o.shot.valid)) {
+                float bestShot = float.NegativeInfinity;
+                foreach (Option o in options) if (o.shot.valid) bestShot = Mathf.Max(bestShot, o.world.score);
+                foreach (Option o in options)
+                    if (!o.shot.valid && o.world.buildings > 0f && o.world.score >= bestShot)
+                        o.world.score = Mathf.Max(o.world.score - o.world.buildings, bestShot - Mathf.Max(profile.worldTieMin, profile.worldTie * worth) - 1f);
+            }
+            foreach (Option o in options) bestWorld = Mathf.Max(bestWorld, o.world.score);
             if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });
             // The tie margin: a fraction of a strength point, but never less than worldTieMin —
             // a quarter of a grunt's point (83) treated real differences as noise in reverse:
@@ -581,7 +591,7 @@ namespace HexTactica.AI {
                 DebugLog(unit.name + " at (" + unit.tile.x + "," + unit.tile.y + ") " + tag + ", posture " + context.posture
                          + ", intent " + (context.intents != null && context.intents.ContainsKey(unit) && context.intents[unit] != null
                              ? "(" + context.intents[unit].x + "," + context.intents[unit].y + ")" : "none"));
-                for (int i = 0; i < Mathf.Min(6, explained.Count); i++) DebugLog(explained[i].Value);
+                for (int i = 0; i < Mathf.Min(System.Environment.GetEnvironmentVariable("EXPLAINALL") != null ? 99 : 6, explained.Count); i++) DebugLog(explained[i].Value);
             }
 
             if (context.intents != null) {
@@ -862,7 +872,7 @@ namespace HexTactica.AI {
             AIAction back = DecideWithdraw(unit, map, profile);
             if (back.kind == AIActionKind.Attack) return back;      // the free kill
             HexTile dest = back.destination ?? unit.tile;
-            bool heals = map.Heals(unit, dest);
+            bool heals = map.HealAt(unit, dest) > 0f;
             bool safe = map.EnemyStrikeTurns(dest) > 1;
             LastChosen = null;
             AIAction f = fight();
@@ -896,6 +906,9 @@ namespace HexTactica.AI {
                 int depth = map.SupplyDepth(t);
                 float v = AIScore.Depth(depth, profile) * worth;
                 if (depth >= profile.supplyComfort) v += worth * 0.5f;
+                // Where it heals faster (a city or base that heals: Building.healPerTurn), a strength's worth a point.
+                float heal = map.HealAt(unit, t);
+                if (heal > profile.healedPerTurn) v += (Mathf.Min(6 - unit.Strength, heal) - profile.healedPerTurn) * worth;
                 v -= AIScore.Hold(map.Conflict(t)) * worth * 0.3f;      // off the contact line
                 // Friendly neighbours mean an attacker has to eat a counterattack.
                 List<HexTile> neighbors = t.neighbors;

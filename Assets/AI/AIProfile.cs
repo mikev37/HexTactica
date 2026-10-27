@@ -344,6 +344,9 @@ namespace HexTactica.AI {
         [Tooltip("Capture objectives only for buildings within this many tiles of our supplied ground: the army's ground, not the whole map.")]
         public int captureReach = 3;
 
+        [Tooltip("A unit with an attack open to it does not choose to capture instead: taking a building earns nothing in its choice while it could fight.")]
+        public bool fightBeforeCapture = true;
+
         [Tooltip("Old rule: only pull units to an objective once they have objectiveRatio times its defenders, and never on a trip they couldn't get back into supply from. Off: objectives give direction to units out of contact regardless.")]
         public bool objectivesNeedForce = false;
 
