@@ -668,7 +668,15 @@ namespace HexTactica.AI {
             // its need is what it was given: it goes once that has gathered, rather than waiting for a
             // force we do not have.
             if (!objectives.Exists(o => o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout && o.units.Count > 0) && pool.Count > 0) {
-                CampaignObjective top = candidates.Find(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout);
+                // The best that our supply can carry: of those needing the fewest supply units beyond what we
+                // have, the first by priority. (The best by priority alone sent the whole army, with no supply
+                // units, at the enemy HQ rather than the city in front of it.)
+                CampaignObjective top = null; int topShort = int.MaxValue;
+                foreach (CampaignObjective o in candidates) {
+                    if (o.kind == CampaignKind.DefendHQ || o.respond || o.kind == CampaignKind.Scout) continue;
+                    int shortBy = o.lasting ? Mathf.Max(0, o.needHubs - Mathf.Max(0, hubsLeft)) : 0;
+                    if (shortBy < topShort) { topShort = shortBy; top = o; }
+                }
                 if (top != null) {
                     Fill(top, pool, map, p, top.needPower);
                     if (!objectives.Contains(top)) objectives.Add(top);
