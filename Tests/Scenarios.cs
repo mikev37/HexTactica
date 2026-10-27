@@ -3446,7 +3446,7 @@ public static class Scenarios {
         int reached = -1;
         int traceRound = int.Parse(Environment.GetEnvironmentVariable("TRACEROUND") ?? "-1");
         for (int r = 0; r < rounds && !gc.gameOver; r++) {
-            if (r == traceRound) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; }
+            if (r == traceRound) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; AITactical.DebugBreakdown = Environment.GetEnvironmentVariable("BREAKDOWN") != null; }
             ScenarioFile.PlayTurn(); if (!gc.gameOver) ScenarioFile.PlayTurn();
             AIPlayer.Trace = null; AITactical.DecisionLog = null; HexTactica.AI.AISupplyChain.DebugLog = null;
             SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);

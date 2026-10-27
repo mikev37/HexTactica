@@ -104,6 +104,7 @@ namespace HexTactica.AI {
                 if (taken.Contains(x) || (x != truck.tile && x.occupier != null)) { nOcc++; continue; }
                 int sx = steps(x);
                 if (sx == int.MaxValue || sx > bestSteps || (sx == bestSteps && !CombatMath.Precedes(x, best))) continue;
+                // Ahead of the army only where the enemy cannot strike within two turns.
                 if (sx < front && map.EnemyStrikeTurns(x) <= 2) { nAhead++; continue; }
                 float loss = map.ExpectedLoss(truck, x);
                 if (loss * caution >= truck.Strength || loss > tolerance) { nRisk++; continue; }
@@ -159,7 +160,7 @@ namespace HexTactica.AI {
             // every link holding the next: none could leap alone without cutting the ones ahead, though
             // one truck past the rear link does what three on foot did, freeing them to go further.
             Plan best = plan;
-            int cut = CutAfter(plan, map);
+            int cut = CutAfter(plan, map), army0 = ArmySupplied(plan, map);
             foreach (SupplyPoint h in map.ownHubs) {
                 if (!IsLink(h) || (only != null && !only.Contains(h)) || (fixedHubs != null && fixedHubs.Contains(h.myUnit))) continue;
                 if (!TruckBeside(h, map)) continue;
@@ -168,6 +169,9 @@ namespace HexTactica.AI {
                 if (DebugLog != null) DebugLog("   chain: leap for (" + h.myUnit.tile.x + "," + h.myUnit.tile.y + ") " + (alt.leaps.ContainsKey(h) ? "to (" + alt.leaps[h].tile.x + "," + alt.leaps[h].tile.y + "): reach " + alt.reachSteps + " vs " + plan.reachSteps + ", cut " + altCut + " vs " + cut + ", spare " + alt.spare.Count : "none"));
                 if (!alt.leaps.ContainsKey(h)) continue;
                 if (altCut > cut) continue;
+                // Not by leaving the army where it stands without supply: the units behind the gap a
+                // leap opened starved, turned back for supply, and the army ended twenty steps back.
+                if (ArmySupplied(alt, map) < army0) continue;
                 if (alt.reachSteps < best.reachSteps || (alt.reachSteps == best.reachSteps && alt.spare.Count > best.spare.Count)) { best = alt; }
             }
             return best;
@@ -180,6 +184,21 @@ namespace HexTactica.AI {
                 if (t.tile.Distance(h.myUnit.tile) <= h.myUnit.moveRange + 1) return true;
             }
             return false;
+        }
+
+        /// <summary>Our fighting units (where they stand) the plan's network supplies.</summary>
+        static int ArmySupplied(Plan plan, AIMap map) {
+            Dictionary<SupplyPoint, HexTile> placed = new Dictionary<SupplyPoint, HexTile>(plan.links);
+            Dictionary<SupplyPoint, Unit> aboard = new Dictionary<SupplyPoint, Unit>();
+            foreach (KeyValuePair<SupplyPoint, Leap> kv in plan.leaps) aboard[kv.Key] = kv.Value.truck;
+            Dictionary<SupplyPoint, Unit> was = SupplyNetwork.PlannedAboard;
+            SupplyNetwork.PlannedAboard = aboard;
+            try {
+                SupplyNetwork.Result net = SupplyNetwork.SolvePlanned(map.player, placed);
+                int n = 0;
+                foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && u.trasnporter == null && net.DepthAt(u.tile) > 0) n++;
+                return n;
+            } finally { SupplyNetwork.PlannedAboard = was; }
         }
 
         /// <summary>Our supply units the plan's network leaves cut off.</summary>
