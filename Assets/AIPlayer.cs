@@ -792,8 +792,7 @@ public class AIPlayer : MonoBehaviour {
     /// short of the enemy HQ and stopped; a truck carries the network a truck's move further each time.
     ///
     /// Aboard already: the truck goes to the tile furthest toward the chain's objective that keeps it
-    /// linked, safe tonight (loadedTransportRisk), and not ahead of the army unless the enemy cannot
-    /// strike there within two turns. On foot: if a free truck is where it can
+    /// linked, safe tonight (loadedTransportRisk), and not ahead of the army. On foot: if a free truck is where it can
     /// board this turn, and such a tile adds to the chain's reach, it boards and the truck drives.
     /// </summary>
     bool SupplyLeap(SupplyPoint hub, out AIAction action) {
@@ -842,8 +841,8 @@ public class AIPlayer : MonoBehaviour {
             if (x != truck.tile && x.occupier != null) continue;
             int sx = steps(x);
             if (sx == int.MaxValue || sx >= bestSteps) continue;
-            // Ahead of the army only where the enemy cannot strike within two turns (a truck out front alone is a gift).
-            if (sx < front && map.EnemyStrikeTurns(x) <= 2) continue;
+            // Supply serves the army: never ahead of it.
+            if (sx < front) continue;
             if (map.ExpectedLoss(truck, x) * caution >= truck.Strength || map.ExpectedLoss(truck, x) > Mathf.Max(0f, Profile.chainRiskTolerance)) continue;
             // Linked: the truck could reach supplied ground from there in one move.
             bool linked = false;
