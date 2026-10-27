@@ -244,11 +244,8 @@ MonoBehaviour:
   destroyedSprite: {fileID: 0}
   buildable:
   - {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
-  - {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
-  - {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
-  - {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
   - {fileID: 9081080694409079478, guid: bef79f3571dc6a548ad283decf31b0d7, type: 3}
-  - {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
+  - {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
 --- !u!1001 &7055445316472753702
 PrefabInstance:
   m_ObjectHideFlags: 0
