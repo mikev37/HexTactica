@@ -85,6 +85,8 @@ namespace HexTactica.AI {
         public int campaignStallTurns = 0;
         [Tooltip("Also give up a task force that has not achieved its objective in campaignTimeBox turns (plus a turn for every turn its target is beyond campaignDrawTurns of its staging tile). Off: only the staging time box applies.")]
         public bool campaignTransitTimeBox = false;
+        [Tooltip("A task force given up by a time box leaves its objective alone for this many turns. 0: not at all — its task force is dissolved and the objective formed again from the units best placed for it now.")]
+        public int campaignGiveUpTurns = 0;
         [Tooltip("A separate group of our units, too far from every task force's staging ground to join it, forms a task force of its own — another one for an objective already taken on, if that is its best.")]
         public bool campaignWings = true;
         [Tooltip("Cohesion: a task force's unit more than this many of its own turns from the task force's centre drops out of it. 0: no limit.")]

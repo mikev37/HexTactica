@@ -201,6 +201,7 @@ namespace HexTactica.AI {
             // objective is left alone for campaignTimeBox turns and its units go to other objectives
             // and to the fighting.
             string timedOut = null;
+            HashSet<string> timedOutIds = new HashSet<string>();
             if (last != null) {
                 foreach (KeyValuePair<string, int> kv in last.givenUp) if (kv.Value > c.turn) c.givenUp[kv.Key] = kv.Value;
                 int draw = DrawTurns(p);
@@ -215,7 +216,10 @@ namespace HexTactica.AI {
                     else if (o.went && p.campaignStallTurns > 0 && o.stalled >= p.campaignStallTurns) why = "stalled " + o.stalled + " turns";
                     else if (p.campaignTransitTimeBox && age >= p.campaignTimeBox + Mathf.Max(0, o.routeTurns - draw)) why = "not achieved in " + age + " turns";
                     if (why == null) continue;
-                    c.givenUp[o.Id] = c.turn + p.campaignTimeBox;
+                    // Left alone for campaignGiveUpTurns (0: not at all — the task force is dissolved and the
+                    // objective formed again from whatever units are best placed for it now).
+                    if (p.campaignGiveUpTurns > 0) c.givenUp[o.Id] = c.turn + p.campaignGiveUpTurns;
+                    else timedOutIds.Add(o.Id);
                     if (timedOut == null) timedOut = o.Id + " " + why + ", given up";
                 }
                 candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && c.givenUp.ContainsKey(o.Id));
@@ -321,7 +325,7 @@ namespace HexTactica.AI {
             // objective was achieved — nearly every turn once they were many and small — no task force
             // across the map lasted two turns: the FOB beyond the lake was set out for six times.)
             bool afresh = last == null || (c.replanned != null && c.replanned.StartsWith("our HQ"));
-            HashSet<string> restart = new HashSet<string>();
+            HashSet<string> restart = new HashSet<string>(timedOutIds);
             if (last != null && !afresh)
                 foreach (CampaignObjective o in last.objectives) {
                     float power = 0f;

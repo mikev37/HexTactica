@@ -489,7 +489,7 @@ public class AIPlayer : MonoBehaviour {
             }
         if (Profile.supplyBackbone) backbonePlanned = AISupplyBackbone.Make(map, null);
         logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, null, fronts) : null;
-        relieved.Clear();
+        relieved.Clear(); sought.Clear();
         if (logistics != null && Trace != null) Trace("   " + logistics);
         HexTactica.AI.AILogistics.Protect = logistics != null ? logistics.dutied : null;
         AISupplyChain.ProtectOnly = HexTactica.AI.AILogistics.Protect;
@@ -692,6 +692,9 @@ public class AIPlayer : MonoBehaviour {
     /// everything else goes to its role-specific tactical decider.
     /// </summary>
     public AIAction DecideFor(Unit unit) {
+        // A transport with a supply unit aboard is that supply unit's (campaignLogistics): the supply logic drives it.
+        AIAction carried;
+        if (CarriesSupply(unit, out carried)) return map != null ? AIAir.Guard(unit, carried, map) : carried;
         AIAction a = DecideForUnit(unit);
         // A decision path that does not go through the tactical choice (which already leaves out tiles
         // reserved for a landing this turn) chose one: the unit decides again the ordinary way, so an
@@ -703,6 +706,75 @@ public class AIPlayer : MonoBehaviour {
         }
         // Aircraft and ships never end a turn where they cannot get home from.
         return map != null && unit != null ? AIAir.Guard(unit, a, map) : a;
+    }
+
+    /// <summary>
+    /// A transport that has a supply unit aboard belongs to it (campaignLogistics): its move is the supply
+    /// logic's. The ride the supply unit planned (a chain leap, a ride to its front) if it has one; else,
+    /// one of a front's own moves with its front (toward the front's nearest unit), and a link of a chain
+    /// holds where it is (the chain's network moves it, by a leap). A rider that would not get nearer its
+    /// goal is let out first.
+    /// </summary>
+    bool CarriesSupply(Unit truck, out AIAction action) {
+        action = default(AIAction);
+        if (logistics == null || truck == null || truck.tile == null || !Transporting.IsTransport(truck)) return false;
+        Unit cargo = null;
+        foreach (Unit c in truck.transported) if (c != null && c.Hub != null && !c.Hub.producer) { cargo = c; break; }
+        if (cargo == null) return false;
+        SupplyPoint hub = cargo.Hub;
+        // Relieved (Relieve): the step it was relieved to make.
+        HexTile upTo;
+        if (relieved.TryGetValue(hub, out upTo) && upTo.occupier == null && !CutsOff(hub, upTo)) {
+            action = AIAction.Move(truck, upTo, 0f, "carries its supply unit: relieved, moves up");
+            return true;
+        }
+        TransportPlan plan;
+        if (!transportAssignments.TryGetValue(truck, out plan) || plan == null || plan.cargo != cargo) {
+            plan = null;
+            // Its supply unit has not decided yet this turn: it decides now (the plan it hands the truck).
+            AIAction ignored;
+            if (cargo.active && LogisticsAction(hub, out ignored)) transportAssignments.TryGetValue(truck, out plan);
+            if (plan != null && plan.cargo != cargo) plan = null;
+        }
+        HexTile to = null;
+        string why;
+        if (plan != null) { to = plan.dropoff; why = "carries its supply unit: "; }
+        else {
+            HexTactica.AI.AILogistics.Task t;
+            if (logistics.tacticalOf.TryGetValue(hub, out t)) {
+                HexTile near; HexTactica.AI.AILogistics.NearestOf(t, cargo, map, out near);
+                if (near != null) {
+                    HexTile step = AITransportPlanner.SafeStepToward(truck, near, map.ReachHorizon(truck), map, true);
+                    if (step != null && step != truck.tile && !CutsOff(hub, step)) to = step;
+                }
+                why = "carries its front's supply unit with the front";
+            } else why = "carries a link of the chain: holds with the chain";
+            plan = new TransportPlan { cargo = cargo, transport = truck, rendezvous = truck.tile, dropoff = to ?? truck.tile, destination = to ?? truck.tile, stayAboard = true };
+            transportAssignments[truck] = plan;
+        }
+        // Riders who would not get nearer their goal get out here.
+        HexTile end = plan.dropoff ?? truck.tile;
+        foreach (Unit r in truck.transported) {
+            if (r == null || r == cargo || r.Hub != null) continue;
+            Front f = AIStrategic.FrontFor(r, fronts);
+            HexTile goal = f != null && f.objectiveTile != null ? f.objectiveTile : AISupplyChain.Objective(map);
+            if (goal == null) continue;
+            Dictionary<HexTile, int> steps = map.LandSteps(goal);
+            int now, then;
+            if (steps == null || !steps.TryGetValue(truck.tile, out now)) continue;
+            if (!steps.TryGetValue(end, out then)) then = int.MaxValue;
+            if (then < now) continue;
+            List<HexTile> off = Transporting.UnloadOptions(truck, r);
+            if (off.Count == 0) continue;
+            off.Sort((x, y) => { int a = (steps.ContainsKey(x) ? steps[x] : int.MaxValue).CompareTo(steps.ContainsKey(y) ? steps[y] : int.MaxValue); return a != 0 ? a : CombatMath.CompareTiles(x, y); });
+            action = AIAction.Disembark(truck, r, off[0], "lets out a rider the supply's ride takes no nearer its goal");
+            return true;
+        }
+        action = AITransportPlanner.TransportAction(truck, plan, map);
+        // Others hang from it: it holds as a link where it is until another supply unit relieves it (Relieve).
+        // (Others hang from it: KeepLinks holds it where it is, as a link, until another supply unit relieves it.)
+        if (!string.IsNullOrEmpty(why) && action.reason != null && !action.reason.StartsWith(why)) action.reason = why + " — " + action.reason;
+        return true;
     }
 
     AIAction DecideForUnit(Unit unit) {
@@ -1237,6 +1309,8 @@ public class AIPlayer : MonoBehaviour {
 
     /// <summary>Supply units relieved this turn by an idle one that took over their job (AIPlayer.Relieve): where each moves up to.</summary>
     readonly Dictionary<SupplyPoint, HexTile> relieved = new Dictionary<SupplyPoint, HexTile>();
+    /// <summary>Chain links another supply unit is on its way to relieve this turn (one each).</summary>
+    readonly HashSet<SupplyPoint> sought = new HashSet<SupplyPoint>();
 
     /// <summary>
     /// An idle supply unit (no duty) beside a busy one takes over its job: a tile it can reach this turn
@@ -1244,33 +1318,59 @@ public class AIPlayer : MonoBehaviour {
     /// the busy one is then relieved to make that step. False: no such relay.
     /// </summary>
     bool Relieve(SupplyPoint hub, out AIAction action) {
+        List<SupplyPoint> busy = new List<SupplyPoint>();
+        foreach (SupplyPoint x in logistics.dutied) if (!logistics.chainOf.ContainsKey(x) && logistics.tacticalOf.ContainsKey(x)) busy.Add(x);
+        return Relieve(hub, busy, out action);
+    }
+
+    /// <summary>
+    /// Relieve one of <paramref name="busy"/> (the nearest that can be): a tile <paramref name="hub"/> can reach this
+    /// turn from which, with that one making its next step up, nobody is cut off (AISupplyChain.Harm). A front's
+    /// own supply unit is then told to make that step (relieved); a link of a chain moves up when the chain is
+    /// planned again with this one in place.
+    /// </summary>
+    bool Relieve(SupplyPoint hub, List<SupplyPoint> busy, out AIAction action) {
         action = default(AIAction);
         Unit unit = hub.myUnit;
-        List<SupplyPoint> busy = new List<SupplyPoint>();
-        foreach (SupplyPoint x in logistics.dutied)
-            if (x != hub && x.myUnit != null && x.myUnit.tile != null && x.myUnit.active && x.myUnit.trasnporter == null && !relieved.ContainsKey(x)
-                && !logistics.chainOf.ContainsKey(x) && logistics.tacticalOf.ContainsKey(x) && x.myUnit.tile.Distance(unit.tile) <= 2 * Mathf.Max(1, unit.moveRange)) busy.Add(x);
-        busy.Sort((a, b) => { int c = a.myUnit.tile.Distance(unit.tile).CompareTo(b.myUnit.tile.Distance(unit.tile)); return c != 0 ? c : AIMap.CompareUnits(a.myUnit, b.myUnit); });
+        List<SupplyPoint> near = new List<SupplyPoint>();
+        foreach (SupplyPoint x in busy)
+            if (x != hub && x.myUnit != null && x.myUnit.tile != null && x.myUnit.active && !relieved.ContainsKey(x)
+                && x.myUnit.tile.Distance(unit.tile) <= 2 * Mathf.Max(1, unit.moveRange)) near.Add(x);
+        near.Sort((a, b) => { int c = a.myUnit.tile.Distance(unit.tile).CompareTo(b.myUnit.tile.Distance(unit.tile)); return c != 0 ? c : AIMap.CompareUnits(a.myUnit, b.myUnit); });
         MoveField walk = map.ReachThisTurn(unit);
-        foreach (SupplyPoint x in busy) {
-            HexTile near;
-            HexTactica.AI.AILogistics.NearestOf(logistics.tacticalOf[x], x.myUnit, map, out near);
-            if (near == null) continue;
-            AIAction up = AISupplyTree.Step(x.myUnit, near, map);
-            if (up.destination == null || up.destination == x.myUnit.tile) continue;
+        foreach (SupplyPoint x in near) {
+            HexTile up = NextStepUp(x);
+            if (up == null) continue;
+            HexTile from = x.myUnit.trasnporter != null ? x.myUnit.trasnporter.tile : x.myUnit.tile;
             List<HexTile> spots = new List<HexTile>();
-            foreach (HexTile s in AIPath.TilesInRangeShared(x.myUnit.tile, 0, Mathf.Max(1, hub.range)))
-                if (s != null && (s == unit.tile || (s.occupier == null && s != up.destination && walk.ReachableThisTurn(s)))) spots.Add(s);
-            spots.Sort((a, b) => { int c = a.Distance(x.myUnit.tile).CompareTo(b.Distance(x.myUnit.tile)); return c != 0 ? c : CombatMath.CompareTiles(a, b); });
+            foreach (HexTile s in AIPath.TilesInRangeShared(from, 0, Mathf.Max(1, hub.range)))
+                if (s != null && (s == unit.tile || (s.occupier == null && s != up && walk.ReachableThisTurn(s)))) spots.Add(s);
+            spots.Sort((a, b) => { int c = a.Distance(from).CompareTo(b.Distance(from)); return c != 0 ? c : CombatMath.CompareTiles(a, b); });
             foreach (HexTile s in spots) {
-                if (AISupplyChain.Harm(new Dictionary<SupplyPoint, HexTile> { { hub, s }, { x, up.destination } }, map) > 0) continue;
-                relieved[x] = up.destination;
-                string why = "logistics: takes over from the supply unit at (" + x.myUnit.tile.x + "," + x.myUnit.tile.y + "), which moves up";
+                if (AISupplyChain.Harm(new Dictionary<SupplyPoint, HexTile> { { hub, s }, { x, up } }, map) > 0) continue;
+                relieved[x] = up;   // one relief each; it makes that step when it moves
+                string why = "logistics: takes over from the supply unit at (" + from.x + "," + from.y + "), which moves up";
                 action = s == unit.tile ? AIAction.Wait(unit, why) : AIAction.Move(unit, s, 0f, why);
                 return true;
             }
         }
         return false;
+    }
+
+    /// <summary>The next step up for supply unit <paramref name="x"/>: toward its front's units (its own), or its chain's goal (a link); by its truck if aboard.</summary>
+    HexTile NextStepUp(SupplyPoint x) {
+        HexTactica.AI.AILogistics.Task t;
+        HexTile goal = null;
+        if (logistics.chainOf.TryGetValue(x, out t)) goal = t.goal;
+        else if (logistics.tacticalOf.TryGetValue(x, out t)) HexTactica.AI.AILogistics.NearestOf(t, x.myUnit, map, out goal);
+        if (goal == null) return null;
+        Unit truck = x.myUnit.trasnporter;
+        if (truck != null) {
+            HexTile step = AITransportPlanner.SafeStepToward(truck, goal, map.ReachHorizon(truck), map, true);
+            return step != null && step != truck.tile ? step : null;
+        }
+        AIAction a = AISupplyTree.Step(x.myUnit, goal, map);
+        return a.destination != null && a.destination != x.myUnit.tile ? a.destination : null;
     }
 
     bool LogisticsAction(SupplyPoint hub, out AIAction action) {
@@ -1330,13 +1430,23 @@ public class AIPlayer : MonoBehaviour {
                 if (!toward.IsNothing && !CutsOff(hub, toward.destination)) { toward.reason = "logistics for " + t.front.Id + ": walks toward (" + claim.to.x + "," + claim.to.y + "), its truck coming"; action = toward; return true; }
             }
         }
-        // The front's chain short: to the back of the chain (AILogistics.DropNear), to be its next rear link.
-        if (t.gap && unit.trasnporter == null) {
-            HexTile back = HexTactica.AI.AILogistics.DropNear(t, unit, map);
-            if (back != null) {
-                if (back == unit.tile) { action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": at the back of the chain, to join it"); return true; }
-                action = AISupplyTree.Step(unit, back, map);
-                if (!action.IsNothing && !CutsOff(hub, action.destination)) { action.reason = "logistics for " + t.front.Id + ": to the back of the chain at (" + back.x + "," + back.y + ")"; return true; }
+        // The front's chain short: to the chain's supply unit nearest it, to relieve that one of its place so it
+        // can move up. (Sent to "the back of the chain", supply units went to whichever end that was that turn.)
+        if (t.gap && unit.trasnporter == null && t.chain.Count > 0) {
+            List<SupplyPoint> links = new List<SupplyPoint>();
+            foreach (SupplyPoint x in t.chain) if (x != hub && x.myUnit != null && x.myUnit.tile != null) links.Add(x);
+            if (Relieve(hub, links, out action)) { action.reason += " (" + t.front.Id + "'s chain)"; return true; }
+            SupplyPoint closest = null; int cd = int.MaxValue;
+            foreach (SupplyPoint x in links) {
+                if (sought.Contains(x) || relieved.ContainsKey(x)) continue;   // one on its way to relieve it already
+                HexTile at = x.myUnit.trasnporter != null ? x.myUnit.trasnporter.tile : x.myUnit.tile;
+                int dd = map.Travel(unit, unit.tile, at);
+                if (dd < cd || (dd == cd && closest != null && AIMap.CompareUnits(x.myUnit, closest.myUnit) < 0)) { cd = dd; closest = x; }
+            }
+            if (closest != null && cd > Mathf.Max(1, hub.range)) {
+                HexTile at = closest.myUnit.trasnporter != null ? closest.myUnit.trasnporter.tile : closest.myUnit.tile;
+                AIAction go = AISupplyTree.Step(unit, at, map);
+                if (go.destination != null && go.destination != unit.tile && !CutsOff(hub, go.destination)) { sought.Add(closest); go.reason = "logistics for " + t.front.Id + ": to relieve the chain's supply unit at (" + at.x + "," + at.y + ")"; action = go; return true; }
             }
         }
         // A tail: near its front but supplying nothing of any front's or in contact (no duty) — it pulls back

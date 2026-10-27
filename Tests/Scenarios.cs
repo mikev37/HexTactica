@@ -419,7 +419,7 @@ public static class Scenarios {
              "Campaign on: a neutral city near Blue's HQ, a Blue tank standing on it and a Blue grunt beside it, Red far away. The city is the campaign's objective; the tank cannot capture, so it steps off on Blue's first turn, and by Blue's second the grunt is on the city taking it. (A gunship parked on a city a whole game long kept Blue's army round it for 30 rounds on RiverCrossing.)");
         make("ai-campaign-time-box", "aiCampaignTimeBox", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
-             "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox, with campaignTransitTimeBox on; off by default) and leaves it alone for 6 turns. With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2).");
+             "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox, with campaignTransitTimeBox on; off by default) and leaves it alone for 6 turns (campaignGiveUpTurns 6; 0 by default). With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2) and, with nothing barring the objective by default (campaignGiveUpTurns 0), formed again at once.");
         make("ai-hold-the-enemy-hq", "aiHoldHQ", (a, o) => { Put("Grunt", a, 6, 0); Put("Grunt", a, 5, 0); Put("Tank", o, 3, 1); },
              "A Blue grunt on Red's HQ, wounded to strength 1 and out of rations, with a Red tank two tiles off. It stays on the HQ to take it (no withdrawing to heal, no attack that would stop the capture).");
         make("ai-campaign-chokepoint-objectives", "campaignChokepoints", (a, o) => {
@@ -898,7 +898,7 @@ public static class Scenarios {
             case "aiCampaignTimeBox": {
                 Rig.At(0, 0).building.capturingPlayer = null;
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
-                prof.campaign = true; prof.campaignTransitTimeBox = true;   // the transit time box is off by default
+                prof.campaign = true; prof.campaignTransitTimeBox = true; prof.campaignGiveUpTurns = 6;   // both off by default
                 List<string> r = new List<string>();
                 Func<AIProfile, int, List<string>> run = (pr, turns) => {
                     List<string> seen = new List<string>();
@@ -921,7 +921,8 @@ public static class Scenarios {
                 // Kept turns 1..6, given up at the 7th plan (its 7th turn would begin) and not taken on again before the 13th.
                 bool kept = true; for (int t = 0; t < 6; t++) kept &= a6[t].StartsWith("city turn " + (t + 1));
                 bool gaveUp = a6[6].StartsWith("no city") && a6[6].Contains("not achieved in 6 turns") && a6[7].StartsWith("no city") && a6[8].StartsWith("no city");
-                bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("no city") && b[2].Contains("did not gather in 2 turns");
+                // Dissolved at its 3rd plan and, with nothing barring the objective (campaignGiveUpTurns 0, the default), formed again at once from the units best placed for it.
+                bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("city turn 1") && b[2].Contains("did not gather in 2 turns");
                 return kept && gaveUp && dissolved;
             }
             case "aiHoldHQ": {
