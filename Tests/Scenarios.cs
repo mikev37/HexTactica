@@ -3446,9 +3446,9 @@ public static class Scenarios {
         int reached = -1;
         int traceRound = int.Parse(Environment.GetEnvironmentVariable("TRACEROUND") ?? "-1");
         for (int r = 0; r < rounds && !gc.gameOver; r++) {
-            if (r == traceRound) { AIPlayer.Trace = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; }
+            if (r == traceRound) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; }
             ScenarioFile.PlayTurn(); if (!gc.gameOver) ScenarioFile.PlayTurn();
-            AIPlayer.Trace = null; AITactical.DecisionLog = null;
+            AIPlayer.Trace = null; AITactical.DecisionLog = null; HexTactica.AI.AISupplyChain.DebugLog = null;
             SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
             int supplyGap = 99, unitGap = 99, ours = 0;
             foreach (HexTile t in Rig.hg.tiles) {
@@ -3461,7 +3461,8 @@ public static class Scenarios {
             foreach (Unit u in l.ai.units) {
                 if (u == null || u.tile == null) continue;
                 int d; bool on = steps.TryGetValue(u.tile, out d);
-                if (u.Hub != null && !u.Hub.producer) hubs.Add("(" + u.tile.x + "," + u.tile.y + ")" + (on ? d.ToString() : "?") + (net.connectedHubs.Contains(u.Hub) ? "" : "x"));
+                if (u.Hub != null && !u.Hub.producer) hubs.Add("(" + u.tile.x + "," + u.tile.y + ")" + (on ? d.ToString() : "?") + (net.connectedHubs.Contains(u.Hub) ? "" : "x") + (u.trasnporter != null ? "T" : ""));
+                else if (Transporting.IsTransport(u) && u.Firepower <= 1) hubs.Add("truck(" + u.tile.x + "," + u.tile.y + ")" + (on ? d.ToString() : "?") + (u.transported.Count > 0 ? "+" : ""));
                 else if (u.Firepower > 0 && on) unitGap = Math.Min(unitGap, d);
             }
             if (supplyGap == 0 && reached < 0) reached = r;
@@ -3476,6 +3477,67 @@ public static class Scenarios {
                 held, all, taking.Count > 0 ? " (taking " + string.Join(" ", taking.ToArray()) + ")" : ""));
         }
         Console.WriteLine("result: " + (gc.gameOver && gc.winner == l.ai ? "took the HQ on round " + gc.days : "HQ not taken") + "; supply reached the HQ " + (reached >= 0 ? "on round " + reached : "never"));
+    }
+
+    /// <summary>
+    /// PROBE=reachcap FILE=&lt;map&gt; HUBS=n TRUCKS=k: how far Blue's supply can reach toward Red's HQ at
+    /// best, with n supply units and k trucks (greedy, nobody in the way): every supply unit on the
+    /// ground, each where the network is furthest along the way; then with k of them aboard trucks
+    /// (a supply unit aboard is linked when its truck could reach supplied ground in one move, so a
+    /// truck carries the network across a gap). Land steps from Red's HQ to the nearest tile supplied.
+    /// </summary>
+    public static void ReachCap(string file, int hubs, int trucks) {
+        Environment.SetEnvironmentVariable("RULES", "standard");
+        foreach (bool useTrucks in new[] { false, true }) {
+            ScenarioFile.Loaded l = ScenarioFile.Load(Find(file), "Human", null);
+            foreach (Unit u in new List<Unit>(l.other.units)) if (u != null) u.Perish();
+            foreach (Unit u in new List<Unit>(l.ai.units)) if (u != null) u.Perish();
+            Building theirs = GameController.HQOf(l.other);
+            HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+            Dictionary<HexTile, int> steps = m.LandSteps(theirs.tile);
+            Func<int> reach = () => {
+                SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                int best = 99;
+                foreach (KeyValuePair<HexTile, int> kv in steps) if (net.DepthAt(kv.Key) > 0) best = Math.Min(best, kv.Value);
+                return best;
+            };
+            List<HexTile> order = new List<HexTile>(steps.Keys);
+            order.Sort((a, b) => steps[a].CompareTo(steps[b]));
+            List<string> log = new List<string>();
+            int left = hubs;
+            if (useTrucks) {
+                for (int k = 0; k < trucks && left > 0; k++) {
+                    bool placed = false;
+                    foreach (HexTile t in order) {
+                        if (t.occupier != null || t.building != null) continue;
+                        Unit tr = Put("Truck Variant", l.ai, t.x, t.y);
+                        if (tr == null || tr.tile != t) { if (tr != null) tr.Perish(); continue; }
+                        HexTile beside = null;
+                        foreach (HexTile n in t.neighbors) if (n != null && n.occupier == null && n.building == null && n.terrain != null && n.terrain.elevation >= 0) { beside = n; break; }
+                        if (beside == null) { tr.Perish(); continue; }
+                        Unit hub = Put("Supplies", l.ai, beside.x, beside.y);
+                        if (hub == null) { tr.Perish(); continue; }
+                        bool loaded = Transporting.Load(tr, hub);
+                        SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                        if (loaded && net.connectedHubs.Contains(hub.GetComponent<SupplyPoint>())) { placed = true; log.Add("truck (" + t.x + "," + t.y + ")" + steps[t]); left--; break; }
+                        hub.Perish(); tr.Perish();
+                    }
+                    if (!placed) break;
+                }
+            }
+            for (; left > 0; left--) {
+                SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+                bool placed = false;
+                foreach (HexTile t in order) {
+                    if (t.occupier != null || t.building != null || net.DepthAt(t) <= 0) continue;
+                    Unit hub = Put("Supplies", l.ai, t.x, t.y);
+                    if (hub == null || hub.tile != t) { if (hub != null) hub.Perish(); continue; }
+                    placed = true; log.Add("(" + t.x + "," + t.y + ")" + steps[t]); break;
+                }
+                if (!placed) break;
+            }
+            Console.WriteLine((useTrucks ? "with " + trucks + " trucks" : "all on the ground") + ": supply " + reach() + " steps from Red's HQ; " + string.Join(" ", log.ToArray()));
+        }
     }
 
     /// <summary>The suite's three measures for <paramref name="us"/> at the end: material share, share of the land only it supplies, share of the buildings' income; all 1 if it won, 0 if it lost.</summary>

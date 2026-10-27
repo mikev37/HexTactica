@@ -78,6 +78,7 @@ public static class Tests {
             }
             return 0;
         }
+        if (probe == "reachcap") { Scenarios.ReachCap(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("HUBS") ?? "5"), int.Parse(Environment.GetEnvironmentVariable("TRUCKS") ?? "0")); return 0; }
         if (probe == "unopposed") { Scenarios.Unopposed(Environment.GetEnvironmentVariable("FILE"), tweak, int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30")); return 0; }
         if (probe == "suite") {
             Scenarios.Suite(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
