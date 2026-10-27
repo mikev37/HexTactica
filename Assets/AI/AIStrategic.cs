@@ -182,6 +182,17 @@ namespace HexTactica.AI {
             }
             // A campaign task force on the move keeps together toward wherever it is going now.
             foreach (Front f in fronts) if (f.pullScale != 1f || f.campaignStaging != null) f.paceLimit = f.staging ? -1 : Pace(f, map);
+            // Stalled: a task force's main body no nearer its objective than last turn has its pace
+            // lifted, so the units ahead of it go on. (Held for the main body on a bridge one unit wide,
+            // the leaders stood on it and the main body, queued behind them, never came: the army stood
+            // still for twenty turns.)
+            foreach (Front f in fronts) {
+                CampaignObjective o = f.campaignObjective;
+                if (o == null || f.staging) continue;
+                int raw = Pace(f, map);
+                if (raw >= 0 && o.lastPace >= 0 && raw >= o.lastPace) f.paceLimit = -1;
+                o.lastPace = raw;
+            }
             if (memory != null) {
                 // Staging is a pause in an attack, not a change of mind: remember it as aggressive.
                 foreach (Front f in fronts) if (f.objectiveTile != null) memory[f.objectiveTile] = f.staging ? Posture.Aggressive : f.posture;

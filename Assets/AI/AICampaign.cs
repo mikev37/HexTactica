@@ -48,6 +48,8 @@ namespace HexTactica.AI {
         /// <summary>Turns this task force has been out (0 the turn it formed), whether it has gone in yet, and the turns from its staging tile to its target when it formed (time boxes: AIProfile.campaignTimeBox).</summary>
         public int age;
         public bool went;
+        /// <summary>Last turn's pace (AIStrategic.Pace) for this task force: no nearer since, it has stalled.</summary>
+        public int lastPace = -1;
         /// <summary>Taken on all in, with everything that could join, because nothing was within reach (its need is what it was given).</summary>
         public bool allIn;
         public int routeTurns;
@@ -620,7 +622,7 @@ namespace HexTactica.AI {
                     foreach (Unit u in was.units) if (pool.Contains(u) && CanJoin(u, now, map, p)) { Give(now, u); pool.Remove(u); }
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
-                    now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns;
+                    now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns; now.lastPace = was.lastPace;
                     now.allIn = was.allIn;
                     objectives.Add(now);
                 }
@@ -642,14 +644,21 @@ namespace HexTactica.AI {
             int candidatesLeft = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ).Count;
             int maxPursued = 1 + Mathf.RoundToInt(spread * Mathf.Max(0, candidatesLeft - 1));
             int pursued = 0;
+            // Supply decides how far the army can spread: an objective beyond our supply is taken on
+            // only if the supply units it needs are left after those before it. (Seven task forces at
+            // once on BigMapLakes, most with no supply at all, starved one after another.)
+            int hubsLeft = hubPool.Count;
+            foreach (CampaignObjective o in objectives) if (o.lasting) hubsLeft -= o.needHubs;
             foreach (CampaignObjective o in candidates) {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 if (pursued >= maxPursued || pool.Count == 0) break;
+                bool kept = objectives.Contains(o);
+                if (!kept && o.lasting && o.needHubs > 0 && o.needHubs > hubsLeft) continue;
                 float still = Mathf.Max(0f, o.needPower - o.assignedPower);
                 float near = 0f; foreach (Unit u in pool) if (CanJoin(u, o, map, p)) near += Power(u);
                 if (still > near && o.assignedPower <= 0f) continue;
                 Fill(o, pool, map, p, o.needPower);
-                if (!objectives.Contains(o)) objectives.Add(o);
+                if (!objectives.Contains(o)) { objectives.Add(o); if (o.lasting) hubsLeft -= o.needHubs; }
                 pursued++;
                 poolPower = 0f; foreach (Unit u in pool) poolPower += Power(u);
             }
