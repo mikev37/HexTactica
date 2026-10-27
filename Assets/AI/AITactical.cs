@@ -329,8 +329,10 @@ namespace HexTactica.AI {
         /// campaignStep: its staging ground while it gathers (nothing more once on it), else its
         /// objective, no closer than the force's pace. 0 off a campaign front, and for supply units.
         /// </summary>
+        public static string StepDebug = System.Environment.GetEnvironmentVariable("STEPDBG");
         static float CampaignStep(Unit unit, HexTile stop, AIMap map, AIProfile profile) {
             Front f = context.front;
+            if (StepDebug != null && unit.tile != null && unit.tile.x + "," + unit.tile.y == StepDebug && stop == unit.tile) System.Console.WriteLine("      step " + unit.name + " front " + (f == null ? "none" : f.ToString() + " campaign " + f.campaign + " objective " + (f.objectiveTile != null ? f.objectiveTile.x + "," + f.objectiveTile.y : "-")));
             if (f == null || !f.campaign || profile.campaignStep <= 0f || unit.tile == null || unit.Hub != null || stop == null) return 0f;
             bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
             HexTile goal = gathering ? f.stagingTile : f.objectiveTile;
@@ -340,6 +342,12 @@ namespace HexTactica.AI {
             // A building to take, and this unit cannot take it: beside it is as far as it goes, and
             // standing on it costs a step — it blocks the one that can. (A gunship parked on the city
             // that was the campaign's objective, for the whole game, earned the most for being there.)
+            // Out of supply there, with rations that would run out before it got back: no step is worth
+            // that. (On BigMapLakes, with no enemy on the board, the campaign marched its whole army out
+            // of supply toward its objectives and every fighting unit starved to death.)
+            if (StepDebug != null && unit.tile != null && unit.tile.x + "," + unit.tile.y == StepDebug)
+                System.Console.WriteLine("      step " + unit.name + " stop (" + stop.x + "," + stop.y + ") goal (" + goal.x + "," + goal.y + ") gathering " + gathering + " now " + map.Travel(unit, unit.tile, goal) + " then " + map.Travel(unit, stop, goal) + " pace " + f.paceLimit + " supplies " + unit.supplies + "/" + unit.suppliesMax + " depth " + map.SupplyDepth(stop) + " back " + map.TurnsToSupply(unit, stop));
+            if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0 && unit.supplies - 1 < map.TurnsToSupply(unit, stop)) return 0f;
             bool blocker = !gathering && f.objective != null && goal == f.objectiveTile && !Building.CanCapture(unit);
             if (blocker) floor = Mathf.Max(floor, 1);
             float v = profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
@@ -360,8 +368,11 @@ namespace HexTactica.AI {
                 o.world.score += AIFog.StopValue(unit, o.stop, map, profile);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
                 o.world.score -= AIFog.FogRisk(unit, o.stop, map, profile);
-                // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal.
+                // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal — and,
+                // on a campaign front, what starving on the way back to supply would cost, on the same
+                // scale (otherwise only a tie-break, and the lean always won).
                 o.world.score += CampaignStep(unit, o.stop, map, profile) * worth;
+                if (context.front != null && context.front.campaign) o.world.score -= AIScore.StrandingCost(unit, o.stop, 0, map);
             }
             // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
             // an attack open to it, standing on a building to take it earns it nothing.

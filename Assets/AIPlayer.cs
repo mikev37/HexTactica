@@ -332,6 +332,7 @@ public class AIPlayer : MonoBehaviour {
     bool Run(Unit unit, AIAction action, bool headless) {
         {
             long __x = AIPerf.Begin();
+            HexTile wasAt = unit.tile;
             bool did = HexTactica.AI.AIExecutor.Execute(action, map, headless);
             AIPerf.End("act: execute", __x);
             // Cargo put down that has not acted this turn: it decides next, from where it landed
@@ -355,8 +356,8 @@ public class AIPlayer : MonoBehaviour {
 
             Annotate(unit, action);
             if (onDecision != null) onDecision(unit, action, did);
-            if (Trace != null && (did || action.kind != AIActionKind.Wait))
-                Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": " + action.kind + (did ? "" : " (not executed)") + " — " + action.reason);
+            if (Trace != null)
+                Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + (wasAt != null ? " (" + wasAt.x + "," + wasAt.y + ")" + (unit.tile != null && unit.tile != wasAt ? "->(" + unit.tile.x + "," + unit.tile.y + ")" : "") : "") + ": " + action.kind + (did ? "" : " (not executed)") + " — " + action.reason);
 
             // A unit that waited changed nothing, so there is nothing to recalculate.
             unit.active = false;
