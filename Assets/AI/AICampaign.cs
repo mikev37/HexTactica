@@ -77,13 +77,29 @@ namespace HexTactica.AI {
         /// <summary>The id of last turn's objective this one continues (an enemy group that has moved), if any.</summary>
         public string inherited;
 
-        public string Id {
+        /// <summary>A second (third...) task force for the same objective, from a separate group of our units: 1, 2...; 0 the first.</summary>
+        public int wing;
+
+        /// <summary>The objective's own id, whichever of its task forces this is.</summary>
+        public string BaseId {
             get { return inherited ?? kind + "@" + (target != null ? target.x + "," + target.y : "-"); }
+        }
+
+        public string Id {
+            get { return BaseId + (wing > 0 ? "#" + (wing + 1) : ""); }
+        }
+
+        /// <summary>Another task force for the same objective (its wing number <paramref name="w"/>): the objective, without its units, supply or staging.</summary>
+        public CampaignObjective Wing(int w) {
+            CampaignObjective o = new CampaignObjective { kind = kind, target = target, building = building, lasting = lasting, respond = respond, placeKind = placeKind, inherited = inherited, wing = w };
+            o.enemies.AddRange(enemies);
+            return o;
         }
 
         public override string ToString() {
             StringBuilder sb = new StringBuilder();
             sb.Append(kind).Append(target != null ? "(" + target.x + "," + target.y + ")" : "");
+            if (wing > 0) sb.Append(" wing ").Append(wing + 1);
             if (placeKind != null) sb.Append(' ').Append(placeKind);
             if (turnsAway < 99) sb.Append(" away ").Append(turnsAway);
             if (building != null) sb.Append(' ').Append(building.name.Replace("(Clone)", ""));
@@ -197,12 +213,18 @@ namespace HexTactica.AI {
                     string why = null;
                     if (!o.went && o.staging != null && age >= draw && !GatheredEnough(o, map, p)) why = "did not gather in " + draw + " turns";
                     else if (o.went && p.campaignStallTurns > 0 && o.stalled >= p.campaignStallTurns) why = "stalled " + o.stalled + " turns";
-                    else if (age >= p.campaignTimeBox + Mathf.Max(0, o.routeTurns - draw)) why = "not achieved in " + age + " turns";
+                    else if (p.campaignTransitTimeBox && age >= p.campaignTimeBox + Mathf.Max(0, o.routeTurns - draw)) why = "not achieved in " + age + " turns";
                     if (why == null) continue;
                     c.givenUp[o.Id] = c.turn + p.campaignTimeBox;
                     if (timedOut == null) timedOut = o.Id + " " + why + ", given up";
                 }
                 candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && c.givenUp.ContainsKey(o.Id));
+                // Its other task forces (wings) are its own as long as the objective is there.
+                foreach (CampaignObjective was in last.objectives) {
+                    if (was.wing <= 0 || c.givenUp.ContainsKey(was.Id)) continue;
+                    CampaignObjective first = candidates.Find(x => x.wing == 0 && x.BaseId == was.BaseId);
+                    if (first != null && !candidates.Exists(x => x.Id == was.Id)) candidates.Add(first.Wing(was.wing));
+                }
             }
 
             // Staging: near where our free units already are (AICampaign.Staging); a task force out
@@ -824,6 +846,45 @@ namespace HexTactica.AI {
                 pursued++;
                 poolPower = 0f; foreach (Unit u in pool) poolPower += Power(u);
             }
+            // Separate groups of what is left (AIProfile.campaignWings): a group too far from every task
+            // force's staging ground to join it forms a task force of its own — another one for an
+            // objective already taken on if that is its best, staged near it. (One front per objective
+            // left a second group of ours idle across the map, the other front short.)
+            if (p.campaignWings && pool.Count > 0) {
+                int band = p.campaignMaxTurns > 0 ? p.campaignMaxTurns : 99;
+                foreach (List<Unit> g in Groups(pool, map, p)) {
+                    if (pursued >= maxPursued) break;
+                    List<Unit> group = g.FindAll(pool.Contains);
+                    if (group.Count == 0) continue;
+                    CampaignObjective best = null; float bestPriority = 0f;
+                    foreach (CampaignObjective first in new List<CampaignObjective>(objectives)) {
+                        if (first.wing != 0 || first.units.Count == 0 || first.target == null) continue;
+                        if (first.kind != CampaignKind.Secure && first.kind != CampaignKind.Hold) continue;
+                        if (group.Exists(u => CanJoin(u, first, map, p))) continue;   // it can join the one there is
+                        int w = 1; while (objectives.Exists(x => x.BaseId == first.BaseId && x.wing == w)) w++;
+                        CampaignObjective wing = first.Wing(w);
+                        Reach(wing, map, p, null, group);
+                        Price(wing, map, p, null);
+                        // Its share: what the objective needs beyond its other task forces, at least someone to hold or take it.
+                        float others = 0f; foreach (CampaignObjective x in objectives) if (x.BaseId == first.BaseId) others += x.assignedPower;
+                        float least = 0f; foreach (Unit u in group) if (first.kind != CampaignKind.Secure || Building.CanCapture(u)) least = least <= 0f ? Power(u) : Mathf.Min(least, Power(u));
+                        wing.needPower = Mathf.Max(least, wing.needPower - others);
+                        wing.turnsAway = TurnsAway(wing, group, map);
+                        if (wing.turnsAway > band) continue;
+                        if (wing.lasting && wing.needHubs > 0 && wing.needHubs > hubsLeft) continue;
+                        float near = 0f; foreach (Unit u in group) if (CanJoin(u, wing, map, p)) near += Power(u);
+                        if (near < wing.needPower) continue;
+                        wing.priority = wing.priority / Mathf.Max(1f, wing.turnsAway + 1f);
+                        if (best == null || wing.priority > bestPriority) { best = wing; bestPriority = wing.priority; }
+                    }
+                    if (best == null) continue;
+                    Fill(best, pool, map, p, best.needPower);
+                    if (best.units.Count == 0) continue;
+                    objectives.Add(best); if (best.lasting) hubsLeft -= best.needHubs;
+                    pursued++;
+                }
+            }
+
             // Nothing within reach of what we have: everything on the best of them (all in), not nothing —
             // scouting does not count as something. (Under the fog every objective needed more than our
             // whole army, two scouts counted as "pursued", and the army sat at home for 24 rounds.) All in,
@@ -926,6 +987,26 @@ namespace HexTactica.AI {
                 foreach (Unit u in o.units) unitOf[u] = o;
                 foreach (SupplyPoint h in o.hubs) hubOf[h] = o;
             }
+        }
+
+        /// <summary>Our units in groups: one unit is in another's group if it is within campaignDrawTurns of its moves of it (largest group by power first).</summary>
+        static List<List<Unit>> Groups(List<Unit> units, AIMap map, AIProfile p) {
+            List<List<Unit>> groups = new List<List<Unit>>();
+            List<Unit> left = new List<Unit>(units);
+            left.Sort(AIMap.CompareUnits);
+            int reach = TypicalMove(map) * DrawTurns(p);
+            while (left.Count > 0) {
+                List<Unit> g = new List<Unit> { left[0] }; left.RemoveAt(0);
+                for (int i = 0; i < g.Count; i++)
+                    for (int j = left.Count - 1; j >= 0; j--)
+                        if (left[j].tile.Distance(g[i].tile) <= reach) { g.Add(left[j]); left.RemoveAt(j); }
+                groups.Add(g);
+            }
+            groups.Sort((a, b) => {
+                float pa = 0f, pb = 0f; foreach (Unit u in a) pa += Power(u); foreach (Unit u in b) pb += Power(u);
+                int k = pb.CompareTo(pa); return k != 0 ? k : AIMap.CompareUnits(a[0], b[0]);
+            });
+            return groups;
         }
 
         static void Give(CampaignObjective o, Unit u) {
