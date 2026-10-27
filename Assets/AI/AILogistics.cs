@@ -12,7 +12,8 @@ namespace HexTactica.AI {
     /// not yet given to an earlier front's chain, and never ahead of that front's units (AISupplyChain).
     /// The chain takes only the supply units that bring supply nearer the front — none when the front
     /// is already on or beside supplied ground; its links are the front's link nodes, the only supply
-    /// units the chain keeps connected. The chain walks; it does not leap.
+    /// units the chain keeps connected. Its links ride trucks where it has them, each at the farthest
+    /// tile its truck keeps it linked from (a few walk), as a player builds a supply line.
     ///
     /// The supply units left over after every chain are the fronts' own, shared out by the number of
     /// units in each front (the largest first takes any remainder). Each heads to its front — on a free
@@ -264,7 +265,7 @@ namespace HexTactica.AI {
         /// <summary>
         /// The chain toward <paramref name="t"/>'s goal of <paramref name="hubs"/>, those in
         /// <paramref name="moved"/> where they now stand; it keeps connected only <paramref name="connect"/>
-        /// (its link nodes) and does not leap.
+        /// (its link nodes); its links ride trucks where that reaches further.
         /// </summary>
         public static AISupplyChain.Plan Chain(AIMap map, Task t, ICollection<SupplyPoint> hubs, ICollection<Unit> moved, ICollection<Unit> reservedTrucks, HashSet<SupplyPoint> connect) {
             HashSet<Unit> was = AISupplyChain.ReservedTrucks;
@@ -272,7 +273,7 @@ namespace HexTactica.AI {
             bool wasNoLeaps = AISupplyChain.NoLeaps;
             AISupplyChain.ReservedTrucks = reservedTrucks != null ? new HashSet<Unit>(reservedTrucks) : null;
             AISupplyChain.ConnectOnly = connect;
-            AISupplyChain.NoLeaps = true;
+            AISupplyChain.NoLeaps = false;   // its links ride trucks at the farthest range they stay linked from
             try { return AISupplyChain.Make(map, moved, t.goal, hubs, t.front.units); }
             finally { AISupplyChain.ReservedTrucks = was; AISupplyChain.ConnectOnly = wasConnect; AISupplyChain.NoLeaps = wasNoLeaps; }
         }
