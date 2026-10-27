@@ -965,8 +965,11 @@ namespace HexTactica.AI {
                 float v = 0f;
                 if (pickup != null) v += worth * 2f / (1 + map.Travel(unit, t, pickup));
                 else if (toObj != null && front < int.MaxValue) {
+                    // Behind the army, not in it: no credit for ground the enemy can strike next turn, and a
+                    // cost for standing there (empty trucks parked at the front line were shot up from turn 3).
                     int d;
-                    if (toObj.TryGetValue(t, out d)) v += worth * 0.5f * (Mathf.Max(here, front + 1) - Mathf.Max(d, front + 1));
+                    if (map.EnemyStrikeTurns(t) <= 1) v -= worth * 2f;
+                    else if (toObj.TryGetValue(t, out d)) v += worth * 0.5f * (Mathf.Max(here, front + 1) - Mathf.Max(d, front + 1));
                 } else
                     for (int i = 0; i < map.ownHubs.Count; i++) {
                         SupplyPoint sp = map.ownHubs[i];
