@@ -4,7 +4,7 @@ using UnityEngine;
 /// A building's capture flag. Put it on the flag's sprite (a child of the building): it climbs
 /// its pole between <see cref="bottom"/> and <see cref="top"/> (local height) as capture points
 /// build up, and takes the colour of whoever holds the building, or of whoever is taking it while
-/// it is neutral — grey (<see cref="neutral"/>) when it is neither. Under fog of war it shows the
+/// it is neutral — <see cref="neutral"/> (white: as drawn) when it is neither. Under fog of war it shows the
 /// building as the viewer last saw it (FogOfWar.ShownOwner, FogOfWar.ShownCapture).
 /// </summary>
 public class CaptureFlag : MonoBehaviour {
@@ -16,7 +16,7 @@ public class CaptureFlag : MonoBehaviour {
     [Tooltip("How fast it climbs or drops, in poles per second.")]
     public float speed = 0.8f;
     [Tooltip("Colour while nobody holds it or is taking it.")]
-    public Color neutral = new Color(0.6f, 0.6f, 0.6f, 1f);
+    public Color neutral = Color.white;
 
     Building building;
     SpriteRenderer render;
