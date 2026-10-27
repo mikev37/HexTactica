@@ -1305,7 +1305,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3547141541890433994, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: m_Name
-      value: Gunship Variant
+      value: Gunship
       objectReference: {fileID: 0}
     - target: {fileID: 7406762579798693001, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: m_PresetInfoIsWorld
