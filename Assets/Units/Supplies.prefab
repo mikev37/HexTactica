@@ -76,6 +76,7 @@ MonoBehaviour:
   Armor: 0
   Piercing: 0
   Concealment: 0
+  Vulnerability: 2
   ammoPerShot: 1
   moveAndAttack: 0
   AttackRange: 0

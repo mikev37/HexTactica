@@ -63,42 +63,42 @@ MonoBehaviour:
   personal_name: 
   active: 1
   owner: {fileID: 0}
-  Strength: 6
+  _strength: 6
   Veterancy: 0
-  tile: {fileID: 0}
+  _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
   refuelStock: 0
   refuelStockMax: 0
-  Firepower: 4
-  Evasion: 0
-  Targeting: 4
+  Firepower: 6
+  Evasion: 6
+  Targeting: 6
   Armor: 1
   Piercing: 0
   Concealment: 0
   ammoPerShot: 1
   moveAndAttack: 1
-  AttackRange: 1
+  AttackRange: 2
   MinRange: 0
   retaliates: 1
   visionRange: 6
   stealthRange: 0
   move_display: {fileID: 0}
   locomotion: 5
-  moveRange: 7
+  moveRange: 10
   terrainScramble: 5
   minFuelPerTurn: 3
   minFuelPerTile: 1
   elevationMin: -2
   elevationMax: 3
-  moveSpeed: 10
+  moveSpeed: 14
   StrengthDisplay: 0
   suppressed: 0
   path: []
   supplies: 3
   suppliesMax: 3
-  fuel: 14
-  fuelMax: 14
+  fuel: 36
+  fuelMax: 36
   ammo: 6
   ammoMax: 6
   transportSlots: 0

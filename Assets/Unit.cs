@@ -93,7 +93,7 @@ public class Unit : MonoBehaviour
 
     [Tooltip("((Firepower+Veterancy) / (Evasion - Targeting)™ / (Armor - Pierce)™ - (Concealment of Hex.Cover)) * Unit_Strength / Defender_Strength")]
     [Header("Combat Variables")]
-    [Range(0, 6)]
+    [Range(0, 10)]
     public int Firepower;
     [Range(0, 6)]
     public int Evasion;
@@ -105,6 +105,8 @@ public class Unit : MonoBehaviour
     public int Piercing;
     [Range(0, 6)]
     public int Concealment;
+    [Range(0, 6)]
+    public int Vulnerability;
     [Range(1, 6)]
     [Tooltip("Ammo consumed per shot")]
     public int ammoPerShot = 1;
@@ -1068,15 +1070,18 @@ public class Unit : MonoBehaviour
         if (attacker.Strength - firstStrike <= 0)
             return 0;
         float cover = 0;
-        float destructin = (attacker.Firepower + attacker.Veterancy);
+        float destruction = (attacker.Firepower + attacker.Veterancy + defender.Vulnerability);
         float penetration = Mathf.Max(1, defender.Armor - attacker.Piercing);
         float aquire = Mathf.Max(1, defender.Evasion - attacker.Targeting);
         float toughness = 6;
         if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion))
             cover = Math.Min(defender.Concealment, tile.EffectiveCover);
-        return (int)Mathf.Max(1,Mathf.Floor(
-            (destructin / penetration / aquire - cover)
-            * (attacker.Strength - firstStrike) / toughness ));// (defender.Strength));
+        int minDamage = 1;
+		if (LocomotionRules.IsAirborne(defender.locomotion))
+            minDamage = 0;
+        return (int) Mathf.Max(minDamage, Mathf.Floor(
+            (destruction / penetration / aquire - cover)
+            * (attacker.Strength - firstStrike) / toughness));
     }
 
     internal int displayAttackOdds(Unit attacker, HexTile tile, int firstStrike) {

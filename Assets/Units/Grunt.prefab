@@ -442,7 +442,7 @@ SpriteRenderer:
   m_SortingLayer: 6
   m_SortingOrder: 15
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 65dc91e183885fe47a439be3837de636, type: 3}
+  m_Sprite: {fileID: 6707049780695382732, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -626,9 +626,9 @@ MonoBehaviour:
   personal_name: 
   active: 1
   owner: {fileID: 0}
-  Strength: 6
+  _strength: 6
   Veterancy: 0
-  tile: {fileID: 0}
+  _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
   refuelStock: 0
@@ -1375,6 +1375,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1749355107114374092}
   - component: {fileID: 7462899616314035067}
+  - component: {fileID: 1384327335864213891}
   m_Layer: 0
   m_Name: boot_color
   m_TagString: Untagged
@@ -1444,7 +1445,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -279978025
   m_SortingLayer: 6
-  m_SortingOrder: 11
+  m_SortingOrder: 21
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: e274304434fde704dbb595be549e7cd8, type: 3}
   m_Color: {r: 1, g: 0, b: 0, a: 0.5019608}
@@ -1457,6 +1458,19 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &1384327335864213891
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8742020049851360822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ColorObjectUnit
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1001 &912949954692507007
 PrefabInstance:
   m_ObjectHideFlags: 0
