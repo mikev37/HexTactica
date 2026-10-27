@@ -403,12 +403,23 @@ namespace HexTactica.AI {
 
             if (plan.stayAboard) {
                 // A supply leap: drive to the drop-off and stay there with the supply unit aboard.
+                // A passenger riding along with the supply (infantry): let out where the link stops.
+                Unit rider = null;
+                foreach (Unit c in transport.transported) if (c != null && c != cargo && c.Hub == null) { rider = c; break; }
                 if (!aboard) {
                     if (plan.rendezvous == null || transport.tile == plan.rendezvous) return AIAction.Wait(transport, "supply leap: waiting for its supply unit");
                 } else {
-                    if (plan.dropoff == null || transport.tile == plan.dropoff) return AIAction.Wait(transport, "supply leap: holds, carrying supply");
+                    if (plan.dropoff == null || transport.tile == plan.dropoff) {
+                        HexTile off = rider != null ? DropTile(transport, rider, transport.tile, null) : null;
+                        if (off != null) return AIAction.Disembark(transport, rider, off, "supply link: lets its rider out");
+                        return AIAction.Wait(transport, "supply leap: holds, carrying supply");
+                    }
                     MoveField reach = map.ReachThisTurn(transport);
-                    if (reach.ReachableThisTurn(plan.dropoff)) return AIAction.Move(transport, plan.dropoff, plan.score, "supply leap: " + plan.ToString());
+                    if (reach.ReachableThisTurn(plan.dropoff)) {
+                        HexTile off = rider != null && map.profile.freshUnload ? DropTile(transport, rider, plan.dropoff, null) : null;
+                        if (off != null) return AIAction.MoveAndDisembark(transport, plan.dropoff, rider, off, "supply link: arrives and lets its rider out");
+                        return AIAction.Move(transport, plan.dropoff, plan.score, "supply leap: " + plan.ToString());
+                    }
                     // Further than a move: as far along the way as is safe tonight.
                     HexTile toward = SafeStepToward(transport, plan.dropoff, map.ReachHorizon(transport), map, true);
                     if (toward != null && toward != transport.tile) return AIAction.Move(transport, toward, plan.score, "supply link on its way: " + plan.ToString());
