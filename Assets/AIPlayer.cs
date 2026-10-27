@@ -267,6 +267,16 @@ public class AIPlayer : MonoBehaviour {
         bool carriesHub = false;
         foreach (Unit c in tr.transported) if (c != null && c.Hub != null && !c.Hub.producer) carriesHub = true;
         if (!carriesHub) return a;
+        // Under the logistics only supply units with a duty are kept connected (AILogistics.duty): a tail
+        // supplying nothing held a loaded truck where it stood for eight turns.
+        if (logistics != null) {
+            Dictionary<SupplyPoint, HexTile> mv = new Dictionary<SupplyPoint, HexTile>();
+            HexTile dest = a.kind == AIActionKind.Unload ? (a.via ?? tr.tile) : a.destination;
+            foreach (Unit c in tr.transported) if (c != null && c.Hub != null && dest != null) mv[c.Hub] = dest;
+            if (a.kind == AIActionKind.Unload && a.target != null && a.target.Hub != null && a.destination != null) mv[a.target.Hub] = a.destination;
+            int lost = AISupplyChain.Harm(mv, map);
+            return lost <= 0 ? a : AIAction.Wait(tr, a.reason + "; held: that would cut off " + lost + " supply units with a duty");
+        }
         int before = Connected(SupplyNetwork.SolveMoved(player, new Dictionary<SupplyPoint, HexTile>()));
         HexTile from = tr.tile;
         HexTile to = a.kind == AIActionKind.Unload ? (a.via ?? from) : a.destination;
@@ -480,6 +490,8 @@ public class AIPlayer : MonoBehaviour {
         if (Profile.supplyBackbone) backbonePlanned = AISupplyBackbone.Make(map, null);
         logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, null, fronts) : null;
         if (logistics != null && Trace != null) Trace("   " + logistics);
+        HexTactica.AI.AILogistics.Protect = logistics != null ? logistics.dutied : null;
+        AISupplyChain.ProtectOnly = HexTactica.AI.AILogistics.Protect;
         { long __p = AIPerf.Begin();
         objectives = AIObjectives.Build(map, Profile);
         AIPerf.End("prepare: objectives", __p); }
@@ -885,7 +897,7 @@ public class AIPlayer : MonoBehaviour {
                 }
                 return AIAction.Wait(unit, "supply: no better position");
             }
-            if (Profile.supplyChain && !Profile.supplyTree && (unit.trasnporter == null || Profile.supplyLeaps) && job == null) {
+            if (Profile.supplyChain && !Profile.supplyTree && (unit.trasnporter == null || Profile.supplyLeaps) && job == null && logistics == null) {
                 List<Unit> moved = new List<Unit>();
                 foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
                 List<SupplyPoint> free = null;
@@ -1271,6 +1283,23 @@ public class AIPlayer : MonoBehaviour {
                 if (back == unit.tile) { action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": at the back of the chain, to join it"); return true; }
                 action = AISupplyTree.Step(unit, back, map);
                 if (!action.IsNothing && !CutsOff(hub, action.destination)) { action.reason = "logistics for " + t.front.Id + ": to the back of the chain at (" + back.x + "," + back.y + ")"; return true; }
+            }
+        }
+        // A tail: near its front but supplying nothing of any front's or in contact (no duty) — it pulls back
+        // toward the nearest supply unit that does, where the chain takes it in next turn and that one is
+        // free to move up.
+        float myDuty;
+        logistics.duty.TryGetValue(hub, out myDuty);
+        if (myDuty <= 0f && unit.trasnporter == null && !logistics.dutied.Contains(hub) && !HexTactica.AI.AILogistics.Far(t, unit, map)) {
+            HexTile to = null; int td = int.MaxValue;
+            foreach (SupplyPoint x in logistics.dutied) {
+                if (x == hub || x.myUnit == null || x.myUnit.tile == null) continue;
+                int dd = map.Travel(unit, unit.tile, x.myUnit.tile);
+                if (dd < td || (dd == td && to != null && CombatMath.Precedes(x.myUnit.tile, to))) { td = dd; to = x.myUnit.tile; }
+            }
+            if (to != null && td > Mathf.Max(1, hub.range)) {
+                AIAction back = AISupplyTree.Step(unit, to, map);
+                if (!back.IsNothing && !CutsOff(hub, back.destination)) { back.reason = "logistics for " + t.front.Id + ": supplies no one, pulls back to the supply unit at (" + to.x + "," + to.y + ")"; action = back; return true; }
             }
         }
         HexTile near;
