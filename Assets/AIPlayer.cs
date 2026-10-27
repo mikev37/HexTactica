@@ -1243,6 +1243,15 @@ public class AIPlayer : MonoBehaviour {
                 }
             }
         }
+        // The front's chain short: to the back of the chain (AILogistics.DropNear), to be its next rear link.
+        if (t.gap && unit.trasnporter == null) {
+            HexTile back = HexTactica.AI.AILogistics.DropNear(t, unit, map);
+            if (back != null) {
+                if (back == unit.tile) { action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": at the back of the chain, to join it"); return true; }
+                action = AISupplyTree.Step(unit, back, map);
+                if (!action.IsNothing) { action.reason = "logistics for " + t.front.Id + ": to the back of the chain at (" + back.x + "," + back.y + ")"; return true; }
+            }
+        }
         HexTile near;
         int d = HexTactica.AI.AILogistics.NearestOf(t, unit, map, out near);
         if (near != null && d > 2 * Mathf.Max(1, unit.moveRange)) {

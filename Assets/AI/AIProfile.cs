@@ -487,7 +487,7 @@ namespace HexTactica.AI {
         public bool supplyFrontFirst = false;
 
         [Tooltip("Campaign: buildings valued by what they do for the war — those that build units (productionBuildingWeight), then those that make supply (supplyBuildingWeight), above cities and resupply points. The HQ is worth the board either way.")]
-        public bool campaignBuildingTiers = false;
+        public bool campaignBuildingTiers = true;
         public float productionBuildingWeight = 3f;
         public float supplyBuildingWeight = 2f;
 
