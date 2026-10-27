@@ -180,7 +180,8 @@ public static class SupplyNetwork {
                 HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
                 if (at == null) continue;
                 if (hub == AssumeLinked) {
-                    // A front-line supply unit: linked, by assumption (see AssumeLinked).
+                    // A front-line supply unit (see AssumeLinked): aboard its transport, linked as cargo is.
+                    if (AssumeLinkedVia != null && !WithinMoveOfSupply(AssumeLinkedVia, at, result)) continue;
                 } else if (IsNavalHub(hub)) {
                     // A supply boat links to a friendly dock in supply, or to a linked supply boat,
                     // over water within its range; it supplies only the land it borders.
@@ -284,6 +285,8 @@ public static class SupplyNetwork {
     /// so where it is placed is judged by what it supplies there.
     /// </summary>
     [System.ThreadStatic] public static SupplyPoint AssumeLinked;
+    /// <summary>With <see cref="AssumeLinked"/>: it counts as aboard this transport — linked only where the transport could reach supplied ground in one move.</summary>
+    [System.ThreadStatic] public static Unit AssumeLinkedVia;
 
     /// <summary>Set (per thread) by an AI that plans this way (AIProfile.hubLinkPenalty): see PutDown.</summary>
     [System.ThreadStatic] public static bool PutDownHypothetical;

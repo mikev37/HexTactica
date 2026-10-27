@@ -778,16 +778,16 @@ public class AIPlayer : MonoBehaviour {
             }
             if (Profile.supplyFrontFirst && job == null) {
                 if (frontHubs.Contains(hub)) {
-                    // Front line: where it supplies the army most for what it risks there (the world's
-                    // reply), as if linked — the rest line up to link it.
-                    TransportPlan frontPlan;
-                    AISupplyPlanner.FrontLine = true;
-                    try { frontPlan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports); } finally { AISupplyPlanner.FrontLine = false; }
-                    if (frontPlan != null) {
-                        if (frontPlan.transport != null) { transportAssignments[frontPlan.transport] = frontPlan; reservedTransports.Add(frontPlan.transport); }
-                        AIAction a = AITransportPlanner.NextAction(frontPlan, map, Profile);
-                        a.reason = "front-line supply: " + a.reason;
-                        return a;
+                    // Front line: aboard a truck (its own, or a free one it can board now), the truck goes
+                    // where the supply unit supplies the army most for what it risks there (the world's
+                    // reply) — wherever the truck keeps it linked; the rest line up behind to link it.
+                    AIAction fa;
+                    if (FrontLineLeg(hub, out fa)) return fa;
+                    // No truck to hand: placed on foot as any supply unit is.
+                    TransportPlan walkPlan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
+                    if (walkPlan != null) {
+                        if (walkPlan.transport != null) { transportAssignments[walkPlan.transport] = walkPlan; reservedTransports.Add(walkPlan.transport); }
+                        return AITransportPlanner.NextAction(walkPlan, map, Profile);
                     }
                     return AIAction.Wait(unit, "front-line supply: holds");
                 }
@@ -817,9 +817,9 @@ public class AIPlayer : MonoBehaviour {
                     }
                 }
                 // Not needed in the chain: another front-line supply unit.
-                TransportPlan extra;
-                AISupplyPlanner.FrontLine = true;
-                try { extra = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports); } finally { AISupplyPlanner.FrontLine = false; }
+                AIAction xa;
+                if (FrontLineLeg(hub, out xa)) return xa;
+                TransportPlan extra = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
                 if (extra != null) {
                     if (extra.transport != null) { transportAssignments[extra.transport] = extra; reservedTransports.Add(extra.transport); }
                     return AITransportPlanner.NextAction(extra, map, Profile);
@@ -917,6 +917,59 @@ public class AIPlayer : MonoBehaviour {
         }
 
         return AITactical.Decide(unit, map, Profile, posture, front, objective);
+    }
+
+    /// <summary>
+    /// A front-line supply unit (supplyFrontFirst) with a truck: the one it is aboard, or a free one it
+    /// can board this turn. Of the tiles the truck can reach this turn (and stop on safely), the one
+    /// where the supply unit aboard adds most — the army units it supplies, heals and spares, less what
+    /// it would lose in the enemy's reply (AISupplyPlanner.ExactValue) — counting it linked wherever the
+    /// truck could reach supplied ground in one move. It stays aboard there.
+    /// </summary>
+    bool FrontLineLeg(SupplyPoint hub, out AIAction action) {
+        action = default(AIAction);
+        Unit unit = hub.myUnit;
+        Unit truck = unit.trasnporter;
+        HexTile board = null;
+        if (truck != null) { if (!Transporting.IsTransport(truck) || truck.Firepower > 1 || LocomotionRules.IsAirborne(truck.locomotion) || LocomotionRules.IsNaval(truck.locomotion)) return false; }
+        else {
+            MoveField walk = map.ReachThisTurn(unit);
+            int bd = int.MaxValue;
+            foreach (Unit t in map.ownUnits) {
+                if (t == null || t.tile == null || !Transporting.IsTransport(t) || t.Firepower > 1 || t.transported.Count > 0 || !t.active) continue;
+                if (LocomotionRules.IsAirborne(t.locomotion) || LocomotionRules.IsNaval(t.locomotion)) continue;
+                if (reservedTransports.Contains(t) || transportAssignments.ContainsKey(t) || !Transporting.CanCarry(t, unit)) continue;
+                HexTile b = null;
+                if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
+                else foreach (HexTile n in t.tile.neighbors) {
+                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                    if (b == null || CombatMath.Precedes(n, b)) b = n;
+                }
+                if (b == null) continue;
+                int d = unit.tile.Distance(t.tile);
+                if (d < bd) { bd = d; truck = t; board = b; }
+            }
+            if (truck == null) return false;
+        }
+        MoveField drive = map.ReachThisTurn(truck);
+        float caution = Mathf.Max(1f, Profile.loadedTransportRisk);
+        HexTile best = null; float bestV = float.NegativeInfinity;
+        SupplyPoint wasA = SupplyNetwork.AssumeLinked; Unit wasV = SupplyNetwork.AssumeLinkedVia;
+        SupplyNetwork.AssumeLinked = hub; SupplyNetwork.AssumeLinkedVia = truck;
+        try {
+            foreach (HexTile x in drive.Tiles) {
+                if (x != truck.tile && (!drive.ReachableThisTurn(x) || !AIPath.CanFinishTurnOn(truck, x) || x.occupier != null)) continue;
+                if (map.ExpectedLoss(truck, x) * caution >= truck.Strength) continue;
+                float v = AISupplyPlanner.ExactValue(hub, x, map, Profile) - AIScore.Risk(truck, x, map, Profile) * caution;
+                if (v > bestV || (v == bestV && best != null && CombatMath.Precedes(x, best))) { bestV = v; best = x; }
+            }
+        } finally { SupplyNetwork.AssumeLinked = wasA; SupplyNetwork.AssumeLinkedVia = wasV; }
+        if (best == null) return false;
+        transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = best, destination = best, stayAboard = true };
+        reservedTransports.Add(truck);
+        if (unit.trasnporter == truck) { action = AIAction.Wait(unit, "front-line supply: its truck to (" + best.x + "," + best.y + ")"); return true; }
+        action = AIAction.Board(unit, truck, board, "front-line supply: boards a truck for (" + best.x + "," + best.y + ")");
+        return true;
     }
 
     /// <summary>
