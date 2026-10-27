@@ -70,7 +70,7 @@ namespace HexTactica.AI {
         /// A supply leap for <paramref name="h"/>: the truck it is aboard, or a free truck it can board
         /// this turn, and the tile furthest toward the objective where that truck stops tonight with it
         /// aboard and still linked to <paramref name="net"/> (within a move of supplied ground), safe,
-        /// and not ahead of the army unless the enemy cannot strike there within two turns. Null: none.
+        /// and not ahead of the army. Null: none.
         /// </summary>
         static Leap FindLeap(SupplyPoint h, AIMap map, SupplyNetwork.Result net, System.Func<HexTile, int> steps, int front, HashSet<Unit> used, HashSet<HexTile> taken) {
             Unit u = h.myUnit;
@@ -104,8 +104,9 @@ namespace HexTactica.AI {
                 if (taken.Contains(x) || (x != truck.tile && x.occupier != null)) { nOcc++; continue; }
                 int sx = steps(x);
                 if (sx == int.MaxValue || sx > bestSteps || (sx == bestSteps && !CombatMath.Precedes(x, best))) continue;
-                // Ahead of the army only where the enemy cannot strike within two turns.
-                if (sx < front && map.EnemyStrikeTurns(x) <= 2) { nAhead++; continue; }
+                // Supply serves the army: never ahead of it. (Carried out in front where nothing could strike
+                // it yet, it fed itself to the enemy and left the army behind a gap it would not cross.)
+                if (sx < front) { nAhead++; continue; }
                 float loss = map.ExpectedLoss(truck, x);
                 if (loss * caution >= truck.Strength || loss > tolerance) { nRisk++; continue; }
                 if (!SupplyNetwork.WithinMoveOfSupply(truck, x, net)) { nUnlinked++; continue; }

@@ -917,29 +917,49 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction DecideIdleTransport(Unit unit, AIMap map, AIProfile profile) {
             float worth = AIScore.Worth(unit);
-            // Supply leaps (supplyLeaps): an idle truck goes to stand beside the nearest supply unit on
-            // foot that no other truck stands beside, so the chain can put it aboard and carry it on.
-            HexTile pickup = null;
-            if (profile.supplyLeaps && unit.tile != null && unit.transported.Count == 0) {
-                int best = int.MaxValue;
-                foreach (SupplyPoint sp in map.ownHubs) {
-                    if (sp == null || sp.producer || sp.myUnit == null || sp.myUnit.tile == null || sp.myUnit.trasnporter != null || !Transporting.CanCarry(unit, sp.myUnit)) continue;
-                    bool served = false;
-                    foreach (HexTile n in sp.myUnit.tile.neighbors) if (n != null && n.occupier != null && n.occupier != unit && n.occupier.owner == unit.owner && Transporting.IsTransport(n.occupier) && n.occupier.transported.Count == 0) served = true;
-                    if (served) continue;
-                    int d = map.Travel(unit, unit.tile, sp.myUnit.tile);
-                    if (d < best || (d == best && pickup != null && CombatMath.Precedes(sp.myUnit.tile, pickup))) { best = d; pickup = sp.myUnit.tile; }
+            // An idle truck follows the army (supplyLeaps): each step toward the enemy HQ counts, up to the
+            // army's frontmost fighting unit and never past it — out of the way of the column behind and
+            // where supply units and the army will want a ride. (Parked beside the supply units, the
+            // trucks blocked a two-tile road and nothing behind them could move.)
+            HexTile objective = profile.supplyLeaps ? AISupplyChain.Objective(map) : null;
+            Dictionary<HexTile, int> toObj = objective != null ? map.LandSteps(objective) : null;
+            int front = int.MaxValue;
+            if (toObj != null)
+                foreach (Unit u in map.ownUnits) {
+                    int d;
+                    if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && !(Transporting.IsTransport(u) && u.Firepower <= 1) && toObj.TryGetValue(u.tile, out d)) front = Mathf.Min(front, d);
                 }
-                if (best >= 99) pickup = null;
+            int here = int.MaxValue;
+            if (toObj != null && unit.tile != null) toObj.TryGetValue(unit.tile, out here);
+            // ...unless the chain is stretched (no link can go further on foot): then to the rearmost
+            // link on foot that no other empty truck is already beside, to carry it past the rest.
+            HexTile pickup = null;
+            if (toObj != null && unit.transported.Count == 0) {
+                AISupplyChain.Plan chain = AISupplyChain.Make(map, null);
+                if (chain.short_) {
+                    int rear = -1;
+                    foreach (KeyValuePair<SupplyPoint, HexTile> kv in chain.links) {
+                        Unit h = kv.Key.myUnit; int d;
+                        if (h == null || h.tile == null || h.trasnporter != null || !toObj.TryGetValue(h.tile, out d)) continue;
+                        bool served = false;
+                        foreach (HexTile n in h.tile.neighbors) if (n != null && n.occupier != null && n.occupier != unit && n.occupier.owner == unit.owner && Transporting.IsTransport(n.occupier) && n.occupier.Firepower <= 1 && n.occupier.transported.Count == 0) served = true;
+                        if (served) continue;
+                        if (d > rear) { rear = d; pickup = h.tile; }
+                    }
+                }
             }
             return Choose(unit, map, profile, t => {
                 float v = 0f;
                 if (pickup != null) v += worth * 2f / (1 + map.Travel(unit, t, pickup));
-                for (int i = 0; i < map.ownHubs.Count; i++) {
-                    SupplyPoint sp = map.ownHubs[i];
-                    if (sp == null || sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;
-                    v += worth * 0.5f / (1 + t.Distance(sp.myUnit.tile));
-                }
+                else if (toObj != null && front < int.MaxValue) {
+                    int d;
+                    if (toObj.TryGetValue(t, out d)) v += worth * 0.5f * (Mathf.Max(here, front + 1) - Mathf.Max(d, front + 1));
+                } else
+                    for (int i = 0; i < map.ownHubs.Count; i++) {
+                        SupplyPoint sp = map.ownHubs[i];
+                        if (sp == null || sp.producer || sp.myUnit == null || sp.myUnit.tile == null) continue;
+                        v += worth * 0.5f / (1 + t.Distance(sp.myUnit.tile));
+                    }
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.2f;
                 return v;
             }, true, 1.5f, 0.02f, "transport", profile.idleTransportScreens);
