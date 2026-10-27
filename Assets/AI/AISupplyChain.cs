@@ -70,6 +70,8 @@ namespace HexTactica.AI {
         /// </summary>
         public static HashSet<SupplyPoint> ConnectOnly;
         public static bool NoLeaps;
+        /// <summary>Set (AILogistics): the only supply units Harm counts as cut off — those with a duty.</summary>
+        [System.ThreadStatic] public static HashSet<SupplyPoint> ProtectOnly;
 
         static bool IsTruck(Unit t) { return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1; }
 
@@ -428,7 +430,8 @@ namespace HexTactica.AI {
             SupplyNetwork.Result after = SupplyNetwork.SolveAll(map.player, placed);
             int n = 0;
             foreach (SupplyPoint h in map.ownHubs)
-                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && before.connectedHubs.Contains(h) && !after.connectedHubs.Contains(h)) n++;
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && before.connectedHubs.Contains(h) && !after.connectedHubs.Contains(h)
+                    && (ProtectOnly == null || ProtectOnly.Contains(h))) n++;
             return n;
         }
 

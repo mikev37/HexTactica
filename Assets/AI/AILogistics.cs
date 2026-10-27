@@ -49,6 +49,17 @@ namespace HexTactica.AI {
         public readonly Dictionary<SupplyPoint, Task> chainOf = new Dictionary<SupplyPoint, Task>();
         public readonly Dictionary<SupplyPoint, Task> tacticalOf = new Dictionary<SupplyPoint, Task>();
         public readonly Dictionary<SupplyPoint, Ride> rides = new Dictionary<SupplyPoint, Ride>();
+        /// <summary>
+        /// What each supply unit joined to the network is doing for the war: the fighting units supplied
+        /// only through it — in contact (front-line combat) counting most, then on a campaign front — and
+        /// a campaign front's chain links. The ordinary fronts' units count for nothing: they are not left
+        /// behind on purpose, but nothing is kept for them. Only supply units with a duty are protected from
+        /// being cut off (AISupplyChain.Harm, AIPlayer.KeepLinks).
+        /// </summary>
+        public readonly Dictionary<SupplyPoint, float> duty = new Dictionary<SupplyPoint, float>();
+        public readonly HashSet<SupplyPoint> dutied = new HashSet<SupplyPoint>();
+        /// <summary>The protected supply units this turn (dutied), for AISupplyChain.Harm and AIPlayer.KeepLinks.</summary>
+        [System.ThreadStatic] public static HashSet<SupplyPoint> Protect;
         /// <summary>Free trucks after the claims.</summary>
         public int freeTrucks;
 
@@ -162,6 +173,32 @@ namespace HexTactica.AI {
                 }
             }
 
+            // Duty (see duty): who each supply unit keeps supplied.
+            HashSet<Unit> onFront = new HashSet<Unit>();
+            foreach (Task t in l.tasks) if (!t.ordinary) foreach (Unit u in t.front.units) if (u != null) onFront.Add(u);
+            SupplyNetwork.Result all = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
+            foreach (SupplyPoint h in all.connectedHubs) {
+                if (h == null || h.producer || h.myUnit == null) continue;
+                SupplyNetwork.Result w = SupplyNetwork.SolveWithout(map.player, h);
+                float d = 0f;
+                foreach (Unit u in map.ownUnits) {
+                    if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
+                    if (all.DepthAt(u.tile) <= 0 || w.DepthAt(u.tile) > 0) continue;   // not supplied, or supplied without it
+                    if (map.TurnsToContact(u) <= 1) d += 3f;
+                    else if (onFront.Contains(u)) d += 1f;
+                }
+                Task ct;
+                if (l.chainOf.TryGetValue(h, out ct) && !ct.ordinary) d += 1f;
+                l.duty[h] = d;
+                if (d > 0f) l.dutied.Add(h);
+            }
+            // Those a dutied one hangs from have a duty too (cut them and it is cut).
+            foreach (SupplyPoint h in new List<SupplyPoint>(l.duty.Keys)) {
+                if (l.dutied.Contains(h)) continue;
+                SupplyNetwork.Result w = SupplyNetwork.SolveWithout(map.player, h);
+                foreach (SupplyPoint x in l.dutied) if (x != h && !w.connectedHubs.Contains(x)) { l.dutied.Add(h); break; }
+            }
+
             // Buying pressure: a gap with no spare supply unit going to it.
             foreach (Task t in l.tasks) t.short_ = t.gap && t.tactical.Count == 0;
 
@@ -272,10 +309,12 @@ namespace HexTactica.AI {
             HashSet<SupplyPoint> wasConnect = AISupplyChain.ConnectOnly;
             bool wasNoLeaps = AISupplyChain.NoLeaps;
             AISupplyChain.ReservedTrucks = reservedTrucks != null ? new HashSet<Unit>(reservedTrucks) : null;
+            HashSet<SupplyPoint> wasProtect = AISupplyChain.ProtectOnly;
+            if (Protect != null) AISupplyChain.ProtectOnly = Protect;
             AISupplyChain.ConnectOnly = connect;
             AISupplyChain.NoLeaps = false;   // its links ride trucks at the farthest range they stay linked from
             try { return AISupplyChain.Make(map, moved, t.goal, hubs, t.front.units); }
-            finally { AISupplyChain.ReservedTrucks = was; AISupplyChain.ConnectOnly = wasConnect; AISupplyChain.NoLeaps = wasNoLeaps; }
+            finally { AISupplyChain.ReservedTrucks = was; AISupplyChain.ConnectOnly = wasConnect; AISupplyChain.NoLeaps = wasNoLeaps; AISupplyChain.ProtectOnly = wasProtect; }
         }
 
         /// <summary>Travel from <paramref name="u"/> to the nearest of the front's units (and the tile it is nearest).</summary>
@@ -300,7 +339,7 @@ namespace HexTactica.AI {
             }
             List<string> rs = new List<string>();
             foreach (KeyValuePair<SupplyPoint, Ride> kv in rides) rs.Add("(" + kv.Key.myUnit.tile.x + "," + kv.Key.myUnit.tile.y + ") on the truck at (" + kv.Value.truck.tile.x + "," + kv.Value.truck.tile.y + ") to (" + kv.Value.to.x + "," + kv.Value.to.y + ")");
-            return "logistics: " + (s.Count > 0 ? string.Join("; ", s.ToArray()) : "no fronts") + "; free trucks " + freeTrucks + (rs.Count > 0 ? "; rides " + string.Join(", ", rs.ToArray()) : "");
+            return "logistics: " + (s.Count > 0 ? string.Join("; ", s.ToArray()) : "no fronts") + "; free trucks " + freeTrucks + "; supply units with a duty " + dutied.Count + " of " + duty.Count + (rs.Count > 0 ? "; rides " + string.Join(", ", rs.ToArray()) : "");
         }
     }
 }
