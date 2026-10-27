@@ -332,7 +332,7 @@ namespace HexTactica.AI {
         public static string StepDebug = System.Environment.GetEnvironmentVariable("STEPDBG");
         static float CampaignStep(Unit unit, HexTile stop, AIMap map, AIProfile profile) {
             Front f = context.front;
-            if (StepDebug != null && unit.tile != null && unit.tile.x + "," + unit.tile.y == StepDebug && stop == unit.tile) System.Console.WriteLine("      step " + unit.name + " front " + (f == null ? "none" : f.ToString() + " campaign " + f.campaign + " objective " + (f.objectiveTile != null ? f.objectiveTile.x + "," + f.objectiveTile.y : "-")));
+            if (StepDebug != null && unit.tile != null && (StepDebug == "*" || unit.tile.x + "," + unit.tile.y == StepDebug) && stop == unit.tile) System.Console.WriteLine("      step " + unit.name + " front " + (f == null ? "none" : f.ToString() + " campaign " + f.campaign + " objective " + (f.objectiveTile != null ? f.objectiveTile.x + "," + f.objectiveTile.y : "-")));
             if (f == null || !f.campaign || profile.campaignStep <= 0f || unit.tile == null || unit.Hub != null || stop == null) return 0f;
             bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
             HexTile goal = gathering ? f.stagingTile : f.objectiveTile;
@@ -345,9 +345,13 @@ namespace HexTactica.AI {
             // Out of supply there, with rations that would run out before it got back: no step is worth
             // that. (On BigMapLakes, with no enemy on the board, the campaign marched its whole army out
             // of supply toward its objectives and every fighting unit starved to death.)
-            if (StepDebug != null && unit.tile != null && unit.tile.x + "," + unit.tile.y == StepDebug)
+            if (StepDebug != null && unit.tile != null && (StepDebug == "*" || unit.tile.x + "," + unit.tile.y == StepDebug))
                 System.Console.WriteLine("      step " + unit.name + " stop (" + stop.x + "," + stop.y + ") goal (" + goal.x + "," + goal.y + ") gathering " + gathering + " now " + map.Travel(unit, unit.tile, goal) + " then " + map.Travel(unit, stop, goal) + " pace " + f.paceLimit + " supplies " + unit.supplies + "/" + unit.suppliesMax + " depth " + map.SupplyDepth(stop) + " back " + map.TurnsToSupply(unit, stop));
             if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0 && unit.supplies - 1 < map.TurnsToSupply(unit, stop)) return 0f;
+            // Out of contact, nothing is worth a night out of supply: the chain moves up level with the
+            // army and the army steps into what it supplies. (With no enemy near, units walked out of
+            // supply, used up their rations there and walked back.)
+            if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0 && map.TurnsToContact(unit) > profile.objectiveContactTurns) return 0f;
             bool blocker = !gathering && f.objective != null && goal == f.objectiveTile && !Building.CanCapture(unit);
             if (blocker) floor = Mathf.Max(floor, 1);
             float v = profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
@@ -372,7 +376,10 @@ namespace HexTactica.AI {
                 // on a campaign front, what starving on the way back to supply would cost, on the same
                 // scale (otherwise only a tie-break, and the lean always won).
                 o.world.score += CampaignStep(unit, o.stop, map, profile) * worth;
-                if (context.front != null && context.front.campaign) o.world.score -= AIScore.StrandingCost(unit, o.stop, 0, map);
+                if (context.front != null && context.front.campaign) {
+                    o.world.score -= AIScore.StrandingCost(unit, o.stop, 0, map);
+                    if (map.TurnsToContact(unit) > profile.objectiveContactTurns) o.world.score -= AIScore.OutOfSupplyCost(unit, o.stop, map);
+                }
             }
             // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
             // an attack open to it, standing on a building to take it earns it nothing.

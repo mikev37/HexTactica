@@ -478,7 +478,7 @@ public class AIPlayer : MonoBehaviour {
                 if (best != null && bd < 99) frontHubs.Add(best);
             }
         if (Profile.supplyBackbone) backbonePlanned = AISupplyBackbone.Make(map, null);
-        logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, null) : null;
+        logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, null, fronts) : null;
         if (logistics != null && Trace != null) Trace("   " + logistics);
         { long __p = AIPerf.Begin();
         objectives = AIObjectives.Build(map, Profile);
