@@ -179,7 +179,9 @@ public static class SupplyNetwork {
                 if (activated.Contains(hub)) continue;
                 HexTile at = TileOf(hub, movedHub, hypotheticalTile, moved);
                 if (at == null) continue;
-                if (IsNavalHub(hub)) {
+                if (hub == AssumeLinked) {
+                    // A front-line supply unit: linked, by assumption (see AssumeLinked).
+                } else if (IsNavalHub(hub)) {
                     // A supply boat links to a friendly dock in supply, or to a linked supply boat,
                     // over water within its range; it supplies only the land it borders.
                     if (!NavalLinked(hub, at, player, result, activated, movedHub, hypotheticalTile, moved)) continue;
@@ -275,6 +277,13 @@ public static class SupplyNetwork {
     /// move of supplied ground — though they are on foot now and board this turn.
     /// </summary>
     [System.ThreadStatic] public static Dictionary<SupplyPoint, Unit> PlannedAboard;
+
+    /// <summary>
+    /// Set (per thread) by an AI placing a front-line supply unit (AIProfile.supplyFrontFirst): this
+    /// supply unit counts as linked wherever it is put — the units behind it will line up to link it —
+    /// so where it is placed is judged by what it supplies there.
+    /// </summary>
+    [System.ThreadStatic] public static SupplyPoint AssumeLinked;
 
     /// <summary>Set (per thread) by an AI that plans this way (AIProfile.hubLinkPenalty): see PutDown.</summary>
     [System.ThreadStatic] public static bool PutDownHypothetical;

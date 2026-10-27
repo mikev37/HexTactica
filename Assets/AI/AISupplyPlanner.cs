@@ -131,7 +131,7 @@ namespace HexTactica.AI {
             }
 
             // A relay is connected if it stands where the network reaches *without it*.
-            bool connected = without.DepthAt(at) > 0;
+            bool connected = FrontLine || without.DepthAt(at) > 0;
             if (!connected) score -= AIScore.Worth(hub.myUnit);
 
             // Same forward-coverage term ExactValue uses, by hex distance.
@@ -160,8 +160,17 @@ namespace HexTactica.AI {
         public static bool Ghost;
         static readonly Dictionary<HexTile, string> breakdown = new Dictionary<HexTile, string>();
 
+        /// <summary>Set (per thread) while placing a front-line supply unit (supplyFrontFirst): it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
+        [System.ThreadStatic] public static bool FrontLine;
+
         public static float ExactValue(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
             if (hub == null || hub.myUnit == null || at == null) return 0;
+            SupplyPoint assumedWas = SupplyNetwork.AssumeLinked;
+            if (FrontLine) SupplyNetwork.AssumeLinked = hub;
+            try { return ExactValueOf(hub, at, map, profile); } finally { SupplyNetwork.AssumeLinked = assumedWas; }
+        }
+
+        static float ExactValueOf(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
             float dSupplied = 0f, dForward = 0f, dIntent = 0f, dConnect = 0f, dRisk = 0f;
 
             SupplyNetwork.Result hypothetical =
