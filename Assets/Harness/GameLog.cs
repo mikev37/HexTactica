@@ -213,7 +213,7 @@ namespace HexTactica.Harness {
             return sb.ToString();
         }
 
-        static string Roster() {
+        public static string Roster() {
             StringBuilder sb = new StringBuilder();
             foreach (Unit u in AllUnits()) {
                 if (u == null || u.tile == null) continue;

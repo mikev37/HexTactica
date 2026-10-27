@@ -93,6 +93,8 @@ namespace HexTactica.AI {
         public int campaignPlaces = 12;
         [Tooltip("A place objective's worth, in multiples of what a building with no income is worth.")]
         public float campaignPlaceWeight = 0.5f;
+        [Tooltip("Out of contact, a campaign unit may end up to this many turns from supply (and no further than its rations bring it back from). 0: never out of supply.")]
+        public int campaignDipTurns = 1;
         [Tooltip("Campaign supply by logistics (AILogistics): each front, largest first, is joined to the network by a chain of supply units, and the supply units left over are the fronts' own, by their number of units, placed tactically near them. Off: each task force runs its own chain of the supply units it was given.")]
         public bool campaignLogistics = true;
         [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]

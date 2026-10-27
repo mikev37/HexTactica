@@ -3623,7 +3623,7 @@ public static class Scenarios {
         int reached = -1;
         string tr = Environment.GetEnvironmentVariable("TRACEROUND") ?? "-1"; int traceRound = tr == "all" ? -2 : int.Parse(tr);   // all: every round
         for (int r = 0; r < rounds && !gc.gameOver; r++) {
-            if (r == traceRound || traceRound == -2) { Console.WriteLine("== round " + r); if (Environment.GetEnvironmentVariable("BOARD") != null) Console.WriteLine(HexTactica.Harness.GameLog.Draw()); if (Environment.GetEnvironmentVariable("CAMPDBG") != null) HexTactica.AI.AICampaign.Debug = x => Console.WriteLine("   " + x); AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; AITactical.DebugBreakdown = Environment.GetEnvironmentVariable("BREAKDOWN") != null; }
+            if (r == traceRound || traceRound == -2) { Console.WriteLine("== round " + r); if (Environment.GetEnvironmentVariable("BOARD") != null) { Console.WriteLine(HexTactica.Harness.GameLog.Draw()); Console.WriteLine("   units: " + HexTactica.Harness.GameLog.Roster()); } if (Environment.GetEnvironmentVariable("CAMPDBG") != null) HexTactica.AI.AICampaign.Debug = x => Console.WriteLine("   " + x); AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; AITactical.DebugBreakdown = Environment.GetEnvironmentVariable("BREAKDOWN") != null; }
             ScenarioFile.PlayTurn(); if (!gc.gameOver) ScenarioFile.PlayTurn();
             AIPlayer.Trace = null; AITactical.DecisionLog = null; HexTactica.AI.AISupplyChain.DebugLog = null;
             SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
@@ -3653,6 +3653,7 @@ public static class Scenarios {
                 r, supplyGap, unitGap, ours / (float)land, theirs.capturePoints, theirs.CaptureThreshold, theirs.owner == l.other ? "theirs" : theirs.owner == l.ai ? "OURS" : "neutral", string.Join(" ", hubs.ToArray()),
                 held, all, taking.Count > 0 ? " (taking " + string.Join(" ", taking.ToArray()) + ")" : ""));
         }
+        { List<string> owned = new List<string>(); foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner == l.ai && !b.IsHQ) owned.Add(b.name.Replace("(Clone)", "") + Pos(b.tile)); owned.Sort(); Console.WriteLine("owned: " + string.Join(" ", owned.ToArray())); }
         Console.WriteLine("result: " + (gc.gameOver && gc.winner == l.ai ? "took the HQ on round " + gc.days : "HQ not taken") + "; supply reached the HQ " + (reached >= 0 ? "on round " + reached : "never"));
     }
 

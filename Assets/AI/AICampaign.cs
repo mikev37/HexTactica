@@ -278,7 +278,20 @@ namespace HexTactica.AI {
             foreach (CampaignObjective o in beyond) if (!candidates.Contains(o)) c.considered.Add(o);   // too far for now: considered, not pursued
             c.replanned = last == null ? "first plan" : timedOut ?? last.ReplanReason(candidates, map, p);
             if (Debug != null) foreach (CampaignObjective o in candidates) Debug("candidate " + o);
-            c.Allocate(candidates, map, p, c.replanned == null ? last : null);
+            // What happened to one objective is that objective's business: it is dropped (achieved, gone,
+            // given up) or formed again (broken, fell back), and every other task force carries on. Only the
+            // first plan and a new threat to our HQ start everything afresh. (Planned afresh whenever any
+            // objective was achieved — nearly every turn once they were many and small — no task force
+            // across the map lasted two turns: the FOB beyond the lake was set out for six times.)
+            bool afresh = last == null || (c.replanned != null && c.replanned.StartsWith("our HQ"));
+            HashSet<string> restart = new HashSet<string>();
+            if (last != null && !afresh)
+                foreach (CampaignObjective o in last.objectives) {
+                    float power = 0f;
+                    foreach (Unit u in o.units) if (u != null && u.tile != null && u.Strength > 0) power += Power(u);
+                    if (o.fellBack || (o.formedPower > 0f && power < o.formedPower * p.objectiveReplanLoss)) restart.Add(o.Id);
+                }
+            c.Allocate(candidates, map, p, afresh ? null : last, restart);
             return c;
         }
 
@@ -703,7 +716,7 @@ namespace HexTactica.AI {
 
         // ------------------------------------------------------------------ task forces
 
-        void Allocate(List<CampaignObjective> candidates, AIMap map, AIProfile p, AICampaign keep) {
+        void Allocate(List<CampaignObjective> candidates, AIMap map, AIProfile p, AICampaign keep, HashSet<string> restart = null) {
             List<Unit> pool = new List<Unit>();
             foreach (Unit u in map.ownUnits) {
                 if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
@@ -722,6 +735,7 @@ namespace HexTactica.AI {
                 foreach (CampaignObjective now in candidates) {
                     CampaignObjective was = keep.objectives.Find(x => x.Id == now.Id);
                     if (was == null) continue;
+                    if (restart != null && restart.Contains(now.Id)) continue;   // broken or fell back: formed again
                     // Not the HQ's defence: whoever can get there soonest, chosen afresh every turn.
                     if (now.kind == CampaignKind.DefendHQ) continue;
                     // ... except one that has gone off to fight elsewhere, or is now too far to join: it
