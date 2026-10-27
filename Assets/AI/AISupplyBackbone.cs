@@ -43,10 +43,11 @@ namespace HexTactica.AI {
         static bool IsCarrier(Unit t) { return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1 && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion); }
 
         /// <summary>Groups of our fighting units on the ground (each linked to the next within 3 tiles).</summary>
-        static List<List<Unit>> Groups(AIMap map) {
+        public static List<List<Unit>> Groups(AIMap map) {
             List<Unit> army = new List<Unit>();
             foreach (Unit u in map.ownUnits)
-                if (u != null && u.tile != null && u.trasnporter == null && u.Firepower > 0 && u.Hub == null && !IsCarrier(u) && !LocomotionRules.NeedsBase(u.locomotion)) army.Add(u);
+                if (u != null && u.tile != null && u.trasnporter == null && u.Firepower > 0 && u.Hub == null && !IsCarrier(u) && !LocomotionRules.NeedsBase(u.locomotion)
+                    && !AICampaign.HomeFight(u, map, map.profile)) army.Add(u);
             army.Sort(AIMap.CompareUnits);
             List<List<Unit>> groups = new List<List<Unit>>();
             HashSet<Unit> seen = new HashSet<Unit>();
@@ -81,7 +82,7 @@ namespace HexTactica.AI {
             List<HexTile> fronts = new List<HexTile>();
             foreach (List<Unit> g in groups) {
                 HexTile f = null; int fs = int.MaxValue;
-                foreach (Unit u in g) { int s = steps(u.tile); if (s < fs || (s == fs && CombatMath.Precedes(u.tile, f))) { fs = s; f = u.tile; } }
+                foreach (Unit u in g) { int s = steps(u.tile); if (f == null || s < fs || (s == fs && CombatMath.Precedes(u.tile, f))) { fs = s; f = u.tile; } }
                 if (f != null) fronts.Add(f);
             }
             if (fronts.Count == 0) return plan;
@@ -106,7 +107,7 @@ namespace HexTactica.AI {
                         Dictionary<HexTile, int> toF = map.LandSteps(f);
                         int gap = int.MaxValue;
                         foreach (KeyValuePair<HexTile, int> kv in net.depth) { int d; if (kv.Value > 0 && toF.TryGetValue(kv.Key, out d) && d < gap) gap = d; }
-                        if (gap < targetGap || (gap == targetGap && CombatMath.Precedes(f, target))) { targetGap = gap; target = f; }
+                        if (target == null || gap < targetGap || (gap == targetGap && CombatMath.Precedes(f, target))) { targetGap = gap; target = f; }
                     }
                     if (target == null || targetGap == int.MaxValue) break;
                     Dictionary<HexTile, int> toTarget = map.LandSteps(target);
@@ -145,7 +146,7 @@ namespace HexTactica.AI {
                             if (!SupplyNetwork.WithinMoveOfSupply(c, x, net)) continue;
                             int cost = pickup + map.Travel(c, c.tile, x);
                             if (cost >= 99) continue;
-                            if (gap < bestGap || (gap == bestGap && (cost < bestCost || (cost == bestCost && CombatMath.Precedes(x, bestTile))))) {
+                            if (gap < bestGap || (gap == bestGap && (cost < bestCost || (cost == bestCost && (bestTile == null || CombatMath.Precedes(x, bestTile)))))) {
                                 bestGap = gap; bestCost = cost; bestTile = x; bestHub = h; bestCarrier = c;
                             }
                         }

@@ -150,7 +150,10 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Strength <paramref name="u"/> should expect to lose tonight on <paramref name="at"/> to what the fog may hide.</summary>
-        public float Loss(Unit u, HexTile at) {
+        public float Loss(Unit u, HexTile at) { return Loss(u, at, true); }
+
+        /// <param name="unknownGround">Count ground we have not seen as possibly hiding the enemy (false: only the enemy we remember).</param>
+        public float Loss(Unit u, HexTile at, bool unknownGround) {
             if (u == null || at == null) return 0f;
             float loss = 0f;
             List<Zone> list;
@@ -163,7 +166,7 @@ namespace HexTactica.AI {
                     loss += dmg * z.weight / Mathf.Max(1, sharers);
                 }
             }
-            if (kinds.Count > 0 && unknown.Count > 0 && profile.fogAggression < 1f) {
+            if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && profile.fogAggression < 1f) {
                 float d = Density(at);
                 if (d > 0f) {
                     float dmg = 0f;
