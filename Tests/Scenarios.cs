@@ -3611,9 +3611,21 @@ public static class Scenarios {
         // Standard rules (under attrition a side with no fighting units is out at once), no purchases.
         if (Environment.GetEnvironmentVariable("RULES") == null) Environment.SetEnvironmentVariable("RULES", "standard");
         if (Environment.GetEnvironmentVariable("PURCHASES") == null) Environment.SetEnvironmentVariable("PURCHASES", "off");
-        ScenarioFile.Loaded l = ScenarioFile.Load(Find(file), "Human", tweak);
+        // ENEMY=half / full: Red is played by this AI with its default profile, with every other unit of each
+        // kind removed (half) or all of them (full). Unset: Red has no units and does nothing (unopposed).
+        string enemy = Environment.GetEnvironmentVariable("ENEMY");
+        bool opposed = enemy == "half" || enemy == "full";
+        ScenarioFile.Loaded l = opposed ? ScenarioFile.Load(Find(file), "Full", tweak, null) : ScenarioFile.Load(Find(file), "Human", tweak);
         Rig.gc.fogOfWar = (Environment.GetEnvironmentVariable("FOG") ?? "off") == "on"; FogOfWar.Reset();
-        foreach (Unit u in new List<Unit>(l.other.units)) if (u != null) u.Perish();
+        if (!opposed) { foreach (Unit u in new List<Unit>(l.other.units)) if (u != null) u.Perish(); }
+        else if (enemy == "half") {
+            Dictionary<string, List<Unit>> byKind = new Dictionary<string, List<Unit>>();
+            foreach (Unit x in l.other.units) if (x != null && x.tile != null) { string k = GameController.UnitName(x); if (!byKind.ContainsKey(k)) byKind[k] = new List<Unit>(); byKind[k].Add(x); }
+            List<string> kinds = new List<string>(byKind.Keys); kinds.Sort(StringComparer.Ordinal);
+            foreach (string k in kinds) { List<Unit> g = byKind[k]; g.Sort((a, b) => CombatMath.CompareTiles(a.tile, b.tile)); for (int i = 1; i < g.Count; i += 2) g[i].Perish(); }
+        }
+        int redStart = 0, blueStart = 0; foreach (Unit x in l.other.units) if (x != null && x.tile != null) redStart++; foreach (Unit x in l.ai.units) if (x != null && x.tile != null) blueStart++;
+        if (opposed) Console.WriteLine("opposed (" + enemy + "): Red " + redStart + " units, Blue " + blueStart);
         Building theirs = GameController.HQOf(l.other);
         HexTactica.AI.AIMap m0 = new HexTactica.AI.AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
         Dictionary<HexTile, int> steps = m0.LandSteps(theirs.tile);
@@ -3655,7 +3667,12 @@ public static class Scenarios {
                 held, all, taking.Count > 0 ? " (taking " + string.Join(" ", taking.ToArray()) + ")" : ""));
         }
         { List<string> owned = new List<string>(); foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner == l.ai && !b.IsHQ) owned.Add(b.name.Replace("(Clone)", "") + Pos(b.tile)); owned.Sort(); Console.WriteLine("owned: " + string.Join(" ", owned.ToArray())); }
-        Console.WriteLine("result: " + (gc.gameOver && gc.winner == l.ai ? "took the HQ on round " + gc.days : "HQ not taken") + "; supply reached the HQ " + (reached >= 0 ? "on round " + reached : "never"));
+        Console.WriteLine("result: " + (gc.gameOver && gc.winner == l.ai ? "took the HQ on round " + gc.days : gc.gameOver && gc.winner == l.other ? "LOST (Red won) on round " + gc.days : "HQ not taken") + "; supply reached the HQ " + (reached >= 0 ? "on round " + reached : "never"));
+        if (opposed) {
+            int red = 0, blue = 0, redB = 0; foreach (Unit u in l.other.units) if (u != null && u.tile != null) red++; foreach (Unit u in l.ai.units) if (u != null && u.tile != null) blue++;
+            foreach (Building b in Building.all) if (b != null && !b.IsHQ && b.owner == l.other) redB++;
+            Console.WriteLine("units: Blue " + blue + " (started " + blueStart + "), Red " + red + " (started " + redStart + "); Red buildings " + redB);
+        }
     }
 
     /// <summary>

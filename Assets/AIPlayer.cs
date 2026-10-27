@@ -1433,20 +1433,35 @@ public class AIPlayer : MonoBehaviour {
         // The front's chain short: to the chain's supply unit nearest it, to relieve that one of its place so it
         // can move up. (Sent to "the back of the chain", supply units went to whichever end that was that turn.)
         if (t.gap && unit.trasnporter == null && t.chain.Count > 0) {
+            // Only a middle link is relieved (one with a link nearer the front beyond it: HQ > link > link > end):
+            // the chain's end is joined, by going on past it to supply the front's units as the new end.
+            Dictionary<HexTile, int> toGoal = t.goal != null ? map.LandSteps(t.goal) : null;
+            System.Func<SupplyPoint, HexTile> at = x => x.myUnit.trasnporter != null ? x.myUnit.trasnporter.tile : x.myUnit.tile;
+            System.Func<SupplyPoint, int> ahead = x => { int v; return toGoal != null && toGoal.TryGetValue(at(x), out v) ? v : int.MaxValue; };
             List<SupplyPoint> links = new List<SupplyPoint>();
             foreach (SupplyPoint x in t.chain) if (x != hub && x.myUnit != null && x.myUnit.tile != null) links.Add(x);
-            if (Relieve(hub, links, out action)) { action.reason += " (" + t.front.Id + "'s chain)"; return true; }
+            SupplyPoint end = null;
+            foreach (SupplyPoint x in links) if (end == null || ahead(x) < ahead(end) || (ahead(x) == ahead(end) && AIMap.CompareUnits(x.myUnit, end.myUnit) < 0)) end = x;
+            List<SupplyPoint> middle = links.FindAll(x => x != end);
             SupplyPoint closest = null; int cd = int.MaxValue;
             foreach (SupplyPoint x in links) {
-                if (sought.Contains(x) || relieved.ContainsKey(x)) continue;   // one on its way to relieve it already
-                HexTile at = x.myUnit.trasnporter != null ? x.myUnit.trasnporter.tile : x.myUnit.tile;
-                int dd = map.Travel(unit, unit.tile, at);
+                if (x != end && (sought.Contains(x) || relieved.ContainsKey(x))) continue;   // one on its way to relieve it already
+                int dd = map.Travel(unit, unit.tile, at(x));
                 if (dd < cd || (dd == cd && closest != null && AIMap.CompareUnits(x.myUnit, closest.myUnit) < 0)) { cd = dd; closest = x; }
             }
-            if (closest != null && cd > Mathf.Max(1, hub.range)) {
-                HexTile at = closest.myUnit.trasnporter != null ? closest.myUnit.trasnporter.tile : closest.myUnit.tile;
-                AIAction go = AISupplyTree.Step(unit, at, map);
-                if (go.destination != null && go.destination != unit.tile && !CutsOff(hub, go.destination)) { sought.Add(closest); go.reason = "logistics for " + t.front.Id + ": to relieve the chain's supply unit at (" + at.x + "," + at.y + ")"; action = go; return true; }
+            if (closest != null && closest == end) {
+                HexTile lead;
+                int fd = HexTactica.AI.AILogistics.NearestOf(t, unit, map, out lead);
+                if (lead != null && fd > Mathf.Max(1, hub.range)) {
+                    AIAction go = AISupplyTree.Step(unit, lead, map);
+                    if (go.destination != null && go.destination != unit.tile && !CutsOff(hub, go.destination)) { go.reason = "logistics for " + t.front.Id + ": past the chain's end at (" + at(end).x + "," + at(end).y + ") to supply the front's units, its new end"; action = go; return true; }
+                }
+            } else if (closest != null) {
+                if (Relieve(hub, middle, out action)) { action.reason += " (" + t.front.Id + "'s chain)"; return true; }
+                if (cd > Mathf.Max(1, hub.range)) {
+                    AIAction go = AISupplyTree.Step(unit, at(closest), map);
+                    if (go.destination != null && go.destination != unit.tile && !CutsOff(hub, go.destination)) { sought.Add(closest); go.reason = "logistics for " + t.front.Id + ": to relieve the chain's supply unit at (" + at(closest).x + "," + at(closest).y + ")"; action = go; return true; }
+                }
             }
         }
         // A tail: near its front but supplying nothing of any front's or in contact (no duty) — it pulls back

@@ -181,9 +181,14 @@ namespace HexTactica.AI {
             }
 
             // Duty (see duty): who each supply unit keeps supplied.
+            // Only where the enemy is (front line: in contact, or within reach of an enemy the fog may hide that
+            // we remember): a front with none of its units threatened is no priority, and its supply and
+            // transports are free to move. (With no enemy anywhere, every front's units were protected and
+            // trucks were held four turns at a time in the corner of the map.)
             HashSet<Unit> onFront = new HashSet<Unit>();
-            foreach (Task t in l.tasks) if (!t.ordinary) foreach (Unit u in t.front.units) if (u != null) onFront.Add(u);
-            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && (onFront.Contains(u) || map.TurnsToContact(u) <= 1)) l.protectUnits.Add(u);
+            HashSet<Task> engaged = new HashSet<Task>();
+            foreach (Task t in l.tasks) if (!t.ordinary && t.front.units.Exists(u => Threatened(u, map))) { engaged.Add(t); foreach (Unit u in t.front.units) if (u != null) onFront.Add(u); }
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && (onFront.Contains(u) || Threatened(u, map))) l.protectUnits.Add(u);
             // A campaign front beyond our supply with no supply of its own — no chain link, none of its own —
             // does not go beyond our supply (AITactical.CampaignStep): it scouts and presses near it.
             foreach (Task t in l.tasks) if (!t.ordinary) t.front.noSupply = t.gap && t.chain.Count == 0 && t.tactical.Count == 0;
@@ -195,11 +200,11 @@ namespace HexTactica.AI {
                 foreach (Unit u in map.ownUnits) {
                     if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                     if (all.DepthAt(u.tile) <= 0 || w.DepthAt(u.tile) > 0) continue;   // not supplied, or supplied without it
-                    if (map.TurnsToContact(u) <= 1) d += 3f;
+                    if (Threatened(u, map)) d += 3f;
                     else if (onFront.Contains(u)) d += 1f;
                 }
                 Task ct;
-                if (l.chainOf.TryGetValue(h, out ct) && !ct.ordinary) d += 1f;
+                if (l.chainOf.TryGetValue(h, out ct) && !ct.ordinary && engaged.Contains(ct)) d += 1f;
                 l.duty[h] = d;
                 if (d > 0f) l.dutied.Add(h);
             }
@@ -258,6 +263,13 @@ namespace HexTactica.AI {
         }
 
         /// <summary>More than two of its moves from the nearest of the front's units.</summary>
+        /// <summary>Front line: in contact next turn, or where an enemy we remember under the fog could strike tonight.</summary>
+        public static bool Threatened(Unit u, AIMap map) {
+            if (u == null || u.tile == null) return false;
+            if (map.TurnsToContact(u) <= 1) return true;
+            return map.sigint != null && map.sigint.Loss(u, u.tile, false) > 0f;
+        }
+
         public static bool Far(Task t, Unit u, AIMap map) { return NearestOf(t, u, map) > 2 * Mathf.Max(1, u.moveRange); }
 
         /// <summary>
