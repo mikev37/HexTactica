@@ -63,6 +63,13 @@ namespace HexTactica.AI {
 
         /// <summary>Trucks already promised this turn (AIPlayer): not for a leap.</summary>
         public static HashSet<Unit> ReservedTrucks;
+        /// <summary>
+        /// Set (AILogistics): the only supply units the chain tries to keep connected — a front's link
+        /// nodes — rather than every supply unit we have; and no leaps (a front's own supply units leap,
+        /// not its chain). Null / false: the whole army's chain, as before.
+        /// </summary>
+        public static HashSet<SupplyPoint> ConnectOnly;
+        public static bool NoLeaps;
 
         static bool IsTruck(Unit t) { return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1; }
 
@@ -155,7 +162,7 @@ namespace HexTactica.AI {
         /// </summary>
         public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
             Plan plan = MakeOne(map, fixedHubs, objective, only, army, null);
-            if (!map.profile.supplyLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
+            if (NoLeaps || !map.profile.supplyLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
             // Stretched, with trucks to hand: try each supply unit on foot that a truck could take now
             // carried forward, and the rest of the chain planned after it. A chain of links on foot has
             // every link holding the next: none could leap alone without cutting the ones ahead, though
@@ -232,7 +239,7 @@ namespace HexTactica.AI {
                 plan.frontSteps = Mathf.Min(plan.frontSteps, steps(u.tile));
             }
 
-            bool leaps = map.profile.supplyLeaps;
+            bool leaps = map.profile.supplyLeaps && !NoLeaps;
             List<SupplyPoint> hubs = new List<SupplyPoint>();
             foreach (SupplyPoint h in map.ownHubs) {
                 if (only != null && !only.Contains(h)) continue;
@@ -407,7 +414,8 @@ namespace HexTactica.AI {
             SupplyNetwork.Result net = SupplyNetwork.SolveAll(map.player, placed);
             int n = 0;
             foreach (SupplyPoint h in map.ownHubs)
-                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && h.myUnit.trasnporter == null && !net.connectedHubs.Contains(h)) n++;
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && h.myUnit.trasnporter == null && !net.connectedHubs.Contains(h)
+                    && (ConnectOnly == null || ConnectOnly.Contains(h))) n++;
             return n;
         }
 
