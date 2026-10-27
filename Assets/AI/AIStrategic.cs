@@ -41,6 +41,8 @@ namespace HexTactica.AI {
         public readonly List<Unit> assigned = new List<Unit>();
         /// <summary>A campaign objective's own place to gather (AICampaign: on the way that avoids the enemy's fire), instead of the supplied tile nearest the objective.</summary>
         public HexTile campaignStaging;
+        /// <summary>The campaign objective this front is the task force of (AICampaign), told when it goes in.</summary>
+        public CampaignObjective campaignObjective;
         /// <summary>A campaign task force with the power its objective needs: it goes (aggressive), gathering first as any attack does.</summary>
         public bool campaignReady;
         /// <summary>The combat power the campaign objective needs (AICampaign: the enemy there times objectiveForceRatio).</summary>
@@ -440,6 +442,7 @@ namespace HexTactica.AI {
             f.stagingTile = staging;
             if (go) {
                 f.staging = false; f.posture = Posture.Aggressive; f.assault = true; f.gatedAssault = true;
+                if (f.campaignObjective != null) f.campaignObjective.went = true;
             } else {
                 // Gathering is not defending: the force is moving up, its units still fight as they see fit.
                 f.staging = true; f.assault = false; f.gatedAssault = false;

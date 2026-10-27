@@ -410,6 +410,9 @@ public static class Scenarios {
         make("ai-campaign-clear-the-building", "aiCampaignClear", (a, o) => {
                  Rig.PlaceBuilding("City", null, -2, 0); Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Grunt", o, 5, -3); },
              "Campaign on: a neutral city near Blue's HQ, a Blue tank standing on it and a Blue grunt beside it, Red far away. The city is the campaign's objective; the tank cannot capture, so it steps off on Blue's first turn, and by Blue's second the grunt is on the city taking it. (A gunship parked on a city a whole game long kept Blue's army round it for 30 rounds on RiverCrossing.)");
+        make("ai-campaign-time-box", "aiCampaignTimeBox", (a, o) => {
+                 Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
+             "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox) and leaves it alone for 6 turns. With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2).");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
         Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
@@ -876,6 +879,35 @@ public static class Scenarios {
                 string obj = c == null ? "none" : string.Join("; ", c.objectives.ConvertAll(x => x.kind + "(" + (x.target != null ? x.target.x + "," + x.target.y : "-") + ")").ToArray());
                 detail = "objectives " + obj + "; the tank off the city on Blue's first turn " + off + "; after Blue's second: tank at " + Pos(tank.tile) + ", grunt at " + Pos(g.tile) + ", city " + (city.capturingPlayer == l.ai ? "being taken by Blue" : "not being taken") + " (" + city.capturePoints + ")";
                 return off && tank.tile != city.tile && g.tile == city.tile;
+            }
+            case "aiCampaignTimeBox": {
+                Rig.At(0, 0).building.capturingPlayer = null;
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                prof.campaign = true;
+                List<string> r = new List<string>();
+                Func<AIProfile, int, List<string>> run = (pr, turns) => {
+                    List<string> seen = new List<string>();
+                    AICampaign c = null;
+                    for (int t = 0; t < turns; t++) {
+                        c = AICampaign.Plan(new AIMap(l.ai, pr), pr, c);
+                        CampaignObjective city = c.objectives.Find(x => x.kind == CampaignKind.Secure && x.target == Rig.At(0, 0));
+                        seen.Add((city != null ? "city turn " + (city.age + 1) + (city.staging != null ? " via " + Pos(city.staging) : "") : "no city") + (c.replanned != null ? " [" + c.replanned + "]" : ""));
+                        if (t == 0 && pr.readyStrength > 1f) { }   // (nothing moves)
+                    }
+                    return seen;
+                };
+                List<string> a6 = run(prof, 9);
+                r.Add("gathered: " + string.Join(" | ", a6.ToArray()));
+                AIProfile wounded = ScriptableObject.CreateInstance<AIProfile>();
+                wounded.campaign = true; wounded.readyStrength = 1.01f;
+                List<string> b = run(wounded, 4);
+                r.Add("never gathered: " + string.Join(" | ", b.ToArray()));
+                detail = string.Join("; ", r.ToArray());
+                // Kept turns 1..6, given up at the 7th plan (its 7th turn would begin) and not taken on again before the 13th.
+                bool kept = true; for (int t = 0; t < 6; t++) kept &= a6[t].StartsWith("city turn " + (t + 1));
+                bool gaveUp = a6[6].StartsWith("no city") && a6[6].Contains("not achieved in 6 turns") && a6[7].StartsWith("no city") && a6[8].StartsWith("no city");
+                bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("no city") && b[2].Contains("did not gather in 2 turns");
+                return kept && gaveUp && dissolved;
             }
             case "aiFightFirst": {
                 Unit g = Rig.At(0, 0).occupier, e = Rig.At(1, -1).occupier;

@@ -77,6 +77,8 @@ namespace HexTactica.AI {
         public int campaignStagingRadius = 0;
         [Tooltip("A task force takes only units within this many turns of its staging tile, and none fighting elsewhere. 0: frontReachTurns.")]
         public int campaignDrawTurns = 0;
+        [Tooltip("Time boxes: a task force not gathered on its staging ground by its campaignDrawTurns-th turn is dissolved; one that has not achieved its objective in this many turns (plus a turn for every turn its target is beyond campaignDrawTurns of its staging tile) gives it up. A given-up objective is left alone for this many turns. 0: no time boxes.")]
+        public int campaignTimeBox = 6;
         [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]
         public float campaignFallbackRatio = 0.5f;
 
