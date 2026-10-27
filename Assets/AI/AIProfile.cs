@@ -62,6 +62,14 @@ namespace HexTactica.AI {
         public bool campaignGather = true;
         [Tooltip("How strongly campaign fronts pull their units toward their objectives and staging grounds, as a multiple of an ordinary front's pull. The units still choose their own moves: this only weighs where they would rather be.")]
         public float campaignPull = 1f;
+        /// <summary>
+        /// How much the campaign's plan weighs against the fight in front of a unit: each step a move
+        /// takes toward its task force's goal (its staging ground while gathering, else its objective;
+        /// no further than the force's pace) is worth this many of the unit's strength points in the
+        /// simulated outcome the tactical layer chooses by. 0: the plan only breaks ties (campaignPull).
+        /// The units choose their own moves either way; this is how hard the plan leans on them.
+        /// </summary>
+        public float campaignStep = 1f;
         [Tooltip("A task force goes once this share of its healthy power is on its staging ground (or what is there meets its need): so 90% does not wait for the last 10%.")]
         [Range(0f, 1f)]
         public float campaignGatherShare = 0.6f;
@@ -107,6 +115,10 @@ namespace HexTactica.AI {
         [Tooltip("Hubs: worth of closing the gap between the network and where a friendly unit is heading, as strength points of that unit per turn (full gap closed = 1 x weight).")]
         [Range(0f, 6f)]
         public float intentSupplyWeight = 2f;
+
+        [Tooltip("Hubs: worth of holding ground — each tile of land newly supplied by us and not by the enemy, as strength points of an average fighting unit. Spreads the network over the map instead of only after the army.")]
+        [Range(0f, 1f)]
+        public float groundSupplyWeight = 0f;
 
         [Tooltip("Multiplier on a hub's target worth for the units it sustains (base: a quarter of their combined value).")]
         public float enemySupplyTargetWeight = 1f;
@@ -323,6 +335,15 @@ namespace HexTactica.AI {
         [Range(0f, 3f)]
         public float assignmentPull = 0.5f;
 
+        [Tooltip("Objectives: every building we do not hold is one (AIObjectives.Capture) — the nearest unit that can capture it and an escort for its defence — so the army spreads out to take them in parallel instead of drifting toward one.")]
+        public bool captureObjectives = true;
+
+        [Tooltip("Capture objectives: each step toward the building, for a unit out of contact sent to take it, as a fraction of a strength point of that unit (and six times that for standing on it, for one that can capture).")]
+        public float capturePull = 0.3f;
+
+        [Tooltip("Capture objectives only for buildings within this many tiles of our supplied ground: the army's ground, not the whole map.")]
+        public int captureReach = 3;
+
         [Tooltip("Old rule: only pull units to an objective once they have objectiveRatio times its defenders, and never on a trip they couldn't get back into supply from. Off: objectives give direction to units out of contact regardless.")]
         public bool objectivesNeedForce = false;
 
@@ -443,6 +464,9 @@ namespace HexTactica.AI {
 
         [Tooltip("A supply-chain link may stand ahead of the army where no enemy can strike for more than two turns (otherwise links never pass the frontmost fighting unit).")]
         public bool chainLeadsWhenClear = false;
+
+        [Tooltip("Supply leaps: a supply unit the chain cannot use rides a truck past the edge of supply and stays aboard, linked while the truck could drive back onto supplied ground in one move — the network crosses ground it could not link on foot.")]
+        public bool supplyLeaps = true;
 
         [Tooltip("Supply units as a tree grown out from the HQ to every fighting unit out of supply, nearest the edge of supply first, a link at a time (AISupplyTree), instead of one chain toward the enemy HQ (supplyChain). Units the tree does not need are placed by the ordinary supply planner. Off: it lost the benchmark against the chain (PROBE=bench, ChanceMeeting from both sides and the campaign maps, fog off and on: -70,000 material over 12 games, better in 5, worse in 7).")]
         public bool supplyTree = false;

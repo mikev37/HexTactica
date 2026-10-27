@@ -159,6 +159,21 @@ namespace HexTactica.Testing {
         }
 
         /// <summary>The carries list of a prefab's Unit (as a YAML list, or as Unity's hex string of little-endian ints).</summary>
+        /// <summary>A packed int list as Unity writes it: 8 hex digits per int, little-endian.</summary>
+        static List<int> PackedInts(string hex) {
+            List<int> r = new List<int>();
+            for (int k = 0; k + 8 <= hex.Length; k += 8) {
+                int v = 0; bool ok = true;
+                for (int byteI = 0; byteI < 4; byteI++) {
+                    int bv;
+                    if (!int.TryParse(hex.Substring(k + byteI * 2, 2), System.Globalization.NumberStyles.HexNumber, null, out bv)) { ok = false; break; }
+                    v |= bv << (8 * byteI);
+                }
+                if (ok) r.Add(v);
+            }
+            return r;
+        }
+
         static List<Locomotion> Carries(string text) {
             List<Locomotion> carries = new List<Locomotion>();
             string[] lines = text.Split('\n');
@@ -267,6 +282,9 @@ namespace HexTactica.Testing {
                     for (int j = i + 1; j + 1 < lines.Count && lines[j].StartsWith("  - x:"); j += 2)
                         into.Add(new TileOffset(int.Parse(lines[j].Substring(lines[j].IndexOf(':') + 1).Trim()), int.Parse(lines[j + 1].Substring(lines[j + 1].IndexOf(':') + 1).Trim())));
                 } else if (l.StartsWith("  services:")) {
+                    // Unity writes an int list either as "- n" lines or packed on the line as hex (4 bytes each, little-endian, then "i").
+                    string packed = l.Substring("  services:".Length).Trim();
+                    if (packed.Length > 0) foreach (int v in PackedInts(packed)) b.services.Add((Locomotion)v);
                     for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) b.services.Add((Locomotion)int.Parse(lines[j].Substring(4).Trim()));
                 } else if (l.StartsWith("  buildable:")) {
                     for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) {

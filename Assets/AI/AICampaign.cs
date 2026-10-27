@@ -38,6 +38,10 @@ namespace HexTactica.AI {
         public bool respond;
         /// <summary>Its task force fell back this turn, outmatched.</summary>
         public bool fellBack;
+        /// <summary>The enemy power its task force met when it fell back (Outmatched).</summary>
+        public float metPower;
+        /// <summary>Need at least this: the enemy it met there before (AICampaign.opposition).</summary>
+        public float minNeed;
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
@@ -65,6 +69,10 @@ namespace HexTactica.AI {
               .Append(" have ").Append(assignedPower.ToString("0")).Append(", ").Append(units.Count).Append(" units, ")
               .Append(hubs.Count).Append('/').Append(needHubs).Append(" supply");
             if (staging != null) sb.Append(" via (").Append(staging.x).Append(',').Append(staging.y).Append(")");
+            if (units.Count > 0) {
+                sb.Append(":");
+                foreach (Unit u in units) if (u != null && u.tile != null) sb.Append(' ').Append(u.name.Replace("(Clone)", "").Replace(" Variant", "")).Append('(').Append(u.tile.x).Append(',').Append(u.tile.y).Append(")s").Append(u.Strength);
+            }
             return sb.ToString();
         }
     }
@@ -116,6 +124,13 @@ namespace HexTactica.AI {
         readonly Dictionary<SupplyPoint, CampaignObjective> hubOf = new Dictionary<SupplyPoint, CampaignObjective>();
         /// <summary>Why the last plan was made from scratch, if it was.</summary>
         public string replanned;
+        /// <summary>
+        /// What each objective's task force met when it fell back, remembered (fading a little each
+        /// turn): the objective needs at least that times objectiveForceRatio before it is tried again.
+        /// Without it the campaign went straight back in at the same odds the next turn, fell back
+        /// again under fire, and spent its army in the coming and going.
+        /// </summary>
+        public readonly Dictionary<string, float> opposition = new Dictionary<string, float>();
 
         public CampaignObjective ObjectiveOf(Unit u) { CampaignObjective o; return u != null && unitOf.TryGetValue(u, out o) ? o : null; }
         public CampaignObjective ObjectiveOf(SupplyPoint h) { CampaignObjective o; return h != null && hubOf.TryGetValue(h, out o) ? o : null; }
@@ -130,6 +145,13 @@ namespace HexTactica.AI {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 foreach (Unit e in o.arriving.Keys) { int k; reaches.TryGetValue(e, out k); reaches[e] = k + 1; }
             }
+            // The enemy splits at most as we do: an enemy unit is shared among no more objectives than
+            // we had task forces out last turn (one, the first turn). Shared among every candidate, the
+            // enemy's whole army in front of its HQ was priced at half its strength because there were
+            // also three cities it could have gone to, and the one push we made went in at even odds.
+            int split = 1;
+            if (last != null) { split = 0; foreach (CampaignObjective o in last.objectives) if ((o.kind == CampaignKind.Secure || o.kind == CampaignKind.Clear) && o.units.Count > 0) split++; split = Mathf.Max(1, split); }
+            foreach (Unit e in new List<Unit>(reaches.Keys)) reaches[e] = Mathf.Min(reaches[e], split);
             // The enemy we have not seen is still out there (fog of war): what they field that we cannot
             // account for — as much as we field (all we know), less what we see or remember — could be at
             // any objective with unknown ground in reach, shared out as a seen unit's power is. Without
@@ -139,10 +161,16 @@ namespace HexTactica.AI {
             if (hidden > 0f) {
                 int k = 0;
                 foreach (CampaignObjective o in candidates) if (o.hiddenReach && o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout) k++;
+                k = Mathf.Min(k, split);
                 foreach (CampaignObjective o in candidates)
                     if (o.hiddenReach && o.kind != CampaignKind.Scout)
                         o.hiddenPower = hidden * (o.kind == CampaignKind.DefendHQ || o.respond || k <= 1 ? 1f : 1f / Mathf.Pow(k, Mathf.Clamp01(p.objectiveSpread)));
             }
+            if (last != null) {
+                foreach (KeyValuePair<string, float> kv in last.opposition) if (kv.Value * 0.85f > 1f) c.opposition[kv.Key] = kv.Value * 0.85f;
+                foreach (CampaignObjective o in last.objectives) if (o.fellBack) { float had; c.opposition.TryGetValue(o.Id, out had); c.opposition[o.Id] = Mathf.Max(had, o.metPower); }
+            }
+            foreach (CampaignObjective o in candidates) { float met; if (c.opposition.TryGetValue(o.Id, out met)) o.minNeed = met * p.objectiveForceRatio; }
             foreach (CampaignObjective o in candidates) Price(o, map, p, o.kind == CampaignKind.DefendHQ || o.respond ? null : reaches);
             candidates.Sort((a, b) => {
                 if ((a.kind == CampaignKind.DefendHQ) != (b.kind == CampaignKind.DefendHQ)) return a.kind == CampaignKind.DefendHQ ? -1 : 1;
@@ -275,9 +303,27 @@ namespace HexTactica.AI {
 
             // The enemy that can fight there: what we see (each unit, with its power), and those we lost track of nearby.
             if (o.kind == CampaignKind.Clear || o.kind == CampaignKind.DefendHQ) { foreach (Unit e in o.enemies) o.owned += Power(e); }
+            // ... and whatever stands in the way, or can get onto the way in time: the road from the
+            // staging ground in. (Counting only what could reach the target itself, the push on the
+            // enemy HQ priced the enemy's whole army, drawn up across its path, at a quarter of what
+            // it was, went in at what it thought was twice their strength, and was destroyed.)
+            List<HexTile> way = new List<HexTile>();
+            if (o.staging != null && o.kind != CampaignKind.DefendHQ) {
+                HexTile at = o.staging; int left; int guard = 0;
+                while (at != null && route.TryGetValue(at, out left) && left > 0 && guard++ < 200) {
+                    way.Add(at);
+                    HexTile next = null; int nb = left;
+                    if (at.neighbors != null) foreach (HexTile n in at.neighbors) { int v; if (n != null && route.TryGetValue(n, out v) && v < nb) { nb = v; next = n; } }
+                    at = next;
+                }
+            }
             if (o.kind != CampaignKind.DefendHQ)
-                foreach (Unit e in map.enemyUnits)
-                    if (e != null && e.tile != null && !o.enemies.Contains(e) && Power(e) > 0f && CanArrive(e, o.target, turns, map)) o.arriving[e] = Power(e);
+                foreach (Unit e in map.enemyUnits) {
+                    if (e == null || e.tile == null || o.enemies.Contains(e) || Power(e) <= 0f) continue;
+                    bool comes = CanArrive(e, o.target, turns, map);
+                    for (int i = 0; i < way.Count && !comes; i += 2) comes = CanArrive(e, way[i], turns, map);
+                    if (comes) o.arriving[e] = Power(e);
+                }
             FogOfWar.Knowledge k = FogOfWar.current;
             if (k != null && map.sigint != null) {
                 int move = 0, n = 0;
@@ -346,6 +392,8 @@ namespace HexTactica.AI {
                     break;
             }
 
+
+            if (o.kind != CampaignKind.DefendHQ) o.needPower = Mathf.Max(o.needPower, o.minNeed);
 
             // Supply for a lasting presence: from our supplied ground to it, and spread at the contact line.
             if (o.lasting && o.kind != CampaignKind.DefendHQ) {
@@ -476,6 +524,8 @@ namespace HexTactica.AI {
                 foreach (CampaignObjective now in candidates) {
                     CampaignObjective was = keep.objectives.Find(x => x.Id == now.Id);
                     if (was == null) continue;
+                    // Not the HQ's defence: whoever can get there soonest, chosen afresh every turn.
+                    if (now.kind == CampaignKind.DefendHQ) continue;
                     foreach (Unit u in was.units) if (pool.Contains(u)) { Give(now, u); pool.Remove(u); }
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
@@ -679,12 +729,15 @@ namespace HexTactica.AI {
                 f.campaignReady = o.assignedPower >= o.needPower && o.kind != CampaignKind.DefendHQ;
                 f.campaignNeed = o.needPower;
                 f.pullScale = p.campaignPull;
+                f.campaign = true;
                 f.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
                 // Outmatched where it stands (campaignFallbackRatio): the enemy that can strike its units
                 // next turn is more than it can take. It falls back to its staging ground and the campaign
                 // plans again, rather than being destroyed in detail — the south task force on ChanceMeeting
                 // lost its tanks one by one to the enemy's whole army.
-                if (o.kind != CampaignKind.DefendHQ && o.staging != null && Outmatched(o, map, p)) {
+                float met;
+                if (o.kind != CampaignKind.DefendHQ && o.staging != null && Outmatched(o, map, p, out met)) {
+                    o.metPower = met;
                     f.objectiveTile = o.staging; f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = o.value * 0.5f;
                     f.campaignStaging = null; f.campaignReady = false; f.posture = Posture.Defensive;
                     o.fellBack = true;
@@ -695,7 +748,10 @@ namespace HexTactica.AI {
                 }
                 f.assigned.AddRange(o.units);
                 foreach (SupplyPoint h in o.hubs) if (h.myUnit != null) f.assigned.Add(h.myUnit);
-                if (o.kind == CampaignKind.DefendHQ) { f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = 0f; }
+                // Defending the HQ: no building to take, but the HQ's worth pulls its task force home. (With
+                // no pull at all, the five units given to it fought on where they were, 15 tiles away, while
+                // the enemy took the HQ.)
+                if (o.kind == CampaignKind.DefendHQ) { f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = o.value; }
                 fronts.Add(f);
             }
             Building homeB = GameController.HQOf(map.player);
@@ -712,9 +768,10 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Is the enemy that can strike <paramref name="o"/>'s units next turn more than campaignFallbackRatio of their power?</summary>
-        static bool Outmatched(CampaignObjective o, AIMap map, AIProfile p) {
+        static bool Outmatched(CampaignObjective o, AIMap map, AIProfile p, out float theirs) {
+            theirs = 0f;
             if (p.campaignFallbackRatio <= 0f) return false;
-            float ours = 0f, theirs = 0f;
+            float ours = 0f;
             HashSet<Unit> near = new HashSet<Unit>();
             foreach (Unit u in o.units) {
                 if (u == null || u.tile == null) continue;

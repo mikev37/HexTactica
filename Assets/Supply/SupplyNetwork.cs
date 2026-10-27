@@ -183,6 +183,9 @@ public static class SupplyNetwork {
                     // A supply boat links to a friendly dock in supply, or to a linked supply boat,
                     // over water within its range; it supplies only the land it borders.
                     if (!NavalLinked(hub, at, player, result, activated, movedHub, hypotheticalTile, moved)) continue;
+                } else if (PlannedAboard != null && PlannedAboard.ContainsKey(hub) && moved != null && moved.ContainsKey(hub)) {
+                    // Planned aboard a transport at that tile (a supply leap).
+                    if (!WithinMoveOfSupply(PlannedAboard[hub], at, result)) continue;
                 } else if (hub.myUnit != null && hub.myUnit.trasnporter != null && !PutDown(hub, at)) {
                     // Aboard: linked if the transport could carry it onto supplied ground in one move.
                     if (!WithinMoveOfSupply(hub.myUnit.trasnporter, at, result)) continue;
@@ -265,6 +268,13 @@ public static class SupplyNetwork {
         Publish(player, r);
         return r;
     }
+
+    /// <summary>
+    /// Set (per thread) by an AI planning supply leaps (AISupplyChain): supply units a planned network
+    /// has aboard these transports at their planned tiles, linked as cargo is — the transport within a
+    /// move of supplied ground — though they are on foot now and board this turn.
+    /// </summary>
+    [System.ThreadStatic] public static Dictionary<SupplyPoint, Unit> PlannedAboard;
 
     /// <summary>Set (per thread) by an AI that plans this way (AIProfile.hubLinkPenalty): see PutDown.</summary>
     [System.ThreadStatic] public static bool PutDownHypothetical;
@@ -371,7 +381,7 @@ public static class SupplyNetwork {
     /// Is there supplied ground within one move of <paramref name="transport"/> standing on
     /// <paramref name="at"/>, moving as it moves (its range, terrain and locomotion; enemies block)?
     /// </summary>
-    static bool WithinMoveOfSupply(Unit transport, HexTile at, Result result) {
+    public static bool WithinMoveOfSupply(Unit transport, HexTile at, Result result) {
         if (transport == null || at == null) return false;
         if (result.IsSupplied(at)) return true;
         Result reach = new Result();

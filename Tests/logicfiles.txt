@@ -22,6 +22,7 @@ Units/CombatMath.cs
 Units/Transporting.cs
 Buildings/Building.cs
 Buildings/BuildingController.cs
+Buildings/CaptureFlag.cs
 Supply/SupplyNetwork.cs
 AI/AIHeap.cs
 AI/AIPath.cs

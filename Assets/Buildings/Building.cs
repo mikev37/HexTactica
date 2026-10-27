@@ -97,13 +97,8 @@ public class Building : MonoBehaviour {
     readonly Dictionary<HexTile, TerrainData> underlying = new Dictionary<HexTile, TerrainData>();
 
     [Header("Render")]
+    [Tooltip("The building's picture, swapped for its damage pictures as it wears down. Parts in the owner's colour carry a ColorObjectUnit; the capture flag, a CaptureFlag.")]
     public SpriteRenderer sprite;
-    [Tooltip("Parts tinted with the owner's colour (neutral: grey)")]
-    public SpriteRenderer ownerFlag;
-    [Tooltip("The capture flag, raised along its pole as points build up")]
-    public Transform flag;
-    public SpriteRenderer flagSprite;
-    public float flagBottom = 0f, flagTop = 1.2f;
 
     [Header("Vision (fog of war)")]
     [Range(0, 10)]
@@ -128,8 +123,19 @@ public class Building : MonoBehaviour {
     public int chargePerTurn = 1;
 
     [Header("Service")]
-    [Tooltip("Locomotion types healed, refuelled and rearmed while standing on this building")]
+    [Tooltip("Locomotion types this building services while standing on it (what it gives: below)")]
     public List<Locomotion> services = new List<Locomotion>();
+    [Tooltip("Strength a serviced unit heals each turn (0: none). Capped at full strength.")]
+    [Range(0, 6)]
+    public int healPerTurn = 1;
+    [Tooltip("A serviced unit's ammunition is filled each turn.")]
+    public bool rearm = true;
+    [Tooltip("A serviced unit's fuel (and an air tanker's refuelling stock) is filled each turn.")]
+    public bool refuel = true;
+    [Tooltip("A serviced unit's supplies (rations: what it starves without) are filled each turn.")]
+    public bool resupply = true;
+    [Tooltip("The heal is on top of the supply network's (a unit in supply on it heals 1 + healPerTurn); off: whichever is more.")]
+    public bool healStacksWithSupply = false;
 
     [Header("Capture")]
     [Tooltip("Owner's points when owned; the capturing side's progress when neutral")]
@@ -218,8 +224,6 @@ public class Building : MonoBehaviour {
     /// <summary>Capture points moved: building, player capturing, points before, points after.</summary>
     public static event Action<Building, Player, int, int> Captured;
 
-    float flagShown = -1f;
-
     void Awake() {
         if (!all.Contains(this)) all.Add(this);
     }
@@ -234,19 +238,6 @@ public class Building : MonoBehaviour {
     void Start() {
         if (sprite != null && intactSprite == null) intactSprite = sprite.sprite;
         RefreshCondition();
-        RefreshFlag();
-    }
-
-    void Update() {
-        // Under fog of war the owner and flag shown are those last seen (FogOfWar.ShownOwner).
-        if (FogOfWar.On) RefreshFlag();
-        // The flag climbs (or drops) to where the points are, rather than jumping.
-        if (flag == null) return;
-        float target = ShownFlagHeight;
-        flagShown = flagShown < 0f ? target : Mathf.MoveTowards(flagShown, target, Time.deltaTime * 0.8f);
-        Vector3 p = flag.localPosition;
-        p.y = flagBottom + (flagTop - flagBottom) * flagShown;
-        flag.localPosition = p;
     }
 
     public bool IsHQ { get { return type == BuildingType.HQ; } }
@@ -273,7 +264,6 @@ public class Building : MonoBehaviour {
         }
     }
 
-    /// <summary>0..1: how far up its pole the flag is.</summary>
     /// <summary>
     /// Capture progress as the screen shows it (under fog of war, as the viewer last saw it), if
     /// there is any: a neutral building someone is taking — "Capturing", "Blue 6/10", Blue; an owned
@@ -298,16 +288,9 @@ public class Building : MonoBehaviour {
         return false;
     }
 
+    /// <summary>0..1: how far up its pole the flag is (CaptureFlag shows it as the viewer last saw it).</summary>
     public float FlagHeight { get { return Mathf.Clamp01(capturePoints / (float)CaptureThreshold); } }
 
-    /// <summary>The flag's height as the screen shows it (under fog of war, as last seen).</summary>
-    float ShownFlagHeight {
-        get {
-            Player capturing; int points;
-            FogOfWar.ShownCapture(this, out capturing, out points);
-            return Mathf.Clamp01(points / (float)CaptureThreshold);
-        }
-    }
 
     /// <summary>Only infantry take ground. Vehicles can sit on a building but not flip it.</summary>
     public static bool CanCapture(Unit u) {
@@ -471,7 +454,6 @@ public class Building : MonoBehaviour {
 
         if (capturePoints != before || owner != prevOwner) {
             if (Captured != null) Captured(this, side, before, capturePoints);
-            RefreshFlag();
         }
         if (owner != prevOwner) {
             FogOfWar.Changed();
@@ -505,17 +487,6 @@ public class Building : MonoBehaviour {
         return -left;
     }
 
-    public void RefreshFlag() {
-        // As the screen shows it: under fog of war, as the viewer last saw it.
-        Player shownOwner = FogOfWar.ShownOwner(this), capturing; int points;
-        FogOfWar.ShownCapture(this, out capturing, out points);
-        Color c = shownOwner != null ? shownOwner.displayColor : new Color(0.6f, 0.6f, 0.6f, 1f);
-        if (ownerFlag != null) ownerFlag.color = c;
-        if (flagSprite != null) {
-            Player shown = shownOwner ?? capturing;
-            flagSprite.color = shown != null ? shown.displayColor : new Color(0.6f, 0.6f, 0.6f, 1f);
-        }
-    }
 
     // ------------------------------------------------------------------ supply and service
 
