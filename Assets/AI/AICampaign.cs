@@ -30,6 +30,8 @@ namespace HexTactica.AI {
         /// <summary>Unknown ground within the enemy's reach of it: the part of their army we have not seen could be coming. Its share of that army.</summary>
         public bool hiddenReach;
         public float hiddenPower;
+        /// <summary>The share of the ground around it we cannot see (0..1): the unseen enemy is priced at that share.</summary>
+        public float hiddenShare;
         /// <summary>Combat power the task force needs; supply units it needs (to reach the place from supplied ground, and to spread at the contact line).</summary>
         public float needPower;
         public int needHubs;
@@ -86,7 +88,7 @@ namespace HexTactica.AI {
             if (turnsAway < 99) sb.Append(" away ").Append(turnsAway);
             if (building != null) sb.Append(' ').Append(building.name.Replace("(Clone)", ""));
             sb.Append(" value ").Append(value.ToString("0")).Append(" priority ").Append(priority.ToString("0.00"))
-              .Append(" enemy ").Append(enemyPower.ToString("0")).Append(hiddenPower > 0f ? " (unseen " + hiddenPower.ToString("0") + ")" : "").Append(" need ").Append(needPower.ToString("0"))
+              .Append(" enemy ").Append(enemyPower.ToString("0")).Append(hiddenPower > 0f ? " (unseen " + hiddenPower.ToString("0") + ", " + (hiddenShare * 100f).ToString("0") + "% dark)" : "").Append(" need ").Append(needPower.ToString("0"))
               .Append(" have ").Append(assignedPower.ToString("0")).Append(", ").Append(units.Count).Append(" units, ")
               .Append(hubs.Count).Append('/').Append(needHubs).Append(" supply");
             if (staging != null) sb.Append(" via (").Append(staging.x).Append(',').Append(staging.y).Append(")");
@@ -241,7 +243,7 @@ namespace HexTactica.AI {
                 foreach (CampaignObjective o in candidates)
                     if (o.hiddenReach && o.kind != CampaignKind.Scout) {
                         bool full = o.kind == CampaignKind.DefendHQ || o.respond || k <= 1 || (o.building != null && o.building.IsHQ);
-                        o.hiddenPower = hidden * (full ? 1f : 1f / k);
+                        o.hiddenPower = hidden * o.hiddenShare * (full ? 1f : 1f / k);
                     }
             }
             if (last != null) {
@@ -506,7 +508,12 @@ namespace HexTactica.AI {
                 int move = 0, n = 0;
                 foreach (Unit u in map.ownUnits) if (u != null && u.Firepower > 0 && u.moveRange > 0) { move += u.moveRange; n++; }
                 int far = n > 0 ? move / n * turns : 0;
-                foreach (HexTile t in AIPath.TilesInRangeShared(o.target, 0, far)) if (map.sigint.Unknown(t)) { o.hiddenReach = true; break; }
+                // How much of the ground around it we cannot see (what scouting narrows): the unseen enemy is
+                // priced at that share, none when all of it is in view (then what we see is what is there).
+                int all = 0, dark = 0;
+                foreach (HexTile t in AIPath.TilesInRangeShared(o.target, 0, far)) { if (t == null || t.terrain == null || t.terrain.elevation < 0) continue; all++; if (map.sigint.Unknown(t)) dark++; }
+                o.hiddenReach = dark > 0;
+                o.hiddenShare = all > 0 ? dark / (float)all : 0f;
             }
             if (k != null && map.sigint != null)
                 foreach (FogOfWar.Phantom ph in k.phantoms) {
