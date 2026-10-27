@@ -107,7 +107,7 @@ namespace HexTactica.AI {
                 // Supply serves the army: never ahead of it. (Carried out in front where nothing could strike
                 // it yet, it fed itself to the enemy and left the army behind a gap it would not cross.)
                 if (sx < front && !(map.profile.leapsAheadWhenClear && map.EnemyStrikeTurns(x) > 2)) { nAhead++; continue; }
-                float loss = map.ExpectedLoss(truck, x);
+                float loss = map.KnownLoss(truck, x);
                 if (loss * caution >= truck.Strength || loss > tolerance) { nRisk++; continue; }
                 if (!SupplyNetwork.WithinMoveOfSupply(truck, x, net)) { nUnlinked++; continue; }
                 best = x; bestSteps = sx;
@@ -289,7 +289,7 @@ namespace HexTactica.AI {
                     if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) { cappedOut = true; continue; }
                     // Little or nothing can hit it tonight (profile.chainRiskTolerance strength at most)...
                     float tolerance = Mathf.Max(0f, map.profile.chainRiskTolerance);
-                    float expected = map.ExpectedLoss(u, t);
+                    float expected = map.KnownLoss(u, t);
                     if (expected > tolerance) { nRisky++; continue; }
                     if (best != null && !(s < bestSteps || (s == bestSteps && (expected < bestRisk || expected == bestRisk && CombatMath.Precedes(t, best))))) continue;
                     // ...not even by a chain of blows (the enemy's reply played out, as everywhere else).
@@ -325,7 +325,7 @@ namespace HexTactica.AI {
                         if (t != u.tile && (!field.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
                         if (taken.Contains(t) || net.DepthAt(t) <= 0 || !AIAir.MayEndOn(u, t, map)) continue;
                         if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
-                        if (map.ExpectedLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
+                        if (map.KnownLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
                         int ahead = steps(t);
                         if (ahead < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) continue;   // not ahead of the army
                         Dictionary<SupplyPoint, HexTile> tr = new Dictionary<SupplyPoint, HexTile>(placed);

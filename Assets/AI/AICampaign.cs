@@ -48,6 +48,8 @@ namespace HexTactica.AI {
         /// <summary>Turns this task force has been out (0 the turn it formed), whether it has gone in yet, and the turns from its staging tile to its target when it formed (time boxes: AIProfile.campaignTimeBox).</summary>
         public int age;
         public bool went;
+        /// <summary>Taken on all in, with everything that could join, because nothing was within reach (its need is what it was given).</summary>
+        public bool allIn;
         public int routeTurns;
         /// <summary>Order of preference: value over what it costs, discounted by the turns to get there.</summary>
         public float priority;
@@ -568,6 +570,9 @@ namespace HexTactica.AI {
             foreach (CampaignObjective o in now)
                 if (o.kind == CampaignKind.DefendHQ && !objectives.Exists(x => x.kind == CampaignKind.DefendHQ)) return "our HQ is threatened";
             foreach (CampaignObjective o in objectives) {
+                // A scout that has had its look is simply done: it does not throw out every task force's
+                // plan. (It did, nearly every turn: no task force lasted more than one.)
+                if (o.kind == CampaignKind.Scout) continue;
                 if (!ids.Contains(o.Id)) return o.Id + " achieved or gone";
                 float power = 0f;
                 foreach (Unit u in o.units) if (u != null && u.tile != null && u.Strength > 0) power += Power(u);
@@ -613,6 +618,7 @@ namespace HexTactica.AI {
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
                     now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns;
+                    now.allIn = was.allIn;
                     objectives.Add(now);
                 }
             }
@@ -644,10 +650,18 @@ namespace HexTactica.AI {
                 pursued++;
                 poolPower = 0f; foreach (Unit u in pool) poolPower += Power(u);
             }
-            // Nothing within reach of what we have: everything on the best of them (all in), not nothing.
-            if (pursued == 0 && pool.Count > 0) {
+            // Nothing within reach of what we have: everything on the best of them (all in), not nothing —
+            // scouting does not count as something. (Under the fog every objective needed more than our
+            // whole army, two scouts counted as "pursued", and the army sat at home for 24 rounds.) All in,
+            // its need is what it was given: it goes once that has gathered, rather than waiting for a
+            // force we do not have.
+            if (!objectives.Exists(o => o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout && o.units.Count > 0) && pool.Count > 0) {
                 CampaignObjective top = candidates.Find(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout);
-                if (top != null) { Fill(top, pool, map, p, top.needPower); if (!objectives.Contains(top)) objectives.Add(top); }
+                if (top != null) {
+                    Fill(top, pool, map, p, top.needPower);
+                    if (!objectives.Contains(top)) objectives.Add(top);
+                    if (top.assignedPower > 0f) { top.needPower = Mathf.Min(top.needPower, top.assignedPower); top.allIn = true; }
+                }
             }
 
             // What is left: (1 - spread) of it to the best objective, the rest over all in proportion to need.
@@ -712,6 +726,16 @@ namespace HexTactica.AI {
                 }
             }
 
+            foreach (CampaignObjective o in objectives) if (o.allIn && o.assignedPower > 0f) o.needPower = Mathf.Min(o.needPower, o.assignedPower);
+            // A new task force's time box counts its own units' travel to the target (the middle of them),
+            // not a typical unit's: five grunts walking through forest to the enemy HQ were given up after
+            // 11 turns, still 10 tiles short of it.
+            foreach (CampaignObjective o in objectives) {
+                if (o.age > 0 || o.units.Count == 0 || o.target == null) continue;
+                List<int> t = new List<int>();
+                foreach (Unit u in o.units) if (u != null && u.tile != null && u.moveRange > 0) t.Add(Mathf.CeilToInt(map.Travel(u, u.tile, o.target) / (float)u.moveRange));
+                if (t.Count > 0) { t.Sort(); o.routeTurns = t[t.Count / 2]; }
+            }
             foreach (CampaignObjective o in objectives) {
                 if (o.formedPower <= 0f) o.formedPower = o.assignedPower;
                 foreach (Unit u in o.units) unitOf[u] = o;
@@ -769,12 +793,17 @@ namespace HexTactica.AI {
         /// </summary>
         static bool CanJoin(Unit u, CampaignObjective o, AIMap map, AIProfile p) {
             if (u == null || u.tile == null) return false;
+            // On its way: past the staging ground toward the target. However far it has gone, it is
+            // the task force's (fighting there is the task force's fight). (Measured from the staging
+            // tile alone, every unit that had marched two turns past it was dropped, and the HQ's task
+            // force was made of whatever had just been bought at home.)
+            if (o.staging != null && o.target != null && o.kind != CampaignKind.DefendHQ
+                && map.Travel(u, u.tile, o.target) < map.Travel(null, o.staging, o.target)) return true;
             if (Turns(u, o, map) > DrawTurns(p)) return false;
             if (o.staging == null || o.kind == CampaignKind.DefendHQ) return true;
             if (map.TurnsToContact(u) > 1) return true;
             int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
-            if (map.Travel(u, u.tile, o.staging) <= radius) return true;
-            return o.target != null && map.Travel(u, u.tile, o.target) < map.Travel(null, o.staging, o.target);
+            return map.Travel(u, u.tile, o.staging) <= radius;
         }
 
         /// <summary>Turns for <paramref name="u"/> to reach the objective's staging tile.</summary>

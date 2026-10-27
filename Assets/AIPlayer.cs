@@ -767,10 +767,13 @@ public class AIPlayer : MonoBehaviour {
             // Supply front first serves the whole army, the campaign's task forces included.
             CampaignObjective job = campaign != null && !Profile.supplyFrontFirst ? campaign.ObjectiveOf(hub) : null;
             if (job != null && unit.trasnporter == null) {
-                // A task force's supply: its own chain toward where it gathers, never ahead of its army.
+                // A task force's supply: its own chain toward where it gathers, and once it has gone in, on
+                // toward its objective — never ahead of its army either way. (Aimed at the staging ground
+                // for good, the supply stopped there, the army would not leave its supply, and a task force
+                // on an undefended HQ stood 10 tiles short of it for 11 turns.)
                 List<Unit> moved = new List<Unit>();
                 foreach (SupplyPoint h in job.hubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
-                AISupplyChain.Plan now = AISupplyChain.Make(map, moved, job.staging ?? job.target, job.hubs, job.units);
+                AISupplyChain.Plan now = AISupplyChain.Make(map, moved, job.went || job.staging == null ? job.target : job.staging, job.hubs, job.units);
                 HexTile link;
                 if (now.links.TryGetValue(hub, out link)) {
                     if (link == unit.tile) return AIAction.Wait(unit, "supply for " + job.Id + ": holds this link");
