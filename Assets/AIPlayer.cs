@@ -52,6 +52,9 @@ public class AIPlayer : MonoBehaviour {
     List<Unit> queue = new List<Unit>();
     readonly Dictionary<Unit, TransportPlan> transportAssignments = new Dictionary<Unit, TransportPlan>();
     readonly HashSet<Unit> reservedTransports = new HashSet<Unit>();
+    /// <summary>This turn's supply backbone (supplyBackbone), planned once the army has moved.</summary>
+    AISupplyBackbone.Plan backbone;
+    AIMap backboneTurn;
 
     /// <summary>Each unit's destination from its last decision. Persists across turns.</summary>
     readonly Dictionary<Unit, HexTile> intents = new Dictionary<Unit, HexTile>();
@@ -669,6 +672,48 @@ public class AIPlayer : MonoBehaviour {
             // The real move is planned on the real board: the ghost has served its purpose.
             map.ClearGhost(hub);
 
+            // A link of the supply backbone (supplyBackbone): aboard its transport, on the way to its place or holding it.
+            if (Profile.supplyBackbone) {
+                if (backboneTurn != map || backbone == null) {
+                    HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
+                    foreach (KeyValuePair<Unit, TransportPlan> kv in transportAssignments) if (kv.Value == null || kv.Value.cargo == null || kv.Value.cargo.Hub == null) busy.Add(kv.Key);
+                    AISupplyBackbone.DebugLog = Trace;
+                    backbone = AISupplyBackbone.Make(map, busy);
+                    AISupplyBackbone.DebugLog = null;
+                    backboneTurn = map;
+                }
+                AISupplyBackbone.Link link;
+                if (backbone.links.TryGetValue(hub, out link) && link.transport != null && link.transport.tile != null) {
+                    Unit truck = link.transport;
+                    reservedTransports.Add(truck);
+                    if (unit.trasnporter == truck) {
+                        transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = link.tile, destination = link.tile, stayAboard = true };
+                        return AIAction.Wait(unit, "supply backbone: rides to (" + link.tile.x + "," + link.tile.y + ")");
+                    }
+                    if (unit.trasnporter != null) {
+                        TransportPlan off = UnloadHere(unit);
+                        if (off != null) { transportAssignments[off.transport] = off; reservedTransports.Add(off.transport); }
+                        return AIAction.Wait(unit, "supply backbone: off this one first");
+                    }
+                    // Board now if it can (beside it, or a walk away), else wait for the truck to come.
+                    MoveField walk = map.ReachThisTurn(unit);
+                    HexTile beside = null;
+                    if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
+                    else foreach (HexTile n in truck.tile.neighbors) {
+                        if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, truck.tile, truck)) continue;
+                        if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
+                    }
+                    if (beside != null) {
+                        transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = link.tile, destination = link.tile, stayAboard = true };
+                        return AIAction.Board(unit, truck, beside, "supply backbone: boards for (" + link.tile.x + "," + link.tile.y + ")");
+                    }
+                    HexTile meet = null;
+                    foreach (HexTile n in unit.tile.neighbors) if (n != null && (n.occupier == null || n.occupier == truck) && truck.CanEnter(n) && (meet == null || map.Travel(truck, truck.tile, n) < map.Travel(truck, truck.tile, meet))) meet = n;
+                    if (meet != null) transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = meet, dropoff = link.tile, destination = link.tile, stayAboard = true };
+                    return AIAction.Wait(unit, "supply backbone: waits for its transport");
+                }
+            }
+
             // A link of the supply tree: planned again now, with the supply units that have already
             // moved where they are and the army where it went.
             if (Profile.supplyTree && unit.trasnporter == null) {
@@ -697,6 +742,7 @@ public class AIPlayer : MonoBehaviour {
                 foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
                 List<SupplyPoint> free = null;
                 if (campaign != null) { free = new List<SupplyPoint>(); foreach (SupplyPoint h in map.ownHubs) if (campaign.ObjectiveOf(h) == null) free.Add(h); }
+                if (Profile.supplyBackbone && backbone != null) { List<SupplyPoint> rest = new List<SupplyPoint>(); foreach (SupplyPoint h in (IEnumerable<SupplyPoint>)free ?? map.ownHubs) if (!backbone.links.ContainsKey(h)) rest.Add(h); free = rest; }
                 AISupplyChain.ReservedTrucks = new HashSet<Unit>(reservedTransports);
                 foreach (Unit t in transportAssignments.Keys) AISupplyChain.ReservedTrucks.Add(t);
                 AISupplyChain.Plan now;
