@@ -397,6 +397,12 @@ public static class Scenarios {
                  Rig.PlaceBuilding("City", a, -5, 1); Put("Grunt", a, -5, 1);
                  Put("Grunt", o, 6, -2); },
              "Two of Blue's cities that service infantry, each with a wounded grunt (strength 3, no ammunition, 2 supplies) on it. Far beyond supply, a city that heals 1 and gives rations but no ammunition: the grunt heals to 4, is fed, and is still out of ammunition. Inside the HQ's supply, a city whose heal of 1 stacks with the network's: the grunt heals to 5 and is refilled.");
+        make("ai-heal-where-it-heals", "aiHealWhere", (a, o) => {
+                 Rig.PlaceBuilding("City", a, -5, 1); Put("Grunt", a, -3, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 4, -1); },
+             "A wounded Blue grunt (strength 2) inside the HQ's supply, a Red tank six tiles off (out of reach of the city), and a Blue city two tiles away that services infantry and heals 2 a turn on top of the network's 1. The AI counts 3 there and 1 on plain supplied ground, and the grunt pulls back onto the city.");
+        make("ai-fight-before-capture", "aiFightFirst", (a, o) => {
+                 Rig.PlaceBuilding("City", null, 1, 0); Put("Grunt", a, 0, 0); Put("Grunt", o, 1, -1); },
+             "A Blue grunt beside a neutral city, with a Red grunt beside it too. With an attack open to it, it does not step onto the city to capture (AIProfile.fightBeforeCapture): it attacks, or falls back if the attack is a bad one; with the rule off it captures.");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
         Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
@@ -834,6 +840,31 @@ public static class Scenarios {
                 bool capturer = city != null && city.capturingPlayer != null && beforeCapturer != null && (city.capturingPlayer.id == aiId) != (beforeCapturer.id == aiId);
                 detail = units + " units, " + flipped + " changed side; " + bFlipped + " of " + bBefore.Count + " buildings changed side; capture progress changed side " + capturer;
                 return units == before.Count && flipped == units && bFlipped == bBefore.Count && capturer;
+            }
+            case "aiHealWhere": {
+                Building city = Rig.At(-5, 1).building; Unit g = Rig.At(-3, 0).occupier;
+                city.services = new List<Locomotion> { Locomotion.Boots }; city.healPerTurn = 2; city.healStacksWithSupply = true; city.producesSupply = false;
+                g.Strength = 2;
+                l.ai.Resupply(); l.other.Resupply();
+                AIProfile prof = l.ai.GetComponent<AIPlayer>().Profile;
+                HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
+                float onCity = m.HealAt(g, city.tile), plain = m.HealAt(g, g.tile);
+                if (Environment.GetEnvironmentVariable("EXPLAIN") != null) { AITactical.DebugUnit = g; AITactical.DebugLog = Console.WriteLine; AITactical.DecisionLog = Console.WriteLine; }
+                AIAction act = AITactical.Decide(g, m, prof, Posture.Defensive);
+                AITactical.DebugUnit = null;
+                HexTile to = act.destination ?? g.tile;
+                detail = "heal on the city " + onCity + ", on plain supplied ground " + plain + "; the grunt " + act.kind + " to (" + to.x + "," + to.y + ") - " + act.reason;
+                return onCity == 3f && plain == 1f && to == city.tile;
+            }
+            case "aiFightFirst": {
+                Unit g = Rig.At(0, 0).occupier, e = Rig.At(1, -1).occupier;
+                l.ai.Resupply(); l.other.Resupply();
+                AIProfile prof = l.ai.GetComponent<AIPlayer>().Profile;
+                HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
+                AIAction act = AITactical.Decide(g, m, prof, Posture.Aggressive);
+                detail = "the grunt: " + act.kind + (act.destination != null ? " to (" + act.destination.x + "," + act.destination.y + ")" : "") + " - " + act.reason;
+                // Not onto the city while it has an attack open to it: it attacks, or does whatever else is best.
+                return act.kind == AIActionKind.Attack || act.kind == AIActionKind.MoveAndAttack || act.destination != Rig.At(1, 0);
             }
             case "buildingService": {
                 Building far = Rig.At(4, -4).building, near = Rig.At(-5, 1).building;

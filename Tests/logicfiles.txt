@@ -65,6 +65,7 @@ AI/AICoordinator.cs
 Buildings/BuildingMenu.cs
 AI/AIAir.cs
 AI/AISupplyChain.cs
+AI/AISupplyBackbone.cs
 AI/AIProduction.cs
 Units/TransportMenu.cs
 Fog/FogOfWar.cs
