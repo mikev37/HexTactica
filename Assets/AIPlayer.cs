@@ -492,6 +492,8 @@ public class AIPlayer : MonoBehaviour {
         if (logistics != null && Trace != null) Trace("   " + logistics);
         HexTactica.AI.AILogistics.Protect = logistics != null ? logistics.dutied : null;
         AISupplyChain.ProtectOnly = HexTactica.AI.AILogistics.Protect;
+        HexTactica.AI.AILogistics.ProtectUnitsNow = logistics != null ? logistics.protectUnits : null;
+        AISupplyChain.ProtectUnits = HexTactica.AI.AILogistics.ProtectUnitsNow;
         { long __p = AIPerf.Begin();
         objectives = AIObjectives.Build(map, Profile);
         AIPerf.End("prepare: objectives", __p); }
