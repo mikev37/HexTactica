@@ -70,13 +70,13 @@ namespace HexTactica.AI {
         /// The units choose their own moves either way; this is how hard the plan leans on them.
         /// </summary>
         public float campaignStep = 1f;
-        [Tooltip("A task force goes once this share of its healthy power is on its staging ground (or what is there meets its need): so 90% does not wait for the last 10%.")]
+        [Tooltip("A task force goes once the healthy power on its staging ground is this share of its need (objectiveForceRatio times the enemy there): it needs 1.5 to one, goes at 0.8 of that (1.2 to one).")]
         [Range(0f, 1f)]
-        public float campaignGatherShare = 0.6f;
+        public float campaignGatherShare = 0.8f;
         [Tooltip("How large a staging ground is: hexes around the staging tile. 0: one move of our typical unit.")]
         public int campaignStagingRadius = 0;
-        [Tooltip("A task force falls back to its staging ground (and the campaign plans again) when the enemy that can strike its units next turn is more than its power over this. 0: never.")]
-        public float campaignFallbackRatio = 1f;
+        [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]
+        public float campaignFallbackRatio = 0.5f;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
