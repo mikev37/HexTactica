@@ -541,7 +541,9 @@ namespace HexTactica.AI {
                     if (was == null) continue;
                     // Not the HQ's defence: whoever can get there soonest, chosen afresh every turn.
                     if (now.kind == CampaignKind.DefendHQ) continue;
-                    foreach (Unit u in was.units) if (pool.Contains(u)) { Give(now, u); pool.Remove(u); }
+                    // ... except one that has gone off to fight elsewhere, or is now too far to join: it
+                    // fights where it is by the ordinary tactics, and the task force no longer waits for it.
+                    foreach (Unit u in was.units) if (pool.Contains(u) && CanJoin(u, now, map, p)) { Give(now, u); pool.Remove(u); }
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
                     objectives.Add(now);
@@ -568,7 +570,8 @@ namespace HexTactica.AI {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 if (pursued >= maxPursued || pool.Count == 0) break;
                 float still = Mathf.Max(0f, o.needPower - o.assignedPower);
-                if (still > poolPower && o.assignedPower <= 0f) continue;
+                float near = 0f; foreach (Unit u in pool) if (CanJoin(u, o, map, p)) near += Power(u);
+                if (still > near && o.assignedPower <= 0f) continue;
                 Fill(o, pool, map, p, o.needPower);
                 if (!objectives.Contains(o)) objectives.Add(o);
                 pursued++;
@@ -596,6 +599,7 @@ namespace HexTactica.AI {
                 foreach (Unit u in pool) {
                     CampaignObjective best = null; float bestScore = float.NegativeInfinity;
                     foreach (CampaignObjective o in active) {
+                        if (!CanJoin(u, o, map, p)) continue;
                         float deficit = target[o] - got[o];
                         float s = deficit / Mathf.Max(1f, Power(u)) - Turns(u, o, map) * 0.1f;
                         if (s > bestScore) { bestScore = s; best = o; }
@@ -660,7 +664,7 @@ namespace HexTactica.AI {
             if (o.kind == CampaignKind.Secure && !o.units.Exists(Building.CanCapture)) {
                 Unit c = null; int ct = int.MaxValue;
                 foreach (Unit u in pool) {
-                    if (!Building.CanCapture(u)) continue;
+                    if (!Building.CanCapture(u) || !CanJoin(u, o, map, p)) continue;
                     int t = Turns(u, o, map);
                     if (t < ct || (t == ct && c != null && AIMap.CompareUnits(u, c) < 0)) { ct = t; c = u; }
                 }
@@ -670,7 +674,7 @@ namespace HexTactica.AI {
                 // Those that see the most for the least.
                 Unit s = null; float sv = 0f;
                 foreach (Unit u in pool) {
-                    if (u.visionRange <= 0 || u.moveRange <= 0 || LocomotionRules.NeedsAirfield(u.locomotion)) continue;
+                    if (u.visionRange <= 0 || u.moveRange <= 0 || LocomotionRules.NeedsAirfield(u.locomotion) || !CanJoin(u, o, map, p)) continue;
                     float v = (u.visionRange + 1f) * u.moveRange / AIScore.Worth(u) / (1f + Turns(u, o, map));
                     if (v > sv || (v == sv && s != null && AIMap.CompareUnits(u, s) < 0)) { sv = v; s = u; }
                 }
@@ -679,12 +683,31 @@ namespace HexTactica.AI {
             while (o.assignedPower < upTo && pool.Count > 0) {
                 Unit best = null; float bestScore = float.NegativeInfinity;
                 foreach (Unit u in pool) {
+                    if (!CanJoin(u, o, map, p)) continue;
                     float s = Fit(u, o, map) - Turns(u, o, map);
                     if (s > bestScore || (s == bestScore && best != null && AIMap.CompareUnits(u, best) < 0)) { bestScore = s; best = u; }
                 }
                 if (best == null) break;
                 Give(o, best); pool.Remove(best);
             }
+        }
+
+        /// <summary>
+        /// Whether <paramref name="u"/> can be part of <paramref name="o"/>'s task force: near enough to
+        /// join it (campaignDrawTurns of its staging tile — a task force never takes units from far
+        /// away), and not in a fight of its own elsewhere (in contact next turn, and neither on the
+        /// staging ground nor past it toward the objective). A task force that kept such a unit waited
+        /// at its staging ground for a unit that was not coming.
+        /// </summary>
+        static bool CanJoin(Unit u, CampaignObjective o, AIMap map, AIProfile p) {
+            if (u == null || u.tile == null) return false;
+            int reach = p.campaignDrawTurns > 0 ? p.campaignDrawTurns : Mathf.Max(1, p.frontReachTurns);
+            if (Turns(u, o, map) > reach) return false;
+            if (o.staging == null || o.kind == CampaignKind.DefendHQ) return true;
+            if (map.TurnsToContact(u) > 1) return true;
+            int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+            if (map.Travel(u, u.tile, o.staging) <= radius) return true;
+            return o.target != null && map.Travel(u, u.tile, o.target) < map.Travel(null, o.staging, o.target);
         }
 
         /// <summary>Turns for <paramref name="u"/> to reach the objective's staging tile.</summary>
