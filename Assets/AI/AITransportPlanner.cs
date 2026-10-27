@@ -457,7 +457,7 @@ namespace HexTactica.AI {
         /// to take the furthest reachable tile regardless, and would park a loaded helicopter
         /// wherever the route happened to end that turn.)
         /// </summary>
-        static HexTile SafeStepToward(Unit transport, HexTile goal, MoveField field, AIMap map, bool loaded) {
+        public static HexTile SafeStepToward(Unit transport, HexTile goal, MoveField field, AIMap map, bool loaded) {
             List<HexTile> path = field.PathTo(goal);
             float caution = loaded ? Mathf.Max(1f, map.profile.loadedTransportRisk) : 1f;
             HexTile best = null;
