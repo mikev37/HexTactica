@@ -84,7 +84,7 @@ namespace HexTactica.AI {
                         int kindOf = Kind(t);
                         bool fighter = kindOf == 0, supply = kindOf == 1, truck = kindOf == 2;
                         if (kindOf < 0) continue;
-                        if (!fighter && !((supply || truck) && fronts != null)) continue;
+                        if (!fighter && !((supply || truck) && (fronts != null || (supply && logistics != null && logistics.supplyDemand > 0f)))) continue;
                         HexTile free = FreeTile(b, t, map);
                         if (free == null) continue;
                         int n; have.TryGetValue(GameController.UnitName(t), out n);
@@ -105,6 +105,11 @@ namespace HexTactica.AI {
                                     v = f.unsupplied * (supply ? 1f : 0.5f) / t.cost * mix;
                                 if (v > score) { score = v; tag = f.front.Id + (fighter ? "" : supply ? ": its supply is short" : ": no truck for its supply"); }
                             }
+                        // The campaign's next front, a supply unit away (AICampaign.supplyDemand).
+                        if (supply && logistics != null && logistics.supplyDemand > 0f) {
+                            float v = logistics.supplyDemand / t.cost * mix;
+                            if (v > score) { score = v; tag = logistics.supplyDemandFor + ": no supply unit free for it"; }
+                        }
                         if (!fighter && score > bestSupply) { bestSupply = score; bestSupplyName = GameController.UnitName(t); bestSupplyCost = t.cost; }
                         if (t.cost > p.money) continue;
                         if (score > bestScore || (score == bestScore && pick != null && string.CompareOrdinal(t.name, pick.name) < 0)) { pick = t; bestScore = score; where = free; why = tag; }
