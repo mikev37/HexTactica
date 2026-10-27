@@ -28,7 +28,11 @@ namespace HexTactica.Testing {
         }
 
         static string PathFor(string name) {
-            return Path.Combine(AssetsRoot, "Units", name + ".prefab");
+            string p = Path.Combine(AssetsRoot, "Units", name + ".prefab");
+            string now;
+            // A unit renamed since the file was saved loads as the game loads it (LevelEditor.renamedUnits).
+            if (!File.Exists(p) && LevelEditor.renamedUnits.TryGetValue(name, out now)) return Path.Combine(AssetsRoot, "Units", now + ".prefab");
+            return p;
         }
 
         /// <summary>A fresh archetype built from the prefab. Throws if the prefab is missing.</summary>

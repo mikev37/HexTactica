@@ -176,7 +176,7 @@
 "buildings":[
 {"x":-6,"y":0,"z":6,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":112,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1},
 {"x":6,"y":0,"z":-6,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":0,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1},
-{"x":-3,"y":3,"z":0,"gameobject_name":"City","personal_name":"City","type":2,"owner_id":112,"income":1000,"producesSupply":true,"supplyRange":3,"supplies":0,"suppliesMax":3,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1}
+{"x":-3,"y":3,"z":0,"gameobject_name":"City","personal_name":"City","type":2,"owner_id":112,"income":1000,"producesSupply":false,"supplyRange":0,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1}
 ],
 "units":[
 {"x":-2,"y":0,"z":2,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
