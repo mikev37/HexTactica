@@ -7,8 +7,8 @@ using UnityEngine;
 /// </summary>
 public class ColorObjectUnit : MonoBehaviour
 {
-    [Tooltip("Colour while nobody owns it (a neutral building).")]
-    public Color neutral = new Color(0.6f, 0.6f, 0.6f, 1f);
+    [Tooltip("Colour while nobody owns it (a neutral building). White: the sprite as drawn (the colour multiplies it).")]
+    public Color neutral = Color.white;
 
     Unit unit;
     Building building;

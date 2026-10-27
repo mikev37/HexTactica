@@ -469,7 +469,6 @@ namespace HexTactica.AI {
         internal static float Valuate(Dictionary<Unit, float> hp, Player us, Func<Unit, HexTile> where, AIMap map, Outcome w) {
             float stake = map.BoardStake;
             w.own = 0f; w.enemy = 0f; w.deaths = 0f; w.hubs = 0f; w.healOwn = 0f; w.healEnemy = 0f;
-            float healN = map.profile.healedPerTurn;
             foreach (KeyValuePair<Unit, float> kv in hp) {
                 float left = Mathf.Max(0f, kv.Value);
                 // The strength a supplied unit heals back by its next turn (one, by the game's rule)
@@ -478,8 +477,10 @@ namespace HexTactica.AI {
                 // damage, which made a 5-point hit on our HQ look like 2.5 when only 1 comes back.)
                 if (left >= map.profile.healMinStrength && left < kv.Key.Strength) {
                     HexTile at = where(kv.Key);
-                    if (map.Heals(kv.Key, at)) {
-                        float healed = Mathf.Min(kv.Key.Strength - left, healN);
+                    float heal = map.HealAt(kv.Key, at);
+                    if (heal > 0f) {
+                        // As the game heals it there: a city or base that heals more counts more (Building.healPerTurn).
+                        float healed = Mathf.Min(kv.Key.Strength - left, heal);
                         left += healed;
                         if (kv.Key.owner == us) w.healOwn += healed * Value(kv.Key); else w.healEnemy += healed * Value(kv.Key);
                     }
