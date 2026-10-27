@@ -335,6 +335,12 @@ namespace HexTactica.AI {
         [Range(0f, 3f)]
         public float assignmentPull = 0.5f;
 
+        [Tooltip("Objectives: every building we do not hold is one (AIObjectives.Capture) — the nearest unit that can capture it and an escort for its defence — so the army spreads out to take them in parallel instead of drifting toward one.")]
+        public bool captureObjectives = true;
+
+        [Tooltip("Capture objectives: each step toward the building, for a unit out of contact sent to take it, as a fraction of a strength point of that unit (and six times that for standing on it, for one that can capture).")]
+        public float capturePull = 0.3f;
+
         [Tooltip("Old rule: only pull units to an objective once they have objectiveRatio times its defenders, and never on a trip they couldn't get back into supply from. Off: objectives give direction to units out of contact regardless.")]
         public bool objectivesNeedForce = false;
 
