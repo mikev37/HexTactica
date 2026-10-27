@@ -46,6 +46,8 @@ namespace HexTactica.AI {
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
+        /// <summary>Beyond our supply with no supply of its own this turn (AILogistics): it stays within our supply.</summary>
+        public bool noSupply;
         /// <summary>Not the campaign's: an ordinary front, made a supply front by the logistics (AILogistics).</summary>
         public bool ordinaryFront;
         /// <summary>Hold: what kind of place (chokepoint end, road junction).</summary>
@@ -350,13 +352,17 @@ namespace HexTactica.AI {
 
             // Ground to look at (fog of war).
             if (map.sigint != null) {
+                int scoutMove = 0; foreach (Unit u in map.ownUnits) if (u != null && u.visionRange > 0 && u.Firepower > 0 && u.Hub == null) scoutMove = Mathf.Max(scoutMove, u.moveRange);
+                int scoutReach = Mathf.Max(1, scoutMove) * Mathf.Max(1, p.campaignDipTurns);
                 HashSet<HexTile> near = new HashSet<HexTile>();
                 List<KeyValuePair<HexTile, float>> spots = new List<KeyValuePair<HexTile, float>>();
                 foreach (HexTile t in HexGenerator.hg.tiles) {
                     if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
                     float v = 0f;
                     foreach (HexTile n in AIPath.TilesInRangeShared(t, 0, p.scoutRadius)) v += map.sigint.Presence(n);
-                    if (v > 0f) spots.Add(new KeyValuePair<HexTile, float>(t, v));
+                    // Only near our supply (campaignDipTurns, in moves of our scouts): a look is not worth a
+                    // scout — two recons sent across the map starved two turns out.
+                    if (v > 0f && AIMap.GapToSupply(t, x => map.SupplyDepth(x), 99) <= scoutReach) spots.Add(new KeyValuePair<HexTile, float>(t, v));
                 }
                 spots.Sort((a, b) => { int k = b.Value.CompareTo(a.Value); return k != 0 ? k : CombatMath.CompareTiles(a.Key, b.Key); });
                 int made = 0;
@@ -781,7 +787,9 @@ namespace HexTactica.AI {
             // Supply decides how far the army can spread: an objective beyond our supply is taken on
             // only if the supply units it needs are left after those before it. (Seven task forces at
             // once on BigMapLakes, most with no supply at all, starved one after another.)
-            int hubsLeft = hubPool.Count;
+            // (Only supply units joined to the network count: one cut off serves no front.)
+            SupplyNetwork.Result joined = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
+            int hubsLeft = 0; foreach (SupplyPoint h in hubPool) if (joined.connectedHubs.Contains(h)) hubsLeft++;
             foreach (CampaignObjective o in objectives) if (o.lasting) hubsLeft -= o.needHubs;
             foreach (CampaignObjective o in candidates) {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;

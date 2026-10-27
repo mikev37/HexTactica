@@ -348,10 +348,16 @@ namespace HexTactica.AI {
             if (StepDebug != null && unit.tile != null && (StepDebug == "*" || unit.tile.x + "," + unit.tile.y == StepDebug))
                 System.Console.WriteLine("      step " + unit.name + " stop (" + stop.x + "," + stop.y + ") goal (" + goal.x + "," + goal.y + ") gathering " + gathering + " now " + map.Travel(unit, unit.tile, goal) + " then " + map.Travel(unit, stop, goal) + " pace " + f.paceLimit + " supplies " + unit.supplies + "/" + unit.suppliesMax + " depth " + map.SupplyDepth(stop) + " back " + map.TurnsToSupply(unit, stop));
             if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0 && unit.supplies - 1 < map.TurnsToSupply(unit, stop)) return 0f;
-            // Out of contact, nothing is worth more than campaignDipTurns out of supply: the chain moves up
-            // level with the army and the army steps into what it supplies. (With no enemy near, units walked out of
-            // supply, used up their rations there and walked back.)
-            if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0 && map.TurnsToContact(unit) > profile.objectiveContactTurns && map.TurnsToSupply(unit, stop) > profile.campaignDipTurns) return 0f;
+            // Out of supply there: out of contact, a unit may spend campaignDipTurns rations out of supply and
+            // no more; nor may any unit of a front with no supply of its own (it scouts and presses near our
+            // supply). Past that, the step is back toward supply. (A grunt held out of supply until its
+            // rations ran out, then lost a strength point a turn.)
+            if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0) {
+                int spent = unit.suppliesMax - unit.supplies + (map.SupplyDepth(unit.tile) > 0 ? 0 : 1);   // tonight's too
+                bool noSupply = f.campaignObjective != null && f.campaignObjective.noSupply;
+                if (noSupply || (map.TurnsToContact(unit) > profile.objectiveContactTurns && spent > profile.campaignDipTurns))
+                    return profile.campaignStep * (map.TurnsToSupply(unit, unit.tile) - map.TurnsToSupply(unit, stop)) * Mathf.Max(1, unit.moveRange);
+            }
             bool blocker = !gathering && f.objective != null && goal == f.objectiveTile && !Building.CanCapture(unit);
             if (blocker) floor = Mathf.Max(floor, 1);
             float v = profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
@@ -376,8 +382,11 @@ namespace HexTactica.AI {
                 // on a campaign front, what starving on the way back to supply would cost, on the same
                 // scale (otherwise only a tie-break, and the lean always won).
                 o.world.score += CampaignStep(unit, o.stop, map, profile) * worth;
+                // Starving (every unit): the strength it would lose before it got back to supply, on the scale
+                // the rest of the world is scored on (otherwise only a tie-break: a grunt sat out of supply
+                // and lost a point a turn).
+                if (profile.worldStarvation) o.world.score -= AIScore.StrandingCost(unit, o.stop, 0, map);
                 if (context.front != null && context.front.campaign) {
-                    o.world.score -= AIScore.StrandingCost(unit, o.stop, 0, map);
                     if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) o.world.score -= AIScore.OutOfSupplyCost(unit, o.stop, map);
                 }
             }
@@ -937,6 +946,9 @@ namespace HexTactica.AI {
                 int depth = map.SupplyDepth(t);
                 float v = AIScore.Depth(depth, profile) * worth;
                 if (depth >= profile.supplyComfort) v += worth * 0.5f;
+                // Out of supply, the nearer it the better: every tile it could reach being as far out as the
+                // next, a starving recon held where it was until it was down to one strength.
+                if (depth <= 0) v -= worth * map.TurnsToSupply(unit, t);
                 // Where it heals faster (a city or base that heals: Building.healPerTurn), a strength's worth a point.
                 float heal = map.HealAt(unit, t);
                 if (heal > profile.healedPerTurn) v += (Mathf.Min(6 - unit.Strength, heal) - profile.healedPerTurn) * worth;

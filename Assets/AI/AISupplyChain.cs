@@ -72,6 +72,8 @@ namespace HexTactica.AI {
         public static bool NoLeaps;
         /// <summary>Set (AILogistics): the only supply units Harm counts as cut off — those with a duty.</summary>
         [System.ThreadStatic] public static HashSet<SupplyPoint> ProtectOnly;
+        /// <summary>Set (AILogistics): fighting units Harm counts too when they would lose supply — a campaign front's and any in contact.</summary>
+        [System.ThreadStatic] public static HashSet<Unit> ProtectUnits;
 
         static bool IsTruck(Unit t) { return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1; }
 
@@ -432,6 +434,11 @@ namespace HexTactica.AI {
             foreach (SupplyPoint h in map.ownHubs)
                 if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && before.connectedHubs.Contains(h) && !after.connectedHubs.Contains(h)
                     && (ProtectOnly == null || ProtectOnly.Contains(h))) n++;
+            // And the fighting units it serves that would be left out of supply. (Links that moved up one
+            // turn walked back the next, and the grunt they had supplied starved where it stood.)
+            if (ProtectUnits != null)
+                foreach (Unit u in ProtectUnits)
+                    if (u != null && u.tile != null && before.DepthAt(u.tile) > 0 && after.DepthAt(u.tile) <= 0) n++;
             return n;
         }
 

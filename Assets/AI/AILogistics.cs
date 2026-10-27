@@ -60,6 +60,9 @@ namespace HexTactica.AI {
         public readonly HashSet<SupplyPoint> dutied = new HashSet<SupplyPoint>();
         /// <summary>The protected supply units this turn (dutied), for AISupplyChain.Harm and AIPlayer.KeepLinks.</summary>
         [System.ThreadStatic] public static HashSet<SupplyPoint> Protect;
+        /// <summary>Fighting units on a campaign front or in contact: kept in supply where they are (AISupplyChain.Harm).</summary>
+        public readonly HashSet<Unit> protectUnits = new HashSet<Unit>();
+        [System.ThreadStatic] public static HashSet<Unit> ProtectUnitsNow;
         /// <summary>Free trucks after the claims.</summary>
         public int freeTrucks;
 
@@ -176,6 +179,10 @@ namespace HexTactica.AI {
             // Duty (see duty): who each supply unit keeps supplied.
             HashSet<Unit> onFront = new HashSet<Unit>();
             foreach (Task t in l.tasks) if (!t.ordinary) foreach (Unit u in t.front.units) if (u != null) onFront.Add(u);
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && (onFront.Contains(u) || map.TurnsToContact(u) <= 1)) l.protectUnits.Add(u);
+            // A campaign front beyond our supply with no supply of its own — no chain link, none of its own —
+            // does not go beyond our supply (AITactical.CampaignStep): it scouts and presses near it.
+            foreach (Task t in l.tasks) if (!t.ordinary) t.front.noSupply = t.gap && t.chain.Count == 0 && t.tactical.Count == 0;
             SupplyNetwork.Result all = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
             foreach (SupplyPoint h in all.connectedHubs) {
                 if (h == null || h.producer || h.myUnit == null) continue;
@@ -310,11 +317,13 @@ namespace HexTactica.AI {
             bool wasNoLeaps = AISupplyChain.NoLeaps;
             AISupplyChain.ReservedTrucks = reservedTrucks != null ? new HashSet<Unit>(reservedTrucks) : null;
             HashSet<SupplyPoint> wasProtect = AISupplyChain.ProtectOnly;
+            HashSet<Unit> wasUnits = AISupplyChain.ProtectUnits;
             if (Protect != null) AISupplyChain.ProtectOnly = Protect;
+            if (ProtectUnitsNow != null) AISupplyChain.ProtectUnits = ProtectUnitsNow;
             AISupplyChain.ConnectOnly = connect;
             AISupplyChain.NoLeaps = false;   // its links ride trucks at the farthest range they stay linked from
             try { return AISupplyChain.Make(map, moved, t.goal, hubs, t.front.units); }
-            finally { AISupplyChain.ReservedTrucks = was; AISupplyChain.ConnectOnly = wasConnect; AISupplyChain.NoLeaps = wasNoLeaps; AISupplyChain.ProtectOnly = wasProtect; }
+            finally { AISupplyChain.ReservedTrucks = was; AISupplyChain.ConnectOnly = wasConnect; AISupplyChain.NoLeaps = wasNoLeaps; AISupplyChain.ProtectOnly = wasProtect; AISupplyChain.ProtectUnits = wasUnits; }
         }
 
         /// <summary>Travel from <paramref name="u"/> to the nearest of the front's units (and the tile it is nearest).</summary>
