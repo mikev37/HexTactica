@@ -830,7 +830,9 @@ public class AIPlayer : MonoBehaviour {
             if (logistics != null) {
                 AIAction la;
                 if (LogisticsAction(hub, out la)) {
-                    if (Trace != null) Trace("   supply at (" + unit.tile.x + "," + unit.tile.y + ")" + (unit.trasnporter != null ? " aboard" : "") + ": " + la.kind + (la.destination != null ? " to (" + la.destination.x + "," + la.destination.y + ")" : "") + " - " + la.reason);
+                    float dty; logistics.duty.TryGetValue(hub, out dty);
+                    string role = logistics.chainOf.ContainsKey(hub) ? "chain" : logistics.tacticalOf.ContainsKey(hub) ? "own" : "none";
+                    if (Trace != null) Trace("   supply at (" + unit.tile.x + "," + unit.tile.y + ")" + (unit.trasnporter != null ? " aboard" : "") + " [" + role + ", duty " + dty.ToString("0") + (logistics.dutied.Contains(hub) ? "+" : "") + "]: " + la.kind + (la.destination != null ? " to (" + la.destination.x + "," + la.destination.y + ")" : "") + " - " + la.reason);
                     return la;
                 }
             }
