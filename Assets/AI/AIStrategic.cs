@@ -429,14 +429,14 @@ namespace HexTactica.AI {
             }
             float need = Mathf.Max(1f, f.campaignNeed);
             bool going = wasAssaulting.Contains(objective);
-            // It goes once campaignGatherShare of its healthy force is on the staging ground (90% does
-            // not wait for the last 10%), or what is there already meets the objective's need; and keeps
-            // going while what is left is assaultBreakoff of that need.
+            // It goes once the healthy power on the staging ground is campaignGatherShare of its need (0.8: so
+            // it does not wait for the last of it), and keeps going while what is left is assaultBreakoff of
+            // that need; it falls back only when outnumbered two to one (campaignFallbackRatio, AICampaign).
             f.readiness = going ? committed / need : Mathf.Max(gathered / Mathf.Max(1f, force), gathered / need);
             bool go = going ? committed >= need * profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
-                            : gathered >= need || (f.campaignReady && gathered >= force * Mathf.Clamp01(profile.campaignGatherShare));
-            // (The share is of a force that meets the need: a task force short of it went in once 60% of
-            // too little had gathered, fell back outmatched, and went in again the next turn.)
+                            : gathered >= need * Mathf.Clamp01(profile.campaignGatherShare);
+            // (It went in once 60% of its force had gathered — 0.9 to one — and fell back at one to one: it
+            // attacked under strength and retreated as soon as it met an even enemy, turn after turn.)
             f.stagingTile = staging;
             if (go) {
                 f.staging = false; f.posture = Posture.Aggressive; f.assault = true; f.gatedAssault = true;
