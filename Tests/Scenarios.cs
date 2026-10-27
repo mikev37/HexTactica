@@ -3417,7 +3417,8 @@ public static class Scenarios {
         string rulesWas = Environment.GetEnvironmentVariable("RULES"), purchasesWas = Environment.GetEnvironmentVariable("PURCHASES");
         try {
             Environment.SetEnvironmentVariable("RULES", "standard");
-            Environment.SetEnvironmentVariable("PURCHASES", "off");
+            // BUILDS=on: units may be bought (ForestClearing, with its production buildings).
+            Environment.SetEnvironmentVariable("PURCHASES", Environment.GetEnvironmentVariable("BUILDS") == "on" ? "on" : "off");
             for (int mi = 0; mi < maps.Length; mi++) {
                 string map = maps[mi];
                 string fog = fogSet == "alt" ? ((first + mi) % 2 == 0 ? "on" : "off") : fogSet;
