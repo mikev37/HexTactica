@@ -111,6 +111,11 @@ public static class SupplyNetwork {
         return Solve(player, false, null, null, null, false, planned, true);
     }
 
+    /// <summary>Every supply unit where it stands, those in <paramref name="planned"/> moved there instead.</summary>
+    public static Result SolveAll(Player player, Dictionary<SupplyPoint, HexTile> planned) {
+        return Solve(player, false, null, null, null, false, planned, false);
+    }
+
     static Result Solve(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded) {
         return Solve(player, applyDrain, movedHub, hypotheticalTile, excluded, false, null);
     }
