@@ -45,6 +45,10 @@ namespace HexTactica.AI {
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
+        /// <summary>Turns this task force has been out (0 the turn it formed), whether it has gone in yet, and the turns from its staging tile to its target when it formed (time boxes: AIProfile.campaignTimeBox).</summary>
+        public int age;
+        public bool went;
+        public int routeTurns;
         /// <summary>Order of preference: value over what it costs, discounted by the turns to get there.</summary>
         public float priority;
         public readonly List<Unit> units = new List<Unit>();
@@ -69,6 +73,7 @@ namespace HexTactica.AI {
               .Append(" have ").Append(assignedPower.ToString("0")).Append(", ").Append(units.Count).Append(" units, ")
               .Append(hubs.Count).Append('/').Append(needHubs).Append(" supply");
             if (staging != null) sb.Append(" via (").Append(staging.x).Append(',').Append(staging.y).Append(")");
+            sb.Append(" turn ").Append(age + 1).Append(went ? " gone in" : "");
             if (units.Count > 0) {
                 sb.Append(":");
                 foreach (Unit u in units) if (u != null && u.tile != null) sb.Append(' ').Append(u.name.Replace("(Clone)", "").Replace(" Variant", "")).Append('(').Append(u.tile.x).Append(',').Append(u.tile.y).Append(")s").Append(u.Strength);
@@ -131,6 +136,9 @@ namespace HexTactica.AI {
         /// again under fire, and spent its army in the coming and going.
         /// </summary>
         public readonly Dictionary<string, float> opposition = new Dictionary<string, float>();
+        /// <summary>Objectives given up (time boxes), each until the turn it may be taken on again; and this campaign's turn.</summary>
+        public readonly Dictionary<string, int> givenUp = new Dictionary<string, int>();
+        public int turn;
 
         public CampaignObjective ObjectiveOf(Unit u) { CampaignObjective o; return u != null && unitOf.TryGetValue(u, out o) ? o : null; }
         public CampaignObjective ObjectiveOf(SupplyPoint h) { CampaignObjective o; return h != null && hubOf.TryGetValue(h, out o) ? o : null; }
@@ -138,8 +146,41 @@ namespace HexTactica.AI {
         /// <summary>Plan this turn's campaign on <paramref name="map"/>, keeping what <paramref name="last"/> (last turn's) still holds.</summary>
         public static AICampaign Plan(AIMap map, AIProfile p, AICampaign last) {
             AICampaign c = new AICampaign();
+            c.turn = last != null ? last.turn + 1 : 0;
             List<CampaignObjective> candidates = Candidates(map, p);
-            foreach (CampaignObjective o in candidates) Reach(o, map, p);
+
+            // Time boxes (AIProfile.campaignTimeBox): a task force that has not gathered on its staging
+            // ground by its campaignDrawTurns-th turn is dissolved; one that has not achieved its
+            // objective in campaignTimeBox turns (more for one further off) gives it up. Either way the
+            // objective is left alone for campaignTimeBox turns and its units go to other objectives
+            // and to the fighting.
+            string timedOut = null;
+            if (last != null) {
+                foreach (KeyValuePair<string, int> kv in last.givenUp) if (kv.Value > c.turn) c.givenUp[kv.Key] = kv.Value;
+                int draw = DrawTurns(p);
+                foreach (CampaignObjective o in last.objectives) {
+                    if (o.kind == CampaignKind.DefendHQ || o.respond || p.campaignTimeBox <= 0) continue;
+                    int age = o.age + 1;
+                    string why = null;
+                    if (!o.went && o.staging != null && age >= draw && !GatheredEnough(o, map, p)) why = "did not gather in " + draw + " turns";
+                    else if (age >= p.campaignTimeBox + Mathf.Max(0, o.routeTurns - draw)) why = "not achieved in " + age + " turns";
+                    if (why == null) continue;
+                    c.givenUp[o.Id] = c.turn + p.campaignTimeBox;
+                    if (timedOut == null) timedOut = o.Id + " " + why + ", given up";
+                }
+                candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && c.givenUp.ContainsKey(o.Id));
+            }
+
+            // Staging: near where our free units already are (AICampaign.Staging); a task force out
+            // keeps the one it gathers on while that is still ours and safe.
+            List<Unit> free = new List<Unit>();
+            foreach (Unit u in map.ownUnits)
+                if (u != null && u.tile != null && Power(u) > 0f && !(Transporting.IsTransport(u) && u.Firepower <= 1) && map.TurnsToContact(u) > 1 && !HomeFight(u, map, p)) free.Add(u);
+            foreach (CampaignObjective o in candidates) {
+                CampaignObjective was = last != null ? last.objectives.Find(x => x.Id == o.Id) : null;
+                HexTile keepStaging = was != null && was.staging != null && map.SupplyDepth(was.staging) > 0 && map.EnemyStrikeTurns(was.staging) > 1 ? was.staging : null;
+                Reach(o, map, p, keepStaging, free);
+            }
             Dictionary<Unit, int> reaches = new Dictionary<Unit, int>();
             foreach (CampaignObjective o in candidates) {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
@@ -186,7 +227,7 @@ namespace HexTactica.AI {
                     if (was != null) o.inherited = was.Id;
                 }
             c.considered = candidates;
-            c.replanned = last == null ? "first plan" : last.ReplanReason(candidates, map, p);
+            c.replanned = last == null ? "first plan" : timedOut ?? last.ReplanReason(candidates, map, p);
             if (Debug != null) foreach (CampaignObjective o in candidates) Debug("candidate " + o);
             c.Allocate(candidates, map, p, c.replanned == null ? last : null);
             return c;
@@ -274,10 +315,10 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Value, the enemy there, what it needs, the way there and its priority.</summary>
-        static void Appraise(CampaignObjective o, AIMap map, AIProfile p) { Reach(o, map, p); Price(o, map, p, null); }
+        static void Appraise(CampaignObjective o, AIMap map, AIProfile p) { Reach(o, map, p, null, null); Price(o, map, p, null); }
 
         /// <summary>The way there, and the enemy units that could fight there (each with its power).</summary>
-        static void Reach(CampaignObjective o, AIMap map, AIProfile p) {
+        static void Reach(CampaignObjective o, AIMap map, AIProfile p, HexTile keepStaging, List<Unit> free) {
             int turns = Mathf.Max(1, p.frontReachTurns);
             float board = map.BoardStake;
             // The way there first: the enemy that matters is whatever can be there by the time we are.
@@ -295,7 +336,8 @@ namespace HexTactica.AI {
                 }
             }
             o.routeLength = from != null ? best : 99;
-            o.staging = from != null ? Staging(from, route, map, o.target) : null;
+            o.staging = keepStaging ?? (from != null ? Staging(route, map, o.target, p, free) : null);
+            o.routeTurns = o.staging != null ? Mathf.CeilToInt(map.Travel(null, o.staging, o.target) / (float)Mathf.Max(1, TypicalMove(map))) : 0;
             // The enemy that matters is what can be there soon after we are (frontReachTurns and one
             // more), not the whole army that could converge in the turns it takes us to get there: that
             // priced every far objective out, and the army spent its first turns on a city at home.
@@ -450,25 +492,54 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// The staging tile: on ground we hold (supplied, and out of the enemy's reach next turn), nearest
-        /// the target, and no nearer it than one move of our army; null when there is none. The first
-        /// fronts gather by home; later ones on what earlier fronts took and supplied.
+        /// The staging tile: on ground we hold (supplied, and out of the enemy's reach next turn), no
+        /// nearer the target than one move of our army, and close to where our free units already are
+        /// (not in a fight, not on a task force): of the tiles with nearly the most of their power
+        /// within campaignDrawTurns of it (four fifths of the best), the one nearest the target. Null
+        /// when there is no such ground — better none than one in the firing line. (It was the supplied
+        /// tile nearest the target, wherever the army was: often in the enemy's reach, and often too
+        /// far from the units for them to gather on it.)
         /// </summary>
-        static HexTile Staging(HexTile from, Dictionary<HexTile, int> route, AIMap map, HexTile target) {
-            // The supplied tile nearest the target (by the route) that the enemy cannot strike next turn,
-            // and no nearer the target than one move of our army; none such, no staging ground at all —
-            // better none than one in the firing line. (It used to start from the supplied tile nearest
-            // the target and walk on while the ground was safe, but never checked that first tile: the
-            // walk could not move, and the staging ground was often in the enemy's reach.)
-            int bound = TypicalMove(map);
-            HexTile best = null; int bestD = int.MaxValue;
+        static HexTile Staging(Dictionary<HexTile, int> route, AIMap map, HexTile target, AIProfile p, List<Unit> free) {
+            int bound = TypicalMove(map), draw = DrawTurns(p);
+            List<HexTile> safe = new List<HexTile>();
             foreach (KeyValuePair<HexTile, int> kv in route) {
                 HexTile t = kv.Key;
                 if (t == null || map.SupplyDepth(t) <= 0 || map.EnemyStrikeTurns(t) <= 1) continue;
                 if (target != null && t.Distance(target) < bound) continue;
-                if (kv.Value < bestD || (kv.Value == bestD && CombatMath.Precedes(t, best))) { bestD = kv.Value; best = t; }
+                safe.Add(t);
+            }
+            if (safe.Count == 0) return null;
+            Dictionary<HexTile, float> near = new Dictionary<HexTile, float>();
+            float most = 0f;
+            foreach (HexTile t in safe) {
+                float v = 0f;
+                if (free != null) foreach (Unit u in free) if (u.tile.Distance(t) <= u.moveRange * draw) v += Power(u);
+                near[t] = v; most = Mathf.Max(most, v);
+            }
+            HexTile best = null; int bestD = int.MaxValue;
+            foreach (HexTile t in safe) {
+                if (near[t] < most * 0.8f) continue;
+                int d = route[t];
+                if (d < bestD || (d == bestD && CombatMath.Precedes(t, best))) { bestD = d; best = t; }
             }
             return best;
+        }
+
+        static int DrawTurns(AIProfile p) { return p.campaignDrawTurns > 0 ? p.campaignDrawTurns : Mathf.Max(1, p.frontReachTurns); }
+
+        /// <summary>Whether the healthy power on the task force's staging ground (or past it) is campaignGatherShare of its need, as AIStrategic.GatherThenGo counts it.</summary>
+        static bool GatheredEnough(CampaignObjective o, AIMap map, AIProfile p) {
+            if (o.staging == null || o.target == null) return true;
+            int healthy = Mathf.CeilToInt(6 * p.readyStrength);
+            int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+            int stagingToGo = map.Travel(null, o.staging, o.target);
+            float gathered = 0f;
+            foreach (Unit u in o.units) {
+                if (u == null || u.tile == null || u.Strength < healthy) continue;
+                if (map.Travel(u, u.tile, o.staging) <= radius || map.Travel(u, u.tile, o.target) < stagingToGo) gathered += Power(u);
+            }
+            return gathered >= Mathf.Max(1f, o.needPower) * Mathf.Clamp01(p.campaignGatherShare);
         }
 
         /// <summary>The middle move range of our fighting units.</summary>
@@ -541,6 +612,7 @@ namespace HexTactica.AI {
                     foreach (Unit u in was.units) if (pool.Contains(u) && CanJoin(u, now, map, p)) { Give(now, u); pool.Remove(u); }
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
+                    now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns;
                     objectives.Add(now);
                 }
             }
@@ -679,7 +751,8 @@ namespace HexTactica.AI {
                 Unit best = null; float bestScore = float.NegativeInfinity;
                 foreach (Unit u in pool) {
                     if (!CanJoin(u, o, map, p)) continue;
-                    float s = Fit(u, o, map) - Turns(u, o, map);
+                    // The nearest first; how well it fights the enemy there only between equals (under a turn).
+                    float s = Fit(u, o, map) * 0.25f - Turns(u, o, map);
                     if (s > bestScore || (s == bestScore && best != null && AIMap.CompareUnits(u, best) < 0)) { bestScore = s; best = u; }
                 }
                 if (best == null) break;
@@ -696,8 +769,7 @@ namespace HexTactica.AI {
         /// </summary>
         static bool CanJoin(Unit u, CampaignObjective o, AIMap map, AIProfile p) {
             if (u == null || u.tile == null) return false;
-            int reach = p.campaignDrawTurns > 0 ? p.campaignDrawTurns : Mathf.Max(1, p.frontReachTurns);
-            if (Turns(u, o, map) > reach) return false;
+            if (Turns(u, o, map) > DrawTurns(p)) return false;
             if (o.staging == null || o.kind == CampaignKind.DefendHQ) return true;
             if (map.TurnsToContact(u) > 1) return true;
             int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
@@ -763,6 +835,7 @@ namespace HexTactica.AI {
                 f.campaignNeed = o.needPower;
                 f.pullScale = p.campaignPull;
                 f.campaign = true;
+                f.campaignObjective = o;
                 f.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
                 // Outmatched where it stands (campaignFallbackRatio): the enemy that can strike its units
                 // next turn is more than it can take. It falls back to its staging ground and the campaign
