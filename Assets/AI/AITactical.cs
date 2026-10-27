@@ -934,7 +934,7 @@ namespace HexTactica.AI {
             // army's frontmost fighting unit and never past it — out of the way of the column behind and
             // where supply units and the army will want a ride. (Parked beside the supply units, the
             // trucks blocked a two-tile road and nothing behind them could move.)
-            HexTile objective = profile.supplyLeaps ? AISupplyChain.Objective(map) : null;
+            HexTile objective = profile.supplyLeaps && profile.idleTrucksFollowArmy ? AISupplyChain.Objective(map) : null;
             Dictionary<HexTile, int> toObj = objective != null ? map.LandSteps(objective) : null;
             int front = int.MaxValue;
             if (toObj != null)
