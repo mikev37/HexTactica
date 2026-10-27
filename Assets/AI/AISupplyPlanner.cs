@@ -132,7 +132,9 @@ namespace HexTactica.AI {
 
             // A relay is connected if it stands where the network reaches *without it*.
             bool connected = FrontLine || without.DepthAt(at) > 0;
-            if (!connected) score -= AIScore.Worth(hub.myUnit);
+            // Cut off, and the further from the network the worse: so a cut-off supply unit makes its way
+            // back (it stood still, every tile it could reach as bad as the next).
+            if (!connected) score -= AIScore.Worth(hub.myUnit) * (1f + (LocomotionRules.IsNaval(hub.myUnit.locomotion) ? 0f : 0.5f * AIMap.GapToSupply(at, t => without.DepthAt(t), 12)));
 
             // Same forward-coverage term ExactValue uses, by hex distance.
             int range = hub.range;
@@ -331,7 +333,7 @@ namespace HexTactica.AI {
             }
             float hubWorth = AIScore.Worth(hub.myUnit);
             if (!hypothetical.connectedHubs.Contains(hub)) {
-                stranded = hubWorth;
+                stranded = hubWorth * (1f + (LocomotionRules.IsNaval(hub.myUnit.locomotion) ? 0f : 0.5f * AIMap.GapToSupply(at, t => without.DepthAt(t), 12)));
                 int autonomy = Mathf.Max(1, hub.TurnsOfAutonomy);
                 if (autonomy <= profile.hubPanicThreshold) stranded += hubWorth * (profile.hubPanicThreshold - autonomy + 1) * 0.5f;
                 total -= stranded;

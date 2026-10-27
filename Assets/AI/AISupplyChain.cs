@@ -367,8 +367,8 @@ namespace HexTactica.AI {
                     // supply unit linked: the rear link carried past the ones ahead of it (they are then
                     // free to move up or leap in turn — leapfrogging, as a player moves a column of trucks).
                     bool better = (leapReach < reach && leapReach < walkReach) || h == forceLeap;
-                    bool leapfrog = leapReach <= Mathf.Min(reach, walkReach) && steps(jump.tile) <= steps(u.tile) - Mathf.Max(2, jump.truck.moveRange / 2) && Cut(trial, map) <= Cut(placed, map);
-                    if (after.connectedHubs.Contains(h) && (better || leapfrog) && (h == forceLeap || !map.profile.chainReconnects || Cut(trial, map) <= Cut(placed, map))) {
+                    bool leapfrog = leapReach <= Mathf.Min(reach, walkReach) && steps(jump.tile) <= steps(u.tile) - Mathf.Max(2, jump.truck.moveRange / 2) && Harm(trial, map) <= Harm(placed, map);
+                    if (after.connectedHubs.Contains(h) && (better || leapfrog) && (h == forceLeap || !map.profile.chainReconnects || Harm(trial, map) <= Harm(placed, map))) {
                         trucksUsed.Add(jump.truck);
                         placed[h] = jump.tile; taken.Add(jump.tile);
                         if (jump.board != null) taken.Add(jump.board);
@@ -385,7 +385,7 @@ namespace HexTactica.AI {
                     SupplyNetwork.Result after = SupplyNetwork.SolvePlanned(map.player, trial);
                     bestReach = Reach(after, toObj);
                     // Never a move that cuts off more of our supply units than are cut off now.
-                    if (bestReach < reach && (!map.profile.chainReconnects || Cut(trial, map) <= Cut(placed, map))) {
+                    if (bestReach < reach && (!map.profile.chainReconnects || Harm(trial, map) <= Harm(placed, map))) {
                         placed[h] = best; taken.Add(best);
                         net = after; reach = bestReach;
                         plan.links[h] = best;
@@ -416,6 +416,19 @@ namespace HexTactica.AI {
             foreach (SupplyPoint h in map.ownHubs)
                 if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && h.myUnit.trasnporter == null && !net.connectedHubs.Contains(h)
                     && (ConnectOnly == null || ConnectOnly.Contains(h))) n++;
+            return n;
+        }
+
+        /// <summary>
+        /// Supply units joined to the network now that <paramref name="placed"/> would leave cut off (every
+        /// other supply unit where it stands): what a move costs the rest of our supply, whoever's they are.
+        /// </summary>
+        public static int Harm(Dictionary<SupplyPoint, HexTile> placed, AIMap map) {
+            SupplyNetwork.Result before = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
+            SupplyNetwork.Result after = SupplyNetwork.SolveAll(map.player, placed);
+            int n = 0;
+            foreach (SupplyPoint h in map.ownHubs)
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && before.connectedHubs.Contains(h) && !after.connectedHubs.Contains(h)) n++;
             return n;
         }
 

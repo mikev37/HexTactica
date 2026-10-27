@@ -26,6 +26,8 @@ namespace HexTactica.AI {
         public class Task {
             public CampaignObjective front;
             public HexTile goal;
+            /// <summary>An ordinary front's (AIStrategic): the fallback, served after the campaign's.</summary>
+            public bool ordinary;
             /// <summary>An owned FOB (or other supply building) the chain makes for first, cut off now, that brings supply nearer the front once joined.</summary>
             public Building fob;
             public int size;
@@ -75,26 +77,32 @@ namespace HexTactica.AI {
                     if (f.campaign) continue;
                     HexTile at = f.objectiveTile ?? f.center;
                     if (at == null) continue;
-                    CampaignObjective o = new CampaignObjective { kind = CampaignKind.Clear, target = at, went = true, priority = f.priority };
+                    CampaignObjective o = new CampaignObjective { kind = CampaignKind.Clear, target = at, went = true, priority = f.priority, ordinaryFront = true };
                     foreach (Unit u in f.assigned) if (u != null && u.Hub == null) o.units.Add(u);
                     fronts.Add(o);
                 }
             foreach (CampaignObjective o in fronts) {
                 if (o.kind == CampaignKind.Scout || o.target == null) continue;
                 int n = Size(o);
-                if (n > 0) l.tasks.Add(new Task { front = o, goal = Goal(o), size = n });
+                if (n > 0) l.tasks.Add(new Task { front = o, goal = Goal(o), size = n, ordinary = o.ordinaryFront });
             }
-            // Largest first; between equals, the campaign's priority, then the board.
+            // The campaign's fronts first, largest first; the ordinary fronts (the fallback, kept inside
+            // our supply) after them. Between equals, the campaign's priority, then the board.
             l.tasks.Sort((a, b) => {
+                if (a.ordinary != b.ordinary) return a.ordinary ? 1 : -1;
                 int c = b.size.CompareTo(a.size); if (c != 0) return c;
                 c = b.front.priority.CompareTo(a.front.priority); if (c != 0) return c;
                 return CombatMath.CompareTiles(a.front.target, b.front.target);
             });
             foreach (Task t in l.tasks)
                 foreach (Unit u in t.front.units) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && map.SupplyDepth(u.tile) <= 0) t.unsupplied += AIScore.Worth(u) * u.Strength;
+            // Only supply units joined to the network now: one cut off moves as a unit (AISupplyPlanner),
+            // which brings it back to our supply first.
+            SupplyNetwork.Result now = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
             List<SupplyPoint> pool = new List<SupplyPoint>();
             foreach (SupplyPoint h in map.ownHubs)
-                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion)) pool.Add(h);
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion)
+                    && now.connectedHubs.Contains(h)) pool.Add(h);
             if (l.tasks.Count == 0) return l;
 
             // A supply building of ours cut off from the network — a FOB — that would carry supply nearer
