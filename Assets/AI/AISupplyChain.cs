@@ -63,6 +63,17 @@ namespace HexTactica.AI {
 
         /// <summary>Trucks already promised this turn (AIPlayer): not for a leap.</summary>
         public static HashSet<Unit> ReservedTrucks;
+        /// <summary>
+        /// Set (AILogistics): the only supply units the chain tries to keep connected — a front's link
+        /// nodes — rather than every supply unit we have; and no leaps (a front's own supply units leap,
+        /// not its chain). Null / false: the whole army's chain, as before.
+        /// </summary>
+        public static HashSet<SupplyPoint> ConnectOnly;
+        public static bool NoLeaps;
+        /// <summary>Set (AILogistics): the only supply units Harm counts as cut off — those with a duty.</summary>
+        [System.ThreadStatic] public static HashSet<SupplyPoint> ProtectOnly;
+        /// <summary>Set (AILogistics): fighting units Harm counts too when they would lose supply — a campaign front's and any in contact.</summary>
+        [System.ThreadStatic] public static HashSet<Unit> ProtectUnits;
 
         static bool IsTruck(Unit t) { return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1; }
 
@@ -106,8 +117,8 @@ namespace HexTactica.AI {
                 if (sx == int.MaxValue || sx > bestSteps || (sx == bestSteps && !CombatMath.Precedes(x, best))) continue;
                 // Supply serves the army: never ahead of it. (Carried out in front where nothing could strike
                 // it yet, it fed itself to the enemy and left the army behind a gap it would not cross.)
-                if (sx < front) { nAhead++; continue; }
-                float loss = map.ExpectedLoss(truck, x);
+                if (sx < front && !(map.profile.leapsAheadWhenClear && map.EnemyStrikeTurns(x) > 2)) { nAhead++; continue; }
+                float loss = map.KnownLoss(truck, x);
                 if (loss * caution >= truck.Strength || loss > tolerance) { nRisk++; continue; }
                 if (!SupplyNetwork.WithinMoveOfSupply(truck, x, net)) { nUnlinked++; continue; }
                 best = x; bestSteps = sx;
@@ -155,7 +166,7 @@ namespace HexTactica.AI {
         /// </summary>
         public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
             Plan plan = MakeOne(map, fixedHubs, objective, only, army, null);
-            if (!map.profile.supplyLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
+            if (NoLeaps || !map.profile.supplyLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
             // Stretched, with trucks to hand: try each supply unit on foot that a truck could take now
             // carried forward, and the rest of the chain planned after it. A chain of links on foot has
             // every link holding the next: none could leap alone without cutting the ones ahead, though
@@ -210,7 +221,7 @@ namespace HexTactica.AI {
             Dictionary<SupplyPoint, Unit> was = SupplyNetwork.PlannedAboard;
             SupplyNetwork.PlannedAboard = aboard;
             try {
-                SupplyNetwork.Result net = SupplyNetwork.SolvePlanned(map.player, placed);
+                SupplyNetwork.Result net = SupplyNetwork.SolveAll(map.player, placed);
                 int n = 0;
                 foreach (SupplyPoint h in map.ownHubs)
                     if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !net.connectedHubs.Contains(h)) n++;
@@ -232,7 +243,7 @@ namespace HexTactica.AI {
                 plan.frontSteps = Mathf.Min(plan.frontSteps, steps(u.tile));
             }
 
-            bool leaps = map.profile.supplyLeaps;
+            bool leaps = map.profile.supplyLeaps && !NoLeaps;
             List<SupplyPoint> hubs = new List<SupplyPoint>();
             foreach (SupplyPoint h in map.ownHubs) {
                 if (only != null && !only.Contains(h)) continue;
@@ -289,7 +300,7 @@ namespace HexTactica.AI {
                     if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) { cappedOut = true; continue; }
                     // Little or nothing can hit it tonight (profile.chainRiskTolerance strength at most)...
                     float tolerance = Mathf.Max(0f, map.profile.chainRiskTolerance);
-                    float expected = map.ExpectedLoss(u, t);
+                    float expected = map.KnownLoss(u, t);
                     if (expected > tolerance) { nRisky++; continue; }
                     if (best != null && !(s < bestSteps || (s == bestSteps && (expected < bestRisk || expected == bestRisk && CombatMath.Precedes(t, best))))) continue;
                     // ...not even by a chain of blows (the enemy's reply played out, as everywhere else).
@@ -319,18 +330,18 @@ namespace HexTactica.AI {
                 // that connects the most of our cut-off supply units again, if any does — a link held
                 // in the rear only for its reach toward the enemy HQ left five supply units cut off
                 // for three turns after the one joining them to the HQ was killed.
-                if (map.profile.chainReconnects && Cut(net, map) > 0) {
-                    HexTile fix = null; int fixCut = Cut(net, map); int fixSteps = int.MaxValue;
+                if (map.profile.chainReconnects && Cut(placed, map) > 0) {
+                    HexTile fix = null; int fixCut = Cut(placed, map); int fixSteps = int.MaxValue;
                     foreach (HexTile t in field.Tiles) {
                         if (t != u.tile && (!field.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
                         if (taken.Contains(t) || net.DepthAt(t) <= 0 || !AIAir.MayEndOn(u, t, map)) continue;
                         if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
-                        if (map.ExpectedLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
+                        if (map.KnownLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
                         int ahead = steps(t);
                         if (ahead < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) continue;   // not ahead of the army
                         Dictionary<SupplyPoint, HexTile> tr = new Dictionary<SupplyPoint, HexTile>(placed);
                         tr[h] = t;
-                        int c = Cut(SupplyNetwork.SolvePlanned(map.player, tr), map);
+                        int c = Cut(tr, map);
                         int st = steps(t);
                         if (c < fixCut || (c == fixCut && fix != null && (st < fixSteps || st == fixSteps && CombatMath.Precedes(t, fix)))) { fix = t; fixCut = c; fixSteps = st; }
                     }
@@ -360,8 +371,8 @@ namespace HexTactica.AI {
                     // supply unit linked: the rear link carried past the ones ahead of it (they are then
                     // free to move up or leap in turn — leapfrogging, as a player moves a column of trucks).
                     bool better = (leapReach < reach && leapReach < walkReach) || h == forceLeap;
-                    bool leapfrog = leapReach <= Mathf.Min(reach, walkReach) && steps(jump.tile) <= steps(u.tile) - Mathf.Max(2, jump.truck.moveRange / 2) && Cut(after, map) <= Cut(net, map);
-                    if (after.connectedHubs.Contains(h) && (better || leapfrog) && (h == forceLeap || !map.profile.chainReconnects || Cut(after, map) <= Cut(net, map))) {
+                    bool leapfrog = leapReach <= Mathf.Min(reach, walkReach) && steps(jump.tile) <= steps(u.tile) - Mathf.Max(2, jump.truck.moveRange / 2) && Harm(trial, map) <= Harm(placed, map);
+                    if (after.connectedHubs.Contains(h) && (better || leapfrog) && (h == forceLeap || !map.profile.chainReconnects || Harm(trial, map) <= Harm(placed, map))) {
                         trucksUsed.Add(jump.truck);
                         placed[h] = jump.tile; taken.Add(jump.tile);
                         if (jump.board != null) taken.Add(jump.board);
@@ -378,7 +389,7 @@ namespace HexTactica.AI {
                     SupplyNetwork.Result after = SupplyNetwork.SolvePlanned(map.player, trial);
                     bestReach = Reach(after, toObj);
                     // Never a move that cuts off more of our supply units than are cut off now.
-                    if (bestReach < reach && (!map.profile.chainReconnects || Cut(after, map) <= Cut(net, map))) {
+                    if (bestReach < reach && (!map.profile.chainReconnects || Harm(trial, map) <= Harm(placed, map))) {
                         placed[h] = best; taken.Add(best);
                         net = after; reach = bestReach;
                         plan.links[h] = best;
@@ -396,11 +407,38 @@ namespace HexTactica.AI {
             } finally { SupplyNetwork.PlannedAboard = aboardWas; }
         }
 
-        /// <summary>Our supply units (not producers, not aboard) the network leaves cut off.</summary>
-        static int Cut(SupplyNetwork.Result net, AIMap map) {
+        /// <summary>
+        /// Our supply units (not producers, not aboard) cut off, with those in <paramref name="placed"/>
+        /// where they are planned to be and every other one where it stands. (Counted on the planned
+        /// network alone, every supply unit not yet planned looked cut off, and each in turn was taken
+        /// into the chain to "reconnect" the rest: on ForestClearing the chain took every supply unit
+        /// on the first turn for a staging ground the HQ already supplied.)
+        /// </summary>
+        static int Cut(Dictionary<SupplyPoint, HexTile> placed, AIMap map) {
+            SupplyNetwork.Result net = SupplyNetwork.SolveAll(map.player, placed);
             int n = 0;
             foreach (SupplyPoint h in map.ownHubs)
-                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && h.myUnit.trasnporter == null && !net.connectedHubs.Contains(h)) n++;
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && h.myUnit.trasnporter == null && !net.connectedHubs.Contains(h)
+                    && (ConnectOnly == null || ConnectOnly.Contains(h))) n++;
+            return n;
+        }
+
+        /// <summary>
+        /// Supply units joined to the network now that <paramref name="placed"/> would leave cut off (every
+        /// other supply unit where it stands): what a move costs the rest of our supply, whoever's they are.
+        /// </summary>
+        public static int Harm(Dictionary<SupplyPoint, HexTile> placed, AIMap map) {
+            SupplyNetwork.Result before = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
+            SupplyNetwork.Result after = SupplyNetwork.SolveAll(map.player, placed);
+            int n = 0;
+            foreach (SupplyPoint h in map.ownHubs)
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && before.connectedHubs.Contains(h) && !after.connectedHubs.Contains(h)
+                    && (ProtectOnly == null || ProtectOnly.Contains(h))) n++;
+            // And the fighting units it serves that would be left out of supply. (Links that moved up one
+            // turn walked back the next, and the grunt they had supplied starved where it stood.)
+            if (ProtectUnits != null)
+                foreach (Unit u in ProtectUnits)
+                    if (u != null && u.tile != null && before.DepthAt(u.tile) > 0 && after.DepthAt(u.tile) <= 0) n++;
             return n;
         }
 

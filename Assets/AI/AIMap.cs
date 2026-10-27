@@ -371,10 +371,20 @@ namespace HexTactica.AI {
 
         /// <param name="exclude">An enemy that will not be firing tonight — typically the
         /// target of a shot that kills it.</param>
-        public float ExpectedLoss(Unit u, HexTile at, Unit exclude) {
+        public float ExpectedLoss(Unit u, HexTile at, Unit exclude) { return ExpectedLoss(u, at, exclude, true); }
+
+        /// <summary>
+        /// Same, from the enemy we see and remember only — not from ground we have not seen (AISigint).
+        /// For supply moving up behind its own army (never ahead of it): under the fog there is always
+        /// unseen ground ahead, and priced as a full-strength enemy it held every supply link where it
+        /// stood — the chain came apart behind an army at the enemy's undefended HQ.
+        /// </summary>
+        public float KnownLoss(Unit u, HexTile at) { return ExpectedLoss(u, at, null, false); }
+
+        float ExpectedLoss(Unit u, HexTile at, Unit exclude, bool unknownGround) {
             if (u == null || at == null) return 0f;
             List<EnemyFire> list;
-            float fog = FogLoss(u, at);
+            float fog = sigint != null ? sigint.Loss(u, at, unknownGround) : 0f;
             if (!firersAt.TryGetValue(at, out list)) return Mathf.Min(u.Strength, fog);
             float loss = fog;
             for (int i = 0; i < list.Count; i++) {

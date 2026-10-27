@@ -211,13 +211,19 @@ public class LevelEditor : MonoBehaviour
         return null;
     }
 
+    /// <summary>Units renamed since saves were written: old name, new name.</summary>
+    public static readonly System.Collections.Generic.Dictionary<string, string> renamedUnits = new System.Collections.Generic.Dictionary<string, string> {
+        { "Gunship Variant", "Gunship" }, { "Gunner Anti Air Variant", "Gunner Anti Air" } };
+
     public static Unit loadUnit(string name) {
-        name = name.Replace("(Clone)","");
+        name = name.Replace("(Clone)","").Trim();
         foreach (Unit t in singleton.allUnit) {
             if (t.name.Equals(name)) {
                 return t;
             }
         }
+        string now;
+        if (renamedUnits.TryGetValue(name, out now)) return loadUnit(now);
         return null;
     }
 

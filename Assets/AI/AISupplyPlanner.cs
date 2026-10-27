@@ -131,8 +131,10 @@ namespace HexTactica.AI {
             }
 
             // A relay is connected if it stands where the network reaches *without it*.
-            bool connected = without.DepthAt(at) > 0;
-            if (!connected) score -= AIScore.Worth(hub.myUnit);
+            bool connected = FrontLine || without.DepthAt(at) > 0;
+            // Cut off, and the further from the network the worse: so a cut-off supply unit makes its way
+            // back (it stood still, every tile it could reach as bad as the next).
+            if (!connected) score -= AIScore.Worth(hub.myUnit) * (1f + (LocomotionRules.IsNaval(hub.myUnit.locomotion) ? 0f : 0.5f * AIMap.GapToSupply(at, t => without.DepthAt(t), 12)));
 
             // Same forward-coverage term ExactValue uses, by hex distance.
             int range = hub.range;
@@ -160,8 +162,17 @@ namespace HexTactica.AI {
         public static bool Ghost;
         static readonly Dictionary<HexTile, string> breakdown = new Dictionary<HexTile, string>();
 
+        /// <summary>Set (per thread) while placing a front-line supply unit (supplyFrontFirst): it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
+        [System.ThreadStatic] public static bool FrontLine;
+
         public static float ExactValue(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
             if (hub == null || hub.myUnit == null || at == null) return 0;
+            SupplyPoint assumedWas = SupplyNetwork.AssumeLinked;
+            if (FrontLine) SupplyNetwork.AssumeLinked = hub;
+            try { return ExactValueOf(hub, at, map, profile); } finally { SupplyNetwork.AssumeLinked = assumedWas; }
+        }
+
+        static float ExactValueOf(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
             float dSupplied = 0f, dForward = 0f, dIntent = 0f, dConnect = 0f, dRisk = 0f;
 
             SupplyNetwork.Result hypothetical =
@@ -322,7 +333,7 @@ namespace HexTactica.AI {
             }
             float hubWorth = AIScore.Worth(hub.myUnit);
             if (!hypothetical.connectedHubs.Contains(hub)) {
-                stranded = hubWorth;
+                stranded = hubWorth * (1f + (LocomotionRules.IsNaval(hub.myUnit.locomotion) ? 0f : 0.5f * AIMap.GapToSupply(at, t => without.DepthAt(t), 12)));
                 int autonomy = Mathf.Max(1, hub.TurnsOfAutonomy);
                 if (autonomy <= profile.hubPanicThreshold) stranded += hubWorth * (profile.hubPanicThreshold - autonomy + 1) * 0.5f;
                 total -= stranded;

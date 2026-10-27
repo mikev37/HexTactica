@@ -44,6 +44,12 @@ namespace HexTactica.AI {
             context.objective = objective;
             context.posture = posture;
 
+            // On the enemy's HQ and able to take it: it stays and takes it, whatever else — wounded,
+            // starving or about to be attacked. Standing there is worth it for the chance of winning.
+            // (A grunt down to strength 2 out of supply walked off the enemy HQ at 3/10 to find supply.)
+            Building onHQ = unit.tile.building;
+            if (onHQ != null && onHQ.IsHQ && onHQ.owner != unit.owner && Building.CanCapture(unit))
+                return AIAction.Seize(unit, onHQ, 0f, "on the enemy HQ: holds it to take it");
             if (unit.airTanker) return AIAir.DecideTanker(unit, map);
             AIRole role = AIRoles.Classify(unit, profile);
             if (role == AIRole.Wounded && profile.woundedNeedsSafety) return DecideWounded(unit, map, profile, posture);
@@ -323,15 +329,40 @@ namespace HexTactica.AI {
         /// campaignStep: its staging ground while it gathers (nothing more once on it), else its
         /// objective, no closer than the force's pace. 0 off a campaign front, and for supply units.
         /// </summary>
+        public static string StepDebug = System.Environment.GetEnvironmentVariable("STEPDBG");
         static float CampaignStep(Unit unit, HexTile stop, AIMap map, AIProfile profile) {
             Front f = context.front;
+            if (StepDebug != null && unit.tile != null && (StepDebug == "*" || unit.tile.x + "," + unit.tile.y == StepDebug) && stop == unit.tile) System.Console.WriteLine("      step " + unit.name + " front " + (f == null ? "none" : f.ToString() + " campaign " + f.campaign + " objective " + (f.objectiveTile != null ? f.objectiveTile.x + "," + f.objectiveTile.y : "-")));
             if (f == null || !f.campaign || profile.campaignStep <= 0f || unit.tile == null || unit.Hub != null || stop == null) return 0f;
             bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
             HexTile goal = gathering ? f.stagingTile : f.objectiveTile;
             if (goal == null) return 0f;
             int now = map.Travel(unit, unit.tile, goal), then = map.Travel(unit, stop, goal);
             int floor = gathering ? f.campaignStagingRadius : Mathf.Max(0, f.paceLimit);
-            return profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
+            // A building to take, and this unit cannot take it: beside it is as far as it goes, and
+            // standing on it costs a step — it blocks the one that can. (A gunship parked on the city
+            // that was the campaign's objective, for the whole game, earned the most for being there.)
+            // Out of supply there, with rations that would run out before it got back: no step is worth
+            // that. (On BigMapLakes, with no enemy on the board, the campaign marched its whole army out
+            // of supply toward its objectives and every fighting unit starved to death.)
+            if (StepDebug != null && unit.tile != null && (StepDebug == "*" || unit.tile.x + "," + unit.tile.y == StepDebug))
+                System.Console.WriteLine("      step " + unit.name + " stop (" + stop.x + "," + stop.y + ") goal (" + goal.x + "," + goal.y + ") gathering " + gathering + " now " + map.Travel(unit, unit.tile, goal) + " then " + map.Travel(unit, stop, goal) + " pace " + f.paceLimit + " supplies " + unit.supplies + "/" + unit.suppliesMax + " depth " + map.SupplyDepth(stop) + " back " + map.TurnsToSupply(unit, stop));
+            if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0 && unit.supplies - 1 < map.TurnsToSupply(unit, stop)) return 0f;
+            // Out of supply there: out of contact, a unit may spend campaignDipTurns rations out of supply and
+            // no more; nor may any unit of a front with no supply of its own (it scouts and presses near our
+            // supply). Past that, the step is back toward supply. (A grunt held out of supply until its
+            // rations ran out, then lost a strength point a turn.)
+            if (unit.suppliesMax > 0 && map.SupplyDepth(stop) <= 0) {
+                int spent = unit.suppliesMax - unit.supplies + (map.SupplyDepth(unit.tile) > 0 ? 0 : 1);   // tonight's too
+                bool noSupply = f.campaignObjective != null && f.campaignObjective.noSupply;
+                if (noSupply || (map.TurnsToContact(unit) > profile.objectiveContactTurns && spent > profile.campaignDipTurns))
+                    return profile.campaignStep * (map.TurnsToSupply(unit, unit.tile) - map.TurnsToSupply(unit, stop)) * Mathf.Max(1, unit.moveRange);
+            }
+            bool blocker = !gathering && f.objective != null && goal == f.objectiveTile && !Building.CanCapture(unit);
+            if (blocker) floor = Mathf.Max(floor, 1);
+            float v = profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
+            if (blocker && stop == goal) v -= profile.campaignStep * 2f;
+            return v;
         }
 
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {
@@ -347,8 +378,17 @@ namespace HexTactica.AI {
                 o.world.score += AIFog.StopValue(unit, o.stop, map, profile);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
                 o.world.score -= AIFog.FogRisk(unit, o.stop, map, profile);
-                // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal.
+                // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal — and,
+                // on a campaign front, what starving on the way back to supply would cost, on the same
+                // scale (otherwise only a tie-break, and the lean always won).
                 o.world.score += CampaignStep(unit, o.stop, map, profile) * worth;
+                // Starving (every unit): the strength it would lose before it got back to supply, on the scale
+                // the rest of the world is scored on (otherwise only a tie-break: a grunt sat out of supply
+                // and lost a point a turn).
+                if (profile.worldStarvation) o.world.score -= AIScore.StrandingCost(unit, o.stop, 0, map);
+                if (context.front != null && context.front.campaign) {
+                    if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) o.world.score -= AIScore.OutOfSupplyCost(unit, o.stop, map);
+                }
             }
             // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
             // an attack open to it, standing on a building to take it earns it nothing.
@@ -906,6 +946,9 @@ namespace HexTactica.AI {
                 int depth = map.SupplyDepth(t);
                 float v = AIScore.Depth(depth, profile) * worth;
                 if (depth >= profile.supplyComfort) v += worth * 0.5f;
+                // Out of supply, the nearer it the better: every tile it could reach being as far out as the
+                // next, a starving recon held where it was until it was down to one strength.
+                if (depth <= 0) v -= worth * map.TurnsToSupply(unit, t);
                 // Where it heals faster (a city or base that heals: Building.healPerTurn), a strength's worth a point.
                 float heal = map.HealAt(unit, t);
                 if (heal > profile.healedPerTurn) v += (Mathf.Min(6 - unit.Strength, heal) - profile.healedPerTurn) * worth;
@@ -934,7 +977,7 @@ namespace HexTactica.AI {
             // army's frontmost fighting unit and never past it — out of the way of the column behind and
             // where supply units and the army will want a ride. (Parked beside the supply units, the
             // trucks blocked a two-tile road and nothing behind them could move.)
-            HexTile objective = profile.supplyLeaps ? AISupplyChain.Objective(map) : null;
+            HexTile objective = profile.supplyLeaps && profile.idleTrucksFollowArmy ? AISupplyChain.Objective(map) : null;
             Dictionary<HexTile, int> toObj = objective != null ? map.LandSteps(objective) : null;
             int front = int.MaxValue;
             if (toObj != null)

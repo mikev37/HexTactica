@@ -70,13 +70,47 @@ namespace HexTactica.AI {
         /// The units choose their own moves either way; this is how hard the plan leans on them.
         /// </summary>
         public float campaignStep = 1f;
-        [Tooltip("A task force goes once this share of its healthy power is on its staging ground (or what is there meets its need): so 90% does not wait for the last 10%.")]
+        [Tooltip("A task force goes once the healthy power on its staging ground is this share of its need (objectiveForceRatio times the enemy there): it needs 1.5 to one, goes at 0.8 of that (1.2 to one).")]
         [Range(0f, 1f)]
-        public float campaignGatherShare = 0.6f;
+        public float campaignGatherShare = 0.8f;
         [Tooltip("How large a staging ground is: hexes around the staging tile. 0: one move of our typical unit.")]
         public int campaignStagingRadius = 0;
-        [Tooltip("A task force falls back to its staging ground (and the campaign plans again) when the enemy that can strike its units next turn is more than its power over this. 0: never.")]
-        public float campaignFallbackRatio = 1f;
+        [Tooltip("A task force takes only units within this many turns of its staging tile, and none fighting elsewhere. 0: frontReachTurns.")]
+        public int campaignDrawTurns = 0;
+        [Tooltip("Time boxes: a task force not gathered on its staging ground by its campaignDrawTurns-th turn is dissolved; one that has not achieved its objective in this many turns (plus a turn for every turn its target is beyond campaignDrawTurns of its staging tile) gives it up. A given-up objective is left alone for this many turns. 0: no time boxes.")]
+        public int campaignTimeBox = 6;
+        [Tooltip("Breadth first: no front further than this many turns away (the slowest unit it needs, riding where a transport can take it) while any objective is nearer. 0: no cutoff.")]
+        public int campaignMaxTurns = 3;
+        [Tooltip("A task force that has gone in and whose main body has got no nearer its objective for this many turns in a row is dissolved (its objective given up a while). 0: never.")]
+        public int campaignStallTurns = 0;
+        [Tooltip("Also give up a task force that has not achieved its objective in campaignTimeBox turns (plus a turn for every turn its target is beyond campaignDrawTurns of its staging tile). Off: only the staging time box applies.")]
+        public bool campaignTransitTimeBox = false;
+        [Tooltip("A task force given up by a time box leaves its objective alone for this many turns. 0: not at all — its task force is dissolved and the objective formed again from the units best placed for it now.")]
+        public int campaignGiveUpTurns = 0;
+        [Tooltip("A separate group of our units, too far from every task force's staging ground to join it, forms a task force of its own — another one for an objective already taken on, if that is its best.")]
+        public bool campaignWings = true;
+        [Tooltip("Cohesion: a task force's unit more than this many of its own turns from the task force's centre drops out of it. 0: no limit.")]
+        public int campaignCohesionTurns = 2;
+        [Tooltip("A front's own supply units: one for every this many of its fighting units (after its chain).")]
+        public int campaignUnitsPerSupply = 6;
+        [Tooltip("Buying: an enemy unit seen counts for this many days after it is last seen.")]
+        public int productionMemoryDays = 6;
+        [Tooltip("Buying: what is bought against an enemy unit counts 1 / (1 + c / this), c the full kills our army could make on it (nothing of ours can hit it: full value).")]
+        public float productionCounterUnits = 2f;
+        [Tooltip("The units no objective needs go to the task forces too (by objectiveSpread). Off: they stay with the ordinary tactics.")]
+        public bool campaignLeftoverToFronts = false;
+        [Tooltip("Place objectives (AICampaign.Places): both ends of chokepoints and road junctions not yet in our supply, at most this many, the nearest our units. 0: none.")]
+        public int campaignPlaces = 12;
+        [Tooltip("A place objective's worth, in multiples of what a building with no income is worth.")]
+        public float campaignPlaceWeight = 0.5f;
+        [Tooltip("Out of contact, a campaign unit may spend this many rations out of supply (and go no further than its rations bring it back from); past that it is pulled back. 0: never out of supply.")]
+        public int campaignDipTurns = 1;
+        [Tooltip("The world score counts what a unit would lose starving before it got back to supply (AIScore.StrandingCost), for every unit.")]
+        public bool worldStarvation = true;
+        [Tooltip("Campaign supply by logistics (AILogistics): each front, largest first, is joined to the network by a chain of supply units, and the supply units left over are the fronts' own, by their number of units, placed tactically near them. Off: each task force runs its own chain of the supply units it was given.")]
+        public bool campaignLogistics = true;
+        [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]
+        public float campaignFallbackRatio = 0.5f;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
@@ -473,6 +507,23 @@ namespace HexTactica.AI {
 
         [Tooltip("Supply as a backbone (AISupplyBackbone): supply units ride trucks and APCs as moving links, a transport's move apart, from the HQ's network to each group of the army; the rest stay on foot by the army.")]
         public bool supplyBackbone = false;
+
+        [Tooltip("Idle trucks follow the army from behind (else they wait beside the supply units).")]
+        public bool idleTrucksFollowArmy = true;
+
+        [Tooltip("Supply front first: for each group of the army, the supply unit nearest it is a front-line one, placed by what it supplies there and what it risks (as if linked, wherever it goes); the rest line up behind as a chain to the nearest front-line one; any the chain does not need become front-line too.")]
+        public bool supplyFrontFirst = false;
+
+        [Tooltip("Campaign: buildings valued by what they do for the war — those that build units (productionBuildingWeight), then those that make supply (supplyBuildingWeight), above cities and resupply points. The HQ is worth the board either way.")]
+        public bool campaignBuildingTiers = true;
+        public float productionBuildingWeight = 3f;
+        public float supplyBuildingWeight = 2f;
+
+        [Tooltip("Units fighting (in contact) within this many tiles of our HQ are left to the ordinary tactics and supply: no campaign task force, no front-line supply group. 0: off.")]
+        public int homeFightRadius = 0;
+
+        [Tooltip("Supply leaps may go ahead of the army where the enemy cannot strike within two turns (else never ahead of it).")]
+        public bool leapsAheadWhenClear = false;
 
         [Tooltip("Supply units as a tree grown out from the HQ to every fighting unit out of supply, nearest the edge of supply first, a link at a time (AISupplyTree), instead of one chain toward the enemy HQ (supplyChain). Units the tree does not need are placed by the ordinary supply planner. Off: it lost the benchmark against the chain (PROBE=bench, ChanceMeeting from both sides and the campaign maps, fog off and on: -70,000 material over 12 games, better in 5, worse in 7).")]
         public bool supplyTree = false;

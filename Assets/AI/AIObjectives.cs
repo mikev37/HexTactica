@@ -167,6 +167,9 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Assign units to objectives. Returns each assigned unit's objective.</summary>
+        /// <summary>Units Assign leaves alone: those on a campaign task force, which its front moves (the ordinary objectives are lower priority and must not pull them off it).</summary>
+        [System.ThreadStatic] public static HashSet<Unit> Exclude;
+
         public static Dictionary<Unit, Objective> Assign(List<Objective> objectives, AIMap map, AIProfile profile) {
             Dictionary<Unit, Objective> result = new Dictionary<Unit, Objective>();
 
@@ -176,6 +179,7 @@ namespace HexTactica.AI {
                 if (u == null || u.tile == null || u.trasnporter != null) continue;
                 if (u.Firepower <= 0 || u.Hub != null) continue;
                 if (u.Strength <= profile.withdrawStrength) continue;
+                if (Exclude != null && Exclude.Contains(u)) continue;
                 pool.Add(u);
             }
 

@@ -114,6 +114,20 @@ namespace HexTactica.Testing {
             return bc.Adopt(PrefabLoader.LoadBuilding(prefab), owner, tile);
         }
 
+        /// <summary>
+        /// An airfield as the old two-tile Airport with its three runway tiles was: an Airport at
+        /// (<paramref name="x"/>, <paramref name="y"/>) and a Runway building on each of the old runway
+        /// tiles — offsets (0, 1), (1, 1), (-1, 1). (The Airport is one tile now; runways are their own buildings.)
+        /// </summary>
+        public static Building PlaceAirfield(Player owner, int x, int y) {
+            Building ap = PlaceBuilding("Airport", owner, x, y);
+            foreach (int[] o in new[] { new[] { 0, 1 }, new[] { 1, 1 }, new[] { -1, 1 } }) {
+                HexTile t = At(x + o[0], y + o[1]);
+                if (t != null && t.building == null) PlaceBuilding("Runway", owner, t.x, t.y);
+            }
+            return ap;
+        }
+
         public static Unit Spawn(Unit archetype, Player owner, int x, int y) {
             HexTile tile = At(x, y);
             if (tile == null) throw new Exception("no tile at " + x + "," + y);
