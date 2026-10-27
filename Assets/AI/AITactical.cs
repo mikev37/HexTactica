@@ -166,6 +166,15 @@ namespace HexTactica.AI {
         /// 3 picks among them — which is what puts units on chokepoints while the enemy is still
         /// out of range, and walks them forward when it is not.
         /// </summary>
+        /// <summary>Would <paramref name="unit"/> ending on <paramref name="t"/> stand on one of our producing buildings that no enemy can strike next turn?</summary>
+        public static bool BlocksProduction(Unit unit, HexTile t, AIMap map) {
+            if (t == null || unit == null) return false;
+            Building b = t.building;
+            if (b == null || b.owner != unit.owner || b.Purchasable().Count == 0) return false;
+            if (GameController.gc != null && !GameController.gc.purchasesAllowed) return false;
+            return map.EnemyStrikeTurns(t) > 1;
+        }
+
         static AIAction Tiered(Unit unit, AIMap map, AIProfile profile, Posture posture,
                                Dictionary<HexTile, KeyValuePair<float, HexTile>> stops,
                                Func<HexTile, bool> canShootFrom, Func<AttackAppraisal, bool> shotAllowed,
@@ -177,9 +186,14 @@ namespace HexTactica.AI {
             // tile reserved for an aircraft's landing this turn.
             AIAir.FilterSafe(unit, map, stops);
             AIAir.FilterReserved(unit, map, stops);
+            // Off our buildings that produce while the enemy cannot strike them next turn: a unit standing
+            // there is a unit that cannot be bought (both sides sat on 60,000+ gold they could not spend).
+            bool elsewhere = false;
+            foreach (HexTile s0 in stops.Keys) if (s0 != unit.tile && AIPath.CanFinishTurnOn(unit, s0) && !BlocksProduction(unit, s0, map)) { elsewhere = true; break; }
             foreach (KeyValuePair<HexTile, KeyValuePair<float, HexTile>> kv in stops) {
                 HexTile s = kv.Key;
                 if (s != unit.tile && !AIPath.CanFinishTurnOn(unit, s)) continue;
+                if (elsewhere && BlocksProduction(unit, s, map)) continue;
                 if (profile.choiceMode == 2) {
                     // Every choice from this tile goes to the simulation: standing without firing,
                     // and each shot it could take — not just the one the attack score likes best.
