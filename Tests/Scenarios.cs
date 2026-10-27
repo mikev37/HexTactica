@@ -3531,9 +3531,9 @@ public static class Scenarios {
         Console.WriteLine("unopposed: " + Path.GetFileNameWithoutExtension(file) + ", Red HQ at (" + theirs.tile.x + "," + theirs.tile.y + "), Blue's nearest unit " + start + " land steps from it; " + land + " land tiles");
         GameController gc = Rig.gc;
         int reached = -1;
-        int traceRound = int.Parse(Environment.GetEnvironmentVariable("TRACEROUND") ?? "-1");
+        string tr = Environment.GetEnvironmentVariable("TRACEROUND") ?? "-1"; int traceRound = tr == "all" ? -2 : int.Parse(tr);   // all: every round
         for (int r = 0; r < rounds && !gc.gameOver; r++) {
-            if (r == traceRound) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; AITactical.DebugBreakdown = Environment.GetEnvironmentVariable("BREAKDOWN") != null; }
+            if (r == traceRound || traceRound == -2) { Console.WriteLine("== round " + r); if (Environment.GetEnvironmentVariable("CAMPDBG") != null) HexTactica.AI.AICampaign.Debug = x => Console.WriteLine("   " + x); AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; AITactical.DebugBreakdown = Environment.GetEnvironmentVariable("BREAKDOWN") != null; }
             ScenarioFile.PlayTurn(); if (!gc.gameOver) ScenarioFile.PlayTurn();
             AIPlayer.Trace = null; AITactical.DecisionLog = null; HexTactica.AI.AISupplyChain.DebugLog = null;
             SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
