@@ -717,7 +717,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3547141541890433994, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: m_Name
-      value: Gunner Anti Air Variant
+      value: Gunner Anti Air
       objectReference: {fileID: 0}
     - target: {fileID: 3742740318056287377, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: EmissionModule.rateOverTime.maxCurve.m_Curve.Array.size

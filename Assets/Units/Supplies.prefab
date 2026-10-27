@@ -59,7 +59,7 @@ MonoBehaviour:
   deathExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
-  cost: 25000
+  cost: 6500
   personal_name: 
   active: 1
   owner: {fileID: 0}
