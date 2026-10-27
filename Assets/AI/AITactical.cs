@@ -640,6 +640,13 @@ namespace HexTactica.AI {
                     // A scout: every step toward where it will look counts (AIObjectives.AssignScouts).
                     int gained = context.map.Travel(unit, unit.tile, job.tile) - context.map.Travel(unit, tile, job.tile);
                     bonus += worth * context.profile.scoutPull * gained;
+                } else if (job.kind == ObjectiveKind.Capture && unit.tile != null) {
+                    // Off to take a building: every step toward it counts the same however far it is
+                    // (a pull fading with distance moved nobody twelve tiles from the enemy HQ), and
+                    // standing on it, for one that can capture, is the point.
+                    int gained = context.map.Travel(unit, unit.tile, job.tile) - context.map.Travel(unit, tile, job.tile);
+                    bonus += worth * context.profile.capturePull * gained;
+                    if (tile == job.tile && Building.CanCapture(unit)) bonus += worth * context.profile.capturePull * 6f;
                 } else bonus += worth * context.profile.assignmentPull / (1 + context.map.Travel(unit, tile, job.tile));
             }
 

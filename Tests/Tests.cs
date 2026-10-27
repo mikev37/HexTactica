@@ -78,6 +78,7 @@ public static class Tests {
             }
             return 0;
         }
+        if (probe == "unopposed") { Scenarios.Unopposed(Environment.GetEnvironmentVariable("FILE"), tweak, int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30")); return 0; }
         if (probe == "suite") {
             Scenarios.Suite(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
                             Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");

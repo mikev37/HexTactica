@@ -790,7 +790,10 @@ public class AIPlayer : MonoBehaviour {
         string who = unit.name.Replace("(Clone)", "");
         if (!aboard && map.TurnsToContact(unit) <= Profile.objectiveContactTurns) return false;
         if (!aboard && Transporting.AvailableFor(player, unit).Count == 0) { if (Trace != null) Trace("   " + who + " ride: no transport can take it"); return false; }
-        HexTile objectiveTile = front != null && front.objectiveTile != null ? front.objectiveTile : AISupplyChain.Objective(map);
+        // Where it is going: its own errand (a building to take, ground to look at) if it has one, else its front's objective.
+        Objective errand;
+        HexTile objectiveTile = assignments != null && assignments.TryGetValue(unit, out errand) && errand.tile != null && (errand.kind == ObjectiveKind.Capture || errand.kind == ObjectiveKind.Scout) ? errand.tile
+                              : front != null && front.objectiveTile != null ? front.objectiveTile : AISupplyChain.Objective(map);
         if (objectiveTile == null) return false;
         int from = map.Travel(unit, unit.tile, objectiveTile);
         float worth = AIScore.Worth(unit);

@@ -3422,6 +3422,62 @@ public static class Scenarios {
         if (n > 0) Console.WriteLine(string.Format("  SUITE over {0} games: challenger {1:0.0%} (runs won {2}), champion {3:0.0%} (runs won {4})", n, sumC / n, wonC, sumB / n, wonB));
     }
 
+    /// <summary>
+    /// PROBE=unopposed FILE=&lt;map&gt; [SET=...] [ROUNDS=30] [FOG=off]: Blue (this AI) alone — every Red
+    /// unit removed, Red's buildings left, nobody playing Red. Each round: how close Blue's supply has
+    /// come to Red's HQ (land steps from it to the nearest tile Blue supplies), how close its nearest
+    /// fighting unit is, the share of the land it supplies, where its supply units are; and the round
+    /// the HQ falls. Does it get its supply to the enemy HQ, and how fast?
+    /// </summary>
+    public static void Unopposed(string file, Action<AIProfile> tweak, int rounds) {
+        // Standard rules (under attrition a side with no fighting units is out at once), no purchases.
+        if (Environment.GetEnvironmentVariable("RULES") == null) Environment.SetEnvironmentVariable("RULES", "standard");
+        if (Environment.GetEnvironmentVariable("PURCHASES") == null) Environment.SetEnvironmentVariable("PURCHASES", "off");
+        ScenarioFile.Loaded l = ScenarioFile.Load(Find(file), "Human", tweak);
+        Rig.gc.fogOfWar = (Environment.GetEnvironmentVariable("FOG") ?? "off") == "on"; FogOfWar.Reset();
+        foreach (Unit u in new List<Unit>(l.other.units)) if (u != null) u.Perish();
+        Building theirs = GameController.HQOf(l.other);
+        HexTactica.AI.AIMap m0 = new HexTactica.AI.AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+        Dictionary<HexTile, int> steps = m0.LandSteps(theirs.tile);
+        int land = 0; foreach (HexTile t in Rig.hg.tiles) if (t != null && t.terrain != null && t.terrain.elevation >= 0) land++;
+        int start = 99; foreach (Unit u in l.ai.units) { int d; if (u != null && u.tile != null && steps.TryGetValue(u.tile, out d)) start = Math.Min(start, d); }
+        Console.WriteLine("unopposed: " + Path.GetFileNameWithoutExtension(file) + ", Red HQ at (" + theirs.tile.x + "," + theirs.tile.y + "), Blue's nearest unit " + start + " land steps from it; " + land + " land tiles");
+        GameController gc = Rig.gc;
+        int reached = -1;
+        int traceRound = int.Parse(Environment.GetEnvironmentVariable("TRACEROUND") ?? "-1");
+        for (int r = 0; r < rounds && !gc.gameOver; r++) {
+            if (r == traceRound) { AIPlayer.Trace = Console.WriteLine; if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine; }
+            ScenarioFile.PlayTurn(); if (!gc.gameOver) ScenarioFile.PlayTurn();
+            AIPlayer.Trace = null; AITactical.DecisionLog = null;
+            SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
+            int supplyGap = 99, unitGap = 99, ours = 0;
+            foreach (HexTile t in Rig.hg.tiles) {
+                if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
+                if (net.DepthAt(t) <= 0) continue;
+                ours++;
+                int d; if (steps.TryGetValue(t, out d)) supplyGap = Math.Min(supplyGap, d);
+            }
+            List<string> hubs = new List<string>();
+            foreach (Unit u in l.ai.units) {
+                if (u == null || u.tile == null) continue;
+                int d; bool on = steps.TryGetValue(u.tile, out d);
+                if (u.Hub != null && !u.Hub.producer) hubs.Add("(" + u.tile.x + "," + u.tile.y + ")" + (on ? d.ToString() : "?") + (net.connectedHubs.Contains(u.Hub) ? "" : "x"));
+                else if (u.Firepower > 0 && on) unitGap = Math.Min(unitGap, d);
+            }
+            if (supplyGap == 0 && reached < 0) reached = r;
+            int held = 0, all = 0; List<string> taking = new List<string>();
+            foreach (Building b in Building.all) {
+                if (b == null || b.IsHQ) continue;
+                all++; if (b.owner == l.ai) held++;
+                else if (b.capturingPlayer == l.ai && b.capturePoints > 0) taking.Add("(" + b.tile.x + "," + b.tile.y + ")" + b.capturePoints);
+            }
+            Console.WriteLine(string.Format("  round {0,2}: supply {1,2} steps from their HQ, nearest unit {2,2}; land supplied {3,4:0%}; buildings {8}/{9}{10}; HQ {4}/{5} {6}; supply units {7}",
+                r, supplyGap, unitGap, ours / (float)land, theirs.capturePoints, theirs.CaptureThreshold, theirs.owner == l.other ? "theirs" : theirs.owner == l.ai ? "OURS" : "neutral", string.Join(" ", hubs.ToArray()),
+                held, all, taking.Count > 0 ? " (taking " + string.Join(" ", taking.ToArray()) + ")" : ""));
+        }
+        Console.WriteLine("result: " + (gc.gameOver && gc.winner == l.ai ? "took the HQ on round " + gc.days : "HQ not taken") + "; supply reached the HQ " + (reached >= 0 ? "on round " + reached : "never"));
+    }
+
     /// <summary>The suite's three measures for <paramref name="us"/> at the end: material share, share of the land only it supplies, share of the buildings' income; all 1 if it won, 0 if it lost.</summary>
     static float[] Score(Player us, Player them, GameController gc) {
         if (gc.gameOver && gc.winner == us) return new[] { 1f, 1f, 1f };
