@@ -764,7 +764,8 @@ public class AIPlayer : MonoBehaviour {
             }
             // A link of the supply chain: planned again now, with the supply units that have
             // already moved where they are and the army where it went.
-            CampaignObjective job = campaign != null ? campaign.ObjectiveOf(hub) : null;
+            // Supply front first serves the whole army, the campaign's task forces included.
+            CampaignObjective job = campaign != null && !Profile.supplyFrontFirst ? campaign.ObjectiveOf(hub) : null;
             if (job != null && unit.trasnporter == null) {
                 // A task force's supply: its own chain toward where it gathers, never ahead of its army.
                 List<Unit> moved = new List<Unit>();

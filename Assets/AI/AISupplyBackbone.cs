@@ -46,7 +46,8 @@ namespace HexTactica.AI {
         public static List<List<Unit>> Groups(AIMap map) {
             List<Unit> army = new List<Unit>();
             foreach (Unit u in map.ownUnits)
-                if (u != null && u.tile != null && u.trasnporter == null && u.Firepower > 0 && u.Hub == null && !IsCarrier(u) && !LocomotionRules.NeedsBase(u.locomotion)) army.Add(u);
+                if (u != null && u.tile != null && u.trasnporter == null && u.Firepower > 0 && u.Hub == null && !IsCarrier(u) && !LocomotionRules.NeedsBase(u.locomotion)
+                    && !AICampaign.HomeFight(u, map, map.profile)) army.Add(u);
             army.Sort(AIMap.CompareUnits);
             List<List<Unit>> groups = new List<List<Unit>>();
             HashSet<Unit> seen = new HashSet<Unit>();

@@ -371,6 +371,12 @@ namespace HexTactica.AI {
                     else {
                         o.value = Mathf.Max(b.income * p.objectiveHorizonTurns, average * 2f);
                         if (b.producesSupply) o.value += average * 2f;
+                        // What it does for the war (campaignBuildingTiers): a building that makes units,
+                        // then one that makes supply, above cities and resupply points.
+                        if (p.campaignBuildingTiers) {
+                            bool produces = b.buildable != null && b.buildable.Count > 0;
+                            o.value *= produces ? p.productionBuildingWeight : b.producesSupply ? p.supplyBuildingWeight : 1f;
+                        }
                     }
                     // At least someone who can take it, at full strength.
                     float capturer = float.MaxValue;
@@ -505,6 +511,13 @@ namespace HexTactica.AI {
             return null;
         }
 
+        /// <summary>In contact within homeFightRadius of our HQ: left to the ordinary tactics (and supply).</summary>
+        public static bool HomeFight(Unit u, AIMap map, AIProfile p) {
+            if (p.homeFightRadius <= 0 || u == null || u.tile == null) return false;
+            Building home = GameController.HQOf(map.player);
+            return home != null && home.tile != null && u.tile.Distance(home.tile) <= p.homeFightRadius && map.TurnsToContact(u) <= p.objectiveContactTurns;
+        }
+
         // ------------------------------------------------------------------ task forces
 
         void Allocate(List<CampaignObjective> candidates, AIMap map, AIProfile p, AICampaign keep) {
@@ -512,6 +525,8 @@ namespace HexTactica.AI {
             foreach (Unit u in map.ownUnits) {
                 if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
                 if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;
+                // Fighting close to home (homeFightRadius): the ordinary tactics, not a task force.
+                if (p.homeFightRadius > 0 && HomeFight(u, map, p)) continue;
                 pool.Add(u);
             }
             List<SupplyPoint> hubPool = new List<SupplyPoint>();
