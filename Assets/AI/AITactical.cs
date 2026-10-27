@@ -331,7 +331,14 @@ namespace HexTactica.AI {
             if (goal == null) return 0f;
             int now = map.Travel(unit, unit.tile, goal), then = map.Travel(unit, stop, goal);
             int floor = gathering ? f.campaignStagingRadius : Mathf.Max(0, f.paceLimit);
-            return profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
+            // A building to take, and this unit cannot take it: beside it is as far as it goes, and
+            // standing on it costs a step — it blocks the one that can. (A gunship parked on the city
+            // that was the campaign's objective, for the whole game, earned the most for being there.)
+            bool blocker = !gathering && f.objective != null && goal == f.objectiveTile && !Building.CanCapture(unit);
+            if (blocker) floor = Mathf.Max(floor, 1);
+            float v = profile.campaignStep * (Mathf.Max(now, floor) - Mathf.Max(then, floor));
+            if (blocker && stop == goal) v -= profile.campaignStep * 2f;
+            return v;
         }
 
         static AIAction ByWorld(Unit unit, AIMap map, AIProfile profile, Posture posture, List<Option> options, string tag) {

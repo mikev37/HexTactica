@@ -407,6 +407,9 @@ public static class Scenarios {
         make("ai-fight-before-capture", "aiFightFirst", (a, o) => {
                  Rig.PlaceBuilding("City", null, 1, 0); Put("Grunt", a, 0, 0); Put("Grunt", o, 1, -1); },
              "A Blue grunt beside a neutral city, with a Red grunt beside it too. With an attack open to it, it does not step onto the city to capture (AIProfile.fightBeforeCapture): it attacks, or falls back if the attack is a bad one; with the rule off it captures.");
+        make("ai-campaign-clear-the-building", "aiCampaignClear", (a, o) => {
+                 Rig.PlaceBuilding("City", null, -2, 0); Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Grunt", o, 5, -3); },
+             "Campaign on: a neutral city near Blue's HQ, a Blue tank standing on it and a Blue grunt beside it, Red far away. The city is the campaign's objective; the tank cannot capture, so it steps off on Blue's first turn, and by Blue's second the grunt is on the city taking it. (A gunship parked on a city a whole game long kept Blue's army round it for 30 rounds on RiverCrossing.)");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
         Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
@@ -861,6 +864,18 @@ public static class Scenarios {
                 HexTile to = act.destination ?? g.tile;
                 detail = "heal on the city " + onCity + ", on plain supplied ground " + plain + "; the grunt " + act.kind + " to (" + to.x + "," + to.y + ") - " + act.reason;
                 return onCity == 3f && plain == 1f && to == city.tile;
+            }
+            case "aiCampaignClear": {
+                Unit tank = Rig.At(-2, 0).occupier, g = Rig.At(-3, 1).occupier;
+                Building city = Rig.At(-2, 0).building;
+                l.ai.GetComponent<AIPlayer>().Profile.campaign = true;
+                ScenarioFile.PlayTurn();
+                bool off = tank.tile != city.tile;
+                ScenarioFile.PlayTurn(); ScenarioFile.PlayTurn();
+                AICampaign c = l.ai.GetComponent<AIPlayer>().CurrentCampaign;
+                string obj = c == null ? "none" : string.Join("; ", c.objectives.ConvertAll(x => x.kind + "(" + (x.target != null ? x.target.x + "," + x.target.y : "-") + ")").ToArray());
+                detail = "objectives " + obj + "; the tank off the city on Blue's first turn " + off + "; after Blue's second: tank at " + Pos(tank.tile) + ", grunt at " + Pos(g.tile) + ", city " + (city.capturingPlayer == l.ai ? "being taken by Blue" : "not being taken") + " (" + city.capturePoints + ")";
+                return off && tank.tile != city.tile && g.tile == city.tile;
             }
             case "aiFightFirst": {
                 Unit g = Rig.At(0, 0).occupier, e = Rig.At(1, -1).occupier;
