@@ -125,15 +125,19 @@ public static class Scenarios {
                     Building ap = null;
                     foreach (HexTile c in Deployment(hq, Rig.hg.tiles.Count)) {
                         if (c.Distance(hq) < 2 || c.building != null || c.occupier != null) continue;
-                        Building b = Rig.PlaceBuilding("Airport", p, c.x, c.y);
-                        List<HexTile> all = new List<HexTile>(b.ServiceTiles());
-                        bool fits = b.Footprint.Count == 2 && b.runway.Count == 3;
-                        foreach (HexTile t in all) if (t == null || t.occupier != null || t == hq || t.terrain == T("Water") || (t.building != null && t.building != b)) fits = false;
-                        if (fits) { ap = b; break; }
-                        b.Release(); BuildingController.bc.buildings.Remove(b); Building.all.Remove(b);
+                        // An airfield: the airport and its three runways, all on dry, free ground.
+                        bool fits = c.terrain != T("Water");
+                        foreach (int[] o in new[] { new[] { 0, 1 }, new[] { 1, 1 }, new[] { -1, 1 } }) {
+                            HexTile t = Rig.At(c.x + o[0], c.y + o[1]);
+                            if (t == null || t.occupier != null || t == hq || t.terrain == T("Water") || t.building != null) fits = false;
+                        }
+                        if (!fits) continue;
+                        ap = Rig.PlaceAirfield(p, c.x, c.y);
+                        break;
                     }
                     if (ap == null) { ok = false; break; }
-                    List<HexTile> pads = new List<HexTile>(ap.ServiceTiles());
+                    List<HexTile> pads = new List<HexTile> { ap.tile };
+                    foreach (Building rw in Runways(ap)) pads.Add(rw.tile);
                     Put("Fighter", p, pads[0].x, pads[0].y);
                     Put("Fighter", p, pads[1].x, pads[1].y);
                     Put("AirTanker", p, pads[2].x, pads[2].y);
@@ -354,8 +358,8 @@ public static class Scenarios {
              "A Blue City at 3 points, a Red grunt (6) on it: after Red's turn it is neutral with 3 Red.");
         make("rule-attack-no-capture", "attackNoCapture", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 1, 0); },
              "A Red grunt on a Blue City that attacks during its turn does not capture.");
-        make("rule-contested-airport", "contested", (a, o) => { Building ap = Rig.PlaceBuilding("Airport", a, 0, 0); ap.capturePoints = 3; Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0); },
-             "A two-tile Airport (threshold 15) at 3 Blue, a Blue grunt and a Red grunt on it: Blue cannot raise it; Red brings it to 0 (neutral), not past.");
+        make("rule-contested-airport", "contested", (a, o) => { Building ap = Rig.PlaceBuilding("Airport", a, 0, 0); Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0); },
+             "An Airport made two tiles for the test (threshold 15) at 3 Blue, a Blue grunt and a Red grunt on it: Blue cannot raise it; Red brings it to 0 (neutral), not past.");
         make("rule-neutral-decay", "decay", (a, o) => { Building c = Rig.PlaceBuilding("City", null, 0, 0); c.capturingPlayer = o; c.capturePoints = 4; Put("Grunt", o, 3, 0); },
              "A neutral City with 4 Red progress and no Red infantry on it: 2 after Red's turn. An owned building does not decay.");
         make("rule-hq-standard", "hqStandard", (a, o) => { Put("Grunt", o, -6, 0); },
@@ -370,13 +374,13 @@ public static class Scenarios {
         Action<int, int, int, int> water = (x0, x1, y0, y1) => { for (int x = x0; x <= x1; x++) for (int y = y0; y <= y1; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Water"); } };
         make("attrition-rule-air-fuel", "attritionAirFuel", (a, o) => { Unit f = Put("Fighter", a, -4, 1); f.fuel = 5; f.Strength = 4; Put("Grunt", o, 4, 0); },
              "A Fighter (fuel 5, burns 3 a turn; 3 supplies aboard) inside the HQ's supply but off any airport: not healed or refuelled, its own supplies down to 2 and 2 fuel after a turn, ditched the next.");
-        make("attrition-rule-air-base", "attritionAirBase", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Unit f = Put("Fighter", a, -3, 3); f.fuel = 2; f.Strength = 4; Put("Grunt", o, 4, 0); },
+        make("attrition-rule-air-base", "attritionAirBase", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, -3, 3); f.fuel = 2; f.Strength = 4; Put("Grunt", o, 4, 0); },
              "A Fighter on its own airport's runway (fuel 2, strength 4) is refuelled to 14 and healed to 5.");
         make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit t = Put("AirTanker", a, 1, 0); t.refuelStock = 1; Put("Grunt", o, 5, 0); },
              "A Fighter starting its turn beside an air tanker with 1 refuel left is refuelled (tanker 0); the next turn the tanker is empty and the fighter burns 3.");
         make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
-        make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
+        make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
              "A Fighter with 3 fuel flies 3 tiles onto its airport's runway (a plain move): refuelled and re-armed as it lands (fuel 14, ammo 6). Another lands there as a move and attack: nothing until its next turn (fuel 5 - 3 = 2, ammo 1). The airport is then lost before their next turn: the first burns a turn's fuel (11) and is not ditched.");
         make("attrition-rule-supply-aboard", "attritionSupplyAboard", (a, o) => { Put("APC", a, 1, 0); Put("Supplies", a, 2, 0); Put("Grunt", o, 6, -3); },
              "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off.");
@@ -515,8 +519,8 @@ public static class Scenarios {
                  Rig.At(3, -2).terrain = T("Bridge"); Rig.At(3, -2).road = true; Put("Grunt", a, 3, -2);
                  Rig.PlaceBuilding("City", a, -3, 2); Put("Grunt", a, -3, 2); Put("Supplies", a, -4, 3); },
              "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit ten times, becomes water: no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it earns, supplies and builds nothing until repaired. Water takes no damage.");
-        make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceBuilding("Airport", a, -3, 2); Put("Grunt", o, -3, 3); },
-             "A Red grunt on a Blue airport's runway tile does not capture it: runways and docks are not part of the building.");
+        make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Put("Grunt", o, -3, 3); },
+             "A Red grunt on a runway beside a Blue airport does not capture the airport: the runway is a building of its own.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
                  water(-2, 1, -7, 7);
                  Rig.PlaceBuilding("NavalYard", a, -3, 0);
@@ -561,6 +565,8 @@ public static class Scenarios {
                 return at00.owner == a && at00.capturePoints == 10;
             }
             case "contested": {
+                // Buildings are one tile now: give this one a second, so two sides can stand on it.
+                at00.footprint = new List<TileOffset> { new TileOffset(1, 0) }; at00.Occupy(at00.tile); at00.capturePoints = 3;
                 endTurn(); string afterBlue = show(at00);
                 bool ok1 = at00.owner == a && at00.capturePoints == 3;
                 endTurn();
@@ -1953,11 +1959,12 @@ public static class Scenarios {
                 bool ok1 = f.fuel == f.fuelMax && f.ammo == f.ammoMax;
                 Unit g = Rig.At(0, 4).occupier;
                 HexTile other = null;
-                foreach (HexTile t in ap.ServiceTiles()) if (t != runway && t.occupier == null && other == null) other = t;
+                foreach (Building rw in Runways(ap)) if (rw.tile != runway && rw.tile.occupier == null && other == null) other = rw.tile;
                 g.TeleportTo(other, 3, true);
                 landed += "; move and attack: fuel " + g.fuel + ", ammo " + g.ammo;
                 ok1 = ok1 && g.fuel == 2 && g.ammo == 1;
                 ap.owner = l.other;
+                foreach (Building rw in Runways(ap)) rw.owner = l.other;
                 Unit.Ditched += hook;
                 try { endTurn(); endTurn(); } finally { Unit.Ditched -= hook; }
                 detail = landed + "; airport lost, next turn fuel " + f.fuel + (ditched || f.tile == null ? ", ditched" : ", flying");
@@ -2253,17 +2260,17 @@ public static class Scenarios {
             n++;
         };
         Action<int, int> sea = (x0, x1) => { for (int x = x0; x <= x1; x++) for (int y = -7; y <= 7; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Water"); } };
-        air("fighter-comes-home", "fighterHome", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 2, -2); f.fuel = 11; Put("Grunt", a, -5, 0); }, 4,
+        air("fighter-comes-home", "fighterHome", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Unit f = Put("Fighter", a, 2, -2); f.fuel = 11; Put("Grunt", a, -5, 0); }, 4,
             "A Fighter 6 tiles from its airport with 11 fuel (7 a turn's flying, 3 burnt each turn away): it has to come home now, and should never be ditched.");
-        air("keep-the-runway-clear", "runwayClear", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 8; Put("Grunt", a, -4, 3); Put("Grunt", a, -5, 3); Put("Grunt", a, -3, 3); }, 1,
+        air("keep-the-runway-clear", "runwayClear", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 8; Put("Grunt", a, -4, 3); Put("Grunt", a, -5, 3); Put("Grunt", a, -3, 3); }, 1,
             "Our grunts are parked on all three runway tiles and a Fighter low on fuel needs one: the grunts should leave the runway.");
-        air("reserve-the-runway", "runwayReserve", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f1 = Put("Fighter", a, -1, 2); f1.fuel = 10; Unit f2 = Put("Fighter", a, -1, 3); f2.fuel = 10; Put("Grunt", a, -5, 0); }, 1,
+        air("reserve-the-runway", "runwayReserve", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Unit f1 = Put("Fighter", a, -1, 2); f1.fuel = 10; Unit f2 = Put("Fighter", a, -1, 3); f2.fuel = 10; Put("Grunt", a, -5, 0); }, 1,
             "An airfield cut down to one landing tile and two Fighters that could each stay up three more turns: the first reserves the tile for its third turn, so the second takes it a turn earlier (a reservation holds one turn). Nobody needs it this turn, so it stays empty.");
-        air("lift-off-for-landing", "liftOff", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Put("Fighter", a, -4, 2); Unit f2 = Put("Fighter", a, -1, 2); f2.fuel = 4; Put("Grunt", a, -5, 0); }, 1,
+        air("lift-off-for-landing", "liftOff", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Put("Fighter", a, -4, 2); Unit f2 = Put("Fighter", a, -1, 2); f2.fuel = 4; Put("Grunt", a, -5, 0); }, 1,
             "One landing tile, a full Fighter parked on it and another 3 tiles out with 4 fuel that must land this turn: the parked one lifts off, the other lands (acting last), nobody is ditched.");
-        air("no-build-on-reserved", "noBuildReserved", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f2 = Put("Fighter", a, -1, 2); f2.fuel = 4; Put("Grunt", a, -5, 0); }, 1,
+        air("no-build-on-reserved", "noBuildReserved", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Unit f2 = Put("Fighter", a, -1, 2); f2.fuel = 4; Put("Grunt", a, -5, 0); }, 1,
             "One landing tile reserved for a Fighter landing this turn: the AI may not build a unit on it.");
-        air("tanker-meets-fighter", "tankerMeets", (a, o) => { Rig.PlaceBuilding("Airport", a, -4, 2); Unit f = Put("Fighter", a, 1, -1); f.fuel = 9; Put("AirTanker", a, -3, 0); Put("Grunt", a, -5, 0); }, 1,
+        air("tanker-meets-fighter", "tankerMeets", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Unit f = Put("Fighter", a, 1, -1); f.fuel = 9; Put("AirTanker", a, -3, 0); Put("Grunt", a, -5, 0); }, 1,
             "An air tanker (3 supplies) and a Fighter that is short of fuel: the tanker should end its turn beside the fighter.");
         air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); Put("SupplyBoat", a, -2, 0); Put("SupplyBoat", a, -2, -1); Put("Grunt", a, 3, 0); Put("Grunt", a, -4, 1); }, 3,
             "A Blue grunt stranded on an island across a four-tile strait; two supply boats at the naval yard's docks. Within three turns the boats should link up and supply the island.");
@@ -2491,15 +2498,16 @@ public static class Scenarios {
                 Building ap = Rig.At(-4, 2).building;
                 ScenarioFile.PlayTurn();
                 int blocked = 0;
-                foreach (HexTile t in ap.runway) if (t.occupier != null && !AIAir.NeedsBase(t.occupier)) blocked++;
+                List<Building> rws = Runways(ap);
+                foreach (Building rw in rws) if (rw.tile.occupier != null && !AIAir.NeedsBase(rw.tile.occupier)) blocked++;
                 Unit f = First(l.ai, "Fighter");
-                detail = blocked + " runway tiles still blocked by grunts; fighter at " + (f != null && f.tile != null ? Pos(f.tile) + " fuel " + f.fuel : "gone");
-                return blocked < ap.runway.Count;
+                detail = blocked + " of " + rws.Count + " runways still blocked by grunts; fighter at " + (f != null && f.tile != null ? Pos(f.tile) + " fuel " + f.fuel : "gone");
+                return rws.Count > 0 && blocked < rws.Count;
             }
             case "runwayReserve": {
                 Building ap = Rig.At(-4, 2).building;
                 // One landing tile: the anchor; the rest of the airfield is taken out for the test.
-                foreach (HexTile t in new List<HexTile>(ap.ServiceTiles())) if (t != ap.tile) { t.building = null; ap.tiles.Remove(t); ap.runway.Remove(t); }
+                foreach (Building rw in Runways(ap)) RemoveBuilding(rw);
                 Unit f1 = Rig.At(-1, 2).occupier, f2 = Rig.At(-1, 3).occupier;
                 AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
                 Dictionary<Unit, AIAir.Landing> plan = AIAir.PlanLandings(map);
@@ -2594,11 +2602,11 @@ public static class Scenarios {
                 int after = 0; Unit made = null;
                 foreach (Unit u in l.ai.units) if (u != null && u.tile != null && u.GetComponent<SupplyPoint>() != null && !u.GetComponent<SupplyPoint>().producer) { after++; if (u.tile == GameController.HQOf(l.ai).tile) made = u; }
                 detail = "supply units " + before + " -> " + after + ", money " + l.ai.money + (made != null ? ", new one on the HQ" : "");
-                return after == before + 1 && made != null && l.ai.money == 0;
+                return after == before + 1 && made != null && made.cost > 0 && l.ai.money == 25000 - made.cost;
             }
             case "liftOff": {
                 Building ap = Rig.At(-4, 2).building;
-                foreach (HexTile t in new List<HexTile>(ap.ServiceTiles())) if (t != ap.tile) { t.building = null; ap.tiles.Remove(t); ap.runway.Remove(t); }
+                foreach (Building rw in Runways(ap)) RemoveBuilding(rw);
                 Unit parked = Rig.At(-4, 2).occupier, inbound = Rig.At(-1, 2).occupier;
                 AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
                 Dictionary<Unit, AIAir.Landing> plan = AIAir.PlanLandings(map);
@@ -2612,7 +2620,7 @@ public static class Scenarios {
             }
             case "noBuildReserved": {
                 Building ap = Rig.At(-4, 2).building;
-                foreach (HexTile t in new List<HexTile>(ap.ServiceTiles())) if (t != ap.tile) { t.building = null; ap.tiles.Remove(t); ap.runway.Remove(t); }
+                foreach (Building rw in Runways(ap)) RemoveBuilding(rw);
                 // Leave only the anchor as a footprint tile too, so the reserved tile is the only place to build.
                 foreach (HexTile t in new List<HexTile>(ap.tiles)) if (t != ap.tile) { t.building = null; ap.tiles.Remove(t); }
                 Unit inbound = Rig.At(-1, 2).occupier;
@@ -3586,6 +3594,20 @@ public static class Scenarios {
         float ia = 0f, all = 0f;
         foreach (Building b in Building.all) { if (b == null) continue; all += b.income; if (b.owner == us) ia += b.income; }
         return new[] { ma + mo > 0f ? ma / (ma + mo) : 0.5f, land > 0 ? (float)ours / land : 0f, all > 0f ? ia / all : 0f };
+    }
+
+    /// <summary>The Runway buildings beside <paramref name="ap"/> (Rig.PlaceAirfield).</summary>
+    static List<Building> Runways(Building ap) {
+        List<Building> r = new List<Building>();
+        foreach (Building b in Building.all) if (b != null && b != ap && b.tile != null && b.name.Replace("(Clone)", "").Trim() == "Runway" && b.tile.Distance(ap.tile) <= 2) r.Add(b);
+        return r;
+    }
+
+    /// <summary>Take <paramref name="b"/> off the board (its tiles get their ground back).</summary>
+    static void RemoveBuilding(Building b) {
+        b.Release();
+        if (BuildingController.bc != null) BuildingController.bc.buildings.Remove(b);
+        Building.all.Remove(b);
     }
 
     /// <summary>Tiles only each side supplies, and the buildings each owns (HQs included).</summary>
