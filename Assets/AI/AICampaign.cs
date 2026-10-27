@@ -83,6 +83,7 @@ namespace HexTactica.AI {
             StringBuilder sb = new StringBuilder();
             sb.Append(kind).Append(target != null ? "(" + target.x + "," + target.y + ")" : "");
             if (placeKind != null) sb.Append(' ').Append(placeKind);
+            if (turnsAway < 99) sb.Append(" away ").Append(turnsAway);
             if (building != null) sb.Append(' ').Append(building.name.Replace("(Clone)", ""));
             sb.Append(" value ").Append(value.ToString("0")).Append(" priority ").Append(priority.ToString("0.00"))
               .Append(" enemy ").Append(enemyPower.ToString("0")).Append(hiddenPower > 0f ? " (unseen " + hiddenPower.ToString("0") + ")" : "").Append(" need ").Append(needPower.ToString("0"))
@@ -270,6 +271,7 @@ namespace HexTactica.AI {
                 int nearest = int.MaxValue;
                 foreach (CampaignObjective o in candidates) if (o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout) nearest = Mathf.Min(nearest, o.turnsAway);
                 int band = Mathf.Max(p.campaignMaxTurns, nearest == int.MaxValue ? p.campaignMaxTurns : nearest);
+                if (Debug != null) foreach (CampaignObjective o in candidates) if (o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.turnsAway > band && (o.building != null && (o.building.IsHQ || o.building.producesSupply))) Debug("beyond the band (" + band + " turns): " + o);
                 candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.turnsAway > band);
             }
             candidates.Sort((a, b) => {
