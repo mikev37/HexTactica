@@ -422,6 +422,12 @@ public static class Scenarios {
              "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox) and leaves it alone for 6 turns. With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2).");
         make("ai-hold-the-enemy-hq", "aiHoldHQ", (a, o) => { Put("Grunt", a, 6, 0); Put("Grunt", a, 5, 0); Put("Tank", o, 3, 1); },
              "A Blue grunt on Red's HQ, wounded to strength 1 and out of rations, with a Red tank two tiles off. It stays on the HQ to take it (no withdrawing to heal, no attack that would stop the capture).");
+        make("ai-campaign-chokepoint-objectives", "campaignChokepoints", (a, o) => {
+                 water(0, 0, -7, 7);
+                 Rig.At(0, 0).terrain = T("Bridge");
+                 Rig.At(-1, 0).terrain = T("Road"); Rig.At(1, 0).terrain = T("Road");
+                 Put("Grunt", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", o, 4, 3); },
+             "A river with one bridge (the rule-bridge-road-only board) and Blue's grunts on the near side: the bridge is a chokepoint, and the campaign has an objective at each end of it — on our side and on theirs — to bring into our supply (AICampaign.Places, AIProfile.campaignPlaces).");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
         Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
@@ -946,6 +952,18 @@ public static class Scenarios {
                 foreach (AILogistics.Task t in lg.tasks) shared &= Math.Abs(t.tactical.Count - (hubs - chained) * t.size / (float)Math.Max(1, total)) < 1.01f;
                 detail += "; " + lg.tasks.Count + " fronts, largest first " + ordered + "; " + seen.Count + " of " + hubs + " supply units given one job each " + once + "; shared by size " + shared;
                 return lg.tasks.Count >= 2 && ordered && once && seen.Count == hubs && shared;
+            }
+            case "campaignChokepoints": {
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                prof.campaign = true;
+                AIMap m = new AIMap(l.ai, prof);
+                List<KeyValuePair<HexTile, string>> places = AICampaign.Places(m);
+                List<string> ends = new List<string>(); bool west = false, east = false;
+                foreach (KeyValuePair<HexTile, string> kv in places) if (kv.Value == "chokepoint end") { ends.Add(Pos(kv.Key)); if (kv.Key.x < 0) west = true; if (kv.Key.x > 0) east = true; }
+                AICampaign c = AICampaign.Plan(m, prof, null);
+                int holds = c.considered.FindAll(x => x.kind == CampaignKind.Hold).Count;
+                detail = "chokepoint ends " + string.Join(" ", ends.ToArray()) + "; Hold objectives considered " + holds;
+                return west && east && holds > 0;
             }
             case "aiFightFirst": {
                 Unit g = Rig.At(0, 0).occupier, e = Rig.At(1, -1).occupier;

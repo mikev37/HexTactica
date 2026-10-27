@@ -9,7 +9,8 @@ namespace HexTactica.AI {
         DefendHQ,   // kill or hold off what can reach our HQ
         Secure,     // take and hold a building (the enemy HQ, where the rules let it be taken, is one)
         Clear,      // defeat an enemy group in an area
-        Scout       // look at ground the fog hides
+        Scout,      // look at ground the fog hides
+        Hold        // bring a place into our supply and hold it: an end of a chokepoint (a bridge, a strip of land one tile wide), a road junction
     }
 
     /// <summary>One objective of the campaign and the task force given to it.</summary>
@@ -45,6 +46,8 @@ namespace HexTactica.AI {
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
+        /// <summary>Hold: what kind of place (chokepoint end, road junction).</summary>
+        public string placeKind;
         /// <summary>Turns this task force has been out (0 the turn it formed), whether it has gone in yet, and the turns from its staging tile to its target when it formed (time boxes: AIProfile.campaignTimeBox).</summary>
         public int age;
         public bool went;
@@ -75,6 +78,7 @@ namespace HexTactica.AI {
         public override string ToString() {
             StringBuilder sb = new StringBuilder();
             sb.Append(kind).Append(target != null ? "(" + target.x + "," + target.y + ")" : "");
+            if (placeKind != null) sb.Append(' ').Append(placeKind);
             if (building != null) sb.Append(' ').Append(building.name.Replace("(Clone)", ""));
             sb.Append(" value ").Append(value.ToString("0")).Append(" priority ").Append(priority.ToString("0.00"))
               .Append(" enemy ").Append(enemyPower.ToString("0")).Append(hiddenPower > 0f ? " (unseen " + hiddenPower.ToString("0") + ")" : "").Append(" need ").Append(needPower.ToString("0"))
@@ -218,10 +222,15 @@ namespace HexTactica.AI {
             if (hidden > 0f) {
                 int k = 0;
                 foreach (CampaignObjective o in candidates) if (o.hiddenReach && o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout) k++;
-                k = Mathf.Min(k, split);
+                // Shared over every objective it could be at (not capped at our task forces: with one task
+                // force out, every city was priced against the whole unseen enemy — as large as our own army
+                // and growing with every unit we bought — and one city's task force took the whole army).
+                // Their HQ, and ours, it defends in full.
                 foreach (CampaignObjective o in candidates)
-                    if (o.hiddenReach && o.kind != CampaignKind.Scout)
-                        o.hiddenPower = hidden * (o.kind == CampaignKind.DefendHQ || o.respond || k <= 1 ? 1f : 1f / Mathf.Pow(k, Mathf.Clamp01(p.objectiveSpread)));
+                    if (o.hiddenReach && o.kind != CampaignKind.Scout) {
+                        bool full = o.kind == CampaignKind.DefendHQ || o.respond || k <= 1 || (o.building != null && o.building.IsHQ);
+                        o.hiddenPower = hidden * (full ? 1f : 1f / k);
+                    }
             }
             if (last != null) {
                 foreach (KeyValuePair<string, float> kv in last.opposition) if (kv.Value * 0.85f > 1f) c.opposition[kv.Key] = kv.Value * 0.85f;
@@ -243,9 +252,15 @@ namespace HexTactica.AI {
                 o.priority = o.priority / Mathf.Max(1f, o.turnsAway + 1f);   // +1: taking it
             }
             List<CampaignObjective> beyond = new List<CampaignObjective>(candidates);
-            if (p.campaignMaxTurns > 0 && candidates.Exists(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.turnsAway <= p.campaignMaxTurns))
-                candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.turnsAway > p.campaignMaxTurns
-                                          && (last == null || !last.objectives.Exists(x => x.Id == o.Id)));
+            // The band widens step by step: campaignMaxTurns, or the nearest objective's distance if that is
+            // further — never everything at once. An objective kept from last turn that is now beyond the
+            // band is dropped too.
+            if (p.campaignMaxTurns > 0) {
+                int nearest = int.MaxValue;
+                foreach (CampaignObjective o in candidates) if (o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout) nearest = Mathf.Min(nearest, o.turnsAway);
+                int band = Mathf.Max(p.campaignMaxTurns, nearest == int.MaxValue ? p.campaignMaxTurns : nearest);
+                candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.turnsAway > band);
+            }
             candidates.Sort((a, b) => {
                 if ((a.kind == CampaignKind.DefendHQ) != (b.kind == CampaignKind.DefendHQ)) return a.kind == CampaignKind.DefendHQ ? -1 : 1;
                 if (a.respond != b.respond) return a.respond ? -1 : 1;
@@ -302,6 +317,22 @@ namespace HexTactica.AI {
                 list.Add(o);
             }
 
+            // Places (AIProfile.campaignPlaces): both ends of each chokepoint — a bridge or a strip of land
+            // one tile wide — and the junctions where three or more roads meet, where supply placed covers
+            // the most road; each until it is in our supply. (With only buildings for objectives, the far
+            // side of a lake was only cities a long way off; nothing said "take the crossing".)
+            if (p.campaignPlaces > 0) {
+                List<CampaignObjective> places = new List<CampaignObjective>();
+                foreach (KeyValuePair<HexTile, string> kv in Places(map)) {
+                    if (map.SupplyDepth(kv.Key) > 0) continue;   // ours already
+                    places.Add(new CampaignObjective { kind = CampaignKind.Hold, target = kv.Key, lasting = true, placeKind = kv.Value });
+                }
+                // The nearest to our units only (each costs a route to plan).
+                places.Sort((a, b) => { int c = NearestOwn(a.target, map).CompareTo(NearestOwn(b.target, map)); return c != 0 ? c : CombatMath.CompareTiles(a.target, b.target); });
+                if (places.Count > p.campaignPlaces) places.RemoveRange(p.campaignPlaces, places.Count - p.campaignPlaces);
+                list.AddRange(places);
+            }
+
             // Ground to look at (fog of war).
             if (map.sigint != null) {
                 HashSet<HexTile> near = new HashSet<HexTile>();
@@ -334,6 +365,46 @@ namespace HexTactica.AI {
                 if (d < bd || (d == bd && CombatMath.Precedes(u.tile, best))) { best = u.tile; bd = d; }
             }
             return best;
+        }
+
+        /// <summary>Ground an army moves over: bridges (elevation 0), land and hills, not water or mountains.</summary>
+        static bool ArmyGround(HexTile t) { return t != null && t.terrain != null && t.terrain.elevation >= 0 && t.terrain.elevation <= 2; }
+
+        /// <summary>
+        /// Chokepoint ends and road junctions. A choke tile is a bridge, or army ground with exactly two
+        /// army-ground neighbours that do not touch (a strip one tile wide); the chokepoint is a run of them,
+        /// and its ends the army ground just off each end of the run. A junction is a road tile with three
+        /// or more road neighbours.
+        /// </summary>
+        public static List<KeyValuePair<HexTile, string>> Places(AIMap map) {
+            List<KeyValuePair<HexTile, string>> r = new List<KeyValuePair<HexTile, string>>();
+            if (HexGenerator.hg == null) return r;
+            HashSet<HexTile> choke = new HashSet<HexTile>();
+            foreach (HexTile t in HexGenerator.hg.tiles) {
+                if (!ArmyGround(t) || t.neighbors == null) continue;
+                if (t.terrain.elevation == 0) { choke.Add(t); continue; }
+                List<HexTile> g = new List<HexTile>();
+                foreach (HexTile n in t.neighbors) if (ArmyGround(n)) g.Add(n);
+                if (g.Count == 2 && g[0].Distance(g[1]) > 1) choke.Add(t);
+            }
+            HashSet<HexTile> ends = new HashSet<HexTile>();
+            foreach (HexTile t in choke)
+                foreach (HexTile n in t.neighbors)
+                    if (ArmyGround(n) && !choke.Contains(n) && n.terrain.elevation > 0) ends.Add(n);
+            foreach (HexTile e in ends) r.Add(new KeyValuePair<HexTile, string>(e, "chokepoint end"));
+            foreach (HexTile t in HexGenerator.hg.tiles) {
+                if (t == null || t.terrain == null || !t.terrain.road || t.neighbors == null || ends.Contains(t) || choke.Contains(t)) continue;
+                int roads = 0; foreach (HexTile n in t.neighbors) if (n != null && n.terrain != null && n.terrain.road) roads++;
+                if (roads >= 3) r.Add(new KeyValuePair<HexTile, string>(t, "road junction"));
+            }
+            r.Sort((a, b) => CombatMath.CompareTiles(a.Key, b.Key));
+            return r;
+        }
+
+        static int NearestOwn(HexTile t, AIMap map) {
+            int d = int.MaxValue;
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0) d = Mathf.Min(d, u.tile.Distance(t));
+            return d;
         }
 
         /// <summary>The enemy's combat power we cannot see or account for (0 without the fog).</summary>
@@ -467,6 +538,15 @@ namespace HexTactica.AI {
                     o.value = material * p.killBonus;
                     // Contact on our ground: as defending, just enough when all in, the full margin when spread.
                     o.needPower = o.enemyPower * (o.respond ? Mathf.Lerp(1f, p.objectiveForceRatio, Mathf.Clamp01(p.objectiveSpread)) : p.objectiveForceRatio);
+                    break;
+                }
+                case CampaignKind.Hold: {
+                    // What holding it opens up (campaignPlaceWeight of an average unit's worth of the board,
+                    // as a building with no income is), against what can fight there; someone to stand there.
+                    o.value = average * 2f * p.campaignPlaceWeight;
+                    float one = float.MaxValue;
+                    foreach (Unit u in map.ownUnits) if (u != null && u.Firepower > 0 && u.Hub == null) one = Mathf.Min(one, Power(u));
+                    o.needPower = Mathf.Max(one == float.MaxValue ? average : one, o.enemyPower * p.objectiveForceRatio);
                     break;
                 }
                 case CampaignKind.Scout:
