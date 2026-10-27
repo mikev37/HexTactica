@@ -190,7 +190,9 @@ namespace HexTactica.AI {
                 CampaignObjective o = f.campaignObjective;
                 if (o == null || f.staging) continue;
                 int raw = Pace(f, map);
-                if (raw >= 0 && o.lastPace >= 0 && raw >= o.lastPace) f.paceLimit = -1;
+                bool stall = raw >= 0 && o.lastPace >= 0 && raw >= o.lastPace;
+                if (stall) f.paceLimit = -1;
+                o.stalled = stall && o.went ? o.stalled + 1 : 0;
                 o.lastPace = raw;
             }
             if (memory != null) {
@@ -311,11 +313,15 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Each unit belongs to the nearest front, weighted by that front's priority.</summary>
+        /// <summary>Units BuildFronts leaves out (AICampaign: the campaign's task forces have fronts of their own).</summary>
+        [System.ThreadStatic] public static HashSet<Unit> Exclude;
+
         static void AssignUnits(List<Front> fronts, AIMap map) {
             if (fronts.Count == 0) return;
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
                 if (u.tile == null) continue;
+                if (Exclude != null && Exclude.Contains(u)) continue;
 
                 Front best = null;
                 float bestScore = float.NegativeInfinity;

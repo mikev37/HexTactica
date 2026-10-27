@@ -62,10 +62,24 @@ namespace HexTactica.AI {
             return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1 && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion);
         }
 
-        public static AILogistics Make(AIMap map, AICampaign campaign, ICollection<Unit> reservedTrucks) {
+        public static AILogistics Make(AIMap map, AICampaign campaign, ICollection<Unit> reservedTrucks) { return Make(map, campaign, reservedTrucks, null); }
+
+        /// <param name="ordinary">The ordinary fronts (AIStrategic) of the units on no task force: each is a
+        /// front for supply too, toward its objective (or where it stands).</param>
+        public static AILogistics Make(AIMap map, AICampaign campaign, ICollection<Unit> reservedTrucks, List<Front> ordinary) {
             AILogistics l = new AILogistics();
             if (campaign == null) return l;
-            foreach (CampaignObjective o in campaign.objectives) {
+            List<CampaignObjective> fronts = new List<CampaignObjective>(campaign.objectives);
+            if (ordinary != null)
+                foreach (Front f in ordinary) {
+                    if (f.campaign) continue;
+                    HexTile at = f.objectiveTile ?? f.center;
+                    if (at == null) continue;
+                    CampaignObjective o = new CampaignObjective { kind = CampaignKind.Clear, target = at, went = true, priority = f.priority };
+                    foreach (Unit u in f.assigned) if (u != null && u.Hub == null) o.units.Add(u);
+                    fronts.Add(o);
+                }
+            foreach (CampaignObjective o in fronts) {
                 if (o.kind == CampaignKind.Scout || o.target == null) continue;
                 int n = Size(o);
                 if (n > 0) l.tasks.Add(new Task { front = o, goal = Goal(o), size = n });
@@ -115,12 +129,17 @@ namespace HexTactica.AI {
             }
 
             // The rest: the fronts' own, by their number of units, the largest first taking any remainder.
+            // First what each needs — one for every campaignUnitsPerSupply of its units, the largest front
+            // first — then any left over by their number of units.
             int total = 0; foreach (Task t in l.tasks) total += t.size;
             int left = pool.Count;
             Dictionary<Task, int> share = new Dictionary<Task, int>();
             int given = 0;
-            foreach (Task t in l.tasks) { int s = Mathf.FloorToInt(left * t.size / (float)Mathf.Max(1, total)); share[t] = s; given += s; }
-            for (int i = 0; given < left; i = (i + 1) % l.tasks.Count) { share[l.tasks[i]]++; given++; }
+            int per = Mathf.Max(1, map.profile.campaignUnitsPerSupply);
+            foreach (Task t in l.tasks) { int want = Mathf.Min(Mathf.CeilToInt(t.size / (float)per), left - given); share[t] = want; given += want; }
+            int extra = left - given, extraGiven = 0;
+            foreach (Task t in l.tasks) { int e = Mathf.FloorToInt(extra * t.size / (float)Mathf.Max(1, total)); share[t] += e; extraGiven += e; }
+            for (int i = 0; extraGiven < extra; i = (i + 1) % l.tasks.Count) { share[l.tasks[i]]++; extraGiven++; }
             foreach (Task t in l.tasks) {
                 for (int k = 0; k < share[t] && pool.Count > 0; k++) {
                     // The nearest to the front's units.

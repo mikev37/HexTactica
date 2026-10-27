@@ -79,6 +79,16 @@ namespace HexTactica.AI {
         public int campaignDrawTurns = 0;
         [Tooltip("Time boxes: a task force not gathered on its staging ground by its campaignDrawTurns-th turn is dissolved; one that has not achieved its objective in this many turns (plus a turn for every turn its target is beyond campaignDrawTurns of its staging tile) gives it up. A given-up objective is left alone for this many turns. 0: no time boxes.")]
         public int campaignTimeBox = 6;
+        [Tooltip("Breadth first: no front further than this many turns away (the slowest unit it needs, riding where a transport can take it) while any objective is nearer. 0: no cutoff.")]
+        public int campaignMaxTurns = 3;
+        [Tooltip("A task force that has gone in and whose main body has got no nearer its objective for this many turns in a row is dissolved (its objective given up a while). 0: never.")]
+        public int campaignStallTurns = 2;
+        [Tooltip("Cohesion: a task force's unit more than this many of its own turns from the task force's centre drops out of it. 0: no limit.")]
+        public int campaignCohesionTurns = 2;
+        [Tooltip("A front's own supply units: one for every this many of its fighting units (after its chain).")]
+        public int campaignUnitsPerSupply = 6;
+        [Tooltip("The units no objective needs go to the task forces too (by objectiveSpread). Off: they stay with the ordinary tactics.")]
+        public bool campaignLeftoverToFronts = false;
         [Tooltip("Campaign supply by logistics (AILogistics): each front, largest first, is joined to the network by a chain of supply units, and the supply units left over are the fronts' own, by their number of units, placed tactically near them. Off: each task force runs its own chain of the supply units it was given.")]
         public bool campaignLogistics = true;
         [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]

@@ -50,6 +50,10 @@ namespace HexTactica.AI {
         public bool went;
         /// <summary>Last turn's pace (AIStrategic.Pace) for this task force: no nearer since, it has stalled.</summary>
         public int lastPace = -1;
+        /// <summary>Turns in a row its main body has got no nearer its objective (AIStrategic.Finish).</summary>
+        public int stalled;
+        /// <summary>Turns for the slowest of the units it needs to reach it (on a transport where one can carry it): the front's distance.</summary>
+        public int turnsAway = 99;
         /// <summary>Taken on all in, with everything that could join, because nothing was within reach (its need is what it was given).</summary>
         public bool allIn;
         public int routeTurns;
@@ -151,6 +155,10 @@ namespace HexTactica.AI {
         public static AICampaign Plan(AIMap map, AIProfile p, AICampaign last) {
             AICampaign c = new AICampaign();
             c.turn = last != null ? last.turn + 1 : 0;
+            // Seats on our free ground transports, for the travel times below (Turns).
+            seats = new Dictionary<Unit, int>();
+            planMap = map;
+            foreach (Unit t in map.ownUnits) if (IsSeatCarrier(t)) seats[t] = Mathf.Max(1, t.transportSlots);
             List<CampaignObjective> candidates = Candidates(map, p);
 
             // Time boxes (AIProfile.campaignTimeBox): a task force that has not gathered on its staging
@@ -170,6 +178,7 @@ namespace HexTactica.AI {
                     int age = o.age + 1;
                     string why = null;
                     if (!o.went && o.staging != null && age >= draw && !GatheredEnough(o, map, p)) why = "did not gather in " + draw + " turns";
+                    else if (o.went && p.campaignStallTurns > 0 && o.stalled >= p.campaignStallTurns) why = "stalled " + o.stalled + " turns";
                     else if (age >= p.campaignTimeBox + Mathf.Max(0, o.routeTurns - draw)) why = "not achieved in " + age + " turns";
                     if (why == null) continue;
                     c.givenUp[o.Id] = c.turn + p.campaignTimeBox;
@@ -220,6 +229,23 @@ namespace HexTactica.AI {
             }
             foreach (CampaignObjective o in candidates) { float met; if (c.opposition.TryGetValue(o.Id, out met)) o.minNeed = met * p.objectiveForceRatio; }
             foreach (CampaignObjective o in candidates) Price(o, map, p, o.kind == CampaignKind.DefendHQ || o.respond ? null : reaches);
+            // Breadth first (AIProfile.campaignMaxTurns): each objective's distance is the turns the
+            // slowest of the units it would need takes to get there (riding where a transport can take
+            // it), and its priority is its worth for what it takes per turn to achieve it; none further
+            // than campaignMaxTurns while any objective is nearer. (Fronts were sent across the map for
+            // the enemy HQ — the ordinary tactics' job — while cities stood a few turns off.)
+            List<Unit> forces = new List<Unit>();
+            foreach (Unit u in map.ownUnits)
+                if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1) && !HomeFight(u, map, p)) forces.Add(u);
+            foreach (CampaignObjective o in candidates) {
+                if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
+                o.turnsAway = TurnsAway(o, forces, map);
+                o.priority = o.priority / Mathf.Max(1f, o.turnsAway + 1f);   // +1: taking it
+            }
+            List<CampaignObjective> beyond = new List<CampaignObjective>(candidates);
+            if (p.campaignMaxTurns > 0 && candidates.Exists(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.turnsAway <= p.campaignMaxTurns))
+                candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.turnsAway > p.campaignMaxTurns
+                                          && (last == null || !last.objectives.Exists(x => x.Id == o.Id)));
             candidates.Sort((a, b) => {
                 if ((a.kind == CampaignKind.DefendHQ) != (b.kind == CampaignKind.DefendHQ)) return a.kind == CampaignKind.DefendHQ ? -1 : 1;
                 if (a.respond != b.respond) return a.respond ? -1 : 1;
@@ -233,7 +259,8 @@ namespace HexTactica.AI {
                     CampaignObjective was = last.objectives.Find(x => x.kind == CampaignKind.Clear && x.enemies.Exists(e => o.enemies.Contains(e)));
                     if (was != null) o.inherited = was.Id;
                 }
-            c.considered = candidates;
+            c.considered = new List<CampaignObjective>(candidates);
+            foreach (CampaignObjective o in beyond) if (!candidates.Contains(o)) c.considered.Add(o);   // too far for now: considered, not pursued
             c.replanned = last == null ? "first plan" : timedOut ?? last.ReplanReason(candidates, map, p);
             if (Debug != null) foreach (CampaignObjective o in candidates) Debug("candidate " + o);
             c.Allocate(candidates, map, p, c.replanned == null ? last : null);
@@ -468,7 +495,7 @@ namespace HexTactica.AI {
 
             // Preference: worth over what it takes, the further the less.
             float cost = Mathf.Max(1f, o.needPower) + o.needHubs * AIScore.supplyWorth * 0.5f;
-            o.priority = o.value / cost * Mathf.Pow(Mathf.Clamp01(1f - p.turnPenalty), o.routeLength / 4f);
+            o.priority = o.value / cost;   // per turn to achieve it: Plan
         }
 
         /// <summary>Steps over land from every tile to <paramref name="target"/>, a tile the enemy can strike next turn costing routeDanger more.</summary>
@@ -619,10 +646,21 @@ namespace HexTactica.AI {
                     if (now.kind == CampaignKind.DefendHQ) continue;
                     // ... except one that has gone off to fight elsewhere, or is now too far to join: it
                     // fights where it is by the ordinary tactics, and the task force no longer waits for it.
-                    foreach (Unit u in was.units) if (pool.Contains(u) && CanJoin(u, now, map, p)) { Give(now, u); pool.Remove(u); }
+                    List<Unit> stay = new List<Unit>();
+                    foreach (Unit u in was.units) if (pool.Contains(u) && CanJoin(u, now, map, p)) stay.Add(u);
+                    // Cohesion (campaignCohesionTurns): the task force's centre is the unit with the least
+                    // total distance to the rest; a unit more than that many of its own turns from it drops
+                    // out (the ordinary tactics take it, or another objective). (Half a task force on each
+                    // side of a lake, one with supply and one without.)
+                    HexTile centre = Centre(stay);
+                    foreach (Unit u in stay) {
+                        if (p.campaignCohesionTurns > 0 && centre != null && u.moveRange > 0
+                            && Mathf.CeilToInt(map.Travel(u, u.tile, centre) / (float)u.moveRange) > p.campaignCohesionTurns) continue;
+                        Give(now, u); pool.Remove(u);
+                    }
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
-                    now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns; now.lastPace = was.lastPace;
+                    now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns; now.lastPace = was.lastPace; now.stalled = was.stalled;
                     now.allIn = was.allIn;
                     objectives.Add(now);
                 }
@@ -685,8 +723,11 @@ namespace HexTactica.AI {
             }
 
             // What is left: (1 - spread) of it to the best objective, the rest over all in proportion to need.
+            // (Off by default, campaignLeftoverToFronts: what is left stays with the ordinary tactics, which
+            // fight and push on better than a task force does. Given to the task forces, a city that needed
+            // three units got twenty-four, and the crowd jammed the one bridge on the way.)
             List<CampaignObjective> active = objectives.FindAll(o => o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout);
-            if (active.Count > 0 && pool.Count > 0) {
+            if (p.campaignLeftoverToFronts && active.Count > 0 && pool.Count > 0) {
                 float leftover = 0f; foreach (Unit u in pool) leftover += Power(u);
                 float needSum = 0f; foreach (CampaignObjective o in active) needSum += Mathf.Max(1f, o.needPower);
                 Dictionary<CampaignObjective, float> target = new Dictionary<CampaignObjective, float>();
@@ -767,6 +808,10 @@ namespace HexTactica.AI {
             if (o.units.Contains(u)) return;
             o.units.Add(u);
             o.assignedPower += Power(u);
+            // Its seat on the transport that would carry it there, if riding is quicker.
+            Unit ride;
+            if (planMap != null) TurnsTo(u, o.staging ?? o.target, planMap, out ride); else ride = null;
+            if (ride != null && seats != null && seats.ContainsKey(ride)) seats[ride]--;
         }
 
         /// <summary>Give <paramref name="o"/> the units that fit it best until it has <paramref name="upTo"/> combat power (someone to capture, or to scout, first).</summary>
@@ -829,8 +874,70 @@ namespace HexTactica.AI {
         /// <summary>Turns for <paramref name="u"/> to reach the objective's staging tile.</summary>
         static int Turns(Unit u, CampaignObjective o, AIMap map) {
             HexTile to = o.staging ?? o.target;
+            Unit ride;
+            return TurnsTo(u, to, map, out ride);
+        }
+
+        /// <summary>Of <paramref name="units"/>' tiles, the one with the least total distance to the others.</summary>
+        public static HexTile Centre(List<Unit> units) {
+            HexTile best = null; int bd = int.MaxValue;
+            foreach (Unit a in units) {
+                if (a == null || a.tile == null) continue;
+                int d = 0; foreach (Unit b in units) if (b != null && b.tile != null) d += a.tile.Distance(b.tile);
+                if (d < bd || (d == bd && CombatMath.Precedes(a.tile, best))) { bd = d; best = a.tile; }
+            }
+            return best;
+        }
+
+        /// <summary>Seats left on our free ground transports this plan (Plan; Give takes them).</summary>
+        [System.ThreadStatic] static Dictionary<Unit, int> seats;
+        [System.ThreadStatic] static AIMap planMap;
+
+        static bool IsSeatCarrier(Unit t) {
+            return t != null && t.tile != null && Transporting.IsTransport(t) && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion) && t.transported.Count == 0 && t.Hub == null;
+        }
+
+        /// <summary>
+        /// Turns for <paramref name="u"/> to reach <paramref name="to"/>: walking, or — if a transport with a
+        /// seat left can come to it within one of its moves and carry it — a turn to board and then the
+        /// transport's speed, whichever is quicker (<paramref name="ride"/>: that transport).
+        /// </summary>
+        static int TurnsTo(Unit u, HexTile to, AIMap map, out Unit ride) {
+            ride = null;
             if (to == null || u.tile == null || u.moveRange <= 0) return 99;
-            return Mathf.CeilToInt(map.Travel(u, u.tile, to) / (float)u.moveRange);
+            int walk = Mathf.CeilToInt(map.Travel(u, u.tile, to) / (float)u.moveRange);
+            if (seats == null || Transporting.IsTransport(u)) return walk;
+            int best = walk;
+            foreach (KeyValuePair<Unit, int> kv in seats) {
+                Unit t = kv.Key;
+                if (kv.Value <= 0 || t == u || !Transporting.CanCarry(t, u) || t.moveRange <= 0) continue;
+                if (map.Travel(t, t.tile, u.tile) > t.moveRange + 1) continue;
+                int by = 1 + Mathf.CeilToInt(map.Travel(t, u.tile, to) / (float)t.moveRange);
+                if (by < best || (by == best && ride != null && AIMap.CompareUnits(t, ride) < 0)) { best = by; ride = t; }
+            }
+            return best;
+        }
+
+        /// <summary>The front's distance: of the free units nearest it (by their turns to it) enough for its need, the turns of the slowest.</summary>
+        static int TurnsAway(CampaignObjective o, List<Unit> free, AIMap map) {
+            if (o.target == null) return 99;
+            Dictionary<Unit, int> was = seats;
+            seats = was != null ? new Dictionary<Unit, int>(was) : null;
+            try {
+                List<KeyValuePair<int, Unit>> t = new List<KeyValuePair<int, Unit>>();
+                foreach (Unit u in free) { Unit r; t.Add(new KeyValuePair<int, Unit>(TurnsTo(u, o.target, map, out r), u)); }
+                t.Sort((a, b) => { int c = a.Key.CompareTo(b.Key); return c != 0 ? c : AIMap.CompareUnits(a.Value, b.Value); });
+                float got = 0f; int slowest = 99;
+                bool capturer = o.kind != CampaignKind.Secure;
+                foreach (KeyValuePair<int, Unit> kv in t) {
+                    Unit r; int turns = TurnsTo(kv.Value, o.target, map, out r);
+                    if (r != null) seats[r]--;
+                    got += Power(kv.Value); slowest = turns;
+                    if (Building.CanCapture(kv.Value)) capturer = true;
+                    if (got >= o.needPower && capturer) break;
+                }
+                return slowest;
+            } finally { seats = was; }
         }
 
         /// <summary>How well <paramref name="u"/> fights the enemy kinds there: its damage to them for its worth, in turns-of-travel units (0..3).</summary>
@@ -909,16 +1016,23 @@ namespace HexTactica.AI {
                 if (o.kind == CampaignKind.DefendHQ) { f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = o.value; }
                 fronts.Add(f);
             }
-            Building homeB = GameController.HQOf(map.player);
-            Front home = new Front { center = homeB != null ? homeB.tile : (map.ownUnits.Count > 0 ? map.ownUnits[0].tile : null), priority = 1f };
-            foreach (Unit u in map.ownUnits) {
-                if (u == null || u.tile == null) continue;
-                bool placed = false;
-                foreach (Front f in fronts) if (f.assigned.Contains(u)) { placed = true; break; }
-                if (!placed) home.assigned.Add(u);
-            }
-            if (home.center != null) fronts.Add(home);
             AIStrategic.Finish(fronts, map, p, memory, assaulting);
+            // Everything not on a task force: the ordinary fronts (AIStrategic.BuildFronts), which fight
+            // and push on as the ordinary AI does. (A single front at home with no objective left them
+            // standing there.)
+            HashSet<Unit> taken = new HashSet<Unit>();
+            foreach (Front f in fronts) foreach (Unit u in f.assigned) taken.Add(u);
+            HashSet<Unit> was = AIStrategic.Exclude;
+            AIStrategic.Exclude = taken;
+            List<Front> ordinary;
+            try { ordinary = AIStrategic.BuildFronts(map, p, memory, assaulting); } finally { AIStrategic.Exclude = was; }
+            foreach (Front f in ordinary) if (f.assigned.Count > 0) fronts.Add(f);
+            if (ordinary.Count == 0 || !ordinary.Exists(f => f.assigned.Count > 0)) {
+                Building homeB = GameController.HQOf(map.player);
+                Front home = new Front { center = homeB != null ? homeB.tile : (map.ownUnits.Count > 0 ? map.ownUnits[0].tile : null), priority = 1f };
+                foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && !taken.Contains(u)) home.assigned.Add(u);
+                if (home.center != null) { fronts.Add(home); AIStrategic.Finish(new List<Front> { home }, map, p, memory, assaulting); }
+            }
             return fronts;
         }
 
