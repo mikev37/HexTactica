@@ -263,9 +263,11 @@ namespace HexTactica.AI {
         }
 
         /// <summary>More than two of its moves from the nearest of the front's units.</summary>
-        /// <summary>Front line: in contact next turn, or where an enemy we remember under the fog could strike tonight.</summary>
+        /// <summary>Front line: in contact next turn, or where an enemy we remember under the fog could strike tonight; or capturing a building.</summary>
         public static bool Threatened(Unit u, AIMap map) {
             if (u == null || u.tile == null) return false;
+            // Capturing a building (standing on one not ours): kept in supply as if in contact.
+            if (Building.CanCapture(u) && u.tile.building != null && u.tile.building.owner != map.player) return true;
             if (map.TurnsToContact(u) <= 1) return true;
             return map.sigint != null && map.sigint.Loss(u, u.tile, false) > 0f;
         }

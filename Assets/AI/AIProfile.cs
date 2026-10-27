@@ -93,6 +93,10 @@ namespace HexTactica.AI {
         public int campaignCohesionTurns = 2;
         [Tooltip("A front's own supply units: one for every this many of its fighting units (after its chain).")]
         public int campaignUnitsPerSupply = 6;
+        [Tooltip("Buying: an enemy unit seen counts for this many days after it is last seen.")]
+        public int productionMemoryDays = 6;
+        [Tooltip("Buying: what is bought against an enemy unit counts 1 / (1 + c / this), c the full kills our army could make on it (nothing of ours can hit it: full value).")]
+        public float productionCounterUnits = 2f;
         [Tooltip("The units no objective needs go to the task forces too (by objectiveSpread). Off: they stay with the ordinary tactics.")]
         public bool campaignLeftoverToFronts = false;
         [Tooltip("Place objectives (AICampaign.Places): both ends of chokepoints and road junctions not yet in our supply, at most this many, the nearest our units. 0: none.")]

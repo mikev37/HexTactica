@@ -802,6 +802,9 @@ namespace HexTactica.AI {
                             && Mathf.CeilToInt(map.Travel(u, u.tile, centre) / (float)u.moveRange) > p.campaignCohesionTurns) continue;
                         Give(now, u); pool.Remove(u);
                     }
+                    // A building's task force that has lost its one who could take it gets another (the HQ's
+                    // task force stood a turn from the HQ for seven turns with nobody to capture it).
+                    if (now.kind == CampaignKind.Secure && !now.units.Exists(Building.CanCapture)) Fill(now, pool, map, p, 0f);
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
                     now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns; now.lastPace = was.lastPace; now.stalled = was.stalled;
@@ -840,11 +843,15 @@ namespace HexTactica.AI {
                 if (!kept && o.lasting && o.needHubs > 0 && o.needHubs > hubsLeft) {
                     float per = o.value / Mathf.Max(1, o.needHubs - Mathf.Max(0, hubsLeft));
                     if (per > supplyDemand) { supplyDemand = per; supplyDemandFor = o.Id; }
+                    if (Debug != null) Debug("not taken on: " + o.Id + " needs " + o.needHubs + " supply units, " + hubsLeft + " free");
                     continue;
                 }
                 float still = Mathf.Max(0f, o.needPower - o.assignedPower);
-                float near = 0f; foreach (Unit u in pool) if (CanJoin(u, o, map, p)) near += Power(u);
-                if (still > near && o.assignedPower <= 0f) continue;
+                float near = 0f; int joinable = 0; foreach (Unit u in pool) if (CanJoin(u, o, map, p)) { near += Power(u); joinable++; }
+                if (still > near && o.assignedPower <= 0f) {
+                    if (Debug != null) { float all = 0f; foreach (Unit u in pool) all += Power(u); Debug("not taken on: " + o.Id + " needs " + still.ToString("0") + ", " + joinable + " units that can join have " + near.ToString("0") + " (" + pool.Count + " free have " + all.ToString("0") + ")"); }
+                    continue;
+                }
                 Fill(o, pool, map, p, o.needPower);
                 if (!objectives.Contains(o)) { objectives.Add(o); if (o.lasting) hubsLeft -= o.needHubs; }
                 pursued++;
