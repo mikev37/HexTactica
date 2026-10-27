@@ -46,6 +46,8 @@ namespace HexTactica.AI {
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
+        /// <summary>Not the campaign's: an ordinary front, made a supply front by the logistics (AILogistics).</summary>
+        public bool ordinaryFront;
         /// <summary>Hold: what kind of place (chokepoint end, road junction).</summary>
         public string placeKind;
         /// <summary>Turns this task force has been out (0 the turn it formed), whether it has gone in yet, and the turns from its staging tile to its target when it formed (time boxes: AIProfile.campaignTimeBox).</summary>
@@ -1120,7 +1122,18 @@ namespace HexTactica.AI {
             AIStrategic.Exclude = taken;
             List<Front> ordinary;
             try { ordinary = AIStrategic.BuildFronts(map, p, memory, assaulting); } finally { AIStrategic.Exclude = was; }
-            foreach (Front f in ordinary) if (f.assigned.Count > 0) fronts.Add(f);
+            // The fallback: it does not reach past our supply. An objective of theirs outside it becomes the
+            // supplied tile nearest it (pulls end at the edge of supply; the campaign's fronts carry it further).
+            foreach (Front f in ordinary) {
+                if (f.assigned.Count == 0) continue;
+                if (f.objectiveTile != null && map.SupplyDepth(f.objectiveTile) <= 0) {
+                    Dictionary<HexTile, int> to = map.LandSteps(f.objectiveTile);
+                    HexTile edge = null; int ed = int.MaxValue;
+                    if (to != null) foreach (KeyValuePair<HexTile, int> kv in to) if (map.SupplyDepth(kv.Key) > 0 && (kv.Value < ed || (kv.Value == ed && CombatMath.Precedes(kv.Key, edge)))) { ed = kv.Value; edge = kv.Key; }
+                    if (edge != null) { f.objectiveTile = edge; f.objective = null; f.objectiveIsHQ = false; }
+                }
+                fronts.Add(f);
+            }
             if (ordinary.Count == 0 || !ordinary.Exists(f => f.assigned.Count > 0)) {
                 Building homeB = GameController.HQOf(map.player);
                 Front home = new Front { center = homeB != null ? homeB.tile : (map.ownUnits.Count > 0 ? map.ownUnits[0].tile : null), priority = 1f };

@@ -515,6 +515,22 @@ public class AIPlayer : MonoBehaviour {
         { long __p = AIPerf.Begin();
         queue = AIRoles.Order(actionable, map, Profile);
         AIPerf.End("prepare: roles", __p); }
+        // Supply under the logistics moves tails first: those no other supply unit hangs on before those
+        // others hang on, so a chain whose front has gone draws in from its far end without cutting itself.
+        if (logistics != null) {
+            List<int> slots = new List<int>();
+            List<Unit> hubs = new List<Unit>();
+            for (int i = 0; i < queue.Count; i++) if (queue[i] != null && queue[i].Hub != null && !queue[i].Hub.producer) { slots.Add(i); hubs.Add(queue[i]); }
+            SupplyNetwork.Result all = SupplyNetwork.SolveAll(player, new Dictionary<SupplyPoint, HexTile>());
+            Dictionary<Unit, int> hanging = new Dictionary<Unit, int>();
+            foreach (Unit h in hubs) {
+                SupplyNetwork.Result w = SupplyNetwork.SolveWithout(player, h.Hub);
+                int n = 0; foreach (SupplyPoint x in all.connectedHubs) if (x != h.Hub && !x.producer && !w.connectedHubs.Contains(x)) n++;
+                hanging[h] = n;
+            }
+            hubs.Sort((a, b) => { int c = hanging[a].CompareTo(hanging[b]); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+            for (int i = 0; i < slots.Count; i++) queue[slots[i]] = hubs[i];
+        }
         // (Clearing last turn's notes off the tiles is done on the main thread once this is done: Collect / StepOnce.)
         chainPlan = null;
         treePlan = null;
@@ -1191,6 +1207,12 @@ public class AIPlayer : MonoBehaviour {
     /// its moves of the front's units is placed as any supply unit is, to serve the units around it.
     /// False: not one of the logistics' (spare, or no fronts).
     /// </summary>
+    /// <summary>Would <paramref name="hub"/> moving to <paramref name="to"/> cut off another supply unit joined to the network now?</summary>
+    bool CutsOff(SupplyPoint hub, HexTile to) {
+        if (to == null || to == hub.myUnit.tile) return false;
+        return AISupplyChain.Harm(new Dictionary<SupplyPoint, HexTile> { { hub, to } }, map) > 0;
+    }
+
     bool LogisticsAction(SupplyPoint hub, out AIAction action) {
         action = default(AIAction);
         Unit unit = hub.myUnit;
@@ -1234,14 +1256,12 @@ public class AIPlayer : MonoBehaviour {
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) { transportAssignments[truck] = go; action = AIAction.Board(unit, truck, beside, "logistics for " + t.front.Id + ": boards a truck to (" + claim.to.x + "," + claim.to.y + ")"); return true; }
-                // The truck comes to it.
+                // The truck comes to it; meanwhile it does not wait, it walks that way (the truck meets it).
                 HexTile meet = null;
                 foreach (HexTile n in unit.tile.neighbors) if (n != null && (n.occupier == null || n.occupier == truck) && truck.CanEnter(n) && (meet == null || map.Travel(truck, truck.tile, n) < map.Travel(truck, truck.tile, meet))) meet = n;
-                if (meet != null) {
-                    transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = meet, dropoff = claim.to, destination = claim.to, stayAboard = true };
-                    action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": waits for its truck");
-                    return true;
-                }
+                if (meet != null) transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = meet, dropoff = claim.to, destination = claim.to, stayAboard = true };
+                AIAction toward = AISupplyTree.Step(unit, claim.to, map);
+                if (!toward.IsNothing && !CutsOff(hub, toward.destination)) { toward.reason = "logistics for " + t.front.Id + ": walks toward (" + claim.to.x + "," + claim.to.y + "), its truck coming"; action = toward; return true; }
             }
         }
         // The front's chain short: to the back of the chain (AILogistics.DropNear), to be its next rear link.
@@ -1250,7 +1270,7 @@ public class AIPlayer : MonoBehaviour {
             if (back != null) {
                 if (back == unit.tile) { action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": at the back of the chain, to join it"); return true; }
                 action = AISupplyTree.Step(unit, back, map);
-                if (!action.IsNothing) { action.reason = "logistics for " + t.front.Id + ": to the back of the chain at (" + back.x + "," + back.y + ")"; return true; }
+                if (!action.IsNothing && !CutsOff(hub, action.destination)) { action.reason = "logistics for " + t.front.Id + ": to the back of the chain at (" + back.x + "," + back.y + ")"; return true; }
             }
         }
         HexTile near;
@@ -1263,7 +1283,7 @@ public class AIPlayer : MonoBehaviour {
                 return true;
             }
             action = AISupplyTree.Step(unit, near, map);
-            if (!action.IsNothing) { action.reason = "logistics for " + t.front.Id + ": heads to the front (" + d + " away)"; return true; }
+            if (!action.IsNothing && !CutsOff(hub, action.destination)) { action.reason = "logistics for " + t.front.Id + ": heads to the front (" + d + " away)"; return true; }
         }
         TransportPlan plan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
         if (plan == null && unit.trasnporter != null) plan = UnloadHere(unit);
