@@ -54,6 +54,8 @@ public class AIPlayer : MonoBehaviour {
     readonly HashSet<Unit> reservedTransports = new HashSet<Unit>();
     /// <summary>This turn's supply backbone (supplyBackbone), planned once the army has moved.</summary>
     AISupplyBackbone.Plan backbone, backbonePlanned;
+    /// <summary>This turn's supply for the campaign's fronts (AIProfile.campaignLogistics): each front's chain, then its own supply units.</summary>
+    HexTactica.AI.AILogistics logistics;
     /// <summary>This turn's front-line supply units (supplyFrontFirst).</summary>
     readonly HashSet<SupplyPoint> frontHubs = new HashSet<SupplyPoint>();
     AIMap backboneTurn;
@@ -474,6 +476,8 @@ public class AIPlayer : MonoBehaviour {
                 if (best != null && bd < 99) frontHubs.Add(best);
             }
         if (Profile.supplyBackbone) backbonePlanned = AISupplyBackbone.Make(map, null);
+        logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, reservedTransports) : null;
+        if (logistics != null && Trace != null) Trace("   " + logistics);
         { long __p = AIPerf.Begin();
         objectives = AIObjectives.Build(map, Profile);
         AIPerf.End("prepare: objectives", __p); }
@@ -765,7 +769,11 @@ public class AIPlayer : MonoBehaviour {
             // A link of the supply chain: planned again now, with the supply units that have
             // already moved where they are and the army where it went.
             // Supply front first serves the whole army, the campaign's task forces included.
-            CampaignObjective job = campaign != null && !Profile.supplyFrontFirst ? campaign.ObjectiveOf(hub) : null;
+            if (logistics != null) {
+                AIAction la;
+                if (LogisticsAction(hub, out la)) return la;
+            }
+            CampaignObjective job = campaign != null && !Profile.supplyFrontFirst && logistics == null ? campaign.ObjectiveOf(hub) : null;
             if (job != null && unit.trasnporter == null) {
                 // A task force's supply: its own chain toward where it gathers, and once it has gone in, on
                 // toward its objective — never ahead of its army either way. (Aimed at the staging ground
@@ -1144,5 +1152,63 @@ public class AIPlayer : MonoBehaviour {
     public List<Front> CurrentFronts { get { return fronts; } }
     public List<Objective> CurrentObjectives { get { return objectives; } }
     public AICampaign CurrentCampaign { get { return campaign; } }
+
+    /// <summary>
+    /// A supply unit's move under the campaign's logistics (AILogistics): a link of a front's chain
+    /// goes to its link (walking, or by truck on a leap), planned again with the links that have
+    /// already moved where they are; one of a front's own heads to the front, and once within two of
+    /// its moves of the front's units is placed as any supply unit is, to serve the units around it.
+    /// False: not one of the logistics' (spare, or no fronts).
+    /// </summary>
+    bool LogisticsAction(SupplyPoint hub, out AIAction action) {
+        action = default(AIAction);
+        Unit unit = hub.myUnit;
+        HexTactica.AI.AILogistics.Task t;
+        if (logistics.chainOf.TryGetValue(hub, out t)) {
+            List<Unit> moved = new List<Unit>();
+            foreach (SupplyPoint h in t.chain) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
+            HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
+            foreach (Unit tr in transportAssignments.Keys) busy.Add(tr);
+            AISupplyChain.Plan now = HexTactica.AI.AILogistics.Chain(map, t, t.chain, moved, busy);
+            AISupplyChain.Leap ride;
+            if (now.leaps.TryGetValue(hub, out ride)) {
+                transportAssignments[ride.truck] = new TransportPlan { cargo = unit, transport = ride.truck, rendezvous = ride.truck.tile, dropoff = ride.tile, destination = ride.tile, stayAboard = true };
+                reservedTransports.Add(ride.truck);
+                if (unit.trasnporter == ride.truck) { action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": rides its truck to (" + ride.tile.x + "," + ride.tile.y + ")"); return true; }
+                action = AIAction.Board(unit, ride.truck, ride.board, "logistics for " + t.front.Id + ": boards a truck to (" + ride.tile.x + "," + ride.tile.y + ")");
+                return true;
+            }
+            HexTile link;
+            if (unit.trasnporter == null && now.links.TryGetValue(hub, out link)) {
+                action = link == unit.tile ? AIAction.Wait(unit, "logistics for " + t.front.Id + ": holds this link")
+                                           : AIAction.Move(unit, link, 0f, "logistics for " + t.front.Id + ": link moves up (" + now.reachSteps + " steps short)");
+                return true;
+            }
+            // Not a link after all this turn (the others moved first): one of the front's own instead.
+        }
+        if (t == null) logistics.tacticalOf.TryGetValue(hub, out t);
+        if (t == null) return false;
+        HexTile near;
+        int d = HexTactica.AI.AILogistics.NearestOf(t, unit, map, out near);
+        if (near != null && d > 2 * Mathf.Max(1, unit.moveRange)) {
+            if (unit.trasnporter != null) {
+                TransportPlan off = UnloadHere(unit);
+                if (off != null) { transportAssignments[off.transport] = off; reservedTransports.Add(off.transport); }
+                action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": off the truck to walk to the front");
+                return true;
+            }
+            action = AISupplyTree.Step(unit, near, map);
+            if (!action.IsNothing) { action.reason = "logistics for " + t.front.Id + ": heads to the front (" + d + " away)"; return true; }
+        }
+        TransportPlan plan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
+        if (plan == null && unit.trasnporter != null) plan = UnloadHere(unit);
+        if (plan != null) {
+            if (plan.transport != null) { transportAssignments[plan.transport] = plan; reservedTransports.Add(plan.transport); }
+            action = AITransportPlanner.NextAction(plan, map, Profile);
+            return true;
+        }
+        action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": its own supply, no better position");
+        return true;
+    }
     public Dictionary<Unit, Objective> CurrentAssignments { get { return assignments; } }
 }

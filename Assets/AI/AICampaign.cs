@@ -162,6 +162,9 @@ namespace HexTactica.AI {
                 int draw = DrawTurns(p);
                 foreach (CampaignObjective o in last.objectives) {
                     if (o.kind == CampaignKind.DefendHQ || o.respond || p.campaignTimeBox <= 0) continue;
+                    // Being taken (one of ours on it, or our capture under way): never given up now.
+                    // (The HQ push was given up on the turn its grunt was finishing the capture.)
+                    if (o.building != null && o.building.tile != null && ((o.building.tile.occupier != null && o.building.tile.occupier.owner == map.player) || (o.building.capturingPlayer == map.player && o.building.capturePoints > 0))) continue;
                     int age = o.age + 1;
                     string why = null;
                     if (!o.went && o.staging != null && age >= draw && !GatheredEnough(o, map, p)) why = "did not gather in " + draw + " turns";
