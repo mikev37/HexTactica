@@ -291,9 +291,10 @@ public class AIPlayer : MonoBehaviour {
     Outcome Act(Thought t, bool headless) {
         if (t.endTurn) {
             using (NewView().Enter()) {
-                BuySupply();
+                // With the campaign's logistics, supply and transports are bought on the fronts' pressure (AIProduction).
+                if (logistics == null) BuySupply();
                 if (Profile.buyUnits && map != null) {
-                    List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace);
+                    List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace, logistics);
                     if (onBuy != null) foreach (Unit u in bought) onBuy(u);
                 }
             }
@@ -476,7 +477,7 @@ public class AIPlayer : MonoBehaviour {
                 if (best != null && bd < 99) frontHubs.Add(best);
             }
         if (Profile.supplyBackbone) backbonePlanned = AISupplyBackbone.Make(map, null);
-        logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, reservedTransports) : null;
+        logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, null) : null;
         if (logistics != null && Trace != null) Trace("   " + logistics);
         { long __p = AIPerf.Begin();
         objectives = AIObjectives.Build(map, Profile);
@@ -497,6 +498,9 @@ public class AIPlayer : MonoBehaviour {
         map.intents = intents;
         transportAssignments.Clear();
         reservedTransports.Clear();
+        // The trucks the logistics claimed for the fronts' own supply units: theirs before any fighting
+        // unit picks a ride (a fighting unit may ride along, below).
+        if (logistics != null) foreach (HexTactica.AI.AILogistics.Ride r in logistics.rides.Values) reservedTransports.Add(r.truck);
 
         // Units riding a transport stay in the queue: a hub aboard is the one that tells
         // its transport where to go. Excluding them meant a loaded hub was never planned
@@ -695,6 +699,29 @@ public class AIPlayer : MonoBehaviour {
                 }
         }
 
+        // Riding along (campaignLogistics): a fighting unit out of contact beside a truck carrying one of
+        // a front's own supply units to its front, with room for both, gets in if the truck sets down
+        // nearer its own goal than it could walk; the truck lets it out where it stops.
+        if (logistics != null && unit.Firepower > 0 && unit.Hub == null && unit.trasnporter == null
+            && unit.locomotion == Locomotion.Boots && map.TurnsToContact(unit) > Profile.objectiveContactTurns) {
+            HexTile goal = front != null && front.objectiveTile != null ? front.objectiveTile : AISupplyChain.Objective(map);
+            Dictionary<HexTile, int> toGoal = goal != null ? map.LandSteps(goal) : null;
+            int mine;
+            if (toGoal != null && toGoal.TryGetValue(unit.tile, out mine))
+                foreach (KeyValuePair<SupplyPoint, HexTactica.AI.AILogistics.Ride> kv in logistics.rides) {
+                    Unit truck = kv.Value.truck; Unit cargo = kv.Key.myUnit;
+                    int there;
+                    if (truck == null || truck.tile == null || cargo == null || !toGoal.TryGetValue(kv.Value.to, out there) || there > mine - Mathf.Max(1, unit.moveRange)) continue;
+                    if (!Transporting.CanBoardFrom(truck, unit)) continue;
+                    // Only if its supply unit gets in this turn too (already aboard, or beside it).
+                    bool cargoAboard = cargo.trasnporter == truck;
+                    if (!cargoAboard && !Transporting.CanBoardFrom(truck, cargo)) continue;
+                    int need = Mathf.Max(1, unit.weight) + (cargoAboard ? 0 : Mathf.Max(1, cargo.weight));
+                    if (Transporting.FreeWeight(truck) < need || truck.transported.Count + (cargoAboard ? 1 : 2) > truck.transportSlots) continue;
+                    return AIAction.Board(unit, truck, unit.tile, "rides along with the supply to (" + kv.Value.to.x + "," + kv.Value.to.y + ")");
+                }
+        }
+
         // A fighting unit out of contact (an objective's or not): ride a transport toward the
         // objective if that is quicker than walking.
         if (Profile.combatRides && unit.Firepower > 0 && unit.Hub == null) {
@@ -771,7 +798,10 @@ public class AIPlayer : MonoBehaviour {
             // Supply front first serves the whole army, the campaign's task forces included.
             if (logistics != null) {
                 AIAction la;
-                if (LogisticsAction(hub, out la)) return la;
+                if (LogisticsAction(hub, out la)) {
+                    if (Trace != null) Trace("   supply at (" + unit.tile.x + "," + unit.tile.y + ")" + (unit.trasnporter != null ? " aboard" : "") + ": " + la.kind + (la.destination != null ? " to (" + la.destination.x + "," + la.destination.y + ")" : "") + " - " + la.reason);
+                    return la;
+                }
             }
             CampaignObjective job = campaign != null && !Profile.supplyFrontFirst && logistics == null ? campaign.ObjectiveOf(hub) : null;
             if (job != null && unit.trasnporter == null) {
@@ -1169,7 +1199,7 @@ public class AIPlayer : MonoBehaviour {
             foreach (SupplyPoint h in t.chain) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
             HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
             foreach (Unit tr in transportAssignments.Keys) busy.Add(tr);
-            AISupplyChain.Plan now = HexTactica.AI.AILogistics.Chain(map, t, t.chain, moved, busy);
+            AISupplyChain.Plan now = HexTactica.AI.AILogistics.Chain(map, t, t.chain, moved, busy, new HashSet<SupplyPoint>(t.chain));
             AISupplyChain.Leap ride;
             if (now.leaps.TryGetValue(hub, out ride)) {
                 transportAssignments[ride.truck] = new TransportPlan { cargo = unit, transport = ride.truck, rendezvous = ride.truck.tile, dropoff = ride.tile, destination = ride.tile, stayAboard = true };
@@ -1188,6 +1218,31 @@ public class AIPlayer : MonoBehaviour {
         }
         if (t == null) logistics.tacticalOf.TryGetValue(hub, out t);
         if (t == null) return false;
+        // Far from its front with a truck claimed for it: on board, and the truck takes it there.
+        HexTactica.AI.AILogistics.Ride claim;
+        if (logistics.rides.TryGetValue(hub, out claim) && claim.truck != null && claim.truck.tile != null && claim.truck.tile != claim.to) {
+            Unit truck = claim.truck;
+            TransportPlan go = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = claim.to, destination = claim.to, stayAboard = true };
+            if (unit.trasnporter == truck) { transportAssignments[truck] = go; action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": rides its truck to (" + claim.to.x + "," + claim.to.y + ")"); return true; }
+            if (unit.trasnporter == null) {
+                MoveField walk = map.ReachThisTurn(unit);
+                HexTile beside = null;
+                if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
+                else foreach (HexTile n in truck.tile.neighbors) {
+                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, truck.tile, truck)) continue;
+                    if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
+                }
+                if (beside != null) { transportAssignments[truck] = go; action = AIAction.Board(unit, truck, beside, "logistics for " + t.front.Id + ": boards a truck to (" + claim.to.x + "," + claim.to.y + ")"); return true; }
+                // The truck comes to it.
+                HexTile meet = null;
+                foreach (HexTile n in unit.tile.neighbors) if (n != null && (n.occupier == null || n.occupier == truck) && truck.CanEnter(n) && (meet == null || map.Travel(truck, truck.tile, n) < map.Travel(truck, truck.tile, meet))) meet = n;
+                if (meet != null) {
+                    transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = meet, dropoff = claim.to, destination = claim.to, stayAboard = true };
+                    action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": waits for its truck");
+                    return true;
+                }
+            }
+        }
         HexTile near;
         int d = HexTactica.AI.AILogistics.NearestOf(t, unit, map, out near);
         if (near != null && d > 2 * Mathf.Max(1, unit.moveRange)) {

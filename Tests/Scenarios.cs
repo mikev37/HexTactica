@@ -2419,12 +2419,26 @@ public static class Scenarios {
             List<HexTile> road = windingRoad();
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, road[0].x, road[0].y);
+            Put("Supplies", ai, road[3].x, road[3].y); Put("Grunt", ai, road[GruntsAt].x, road[GruntsAt].y); Put("Grunt", ai, road[GruntsAt + 1].x, road[GruntsAt + 1].y);
+            HexTile end = road[road.Count - 1];
+            Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
+            Dictionary<string, string> test = Test("ai-campaign-front-buys-supply", "behaviour", "Human", 2, "campaignBuySupply",
+                "The buy-supply-when-stretched board with the campaign on (logistics): the grunts are the front, beyond what Blue's one supply unit can reach — its chain is short and there is no spare supply unit. With a supply unit's price and a little more, Blue buys a supply unit (for the front), not a fighting unit; with 500 less than the price, it buys nothing and saves for one.");
+            test["rules"] = "attrition";
+            test["purchases"] = "on";
+            ScenarioFile.Save(Path.Combine(Dir, "ai-campaign-front-buys-supply.dat"), test, ai, other, ai);
+            n++;
+        }
+        {
+            List<HexTile> road = windingRoad();
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, road[0].x, road[0].y);
             Put("Grunt", ai, road[1].x, road[1].y); Put("Grunt", ai, road[2].x, road[2].y); Put("APC", ai, road[3].x, road[3].y + 1);
             Put("Supplies", ai, road[4].x, road[4].y); Put("Supplies", ai, road[7].x, road[7].y); Put("Supplies", ai, road[10].x, road[10].y); Put("Tank", ai, road[12].x, road[12].y);
             HexTile end = road[road.Count - 1];
             Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
             Dictionary<string, string> test = Test("grunts-ride-the-apc", "behaviour", "Human", 2, "combatRide",
-                "The winding road again: Blue's two grunts at home with an empty APC beside them (grunts move 3, the APC 6 and takes both); three supply units already carry supply up the road to a tank at the far end of it, the enemy beyond. With rides for fighting units on (combatRides), over two rounds the grunts should ride the APC: the farthest grunt ends further up the road than walking could take it (6 steps), or aboard.");
+                "The winding road again: Blue's two grunts at home with an empty APC beside them (grunts move 3, the APC 6 and takes both); three supply units already carry supply up the road to a tank at the far end of it, the enemy beyond. With rides for fighting units on (combatRides), the APC goes to whoever gains most from it: the first supply unit aboard a vehicle gains more than anyone (it carries supply forward for the whole army), so over two rounds a supply unit rides the APC forward; the grunts walk (or ride along, if there is room).");
             test["rules"] = "attrition";
             ScenarioFile.Save(Path.Combine(Dir, "grunts-ride-the-apc.dat"), test, ai, other, ai);
             n++;
@@ -2666,18 +2680,19 @@ public static class Scenarios {
                 List<Unit> grunts = new List<Unit>();
                 foreach (Unit u in l.ai.units) if (u != null && GameController.UnitName(u) == "Grunt") grunts.Add(u);
                 int start = 0; foreach (Unit g in grunts) start = Math.Max(start, hs(g.tile));
-                List<string> trail = new List<string>(); bool aboard = false;
+                List<string> trail = new List<string>(); bool aboard = false, supplyRode = false;
                 for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) {
                     bool blue = gc.activePlayer == l.ai;
                     ScenarioFile.PlayTurn();
                     if (!blue) continue;
                     List<string> at = new List<string>();
                     foreach (Unit g in grunts) { if (g.trasnporter != null) aboard = true; at.Add(hs(g.tile) + (g.trasnporter != null ? " aboard" : "")); }
+                    foreach (Unit u in l.ai.units) if (u != null && u.Hub != null && u.trasnporter != null && GameController.UnitName(u.trasnporter) == "APC") supplyRode = true;
                     trail.Add(string.Join(", ", at.ToArray()));
                 }
                 int far = 0; foreach (Unit g in grunts) far = Math.Max(far, hs(g.tile));
-                detail = "grunts' steps from home after each Blue turn (start " + start + "): " + string.Join(" | ", trail.ToArray());
-                return far > start + 6 || aboard;
+                detail = "grunts' steps from home after each Blue turn (start " + start + "): " + string.Join(" | ", trail.ToArray()) + "; a supply unit rode the APC " + supplyRode;
+                return supplyRode;
             }
             case "buySupply": {
                 l.ai.money = 25000;
@@ -2688,6 +2703,25 @@ public static class Scenarios {
                 foreach (Unit u in l.ai.units) if (u != null && u.tile != null && u.GetComponent<SupplyPoint>() != null && !u.GetComponent<SupplyPoint>().producer) { after++; if (u.tile == GameController.HQOf(l.ai).tile) made = u; }
                 detail = "supply units " + before + " -> " + after + ", money " + l.ai.money + (made != null ? ", new one on the HQ" : "");
                 return after == before + 1 && made != null && made.cost > 0 && l.ai.money == 25000 - made.cost;
+            }
+            case "campaignBuySupply": {
+                AIPlayer ap = l.ai.GetComponent<AIPlayer>();
+                ap.Profile.campaign = true;
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Building hq = GameController.HQOf(l.ai);
+                int price = 0; foreach (Unit b in hq.buildable) if (b != null && b.Hub != null && !b.Hub.producer) price = price == 0 ? b.cost : Math.Min(price, b.cost);
+                Func<int, string> turn = money => {
+                    l.ai.money = money;
+                    int sup = 0, all = 0; foreach (Unit u in l.ai.units) if (u != null && u.tile != null) { all++; if (u.Hub != null && !u.Hub.producer) sup++; }
+                    ScenarioFile.PlayTurn();
+                    int sup2 = 0, all2 = 0; foreach (Unit u in l.ai.units) if (u != null && u.tile != null) { all2++; if (u.Hub != null && !u.Hub.producer) sup2++; }
+                    ScenarioFile.PlayTurn();   // Red
+                    return "supply units +" + (sup2 - sup) + ", others +" + (all2 - all - (sup2 - sup)) + ", money " + money + " -> " + l.ai.money;
+                };
+                string a1 = turn(price - 500);
+                string a2 = turn(price + 1000);
+                detail = "supply unit costs " + price + "; with " + (price - 500) + ": " + a1 + "; then with " + (price + 1000) + ": " + a2;
+                return a1.StartsWith("supply units +0, others +0") && a2.StartsWith("supply units +1, others +0");
             }
             case "liftOff": {
                 Building ap = Rig.At(-4, 2).building;
