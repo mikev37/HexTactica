@@ -44,6 +44,12 @@ namespace HexTactica.AI {
             context.objective = objective;
             context.posture = posture;
 
+            // On the enemy's HQ and able to take it: it stays and takes it, whatever else — wounded,
+            // starving or about to be attacked. Standing there is worth it for the chance of winning.
+            // (A grunt down to strength 2 out of supply walked off the enemy HQ at 3/10 to find supply.)
+            Building onHQ = unit.tile.building;
+            if (onHQ != null && onHQ.IsHQ && onHQ.owner != unit.owner && Building.CanCapture(unit))
+                return AIAction.Seize(unit, onHQ, 0f, "on the enemy HQ: holds it to take it");
             if (unit.airTanker) return AIAir.DecideTanker(unit, map);
             AIRole role = AIRoles.Classify(unit, profile);
             if (role == AIRole.Wounded && profile.woundedNeedsSafety) return DecideWounded(unit, map, profile, posture);

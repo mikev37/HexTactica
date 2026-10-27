@@ -413,6 +413,8 @@ public static class Scenarios {
         make("ai-campaign-time-box", "aiCampaignTimeBox", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
              "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox) and leaves it alone for 6 turns. With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2).");
+        make("ai-hold-the-enemy-hq", "aiHoldHQ", (a, o) => { Put("Grunt", a, 6, 0); Put("Grunt", a, 5, 0); Put("Tank", o, 3, 1); },
+             "A Blue grunt on Red's HQ, wounded to strength 1 and out of rations, with a Red tank two tiles off. It stays on the HQ to take it (no withdrawing to heal, no attack that would stop the capture).");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
         Action<string, string, Action<Player, Player>, string, string, string> makeBuy = (name, check, setup, question, purchases, allowed) => {
@@ -908,6 +910,15 @@ public static class Scenarios {
                 bool gaveUp = a6[6].StartsWith("no city") && a6[6].Contains("not achieved in 6 turns") && a6[7].StartsWith("no city") && a6[8].StartsWith("no city");
                 bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("no city") && b[2].Contains("did not gather in 2 turns");
                 return kept && gaveUp && dissolved;
+            }
+            case "aiHoldHQ": {
+                Unit g = Rig.At(6, 0).occupier;
+                g.Strength = 1; g.supplies = 0;
+                AIProfile prof = l.ai.GetComponent<AIPlayer>().Profile;
+                AIMap m = new AIMap(l.ai, prof);
+                AIAction act = AITactical.Decide(g, m, prof, Posture.Aggressive);
+                detail = "the grunt on the HQ: " + act.kind + (act.destination != null ? " to " + Pos(act.destination) : "") + " - " + act.reason;
+                return act.kind == AIActionKind.Capture || (act.kind == AIActionKind.Wait);
             }
             case "aiFightFirst": {
                 Unit g = Rig.At(0, 0).occupier, e = Rig.At(1, -1).occupier;
