@@ -26,6 +26,8 @@ namespace HexTactica.AI {
         public class Task {
             public CampaignObjective front;
             public HexTile goal;
+            /// <summary>An owned FOB (or other supply building) the chain makes for first, cut off now, that brings supply nearer the front once joined.</summary>
+            public Building fob;
             public int size;
             public readonly List<SupplyPoint> chain = new List<SupplyPoint>();
             public readonly List<SupplyPoint> tactical = new List<SupplyPoint>();
@@ -81,6 +83,27 @@ namespace HexTactica.AI {
                 if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion)) pool.Add(h);
             if (l.tasks.Count == 0) return l;
 
+            // A supply building of ours cut off from the network — a FOB — that would carry supply nearer
+            // the front once joined: the chain makes for it first (joined, it supplies like the HQ).
+            foreach (Task t in l.tasks) {
+                Dictionary<HexTile, int> toGoal = map.LandSteps(t.goal);
+                int reachNow = int.MaxValue;
+                foreach (KeyValuePair<HexTile, int> kv in toGoal) if (map.SupplyDepth(kv.Key) > 0 && kv.Value < reachNow) reachNow = kv.Value;
+                if (reachNow == 0) continue;
+                Building best = null; int bestGap = int.MaxValue;
+                foreach (Building b in Building.all) {
+                    if (b == null || b.owner != map.player || !b.producesSupply || b.IsHQ || b.tile == null || !b.Functioning) continue;
+                    bool joined = false; foreach (HexTile x in b.Footprint) if (map.SupplyDepth(x) > 0) { joined = true; break; }
+                    if (joined) continue;
+                    int there; if (!toGoal.TryGetValue(b.tile, out there) || there >= reachNow - 2) continue;   // not nearer the front by much
+                    // The one nearest our supply now: the least chain to join it.
+                    Dictionary<HexTile, int> toB = map.LandSteps(b.tile);
+                    int gap = int.MaxValue; foreach (KeyValuePair<HexTile, int> kv in toB) if (map.SupplyDepth(kv.Key) > 0 && kv.Value < gap) gap = kv.Value;
+                    if (gap < bestGap || (gap == bestGap && best != null && CombatMath.CompareTiles(b.tile, best.tile) < 0)) { bestGap = gap; best = b; }
+                }
+                if (best != null) { t.fob = best; t.goal = best.tile; }
+            }
+
             // The logistics chains first, largest front first. Choosing them, the chain connects no one
             // (it is choosing who its links are).
             foreach (Task t in l.tasks) {
@@ -122,17 +145,19 @@ namespace HexTactica.AI {
             foreach (Task t in l.tasks) {
                 // Far: more than two of its moves from where a truck would set it down.
                 List<SupplyPoint> far = new List<SupplyPoint>();
+                Dictionary<SupplyPoint, HexTile> drops = new Dictionary<SupplyPoint, HexTile>();
                 HexTile dropFor = null;
                 foreach (SupplyPoint h in t.tactical) {
                     HexTile from = h.myUnit.trasnporter != null ? h.myUnit.trasnporter.tile : h.myUnit.tile;
                     HexTile drop = DropNear(t, h.myUnit, map);
-                    if (drop != null && map.Travel(h.myUnit, from, drop) > 2 * Mathf.Max(1, h.myUnit.moveRange)) far.Add(h);
+                    if (drop != null && map.Travel(h.myUnit, from, drop) > 2 * Mathf.Max(1, h.myUnit.moveRange)) { far.Add(h); drops[h] = drop; }
                     dropFor = drop;
                 }
                 far.Sort((a, b) => { int c = NearestOf(t, b.myUnit, map).CompareTo(NearestOf(t, a.myUnit, map)); return c != 0 ? c : AIMap.CompareUnits(a.myUnit, b.myUnit); });
                 foreach (SupplyPoint h in far) {
                     Unit u = h.myUnit;
-                    if (u.trasnporter != null && IsCarrier(u.trasnporter)) { trucks.Remove(u.trasnporter); l.rides[h] = new Ride { truck = u.trasnporter, to = DropNear(t, u.trasnporter, map), task = t }; continue; }
+                    if (u.trasnporter != null && IsCarrier(u.trasnporter)) { trucks.Remove(u.trasnporter); l.rides[h] = new Ride { truck = u.trasnporter, to = drops[h], task = t }; continue; }
+                    int walk = Mathf.CeilToInt(map.Travel(u, u.tile, drops[h]) / (float)Mathf.Max(1, u.moveRange));
                     Unit pick = null; int pd = int.MaxValue;
                     foreach (Unit tr in trucks) {
                         if (tr.transported.Count > 0 || !Transporting.CanCarry(tr, u)) continue;
@@ -142,11 +167,14 @@ namespace HexTactica.AI {
                         if (Transporting.CanBoardFrom(tr, u)) d = 0;
                         else foreach (HexTile n in u.tile.neighbors) if (n != null && (n.occupier == null || n.occupier == tr) && tr.CanEnter(n)) d = Mathf.Min(d, map.Travel(tr, tr.tile, n));
                         if (d >= 99) continue;
+                        // Only if fetching it and driving it there beats walking.
+                        int byTruck = Mathf.CeilToInt(d / (float)Mathf.Max(1, tr.moveRange)) + Mathf.CeilToInt(map.Travel(tr, u.tile, drops[h]) / (float)Mathf.Max(1, tr.moveRange));
+                        if (byTruck >= walk) continue;
                         if (d < pd || (d == pd && pick != null && AIMap.CompareUnits(tr, pick) < 0)) { pd = d; pick = tr; }
                     }
                     if (pick == null) continue;
                     trucks.Remove(pick);
-                    l.rides[h] = new Ride { truck = pick, to = DropNear(t, pick, map), task = t };
+                    l.rides[h] = new Ride { truck = pick, to = drops[h], task = t };
                 }
             }
             l.freeTrucks = trucks.Count;
@@ -157,24 +185,26 @@ namespace HexTactica.AI {
         public static bool Far(Task t, Unit u, AIMap map) { return NearestOf(t, u, map) > 2 * Mathf.Max(1, u.moveRange); }
 
         /// <summary>
-        /// Where a truck sets a front's supply unit down. The front's chain short: at its head — the
-        /// supplied tile nearest the front's goal — to go on from there as the chain's next link (the
-        /// spare supply becomes more of the chain). Otherwise the tile nearest the front's leading unit
-        /// (the one nearest its goal) not ahead of it. Either way, one the enemy we know of cannot hit tonight.
+        /// Where a front's spare supply unit goes (on a truck, or walking). The front's chain short: to
+        /// the back of the chain — the tile at the edge of the supply our HQ and buildings give out (no
+        /// supply units), nearest the front's goal — where the next turn's chain takes it as its rear link
+        /// and every link ahead of it moves up: backfilling the nearest, rather than carrying the new one
+        /// all the way to the front. Otherwise the tile nearest the front's leading unit (the one nearest
+        /// its goal) not ahead of it. Either way, one the enemy we know of cannot hit tonight.
         /// </summary>
-        static HexTile DropNear(Task t, Unit truck, AIMap map) {
+        public static HexTile DropNear(Task t, Unit truck, AIMap map) {
             Dictionary<HexTile, int> toGoal = map.LandSteps(t.goal);
             System.Func<HexTile, int> steps = x => { int v; return x != null && toGoal.TryGetValue(x, out v) ? v : int.MaxValue; };
             if (t.gap) {
-                HexTile head = null; int hs = int.MaxValue;
-                foreach (KeyValuePair<HexTile, int> kv in toGoal) {
-                    HexTile x = kv.Key;
-                    if (map.SupplyDepth(x) <= 0 || !truck.CanEnter(x) || !AIPath.CanFinishTurnOn(truck, x)) continue;
-                    if (x.occupier != null && x.occupier != truck) continue;
-                    if (map.KnownLoss(truck, x) > 0f) continue;
-                    if (kv.Value < hs || (kv.Value == hs && CombatMath.Precedes(x, head))) { hs = kv.Value; head = x; }
-                }
-                if (head != null) return head;
+                // The back (the fixed network's edge) and the head (the whole network's edge, the chain
+                // included), each the tile nearest the goal; the one nearer the supply unit itself.
+                SupplyNetwork.Result fixedNet = SupplyNetwork.SolvePlanned(map.player, new Dictionary<SupplyPoint, HexTile>());
+                HexTile back = Edge(toGoal, x => fixedNet.DepthAt(x) > 0, truck, map);
+                HexTile head = Edge(toGoal, x => map.SupplyDepth(x) > 0, truck, map);
+                Unit who = truck;
+                HexTile from = who.trasnporter != null ? who.trasnporter.tile : who.tile;
+                if (back != null && head != null) return map.Travel(who, from, head) < map.Travel(who, from, back) ? head : back;
+                if (back != null || head != null) return back ?? head;
             }
             int front = int.MaxValue; HexTile lead = null;
             foreach (Unit v in t.front.units) if (v != null && v.tile != null && v.Firepower > 0 && v.Hub == null) { int s = steps(v.tile); if (s < front) { front = s; lead = v.tile; } }
@@ -189,6 +219,19 @@ namespace HexTactica.AI {
                 if (kv.Value < bd || (kv.Value == bd && CombatMath.Precedes(x, best))) { bd = kv.Value; best = x; }
             }
             return best ?? lead;
+        }
+
+        /// <summary>Of the tiles where <paramref name="ours"/> holds, the one nearest the goal that <paramref name="u"/> may end on, empty and safe from the enemy we know of.</summary>
+        static HexTile Edge(Dictionary<HexTile, int> toGoal, System.Func<HexTile, bool> ours, Unit u, AIMap map) {
+            HexTile best = null; int bs = int.MaxValue;
+            foreach (KeyValuePair<HexTile, int> kv in toGoal) {
+                HexTile x = kv.Key;
+                if (!ours(x) || !u.CanEnter(x) || !AIPath.CanFinishTurnOn(u, x)) continue;
+                if (x.occupier != null && x.occupier != u && !(u.trasnporter != null && x.occupier == u.trasnporter)) continue;
+                if (map.KnownLoss(u, x) > 0f) continue;
+                if (kv.Value < bs || (kv.Value == bs && CombatMath.Precedes(x, best))) { bs = kv.Value; best = x; }
+            }
+            return best;
         }
 
         /// <summary>
@@ -225,7 +268,7 @@ namespace HexTactica.AI {
             List<string> s = new List<string>();
             foreach (Task t in tasks) {
                 int rode = 0; foreach (Ride r in rides.Values) if (r.task == t) rode++;
-                s.Add(t.front.Id + " (" + t.size + " units, to (" + t.goal.x + "," + t.goal.y + ")): chain " + t.chain.Count + ", its own " + t.tactical.Count + (rode > 0 ? " (" + rode + " on trucks)" : "") + (t.gap ? ", chain short" : "") + (t.short_ ? ", nothing spare" : ""));
+                s.Add(t.front.Id + " (" + t.size + " units, to (" + t.goal.x + "," + t.goal.y + ")" + (t.fob != null ? " joining its " + t.fob.name.Replace("(Clone)", "") : "") + "): chain " + t.chain.Count + ", its own " + t.tactical.Count + (rode > 0 ? " (" + rode + " on trucks)" : "") + (t.gap ? ", chain short" : "") + (t.short_ ? ", nothing spare" : ""));
             }
             List<string> rs = new List<string>();
             foreach (KeyValuePair<SupplyPoint, Ride> kv in rides) rs.Add("(" + kv.Key.myUnit.tile.x + "," + kv.Key.myUnit.tile.y + ") on the truck at (" + kv.Value.truck.tile.x + "," + kv.Value.truck.tile.y + ") to (" + kv.Value.to.x + "," + kv.Value.to.y + ")");
