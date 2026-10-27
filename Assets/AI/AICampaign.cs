@@ -154,6 +154,13 @@ namespace HexTactica.AI {
         public readonly Dictionary<string, float> opposition = new Dictionary<string, float>();
         /// <summary>Objectives given up (time boxes), each until the turn it may be taken on again; and this campaign's turn.</summary>
         public readonly Dictionary<string, int> givenUp = new Dictionary<string, int>();
+        /// <summary>
+        /// What one more supply unit would be worth to the campaign: of the objectives passed over this turn for
+        /// want of supply units, the best worth per supply unit missing (AIProduction buys supply on it). Fronts
+        /// must bring supply; with all of it committed, the next front is a supply unit away.
+        /// </summary>
+        public float supplyDemand;
+        public string supplyDemandFor;
         public int turn;
 
         public CampaignObjective ObjectiveOf(Unit u) { CampaignObjective o; return u != null && unitOf.TryGetValue(u, out o) ? o : null; }
@@ -795,7 +802,11 @@ namespace HexTactica.AI {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 if (pursued >= maxPursued || pool.Count == 0) break;
                 bool kept = objectives.Contains(o);
-                if (!kept && o.lasting && o.needHubs > 0 && o.needHubs > hubsLeft) continue;
+                if (!kept && o.lasting && o.needHubs > 0 && o.needHubs > hubsLeft) {
+                    float per = o.value / Mathf.Max(1, o.needHubs - Mathf.Max(0, hubsLeft));
+                    if (per > supplyDemand) { supplyDemand = per; supplyDemandFor = o.Id; }
+                    continue;
+                }
                 float still = Mathf.Max(0f, o.needPower - o.assignedPower);
                 float near = 0f; foreach (Unit u in pool) if (CanJoin(u, o, map, p)) near += Power(u);
                 if (still > near && o.assignedPower <= 0f) continue;

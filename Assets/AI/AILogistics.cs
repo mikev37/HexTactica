@@ -63,6 +63,9 @@ namespace HexTactica.AI {
         /// <summary>Fighting units on a campaign front or in contact: kept in supply where they are (AISupplyChain.Harm).</summary>
         public readonly HashSet<Unit> protectUnits = new HashSet<Unit>();
         [System.ThreadStatic] public static HashSet<Unit> ProtectUnitsNow;
+        /// <summary>The campaign's demand for one more supply unit (AICampaign.supplyDemand) and what for.</summary>
+        public float supplyDemand;
+        public string supplyDemandFor;
         /// <summary>Free trucks after the claims.</summary>
         public int freeTrucks;
 
@@ -86,6 +89,7 @@ namespace HexTactica.AI {
         public static AILogistics Make(AIMap map, AICampaign campaign, ICollection<Unit> reservedTrucks, List<Front> ordinary) {
             AILogistics l = new AILogistics();
             if (campaign == null) return l;
+            l.supplyDemand = campaign.supplyDemand; l.supplyDemandFor = campaign.supplyDemandFor;
             List<CampaignObjective> fronts = new List<CampaignObjective>(campaign.objectives);
             if (ordinary != null)
                 foreach (Front f in ordinary) {
