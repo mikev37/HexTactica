@@ -450,30 +450,25 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Walking the route from <paramref name="from"/> (our supplied ground nearest the target) toward
-        /// the target: the last tile still on ground we hold (supplied, and out of the enemy's reach next
-        /// turn), and no nearer the target than one move of our army. The first fronts gather by home;
-        /// later ones on what earlier fronts took and supplied.
+        /// The staging tile: on ground we hold (supplied, and out of the enemy's reach next turn), nearest
+        /// the target, and no nearer it than one move of our army; null when there is none. The first
+        /// fronts gather by home; later ones on what earlier fronts took and supplied.
         /// </summary>
         static HexTile Staging(HexTile from, Dictionary<HexTile, int> route, AIMap map, HexTile target) {
+            // The supplied tile nearest the target (by the route) that the enemy cannot strike next turn,
+            // and no nearer the target than one move of our army; none such, no staging ground at all —
+            // better none than one in the firing line. (It used to start from the supplied tile nearest
+            // the target and walk on while the ground was safe, but never checked that first tile: the
+            // walk could not move, and the staging ground was often in the enemy's reach.)
             int bound = TypicalMove(map);
-            HexTile at = from, last = from;
-            for (int guard = 0; guard < 200; guard++) {
-                int here;
-                if (!route.TryGetValue(at, out here) || here == 0) break;
-                HexTile next = null; int nd = here;
-                foreach (HexTile n in at.neighbors) {
-                    int v;
-                    if (n != null && route.TryGetValue(n, out v) && (v < nd || (v == nd && next != null && CombatMath.Precedes(n, next)))) { nd = v; next = n; }
-                }
-                if (next == null || nd >= here) break;
-                at = next;
-                if (target != null && at.Distance(target) < bound) break;
-                // Ground we hold: supplied, and the enemy cannot strike it next turn. (Walking on while
-                // tiles merely looked quiet put the first push's staging ground beside the enemy HQ.)
-                if (map.SupplyDepth(at) > 0 && map.EnemyStrikeTurns(at) > 1) last = at; else break;
+            HexTile best = null; int bestD = int.MaxValue;
+            foreach (KeyValuePair<HexTile, int> kv in route) {
+                HexTile t = kv.Key;
+                if (t == null || map.SupplyDepth(t) <= 0 || map.EnemyStrikeTurns(t) <= 1) continue;
+                if (target != null && t.Distance(target) < bound) continue;
+                if (kv.Value < bestD || (kv.Value == bestD && CombatMath.Precedes(t, best))) { bestD = kv.Value; best = t; }
             }
-            return last;
+            return best;
         }
 
         /// <summary>The middle move range of our fighting units.</summary>
