@@ -25,9 +25,60 @@ namespace HexTactica.AI {
         /// bring supply to it, a supply unit (worth the units it would supply), and a transport if none is
         /// free. These compete with the ordinary choice by value for the gold.
         /// </summary>
+        /// <summary>Enemy units each side has seen, and the day it last saw each (kept productionMemoryDays after it is out of sight).</summary>
+        static readonly Dictionary<Player, Dictionary<Unit, int>> seen = new Dictionary<Player, Dictionary<Unit, int>>();
+
+        /// <summary>The enemy we buy against: what we see now, and what we have seen lately (a gunship gone behind the trees is still out there).</summary>
+        static List<Unit> Foes(Player p, AIMap map, AIProfile profile) {
+            int day = GameController.gc != null ? GameController.gc.days : 0;
+            Dictionary<Unit, int> mine;
+            lock (seen) { if (!seen.TryGetValue(p, out mine)) seen[p] = mine = new Dictionary<Unit, int>(); }
+            foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0) mine[e] = day;
+            List<Unit> foes = new List<Unit>();
+            foreach (KeyValuePair<Unit, int> kv in new List<KeyValuePair<Unit, int>>(mine)) {
+                if (kv.Key == null || kv.Key.Strength <= 0 || day - kv.Value > Mathf.Max(0, profile.productionMemoryDays)) { mine.Remove(kv.Key); continue; }
+                foes.Add(kv.Key);
+            }
+            foes.Sort(AIMap.CompareUnits);
+            return foes;
+        }
+
+        /// <summary>
+        /// How little of our army can hurt each enemy unit (1: nothing of ours can; toward 0 the more of ours
+        /// can kill it): what is bought against it counts that much. (Ten enemy gunships and nothing of ours
+        /// that could hit them: averaged over every enemy unit, an anti-air gun was worth no more than a grunt.)
+        /// </summary>
+        static Dictionary<Unit, float> Scarcity(List<Unit> foes, AIMap map, AIProfile profile) {
+            Dictionary<Unit, float> r = new Dictionary<Unit, float>();
+            float k = Mathf.Max(0.01f, profile.productionCounterUnits);
+            foreach (Unit e in foes) {
+                float cover = 0f;
+                foreach (Unit u in map.ownUnits) {
+                    if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
+                    cover += Mathf.Min(e.Strength, Unit.calculateDamage(u, e, u.tile, 0)) / 6f;
+                }
+                r[e] = 1f / (1f + cover / k);
+            }
+            return r;
+        }
+
+        [System.ThreadStatic] static Dictionary<Unit, float> scarce;
+        [System.ThreadStatic] static List<Unit> allFoes;
+
         public static List<Unit> Buy(Player p, AIMap map, AIProfile profile, System.Action<string> trace, AILogistics logistics) {
             List<Unit> bought = new List<Unit>();
             if (p == null || map == null || BuildingController.bc == null) return bought;
+            allFoes = Foes(p, map, profile);
+            scarce = Scarcity(allFoes, map, profile);
+            // Supply after the army (AIProfile.campaignUnitsPerSupply): no more supply units bought than one for
+            // every that many fighting units, and one for each campaign front whose chain is short. (Five
+            // supply units to seven fighting units on BridgeCrossing, bought for fronts the army never formed.)
+            int fighters = 0, hubsHave = 0;
+            foreach (Unit u in map.ownUnits) { if (u == null || u.tile == null) continue; if (u.Hub != null && !u.Hub.producer) hubsHave++; else if (u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1)) fighters++; }
+            int shortFronts = 0; if (logistics != null) foreach (AILogistics.Task t in logistics.tasks) if (!t.ordinary && t.short_) shortFronts++;
+            int supplyCap = Mathf.CeilToInt(fighters / (float)Mathf.Max(1, profile.campaignUnitsPerSupply)) + Mathf.Min(2, shortFronts);
+            bool supplyFull = hubsHave >= supplyCap;
+            if (trace != null) trace("   " + p.personal_name + " buys against " + allFoes.Count + " enemy units (" + map.enemyUnits.Count + " in sight); supply units " + hubsHave + " of at most " + supplyCap + " (" + fighters + " fighting units, " + shortFronts + " fronts short)");
             List<Building> sites = new List<Building>();
             foreach (Building b in Building.all) if (b != null && b.owner == p && b.tile != null && b.Purchasable().Count > 0) sites.Add(b);
             sites.Sort((a, b) => CombatMath.CompareTiles(a.tile, b.tile));
@@ -85,6 +136,7 @@ namespace HexTactica.AI {
                         bool fighter = kindOf == 0, supply = kindOf == 1, truck = kindOf == 2;
                         if (kindOf < 0) continue;
                         if (!fighter && !((supply || truck) && (fronts != null || (supply && logistics != null && logistics.supplyDemand > 0f)))) continue;
+                        if (!fighter && supplyFull) continue;
                         HexTile free = FreeTile(b, t, map);
                         if (free == null) continue;
                         int n; have.TryGetValue(GameController.UnitName(t), out n);
@@ -175,27 +227,18 @@ namespace HexTactica.AI {
             float worth = AIScore.Worth(t);
             float offence = 0f, defence = 0f; int enemies = 0;
             foreach (Unit e in foes) {
-                if (e == null || e.tile == null || e.Strength <= 0 || !GameController.Targetable(e)) continue;
+                if (e == null || e.Strength <= 0) continue;
                 enemies++;
-                offence += Mathf.Min(e.Strength, Unit.calculateDamage(t, e, e.tile, 0)) * AIScore.Worth(e);
+                // Each enemy unit counted as much as our army lacks the means to fight it (Scarcity); on our
+                // own ground (at), not wherever it stands now (one remembered under the fog is not seen there).
+                float need = scarce != null && scarce.ContainsKey(e) ? scarce[e] : 1f;
+                offence += Mathf.Min(e.Strength, Unit.calculateDamage(t, e, at, 0)) * AIScore.Worth(e) * need;
                 if (e.Firepower > 0) defence += Mathf.Min(6, Unit.calculateDamage(e, t, at, 0)) * worth;
             }
             if (enemies == 0) return worth * 6f;
             return Mathf.Max(0f, (offence - 0.5f * defence) / enemies);
         }
 
-        static float Value(Unit t, HexTile at, AIMap map) {
-            float worth = AIScore.Worth(t);
-            float offence = 0f, defence = 0f; int enemies = 0;
-            foreach (Unit e in map.enemyUnits) {
-                if (e == null || e.tile == null || e.Strength <= 0 || !GameController.Targetable(e)) continue;
-                enemies++;
-                int dealt = Mathf.Min(e.Strength, Unit.calculateDamage(t, e, e.tile, 0));
-                offence += dealt * AIScore.Worth(e);
-                if (e.Firepower > 0) defence += Mathf.Min(6, Unit.calculateDamage(e, t, at, 0)) * worth;
-            }
-            if (enemies == 0) return worth * 6f;
-            return Mathf.Max(0f, (offence - 0.5f * defence) / enemies);
-        }
+        static float Value(Unit t, HexTile at, AIMap map) { return ValueVs(t, at, allFoes ?? map.enemyUnits); }
     }
 }

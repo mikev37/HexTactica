@@ -1357,12 +1357,12 @@ public class AIPlayer : MonoBehaviour {
         return false;
     }
 
-    /// <summary>The next step up for supply unit <paramref name="x"/>: toward its front's units (its own), or its chain's goal (a link); by its truck if aboard.</summary>
+    /// <summary>The next step up for supply unit <paramref name="x"/>: toward its front's goal; by its truck if aboard.</summary>
     HexTile NextStepUp(SupplyPoint x) {
         HexTactica.AI.AILogistics.Task t;
         HexTile goal = null;
-        if (logistics.chainOf.TryGetValue(x, out t)) goal = t.goal;
-        else if (logistics.tacticalOf.TryGetValue(x, out t)) HexTactica.AI.AILogistics.NearestOf(t, x.myUnit, map, out goal);
+        // Up: toward where its front is going (its nearest unit may be behind it: one relieved walked home).
+        if (logistics.chainOf.TryGetValue(x, out t) || logistics.tacticalOf.TryGetValue(x, out t)) goal = t.goal;
         if (goal == null) return null;
         Unit truck = x.myUnit.trasnporter;
         if (truck != null) {
