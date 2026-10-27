@@ -79,6 +79,8 @@ namespace HexTactica.AI {
         public int campaignDrawTurns = 0;
         [Tooltip("Time boxes: a task force not gathered on its staging ground by its campaignDrawTurns-th turn is dissolved; one that has not achieved its objective in this many turns (plus a turn for every turn its target is beyond campaignDrawTurns of its staging tile) gives it up. A given-up objective is left alone for this many turns. 0: no time boxes.")]
         public int campaignTimeBox = 6;
+        [Tooltip("Campaign supply by logistics (AILogistics): each front, largest first, is joined to the network by a chain of supply units, and the supply units left over are the fronts' own, by their number of units, placed tactically near them. Off: each task force runs its own chain of the supply units it was given.")]
+        public bool campaignLogistics = true;
         [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]
         public float campaignFallbackRatio = 0.5f;
 

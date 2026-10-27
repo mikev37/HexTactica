@@ -352,6 +352,13 @@ public static class Scenarios {
                  Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
                  Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
              "The campaign (AIProfile.campaign) on a board cut by a river with three crossings, the middle one held by Red tanks: objectives are read from the map — each city, Red's HQ, the Red group by the middle crossing (it can reach our HQ next turn, so dealing with it is defending the HQ); each with a force need (what can fight there, times objectiveForceRatio; a building needs someone who can take it, and gets one) and, beyond our supply, supply units to carry supply there; its staging tile is out of the enemy's reach next turn and short of the objective, and a task force gathers there until campaignGatherShare of it (or what its objective needs) has arrived, then goes in together. Nothing is held back at home while the enemy cannot reach our HQ next turn. An objective is taken on only if what is left can give it all it needs: none is left short. All in (objectiveSpread 0) pursues one objective besides our HQ; spread (1) pursues several. Planned again with the same board, the same units stay on the same objectives; with the Red group gone, it is planned afresh. Fronts come one per task force, with the rest at home.");
+        make("ai-campaign-logistics", "campaignLogistics", (a, o) => {
+                 for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(0, y); if (w != null && Math.Abs(y) != 4 && y != 0) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("City", null, -1, -5); Rig.PlaceBuilding("City", null, 2, 3);
+                 foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
+                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
+                 Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
+             "The ai-campaign-objectives board with the task forces spread (objectiveSpread 1): the campaign's supply by logistics (AIProfile.campaignLogistics). Fronts in order of their number of units, largest first; each front's chain takes only supply units that bring supply nearer it, the largest front's first; every supply unit left is one front's own, shared by number of units; no supply unit has two jobs, and none is left without one.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -919,6 +926,26 @@ public static class Scenarios {
                 AIAction act = AITactical.Decide(g, m, prof, Posture.Aggressive);
                 detail = "the grunt on the HQ: " + act.kind + (act.destination != null ? " to " + Pos(act.destination) : "") + " - " + act.reason;
                 return act.kind == AIActionKind.Capture || (act.kind == AIActionKind.Wait);
+            }
+            case "campaignLogistics": {
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                prof.campaign = true; prof.objectiveSpread = 1f;
+                AIMap m = new AIMap(l.ai, prof);
+                AICampaign c = AICampaign.Plan(m, prof, null);
+                c.Fronts(m, prof, new Dictionary<HexTile, Posture>(), new HashSet<HexTile>());
+                AILogistics lg = AILogistics.Make(m, c, null);
+                detail = lg.ToString();
+                bool ordered = true;
+                for (int i = 1; i < lg.tasks.Count; i++) ordered &= lg.tasks[i - 1].size >= lg.tasks[i].size;
+                HashSet<SupplyPoint> seen = new HashSet<SupplyPoint>(); bool once = true; int hubs = 0;
+                foreach (AILogistics.Task t in lg.tasks) { foreach (SupplyPoint h in t.chain) once &= seen.Add(h); foreach (SupplyPoint h in t.tactical) once &= seen.Add(h); }
+                foreach (SupplyPoint h in m.ownHubs) if (h != null && !h.producer && h.myUnit != null) hubs++;
+                int chained = 0; foreach (AILogistics.Task t in lg.tasks) chained += t.chain.Count;
+                // The rest by share: each front's own within one of its share of what was left.
+                bool shared = true; int total = 0; foreach (AILogistics.Task t in lg.tasks) total += t.size;
+                foreach (AILogistics.Task t in lg.tasks) shared &= Math.Abs(t.tactical.Count - (hubs - chained) * t.size / (float)Math.Max(1, total)) < 1.01f;
+                detail += "; " + lg.tasks.Count + " fronts, largest first " + ordered + "; " + seen.Count + " of " + hubs + " supply units given one job each " + once + "; shared by size " + shared;
+                return lg.tasks.Count >= 2 && ordered && once && seen.Count == hubs && shared;
             }
             case "aiFightFirst": {
                 Unit g = Rig.At(0, 0).occupier, e = Rig.At(1, -1).occupier;
