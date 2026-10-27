@@ -480,6 +480,14 @@ namespace HexTactica.AI {
         [Tooltip("Supply front first: for each group of the army, the supply unit nearest it is a front-line one, placed by what it supplies there and what it risks (as if linked, wherever it goes); the rest line up behind as a chain to the nearest front-line one; any the chain does not need become front-line too.")]
         public bool supplyFrontFirst = false;
 
+        [Tooltip("Campaign: buildings valued by what they do for the war — those that build units (productionBuildingWeight), then those that make supply (supplyBuildingWeight), above cities and resupply points. The HQ is worth the board either way.")]
+        public bool campaignBuildingTiers = false;
+        public float productionBuildingWeight = 3f;
+        public float supplyBuildingWeight = 2f;
+
+        [Tooltip("Units fighting (in contact) within this many tiles of our HQ are left to the ordinary tactics and supply: no campaign task force, no front-line supply group. 0: off.")]
+        public int homeFightRadius = 0;
+
         [Tooltip("Supply leaps may go ahead of the army where the enemy cannot strike within two turns (else never ahead of it).")]
         public bool leapsAheadWhenClear = false;
 
