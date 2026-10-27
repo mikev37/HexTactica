@@ -15,6 +15,8 @@ namespace HexTactica.AI {
         public int walkEta;             // turns on foot, for comparison
         public float value;             // destination value, before the time penalty
         public float score;             // value after the time penalty
+        /// <summary>A supply leap (AIPlayer.SupplyLeap): the cargo, a supply unit, stays aboard at the drop-off — aboard, it is linked while its transport could reach supplied ground in one move.</summary>
+        public bool stayAboard;
         public bool usesTransport { get { return transport != null; } }
 
         public override string ToString() {
@@ -399,6 +401,17 @@ namespace HexTactica.AI {
             Unit cargo = plan.cargo;
             bool aboard = cargo.trasnporter == transport;
 
+            if (plan.stayAboard) {
+                // A supply leap: drive to the drop-off and stay there with the supply unit aboard.
+                if (!aboard) {
+                    if (plan.rendezvous == null || transport.tile == plan.rendezvous) return AIAction.Wait(transport, "supply leap: waiting for its supply unit");
+                } else {
+                    if (plan.dropoff == null || transport.tile == plan.dropoff) return AIAction.Wait(transport, "supply leap: holds, carrying supply");
+                    MoveField reach = map.ReachThisTurn(transport);
+                    if (reach.ReachableThisTurn(plan.dropoff)) return AIAction.Move(transport, plan.dropoff, plan.score, "supply leap: " + plan.ToString());
+                    return AIAction.Wait(transport, "supply leap: drop-off out of reach");
+                }
+            }
             if (aboard && transport.tile == plan.dropoff) {
                 // Arrived: put the cargo on the destination, or the nearest free tile to it.
                 HexTile onto = DropTile(transport, cargo, transport.tile, plan.destination);

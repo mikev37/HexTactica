@@ -692,18 +692,33 @@ public class AIPlayer : MonoBehaviour {
                     return AIAction.Move(unit, link, 0f, "supply for " + job.Id + ": link moves up (" + now.reachSteps + " steps short)");
                 }
             }
-            if (Profile.supplyChain && !Profile.supplyTree && unit.trasnporter == null && job == null) {
+            if (Profile.supplyChain && !Profile.supplyTree && (unit.trasnporter == null || Profile.supplyLeaps) && job == null) {
                 List<Unit> moved = new List<Unit>();
                 foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
                 List<SupplyPoint> free = null;
                 if (campaign != null) { free = new List<SupplyPoint>(); foreach (SupplyPoint h in map.ownHubs) if (campaign.ObjectiveOf(h) == null) free.Add(h); }
-                AISupplyChain.Plan now = AISupplyChain.Make(map, moved, null, free, null);
+                AISupplyChain.ReservedTrucks = new HashSet<Unit>(reservedTransports);
+                foreach (Unit t in transportAssignments.Keys) AISupplyChain.ReservedTrucks.Add(t);
+                AISupplyChain.Plan now;
+                try { now = AISupplyChain.Make(map, moved, null, free, null); } finally { AISupplyChain.ReservedTrucks = null; }
+                AISupplyChain.Leap ride;
+                if (now.leaps.TryGetValue(hub, out ride)) {
+                    // A supply leap: into the truck (or staying in it), and the truck takes it to the far edge of supply.
+                    transportAssignments[ride.truck] = new TransportPlan { cargo = unit, transport = ride.truck, rendezvous = ride.truck.tile, dropoff = ride.tile, destination = ride.tile, stayAboard = true };
+                    reservedTransports.Add(ride.truck);
+                    if (Trace != null) Trace("   supply leap: " + unit.name.Replace("(Clone)", "") + " with the truck at (" + ride.truck.tile.x + "," + ride.truck.tile.y + ") to (" + ride.tile.x + "," + ride.tile.y + "); supply " + now.reachSteps + " steps from the objective");
+                    if (unit.trasnporter == ride.truck) return AIAction.Wait(unit, "supply chain: rides its truck to (" + ride.tile.x + "," + ride.tile.y + ")");
+                    return AIAction.Board(unit, ride.truck, ride.board, "supply chain: boards a truck for a leap");
+                }
                 HexTile link;
-                if (now.links.TryGetValue(hub, out link)) {
+                if (unit.trasnporter == null && now.links.TryGetValue(hub, out link)) {
                     if (link == unit.tile) return AIAction.Wait(unit, "supply chain: holds this link");
                     return AIAction.Move(unit, link, 0f, "supply chain: link moves up (supply " + now.reachSteps + " steps from the objective)");
                 }
             }
+
+            AIAction leap;
+            if (Profile.supplyLeaps && SupplyLeap(hub, out leap)) return leap;
 
             TransportPlan plan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
             if (plan == null && unit.trasnporter != null) plan = UnloadHere(unit);
@@ -770,6 +785,92 @@ public class AIPlayer : MonoBehaviour {
     }
 
     /// <summary>
+    /// A supply leap (profile.supplyLeaps): a supply unit the chain has no place for crosses the
+    /// edge of supply in a truck and stays aboard, linked as long as the truck could drive back
+    /// onto supplied ground in one move. Its own supply then spreads from the truck, and the chain's
+    /// next links are put down at its edge. On the zigzag, five supply units on foot reached 54 steps
+    /// short of the enemy HQ and stopped; a truck carries the network a truck's move further each time.
+    ///
+    /// Aboard already: the truck goes to the tile furthest toward the chain's objective that keeps it
+    /// linked, safe tonight (loadedTransportRisk), and not ahead of the army. On foot: if a free truck is where it can
+    /// board this turn, and such a tile adds to the chain's reach, it boards and the truck drives.
+    /// </summary>
+    bool SupplyLeap(SupplyPoint hub, out AIAction action) {
+        action = default(AIAction);
+        Unit unit = hub.myUnit;
+        if (unit == null || unit.tile == null || hub.producer) return false;
+        HexTile objective = AISupplyChain.Objective(map);
+        if (objective == null) return false;
+        Dictionary<HexTile, int> toObj = map.LandSteps(objective);
+        System.Func<HexTile, int> steps = t => { int v; return t != null && toObj.TryGetValue(t, out v) ? v : int.MaxValue; };
+        SupplyNetwork.Result without = SupplyNetwork.SolveWithout(player, hub);
+        int reach = int.MaxValue;
+        foreach (KeyValuePair<HexTile, int> kv in without.depth) if (kv.Value > 0) { int v = steps(kv.Key); if (v < reach) reach = v; }
+        if (reach == 0 || reach == int.MaxValue) return false;
+        int front = int.MaxValue;
+        foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && !LocomotionRules.NeedsBase(u.locomotion)) front = Mathf.Min(front, steps(u.tile));
+
+        Unit truck = unit.trasnporter;
+        HexTile beside = null;
+        if (truck == null) {
+            // A free truck it can reach and board this turn.
+            MoveField walk = map.ReachThisTurn(unit);
+            int bestD = int.MaxValue;
+            foreach (Unit t in map.ownUnits) {
+                if (t == null || t.tile == null || !Transporting.IsTransport(t) || t.Firepower > 1 || t.transported.Count > 0 || !t.active) continue;
+                if (reservedTransports.Contains(t) || transportAssignments.ContainsKey(t) || !Transporting.CanCarry(t, unit)) continue;
+                HexTile b = null;
+                if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
+                else foreach (HexTile n in t.tile.neighbors) {
+                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                    if (b == null || CombatMath.Precedes(n, b)) b = n;
+                }
+                if (b == null) continue;
+                int d = unit.tile.Distance(t.tile);
+                if (d < bestD) { bestD = d; truck = t; beside = b; }
+            }
+            if (truck == null) return false;
+        } else if (!Transporting.IsTransport(truck) || truck.Firepower > 1 || truck.transported.Count > 1) return false;
+
+        // Where the truck can be tonight with the supply unit aboard and still linked.
+        MoveField drive = map.ReachThisTurn(truck);
+        float caution = Mathf.Max(1f, Profile.loadedTransportRisk);
+        HexTile best = null; int bestSteps = int.MaxValue;
+        foreach (HexTile x in drive.Tiles) {
+            if (x != truck.tile && (!drive.ReachableThisTurn(x) || !AIPath.CanFinishTurnOn(truck, x))) continue;
+            if (x != truck.tile && x.occupier != null) continue;
+            int sx = steps(x);
+            if (sx == int.MaxValue || sx >= bestSteps) continue;
+            // Supply serves the army: never ahead of it.
+            if (sx < front) continue;
+            if (map.ExpectedLoss(truck, x) * caution >= truck.Strength || map.ExpectedLoss(truck, x) > Mathf.Max(0f, Profile.chainRiskTolerance)) continue;
+            // Linked: the truck could reach supplied ground from there in one move.
+            bool linked = false;
+            foreach (HexTile s in AIPath.TilesInRangeShared(x, 0, Mathf.Max(0, truck.moveRange))) {
+                if (without.DepthAt(s) <= 0) continue;
+                if (map.Travel(truck, x, s) <= truck.moveRange) { linked = true; break; }
+            }
+            if (!linked) continue;
+            best = x; bestSteps = sx;
+        }
+        // Worth it only if its supply from there reaches further than the network does without it.
+        if (best == null || bestSteps - Mathf.Max(0, hub.range - 1) >= reach) return false;
+        if (unit.trasnporter == truck && best == truck.tile) {
+            transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, dropoff = best, rendezvous = truck.tile, stayAboard = true };
+            reservedTransports.Add(truck);
+            action = AIAction.Wait(unit, "supply leap: aboard at the far edge of supply");
+            return true;
+        }
+        TransportPlan plan = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = best, destination = best, stayAboard = true, eta = 0 };
+        transportAssignments[truck] = plan;
+        reservedTransports.Add(truck);
+        if (Trace != null) Trace("   supply leap: " + unit.name.Replace("(Clone)", "") + " in the truck at (" + truck.tile.x + "," + truck.tile.y + ") to (" + best.x + "," + best.y + "), " + bestSteps + " steps from the objective (supply reaches " + reach + " without it)");
+        if (unit.trasnporter == truck) { action = AIAction.Wait(unit, "supply leap: riding"); return true; }
+        action = AIAction.Board(unit, truck, beside, "supply leap: board");
+        return true;
+    }
+
+    /// <summary>
     /// profile.combatRides: a fighting unit out of contact (or already riding) asks the walk-or-ride
     /// planner for the quickest way to the supplied ground nearest its objective. When the answer is
     /// a ride, the unit heads for the rendezvous (or boards, or stays aboard) and the transport is
@@ -790,7 +891,10 @@ public class AIPlayer : MonoBehaviour {
         string who = unit.name.Replace("(Clone)", "");
         if (!aboard && map.TurnsToContact(unit) <= Profile.objectiveContactTurns) return false;
         if (!aboard && Transporting.AvailableFor(player, unit).Count == 0) { if (Trace != null) Trace("   " + who + " ride: no transport can take it"); return false; }
-        HexTile objectiveTile = front != null && front.objectiveTile != null ? front.objectiveTile : AISupplyChain.Objective(map);
+        // Where it is going: its own errand (a building to take, ground to look at) if it has one, else its front's objective.
+        Objective errand;
+        HexTile objectiveTile = assignments != null && assignments.TryGetValue(unit, out errand) && errand.tile != null && (errand.kind == ObjectiveKind.Capture || errand.kind == ObjectiveKind.Scout) ? errand.tile
+                              : front != null && front.objectiveTile != null ? front.objectiveTile : AISupplyChain.Objective(map);
         if (objectiveTile == null) return false;
         int from = map.Travel(unit, unit.tile, objectiveTile);
         float worth = AIScore.Worth(unit);

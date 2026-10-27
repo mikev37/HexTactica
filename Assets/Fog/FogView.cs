@@ -5,7 +5,7 @@ using UnityEngine;
 /// Fog of war on the board: every tile the screen's player (FogOfWar.Viewer) does not see is covered
 /// with a dark grey hex (FogSettings: the picture, its colour and opacity, its sorting), fading in and
 /// out as sight changes. Ground and buildings still show through, dimmed; buildings show their owner
-/// as last seen (Building.RefreshFlag). Units are faded by their own FogFader.
+/// as last seen (ColorObjectUnit, CaptureFlag). Units are faded by their own FogFader.
 ///
 /// The fog reaches one tile past the edge of the board, so the edge tiles' art (which reaches past
 /// their hex) is covered like the rest. Those cells beyond the edge are cleared only while a unit
