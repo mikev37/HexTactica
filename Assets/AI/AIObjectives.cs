@@ -131,6 +131,12 @@ namespace HexTactica.AI {
                     if (b == null || b.tile == null || !b.Capturable) continue;
                     if (FogOfWar.OwnerAsSeen(map.player, b) == map.player) continue;
                     if (b.IsHQ && attrition) continue;
+                    // Only where the army is: on or beside our supplied ground (supply follows the army).
+                    // Every building on the map, each with its own capturer, sent the infantry off one by
+                    // one ahead of the army, and on ChanceMeeting it lost two thirds of the material.
+                    bool near = map.SupplyDepth(b.tile) > 0;
+                    if (!near) foreach (HexTile n in AIPath.TilesInRangeShared(b.tile, 0, profile.captureReach)) if (map.SupplyDepth(n) > 0) { near = true; break; }
+                    if (!near) continue;
                     Objective o = new Objective { kind = ObjectiveKind.Capture, tile = b.tile, building = b };
                     o.value = b.IsHQ ? board : Mathf.Max(b.income * 10f, average * 2f) + (b.producesSupply ? average * 2f : 0f);
                     o.defence = DefenceAt(map, b.tile, null);

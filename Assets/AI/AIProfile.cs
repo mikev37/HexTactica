@@ -341,6 +341,9 @@ namespace HexTactica.AI {
         [Tooltip("Capture objectives: each step toward the building, for a unit out of contact sent to take it, as a fraction of a strength point of that unit (and six times that for standing on it, for one that can capture).")]
         public float capturePull = 0.3f;
 
+        [Tooltip("Capture objectives only for buildings within this many tiles of our supplied ground: the army's ground, not the whole map.")]
+        public int captureReach = 3;
+
         [Tooltip("Old rule: only pull units to an objective once they have objectiveRatio times its defenders, and never on a trip they couldn't get back into supply from. Off: objectives give direction to units out of contact regardless.")]
         public bool objectivesNeedForce = false;
 
