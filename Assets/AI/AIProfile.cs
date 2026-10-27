@@ -471,6 +471,9 @@ namespace HexTactica.AI {
         [Tooltip("Supply leaps: a supply unit the chain cannot use rides a truck past the edge of supply and stays aboard, linked while the truck could drive back onto supplied ground in one move — the network crosses ground it could not link on foot.")]
         public bool supplyLeaps = true;
 
+        [Tooltip("Supply as a backbone (AISupplyBackbone): supply units ride trucks and APCs as moving links, a transport's move apart, from the HQ's network to each group of the army; the rest stay on foot by the army.")]
+        public bool supplyBackbone = false;
+
         [Tooltip("Supply units as a tree grown out from the HQ to every fighting unit out of supply, nearest the edge of supply first, a link at a time (AISupplyTree), instead of one chain toward the enemy HQ (supplyChain). Units the tree does not need are placed by the ordinary supply planner. Off: it lost the benchmark against the chain (PROBE=bench, ChanceMeeting from both sides and the campaign maps, fog off and on: -70,000 material over 12 games, better in 5, worse in 7).")]
         public bool supplyTree = false;
         [Tooltip("Strength a supply-tree link may be expected to lose tonight (the share of enemy fire that can reach its tile) and still stand there.")]

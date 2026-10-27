@@ -409,6 +409,9 @@ namespace HexTactica.AI {
                     if (plan.dropoff == null || transport.tile == plan.dropoff) return AIAction.Wait(transport, "supply leap: holds, carrying supply");
                     MoveField reach = map.ReachThisTurn(transport);
                     if (reach.ReachableThisTurn(plan.dropoff)) return AIAction.Move(transport, plan.dropoff, plan.score, "supply leap: " + plan.ToString());
+                    // Further than a move: as far along the way as is safe tonight.
+                    HexTile toward = SafeStepToward(transport, plan.dropoff, map.ReachHorizon(transport), map, true);
+                    if (toward != null && toward != transport.tile) return AIAction.Move(transport, toward, plan.score, "supply link on its way: " + plan.ToString());
                     return AIAction.Wait(transport, "supply leap: drop-off out of reach");
                 }
             }
