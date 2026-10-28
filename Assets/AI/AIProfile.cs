@@ -95,6 +95,10 @@ namespace HexTactica.AI {
         public int campaignReleaseTurns = 2;
         [Tooltip("Campaign: an objective to defend our HQ with a task force when an enemy can reach it next turn. Off: our HQ is defended through the move score (hqThreatNear, hqThreatOn), by whoever is there.")]
         public bool campaignDefendHQ = false;
+        [Tooltip("Campaign: an enemy unit counts at the objectives it is nearest (within a turn) and those whose way in it stands across, not at every objective it could reach in time.")]
+        public bool campaignEnemyNearestOnly = true;
+        [Tooltip("Campaign: a scouting trip's escort, as this share of the enemy that could fight there times objectiveForceRatio (0: the scout alone; was 0.5).")]
+        public float campaignScoutEscort = 0f;
         [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
         public bool campaignReserve = true;
         [Tooltip("Campaign: the share of units on no task force kept with the ordinary fronts as the active reserve (the rest gather as the central reserve).")]
