@@ -48,6 +48,8 @@ namespace HexTactica.AI {
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
+        /// <summary>The way in from the staging tile to the target (Reach).</summary>
+        [System.NonSerialized] public List<HexTile> way;
         /// <summary>Beyond our supply with no supply of its own this turn (AILogistics): it stays within our supply.</summary>
         public bool noSupply;
         /// <summary>Not the campaign's: an ordinary front, made a supply front by the logistics (AILogistics).</summary>
@@ -179,6 +181,8 @@ namespace HexTactica.AI {
         /// must bring supply; with all of it committed, the next front is a supply unit away.
         /// </summary>
         public float supplyDemand;
+        /// <summary>The force (combat power) each missing supply unit would let go to supplyDemandFor.</summary>
+        public float supplyDemandNeed;
         public string supplyDemandFor;
         public int turn;
 
@@ -240,6 +244,29 @@ namespace HexTactica.AI {
                 CampaignObjective was = last != null ? last.objectives.Find(x => x.Id == o.Id) : null;
                 HexTile keepStaging = was != null && was.staging != null && map.SupplyDepth(was.staging) > 0 && map.EnemyStrikeTurns(was.staging) > 1 ? was.staging : null;
                 Reach(o, map, p, keepStaging, free);
+            }
+            // An enemy unit fights where it is (AIProfile.campaignEnemyNearestOnly): it counts at the objectives it
+            // is nearest (within a turn of its nearest), and at any whose way in it stands across (within a
+            // move of it), not at every objective it could reach in time. (Red's whole army, able to reach any
+            // objective on ForestClearing, priced every one at all of it, and Blue fought one front at a time.)
+            if (p.campaignEnemyNearestOnly) {
+                List<CampaignObjective> real = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.target != null);
+                foreach (Unit e in map.enemyUnits) {
+                    if (e == null || e.tile == null || e.moveRange <= 0) continue;
+                    Dictionary<CampaignObjective, int> t = new Dictionary<CampaignObjective, int>();
+                    int nearest = int.MaxValue;
+                    foreach (CampaignObjective o in real) {
+                        if (!o.arriving.ContainsKey(e)) continue;
+                        int turns = Mathf.CeilToInt(Mathf.Max(0, map.Travel(e, e.tile, o.target) - e.AttackRange) / (float)e.moveRange);
+                        t[o] = turns; nearest = Mathf.Min(nearest, turns);
+                    }
+                    foreach (KeyValuePair<CampaignObjective, int> kv in t) {
+                        if (kv.Value <= nearest + 1) continue;
+                        bool across = false;
+                        if (kv.Key.way != null) foreach (HexTile w in kv.Key.way) if (CanArrive(e, w, 1, map)) { across = true; break; }
+                        if (!across) kv.Key.arriving.Remove(e);
+                    }
+                }
             }
             Dictionary<Unit, int> reaches = new Dictionary<Unit, int>();
             foreach (CampaignObjective o in candidates) {
@@ -343,8 +370,8 @@ namespace HexTactica.AI {
             Building home = GameController.HQOf(map.player);
             bool attrition = GameController.gc != null && GameController.gc.rules == RuleSet.Attrition;
 
-            // Our HQ, when anything can reach it.
-            if (home != null && home.tile != null) {
+            // Our HQ, when anything can reach it (campaignDefendHQ; off: the move score defends it).
+            if (p.campaignDefendHQ && home != null && home.tile != null) {
                 CampaignObjective d = new CampaignObjective { kind = CampaignKind.DefendHQ, target = home.tile, building = home };
                 // Only what can strike or reach it on its next turn: a threat two turns off is met
                 // by the campaign's fighting, not by units held back at home.
@@ -513,6 +540,7 @@ namespace HexTactica.AI {
             // enemy HQ priced the enemy's whole army, drawn up across its path, at a quarter of what
             // it was, went in at what it thought was twice their strength, and was destroyed.)
             List<HexTile> way = new List<HexTile>();
+            o.way = way;
             if (o.staging != null && o.kind != CampaignKind.DefendHQ) {
                 HexTile at = o.staging; int left; int guard = 0;
                 while (at != null && route.TryGetValue(at, out left) && left > 0 && guard++ < 200) {
@@ -613,7 +641,9 @@ namespace HexTactica.AI {
                     break;
                 }
                 case CampaignKind.Scout:
-                    o.needPower = o.enemyPower * p.objectiveForceRatio * 0.5f;   // a look, not a fight: enough not to be caught alone
+                    // A look, not a fight: the one that sees best for its cost (Fill), and an escort only by
+                    // campaignScoutEscort of the enemy there (0: none — a scouting trip was given two tanks).
+                    o.needPower = o.enemyPower * p.objectiveForceRatio * Mathf.Max(0f, p.campaignScoutEscort);
                     break;
             }
 
@@ -792,6 +822,9 @@ namespace HexTactica.AI {
                     // fights where it is by the ordinary tactics, and the task force no longer waits for it.
                     List<Unit> stay = new List<Unit>();
                     foreach (Unit u in was.units) if (pool.Contains(u) && CanJoin(u, now, map, p)) stay.Add(u);
+                    // Nobody left on it (dead, gone elsewhere): it is not kept — formed again only if it is still worth it.
+                    if (stay.Count == 0 && was.units.Count > 0) continue;
+                    if (stay.Count == 0 && was.age > 0) continue;
                     // Cohesion (campaignCohesionTurns): the task force's centre is the unit with the least
                     // total distance to the rest; a unit more than that many of its own turns from it drops
                     // out (the ordinary tactics take it, or another objective). (Half a task force on each
@@ -842,14 +875,19 @@ namespace HexTactica.AI {
                 bool kept = objectives.Contains(o);
                 if (!kept && o.lasting && o.needHubs > 0 && o.needHubs > hubsLeft) {
                     float per = o.value / Mathf.Max(1, o.needHubs - Mathf.Max(0, hubsLeft));
-                    if (per > supplyDemand) { supplyDemand = per; supplyDemandFor = o.Id; }
+                    if (per > supplyDemand) { supplyDemand = per; supplyDemandFor = o.Id; supplyDemandNeed = o.needPower / Mathf.Max(1, o.needHubs - Mathf.Max(0, hubsLeft)); }
                     if (Debug != null) Debug("not taken on: " + o.Id + " needs " + o.needHubs + " supply units, " + hubsLeft + " free");
                     continue;
                 }
                 float still = Mathf.Max(0f, o.needPower - o.assignedPower);
                 float near = 0f; int joinable = 0; foreach (Unit u in pool) if (CanJoin(u, o, map, p)) { near += Power(u); joinable++; }
                 if (still > near && o.assignedPower <= 0f) {
-                    if (Debug != null) { float all = 0f; foreach (Unit u in pool) all += Power(u); Debug("not taken on: " + o.Id + " needs " + still.ToString("0") + ", " + joinable + " units that can join have " + near.ToString("0") + " (" + pool.Count + " free have " + all.ToString("0") + ")"); }
+                    if (Debug != null) {
+                        float all = 0f; List<string> why = new List<string>();
+                        foreach (Unit u in pool) { all += Power(u); if (!CanJoin(u, o, map, p)) why.Add(u.name.Replace("(Clone)", "") + "(" + u.tile.x + "," + u.tile.y + ") " + JoinWhy(u, o, map, p)); }
+                        Debug("not taken on: " + o.Id + " needs " + still.ToString("0") + ", " + joinable + " units that can join have " + near.ToString("0") + " (" + pool.Count + " free have " + all.ToString("0") + ")"
+                              + (o.staging != null ? "; staging (" + o.staging.x + "," + o.staging.y + ")" : "") + (why.Count > 0 ? "; left out: " + string.Join(", ", why.ToArray()) : ""));
+                    }
                     continue;
                 }
                 Fill(o, pool, map, p, o.needPower);
@@ -1087,6 +1125,13 @@ namespace HexTactica.AI {
             return map.Travel(u, u.tile, o.staging) <= radius;
         }
 
+        /// <summary>For diagnostics: why CanJoin says no.</summary>
+        static string JoinWhy(Unit u, CampaignObjective o, AIMap map, AIProfile p) {
+            int t = Turns(u, o, map);
+            if (t > DrawTurns(p)) return t + " turns from staging (draw " + DrawTurns(p) + ")";
+            return "in contact (" + map.TurnsToContact(u) + ") off the staging ground";
+        }
+
         /// <summary>Turns for <paramref name="u"/> to reach the objective's staging tile.</summary>
         static int Turns(Unit u, CampaignObjective o, AIMap map) {
             HexTile to = o.staging ?? o.target;
@@ -1233,11 +1278,59 @@ namespace HexTactica.AI {
                 fronts.Add(f);
             }
             AIStrategic.Finish(fronts, map, p, memory, assaulting);
+            // No holding and waiting (AIProfile.regroup): a task force strikes first; its expensive units pull
+            // back when they lack the superiority (AITactical.Regrouping), and the reserve comes up.
+            if (p.regroup && p.campaignStrikeFirst) foreach (Front f in fronts) if (f.campaign) f.posture = Posture.Aggressive;
             // Everything not on a task force: the ordinary fronts (AIStrategic.BuildFronts), which fight
             // and push on as the ordinary AI does. (A single front at home with no objective left them
             // standing there.)
             HashSet<Unit> taken = new HashSet<Unit>();
             foreach (Front f in fronts) foreach (Unit u in f.assigned) taken.Add(u);
+            // The reserve (AIProfile.campaignReserve): of the units on no task force, those not fighting gather
+            // as one group — the central reserve — in our supply out of the enemy's reach, behind the main
+            // front; campaignActiveReserveShare of them (the nearest the enemy), and any already fighting, stay
+            // with the ordinary fronts as the active reserve. (Spare units spread over the ordinary AI's
+            // captures and fights did not clump, with the enemy's whole army somewhere in the fog.)
+            reserveFront = null;
+            if (p.campaignReserve) {
+                List<Unit> spare = new List<Unit>();
+                foreach (Unit u in map.ownUnits)
+                    if (u != null && u.tile != null && !taken.Contains(u) && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1) && u.trasnporter == null && !LocomotionRules.IsAirborne(u.locomotion) && !LocomotionRules.IsNaval(u.locomotion)) spare.Add(u);
+                int release = Mathf.Max(1, p.campaignReleaseTurns);
+                List<Unit> calm = spare.FindAll(u => map.TurnsToContact(u) > release);
+                int active = spare.Count - calm.Count;
+                int wantActive = Mathf.CeilToInt(spare.Count * Mathf.Clamp01(p.campaignActiveReserveShare));
+                calm.Sort((a, b) => { int c = map.TurnsToContact(a).CompareTo(map.TurnsToContact(b)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+                while (active < wantActive && calm.Count > 0) { calm.RemoveAt(0); active++; }
+                HexTile rally = calm.Count > 0 ? RallyTile(map, fronts) : null;
+                // Committed (AIProfile.regroup): to the front most pressed — the enemy that can strike its units
+                // tonight more than regroupCommitRatio of their power — all of it, toward that front's units.
+                Front pressed = null; float worst = 0f;
+                if (p.regroup && calm.Count > 0)
+                    foreach (Front f in fronts) {
+                        float ours = 0f, theirs = 0f; HashSet<Unit> seenE = new HashSet<Unit>(); List<Unit> mine = new List<Unit>();
+                        foreach (Unit u in f.assigned) {
+                            if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
+                            ours += AIScore.Worth(u) * u.Strength; mine.Add(u);
+                            foreach (Unit e in map.FirersOf(u.tile)) if (e != null && seenE.Add(e)) theirs += AIScore.Worth(e) * e.Strength;
+                        }
+                        if (theirs <= ours * Mathf.Max(0f, p.regroupCommitRatio)) continue;
+                        float press = theirs - ours;
+                        HexTile c = Centre(mine);
+                        if (c != null && (pressed == null || press > worst)) { pressed = f; worst = press; rally = c; }
+                    }
+                if (rally != null) {
+                    Front r = new Front { center = rally, objectiveTile = rally, priority = 0.5f };
+                    r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                    r.reserve = true;
+                    r.assigned.AddRange(calm);
+                    foreach (Unit u in calm) taken.Add(u);
+                    AIStrategic.Finish(new List<Front> { r }, map, p, memory, assaulting);
+                    fronts.Add(r);
+                    reserveFront = r;
+                }
+                reserveNote = "reserve: central " + calm.Count + (rally != null ? (pressed != null ? " committed to the front at (" : " gathering at (") + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
+            }
             HashSet<Unit> was = AIStrategic.Exclude;
             AIStrategic.Exclude = taken;
             List<Front> ordinary;
@@ -1261,6 +1354,36 @@ namespace HexTactica.AI {
                 if (home.center != null) { fronts.Add(home); AIStrategic.Finish(new List<Front> { home }, map, p, memory, assaulting); }
             }
             return fronts;
+        }
+
+        /// <summary>The central reserve this turn (AIProfile.campaignReserve), and a line for the trace.</summary>
+        public Front reserveFront;
+        public string reserveNote;
+
+        /// <summary>
+        /// Where the central reserve gathers: a tile in our supply that no enemy can strike for more than two
+        /// turns, the nearest such to the main front (the task force with the most units; else the nearest
+        /// enemy to our HQ).
+        /// </summary>
+        static HexTile RallyTile(AIMap map, List<Front> fronts) {
+            Front main = null;
+            foreach (Front f in fronts) if (f.campaign && f.objectiveTile != null && (main == null || f.assigned.Count > main.assigned.Count)) main = f;
+            HexTile toward = main != null ? (main.campaignStaging ?? main.objectiveTile) : null;
+            if (toward == null) {
+                Building home = GameController.HQOf(map.player);
+                int bd = int.MaxValue;
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && home != null && home.tile != null) { int d = e.tile.Distance(home.tile); if (d < bd) { bd = d; toward = e.tile; } }
+            }
+            if (toward == null) return null;
+            Dictionary<HexTile, int> steps = map.LandSteps(toward);
+            if (steps == null) return null;
+            HexTile best = null; int bs = int.MaxValue;
+            foreach (KeyValuePair<HexTile, int> kv in steps) {
+                HexTile t = kv.Key;
+                if (map.SupplyDepth(t) <= 0 || map.EnemyStrikeTurns(t) <= 2 || (t.building != null && t.building.owner == map.player && t.building.Purchasable().Count > 0)) continue;
+                if (kv.Value < bs || (kv.Value == bs && CombatMath.Precedes(t, best))) { bs = kv.Value; best = t; }
+            }
+            return best;
         }
 
         /// <summary>Is the enemy that can strike <paramref name="o"/>'s units next turn more than campaignFallbackRatio of their power?</summary>

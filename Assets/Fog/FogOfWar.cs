@@ -577,6 +577,9 @@ public static class FogOfWar {
     public static bool ShownToViewer(Unit u) {
         Player v = Viewer;
         if (v == null || u == null || u.owner == v) return true;
+        // Getting on or off: judged by the tile under its sprite, as a marine's boat is.
+        // (Unseen enemy supply units were seen walking into and out of trucks in the fog.)
+        if (u.GettingOnOrOff) { HexTile under = u.TileUnderSprite(); return under != null && SeesAt(v, u, under); }
         if (u.trasnporter != null && u.trasnporter != u) return ShownToViewer(u.trasnporter);
         if (u.tile == null) return false;
         return SeesAt(v, u, u.ShownTile);
