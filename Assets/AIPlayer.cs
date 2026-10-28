@@ -1057,6 +1057,26 @@ public class AIPlayer : MonoBehaviour {
             if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + ": planned step no longer possible (" + step + "); deciding alone");
         }
 
+        // A rider that can take a building beside its transport: put down onto it (the enemy HQ first).
+        if (Transporting.IsTransport(unit) && unit.transported.Count > 0 && unit.tile != null) {
+            foreach (Unit r in unit.transported) {
+                if (r == null || r.Hub != null || !Building.CanCapture(r)) continue;
+                HexTile best = null; bool bestHQ = false;
+                foreach (HexTile n in Transporting.UnloadOptions(unit, r)) {
+                    Building b = n.building;
+                    if (b == null || b.owner == player || !b.Capturable) continue;
+                    if (best == null || (b.IsHQ && !bestHQ) || (b.IsHQ == bestHQ && CombatMath.Precedes(n, best))) { best = n; bestHQ = b.IsHQ; }
+                }
+                if (best != null) return AIAction.Disembark(unit, r, best, "lets its rider off onto " + best.building.name.Replace("(Clone)", "") + " (" + best.x + "," + best.y + ") to take it");
+            }
+        }
+        // An armed transport (a recon carrying a marine) whose rider asked to be put down here: it lets it off
+        // first, then fights as it will. (A marine rode beside the enemy HQ for four turns, never let off.)
+        if (Transporting.IsTransport(unit) && unit.Firepower > 1) {
+            TransportPlan off;
+            if (transportAssignments.TryGetValue(unit, out off) && off != null && off.cargo != null && off.cargo.trasnporter == unit && off.dropoff == unit.tile && !off.stayAboard)
+                return AITransportPlanner.TransportAction(unit, off, map);
+        }
         if (Transporting.IsTransport(unit) && unit.Firepower <= 1) {
             TransportPlan assignment;
             if (transportAssignments.TryGetValue(unit, out assignment)) {
