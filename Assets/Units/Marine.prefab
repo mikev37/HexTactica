@@ -360,7 +360,7 @@ SpriteRenderer:
   m_SortingLayer: 6
   m_SortingOrder: 12
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 2f65799f96ca5bb418c654b3bb579618, type: 3}
+  m_Sprite: {fileID: 1337303943306184564, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
   m_Color: {r: 1, g: 0, b: 0, a: 0.5019608}
   m_FlipX: 0
   m_FlipY: 0
@@ -458,7 +458,7 @@ SpriteRenderer:
   m_SortingLayer: 6
   m_SortingOrder: 11
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: bf96794bf53f35c4393b6c3347b0565b, type: 3}
+  m_Sprite: {fileID: 7520435396284521915, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -795,6 +795,7 @@ MonoBehaviour:
   Armor: 0
   Piercing: 0
   Concealment: 3
+  Vulnerability: 0
   ammoPerShot: 1
   moveAndAttack: 1
   AttackRange: 1
@@ -1412,7 +1413,7 @@ Transform:
   m_GameObject: {fileID: 8416061353759079311}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.9, z: 3.8188934}
+  m_LocalPosition: {x: 0, y: 1.9, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

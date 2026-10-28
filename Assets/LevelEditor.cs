@@ -213,7 +213,7 @@ public class LevelEditor : MonoBehaviour
 
     /// <summary>Units renamed since saves were written: old name, new name.</summary>
     public static readonly System.Collections.Generic.Dictionary<string, string> renamedUnits = new System.Collections.Generic.Dictionary<string, string> {
-        { "Gunship Variant", "Gunship" }, { "Gunner Anti Air Variant", "Gunner Anti Air" } };
+        { "Truck Variant", "Truck" }, { "Gunship Variant", "Gunship" }, { "Gunner Anti Air Variant", "Gunner Anti Air" } };
 
     public static Unit loadUnit(string name) {
         name = name.Replace("(Clone)","").Trim();
