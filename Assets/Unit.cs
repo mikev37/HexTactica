@@ -722,6 +722,7 @@ public class Unit : MonoBehaviour
     public bool WouldDitchFrom(HexTile end) {
         if (end == null || tile == null || fuelMax <= 0) return false;
         if (end.building != null && end.building.owner == owner && end.building.Services(this)) return false;
+        if (locomotion != Locomotion.Jet) return false;
         int flown = tile.Distance(end);
         int left = fuel - flown * minFuelPerTile - (LocomotionRules.IsAirborne(locomotion) ? minFuelPerTurn : 0);
         if (left <= 0) return true;

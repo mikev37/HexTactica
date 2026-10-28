@@ -242,7 +242,8 @@ MonoBehaviour:
   damage: 0
   damageStates: []
   destroyedSprite: {fileID: 0}
-  buildable: []
+  buildable:
+  - {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
 --- !u!1001 &5326743205285704136
 PrefabInstance:
   m_ObjectHideFlags: 0

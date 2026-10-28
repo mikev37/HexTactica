@@ -105,6 +105,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &3547141541890433994
 GameObject:
   m_ObjectHideFlags: 0
@@ -167,9 +168,9 @@ MonoBehaviour:
   personal_name: 
   active: 1
   owner: {fileID: 0}
-  Strength: 6
+  _strength: 6
   Veterancy: 0
-  tile: {fileID: 0}
+  _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
   refuelStock: 0
@@ -180,6 +181,7 @@ MonoBehaviour:
   Armor: 1
   Piercing: 2
   Concealment: 1
+  Vulnerability: 0
   ammoPerShot: 1
   moveAndAttack: 0
   AttackRange: 4
@@ -197,16 +199,19 @@ MonoBehaviour:
   elevationMax: 2
   moveSpeed: 10
   StrengthDisplay: 0
+  suppressed: 0
   path: []
   supplies: 3
   suppliesMax: 3
   fuel: 30
   fuelMax: 30
+  attacksLocomotion: 000000000100000002000000040000000600000007000000i
   ammo: 6
   ammoMax: 6
   transportSlots: 0
   maxWeight: 0
   weight: 2
+  carries: 
   transported: []
   trasnporter: {fileID: 0}
   cargoSlots: []
@@ -215,6 +220,7 @@ MonoBehaviour:
   attacking: 0
   target: {fileID: 0}
   pendingRetreat: {fileID: 0}
+  retreatPause: 0.1
   shooter: 0
   answeredBy: {fileID: 0}
 --- !u!95 &1922176808774982529
@@ -1372,6 +1378,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &7105686836570282034
 GameObject:
   m_ObjectHideFlags: 0
@@ -1477,6 +1484,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &7673112601355140884
 GameObject:
   m_ObjectHideFlags: 0
@@ -1582,6 +1590,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &8416441570556407031
 GameObject:
   m_ObjectHideFlags: 0

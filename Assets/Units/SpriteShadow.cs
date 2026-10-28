@@ -13,10 +13,12 @@ public class SpriteShadow : MonoBehaviour
     private GameObject southGo, northGo, eastGo, westGo;
     private SpriteRenderer southR, northR, eastR, westR;
 
+
     // Start is called before the first frame update
     void Start()
     {
-        if(!sprite)
+   
+        if (!sprite)
             sprite = GetComponent<SpriteRenderer>().sprite;
         shadowGo = new GameObject("Shadow");
         shadowGo.transform.localScale = transform.localScale;
@@ -30,6 +32,7 @@ public class SpriteShadow : MonoBehaviour
         southR = southGo.AddComponent<SpriteRenderer>();
         southR.sprite = sprite;
         southR.color = color;
+        southR.sortingLayerName = "UnitShadow";
         southR.rendererPriority = renderQueue;
         northGo = new GameObject("ShadowNorthObj");
         northGo.transform.localScale = transform.localScale;
@@ -38,6 +41,7 @@ public class SpriteShadow : MonoBehaviour
         northGo.transform.position += (Vector3)Vector2.up * distance;
         northR = northGo.AddComponent<SpriteRenderer>();
         northR.sprite = sprite;
+        northR.sortingLayerName = "UnitShadow";
         northR.color = color;
         northR.rendererPriority = renderQueue;
         westGo = new GameObject("ShadowWestObj");
@@ -49,6 +53,7 @@ public class SpriteShadow : MonoBehaviour
         westR.sprite = sprite;
         westR.color = color;
         westR.rendererPriority = renderQueue;
+        westR.sortingLayerName = "UnitShadow";
         eastGo = new GameObject("ShadowEastObj");
         eastGo.transform.localScale = transform.localScale;
         eastGo.transform.position = shadowGo.transform.position;
@@ -57,6 +62,7 @@ public class SpriteShadow : MonoBehaviour
         eastR = eastGo.AddComponent<SpriteRenderer>();
         eastR.sprite = sprite;
         eastR.color = color;
+        eastR.sortingLayerName = "UnitShadow";
         eastR.rendererPriority = renderQueue;
 
     }
@@ -69,21 +75,17 @@ public class SpriteShadow : MonoBehaviour
         southR.sprite = sprite;
         southR.color = color;
         southR.rendererPriority = renderQueue;
-        southR.sortingOrder = renderQueue;
         northGo.transform.position = shadowGo.transform.position + (Vector3)Vector2.up * distance;
         northR.sprite = sprite;
         northR.color = color;
         northR.rendererPriority = renderQueue;
-        northR.sortingOrder = renderQueue;
         westGo.transform.position = shadowGo.transform.position + (Vector3)Vector2.left * distance;
         westR.sprite = sprite;
         westR.color = color;
         westR.rendererPriority = renderQueue;
-        westR.sortingOrder = renderQueue;
         eastGo.transform.position = shadowGo.transform.position + (Vector3)Vector2.right * distance;
         eastR.sprite = sprite;
         eastR.color = color;
         eastR.rendererPriority = renderQueue;
-        eastR.sortingOrder = renderQueue;
     }
 }
