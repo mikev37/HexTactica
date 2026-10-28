@@ -24,5 +24,7 @@ MonoBehaviour:
   elevation: 1
   road: 0
   health: 10
-  damageStates: []
+  damageStates:
+  - {fileID: -1802479712636334871, guid: 4ec4282f3724954408c1fe6eb5af7979, type: 3}
+  - {fileID: 5876885716319860172, guid: 2e907bce297c0bb4692bcd307c92181b, type: 3}
   destroyedInto: {fileID: 11400000, guid: 877360fc9ea75e242ae7376b192ed80c, type: 2}
