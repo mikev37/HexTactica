@@ -47,7 +47,7 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float objectiveSpread = 0.5f;
         [Tooltip("A task force needs this many times the enemy combat power that could fight where it is going.")]
-        public float objectiveForceRatio = 1.5f;
+        public float objectiveForceRatio = 1.1f;
         [Tooltip("Turns of a building's income its capture is worth.")]
         public int objectiveHorizonTurns = 10;
         [Tooltip("A task force reduced below this share of the power it was formed with sends the campaign back to planning.")]
@@ -91,12 +91,31 @@ namespace HexTactica.AI {
         public bool campaignWings = true;
         [Tooltip("Cohesion: a task force's unit more than this many of its own turns from the task force's centre drops out of it. 0: no limit.")]
         public int campaignCohesionTurns = 2;
+        [Tooltip("A task force's unit this many turns or fewer from contact fights as it will: no lean toward its staging ground or objective, no pace, no dip rule (the campaign sets the stage; the fight is the tactics'). 0: never released.")]
+        public int campaignReleaseTurns = 2;
         [Tooltip("A front's own supply units: one for every this many of its fighting units (after its chain).")]
         public int campaignUnitsPerSupply = 6;
         [Tooltip("Buying: an enemy unit seen counts for this many days after it is last seen.")]
         public int productionMemoryDays = 6;
         [Tooltip("Buying: what is bought against an enemy unit counts 1 / (1 + c / this), c the full kills our army could make on it (nothing of ours can hit it: full value).")]
         public float productionCounterUnits = 2f;
+        [Tooltip("Buying: each unit of a kind we already have (or have planned this turn) makes another worth this much (1: no variety rule; what we lack against the enemy, AIProduction.Scarcity, already gives diminishing returns).")]
+        [Range(0f, 1f)]
+        public float productionVariety = 0.97f;
+        [Tooltip("Buying: a fighting unit is worth at least this share of its own full worth, so a slot is filled when gold allows even if nothing scores against the enemy.")]
+        public float productionFloor = 0.05f;
+        [Tooltip("Buying: a unit's presence on the field — actions the enemy must spend on it, ground it holds and sees — as this share of its own full worth, added to what it would do in exchanges.")]
+        public float productionPresence = 0.25f;
+        [Tooltip("Buying: what a unit would take from the enemy counts this much against what it would do to them.")]
+        public float productionDefenceWeight = 0.5f;
+        [Tooltip("Buying: a front's want (the units that do most against its enemy, at its nearest producer) counts this much.")]
+        public float productionFrontWeight = 1f;
+        [Tooltip("Buying: a supply unit's (or truck's) value — the fighting units it would supply, or the force a front waiting on supply needs — counts this much.")]
+        public float productionSupplyWeight = 1f;
+        [Tooltip("Buying: supply units beyond one per campaignUnitsPerSupply fighting units, for fronts short of supply (and the campaign's next front waiting on one).")]
+        public int productionSupplyExtra = 2;
+        [Tooltip("Buying: spend the gold left after each slot has its best value for cost on upgrades, the most value per extra gold first (every slot filled with the best it can).")]
+        public bool productionSpendAll = true;
         [Tooltip("The units no objective needs go to the task forces too (by objectiveSpread). Off: they stay with the ordinary tactics.")]
         public bool campaignLeftoverToFronts = false;
         [Tooltip("Place objectives (AICampaign.Places): both ends of chokepoints and road junctions not yet in our supply, at most this many, the nearest our units. 0: none.")]

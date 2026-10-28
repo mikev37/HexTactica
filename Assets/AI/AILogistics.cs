@@ -66,6 +66,7 @@ namespace HexTactica.AI {
         /// <summary>The campaign's demand for one more supply unit (AICampaign.supplyDemand) and what for.</summary>
         public float supplyDemand;
         public string supplyDemandFor;
+        public float supplyDemandNeed;
         /// <summary>Free trucks after the claims.</summary>
         public int freeTrucks;
 
@@ -89,7 +90,7 @@ namespace HexTactica.AI {
         public static AILogistics Make(AIMap map, AICampaign campaign, ICollection<Unit> reservedTrucks, List<Front> ordinary) {
             AILogistics l = new AILogistics();
             if (campaign == null) return l;
-            l.supplyDemand = campaign.supplyDemand; l.supplyDemandFor = campaign.supplyDemandFor;
+            l.supplyDemand = campaign.supplyDemand; l.supplyDemandFor = campaign.supplyDemandFor; l.supplyDemandNeed = campaign.supplyDemandNeed;
             List<CampaignObjective> fronts = new List<CampaignObjective>(campaign.objectives);
             if (ordinary != null)
                 foreach (Front f in ordinary) {

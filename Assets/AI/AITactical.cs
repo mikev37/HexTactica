@@ -348,6 +348,10 @@ namespace HexTactica.AI {
             Front f = context.front;
             if (StepDebug != null && unit.tile != null && (StepDebug == "*" || unit.tile.x + "," + unit.tile.y == StepDebug) && stop == unit.tile) System.Console.WriteLine("      step " + unit.name + " front " + (f == null ? "none" : f.ToString() + " campaign " + f.campaign + " objective " + (f.objectiveTile != null ? f.objectiveTile.x + "," + f.objectiveTile.y : "-")));
             if (f == null || !f.campaign || profile.campaignStep <= 0f || unit.tile == null || unit.Hub != null || stop == null) return 0f;
+            // In the fight (AIProfile.campaignReleaseTurns): the campaign has set the stage, and the unit
+            // fights as it will — no lean toward staging or objective, no pace, no dip rule. (On BridgeCrossing
+            // the enemy is two moves away from the start, and the task forces still gathered and held.)
+            if (profile.campaignReleaseTurns > 0 && map.TurnsToContact(unit) <= profile.campaignReleaseTurns) return 0f;
             bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
             HexTile goal = gathering ? f.stagingTile : f.objectiveTile;
             if (goal == null) return 0f;
