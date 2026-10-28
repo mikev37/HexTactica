@@ -48,6 +48,8 @@ namespace HexTactica.AI {
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
+        /// <summary>The way in from the staging tile to the target (Reach).</summary>
+        [System.NonSerialized] public List<HexTile> way;
         /// <summary>Beyond our supply with no supply of its own this turn (AILogistics): it stays within our supply.</summary>
         public bool noSupply;
         /// <summary>Not the campaign's: an ordinary front, made a supply front by the logistics (AILogistics).</summary>
@@ -242,6 +244,29 @@ namespace HexTactica.AI {
                 CampaignObjective was = last != null ? last.objectives.Find(x => x.Id == o.Id) : null;
                 HexTile keepStaging = was != null && was.staging != null && map.SupplyDepth(was.staging) > 0 && map.EnemyStrikeTurns(was.staging) > 1 ? was.staging : null;
                 Reach(o, map, p, keepStaging, free);
+            }
+            // An enemy unit fights where it is (AIProfile.campaignEnemyNearestOnly): it counts at the objectives it
+            // is nearest (within a turn of its nearest), and at any whose way in it stands across (within a
+            // move of it), not at every objective it could reach in time. (Red's whole army, able to reach any
+            // objective on ForestClearing, priced every one at all of it, and Blue fought one front at a time.)
+            if (p.campaignEnemyNearestOnly) {
+                List<CampaignObjective> real = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.target != null);
+                foreach (Unit e in map.enemyUnits) {
+                    if (e == null || e.tile == null || e.moveRange <= 0) continue;
+                    Dictionary<CampaignObjective, int> t = new Dictionary<CampaignObjective, int>();
+                    int nearest = int.MaxValue;
+                    foreach (CampaignObjective o in real) {
+                        if (!o.arriving.ContainsKey(e)) continue;
+                        int turns = Mathf.CeilToInt(Mathf.Max(0, map.Travel(e, e.tile, o.target) - e.AttackRange) / (float)e.moveRange);
+                        t[o] = turns; nearest = Mathf.Min(nearest, turns);
+                    }
+                    foreach (KeyValuePair<CampaignObjective, int> kv in t) {
+                        if (kv.Value <= nearest + 1) continue;
+                        bool across = false;
+                        if (kv.Key.way != null) foreach (HexTile w in kv.Key.way) if (CanArrive(e, w, 1, map)) { across = true; break; }
+                        if (!across) kv.Key.arriving.Remove(e);
+                    }
+                }
             }
             Dictionary<Unit, int> reaches = new Dictionary<Unit, int>();
             foreach (CampaignObjective o in candidates) {
@@ -515,6 +540,7 @@ namespace HexTactica.AI {
             // enemy HQ priced the enemy's whole army, drawn up across its path, at a quarter of what
             // it was, went in at what it thought was twice their strength, and was destroyed.)
             List<HexTile> way = new List<HexTile>();
+            o.way = way;
             if (o.staging != null && o.kind != CampaignKind.DefendHQ) {
                 HexTile at = o.staging; int left; int guard = 0;
                 while (at != null && route.TryGetValue(at, out left) && left > 0 && guard++ < 200) {
@@ -615,7 +641,9 @@ namespace HexTactica.AI {
                     break;
                 }
                 case CampaignKind.Scout:
-                    o.needPower = o.enemyPower * p.objectiveForceRatio * 0.5f;   // a look, not a fight: enough not to be caught alone
+                    // A look, not a fight: the one that sees best for its cost (Fill), and an escort only by
+                    // campaignScoutEscort of the enemy there (0: none — a scouting trip was given two tanks).
+                    o.needPower = o.enemyPower * p.objectiveForceRatio * Mathf.Max(0f, p.campaignScoutEscort);
                     break;
             }
 
@@ -794,6 +822,9 @@ namespace HexTactica.AI {
                     // fights where it is by the ordinary tactics, and the task force no longer waits for it.
                     List<Unit> stay = new List<Unit>();
                     foreach (Unit u in was.units) if (pool.Contains(u) && CanJoin(u, now, map, p)) stay.Add(u);
+                    // Nobody left on it (dead, gone elsewhere): it is not kept — formed again only if it is still worth it.
+                    if (stay.Count == 0 && was.units.Count > 0) continue;
+                    if (stay.Count == 0 && was.age > 0) continue;
                     // Cohesion (campaignCohesionTurns): the task force's centre is the unit with the least
                     // total distance to the rest; a unit more than that many of its own turns from it drops
                     // out (the ordinary tactics take it, or another objective). (Half a task force on each
