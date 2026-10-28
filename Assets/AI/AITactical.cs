@@ -166,6 +166,19 @@ namespace HexTactica.AI {
         /// 3 picks among them — which is what puts units on chokepoints while the enemy is still
         /// out of range, and walks them forward when it is not.
         /// </summary>
+        /// <summary>Is <paramref name="e"/> standing on a building of <paramref name="us"/>'s (and able to take it)?</summary>
+        static bool OnOurBuilding(Unit e, Player us) {
+            return e != null && e.tile != null && e.tile.building != null && e.tile.building.owner == us && Building.CanCapture(e);
+        }
+
+        /// <summary>A shot from <paramref name="s"/> at an enemy taking one of our buildings, if there is one in reach.</summary>
+        static AttackAppraisal OurBuildingShot(Unit unit, HexTile s, AIMap map, AIProfile profile, Posture posture) {
+            AttackAppraisal best = new AttackAppraisal();
+            foreach (AttackAppraisal a in AITargeting.AllFrom(unit, s, map, profile, posture, true))
+                if (OnOurBuilding(a.target, unit.owner) && (!best.valid || a.value > best.value)) best = a;
+            return best;
+        }
+
         /// <summary>Would <paramref name="unit"/> ending on <paramref name="t"/> stand on one of our producing buildings that no enemy can strike next turn?</summary>
         public static bool BlocksProduction(Unit unit, HexTile t, AIMap map) {
             if (t == null || unit == null) return false;
@@ -209,7 +222,17 @@ namespace HexTactica.AI {
                 Option o = new Option { stop = s, destination = kv.Value.Value, positional = kv.Value.Key };
                 if (canShootFrom(s)) {
                     AttackAppraisal a = AITargeting.BestFrom(unit, s, map, profile, posture, true);
-                    if (a.valid && a.value > 0f && shotAllowed(a)) { o.shot = a; o.attack = a.value; }
+                    // An enemy on one of our buildings (taking it) is always worth a look by the move score,
+                    // whatever the shot itself trades: hitting or driving it off is what saves the building.
+                    if (a.valid && !(a.value > 0f) && !OnOurBuilding(a.target, unit.owner)) {
+                        AttackAppraisal off = OurBuildingShot(unit, s, map, profile, posture);
+                        if (off.valid) a = off;
+                    }
+                    if (a.valid && (a.value > 0f || OnOurBuilding(a.target, unit.owner)) && shotAllowed(a)) { o.shot = a; o.attack = a.value; }
+                    else if (!a.valid || !(a.value > 0f)) {
+                        AttackAppraisal off = OurBuildingShot(unit, s, map, profile, posture);
+                        if (off.valid && shotAllowed(off)) { o.shot = off; o.attack = off.value; }
+                    }
                     else if (DecisionLog != null && s == unit.tile && a.valid)
                         DecisionLog(string.Format("{0} {1}{2}: shot at {3}{4} rejected, value {5:0} (dealt {6}, taken {7})",
                             unit.owner.personal_name, unit.name, D(s), a.target.name, D(a.target.tile), a.value, a.outcome.damageToDefender, a.outcome.damageToAttacker));

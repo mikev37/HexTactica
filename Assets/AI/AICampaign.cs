@@ -345,8 +345,8 @@ namespace HexTactica.AI {
             Building home = GameController.HQOf(map.player);
             bool attrition = GameController.gc != null && GameController.gc.rules == RuleSet.Attrition;
 
-            // Our HQ, when anything can reach it.
-            if (home != null && home.tile != null) {
+            // Our HQ, when anything can reach it (campaignDefendHQ; off: the move score defends it).
+            if (p.campaignDefendHQ && home != null && home.tile != null) {
                 CampaignObjective d = new CampaignObjective { kind = CampaignKind.DefendHQ, target = home.tile, building = home };
                 // Only what can strike or reach it on its next turn: a threat two turns off is met
                 // by the campaign's fighting, not by units held back at home.

@@ -420,6 +420,8 @@ public static class Scenarios {
         make("ai-campaign-time-box", "aiCampaignTimeBox", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
              "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox, with campaignTransitTimeBox on; off by default) and leaves it alone for 6 turns (campaignGiveUpTurns 6; 0 by default). With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2) and, with nothing barring the objective by default (campaignGiveUpTurns 0), formed again at once.");
+        make("ai-clear-our-hq", "aiClearOurHQ", (a, o) => { Put("Tank", a, -4, 0); Put("Marine", o, -6, 0); Put("Grunt", o, -3, 2); },
+             "A Red marine stands on Blue's HQ, which it has worn down to 4 of 10; a Red grunt at strength 2 stands two tiles from Blue's tank, the other way. The tank goes for the marine on the HQ (AIProfile.hqThreatOn, and the HQ's points in the move score), not the easy kill.");
         make("ai-hold-the-enemy-hq", "aiHoldHQ", (a, o) => { Put("Grunt", a, 6, 0); Put("Grunt", a, 5, 0); Put("Tank", o, 3, 1); },
              "A Blue grunt on Red's HQ, wounded to strength 1 and out of rations, with a Red tank two tiles off. It stays on the HQ to take it (no withdrawing to heal, no attack that would stop the capture).");
         make("ai-campaign-chokepoint-objectives", "campaignChokepoints", (a, o) => {
@@ -924,6 +926,26 @@ public static class Scenarios {
                 // Dissolved at its 3rd plan and, with nothing barring the objective (campaignGiveUpTurns 0, the default), formed again at once from the units best placed for it.
                 bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("city turn 1") && b[2].Contains("did not gather in 2 turns");
                 return kept && gaveUp && dissolved;
+            }
+            case "aiClearOurHQ": {
+                Building hq = Rig.At(-6, 0).building;
+                hq.capturingPlayer = l.other; hq.capturePoints = 4;
+                Rig.At(-3, 2).occupier.Strength = 2;
+                Unit r = Rig.At(-4, 0).occupier;
+                AIProfile prof = l.ai.GetComponent<AIPlayer>().Profile;
+                AIMap m = new AIMap(l.ai, prof);
+                if (Environment.GetEnvironmentVariable("EXPLAIN") != null) {
+                    AITactical.DecisionLog = Console.WriteLine;
+                    Unit mar = Rig.At(-6, 0).occupier;
+                    foreach (HexTile n in Rig.At(-6, 0).neighbors) if (n != null && n.occupier == null) {
+                        CombatOutcome co = CombatMath.Resolve(r, mar, n);
+                        Console.WriteLine("   tank from " + Pos(n) + " on the marine at the HQ: deals " + co.damageToDefender + ", takes " + co.damageToAttacker + (co.defenderRetreats ? ", it retreats" : "")); break;
+                    }
+                }
+                AIAction act;
+                try { act = AITactical.Decide(r, m, prof, Posture.Aggressive); } finally { AITactical.DecisionLog = null; }
+                detail = "the tank: " + act.kind + (act.destination != null ? " to " + Pos(act.destination) : "") + (act.target != null ? " at " + act.target.name.Replace("(Clone)", "") + Pos(act.target.tile) : "") + " - " + act.reason;
+                return act.target != null && act.target.tile == Rig.At(-6, 0);
             }
             case "aiHoldHQ": {
                 Unit g = Rig.At(6, 0).occupier;
