@@ -93,6 +93,14 @@ namespace HexTactica.AI {
         public int campaignCohesionTurns = 2;
         [Tooltip("A task force's unit this many turns or fewer from contact fights as it will: no lean toward its staging ground or objective, no pace, no dip rule (the campaign sets the stage; the fight is the tactics'). 0: never released.")]
         public int campaignReleaseTurns = 2;
+        [Tooltip("Campaign: an objective to defend our HQ with a task force when an enemy can reach it next turn. Off: our HQ is defended through the move score (hqThreatNear, hqThreatOn), by whoever is there.")]
+        public bool campaignDefendHQ = false;
+        [Tooltip("Move score: our HQ's worth (and the enemy's) as this many times the board's stake: capture progress on an HQ counts this much more than the rest of the board.")]
+        public float hqCaptureWeight = 1f;
+        [Tooltip("Move score: each strength point of enemy infantry within a move of our HQ (after their reply) costs this share of the board's stake.")]
+        public float hqThreatNear = 0.02f;
+        [Tooltip("Move score: each strength point of enemy infantry on our HQ (after their reply) costs this share of the board's stake.")]
+        public float hqThreatOn = 0.1f;
         [Tooltip("A front's own supply units: one for every this many of its fighting units (after its chain).")]
         public int campaignUnitsPerSupply = 6;
         [Tooltip("Buying: an enemy unit seen counts for this many days after it is last seen.")]
