@@ -197,6 +197,8 @@ public class Unit : MonoBehaviour
     public int suppliesMax;
     public int fuel;
     public int fuelMax;
+    [Tooltip("The kinds of unit (by locomotion) this unit can attack. Unticked: it cannot attack them, and does them no damage (artillery and jets, say). All ticked by default.")]
+    public List<Locomotion> attacksLocomotion = new List<Locomotion> { Locomotion.Boots, Locomotion.Wheels, Locomotion.Treads, Locomotion.Rotor, Locomotion.Munition, Locomotion.Jet, Locomotion.Ship, Locomotion.Immobile };
     public int ammo;
     public int ammoMax;
 
@@ -254,7 +256,23 @@ public class Unit : MonoBehaviour
         // transport's tile, is taken shrinking into the slot.
         if (trasnporter != null && boardingWalk.Count > 0) {
             HexTile next = boardingWalk[0];
-            if (boardingWalk.Count == 1 || next == null) { boardingWalk.Clear(); SettleAboard(trasnporter); }
+            if (boardingWalk.Count == 1 || next == null) {
+                // Only into the transport once both are on the same cell on screen: the transport has stopped
+                // and this sprite has reached it. (Parented while the transport was still driving, the cargo
+                // went with every flip of the transport's sprite and was drawn far from where it should be.)
+                Unit tr = trasnporter;
+                bool driving = tr.path != null && tr.path.Count > 0;
+                Vector3 there = tr.transform.position;
+                if (driving || Vector2.Distance(transform.position, there) > .1f) {
+                    if (animator != null) animator.SetBool("Moving", true);
+                    if (!driving || Vector2.Distance(transform.position, there) > .1f) {
+                        transform.rotation = there.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+                        transform.position = Vector2.MoveTowards(transform.position, there, Time.deltaTime * moveSpeed);
+                    }
+                    return;
+                }
+                boardingWalk.Clear(); SettleAboard(tr);
+            }
             else {
                 if (animator != null) animator.SetBool("Moving", true);
                 Vector3 to = next.unitPlacement != null ? next.unitPlacement.position : next.transform.position;
@@ -422,23 +440,47 @@ public class Unit : MonoBehaviour
     public void OnBoarded(Unit transport) {
         disembarkFrom = null;
         if (!scaleKnown) { homeScale = transform.localScale; scaleKnown = true; }
-        // Its own UI goes: strength, veterancy and warnings are not shown for a unit aboard.
-        hiddenUI.Clear();
+        // Its own UI goes: strength, veterancy and warnings are not shown for a unit aboard. (Kept from an
+        // earlier boarding not yet undone — boarded again, or moved between transports — so it all comes
+        // back on getting off: cleared here, the pips hidden the first time were never shown again.)
         foreach (Transform t in GetComponentsInChildren<Transform>(true)) {
             if (t == transform || !t.gameObject.activeSelf) continue;
-            bool ui = t.GetComponent<Canvas>() != null || t.name == "HealthCircles" || t.name == "Veterancy" || t.name == "Canvas";
-            foreach (MonoBehaviour m in t.GetComponents<MonoBehaviour>())
-                if (m != null && (m.GetType().Name == "UnitStatusIcon" || m.GetType().Name == "HealthDot" || m.GetType().Name == "VeterancyChevron")) ui = true;
-            if (ui) {
+            if (IsOwnUI(t)) {
                 t.gameObject.SetActive(false);
-                hiddenUI.Add(t.gameObject);
+                if (!hiddenUI.Contains(t.gameObject)) hiddenUI.Add(t.gameObject);
             }
+        }
+        // Where its sprite is as it steps aboard (fog of war judges it there until it is in: OnScreenAt).
+        if (spriteTile == null && transport != null && transport.tile != null) {
+            HexTile near = transport.tile; float nd = float.MaxValue;
+            foreach (HexTile n in transport.tile.neighbors) {
+                if (n == null || n.unitPlacement == null) continue;
+                float d = Vector2.Distance(transform.position, n.unitPlacement.position);
+                if (d < nd) { nd = d; near = n; }
+            }
+            spriteTile = near;
         }
         // The walk there (if it moved to board) is played out first, at full size.
         boardingWalk.Clear();
         if (path != null && path.Count > 0) boardingWalk.AddRange(path);
         boardingWalk.Add(transport.tile);
         if (path != null) path.Clear();
+    }
+
+    /// <summary>
+    /// For fog of war, where this unit is on screen while getting on or off a transport: walking to it, the
+    /// tile its sprite is on (not the transport's, which it has not reached); riding to where it is put
+    /// down, its transport (it is still inside). Null otherwise.
+    /// </summary>
+    public HexTile BoardingSpriteTile { get { return trasnporter != null && boardingWalk.Count > 0 ? spriteTile : null; } }
+    public Unit RidingOffWith { get { return disembarkFrom; } }
+
+    /// <summary>A child that is this unit's own UI: strength pips, veterancy, status icons.</summary>
+    static bool IsOwnUI(Transform t) {
+        if (t.GetComponent<Canvas>() != null || t.name == "HealthCircles" || t.name == "Veterancy" || t.name == "Canvas") return true;
+        foreach (MonoBehaviour m in t.GetComponents<MonoBehaviour>())
+            if (m != null && (m.GetType().Name == "UnitStatusIcon" || m.GetType().Name == "HealthDot" || m.GetType().Name == "VeterancyChevron")) return true;
+        return false;
     }
 
     /// <summary>Tiles still to walk before stepping into the transport (animation only).</summary>
@@ -506,8 +548,12 @@ public class Unit : MonoBehaviour
     void FinishDisembark() {
         Unit transport = disembarkFrom;
         disembarkFrom = null;
+        // Its sprite starts from the transport's tile (fog of war judges it there until it has walked off).
+        if (transport != null && transport.tile != null && transport.tile != tile) spriteTile = transport.tile;
         foreach (GameObject g in hiddenUI) if (g != null) g.SetActive(true);
         hiddenUI.Clear();
+        // ... and the strength pips whatever happened in between (a supply unit was put down without them).
+        foreach (Transform t in GetComponentsInChildren<Transform>(true)) if (t != transform && t.name == "HealthCircles" && !t.gameObject.activeSelf) t.gameObject.SetActive(true);
         transform.SetParent(null, true);
         transform.rotation = Quaternion.identity;
         if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
@@ -664,6 +710,29 @@ public class Unit : MonoBehaviour
         refuelStock = refuelStockMax;
     }
 
+    /// <summary>
+    /// Would ending this turn's move on <paramref name="end"/> leave this unit unable to get back to a building
+    /// of ours that services it before it runs dry (a fuel-burning aircraft or ship)? It would start next turn
+    /// with its fuel less the tiles flown there (minFuelPerTile each) and, airborne, a turn's burn
+    /// (minFuelPerTurn); out of fuel then, it ditches; otherwise it must be no further from such a building
+    /// than that fuel takes it. Ending on such a building refuels it there (ServiceOnLanding): no warning.
+    /// </summary>
+    public bool WouldDitchFrom(HexTile end) {
+        if (end == null || tile == null || fuelMax <= 0) return false;
+        if (end.building != null && end.building.owner == owner && end.building.Services(this)) return false;
+        int flown = tile.Distance(end);
+        int left = fuel - flown * minFuelPerTile - (LocomotionRules.IsAirborne(locomotion) ? minFuelPerTurn : 0);
+        if (left <= 0) return true;
+        if (minFuelPerTile <= 0) return false;
+        int reach = left / minFuelPerTile;
+        int nearest = int.MaxValue;
+        foreach (Building b in Building.all) {
+            if (b == null || b.owner != owner || !b.Services(this)) continue;
+            foreach (HexTile t in b.Footprint) if (t != null) nearest = Mathf.Min(nearest, t.Distance(end));
+        }
+        return nearest > reach;
+    }
+
     /// <summary>Everything aboard (and aboard that, and so on) is where this transport is.</summary>
     public void SetCargoTile(HexTile t) {
         for (int i = 0; i < transported.Count; i++) {
@@ -701,10 +770,28 @@ public class Unit : MonoBehaviour
         return true;
     }
 
-    internal bool CanAttack(Unit opposition) {
+    /// <summary>
+    /// Can this unit attack <paramref name="opposition"/> at all, wherever they stand: able to fire now
+    /// (strength, ammunition, firepower), the target's locomotion one it can attack (attacksLocomotion), and
+    /// doing damage. Not range: see CanAttackFrom.
+    /// </summary>
+    public bool CanAttack(Unit opposition) {
         if (opposition == null || opposition.tile == null) return false;
         if (!CanAttack(opposition.tile)) return false;
+        if (!CanTarget(opposition)) return false;
         return calculateDamage(this, opposition, opposition.tile, 0) > 0;
+    }
+
+    /// <summary>Can this unit attack <paramref name="opposition"/> from <paramref name="from"/>: CanAttack, and in range from there.</summary>
+    public bool CanAttackFrom(HexTile from, Unit opposition) {
+        if (from == null || !CanAttack(opposition)) return false;
+        int d = from.Distance(opposition.tile);
+        return d <= AttackRange && d > MinRange;
+    }
+
+    /// <summary>Is <paramref name="target"/>'s locomotion one this unit can attack (attacksLocomotion)?</summary>
+    public bool CanTarget(Unit target) {
+        return target != null && attacksLocomotion != null && attacksLocomotion.Contains(target.locomotion);
     }
 
     /// <summary>True once the unit has nothing left to fight with.</summary>
@@ -1067,6 +1154,8 @@ public class Unit : MonoBehaviour
     internal static int calculateDamage(Unit attacker, Unit defender, HexTile tile, int firstStrike) {
         if (attacker.Strength - firstStrike <= 0)
             return 0;
+        // Not something it can attack (artillery at a jet): no damage, and no return fire either way.
+        if (!attacker.CanTarget(defender)) return 0;
         float cover = 0;
         float destructin = (attacker.Firepower + attacker.Veterancy);
         float penetration = Mathf.Max(1, defender.Armor - attacker.Piercing);
@@ -1103,7 +1192,7 @@ public class Unit : MonoBehaviour
 
     internal bool validTarget(HexTile position) {
         return position.occupier != null && position.occupier.owner != owner && GameController.Targetable(position.occupier)
-            && FogOfWar.CanTarget(owner, position.occupier);
+            && FogOfWar.CanTarget(owner, position.occupier) && CanTarget(position.occupier);
     }
 }
 

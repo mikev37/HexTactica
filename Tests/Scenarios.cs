@@ -420,6 +420,10 @@ public static class Scenarios {
         make("ai-campaign-time-box", "aiCampaignTimeBox", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
              "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox, with campaignTransitTimeBox on; off by default) and leaves it alone for 6 turns (campaignGiveUpTurns 6; 0 by default). With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2) and, with nothing barring the objective by default (campaignGiveUpTurns 0), formed again at once.");
+        make("rule-attacks-locomotion", "attacksLocomotion", (a, o) => { Put("Artillery", a, 0, 0); Put("Fighter", o, 2, 0); Put("Grunt", o, 2, 1); },
+             "Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can. With jets ticked (the default), the fighter can be attacked too.");
+        make("ui-fuel-warning-tiles", "fuelWarning", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 10; Put("Grunt", o, 5, 0); },
+             "A fighter at (0,0) with 10 fuel (1 a tile, 3 a turn in the air), Blue's airport at (-3,2). A move tile it could not get back to a building that refuels it from before running dry next turn is marked with the move warning (Unit.WouldDitchFrom): (3,0) is — 3 tiles flown and a turn's burn leave 4, and the airfield is further than that — (-2,1) is not, nor is the airport itself. With 3 fuel every tile is, but the airport.");
         make("ai-regroup-press-with-reserves", "aiRegroupPress", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
              "The hit-the-supply-unit board: Blue's tank beside the enemy supply unit that keeps four grunts going, with regrouping on. Blue has 100,000 gold and an HQ that builds: what it could replace makes its front aggressive (AIStrategic.StrategicNeed), and the tank hits the supply unit.");
         make("ai-regroup-hold-off-without-reserves", "aiRegroupHold", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
@@ -930,6 +934,23 @@ public static class Scenarios {
                 // Dissolved at its 3rd plan and, with nothing barring the objective (campaignGiveUpTurns 0, the default), formed again at once from the units best placed for it.
                 bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("city turn 1") && b[2].Contains("did not gather in 2 turns");
                 return kept && gaveUp && dissolved;
+            }
+            case "attacksLocomotion": {
+                Unit art = Rig.At(0, 0).occupier, jet = Rig.At(2, 0).occupier, grunt = Rig.At(2, 1).occupier;
+                bool jetDefault = art.CanAttack(jet);
+                art.attacksLocomotion.Remove(Locomotion.Jet);
+                bool jetOff = art.CanAttack(jet), gruntOn = art.CanAttackFrom(art.tile, grunt), valid = art.validTarget(jet.tile);
+                int dmg = Unit.calculateDamage(art, jet, jet.tile, 0);
+                detail = "jets ticked: " + jetDefault + "; unticked: fighter " + jetOff + " (damage " + dmg + ", valid target " + valid + "), grunt " + gruntOn;
+                return jetDefault && !jetOff && dmg == 0 && !valid && gruntOn;
+            }
+            case "fuelWarning": {
+                Unit f = Rig.At(0, 0).occupier;
+                bool far = f.WouldDitchFrom(Rig.At(3, 0)), near = f.WouldDitchFrom(Rig.At(-2, 1)), port = f.WouldDitchFrom(Rig.At(-3, 2));
+                f.fuel = 3;
+                bool nearLow = f.WouldDitchFrom(Rig.At(-2, 1)), portLow = f.WouldDitchFrom(Rig.At(-3, 2));
+                detail = "10 fuel: (3,0) " + far + ", (-2,1) " + near + ", airport " + port + "; 3 fuel: (-2,1) " + nearLow + ", airport " + portLow;
+                return far && !near && !port && nearLow && !portLow;
             }
             case "aiRegroupPress":
             case "aiRegroupHold": {
