@@ -179,6 +179,8 @@ namespace HexTactica.AI {
         /// must bring supply; with all of it committed, the next front is a supply unit away.
         /// </summary>
         public float supplyDemand;
+        /// <summary>The force (combat power) each missing supply unit would let go to supplyDemandFor.</summary>
+        public float supplyDemandNeed;
         public string supplyDemandFor;
         public int turn;
 
@@ -842,14 +844,19 @@ namespace HexTactica.AI {
                 bool kept = objectives.Contains(o);
                 if (!kept && o.lasting && o.needHubs > 0 && o.needHubs > hubsLeft) {
                     float per = o.value / Mathf.Max(1, o.needHubs - Mathf.Max(0, hubsLeft));
-                    if (per > supplyDemand) { supplyDemand = per; supplyDemandFor = o.Id; }
+                    if (per > supplyDemand) { supplyDemand = per; supplyDemandFor = o.Id; supplyDemandNeed = o.needPower / Mathf.Max(1, o.needHubs - Mathf.Max(0, hubsLeft)); }
                     if (Debug != null) Debug("not taken on: " + o.Id + " needs " + o.needHubs + " supply units, " + hubsLeft + " free");
                     continue;
                 }
                 float still = Mathf.Max(0f, o.needPower - o.assignedPower);
                 float near = 0f; int joinable = 0; foreach (Unit u in pool) if (CanJoin(u, o, map, p)) { near += Power(u); joinable++; }
                 if (still > near && o.assignedPower <= 0f) {
-                    if (Debug != null) { float all = 0f; foreach (Unit u in pool) all += Power(u); Debug("not taken on: " + o.Id + " needs " + still.ToString("0") + ", " + joinable + " units that can join have " + near.ToString("0") + " (" + pool.Count + " free have " + all.ToString("0") + ")"); }
+                    if (Debug != null) {
+                        float all = 0f; List<string> why = new List<string>();
+                        foreach (Unit u in pool) { all += Power(u); if (!CanJoin(u, o, map, p)) why.Add(u.name.Replace("(Clone)", "") + "(" + u.tile.x + "," + u.tile.y + ") " + JoinWhy(u, o, map, p)); }
+                        Debug("not taken on: " + o.Id + " needs " + still.ToString("0") + ", " + joinable + " units that can join have " + near.ToString("0") + " (" + pool.Count + " free have " + all.ToString("0") + ")"
+                              + (o.staging != null ? "; staging (" + o.staging.x + "," + o.staging.y + ")" : "") + (why.Count > 0 ? "; left out: " + string.Join(", ", why.ToArray()) : ""));
+                    }
                     continue;
                 }
                 Fill(o, pool, map, p, o.needPower);
@@ -1085,6 +1092,13 @@ namespace HexTactica.AI {
             if (map.TurnsToContact(u) > 1) return true;
             int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
             return map.Travel(u, u.tile, o.staging) <= radius;
+        }
+
+        /// <summary>For diagnostics: why CanJoin says no.</summary>
+        static string JoinWhy(Unit u, CampaignObjective o, AIMap map, AIProfile p) {
+            int t = Turns(u, o, map);
+            if (t > DrawTurns(p)) return t + " turns from staging (draw " + DrawTurns(p) + ")";
+            return "in contact (" + map.TurnsToContact(u) + ") off the staging ground";
         }
 
         /// <summary>Turns for <paramref name="u"/> to reach the objective's staging tile.</summary>
