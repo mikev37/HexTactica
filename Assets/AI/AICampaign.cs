@@ -1252,6 +1252,35 @@ namespace HexTactica.AI {
             // standing there.)
             HashSet<Unit> taken = new HashSet<Unit>();
             foreach (Front f in fronts) foreach (Unit u in f.assigned) taken.Add(u);
+            // The reserve (AIProfile.campaignReserve): of the units on no task force, those not fighting gather
+            // as one group — the central reserve — in our supply out of the enemy's reach, behind the main
+            // front; campaignActiveReserveShare of them (the nearest the enemy), and any already fighting, stay
+            // with the ordinary fronts as the active reserve. (Spare units spread over the ordinary AI's
+            // captures and fights did not clump, with the enemy's whole army somewhere in the fog.)
+            reserveFront = null;
+            if (p.campaignReserve) {
+                List<Unit> spare = new List<Unit>();
+                foreach (Unit u in map.ownUnits)
+                    if (u != null && u.tile != null && !taken.Contains(u) && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1) && u.trasnporter == null && !LocomotionRules.IsAirborne(u.locomotion) && !LocomotionRules.IsNaval(u.locomotion)) spare.Add(u);
+                int release = Mathf.Max(1, p.campaignReleaseTurns);
+                List<Unit> calm = spare.FindAll(u => map.TurnsToContact(u) > release);
+                int active = spare.Count - calm.Count;
+                int wantActive = Mathf.CeilToInt(spare.Count * Mathf.Clamp01(p.campaignActiveReserveShare));
+                calm.Sort((a, b) => { int c = map.TurnsToContact(a).CompareTo(map.TurnsToContact(b)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+                while (active < wantActive && calm.Count > 0) { calm.RemoveAt(0); active++; }
+                HexTile rally = calm.Count > 0 ? RallyTile(map, fronts) : null;
+                if (rally != null) {
+                    Front r = new Front { center = rally, objectiveTile = rally, priority = 0.5f };
+                    r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                    r.reserve = true;
+                    r.assigned.AddRange(calm);
+                    foreach (Unit u in calm) taken.Add(u);
+                    AIStrategic.Finish(new List<Front> { r }, map, p, memory, assaulting);
+                    fronts.Add(r);
+                    reserveFront = r;
+                }
+                reserveNote = "reserve: central " + calm.Count + (rally != null ? " gathering at (" + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
+            }
             HashSet<Unit> was = AIStrategic.Exclude;
             AIStrategic.Exclude = taken;
             List<Front> ordinary;
@@ -1275,6 +1304,36 @@ namespace HexTactica.AI {
                 if (home.center != null) { fronts.Add(home); AIStrategic.Finish(new List<Front> { home }, map, p, memory, assaulting); }
             }
             return fronts;
+        }
+
+        /// <summary>The central reserve this turn (AIProfile.campaignReserve), and a line for the trace.</summary>
+        public Front reserveFront;
+        public string reserveNote;
+
+        /// <summary>
+        /// Where the central reserve gathers: a tile in our supply that no enemy can strike for more than two
+        /// turns, the nearest such to the main front (the task force with the most units; else the nearest
+        /// enemy to our HQ).
+        /// </summary>
+        static HexTile RallyTile(AIMap map, List<Front> fronts) {
+            Front main = null;
+            foreach (Front f in fronts) if (f.campaign && f.objectiveTile != null && (main == null || f.assigned.Count > main.assigned.Count)) main = f;
+            HexTile toward = main != null ? (main.campaignStaging ?? main.objectiveTile) : null;
+            if (toward == null) {
+                Building home = GameController.HQOf(map.player);
+                int bd = int.MaxValue;
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && home != null && home.tile != null) { int d = e.tile.Distance(home.tile); if (d < bd) { bd = d; toward = e.tile; } }
+            }
+            if (toward == null) return null;
+            Dictionary<HexTile, int> steps = map.LandSteps(toward);
+            if (steps == null) return null;
+            HexTile best = null; int bs = int.MaxValue;
+            foreach (KeyValuePair<HexTile, int> kv in steps) {
+                HexTile t = kv.Key;
+                if (map.SupplyDepth(t) <= 0 || map.EnemyStrikeTurns(t) <= 2 || (t.building != null && t.building.owner == map.player && t.building.Purchasable().Count > 0)) continue;
+                if (kv.Value < bs || (kv.Value == bs && CombatMath.Precedes(t, best))) { bs = kv.Value; best = t; }
+            }
+            return best;
         }
 
         /// <summary>Is the enemy that can strike <paramref name="o"/>'s units next turn more than campaignFallbackRatio of their power?</summary>
