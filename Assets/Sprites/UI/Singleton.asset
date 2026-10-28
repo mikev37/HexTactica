@@ -21,3 +21,4 @@ MonoBehaviour:
   load: {fileID: 21300000, guid: 1bbef6028d39b9040bf5d7e28e24ab43, type: 3}
   unload: {fileID: 21300000, guid: 1bbef6028d39b9040bf5d7e28e24ab43, type: 3}
   capture: {fileID: -3205644015478069855, guid: 31b122de35a020442acf5e8a88d08398, type: 3}
+  move_warning: {fileID: 21300000, guid: 6e45ce5cdc50f564fb7f5d5482f72b95, type: 3}

@@ -56,6 +56,8 @@ namespace HexTactica.AI {
             public float space;
             /// <summary>Buildings: what our capture this turn is worth, less what the enemy's infantry could take from ours next turn.</summary>
             public float buildings;
+            /// <summary>The part of buildings from HQs (the game-winning captures, which the fight-before-capture rule leaves alone).</summary>
+            public float buildingsHQ;
             public string buildingNote;
             public readonly List<string> replies = new List<string>();
             /// <summary>Strength each of our units loses in the reply.</summary>
@@ -549,7 +551,7 @@ namespace HexTactica.AI {
         /// <summary>A building's worth to whoever holds it, in gold (AIProfile building values; an HQ that can change hands: the game).</summary>
         internal static float BuildingWorth(Building b, AIMap map) {
             if (b == null || !b.Capturable) return 0f;
-            if (b.IsHQ) return map.BoardStake;
+            if (b.IsHQ) return map.BoardStake * Mathf.Max(0f, map.profile.hqCaptureWeight);
             AIProfile p = map.profile;
             // A destroyed building earns, supplies and builds nothing (until it is repaired).
             if (!b.Functioning) return p.buildingValue;
@@ -563,7 +565,8 @@ namespace HexTactica.AI {
         /// </summary>
         static float Control(Building b, Player side, Player owner, int signed) {
             float th = b.CaptureThreshold;
-            if (owner == side) return 1f;
+            // Held: its points count too (an HQ worn down to 4 of 10 by enemy infantry is nearer lost than one at 10).
+            if (owner == side) return 0.5f + 0.5f * Mathf.Clamp01(Mathf.Abs(signed) / th);
             if (owner != null) return -(0.5f + 0.5f * Mathf.Abs(signed) / th);
             return 0.5f * signed / th;
         }
@@ -583,7 +586,7 @@ namespace HexTactica.AI {
                               Dictionary<Unit, HashSet<HexTile>> positions, Dictionary<Unit, float> hp, Dictionary<Unit, HexTile> endsAt, bool narrate) {
             Player us = u.owner;
             Func<Unit, HexTile> ourAt = x => x == u ? uAt : x.tile;
-            float total = 0f;
+            float total = 0f, hqPart = 0f;
             StringBuilder note = narrate ? new StringBuilder() : null;
             int radius = Theater != null ? map.TheaterRadius(u) : int.MaxValue;
             foreach (Building b in Building.all) {
@@ -613,7 +616,28 @@ namespace HexTactica.AI {
                     signedAfter = b.ForecastPoints(us, ourStrength, theirInfantry, out ownerAfter);
                     float gain = (Control(b, us, ownerAfter, signedAfter) - now) * worth;
                     total += gain;
+                    if (b.IsHQ) hqPart += gain;
                     if (note != null && gain != 0f) note.Append(b.name.Replace("(Clone)", "")).Append(" capture ").Append(gain.ToString("+0;-0")).Append(' ');
+                }
+                // Not ours: a world where the enemy is not standing on it (after their reply) is worth a little
+                // (buildingVacantShare of it), one where our infantry stands on it more (buildingOccupyShare), and
+                // twice that where it is capturing (on it without having attacked). The enemy HQ, worth the board,
+                // counts most. (A grunt had to be told to stay on the enemy HQ; the world did not say so.)
+                if (b.owner != us && (map.profile.buildingVacantShare > 0f || map.profile.buildingOccupyShare > 0f)) {
+                    bool enemyOn = false;
+                    foreach (Unit e in map.enemyUnits) {
+                        if (e == null || e.tile == null) continue;
+                        float ehp; if (hp.TryGetValue(e, out ehp) && ehp <= 0f) continue;
+                        HexTile at = endsAt.ContainsKey(e) ? endsAt[e] : e.tile;
+                        if (fp.Contains(at)) { enemyOn = true; break; }
+                    }
+                    bool capturing = ourStrength > 0 || (ourInfantry && !touched);
+                    float hold = (enemyOn ? 0f : map.profile.buildingVacantShare) + (ourInfantry ? map.profile.buildingOccupyShare * (capturing ? 2f : 1f) : 0f);
+                    if (hold > 0f) {
+                        total += hold * worth;
+                        if (b.IsHQ) hqPart += hold * worth;
+                        if (note != null) note.Append(b.name.Replace("(Clone)", "")).Append(ourInfantry ? (capturing ? " ours, capturing " : " ours ") : " clear ").Append((hold * worth).ToString("+0")).Append(' ');
+                    }
                 }
                 // Their infantry next turn, on ours (or on what we are taking).
                 bool ours = ownerAfter == us || (ownerAfter == null && signedAfter > 0);
@@ -648,7 +672,30 @@ namespace HexTactica.AI {
                     }
                 } finally { b.owner = keep; b.capturePoints = keepPts; b.capturingPlayer = keepCap; }
             }
+            // Our HQ (standard rules): enemy infantry within a move of it after their reply costs
+            // hqThreatNear of the board per strength point, on it hqThreatOn per strength point.
+            // (A Marine stood on our HQ worn down to 4 of 10, and nothing of ours near it took it on.)
+            Building home = GameController.HQOf(us);
+            if (home != null && home.tile != null && home.Capturable && (map.profile.hqThreatNear > 0f || map.profile.hqThreatOn > 0f)) {
+                float threatCost = 0f;
+                List<HexTile> hfp = home.Footprint;
+                foreach (Unit e in map.enemyUnits) {
+                    if (e == null || e.tile == null || !Building.CanCapture(e)) continue;
+                    float ehp; if (!hp.TryGetValue(e, out ehp)) ehp = e.Strength;
+                    if (ehp <= 0f) continue;
+                    HexTile at = endsAt.ContainsKey(e) ? endsAt[e] : e.tile;
+                    int pts = Mathf.Max(1, Hp(ehp));
+                    if (hfp.Contains(at)) threatCost += pts * map.profile.hqThreatOn;
+                    else if (at.Distance(home.tile) <= Mathf.Max(1, e.moveRange)) threatCost += pts * map.profile.hqThreatNear;
+                }
+                if (threatCost > 0f) {
+                    float c = threatCost * map.BoardStake;
+                    total -= c;
+                    if (note != null) note.Append("HQ threat ").Append((-c).ToString("+0;-0")).Append(' ');
+                }
+            }
             w.buildings = total;
+            w.buildingsHQ = hqPart;
             if (note != null && note.Length > 0) w.buildingNote = note.ToString().Trim();
             w.score += total;
         }

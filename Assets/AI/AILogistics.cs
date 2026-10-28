@@ -66,11 +66,30 @@ namespace HexTactica.AI {
         /// <summary>The campaign's demand for one more supply unit (AICampaign.supplyDemand) and what for.</summary>
         public float supplyDemand;
         public string supplyDemandFor;
+        public float supplyDemandNeed;
         /// <summary>Free trucks after the claims.</summary>
         public int freeTrucks;
 
         /// <summary>Where a front's supply goes: its staging ground while it gathers, its objective once it has gone in.</summary>
         public static HexTile Goal(CampaignObjective o) { return o.went || o.staging == null ? o.target : o.staging; }
+
+        /// <summary>
+        /// Where the front tells its chain it needs supply (AIProfile.campaignChainToUnits): its unit out of our
+        /// supply nearest its target, else its unit nearest its target — where its units are, not where it is
+        /// going; the chain works out its own links. Off (or no units): Goal(o).
+        /// </summary>
+        public static HexTile Goal(CampaignObjective o, AIMap map) {
+            if (!map.profile.campaignChainToUnits || o.target == null) return Goal(o);
+            Unit need = null, lead = null; int nd = int.MaxValue, ld = int.MaxValue;
+            foreach (Unit u in o.units) {
+                if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null || u.trasnporter != null) continue;
+                int d = u.tile.Distance(o.target);
+                if (d < ld || (d == ld && lead != null && AIMap.CompareUnits(u, lead) < 0)) { ld = d; lead = u; }
+                if (map.SupplyDepth(u.tile) <= 0 && (d < nd || (d == nd && need != null && AIMap.CompareUnits(u, need) < 0))) { nd = d; need = u; }
+            }
+            Unit at = need ?? lead;
+            return at != null ? at.tile : Goal(o);
+        }
 
         static int Size(CampaignObjective o) {
             int n = 0;
@@ -89,7 +108,7 @@ namespace HexTactica.AI {
         public static AILogistics Make(AIMap map, AICampaign campaign, ICollection<Unit> reservedTrucks, List<Front> ordinary) {
             AILogistics l = new AILogistics();
             if (campaign == null) return l;
-            l.supplyDemand = campaign.supplyDemand; l.supplyDemandFor = campaign.supplyDemandFor;
+            l.supplyDemand = campaign.supplyDemand; l.supplyDemandFor = campaign.supplyDemandFor; l.supplyDemandNeed = campaign.supplyDemandNeed;
             List<CampaignObjective> fronts = new List<CampaignObjective>(campaign.objectives);
             if (ordinary != null)
                 foreach (Front f in ordinary) {
@@ -103,7 +122,7 @@ namespace HexTactica.AI {
             foreach (CampaignObjective o in fronts) {
                 if (o.kind == CampaignKind.Scout || o.target == null) continue;
                 int n = Size(o);
-                if (n > 0) l.tasks.Add(new Task { front = o, goal = Goal(o), size = n, ordinary = o.ordinaryFront });
+                if (n > 0) l.tasks.Add(new Task { front = o, goal = Goal(o, map), size = n, ordinary = o.ordinaryFront });
             }
             // The campaign's fronts first, largest first; the ordinary fronts (the fallback, kept inside
             // our supply) after them. Between equals, the campaign's priority, then the board.

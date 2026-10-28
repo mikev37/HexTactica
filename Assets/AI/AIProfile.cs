@@ -47,7 +47,7 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float objectiveSpread = 0.5f;
         [Tooltip("A task force needs this many times the enemy combat power that could fight where it is going.")]
-        public float objectiveForceRatio = 1.5f;
+        public float objectiveForceRatio = 1.1f;
         [Tooltip("Turns of a building's income its capture is worth.")]
         public int objectiveHorizonTurns = 10;
         [Tooltip("A task force reduced below this share of the power it was formed with sends the campaign back to planning.")]
@@ -91,12 +91,79 @@ namespace HexTactica.AI {
         public bool campaignWings = true;
         [Tooltip("Cohesion: a task force's unit more than this many of its own turns from the task force's centre drops out of it. 0: no limit.")]
         public int campaignCohesionTurns = 2;
+        [Tooltip("A task force's unit this many turns or fewer from contact fights as it will: no lean toward its staging ground or objective, no pace, no dip rule (the campaign sets the stage; the fight is the tactics'). 0: never released.")]
+        public int campaignReleaseTurns = 2;
+        [Tooltip("Campaign: an objective to defend our HQ with a task force when an enemy can reach it next turn. Off: our HQ is defended through the move score (hqThreatNear, hqThreatOn), by whoever is there.")]
+        public bool campaignDefendHQ = false;
+        [Tooltip("Campaign: an enemy unit counts at the objectives it is nearest (within a turn) and those whose way in it stands across, not at every objective it could reach in time.")]
+        public bool campaignEnemyNearestOnly = true;
+        [Tooltip("Logistics: a front tells its chain where its units need supply (its unit out of supply nearest its target, else its lead unit), not its staging ground or target; the chain works out its links.")]
+        public bool campaignChainToUnits = true;
+        [Tooltip("Campaign: a scouting trip's escort, as this share of the enemy that could fight there times objectiveForceRatio (0: the scout alone; was 0.5).")]
+        public float campaignScoutEscort = 0f;
+        [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
+        public bool campaignReserve = true;
+        [Tooltip("Campaign: the share of units on no task force kept with the ordinary fronts as the active reserve (the rest gather as the central reserve).")]
+        [Range(0f, 1f)]
+        public float campaignActiveReserveShare = 0.1f;
+        [Tooltip("Regrouping: an expensive unit (regroupExpensiveCost or more) under fire without local superiority pulls back out of the enemy's reach, while cheap units fight, empty transports screen, and the central reserve is brought up to the front most pressed. It engages with the superiority, or when no tile out of reach is left. Replaces task forces falling back.")]
+        public bool regroup = true;
+        [Tooltip("Regrouping: units costing this much or more pull back without local superiority (grunts and conscripts stay and fight).")]
+        public int regroupExpensiveCost = 3000;
+        [Tooltip("Regrouping: only a unit that would expect to lose this many strength points where it stands tonight.")]
+        public float regroupRisk = 2f;
+        [Tooltip("A front's posture weighs what we could replace: the edge it needs to press is 1 + this with nothing to buy with, else 1 / (1 + this x R), R the times the gold in hand and strategicReplaceTurns of income would rebuild the army (at most strategicReplaceCap). 0: off.")]
+        [Range(0f, 1f)]
+        public float strategicReplaceWeight = 0.3f;
+        [Tooltip("Turns of income counted as gold to replace losses (strategicReplaceWeight).")]
+        public int strategicReplaceTurns = 3;
+        [Tooltip("The most times over the army's cost counted as replaceable (strategicReplaceWeight).")]
+        public float strategicReplaceCap = 10f;
+        [Tooltip("Regrouping: task forces' fronts are aggressive (strike first) rather than taking the ordinary fronts' posture by strength ratio.")]
+        public bool campaignStrikeFirst = false;
+        [Tooltip("Regrouping: empty transports with no job screen the enemy (as idleTransportScreens).")]
+        public bool regroupTransportScreens = true;
+        [Tooltip("Regrouping: the central reserve goes to the front whose units the enemy can strike with more than this many times their own power.")]
+        public float regroupCommitRatio = 1f;
+        [Tooltip("Move score: our HQ's worth (and the enemy's) as this many times the board's stake: capture progress on an HQ counts this much more than the rest of the board.")]
+        public float hqCaptureWeight = 2f;
+        [Tooltip("Move score: each strength point of enemy infantry within a move of our HQ (after their reply) costs this share of the board's stake.")]
+        public float hqThreatNear = 0.02f;
+        [Tooltip("Move score: each strength point of enemy infantry on our HQ (after their reply) costs this share of the board's stake.")]
+        public float hqThreatOn = 0.1f;
+        [Tooltip("Move score: a building not ours that no enemy stands on (after their reply) is worth this share of it; the enemy HQ, worth the board, most.")]
+        public float buildingVacantShare = 0.02f;
+        [Tooltip("Move score: a building not ours with our infantry on it is worth this share of it, twice that when it is capturing (on it without having attacked).")]
+        public float buildingOccupyShare = 0.1f;
+        [Tooltip("A unit able to capture that stands on the enemy HQ stays and takes it, whatever else (the old hard rule). Off: the move score decides (buildingVacantShare, buildingOccupyShare).")]
+        public bool holdEnemyHQRule = false;
         [Tooltip("A front's own supply units: one for every this many of its fighting units (after its chain).")]
         public int campaignUnitsPerSupply = 6;
         [Tooltip("Buying: an enemy unit seen counts for this many days after it is last seen.")]
         public int productionMemoryDays = 6;
         [Tooltip("Buying: what is bought against an enemy unit counts 1 / (1 + c / this), c the full kills our army could make on it (nothing of ours can hit it: full value).")]
         public float productionCounterUnits = 2f;
+        [Tooltip("Buying: each unit of a kind we already have (or have planned this turn) makes another worth this much (1: no variety rule; what we lack against the enemy, AIProduction.Scarcity, already gives diminishing returns).")]
+        [Range(0f, 1f)]
+        public float productionVariety = 0.97f;
+        [Tooltip("Buying: a fighting unit is worth at least this share of its own full worth, so a slot is filled when gold allows even if nothing scores against the enemy.")]
+        public float productionFloor = 0.05f;
+        [Tooltip("Buying: a unit's presence on the field — actions the enemy must spend on it, ground it holds and sees — as this share of its own full worth, added to what it would do in exchanges.")]
+        public float productionPresence = 0.25f;
+        [Tooltip("Buying: what a unit would take from the enemy counts this much against what it would do to them.")]
+        public float productionDefenceWeight = 0.5f;
+        [Tooltip("Buying: a front's want (the units that do most against its enemy, at its nearest producer) counts this much.")]
+        public float productionFrontWeight = 1f;
+        [Tooltip("Buying: a supply unit's (or truck's) value — the fighting units it would supply, or the force a front waiting on supply needs — counts this much.")]
+        public float productionSupplyWeight = 1f;
+        [Tooltip("Buying: supply units beyond one per campaignUnitsPerSupply fighting units, for fronts short of supply (and the campaign's next front waiting on one).")]
+        public int productionSupplyExtra = 2;
+        [Tooltip("Buying: cap supply units at one per campaignUnitsPerSupply fighting units plus productionSupplyExtra. Off: no cap; supply competes on value.")]
+        public bool productionSupplyCap = false;
+        [Tooltip("Buying: a supply unit's value scales with how far our army outmatches what we know of theirs (half the edge, 0.25 to 2).")]
+        public bool productionSupplySuperiority = true;
+        [Tooltip("Buying: spend the gold left after each slot has its best value for cost on upgrades, the most value per extra gold first (every slot filled with the best it can).")]
+        public bool productionSpendAll = true;
         [Tooltip("The units no objective needs go to the task forces too (by objectiveSpread). Off: they stay with the ordinary tactics.")]
         public bool campaignLeftoverToFronts = false;
         [Tooltip("Place objectives (AICampaign.Places): both ends of chokepoints and road junctions not yet in our supply, at most this many, the nearest our units. 0: none.")]
@@ -110,7 +177,7 @@ namespace HexTactica.AI {
         [Tooltip("Campaign supply by logistics (AILogistics): each front, largest first, is joined to the network by a chain of supply units, and the supply units left over are the fronts' own, by their number of units, placed tactically near them. Off: each task force runs its own chain of the supply units it was given.")]
         public bool campaignLogistics = true;
         [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]
-        public float campaignFallbackRatio = 0.5f;
+        public float campaignFallbackRatio = 0f;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
@@ -346,6 +413,8 @@ namespace HexTactica.AI {
 
         [Tooltip("With woundedNeedsSafety: off = skip the safe-and-supplied test and just compare fighting with withdrawing.")]
         public bool woundedSafetyGate = true;
+        [Tooltip("A wounded unit weighs fighting on against withdrawing by the move score (what holding its ground is worth counts: a building it is taking). Off: it withdraws by position alone.")]
+        public bool woundedWorldCompare = true;
 
         [Tooltip("Pull toward a front's objective, as a fraction of the objective's value at distance zero, falling off as 1/(1+d).")]
         [Range(0f, 0.5f)]

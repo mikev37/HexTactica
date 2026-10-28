@@ -15,6 +15,8 @@ public class HexTileUIData : ScriptableSingleton<HexTileUIData> {
     public Sprite unload;
     [Tooltip("A move tile where ending the move would capture a building (Sprites/UI/CapOption). Empty: the ordinary move sprite.")]
     public Sprite capture;
+    [Tooltip("A move tile where ending the move would leave the unit unable to reach a building that refuels it before it runs dry next turn (Unit.WouldDitchFrom). Empty: the ordinary move sprite.")]
+    public Sprite move_warning;
        
 }
 
