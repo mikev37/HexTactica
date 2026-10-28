@@ -420,6 +420,10 @@ public static class Scenarios {
         make("ai-campaign-time-box", "aiCampaignTimeBox", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
              "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox, with campaignTransitTimeBox on; off by default) and leaves it alone for 6 turns (campaignGiveUpTurns 6; 0 by default). With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2) and, with nothing barring the objective by default (campaignGiveUpTurns 0), formed again at once.");
+        make("ai-regroup-press-with-reserves", "aiRegroupPress", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
+             "The hit-the-supply-unit board: Blue's tank beside the enemy supply unit that keeps four grunts going, with regrouping on. Blue has 100,000 gold and an HQ that builds: what it could replace makes its front aggressive (AIStrategic.StrategicNeed), and the tank hits the supply unit.");
+        make("ai-regroup-hold-off-without-reserves", "aiRegroupHold", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
+             "The same board, but Blue has no gold and purchases are off: nothing to replace a loss with, so its front is defensive and the tank does not engage — it ends where no enemy can strike it tonight (AIProfile.regroup).");
         make("ai-clear-our-hq", "aiClearOurHQ", (a, o) => { Put("Tank", a, -4, 0); Put("Marine", o, -6, 0); Put("Grunt", o, -3, 2); },
              "A Red marine stands on Blue's HQ, which it has worn down to 4 of 10; a Red grunt at strength 2 stands two tiles from Blue's tank, the other way. The tank goes for the marine on the HQ (AIProfile.hqThreatOn, and the HQ's points in the move score), not the easy kill.");
         make("ai-hold-the-enemy-hq", "aiHoldHQ", (a, o) => { Put("Grunt", a, 6, 0); Put("Grunt", a, 5, 0); Put("Tank", o, 3, 1); },
@@ -926,6 +930,23 @@ public static class Scenarios {
                 // Dissolved at its 3rd plan and, with nothing barring the objective (campaignGiveUpTurns 0, the default), formed again at once from the units best placed for it.
                 bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("city turn 1") && b[2].Contains("did not gather in 2 turns");
                 return kept && gaveUp && dissolved;
+            }
+            case "aiRegroupPress":
+            case "aiRegroupHold": {
+                bool press = l.meta.Get("check", "") == "aiRegroupPress";
+                gc.ApplyPurchaseRules(press ? "on" : "off", null);
+                l.ai.money = press ? 100000 : 0;
+                Unit tank = Rig.At(0, 0).occupier;
+                AIProfile prof = l.ai.GetComponent<AIPlayer>().Profile;
+                AIMap m = new AIMap(l.ai, prof);
+                List<Front> fronts = AIStrategic.BuildFronts(m, prof);
+                Front f = AIStrategic.FrontFor(tank, fronts);
+                Posture posture = f != null ? f.posture : Posture.Defensive;
+                AIAction act = AITactical.Decide(tank, m, prof, posture, f, null);
+                HexTile end = act.destination ?? tank.tile;
+                bool hitsHub = act.target != null && act.target.tile == Rig.At(1, 0);
+                detail = "front " + (f != null ? f.ToString() : "none") + ", edge needed x" + AIStrategic.StrategicNeed(m, prof).ToString("0.00") + "; the tank: " + act.kind + (act.destination != null ? " to " + Pos(act.destination) : "") + (act.target != null ? " at " + act.target.name.Replace("(Clone)", "") + Pos(act.target.tile) : "") + ", " + m.FirersAt(end) + " enemy can strike there - " + act.reason;
+                return press ? posture == Posture.Aggressive && hitsHub : posture != Posture.Aggressive && !hitsHub && m.FirersAt(end) == 0;
             }
             case "aiClearOurHQ": {
                 Building hq = Rig.At(-6, 0).building;
@@ -2369,7 +2390,7 @@ public static class Scenarios {
             for (int x = 2; x <= 4; x++) Put("Grunt", other, x, 0);
             ScenarioFile.Save(Path.Combine(Dir, "hit-the-supply-unit.dat"),
                 Test("hit-the-supply-unit", "behaviour", "Legacy", 1, "enemyHubHit",
-                     "Our tank is next to the enemy supply unit (25,000) that sustains four grunts, and next to a grunt that can only do 1 damage to it. It should hit the supply unit."),
+                     "Our tank is next to the enemy supply unit (25,000) that sustains four grunts, and next to a grunt that can only do 1 damage to it. It should hit the supply unit, with the gold to replace a loss (the check gives Blue 100,000 and purchases)."),
                 ai, other, ai);
             n++;
         }
@@ -2613,6 +2634,10 @@ public static class Scenarios {
                 return lost < tank.Strength;
             }
             case "enemyHubHit": {
+                // With the gold and an HQ that builds to replace a loss (AIStrategic.StrategicNeed): the front is on
+                // the offensive and the tank engages (with nothing to replace it, regrouping keeps it out of reach:
+                // ai-regroup-hold-off-without-reserves).
+                gc.ApplyPurchaseRules("on", null); l.ai.money = 100000;
                 Unit hub = First(l.other, "Supplies");
                 ScenarioFile.PlayTurn();
                 detail = "enemy supply unit " + (hub == null || hub.tile == null ? "destroyed" : "at s" + hub.Strength);

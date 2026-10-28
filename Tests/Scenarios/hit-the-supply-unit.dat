@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"hit-the-supply-unit","kind":"behaviour","opponent":"Legacy","rounds":"1","check":"enemyHubHit","question":"Our tank is next to the enemy supply unit (25,000) that sustains four grunts, and next to a grunt that can only do 1 damage to it. It should hit the supply unit."},
+"test":{"name":"hit-the-supply-unit","kind":"behaviour","opponent":"Legacy","rounds":"1","check":"enemyHubHit","question":"Our tank is next to the enemy supply unit (25,000) that sustains four grunts, and next to a grunt that can only do 1 damage to it. It should hit the supply unit, with the gold to replace a loss (the check gives Blue 100,000 and purchases)."},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},

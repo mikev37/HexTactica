@@ -337,10 +337,32 @@ namespace HexTactica.AI {
             }
         }
 
+        /// <summary>
+        /// How much edge a front needs, for what we could replace (1: as the temperament says): 1 + w with nothing
+        /// to buy with (no purchases, no building that builds, or no gold); otherwise 1 / (1 + w R), R the times
+        /// the gold in hand and strategicReplaceTurns of income would rebuild the army (at most strategicReplaceCap).
+        /// </summary>
+        public static float StrategicNeed(AIMap map, AIProfile profile) {
+            float w = Mathf.Clamp01(profile.strategicReplaceWeight);
+            if (w <= 0f) return 1f;
+            Player p = map.player;
+            bool buys = GameController.gc == null || GameController.gc.purchasesAllowed;
+            int income = 0; bool builds = false;
+            foreach (Building b in Building.all) if (b != null && b.owner == p) { income += b.income; if (b.Purchasable().Count > 0) builds = true; }
+            float army = 0f;
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null) army += u.cost;
+            float replace = buys && builds ? (p.money + income * Mathf.Max(0, profile.strategicReplaceTurns)) / Mathf.Max(1f, army) : 0f;
+            if (replace <= 0f) return 1f + w;
+            return 1f / (1f + w * Mathf.Min(replace, Mathf.Max(0f, profile.strategicReplaceCap)));
+        }
+
         static void DecidePosture(Front f, AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory) {
             float ratio = f.ForceRatio;
             // Temperament: a cautious AI needs a bigger edge to call a front aggressive.
             float need = profile.Aggro(1.3f, 0.75f);
+            // The war behind it (AIProfile.strategicReplaceWeight): with the gold and the buildings to replace
+            // losses, a smaller edge is enough to press; with neither, a bigger one is needed.
+            need *= StrategicNeed(map, profile);
 
             // Hysteresis: between the two thresholds a front keeps last turn's posture for the
             // same objective. Rebuilding fronts from scratch every turn with a single cut-off
