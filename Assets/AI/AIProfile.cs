@@ -101,13 +101,18 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float campaignActiveReserveShare = 0.1f;
         [Tooltip("Regrouping: an expensive unit (regroupExpensiveCost or more) under fire without local superiority pulls back out of the enemy's reach, while cheap units fight, empty transports screen, and the central reserve is brought up to the front most pressed. It engages with the superiority, or when no tile out of reach is left. Replaces task forces falling back.")]
-        public bool regroup = false;
+        public bool regroup = true;
         [Tooltip("Regrouping: units costing this much or more pull back without local superiority (grunts and conscripts stay and fight).")]
         public int regroupExpensiveCost = 3000;
-        [Tooltip("Regrouping: local superiority — our fighting units that could be beside the unit next turn, at least this many times the enemy that could strike it tonight (worth times strength).")]
-        public float regroupSuperiority = 1.2f;
         [Tooltip("Regrouping: only a unit that would expect to lose this many strength points where it stands tonight.")]
         public float regroupRisk = 2f;
+        [Tooltip("A front's posture weighs what we could replace: the edge it needs to press is 1 + this with nothing to buy with, else 1 / (1 + this x R), R the times the gold in hand and strategicReplaceTurns of income would rebuild the army (at most strategicReplaceCap). 0: off.")]
+        [Range(0f, 1f)]
+        public float strategicReplaceWeight = 0.3f;
+        [Tooltip("Turns of income counted as gold to replace losses (strategicReplaceWeight).")]
+        public int strategicReplaceTurns = 3;
+        [Tooltip("The most times over the army's cost counted as replaceable (strategicReplaceWeight).")]
+        public float strategicReplaceCap = 10f;
         [Tooltip("Regrouping: task forces' fronts are aggressive (strike first) rather than taking the ordinary fronts' posture by strength ratio.")]
         public bool campaignStrikeFirst = false;
         [Tooltip("Regrouping: empty transports with no job screen the enemy (as idleTransportScreens).")]
