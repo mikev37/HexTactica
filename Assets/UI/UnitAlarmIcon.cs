@@ -50,6 +50,7 @@ public class UnitAlarmIcon : MonoBehaviour {
         if (u == null || u.suppliesMax <= 0 || u.supplies > 0 || u.owner == null) return false;
         Unit at = u;
         while (at.trasnporter != null) at = at.trasnporter;
-        return at.tile != null && !at.tile.isSupplied(u.owner);
+        if (u.locomotion == Locomotion.Jet) return at.tile != null && at.tile.building != null && at.tile.building.services.Contains(u.locomotion);
+        else return at.tile != null && !at.tile.isSupplied(u.owner);
     }
 }
