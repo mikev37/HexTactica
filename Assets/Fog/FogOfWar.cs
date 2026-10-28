@@ -577,7 +577,12 @@ public static class FogOfWar {
     public static bool ShownToViewer(Unit u) {
         Player v = Viewer;
         if (v == null || u == null || u.owner == v) return true;
+        // Getting on: judged where its sprite is until it is in; getting off: as the transport it still rides.
+        // (Unseen enemy supply units were seen walking into and out of trucks in the fog.)
+        HexTile walking = u.BoardingSpriteTile;
+        if (walking != null) return SeesAt(v, u, walking);
         if (u.trasnporter != null && u.trasnporter != u) return ShownToViewer(u.trasnporter);
+        if (u.RidingOffWith != null && u.RidingOffWith != u) return ShownToViewer(u.RidingOffWith);
         if (u.tile == null) return false;
         return SeesAt(v, u, u.ShownTile);
     }

@@ -128,6 +128,11 @@ public class HexTile : MonoBehaviour
         neighbors.ForEach(x => x.drawRoads());
     }
 
+    /// <summary>The unit being moved would be stranded without fuel by ending here (and there is a warning sprite to show).</summary>
+    bool DitchHere() {
+        return uiData != null && uiData.move_warning != null && GameController.gc != null && GameController.gc.activeUnit != null && GameController.gc.activeUnit.WouldDitchFrom(this);
+    }
+
     /// <summary>The unit being moved would capture a building by ending here (and there is a capture sprite to show).</summary>
     bool CaptureHere() {
         return uiData != null && uiData.capture != null && GameController.gc != null && Building.WouldCapture(GameController.gc.activeUnit, this);
@@ -170,7 +175,7 @@ public class HexTile : MonoBehaviour
                 overlay.sprite = uiData.selected;
                 break;
             case UIState.MOVE:
-                overlay.sprite = CaptureHere() ? uiData.capture : uiData.move_possible;
+                overlay.sprite = DitchHere() ? uiData.move_warning : CaptureHere() ? uiData.capture : uiData.move_possible;
                 break;
             case UIState.ATTACK:
                 overlay.sprite = uiData.attack_possible;
@@ -193,7 +198,7 @@ public class HexTile : MonoBehaviour
                     arrow.transform.up = parent.transform.position - transform.position;
                     arrow.sprite = uiData.move_arrow;
                 }
-                overlay.sprite = CaptureHere() ? uiData.capture : uiData.move_confirm;
+                overlay.sprite = DitchHere() ? uiData.move_warning : CaptureHere() ? uiData.capture : uiData.move_confirm;
                 break;
             case UIState.ATTACK_CONFIRM:
                 overlay.sprite = uiData.attack_Confirm;
