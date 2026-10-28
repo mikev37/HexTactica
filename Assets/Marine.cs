@@ -24,15 +24,5 @@ public class Marine : MonoBehaviour
             transform.localScale = Vector3.zero;
     }
 
-    HexTile TileUnderSprite() {
-        HexTile best = myUnit.tile;
-        float bestD = float.MaxValue;
-        Vector2 here = myUnit.transform.position;
-        foreach (HexTile t in HexGenerator.hg.tiles) {
-            if (t == null || t.unitPlacement == null) continue;
-            float d = ((Vector2)t.unitPlacement.position - here).sqrMagnitude;
-            if (d < bestD) { bestD = d; best = t; }
-        }
-        return best;
-    }
+    HexTile TileUnderSprite() { return myUnit.TileUnderSprite(); }
 }

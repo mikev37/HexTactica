@@ -994,7 +994,9 @@ public static class Scenarios {
                 g.Strength = 1; g.supplies = 0;
                 AIProfile prof = l.ai.GetComponent<AIPlayer>().Profile;
                 AIMap m = new AIMap(l.ai, prof);
-                AIAction act = AITactical.Decide(g, m, prof, Posture.Aggressive);
+                if (Environment.GetEnvironmentVariable("EXPLAIN") != null) AITactical.DecisionLog = Console.WriteLine;
+                AIAction act;
+                try { act = AITactical.Decide(g, m, prof, Posture.Aggressive); } finally { AITactical.DecisionLog = null; }
                 detail = "the grunt on the HQ: " + act.kind + (act.destination != null ? " to " + Pos(act.destination) : "") + " - " + act.reason;
                 return act.kind == AIActionKind.Capture || (act.kind == AIActionKind.Wait);
             }

@@ -56,6 +56,8 @@ namespace HexTactica.AI {
             public float space;
             /// <summary>Buildings: what our capture this turn is worth, less what the enemy's infantry could take from ours next turn.</summary>
             public float buildings;
+            /// <summary>The part of buildings from HQs (the game-winning captures, which the fight-before-capture rule leaves alone).</summary>
+            public float buildingsHQ;
             public string buildingNote;
             public readonly List<string> replies = new List<string>();
             /// <summary>Strength each of our units loses in the reply.</summary>
@@ -584,7 +586,7 @@ namespace HexTactica.AI {
                               Dictionary<Unit, HashSet<HexTile>> positions, Dictionary<Unit, float> hp, Dictionary<Unit, HexTile> endsAt, bool narrate) {
             Player us = u.owner;
             Func<Unit, HexTile> ourAt = x => x == u ? uAt : x.tile;
-            float total = 0f;
+            float total = 0f, hqPart = 0f;
             StringBuilder note = narrate ? new StringBuilder() : null;
             int radius = Theater != null ? map.TheaterRadius(u) : int.MaxValue;
             foreach (Building b in Building.all) {
@@ -614,7 +616,28 @@ namespace HexTactica.AI {
                     signedAfter = b.ForecastPoints(us, ourStrength, theirInfantry, out ownerAfter);
                     float gain = (Control(b, us, ownerAfter, signedAfter) - now) * worth;
                     total += gain;
+                    if (b.IsHQ) hqPart += gain;
                     if (note != null && gain != 0f) note.Append(b.name.Replace("(Clone)", "")).Append(" capture ").Append(gain.ToString("+0;-0")).Append(' ');
+                }
+                // Not ours: a world where the enemy is not standing on it (after their reply) is worth a little
+                // (buildingVacantShare of it), one where our infantry stands on it more (buildingOccupyShare), and
+                // twice that where it is capturing (on it without having attacked). The enemy HQ, worth the board,
+                // counts most. (A grunt had to be told to stay on the enemy HQ; the world did not say so.)
+                if (b.owner != us && (map.profile.buildingVacantShare > 0f || map.profile.buildingOccupyShare > 0f)) {
+                    bool enemyOn = false;
+                    foreach (Unit e in map.enemyUnits) {
+                        if (e == null || e.tile == null) continue;
+                        float ehp; if (hp.TryGetValue(e, out ehp) && ehp <= 0f) continue;
+                        HexTile at = endsAt.ContainsKey(e) ? endsAt[e] : e.tile;
+                        if (fp.Contains(at)) { enemyOn = true; break; }
+                    }
+                    bool capturing = ourStrength > 0 || (ourInfantry && !touched);
+                    float hold = (enemyOn ? 0f : map.profile.buildingVacantShare) + (ourInfantry ? map.profile.buildingOccupyShare * (capturing ? 2f : 1f) : 0f);
+                    if (hold > 0f) {
+                        total += hold * worth;
+                        if (b.IsHQ) hqPart += hold * worth;
+                        if (note != null) note.Append(b.name.Replace("(Clone)", "")).Append(ourInfantry ? (capturing ? " ours, capturing " : " ours ") : " clear ").Append((hold * worth).ToString("+0")).Append(' ');
+                    }
                 }
                 // Their infantry next turn, on ours (or on what we are taking).
                 bool ours = ownerAfter == us || (ownerAfter == null && signedAfter > 0);
@@ -672,6 +695,7 @@ namespace HexTactica.AI {
                 }
             }
             w.buildings = total;
+            w.buildingsHQ = hqPart;
             if (note != null && note.Length > 0) w.buildingNote = note.ToString().Trim();
             w.score += total;
         }
