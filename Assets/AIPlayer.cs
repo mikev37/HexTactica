@@ -65,6 +65,19 @@ public class AIPlayer : MonoBehaviour {
 
     /// <summary>Last posture of each objective's front. Persists across turns for hysteresis.</summary>
     readonly Dictionary<HexTile, Posture> postureMemory = new Dictionary<HexTile, Posture>();
+    readonly Dictionary<HexTile, Posture> releasedMemory = new Dictionary<HexTile, Posture>();
+    List<Front> releasedFronts;
+
+    /// <summary>Is <paramref name="u"/> in the fight (within campaignReleaseTurns of contact), and so off its task force?</summary>
+    bool Released(Unit u) {
+        return campaign != null && releasedFronts != null && Profile.campaignReleaseTurns > 0 && u != null && u.tile != null && map != null && map.TurnsToContact(u) <= Profile.campaignReleaseTurns;
+    }
+
+    /// <summary>The front <paramref name="u"/> fights on: its task force's, or, in the fight, the ordinary front it falls in.</summary>
+    Front FrontOf(Unit u) {
+        if (Released(u)) { Front r = AIStrategic.FrontFor(u, releasedFronts); if (r != null) return r; }
+        return AIStrategic.FrontFor(u, fronts);
+    }
     readonly HashSet<HexTile> assaultMemory = new HashSet<HexTile>();
     List<Objective> objectives = new List<Objective>();
     /// <summary>This turn's group-plan steps (AIPlan), by unit, consumed as each unit acts.</summary>
@@ -468,6 +481,14 @@ public class AIPlayer : MonoBehaviour {
             campaign = null;
             fronts = AIStrategic.BuildFronts(map, Profile, postureMemory, assaultMemory);
         }
+        // In the fight (AIProfile.campaignReleaseTurns): a unit that close to the enemy is on no task force — it
+        // fights as the ordinary AI would, on the ordinary front it falls in, whatever front it was given.
+        releasedFronts = null;
+        if (campaign != null && Profile.campaignReleaseTurns > 0) {
+            HashSet<Unit> was = AIStrategic.Exclude;
+            AIStrategic.Exclude = null;
+            try { releasedFronts = AIStrategic.BuildFronts(map, Profile, releasedMemory, assaultMemory); } finally { AIStrategic.Exclude = was; }
+        }
         AIPerf.End("prepare: fronts", __p); }
         if (Trace != null) foreach (Front f in fronts)
             Trace("   front " + f + (f.objectiveTile != null ? " objective (" + f.objectiveTile.x + "," + f.objectiveTile.y + ") value " + f.objectiveValue.ToString("0") : "")
@@ -501,7 +522,7 @@ public class AIPlayer : MonoBehaviour {
         AIPerf.End("prepare: objectives", __p); }
         // A unit on a campaign task force is its front's: the ordinary objectives do not take it.
         HashSet<Unit> onTaskForce = new HashSet<Unit>();
-        if (campaign != null) foreach (CampaignObjective o in campaign.objectives) foreach (Unit u in o.units) if (u != null) onTaskForce.Add(u);
+        if (campaign != null) foreach (CampaignObjective o in campaign.objectives) foreach (Unit u in o.units) if (u != null && !Released(u)) onTaskForce.Add(u);
         AIObjectives.Exclude = onTaskForce;
         try { assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>(); }
         finally { AIObjectives.Exclude = null; }
@@ -609,7 +630,7 @@ public class AIPlayer : MonoBehaviour {
                 ? AICoordinator.Plan(map, Profile, u => {
                       AIWorld.NoAssist = null;
                       AITactical.Assignments = assignments;
-                      Front f = AIStrategic.FrontFor(u, fronts);
+                      Front f = FrontOf(u);
                       return AITactical.Decide(u, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective);
                   }, noAssist, Trace)
                 : AIPlan.Choose(map, Profile, Trace);
@@ -701,7 +722,7 @@ public class AIPlayer : MonoBehaviour {
         // reserved for a landing this turn) chose one: the unit decides again the ordinary way, so an
         // aircraft parked there lifts off to whatever mission it would pick anyway.
         if (map != null && unit != null && unit.tile != null && !AIAir.MayEndOn(unit, AIAir.EndOf(unit, a), map)) {
-            Front f = AIStrategic.FrontFor(unit, fronts);
+            Front f = FrontOf(unit);
             AIWorld.NoAssist = noAssist.Count > 0 ? noAssist : null;
             a = AITactical.Decide(unit, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective);
         }
@@ -757,7 +778,7 @@ public class AIPlayer : MonoBehaviour {
         HexTile end = plan.dropoff ?? truck.tile;
         foreach (Unit r in truck.transported) {
             if (r == null || r == cargo || r.Hub != null) continue;
-            Front f = AIStrategic.FrontFor(r, fronts);
+            Front f = FrontOf(r);
             HexTile goal = f != null && f.objectiveTile != null ? f.objectiveTile : AISupplyChain.Objective(map);
             if (goal == null) continue;
             Dictionary<HexTile, int> steps = map.LandSteps(goal);
@@ -784,7 +805,7 @@ public class AIPlayer : MonoBehaviour {
         AITactical.Intents = intents;
         AITactical.Assignments = assignments;
 
-        Front front = AIStrategic.FrontFor(unit, fronts);
+        Front front = FrontOf(unit);
         Posture posture = front != null ? front.posture : Posture.Defensive;
 
 
@@ -1428,6 +1449,10 @@ public class AIPlayer : MonoBehaviour {
         }
         if (t == null) logistics.tacticalOf.TryGetValue(hub, out t);
         if (t == null) return false;
+        // A front's own supply unit with its front in the fight (campaignReleaseTurns): it moves as it will —
+        // placed by what it would keep supplied (AISupplyPlanner) — not by the logistics. The chain keeps its
+        // own logic; the front only tells it where its units need supply (AILogistics.Goal).
+        if (!logistics.chainOf.ContainsKey(hub) && Profile.campaignReleaseTurns > 0 && t.front.units.Exists(u => u != null && u.tile != null && map.TurnsToContact(u) <= Profile.campaignReleaseTurns)) return false;
         // Far from its front with a truck claimed for it: on board, and the truck takes it there.
         HexTactica.AI.AILogistics.Ride claim;
         if (logistics.rides.TryGetValue(hub, out claim) && claim.truck != null && claim.truck.tile != null && claim.truck.tile != claim.to) {

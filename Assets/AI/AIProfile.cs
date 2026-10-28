@@ -97,6 +97,8 @@ namespace HexTactica.AI {
         public bool campaignDefendHQ = false;
         [Tooltip("Campaign: an enemy unit counts at the objectives it is nearest (within a turn) and those whose way in it stands across, not at every objective it could reach in time.")]
         public bool campaignEnemyNearestOnly = true;
+        [Tooltip("Logistics: a front tells its chain where its units need supply (its unit out of supply nearest its target, else its lead unit), not its staging ground or target; the chain works out its links.")]
+        public bool campaignChainToUnits = true;
         [Tooltip("Campaign: a scouting trip's escort, as this share of the enemy that could fight there times objectiveForceRatio (0: the scout alone; was 0.5).")]
         public float campaignScoutEscort = 0f;
         [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
