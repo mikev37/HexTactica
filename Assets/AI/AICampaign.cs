@@ -1247,6 +1247,9 @@ namespace HexTactica.AI {
                 fronts.Add(f);
             }
             AIStrategic.Finish(fronts, map, p, memory, assaulting);
+            // No holding and waiting (AIProfile.regroup): a task force strikes first; its expensive units pull
+            // back when they lack the superiority (AITactical.Regrouping), and the reserve comes up.
+            if (p.regroup && p.campaignStrikeFirst) foreach (Front f in fronts) if (f.campaign) f.posture = Posture.Aggressive;
             // Everything not on a task force: the ordinary fronts (AIStrategic.BuildFronts), which fight
             // and push on as the ordinary AI does. (A single front at home with no objective left them
             // standing there.)
@@ -1269,6 +1272,22 @@ namespace HexTactica.AI {
                 calm.Sort((a, b) => { int c = map.TurnsToContact(a).CompareTo(map.TurnsToContact(b)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
                 while (active < wantActive && calm.Count > 0) { calm.RemoveAt(0); active++; }
                 HexTile rally = calm.Count > 0 ? RallyTile(map, fronts) : null;
+                // Committed (AIProfile.regroup): to the front most pressed — the enemy that can strike its units
+                // tonight more than regroupCommitRatio of their power — all of it, toward that front's units.
+                Front pressed = null; float worst = 0f;
+                if (p.regroup && calm.Count > 0)
+                    foreach (Front f in fronts) {
+                        float ours = 0f, theirs = 0f; HashSet<Unit> seenE = new HashSet<Unit>(); List<Unit> mine = new List<Unit>();
+                        foreach (Unit u in f.assigned) {
+                            if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
+                            ours += AIScore.Worth(u) * u.Strength; mine.Add(u);
+                            foreach (Unit e in map.FirersOf(u.tile)) if (e != null && seenE.Add(e)) theirs += AIScore.Worth(e) * e.Strength;
+                        }
+                        if (theirs <= ours * Mathf.Max(0f, p.regroupCommitRatio)) continue;
+                        float press = theirs - ours;
+                        HexTile c = Centre(mine);
+                        if (c != null && (pressed == null || press > worst)) { pressed = f; worst = press; rally = c; }
+                    }
                 if (rally != null) {
                     Front r = new Front { center = rally, objectiveTile = rally, priority = 0.5f };
                     r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
@@ -1279,7 +1298,7 @@ namespace HexTactica.AI {
                     fronts.Add(r);
                     reserveFront = r;
                 }
-                reserveNote = "reserve: central " + calm.Count + (rally != null ? " gathering at (" + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
+                reserveNote = "reserve: central " + calm.Count + (rally != null ? (pressed != null ? " committed to the front at (" : " gathering at (") + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
             }
             HashSet<Unit> was = AIStrategic.Exclude;
             AIStrategic.Exclude = taken;

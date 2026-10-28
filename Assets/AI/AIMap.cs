@@ -840,6 +840,14 @@ namespace HexTactica.AI {
             return 0f;
         }
 
+        /// <summary>The enemy units that could fire on a tile tonight.</summary>
+        public List<Unit> FirersOf(HexTile at) {
+            List<Unit> r = new List<Unit>();
+            List<EnemyFire> list;
+            if (at != null && firersAt.TryGetValue(at, out list)) foreach (EnemyFire e in list) r.Add(e.unit);
+            return r;
+        }
+
         /// <summary>How many enemy units could fire on a tile tonight.</summary>
         public int FirersAt(HexTile at) {
             List<EnemyFire> list;
