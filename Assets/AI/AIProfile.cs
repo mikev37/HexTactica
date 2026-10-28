@@ -95,6 +95,11 @@ namespace HexTactica.AI {
         public int campaignReleaseTurns = 2;
         [Tooltip("Campaign: an objective to defend our HQ with a task force when an enemy can reach it next turn. Off: our HQ is defended through the move score (hqThreatNear, hqThreatOn), by whoever is there.")]
         public bool campaignDefendHQ = false;
+        [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
+        public bool campaignReserve = true;
+        [Tooltip("Campaign: the share of units on no task force kept with the ordinary fronts as the active reserve (the rest gather as the central reserve).")]
+        [Range(0f, 1f)]
+        public float campaignActiveReserveShare = 0.1f;
         [Tooltip("Move score: our HQ's worth (and the enemy's) as this many times the board's stake: capture progress on an HQ counts this much more than the rest of the board.")]
         public float hqCaptureWeight = 1f;
         [Tooltip("Move score: each strength point of enemy infantry within a move of our HQ (after their reply) costs this share of the board's stake.")]

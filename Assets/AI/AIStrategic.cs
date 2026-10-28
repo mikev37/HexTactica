@@ -43,6 +43,8 @@ namespace HexTactica.AI {
         public HexTile campaignStaging;
         /// <summary>The campaign objective this front is the task force of (AICampaign), told when it goes in.</summary>
         public CampaignObjective campaignObjective;
+        /// <summary>The campaign's central reserve (AICampaign.Fronts): gathering behind the main front.</summary>
+        public bool reserve;
         /// <summary>A campaign task force with the power its objective needs: it goes (aggressive), gathering first as any attack does.</summary>
         public bool campaignReady;
         /// <summary>The combat power the campaign objective needs (AICampaign: the enemy there times objectiveForceRatio).</summary>
