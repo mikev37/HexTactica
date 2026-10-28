@@ -450,16 +450,6 @@ public class Unit : MonoBehaviour
                 if (!hiddenUI.Contains(t.gameObject)) hiddenUI.Add(t.gameObject);
             }
         }
-        // Where its sprite is as it steps aboard (fog of war judges it there until it is in: OnScreenAt).
-        if (spriteTile == null && transport != null && transport.tile != null) {
-            HexTile near = transport.tile; float nd = float.MaxValue;
-            foreach (HexTile n in transport.tile.neighbors) {
-                if (n == null || n.unitPlacement == null) continue;
-                float d = Vector2.Distance(transform.position, n.unitPlacement.position);
-                if (d < nd) { nd = d; near = n; }
-            }
-            spriteTile = near;
-        }
         // The walk there (if it moved to board) is played out first, at full size.
         boardingWalk.Clear();
         if (path != null && path.Count > 0) boardingWalk.AddRange(path);
@@ -468,12 +458,24 @@ public class Unit : MonoBehaviour
     }
 
     /// <summary>
-    /// For fog of war, where this unit is on screen while getting on or off a transport: walking to it, the
-    /// tile its sprite is on (not the transport's, which it has not reached); riding to where it is put
-    /// down, its transport (it is still inside). Null otherwise.
+    /// Getting on or off a transport on screen: walking to it before stepping in, or riding to where it is
+    /// put down. Fog of war then judges it by the tile under its sprite (TileUnderSprite).
     /// </summary>
-    public HexTile BoardingSpriteTile { get { return trasnporter != null && boardingWalk.Count > 0 ? spriteTile : null; } }
-    public Unit RidingOffWith { get { return disembarkFrom; } }
+    public bool GettingOnOrOff { get { return (trasnporter != null && boardingWalk.Count > 0) || disembarkFrom != null; } }
+
+    /// <summary>The tile nearest where this unit's sprite is drawn (as a marine's boat decides it is on water).</summary>
+    public HexTile TileUnderSprite() {
+        HexTile best = tile;
+        if (HexGenerator.hg == null) return best;
+        float bestD = float.MaxValue;
+        Vector2 here = transform.position;
+        foreach (HexTile t in HexGenerator.hg.tiles) {
+            if (t == null || t.unitPlacement == null) continue;
+            float d = Vector2.Distance(t.unitPlacement.position, here);
+            if (d < bestD) { bestD = d; best = t; }
+        }
+        return best;
+    }
 
     /// <summary>A child that is this unit's own UI: strength pips, veterancy, status icons.</summary>
     static bool IsOwnUI(Transform t) {
@@ -548,8 +550,6 @@ public class Unit : MonoBehaviour
     void FinishDisembark() {
         Unit transport = disembarkFrom;
         disembarkFrom = null;
-        // Its sprite starts from the transport's tile (fog of war judges it there until it has walked off).
-        if (transport != null && transport.tile != null && transport.tile != tile) spriteTile = transport.tile;
         foreach (GameObject g in hiddenUI) if (g != null) g.SetActive(true);
         hiddenUI.Clear();
         // ... and the strength pips whatever happened in between (a supply unit was put down without them).

@@ -120,11 +120,17 @@ namespace HexTactica.AI {
         [Tooltip("Regrouping: the central reserve goes to the front whose units the enemy can strike with more than this many times their own power.")]
         public float regroupCommitRatio = 1f;
         [Tooltip("Move score: our HQ's worth (and the enemy's) as this many times the board's stake: capture progress on an HQ counts this much more than the rest of the board.")]
-        public float hqCaptureWeight = 1f;
+        public float hqCaptureWeight = 2f;
         [Tooltip("Move score: each strength point of enemy infantry within a move of our HQ (after their reply) costs this share of the board's stake.")]
         public float hqThreatNear = 0.02f;
         [Tooltip("Move score: each strength point of enemy infantry on our HQ (after their reply) costs this share of the board's stake.")]
         public float hqThreatOn = 0.1f;
+        [Tooltip("Move score: a building not ours that no enemy stands on (after their reply) is worth this share of it; the enemy HQ, worth the board, most.")]
+        public float buildingVacantShare = 0.02f;
+        [Tooltip("Move score: a building not ours with our infantry on it is worth this share of it, twice that when it is capturing (on it without having attacked).")]
+        public float buildingOccupyShare = 0.1f;
+        [Tooltip("A unit able to capture that stands on the enemy HQ stays and takes it, whatever else (the old hard rule). Off: the move score decides (buildingVacantShare, buildingOccupyShare).")]
+        public bool holdEnemyHQRule = false;
         [Tooltip("A front's own supply units: one for every this many of its fighting units (after its chain).")]
         public int campaignUnitsPerSupply = 6;
         [Tooltip("Buying: an enemy unit seen counts for this many days after it is last seen.")]
@@ -146,6 +152,10 @@ namespace HexTactica.AI {
         public float productionSupplyWeight = 1f;
         [Tooltip("Buying: supply units beyond one per campaignUnitsPerSupply fighting units, for fronts short of supply (and the campaign's next front waiting on one).")]
         public int productionSupplyExtra = 2;
+        [Tooltip("Buying: cap supply units at one per campaignUnitsPerSupply fighting units plus productionSupplyExtra. Off: no cap; supply competes on value.")]
+        public bool productionSupplyCap = false;
+        [Tooltip("Buying: a supply unit's value scales with how far our army outmatches what we know of theirs (half the edge, 0.25 to 2).")]
+        public bool productionSupplySuperiority = true;
         [Tooltip("Buying: spend the gold left after each slot has its best value for cost on upgrades, the most value per extra gold first (every slot filled with the best it can).")]
         public bool productionSpendAll = true;
         [Tooltip("The units no objective needs go to the task forces too (by objectiveSpread). Off: they stay with the ordinary tactics.")]
@@ -397,6 +407,8 @@ namespace HexTactica.AI {
 
         [Tooltip("With woundedNeedsSafety: off = skip the safe-and-supplied test and just compare fighting with withdrawing.")]
         public bool woundedSafetyGate = true;
+        [Tooltip("A wounded unit weighs fighting on against withdrawing by the move score (what holding its ground is worth counts: a building it is taking). Off: it withdraws by position alone.")]
+        public bool woundedWorldCompare = true;
 
         [Tooltip("Pull toward a front's objective, as a fraction of the objective's value at distance zero, falling off as 1/(1+d).")]
         [Range(0f, 0.5f)]

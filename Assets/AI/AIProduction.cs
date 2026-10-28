@@ -93,6 +93,15 @@ namespace HexTactica.AI {
             foreach (Unit u in map.ownUnits) { if (u == null || u.tile == null) continue; if (u.Hub != null && !u.Hub.producer) hubsHave++; else if (u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1)) fighters++; }
             int shortFronts = 0; if (logistics != null) foreach (AILogistics.Task t in logistics.tasks) if (!t.ordinary && t.short_) shortFronts++;
             int supplyCap = Mathf.CeilToInt(fighters / (float)Mathf.Max(1, profile.campaignUnitsPerSupply)) + Mathf.Min(Mathf.Max(0, profile.productionSupplyExtra), shortFronts + (logistics != null && logistics.supplyDemand > 0f ? 1 : 0));
+            if (!profile.productionSupplyCap) supplyCap = int.MaxValue;
+            // How far our army outmatches what we know of theirs (AIProfile.productionSupplySuperiority): supply
+            // counts for more the more we outmatch them (the fight is won; reach is what is short), less when we
+            // are outmatched. (Twenty to one up, every front asking for supply, and it bought tanks.)
+            float ourPower = 0f, theirPower = 0f;
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null) ourPower += AIScore.Worth(u) * u.Strength;
+            foreach (Unit e in allFoes) if (e != null && e.Firepower > 0 && e.Hub == null) theirPower += AIScore.Worth(e) * e.Strength;
+            float edge = theirPower > 0f ? ourPower / theirPower : 4f;
+            float supplyScale = profile.productionSupplySuperiority ? Mathf.Clamp(edge / 2f, 0.25f, 2f) : 1f;
             List<Building> sites = new List<Building>();
             foreach (Building b in Building.all) if (b != null && b.owner == p && b.tile != null && b.Purchasable().Count > 0) sites.Add(b);
             sites.Sort((a, b) => CombatMath.CompareTiles(a.tile, b.tile));
@@ -150,19 +159,19 @@ namespace HexTactica.AI {
                     if (hubsHave + supplyPlanned >= supplyCap) return new KeyValuePair<float, string>(-1f, null);
                     foreach (KeyValuePair<AILogistics.Task, Building> kv in nearest[1]) {
                         if (kv.Value != sl.b || !kv.Key.short_) continue;
-                        float fv = kv.Key.unsupplied * profile.productionSupplyWeight * mix;
+                        float fv = kv.Key.unsupplied * profile.productionSupplyWeight * supplyScale * mix;
                         if (fv > v) { v = fv; tag = kv.Key.front.Id + ": its supply is short"; }
                     }
                     if (logistics != null && logistics.supplyDemand > 0f) {
                         // The campaign's next front, a supply unit away: worth the force it would let go (its need), not the objective's whole value.
-                        float dv = Mathf.Min(logistics.supplyDemand, logistics.supplyDemandNeed > 0f ? logistics.supplyDemandNeed : logistics.supplyDemand) * profile.productionSupplyWeight * mix;
+                        float dv = Mathf.Min(logistics.supplyDemand, logistics.supplyDemandNeed > 0f ? logistics.supplyDemandNeed : logistics.supplyDemand) * profile.productionSupplyWeight * supplyScale * mix;
                         if (dv > v) { v = dv; tag = logistics.supplyDemandFor + ": no supply unit free for it"; }
                     }
                 } else {
                     if (freeTrucks + trucksPlanned > 0) return new KeyValuePair<float, string>(-1f, null);
                     foreach (KeyValuePair<AILogistics.Task, Building> kv in nearest[2]) {
                         if (kv.Value != sl.b || !kv.Key.short_) continue;
-                        float fv = kv.Key.unsupplied * 0.5f * profile.productionSupplyWeight * mix;
+                        float fv = kv.Key.unsupplied * 0.5f * profile.productionSupplyWeight * supplyScale * mix;
                         if (fv > v) { v = fv; tag = kv.Key.front.Id + ": no truck for its supply"; }
                     }
                 }

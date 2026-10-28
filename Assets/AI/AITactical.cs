@@ -48,11 +48,14 @@ namespace HexTactica.AI {
             // starving or about to be attacked. Standing there is worth it for the chance of winning.
             // (A grunt down to strength 2 out of supply walked off the enemy HQ at 3/10 to find supply.)
             Building onHQ = unit.tile.building;
-            if (onHQ != null && onHQ.IsHQ && onHQ.owner != unit.owner && Building.CanCapture(unit))
+            if (profile.holdEnemyHQRule && onHQ != null && onHQ.IsHQ && onHQ.owner != unit.owner && Building.CanCapture(unit))
                 return AIAction.Seize(unit, onHQ, 0f, "on the enemy HQ: holds it to take it");
             if (unit.airTanker) return AIAir.DecideTanker(unit, map);
             AIRole role = AIRoles.Classify(unit, profile);
-            if (role == AIRole.Wounded && profile.woundedNeedsSafety) return DecideWounded(unit, map, profile, posture);
+            // Wounded: fighting on and withdrawing are weighed by the move score (AIProfile.woundedWorldCompare), so
+            // what holding its ground is worth — a building it is taking, the enemy HQ — counts. (With withdrawal
+            // by position alone, a wounded grunt walked off the enemy HQ it was taking.)
+            if (role == AIRole.Wounded && (profile.woundedNeedsSafety || profile.woundedWorldCompare)) return DecideWounded(unit, map, profile, posture, profile.woundedNeedsSafety && profile.woundedSafetyGate);
             if (role == AIRole.Line && ShouldRotate(unit, map, profile)) role = AIRole.Wounded;
 
             switch (role) {
@@ -469,9 +472,12 @@ namespace HexTactica.AI {
             if (profile.fightBeforeCapture && options.Exists(o => o.shot.valid)) {
                 float bestShot = float.NegativeInfinity;
                 foreach (Option o in options) if (o.shot.valid) bestShot = Mathf.Max(bestShot, o.world.score);
-                foreach (Option o in options)
-                    if (!o.shot.valid && o.world.buildings > 0f && o.world.score >= bestShot)
-                        o.world.score = Mathf.Max(o.world.score - o.world.buildings, bestShot - Mathf.Max(profile.worldTieMin, profile.worldTie * worth) - 1f);
+                // (Not the enemy HQ: taking it ends the game.)
+                foreach (Option o in options) {
+                    float other = o.world.buildings - Mathf.Max(0f, o.world.buildingsHQ);
+                    if (!o.shot.valid && other > 0f && o.world.score >= bestShot)
+                        o.world.score = Mathf.Max(o.world.score - other, bestShot - Mathf.Max(profile.worldTieMin, profile.worldTie * worth) - 1f);
+                }
             }
             foreach (Option o in options) bestWorld = Mathf.Max(bestWorld, o.world.score);
             if (Capture != null) foreach (Option o in options) Capture.Add(new AICoordinator.Candidate { unit = unit, stop = o.stop, shot = o.shot, world = o.world.score, assist = o.world.assist });
@@ -975,7 +981,7 @@ namespace HexTactica.AI {
         /// and fighting on is not worth more than that (the forecast's world score of its best
         /// fighting move against that of the withdraw tile). Otherwise it fights as its type does.
         /// </summary>
-        static AIAction DecideWounded(Unit unit, AIMap map, AIProfile profile, Posture posture) {
+        static AIAction DecideWounded(Unit unit, AIMap map, AIProfile profile, Posture posture, bool safetyGate) {
             AIRole baseRole = AIRole.Line;
             if (unit.AttackRange >= 2 && !unit.moveAndAttack) baseRole = AIRole.Artillery;
             else if (unit.moveRange >= 6 && unit.Firepower <= 2) baseRole = AIRole.Recon;
@@ -990,7 +996,7 @@ namespace HexTactica.AI {
             LastChosen = null;
             AIAction f = fight();
             AIWorld.Outcome fw = LastChosen;
-            if (profile.woundedSafetyGate && (!heals || !safe)) {
+            if (safetyGate && (!heals || !safe)) {
                 f.reason = "wounded, no safe supplied tile (" + (heals ? "" : "no supply") + (heals || safe ? "" : ", ") + (safe ? "" : "enemy reach") + "): " + f.reason;
                 return f;
             }

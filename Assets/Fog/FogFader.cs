@@ -48,7 +48,7 @@ public class FogFader : MonoBehaviour {
         Player v = FogOfWar.Viewer;
         if (v == null) return 1f;
         // Getting on or off (walking to it, or riding to where it is put down): judged where its sprite is.
-        if (u.owner != v && (u.BoardingSpriteTile != null || u.RidingOffWith != null)) return FogOfWar.ShownToViewer(u) ? 1f : 0f;
+        if (u.owner != v && u.GettingOnOrOff) return FogOfWar.ShownToViewer(u) ? 1f : 0f;
         if (u.trasnporter != null && u.trasnporter != u) {
             // Aboard: as its transport is drawn.
             return TargetFor(u.trasnporter);
