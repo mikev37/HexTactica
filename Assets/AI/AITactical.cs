@@ -166,6 +166,29 @@ namespace HexTactica.AI {
         /// 3 picks among them — which is what puts units on chokepoints while the enemy is still
         /// out of range, and walks them forward when it is not.
         /// </summary>
+        /// <summary>
+        /// Should <paramref name="unit"/> regroup (AIProfile.regroup)? An expensive fighting unit (regroupExpensiveCost
+        /// or more) that the enemy can strike tonight, whose side has no local superiority there: our fighting
+        /// units that could be beside it next turn under regroupSuperiority times the enemy that could strike it.
+        /// </summary>
+        public static bool Regrouping(Unit unit, AIMap map, AIProfile profile) {
+            if (!profile.regroup || unit == null || unit.tile == null || unit.Hub != null || unit.Firepower <= 0) return false;
+            if (unit.cost < profile.regroupExpensiveCost || (Transporting.IsTransport(unit) && unit.Firepower <= 1)) return false;
+            List<Unit> theirs = map.FirersOf(unit.tile);
+            if (theirs.Count == 0) return false;
+            // Only when it is at real risk where it stands (a tank among grunts that can only scratch it is not).
+            if (map.ExpectedLoss(unit, unit.tile, null) < Mathf.Max(0f, profile.regroupRisk)) return false;
+            float them = 0f;
+            foreach (Unit e in theirs) if (e != null && e.Strength > 0) them += AIScore.Worth(e) * e.Strength;
+            float us = 0f;
+            foreach (Unit u in map.ownUnits) {
+                if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0 || (Transporting.IsTransport(u) && u.Firepower <= 1)) continue;
+                if (u != unit && map.Travel(u, u.tile, unit.tile) > Mathf.Max(1, u.moveRange)) continue;
+                us += AIScore.Worth(u) * u.Strength;
+            }
+            return us < them * Mathf.Max(0f, profile.regroupSuperiority);
+        }
+
         /// <summary>Is <paramref name="e"/> standing on a building of <paramref name="us"/>'s (and able to take it)?</summary>
         static bool OnOurBuilding(Unit e, Player us) {
             return e != null && e.tile != null && e.tile.building != null && e.tile.building.owner == us && Building.CanCapture(e);
@@ -199,6 +222,30 @@ namespace HexTactica.AI {
             // tile reserved for an aircraft's landing this turn.
             AIAir.FilterSafe(unit, map, stops);
             AIAir.FilterReserved(unit, map, stops);
+            // Regrouping (AIProfile.regroup): an expensive unit under fire without local superiority pulls back
+            // to where nothing can strike it tonight — keeping sight and reach as the move score values them —
+            // while the cheap units fight and the reserve comes up. It engages once it has the superiority, or
+            // when there is no such tile left (the enemy is through, or there is no room behind).
+            if (Regrouping(unit, map, profile)) {
+                bool anySafe = false;
+                foreach (HexTile s0 in stops.Keys) if (map.FirersAt(s0) == 0 && (s0 == unit.tile || AIPath.CanFinishTurnOn(unit, s0))) { anySafe = true; break; }
+                if (anySafe) {
+                    List<HexTile> drop = new List<HexTile>();
+                    // ... except where its blow is worth more than it would lose there tonight (a trade worth taking,
+                    // superiority or not: the supply unit that keeps four grunts going).
+                    float w0 = AIScore.Worth(unit);
+                    foreach (HexTile s0 in stops.Keys) {
+                        if (map.FirersAt(s0) == 0) continue;
+                        if (unit.moveAndAttack || s0 == unit.tile) {
+                            AttackAppraisal b0 = AITargeting.BestFrom(unit, s0, map, profile, posture, true);
+                            if (b0.valid && b0.value > map.ExpectedLoss(unit, s0, b0.outcome.defenderDies ? b0.target : null) * w0) continue;
+                        }
+                        drop.Add(s0);
+                    }
+                    foreach (HexTile s0 in drop) stops.Remove(s0);
+                    if (DecisionLog != null) DecisionLog(unit.owner.personal_name + " " + unit.name + D(unit.tile) + ": regrouping (no local superiority): " + drop.Count + " tiles in the enemy's reach left out");
+                }
+            }
             // Off our buildings that produce while the enemy cannot strike them next turn: a unit standing
             // there is a unit that cannot be bought (both sides sat on 60,000+ gold they could not spend).
             bool elsewhere = false;
@@ -1062,7 +1109,7 @@ namespace HexTactica.AI {
                     }
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.2f;
                 return v;
-            }, true, 1.5f, 0.02f, "transport", profile.idleTransportScreens);
+            }, true, 1.5f, 0.02f, "transport", profile.idleTransportScreens || (profile.regroup && profile.regroupTransportScreens));
         }
 
     }

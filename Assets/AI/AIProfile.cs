@@ -100,6 +100,20 @@ namespace HexTactica.AI {
         [Tooltip("Campaign: the share of units on no task force kept with the ordinary fronts as the active reserve (the rest gather as the central reserve).")]
         [Range(0f, 1f)]
         public float campaignActiveReserveShare = 0.1f;
+        [Tooltip("Regrouping: an expensive unit (regroupExpensiveCost or more) under fire without local superiority pulls back out of the enemy's reach, while cheap units fight, empty transports screen, and the central reserve is brought up to the front most pressed. It engages with the superiority, or when no tile out of reach is left. Replaces task forces falling back.")]
+        public bool regroup = false;
+        [Tooltip("Regrouping: units costing this much or more pull back without local superiority (grunts and conscripts stay and fight).")]
+        public int regroupExpensiveCost = 3000;
+        [Tooltip("Regrouping: local superiority — our fighting units that could be beside the unit next turn, at least this many times the enemy that could strike it tonight (worth times strength).")]
+        public float regroupSuperiority = 1.2f;
+        [Tooltip("Regrouping: only a unit that would expect to lose this many strength points where it stands tonight.")]
+        public float regroupRisk = 2f;
+        [Tooltip("Regrouping: task forces' fronts are aggressive (strike first) rather than taking the ordinary fronts' posture by strength ratio.")]
+        public bool campaignStrikeFirst = false;
+        [Tooltip("Regrouping: empty transports with no job screen the enemy (as idleTransportScreens).")]
+        public bool regroupTransportScreens = true;
+        [Tooltip("Regrouping: the central reserve goes to the front whose units the enemy can strike with more than this many times their own power.")]
+        public float regroupCommitRatio = 1f;
         [Tooltip("Move score: our HQ's worth (and the enemy's) as this many times the board's stake: capture progress on an HQ counts this much more than the rest of the board.")]
         public float hqCaptureWeight = 1f;
         [Tooltip("Move score: each strength point of enemy infantry within a move of our HQ (after their reply) costs this share of the board's stake.")]
@@ -142,7 +156,7 @@ namespace HexTactica.AI {
         [Tooltip("Campaign supply by logistics (AILogistics): each front, largest first, is joined to the network by a chain of supply units, and the supply units left over are the fronts' own, by their number of units, placed tactically near them. Off: each task force runs its own chain of the supply units it was given.")]
         public bool campaignLogistics = true;
         [Tooltip("A task force falls back to its staging ground (and the campaign plans again) only when its power is under this share of the enemy that can strike its units next turn: 0.5, outnumbered two to one. Short of that its units fight as their tactics decide (their own retreats included). 0: never.")]
-        public float campaignFallbackRatio = 0.5f;
+        public float campaignFallbackRatio = 0f;
 
         [Tooltip("choiceMode 2: keep options whose simulated world is within this many of the acting unit's strength points of the best.")]
         [Range(0f, 6f)]
