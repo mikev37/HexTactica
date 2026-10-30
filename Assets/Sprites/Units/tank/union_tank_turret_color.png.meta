@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 0af6c2e35fdef5244ae7615711b7272c
+guid: 400507db39808374492e07dddb990dc5
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 6544152547495718186
-    second: coalition_tank_turret_0
+      213: 1004042927731470441
+    second: union_tank_turret_color_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -102,13 +102,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: coalition_tank_turret_0
+      name: union_tank_turret_color_0
       rect:
         serializedVersion: 2
-        x: 81
-        y: 265
-        width: 299
-        height: 211
+        x: 47
+        y: 271
+        width: 339
+        height: 241
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -117,8 +117,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: a2d237dc11081da50800000000000000
-      internalID: 6544152547495718186
+      spriteID: 9607dae19b31fed00800000000000000
+      internalID: 1004042927731470441
       vertices: []
       indices: 
       edges: []
@@ -127,7 +127,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -137,7 +137,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      coalition_tank_turret_0: 6544152547495718186
+      union_tank_turret_color_0: 1004042927731470441
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
