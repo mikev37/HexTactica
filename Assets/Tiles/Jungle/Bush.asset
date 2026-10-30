@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fd0217391ec204489956106f5e2058f, type: 3}
+  m_Name: Bush
+  m_EditorClassIdentifier: 
+  description: The Bush is hard country
+  upper_normal: {fileID: 21300000, guid: 7362d9bc054d2bd49b3085f6cfb08541, type: 3}
+  upper_damaged: {fileID: 0}
+  upper_destroyed: {fileID: 0}
+  lower: {fileID: 21300000, guid: e4bec33bdecb37a45ad40932e9d6b67b, type: 3}
+  floor: {fileID: 21300000, guid: d1f397d7a7a3a4d4f965d00cc9f8d628, type: 3}
+  water: {fileID: 0}
+  cover: 2
+  moveability: 3
+  elevation: 1
+  road: 0
+  health: 0
+  damageStates:
+  - {fileID: 21300000, guid: b6b3c47d5c205fc4c8362cae4eb93f83, type: 3}
+  - {fileID: 21300000, guid: b132c58b68d1c164995272b63eead082, type: 3}
+  destroyedInto: {fileID: 0}

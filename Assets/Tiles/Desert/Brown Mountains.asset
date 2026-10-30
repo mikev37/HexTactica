@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fd0217391ec204489956106f5e2058f, type: 3}
+  m_Name: Brown Mountains
+  m_EditorClassIdentifier: 
+  description: Mountains are impassible for vehicles and offer defense
+  upper_normal: {fileID: 21300000, guid: fadf949513772d249be190804c84b784, type: 3}
+  upper_damaged: {fileID: 0}
+  upper_destroyed: {fileID: 0}
+  lower: {fileID: 21300000, guid: e96e96398b38016408e4f754da25c55d, type: 3}
+  floor: {fileID: 21300000, guid: bf2589f464175124ebe6aa6bc70b4057, type: 3}
+  water: {fileID: 0}
+  cover: 3
+  moveability: 4
+  elevation: 3
+  road: 0
+  health: 0
+  damageStates: []
+  destroyedInto: {fileID: 0}

@@ -622,7 +622,7 @@ MonoBehaviour:
   deathExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
-  cost: 2000
+  cost: 2500
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -639,6 +639,7 @@ MonoBehaviour:
   Armor: 0
   Piercing: 0
   Concealment: 3
+  Vulnerability: 0
   ammoPerShot: 1
   moveAndAttack: 1
   AttackRange: 1
@@ -662,6 +663,7 @@ MonoBehaviour:
   suppliesMax: 3
   fuel: 30
   fuelMax: 30
+  attacksLocomotion: 0000000001000000020000000300000004000000050000000600000007000000i
   ammo: 6
   ammoMax: 6
   transportSlots: 0

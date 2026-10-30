@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3fd0217391ec204489956106f5e2058f, type: 3}
   m_Name: Badlands
   m_EditorClassIdentifier: 
-  description: Mud Pits
-  upper_normal: {fileID: 21300000, guid: d4e061769ff423349b10ee58e97edc6f, type: 3}
+  description: DestroyedGround
+  upper_normal: {fileID: 21300000, guid: 99a6673976062114bb7473d2b0052e26, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}
   lower: {fileID: 21300000, guid: 412f6f764fc74204eae9205489b1b8df, type: 3}
