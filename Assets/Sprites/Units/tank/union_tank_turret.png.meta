@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: cfbceea0bbff6a442844c162d40351ae
+guid: 14f49c612ea8b55428cf36ceaa1a639d
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4025392696587820602
-    second: light_truck_chassis_0
+      213: -5638888748183406130
+    second: union_tank_turret_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -102,13 +102,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: light_truck_chassis_0
+      name: union_tank_turret_0
       rect:
         serializedVersion: 2
-        x: 53
-        y: 72
-        width: 427
-        height: 259
+        x: 47
+        y: 271
+        width: 354
+        height: 241
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -117,8 +117,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6c16e6e7baee228c0800000000000000
-      internalID: -4025392696587820602
+      spriteID: ec9b4944f84aeb1b0800000000000000
+      internalID: -5638888748183406130
       vertices: []
       indices: 
       edges: []
@@ -127,7 +127,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -137,7 +137,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      light_truck_chassis_0: -4025392696587820602
+      union_tank_turret_0: -5638888748183406130
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
