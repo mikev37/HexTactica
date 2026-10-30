@@ -2877,7 +2877,7 @@ MonoBehaviour:
   editing: 0
   unit_placement: 0
   building_placement: 1
-  ut: {fileID: 6711033188123618812, guid: 0ce975b05de89eb41b42a36469e4dd0c, type: 3}
+  ut: {fileID: 8713449147333190291, guid: 7d8aaf42f45df494cad4b9ceb2a0049c, type: 3}
   bt: {fileID: 1140000000000000001, guid: b49024d89d75c4b4e91f445309f4029d, type: 3}
   placeNeutral: 0
   allTerrain:
@@ -2955,6 +2955,7 @@ MonoBehaviour:
   - {fileID: 8332758219216537460, guid: 2c783bd31ab76594580704c8a784d545, type: 3}
   - {fileID: 5549624872470083748, guid: 7d4765216d156ad4ea2aa4287eca80e9, type: 3}
   - {fileID: 6661928408031301294, guid: ecb0f3ee07ea2714c8e67ffa41791f6b, type: 3}
+  - {fileID: 8713449147333190291, guid: 7d8aaf42f45df494cad4b9ceb2a0049c, type: 3}
   allBuilding:
   - {fileID: 1140000000000000001, guid: 901659d8425717b3a161e4752bed223a, type: 3}
   - {fileID: 1140000000000000001, guid: 28523e9c480d3c1037491724c322f9d2, type: 3}
@@ -3026,7 +3027,7 @@ MonoBehaviour:
   - {fileID: 1909610619}
   - {fileID: 1811020726}
   days: 1
-  activePlayer: {fileID: 1811020726}
+  activePlayer: {fileID: 1909610619}
   activeUnit: {fileID: 0}
   gameOver: 1
   winner: {fileID: 0}
