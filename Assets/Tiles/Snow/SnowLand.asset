@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fd0217391ec204489956106f5e2058f, type: 3}
+  m_Name: SnowLand
+  m_EditorClassIdentifier: 
+  description: A land of snow
+  upper_normal: {fileID: 0}
+  upper_damaged: {fileID: 0}
+  upper_destroyed: {fileID: 0}
+  lower: {fileID: 21300000, guid: 79bf0aaf4bb52384fa7156c37c68e031, type: 3}
+  floor: {fileID: 21300000, guid: 7ca27deec59a4c644bb9830a22ad8acb, type: 3}
+  water: {fileID: 0}
+  cover: 1
+  moveability: 2
+  elevation: 1
+  road: 0
+  health: 10
+  damageStates:
+  - {fileID: 21300000, guid: 39c35ba47bee2934280ef0eddf349c0c, type: 3}
+  - {fileID: 21300000, guid: 162fb6e52c291014d87f256ffb6e0619, type: 3}
+  destroyedInto: {fileID: 11400000, guid: bec849dc09d5da749b6037b1e7ab5a47, type: 2}

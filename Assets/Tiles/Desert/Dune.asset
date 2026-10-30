@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fd0217391ec204489956106f5e2058f, type: 3}
+  m_Name: Dune
+  m_EditorClassIdentifier: 
+  description: Hills make traversing this land difficult
+  upper_normal: {fileID: 21300000, guid: 5a3894e4f2e5a5a479eef06a66841371, type: 3}
+  upper_damaged: {fileID: 0}
+  upper_destroyed: {fileID: 0}
+  lower: {fileID: 21300000, guid: 64e819deec169b641957bd39864532f4, type: 3}
+  floor: {fileID: 21300000, guid: bf2589f464175124ebe6aa6bc70b4057, type: 3}
+  water: {fileID: 0}
+  cover: 1
+  moveability: 3
+  elevation: 2
+  road: 0
+  health: 3
+  damageStates: []
+  destroyedInto: {fileID: 11400000, guid: 5f8905730d9419f4dbb5807d70729540, type: 2}

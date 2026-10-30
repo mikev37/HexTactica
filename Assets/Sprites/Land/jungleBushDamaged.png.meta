@@ -1,0 +1,821 @@
+fileFormatVersion: 2
+guid: b6b3c47d5c205fc4c8362cae4eb93f83
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8975691356246848324
+    second: jungleBushDamaged_0
+  - first:
+      213: 4197317384241037528
+    second: jungleBushDamaged_1
+  - first:
+      213: 56689259908614412
+    second: jungleBushDamaged_2
+  - first:
+      213: -8040589927554432991
+    second: jungleBushDamaged_3
+  - first:
+      213: 2789030770449998824
+    second: jungleBushDamaged_4
+  - first:
+      213: -9179607302844564676
+    second: jungleBushDamaged_5
+  - first:
+      213: 8622508838819941260
+    second: jungleBushDamaged_6
+  - first:
+      213: -4050031736010061433
+    second: jungleBushDamaged_7
+  - first:
+      213: 8339899581957430439
+    second: jungleBushDamaged_8
+  - first:
+      213: 1945049293113679488
+    second: jungleBushDamaged_9
+  - first:
+      213: 3069019706991051884
+    second: jungleBushDamaged_10
+  - first:
+      213: -44709821134126670
+    second: jungleBushDamaged_11
+  - first:
+      213: 7128682784173445666
+    second: jungleBushDamaged_12
+  - first:
+      213: -3082170964175869684
+    second: jungleBushDamaged_13
+  - first:
+      213: 7853735277423854533
+    second: jungleBushDamaged_14
+  - first:
+      213: 9125732612714784343
+    second: jungleBushDamaged_15
+  - first:
+      213: 802922666698575397
+    second: jungleBushDamaged_16
+  - first:
+      213: -3338364155842177108
+    second: jungleBushDamaged_17
+  - first:
+      213: -3025551464237254369
+    second: jungleBushDamaged_18
+  - first:
+      213: -2975239203616639177
+    second: jungleBushDamaged_19
+  - first:
+      213: -7113485075432793296
+    second: jungleBushDamaged_20
+  - first:
+      213: -8130890866479510886
+    second: jungleBushDamaged_21
+  - first:
+      213: -8451791736036173308
+    second: jungleBushDamaged_22
+  - first:
+      213: 83809965175678507
+    second: jungleBushDamaged_23
+  - first:
+      213: 2969691414272803601
+    second: jungleBushDamaged_24
+  - first:
+      213: -1079327978878399181
+    second: jungleBushDamaged_25
+  - first:
+      213: -8187284204212473508
+    second: jungleBushDamaged_26
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: jungleBushDamaged_0
+      rect:
+        serializedVersion: 2
+        x: 319
+        y: 826
+        width: 412
+        height: 262
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cbccc594440ff6380800000000000000
+      internalID: -8975691356246848324
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_1
+      rect:
+        serializedVersion: 2
+        x: 428
+        y: 1077
+        width: 27
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d042413ceddf3a30800000000000000
+      internalID: 4197317384241037528
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_2
+      rect:
+        serializedVersion: 2
+        x: 457
+        y: 1082
+        width: 32
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c09ce6fd49669c000800000000000000
+      internalID: 56689259908614412
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_3
+      rect:
+        serializedVersion: 2
+        x: 558
+        y: 1064
+        width: 23
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 120c88fcf061a6090800000000000000
+      internalID: -8040589927554432991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_4
+      rect:
+        serializedVersion: 2
+        x: 632
+        y: 1065
+        width: 36
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8e36e4475b0a4b620800000000000000
+      internalID: 2789030770449998824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_5
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 906
+        width: 74
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3b3e503bcb7b9080800000000000000
+      internalID: -9179607302844564676
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_6
+      rect:
+        serializedVersion: 2
+        x: 725
+        y: 913
+        width: 22
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8b478ada1e49a770800000000000000
+      internalID: 8622508838819941260
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_7
+      rect:
+        serializedVersion: 2
+        x: 774
+        y: 911
+        width: 25
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 789cf0618956bc7c0800000000000000
+      internalID: -4050031736010061433
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_8
+      rect:
+        serializedVersion: 2
+        x: 802
+        y: 922
+        width: 19
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ac500dab764db370800000000000000
+      internalID: 8339899581957430439
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_9
+      rect:
+        serializedVersion: 2
+        x: 162
+        y: 790
+        width: 52
+        height: 84
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08e5aaad6043efa10800000000000000
+      internalID: 1945049293113679488
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_10
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 655
+        width: 253
+        height: 265
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c6400e3c929579a20800000000000000
+      internalID: 3069019706991051884
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_11
+      rect:
+        serializedVersion: 2
+        x: 705
+        y: 736
+        width: 118
+        height: 137
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b1445197a8216ff0800000000000000
+      internalID: -44709821134126670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_12
+      rect:
+        serializedVersion: 2
+        x: 493
+        y: 718
+        width: 32
+        height: 64
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 222d91b093b2ee260800000000000000
+      internalID: 7128682784173445666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_13
+      rect:
+        serializedVersion: 2
+        x: 606
+        y: 778
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c09264f86dde935d0800000000000000
+      internalID: -3082170964175869684
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_14
+      rect:
+        serializedVersion: 2
+        x: 673
+        y: 752
+        width: 33
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c38dcabf921efc60800000000000000
+      internalID: 7853735277423854533
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_15
+      rect:
+        serializedVersion: 2
+        x: 566
+        y: 752
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 756ef08067d15ae70800000000000000
+      internalID: 9125732612714784343
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_16
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 457
+        width: 438
+        height: 287
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52e8daa49ed842b00800000000000000
+      internalID: 802922666698575397
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_17
+      rect:
+        serializedVersion: 2
+        x: 758
+        y: 711
+        width: 25
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca75128dc7fbba1d0800000000000000
+      internalID: -3338364155842177108
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_18
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 457
+        width: 254
+        height: 191
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f19b97c29f41306d0800000000000000
+      internalID: -3025551464237254369
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_19
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 603
+        width: 21
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7373d9235b3d5b6d0800000000000000
+      internalID: -2975239203616639177
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_20
+      rect:
+        serializedVersion: 2
+        x: 329
+        y: 489
+        width: 128
+        height: 167
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03b19c34303d74d90800000000000000
+      internalID: -7113485075432793296
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_21
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 634
+        width: 47
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9a450416d5492f80800000000000000
+      internalID: -8130890866479510886
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_22
+      rect:
+        serializedVersion: 2
+        x: 482
+        y: 552
+        width: 23
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40a5bf1123435ba80800000000000000
+      internalID: -8451791736036173308
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_23
+      rect:
+        serializedVersion: 2
+        x: 509
+        y: 541
+        width: 20
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b262fe228b0c92100800000000000000
+      internalID: 83809965175678507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_24
+      rect:
+        serializedVersion: 2
+        x: 529
+        y: 549
+        width: 24
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11302407b96763920800000000000000
+      internalID: 2969691414272803601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_25
+      rect:
+        serializedVersion: 2
+        x: 654
+        y: 521
+        width: 22
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33d00d6fbe47501f0800000000000000
+      internalID: -1079327978878399181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDamaged_26
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 527
+        width: 18
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c51bfb4f46ce06e80800000000000000
+      internalID: -8187284204212473508
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      jungleBushDamaged_0: -8975691356246848324
+      jungleBushDamaged_1: 4197317384241037528
+      jungleBushDamaged_10: 3069019706991051884
+      jungleBushDamaged_11: -44709821134126670
+      jungleBushDamaged_12: 7128682784173445666
+      jungleBushDamaged_13: -3082170964175869684
+      jungleBushDamaged_14: 7853735277423854533
+      jungleBushDamaged_15: 9125732612714784343
+      jungleBushDamaged_16: 802922666698575397
+      jungleBushDamaged_17: -3338364155842177108
+      jungleBushDamaged_18: -3025551464237254369
+      jungleBushDamaged_19: -2975239203616639177
+      jungleBushDamaged_2: 56689259908614412
+      jungleBushDamaged_20: -7113485075432793296
+      jungleBushDamaged_21: -8130890866479510886
+      jungleBushDamaged_22: -8451791736036173308
+      jungleBushDamaged_23: 83809965175678507
+      jungleBushDamaged_24: 2969691414272803601
+      jungleBushDamaged_25: -1079327978878399181
+      jungleBushDamaged_26: -8187284204212473508
+      jungleBushDamaged_3: -8040589927554432991
+      jungleBushDamaged_4: 2789030770449998824
+      jungleBushDamaged_5: -9179607302844564676
+      jungleBushDamaged_6: 8622508838819941260
+      jungleBushDamaged_7: -4050031736010061433
+      jungleBushDamaged_8: 8339899581957430439
+      jungleBushDamaged_9: 1945049293113679488
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

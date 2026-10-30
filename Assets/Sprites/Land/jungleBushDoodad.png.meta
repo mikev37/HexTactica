@@ -1,0 +1,535 @@
+fileFormatVersion: 2
+guid: 7362d9bc054d2bd49b3085f6cfb08541
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 4877383687163844084
+    second: jungleBushDoodad_0
+  - first:
+      213: -6161020223086085343
+    second: jungleBushDoodad_1
+  - first:
+      213: -4323790113862015017
+    second: jungleBushDoodad_2
+  - first:
+      213: 8281235454577538219
+    second: jungleBushDoodad_3
+  - first:
+      213: -5672271444288815771
+    second: jungleBushDoodad_4
+  - first:
+      213: -6922814056216339861
+    second: jungleBushDoodad_5
+  - first:
+      213: 776590030444097755
+    second: jungleBushDoodad_6
+  - first:
+      213: -3137326678296656017
+    second: jungleBushDoodad_7
+  - first:
+      213: -159980358079995646
+    second: jungleBushDoodad_8
+  - first:
+      213: -2377525847171818413
+    second: jungleBushDoodad_9
+  - first:
+      213: -6104716539659632869
+    second: jungleBushDoodad_10
+  - first:
+      213: -5235813733792851596
+    second: jungleBushDoodad_11
+  - first:
+      213: 7026591986784574997
+    second: jungleBushDoodad_12
+  - first:
+      213: 6252707430173394255
+    second: jungleBushDoodad_13
+  - first:
+      213: -148611750395490901
+    second: jungleBushDoodad_14
+  - first:
+      213: 5821995001538797604
+    second: jungleBushDoodad_15
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: jungleBushDoodad_0
+      rect:
+        serializedVersion: 2
+        x: 223
+        y: 655
+        width: 508
+        height: 451
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f59faa3f92ffa340800000000000000
+      internalID: 4877383687163844084
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_1
+      rect:
+        serializedVersion: 2
+        x: 428
+        y: 1077
+        width: 27
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12bb4f4efb8af7aa0800000000000000
+      internalID: -6161020223086085343
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_2
+      rect:
+        serializedVersion: 2
+        x: 457
+        y: 1082
+        width: 32
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d7a8e3cccfcef3c0800000000000000
+      internalID: -4323790113862015017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_3
+      rect:
+        serializedVersion: 2
+        x: 774
+        y: 911
+        width: 25
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba4f67325cbdce270800000000000000
+      internalID: 8281235454577538219
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_4
+      rect:
+        serializedVersion: 2
+        x: 802
+        y: 922
+        width: 19
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56db295ac2b0841b0800000000000000
+      internalID: -5672271444288815771
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_5
+      rect:
+        serializedVersion: 2
+        x: 162
+        y: 790
+        width: 53
+        height: 84
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6ad4256b493def90800000000000000
+      internalID: -6922814056216339861
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_6
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 752
+        width: 31
+        height: 55
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd0fab4a48007ca00800000000000000
+      internalID: 776590030444097755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_7
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 591
+        width: 202
+        height: 208
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6785c3220af574d0800000000000000
+      internalID: -3137326678296656017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_8
+      rect:
+        serializedVersion: 2
+        x: 721
+        y: 736
+        width: 102
+        height: 137
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2012a9146b2a7cdf0800000000000000
+      internalID: -159980358079995646
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_9
+      rect:
+        serializedVersion: 2
+        x: 758
+        y: 711
+        width: 25
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 35c9303b6d4510fd0800000000000000
+      internalID: -2377525847171818413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_10
+      rect:
+        serializedVersion: 2
+        x: 273
+        y: 610
+        width: 24
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1fb22fb6a0b74ba0800000000000000
+      internalID: -6104716539659632869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_11
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 603
+        width: 21
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4795a2f4627a657b0800000000000000
+      internalID: -5235813733792851596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_12
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 634
+        width: 47
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51e96e9fe28738160800000000000000
+      internalID: 7026591986784574997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_13
+      rect:
+        serializedVersion: 2
+        x: 329
+        y: 489
+        width: 128
+        height: 139
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f454eeb874416c650800000000000000
+      internalID: 6252707430173394255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_14
+      rect:
+        serializedVersion: 2
+        x: 654
+        y: 521
+        width: 22
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bad4a30866600fdf0800000000000000
+      internalID: -148611750395490901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushDoodad_15
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 527
+        width: 18
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 420e1de8b91ebc050800000000000000
+      internalID: 5821995001538797604
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      jungleBushDoodad_0: 4877383687163844084
+      jungleBushDoodad_1: -6161020223086085343
+      jungleBushDoodad_10: -6104716539659632869
+      jungleBushDoodad_11: -5235813733792851596
+      jungleBushDoodad_12: 7026591986784574997
+      jungleBushDoodad_13: 6252707430173394255
+      jungleBushDoodad_14: -148611750395490901
+      jungleBushDoodad_15: 5821995001538797604
+      jungleBushDoodad_2: -4323790113862015017
+      jungleBushDoodad_3: 8281235454577538219
+      jungleBushDoodad_4: -5672271444288815771
+      jungleBushDoodad_5: -6922814056216339861
+      jungleBushDoodad_6: 776590030444097755
+      jungleBushDoodad_7: -3137326678296656017
+      jungleBushDoodad_8: -159980358079995646
+      jungleBushDoodad_9: -2377525847171818413
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

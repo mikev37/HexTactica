@@ -1,0 +1,535 @@
+fileFormatVersion: 2
+guid: 5988907c44d9cf44ebea6198471e9837
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5045523175284079280
+    second: badsnows_0
+  - first:
+      213: -9124726924899385002
+    second: badsnows_1
+  - first:
+      213: 9019502695210154063
+    second: badsnows_2
+  - first:
+      213: -8408341891233040399
+    second: badsnows_3
+  - first:
+      213: 7903044857709180444
+    second: badsnows_4
+  - first:
+      213: 7362986768186303074
+    second: badsnows_5
+  - first:
+      213: 7533015835015680235
+    second: badsnows_6
+  - first:
+      213: -6586801705613186507
+    second: badsnows_7
+  - first:
+      213: -144598881151156645
+    second: badsnows_8
+  - first:
+      213: -7788131723529054985
+    second: badsnows_9
+  - first:
+      213: 8876565015070655694
+    second: badsnows_10
+  - first:
+      213: -766936264890677294
+    second: badsnows_11
+  - first:
+      213: 6199799415273901316
+    second: badsnows_12
+  - first:
+      213: -2122953698157994812
+    second: badsnows_13
+  - first:
+      213: 6901119099472596104
+    second: badsnows_14
+  - first:
+      213: -30288233821715519
+    second: badsnows_15
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: badsnows_0
+      rect:
+        serializedVersion: 2
+        x: 405
+        y: 1121
+        width: 31
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bafec8789c450640800000000000000
+      internalID: 5045523175284079280
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_1
+      rect:
+        serializedVersion: 2
+        x: 527
+        y: 1125
+        width: 26
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6510ee8e4357e5180800000000000000
+      internalID: -9124726924899385002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_2
+      rect:
+        serializedVersion: 2
+        x: 349
+        y: 1067
+        width: 24
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f48fda6f9e5bb2d70800000000000000
+      internalID: 9019502695210154063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_3
+      rect:
+        serializedVersion: 2
+        x: 430
+        y: 1062
+        width: 52
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f7b40769919f4b80800000000000000
+      internalID: -8408341891233040399
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_4
+      rect:
+        serializedVersion: 2
+        x: 471
+        y: 1080
+        width: 20
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c16bbbb0d614dad60800000000000000
+      internalID: 7903044857709180444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_5
+      rect:
+        serializedVersion: 2
+        x: 578
+        y: 1081
+        width: 28
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26265a374759e2660800000000000000
+      internalID: 7362986768186303074
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_6
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 457
+        width: 938
+        height: 623
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be090858df5aa8860800000000000000
+      internalID: 7533015835015680235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_7
+      rect:
+        serializedVersion: 2
+        x: 135
+        y: 866
+        width: 60
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53a2df24fbaf694a0800000000000000
+      internalID: -6586801705613186507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_8
+      rect:
+        serializedVersion: 2
+        x: 248
+        y: 521
+        width: 316
+        height: 150
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5ef01e65184efdf0800000000000000
+      internalID: -144598881151156645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_9
+      rect:
+        serializedVersion: 2
+        x: 549
+        y: 617
+        width: 26
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f49913f57ffae390800000000000000
+      internalID: -7788131723529054985
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_10
+      rect:
+        serializedVersion: 2
+        x: 706
+        y: 599
+        width: 37
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec442f4e9d4ef2b70800000000000000
+      internalID: 8876565015070655694
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_11
+      rect:
+        serializedVersion: 2
+        x: 516
+        y: 587
+        width: 58
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d783ddc78b4b55f0800000000000000
+      internalID: -766936264890677294
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_12
+      rect:
+        serializedVersion: 2
+        x: 588
+        y: 572
+        width: 110
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40d431268bc1a0650800000000000000
+      internalID: 6199799415273901316
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_13
+      rect:
+        serializedVersion: 2
+        x: 382
+        y: 488
+        width: 47
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ccd0b20cd0c982e0800000000000000
+      internalID: -2122953698157994812
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_14
+      rect:
+        serializedVersion: 2
+        x: 498
+        y: 501
+        width: 38
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88c4abcd143b5cf50800000000000000
+      internalID: 6901119099472596104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: badsnows_15
+      rect:
+        serializedVersion: 2
+        x: 439
+        y: 460
+        width: 105
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c3ce260305649ff0800000000000000
+      internalID: -30288233821715519
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      badsnows_0: 5045523175284079280
+      badsnows_1: -9124726924899385002
+      badsnows_10: 8876565015070655694
+      badsnows_11: -766936264890677294
+      badsnows_12: 6199799415273901316
+      badsnows_13: -2122953698157994812
+      badsnows_14: 6901119099472596104
+      badsnows_15: -30288233821715519
+      badsnows_2: 9019502695210154063
+      badsnows_3: -8408341891233040399
+      badsnows_4: 7903044857709180444
+      badsnows_5: 7362986768186303074
+      badsnows_6: 7533015835015680235
+      badsnows_7: -6586801705613186507
+      badsnows_8: -144598881151156645
+      badsnows_9: -7788131723529054985
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

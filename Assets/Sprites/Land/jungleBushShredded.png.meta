@@ -1,0 +1,1159 @@
+fileFormatVersion: 2
+guid: b132c58b68d1c164995272b63eead082
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -2560258604717209623
+    second: jungleBushShredded_0
+  - first:
+      213: -9075619093962621674
+    second: jungleBushShredded_1
+  - first:
+      213: -7590219285265820118
+    second: jungleBushShredded_2
+  - first:
+      213: -1864856107096545033
+    second: jungleBushShredded_3
+  - first:
+      213: 4781341494169047831
+    second: jungleBushShredded_4
+  - first:
+      213: -3822298847953457331
+    second: jungleBushShredded_5
+  - first:
+      213: 5481983109768435922
+    second: jungleBushShredded_6
+  - first:
+      213: -6380705221956095558
+    second: jungleBushShredded_7
+  - first:
+      213: 8648414276894760902
+    second: jungleBushShredded_8
+  - first:
+      213: -5518418942780565576
+    second: jungleBushShredded_9
+  - first:
+      213: 2733820185336132935
+    second: jungleBushShredded_10
+  - first:
+      213: 6947736953076872010
+    second: jungleBushShredded_11
+  - first:
+      213: 8007223956846995853
+    second: jungleBushShredded_12
+  - first:
+      213: 3397333287893011893
+    second: jungleBushShredded_13
+  - first:
+      213: 8634164237402727512
+    second: jungleBushShredded_14
+  - first:
+      213: -935976463646062471
+    second: jungleBushShredded_15
+  - first:
+      213: -3765983711113520216
+    second: jungleBushShredded_16
+  - first:
+      213: 4986729236759198991
+    second: jungleBushShredded_17
+  - first:
+      213: -4888322060821073474
+    second: jungleBushShredded_18
+  - first:
+      213: -7411408327431269864
+    second: jungleBushShredded_19
+  - first:
+      213: -5177001811856880517
+    second: jungleBushShredded_20
+  - first:
+      213: 4081914729997780681
+    second: jungleBushShredded_21
+  - first:
+      213: -5288823563464584522
+    second: jungleBushShredded_22
+  - first:
+      213: -1161744721871704475
+    second: jungleBushShredded_23
+  - first:
+      213: 2706920153557953125
+    second: jungleBushShredded_24
+  - first:
+      213: 8593516773429255693
+    second: jungleBushShredded_25
+  - first:
+      213: -6636085756329113041
+    second: jungleBushShredded_26
+  - first:
+      213: -9160104607388881078
+    second: jungleBushShredded_27
+  - first:
+      213: 3618304879952357707
+    second: jungleBushShredded_28
+  - first:
+      213: -7959100883603487054
+    second: jungleBushShredded_29
+  - first:
+      213: 4966101807276723978
+    second: jungleBushShredded_30
+  - first:
+      213: -5248765672974614493
+    second: jungleBushShredded_31
+  - first:
+      213: 7114282911256425186
+    second: jungleBushShredded_32
+  - first:
+      213: -2348079701155685348
+    second: jungleBushShredded_33
+  - first:
+      213: 6919240593185752895
+    second: jungleBushShredded_34
+  - first:
+      213: -7614424052858862186
+    second: jungleBushShredded_35
+  - first:
+      213: -1622248058432142359
+    second: jungleBushShredded_36
+  - first:
+      213: 5113196214003977456
+    second: jungleBushShredded_37
+  - first:
+      213: 3665209123011810333
+    second: jungleBushShredded_38
+  - first:
+      213: -6032039783411582721
+    second: jungleBushShredded_39
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: jungleBushShredded_0
+      rect:
+        serializedVersion: 2
+        x: 428
+        y: 1077
+        width: 27
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e781b42d52287cd0800000000000000
+      internalID: -2560258604717209623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_1
+      rect:
+        serializedVersion: 2
+        x: 457
+        y: 1082
+        width: 32
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61dfa9bc48cec0280800000000000000
+      internalID: -9075619093962621674
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_2
+      rect:
+        serializedVersion: 2
+        x: 646
+        y: 1103
+        width: 22
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a26596656cf1aa690800000000000000
+      internalID: -7590219285265820118
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_3
+      rect:
+        serializedVersion: 2
+        x: 323
+        y: 950
+        width: 188
+        height: 99
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f8ea434043be16e0800000000000000
+      internalID: -1864856107096545033
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_4
+      rect:
+        serializedVersion: 2
+        x: 598
+        y: 1037
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71318cd91ccba5240800000000000000
+      internalID: 4781341494169047831
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_5
+      rect:
+        serializedVersion: 2
+        x: 630
+        y: 1002
+        width: 23
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4f695ef27774fac0800000000000000
+      internalID: -3822298847953457331
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_6
+      rect:
+        serializedVersion: 2
+        x: 669
+        y: 996
+        width: 60
+        height: 82
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d85072f79ae31c40800000000000000
+      internalID: 5481983109768435922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_7
+      rect:
+        serializedVersion: 2
+        x: 587
+        y: 998
+        width: 22
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab1b3d4386e2377a0800000000000000
+      internalID: -6380705221956095558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_8
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 906
+        width: 74
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6cf9abca6f6550870800000000000000
+      internalID: 8648414276894760902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_9
+      rect:
+        serializedVersion: 2
+        x: 369
+        y: 846
+        width: 48
+        height: 83
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b717c99533aa63b0800000000000000
+      internalID: -5518418942780565576
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_10
+      rect:
+        serializedVersion: 2
+        x: 453
+        y: 826
+        width: 277
+        height: 158
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 745b0c269fa70f520800000000000000
+      internalID: 2733820185336132935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_11
+      rect:
+        serializedVersion: 2
+        x: 725
+        y: 913
+        width: 22
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a437009b2f15b6060800000000000000
+      internalID: 6947736953076872010
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_12
+      rect:
+        serializedVersion: 2
+        x: 774
+        y: 911
+        width: 25
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d89ecd0c3cf5f1f60800000000000000
+      internalID: 8007223956846995853
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_13
+      rect:
+        serializedVersion: 2
+        x: 802
+        y: 922
+        width: 19
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5bd097020a0c52f20800000000000000
+      internalID: 3397333287893011893
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_14
+      rect:
+        serializedVersion: 2
+        x: 162
+        y: 790
+        width: 52
+        height: 84
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85465cec0a6b2d770800000000000000
+      internalID: 8634164237402727512
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_15
+      rect:
+        serializedVersion: 2
+        x: 319
+        y: 837
+        width: 35
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97800468d5eb203f0800000000000000
+      internalID: -935976463646062471
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_16
+      rect:
+        serializedVersion: 2
+        x: 450
+        y: 856
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8abdb2d84c98cbbc0800000000000000
+      internalID: -3765983711113520216
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_17
+      rect:
+        serializedVersion: 2
+        x: 469
+        y: 816
+        width: 8
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0d361ce1db643540800000000000000
+      internalID: 4986729236759198991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_18
+      rect:
+        serializedVersion: 2
+        x: 705
+        y: 736
+        width: 110
+        height: 88
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb1fd013cf0392cb0800000000000000
+      internalID: -4888322060821073474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_19
+      rect:
+        serializedVersion: 2
+        x: 740
+        y: 811
+        width: 11
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 812561eb463652990800000000000000
+      internalID: -7411408327431269864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_20
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 655
+        width: 253
+        height: 153
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7c87b2f7489728b0800000000000000
+      internalID: -5177001811856880517
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_21
+      rect:
+        serializedVersion: 2
+        x: 606
+        y: 778
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c6c3fce1dfd5a830800000000000000
+      internalID: 4081914729997780681
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_22
+      rect:
+        serializedVersion: 2
+        x: 673
+        y: 752
+        width: 33
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b25afb8df25a96b0800000000000000
+      internalID: -5288823563464584522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_23
+      rect:
+        serializedVersion: 2
+        x: 493
+        y: 718
+        width: 29
+        height: 42
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56ee625a457a0efe0800000000000000
+      internalID: -1161744721871704475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_24
+      rect:
+        serializedVersion: 2
+        x: 566
+        y: 752
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56aea2ca989e09520800000000000000
+      internalID: 2706920153557953125
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_25
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 457
+        width: 438
+        height: 273
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0e9c9b99fd424770800000000000000
+      internalID: 8593516773429255693
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_26
+      rect:
+        serializedVersion: 2
+        x: 758
+        y: 711
+        width: 25
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2a49f20a23e7e3a0800000000000000
+      internalID: -6636085756329113041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_27
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 457
+        width: 254
+        height: 191
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4faa235465c0e080800000000000000
+      internalID: -9160104607388881078
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_28
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 603
+        width: 21
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b496f922e1dc63230800000000000000
+      internalID: 3618304879952357707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_29
+      rect:
+        serializedVersion: 2
+        x: 347
+        y: 613
+        width: 41
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b6015d5ae79b8190800000000000000
+      internalID: -7959100883603487054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_30
+      rect:
+        serializedVersion: 2
+        x: 398
+        y: 620
+        width: 21
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0f872d38432be440800000000000000
+      internalID: 4966101807276723978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_31
+      rect:
+        serializedVersion: 2
+        x: 426
+        y: 616
+        width: 23
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3208519fd63a827b0800000000000000
+      internalID: -5248765672974614493
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_32
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 634
+        width: 47
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e2321d5d920bb260800000000000000
+      internalID: 7114282911256425186
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_33
+      rect:
+        serializedVersion: 2
+        x: 358
+        y: 586
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1c5f44d3f1f96fd0800000000000000
+      internalID: -2348079701155685348
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_34
+      rect:
+        serializedVersion: 2
+        x: 482
+        y: 552
+        width: 23
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f37cc48e8a4160060800000000000000
+      internalID: 6919240593185752895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_35
+      rect:
+        serializedVersion: 2
+        x: 329
+        y: 489
+        width: 128
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6954828baa1245690800000000000000
+      internalID: -7614424052858862186
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_36
+      rect:
+        serializedVersion: 2
+        x: 509
+        y: 541
+        width: 20
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e3c5936cfd9c79e0800000000000000
+      internalID: -1622248058432142359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_37
+      rect:
+        serializedVersion: 2
+        x: 529
+        y: 549
+        width: 24
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0fc4492add8b5f640800000000000000
+      internalID: 5113196214003977456
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_38
+      rect:
+        serializedVersion: 2
+        x: 654
+        y: 521
+        width: 22
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d14d3ac37407dd230800000000000000
+      internalID: 3665209123011810333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: jungleBushShredded_39
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 527
+        width: 18
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff87abea6c3e94ca0800000000000000
+      internalID: -6032039783411582721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      jungleBushShredded_0: -2560258604717209623
+      jungleBushShredded_1: -9075619093962621674
+      jungleBushShredded_10: 2733820185336132935
+      jungleBushShredded_11: 6947736953076872010
+      jungleBushShredded_12: 8007223956846995853
+      jungleBushShredded_13: 3397333287893011893
+      jungleBushShredded_14: 8634164237402727512
+      jungleBushShredded_15: -935976463646062471
+      jungleBushShredded_16: -3765983711113520216
+      jungleBushShredded_17: 4986729236759198991
+      jungleBushShredded_18: -4888322060821073474
+      jungleBushShredded_19: -7411408327431269864
+      jungleBushShredded_2: -7590219285265820118
+      jungleBushShredded_20: -5177001811856880517
+      jungleBushShredded_21: 4081914729997780681
+      jungleBushShredded_22: -5288823563464584522
+      jungleBushShredded_23: -1161744721871704475
+      jungleBushShredded_24: 2706920153557953125
+      jungleBushShredded_25: 8593516773429255693
+      jungleBushShredded_26: -6636085756329113041
+      jungleBushShredded_27: -9160104607388881078
+      jungleBushShredded_28: 3618304879952357707
+      jungleBushShredded_29: -7959100883603487054
+      jungleBushShredded_3: -1864856107096545033
+      jungleBushShredded_30: 4966101807276723978
+      jungleBushShredded_31: -5248765672974614493
+      jungleBushShredded_32: 7114282911256425186
+      jungleBushShredded_33: -2348079701155685348
+      jungleBushShredded_34: 6919240593185752895
+      jungleBushShredded_35: -7614424052858862186
+      jungleBushShredded_36: -1622248058432142359
+      jungleBushShredded_37: 5113196214003977456
+      jungleBushShredded_38: 3665209123011810333
+      jungleBushShredded_39: -6032039783411582721
+      jungleBushShredded_4: 4781341494169047831
+      jungleBushShredded_5: -3822298847953457331
+      jungleBushShredded_6: 5481983109768435922
+      jungleBushShredded_7: -6380705221956095558
+      jungleBushShredded_8: 8648414276894760902
+      jungleBushShredded_9: -5518418942780565576
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

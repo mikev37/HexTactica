@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fd0217391ec204489956106f5e2058f, type: 3}
+  m_Name: Jungle
+  m_EditorClassIdentifier: 
+  description: Trees and Brush provide some cover
+  upper_normal: {fileID: 21300000, guid: dfc6ef88bff28104b8b9da38de6cb52f, type: 3}
+  upper_damaged: {fileID: 0}
+  upper_destroyed: {fileID: 0}
+  lower: {fileID: 21300000, guid: dc4660325d7c2994ca7a42871a750b35, type: 3}
+  floor: {fileID: 21300000, guid: d1f397d7a7a3a4d4f965d00cc9f8d628, type: 3}
+  water: {fileID: 0}
+  cover: 3
+  moveability: 4
+  elevation: 2
+  road: 0
+  health: 10
+  damageStates:
+  - {fileID: 21300000, guid: 816aa9eb9fd75114993988b21a6314df, type: 3}
+  - {fileID: 21300000, guid: 9e73b8eea5148744aac30a68cb8fd6df, type: 3}
+  destroyedInto: {fileID: 11400000, guid: 63fa2d3d2d6ddea4186906c5e36e8b66, type: 2}
