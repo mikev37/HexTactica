@@ -524,7 +524,7 @@ public static class Scenarios {
         makeFog("fog-ai-risk-by-price", "fogPrice", (a, o) => { Put("Bomber", a, -3, 0); Put("Conscript", a, -4, 2); Put("Recon", a, -1, 0); Put("Gunner Anti Air", o, 1, 0); Put("Grunt", o, 1, 2); Put("Tank", o, 5, -4); },
              "Blue saw a Red anti-air gunner and a Red grunt, then lost both (their tiles seen empty since). The fog risk of a stop is the strength each lost unit could take there (its own damage against the unit in question, by the share of its places from which it reaches) times the unit's worth: next to where they may be, a bomber's risk comes only from the anti-air gunner (a grunt cannot hit it), and a bomber's risk in gold is many times a conscript's for the same tile.", "Human");
         makeFog("fog-ai-unknown-ground", "fogUnknownGround", (a, o) => { Put("Tank", a, -5, 0); Put("Conscript", a, -5, 2); Put("Grunt", o, 4, 0); Put("Tank", o, 4, 2); },
-             "Unknown ground (fogUncertainty): Blue has never seen east of the middle, and none of Red's units. At a stop beside that ground, the fog's loss is the average damage of the kinds Red fields by the share of unknown ground near, times the share of Red's forces Blue cannot place: none when every Red unit is placed (0), the most when none is (1), and nothing with fogUncertainty off (and fogAggression 1). (With none of Red's kinds seen, it fears what Blue fields.) Priced at the unit's worth: the tank's risk far above the conscript's.", "Human");
+             "Unknown ground (fogUncertainty): Blue has never seen east of the middle, and none of Red's units. At a stop beside that ground, the fog's loss is the average damage of the kinds Red fields by the share of unknown ground near, times the share of Red's forces Blue cannot place: none when every Red unit is placed (0), the most when none is (1), and nothing with fogUncertainty off (and fogAggression 1). Only the move's own fog risk counts it: the expected loss that supply, trucks, regrouping, targeting and the coordinator use stays at what Blue has seen (none). (With none of Red's kinds seen, it fears what Blue fields.) Priced at the unit's worth: the tank's risk far above the conscript's.", "Human");
         makeFog("game-log-replay", "gameLogReplay", (a, o) => { Put("Grunt", a, -3, 0); Put("Tank", a, -4, 2); Put("Grunt", o, 3, 0); Put("Tank", o, 4, -2); },
              "Replaying a recorded game: three rounds of the AI against itself are recorded (game.log and a board for every turn), then replayed. The replay has a turn for every board saved, each with its round, its side and what the log says happened in it; it shows each board exactly as it was at the start of that turn, forward and back; nobody plays (every AI off, clicks on the board and the recording ignored); it can be seen as either side sees it (that side's fog) or with everything shown; closing it puts the fog as it was.", "Full");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
@@ -2239,11 +2239,11 @@ public static class Scenarios {
                 bool zones = nearLoss > 0f && later > 0f && later < nearLoss && forgotten > 0f && forgotten <= later && farLoss == 0f && inRisk >= nearLoss;
                 // Unknown ground (what it adds over the lost unit, fogAggression 1): Red's tank was never seen, nor the ground far east.
                 HexTile edge = Rig.At(2, 3), home = Rig.At(-6, 1);
-                float uBase = with(c => { c.fogAggression = 1f; }, m => m.FogLoss(grunt, edge));
-                float u0 = with(c => { c.fogAggression = 0f; }, m => m.FogLoss(grunt, edge)) - uBase;
-                float uHalf = with(c => { c.fogAggression = 0.5f; }, m => m.FogLoss(grunt, edge)) - uBase;
+                float uBase = with(c => { c.fogAggression = 1f; c.fogUncertainty = false; }, m => m.FogLoss(grunt, edge));
+                float u0 = with(c => { c.fogAggression = 0f; c.fogUncertainty = false; }, m => m.FogLoss(grunt, edge)) - uBase;
+                float uHalf = with(c => { c.fogAggression = 0.5f; c.fogUncertainty = false; }, m => m.FogLoss(grunt, edge)) - uBase;
                 float u1 = 0f;
-                float uHome = with(c => { c.fogAggression = 0f; }, m => m.FogLoss(grunt, home)) - with(c => { c.fogAggression = 1f; }, m => m.FogLoss(grunt, home));
+                float uHome = with(c => { c.fogAggression = 0f; c.fogUncertainty = false; }, m => m.FogLoss(grunt, home)) - with(c => { c.fogAggression = 1f; c.fogUncertainty = false; }, m => m.FogLoss(grunt, home));
                 r.Add(string.Format("grunt by unknown ground: fogAggression 0 {0:0.00}, 0.5 {1:0.00}, 1 {2:0.00}; at home {3:0.00}", u0, uHalf, u1, uHome));
                 // (Capped at the grunt's strength, so the half is checked only below the cap.)
                 bool unknown = u0 > 0f && uHalf > 0f && uHalf <= u0 && (u0 + uBase >= grunt.Strength || Mathf.Abs(uHalf - u0 / 2f) < 0.01f + u0 * 0.01f) && uHome < u0;
@@ -2272,19 +2272,21 @@ public static class Scenarios {
                 FogOfWar.Changed(); FogOfWar.Refresh();
                 Func<bool, float, Unit, float[]> at = (on, unc, x) => {
                     AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.fogUncertainty = on; prof.fogAggression = 1f;
-                    float[] res = new float[2];
+                    float[] res = new float[3];
                     BoardView v = FogOfWar.Conceal(a, true, prof.fogMemoryTurns);
                     using (v != null ? v.Enter() : null) if (v != null) {
                         HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, prof);
                         m.fogUncertainty = unc;
-                        res[0] = m.FogLoss(x, near); res[1] = HexTactica.AI.AIFog.FogRisk(x, near, m, prof);
+                        res[0] = m.MoveFogLoss(x, near); res[1] = HexTactica.AI.AIFog.FogRisk(x, near, m, prof);
+                        // Everything else (supply, trucks, regrouping, targeting, the coordinator) prices only the enemy seen.
+                        res[2] = m.ExpectedLoss(x, near) + m.FogLoss(x, near);
                     }
                     return res;
                 };
                 float[] b1 = at(true, 1f, bomber), b0 = at(true, 0f, bomber), bh = at(true, 0.5f, bomber), bOff = at(false, 1f, bomber), c1 = at(true, 1f, conscript);
                 bool unseen = !FogOfWar.Sees(a, Rig.At(4, 0).occupier);
-                detail = "Red unseen " + unseen + "; at " + Pos(near) + " the tank's fog loss " + b1[0].ToString("0.##") + " strength (" + b1[1].ToString("0") + " gold) with none of Red placed, " + bh[0].ToString("0.##") + " with half, " + b0[0].ToString("0.##") + " with all, " + bOff[0].ToString("0.##") + " with fogUncertainty off; the conscript's " + c1[0].ToString("0.##") + " (" + c1[1].ToString("0") + " gold)";
-                return unseen && b1[0] > 0f && bh[0] > 0f && bh[0] < b1[0] && b0[0] == 0f && bOff[0] == 0f && b1[1] > 2f * Mathf.Max(1f, c1[1]);
+                detail = "elsewhere (expected loss and fog loss outside the move's fog risk) " + b1[2].ToString("0.##") + "; Red unseen " + unseen + "; at " + Pos(near) + " the tank's fog loss " + b1[0].ToString("0.##") + " strength (" + b1[1].ToString("0") + " gold) with none of Red placed, " + bh[0].ToString("0.##") + " with half, " + b0[0].ToString("0.##") + " with all, " + bOff[0].ToString("0.##") + " with fogUncertainty off; the conscript's " + c1[0].ToString("0.##") + " (" + c1[1].ToString("0") + " gold)";
+                return b1[2] == 0f && unseen && b1[0] > 0f && bh[0] > 0f && bh[0] < b1[0] && b0[0] == 0f && bOff[0] == 0f && b1[1] > 2f * Mathf.Max(1f, c1[1]);
             }
             case "fogPrice": {
                 PinVision();

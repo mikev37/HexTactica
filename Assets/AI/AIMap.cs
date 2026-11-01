@@ -287,7 +287,18 @@ namespace HexTactica.AI {
         public bool AllOut { get { return knowledge != null && knowledge.allOut; } }
 
         /// <summary>Strength <paramref name="u"/> should expect to lose on <paramref name="at"/> to enemies the fog may hide (AISigint).</summary>
-        public float FogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at) : 0f; }
+        /// <summary>
+        /// What the fog may cost <paramref name="u"/> at <paramref name="at"/>, in strength. Unknown ground counts here only
+        /// without fogUncertainty (the old way: fogAggression, in every use of the loss); with it, only in MoveFogLoss.
+        /// </summary>
+        public float FogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at, UnknownEverywhere) : 0f; }
+        /// <summary>
+        /// The fog's cost for a unit choosing where to move (AIFog.FogRisk): lost units, and unknown ground by how much of the
+        /// enemy we cannot place (fogUncertainty). The only place unknown ground is feared with fogUncertainty on: supply,
+        /// trucks, regrouping, targeting and the coordinator price only the enemy we have seen.
+        /// </summary>
+        public float MoveFogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at, true) : 0f; }
+        bool UnknownEverywhere { get { return profile == null || !profile.fogUncertainty; } }
 
         /// <summary>
         /// Model of tonight's enemy fire, one enemy unit at a time.
@@ -377,7 +388,7 @@ namespace HexTactica.AI {
 
         /// <param name="exclude">An enemy that will not be firing tonight — typically the
         /// target of a shot that kills it.</param>
-        public float ExpectedLoss(Unit u, HexTile at, Unit exclude) { return ExpectedLoss(u, at, exclude, true); }
+        public float ExpectedLoss(Unit u, HexTile at, Unit exclude) { return ExpectedLoss(u, at, exclude, UnknownEverywhere); }
 
         /// <summary>
         /// Same, from the enemy we see and remember only — not from ground we have not seen (AISigint).

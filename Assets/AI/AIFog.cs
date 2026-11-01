@@ -32,7 +32,7 @@ namespace HexTactica.AI {
         public static float FogRisk(Unit unit, HexTile stop, AIMap map, AIProfile p) {
             // Less, the better we know the enemy and the more we outmatch it (AIKnowledge.aggression).
             float bold = map.knowledge != null ? 1f - Mathf.Clamp01(map.knowledge.aggression) : 1f;
-            return map.FogLoss(unit, stop) * AIWorld.Value(unit) * p.riskWeight * bold;
+            return map.MoveFogLoss(unit, stop) * AIWorld.Value(unit) * p.riskWeight * bold;
         }
 
         public static bool IsRecon(Unit u) { return u != null && u.moveRange >= 6 && u.Firepower <= 2; }

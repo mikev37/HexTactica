@@ -728,7 +728,7 @@ namespace HexTactica.AI {
         [Range(0f, 1f)]
         public float fogAggression = 1f;
         [Tooltip("Unknown ground (never seen, or not for fogUnknownTurns) is feared by the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge), not by 1 - fogAggression: wary of every dark tile while the enemy's whereabouts are unknown, less as it is found. The loss is priced at the unit's worth (its role, with forecastRoleWorth), so a dear unit fears it most.")]
-        public bool fogUncertainty = false;
+        public bool fogUncertainty = true;
         [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
         [Range(1, 20)]
         public int fogUnknownTurns = 6;
