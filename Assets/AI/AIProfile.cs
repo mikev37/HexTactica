@@ -686,15 +686,15 @@ namespace HexTactica.AI {
 
         [Tooltip("Price what the fog may hide (AISigint): enemies seen before and lost track of, somewhere within reach of where they were last seen, and ground not seen lately, which may hide anything the enemy fields.")]
         public bool fogThreat = true;
-        [Tooltip("Enemy moves an enemy unit lost track of is still counted as about (fogThreat).")]
+        [Tooltip("Enemy moves an enemy unit lost track of is still counted near an objective by the campaign (AICampaign). The tactical fog risk (AISigint) keeps it until it is seen again or dies.")]
         [Range(1, 12)]
         public int sigintMoves = 6;
-        [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen (fogThreat): it may have gone anywhere, or elsewhere.")]
+        [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen: the campaign's estimate of enemy power near an objective (AICampaign). The tactical fog risk (AISigint) does not fade it: it spreads it over where the unit could be.")]
         [Range(0f, 1f)]
         public float sigintDecay = 0.7f;
-        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields; 1: unknown ground is empty, as before. 0.2 beat fogThreat off on the big maps in 18 of 24 games (0.5: 4 of 8, 1: 4 of 8).")]
+        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields (the average of those kinds' damage, by the share of unknown ground near: a threat from anywhere, with no position); 1: unknown ground is empty. Default 1 since lost units are tracked by where they could be (AISigint): the average over every kind feared expansion everywhere while the enemy stood in a known place. (0.2 had beaten fogThreat off on the big maps, 18 of 24, before that.)")]
         [Range(0f, 1f)]
-        public float fogAggression = 0.2f;
+        public float fogAggression = 1f;
         [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
         [Range(1, 20)]
         public int fogUnknownTurns = 6;

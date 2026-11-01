@@ -473,6 +473,8 @@ public class AIPlayer : MonoBehaviour {
         { long __p = AIPerf.Begin();
         map = new AIMap(player, Profile);
         AIPerf.End("prepare: board read (AIMap)", __p); }
+        // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
+        if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);
 
         // Forget the intentions of units that no longer exist.
         List<Unit> stale = new List<Unit>();
