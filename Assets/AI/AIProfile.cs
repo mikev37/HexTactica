@@ -636,6 +636,10 @@ namespace HexTactica.AI {
         [Tooltip("Self-preservation: the acting unit counts every enemy blow that could reach its tile (biggest first, weights 1, 1/2, 1/4 ...), beyond what the forecast reply already takes from it, at this weight. 0 = off.")]
         [Range(0f, 2f)]
         public float selfPreservationWeight = 0f;
+        [Tooltip("Self-preservation prices each blow as the reply does: unanswerable fire from range in full, the rest discounted by replyDiscount (and what the reply took from the unit likewise). Off: every possible blow in full, while the blows the reply landed counted at the discount.")]
+        public bool selfPreservationDiscount = true;
+        [Tooltip("Self-preservation only for units that shield nothing by standing in reach (AIWorld.Shields: artillery, anti-air, aircraft that cannot answer the ground, supply units). Off: every unit.")]
+        public bool selfPreservationShieldless = true;
 
         [Tooltip("A unit destroyed costs this many more of its strength points' worth than the points themselves: alive, it would heal back, hold ground and fire again.")]
         [Range(0f, 6f)]
@@ -657,6 +661,14 @@ namespace HexTactica.AI {
 
         [Tooltip("Artillery: gold per tile the enemy could move to next turn that the gun covers from where it ends its turn (its zone of control).")]
         public float artilleryCoverValue = 25f;
+
+        [Tooltip("A gun's zone of control (artilleryCoverValue) and mutual cover count a tile only for the enemies the gun can fire on (its attacksLocomotion): an anti-air battery no longer holds ground it cannot shoot.")]
+        public bool coverByTarget = true;
+
+        [Tooltip("The forecast prices each unit by its role, not its price alone (AIWorld.RoleWorth): what it does against the other side's units, weighted by how little else can hurt them, against its side's average, as a multiplier from roleWorthMin to roleWorthMax (kills still count double on top). The enemy's reply then goes for what we can least spare.")]
+        public bool forecastRoleWorth = false;
+        public float roleWorthMin = 0.5f;
+        public float roleWorthMax = 2f;
 
         [Tooltip("Space: gold per tile one side's units could move to next turn, and again per tile they could strike. Ours count for us, theirs against us — so taking space from them is a gain, and doing it with a cheap unit is a cheap gain.")]
         public float spaceTileValue = 10f;
@@ -715,6 +727,8 @@ namespace HexTactica.AI {
         [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields (the average of those kinds' damage, by the share of unknown ground near: a threat from anywhere, with no position); 1: unknown ground is empty. Default 1 since lost units are tracked by where they could be (AISigint): the average over every kind feared expansion everywhere while the enemy stood in a known place. (0.2 had beaten fogThreat off on the big maps, 18 of 24, before that.)")]
         [Range(0f, 1f)]
         public float fogAggression = 1f;
+        [Tooltip("Unknown ground (never seen, or not for fogUnknownTurns) is feared by the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge), not by 1 - fogAggression: wary of every dark tile while the enemy's whereabouts are unknown, less as it is found. The loss is priced at the unit's worth (its role, with forecastRoleWorth), so a dear unit fears it most.")]
+        public bool fogUncertainty = false;
         [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
         [Range(1, 20)]
         public int fogUnknownTurns = 6;

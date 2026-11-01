@@ -281,6 +281,8 @@ namespace HexTactica.AI {
         public AISigint sigint;
         /// <summary>How well we know the enemy's forces and how they compare (AIProfile.campaignKnowledge); null when off.</summary>
         public AIKnowledge knowledge;
+        /// <summary>fogUncertainty: the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge); -1 unset.</summary>
+        public float fogUncertainty = -1f;
         /// <summary>All out (AIKnowledge): enemy known and much weaker.</summary>
         public bool AllOut { get { return knowledge != null && knowledge.allOut; } }
 

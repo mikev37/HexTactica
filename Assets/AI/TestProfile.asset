@@ -175,12 +175,18 @@ MonoBehaviour:
   coordinationPassMargin: 0
   coordinationRetreats: 1
   selfPreservationWeight: 0
+  selfPreservationDiscount: 1
+  selfPreservationShieldless: 1
   deathPremium: 1
   hubDependentsWeight: 1
   assistWeight: 0.75
   supplyForecastValue: 0
   coverTileValue: 25
   artilleryCoverValue: 25
+  coverByTarget: 1
+  forecastRoleWorth: 0
+  roleWorthMin: 0.5
+  roleWorthMax: 2
   spaceTileValue: 10
   spaceContestedOnly: 1
   enemyUnsuppliedValue: 100
@@ -200,6 +206,7 @@ MonoBehaviour:
   sigintMoves: 6
   sigintDecay: 0.7
   fogAggression: 1
+  fogUncertainty: 0
   fogUnknownTurns: 6
   scoutUnits: 0
   scoutPull: 0.3
