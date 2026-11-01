@@ -61,7 +61,15 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2214393728267270457, guid: 27d660dc5fedd114babfb10b642cce6f, type: 3}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: cost
+      value: 21000
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: Concealment
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: stealthRange
       value: 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
