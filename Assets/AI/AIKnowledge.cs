@@ -8,8 +8,8 @@ namespace HexTactica.AI {
     ///
     ///   - What the enemy can have: its starting budget (gold and units, known from the start), plus what
     ///     its buildings could have paid for each turn since (their income, as far as its production slots
-    ///     could spend it), less what we have destroyed of it: units we saw die, and the strength lost (less
-    ///     healed) by those we know of.
+    ///     could spend it), less what we have destroyed of it: units we saw die, each at its full cost (what it
+    ///     took out of the budget), with whatever it carried.
     ///   - What we know of: its units we see or believe where they were, and those we have lost track of
     ///     (AISigint), by their worth and strength.
     ///   - Confidence: the share of what it can have that we know of, times how much of its ground we have
@@ -55,7 +55,7 @@ namespace HexTactica.AI {
                 // The starting budget is known: the enemy's gold and its units as the game began.
                 // (Gold counts only where it can buy anything: with purchases off it is worth nothing to either side.)
                 if (Purchases) foreach (Player q in foes) start += q.money;
-                foreach (Unit u in all) if (u != null && u.owner != null && u.owner != me && u.Strength > 0) start += Value(u.cost, u.Strength);
+                foreach (Unit u in all) if (u != null && u.owner != null && u.owner != me && u.Strength > 0) start += Value(u.cost, 6);
                 started = true;
             } else if (Purchases) {
                 // A turn's worth of building: its income, as far as its production slots could spend it.
@@ -75,23 +75,21 @@ namespace HexTactica.AI {
             }
             // What we know of now: seen or believed, and lost from sight.
             Dictionary<Unit, float> now = new Dictionary<Unit, float>();
-            foreach (Unit e in map.enemyUnits) if (e != null && e.Strength > 0) now[e] = Value(e.cost, e.Strength);
+            // (At full cost, as the budget is counted: a hurt unit heals.)
+            foreach (Unit e in map.enemyUnits) if (e != null && e.Strength > 0) now[e] = Value(e.cost, 6);
             FogOfWar.Knowledge k = FogOfWar.current;
-            if (k != null) foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.unit != null && ph.kind != null && !now.ContainsKey(ph.unit)) now[ph.unit] = Value(ph.kind.cost, ph.strength);
-            // Destroyed: an enemy unit we saw die (one that died where we could not see it is still feared:
-            // we cannot know). At the worth we last knew it at, else its cost at the strength it died with.
+            if (k != null) foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.unit != null && ph.kind != null && !now.ContainsKey(ph.unit)) now[ph.unit] = Value(ph.kind.cost, 6);
+            // Destroyed: an enemy unit we saw die (one that died where we could not see it is still feared: we cannot
+            // know), at its full cost — what it took out of the enemy's budget — and so anything it carried (each
+            // carried unit dies with it, and is counted the same way).
             lock (deaths) {
                 if (deathsRead < 0) deathsRead = deaths.Count;   // (deaths before this game began are not ours)
                 for (; deathsRead < deaths.Count; deathsRead++) {
                     Death d = deaths[deathsRead];
                     if (d.owner == null || d.owner == me || !d.seenBy.Contains(me)) continue;
-                    float v; destroyed += tracked.TryGetValue(d.unit, out v) ? v : Value(d.cost, d.strength);
+                    destroyed += Value(d.cost, 6);
                 }
             }
-            // Hurt (or healed) since last turn, for those we know of both turns: the strength lost counts as destroyed.
-            // (Only deaths counted, the damage done before a killing blow was never taken off: with Red wiped out, it
-            // still "could have" a quarter of its army.)
-            foreach (KeyValuePair<Unit, float> kv in now) { float was; if (tracked.TryGetValue(kv.Key, out was)) destroyed += was - kv.Value; }
             tracked.Clear();
             known = 0f;
             foreach (KeyValuePair<Unit, float> kv in now) { tracked[kv.Key] = kv.Value; known += kv.Value; }
@@ -99,7 +97,7 @@ namespace HexTactica.AI {
             // Ours on the same footing as the estimate of theirs: every unit we have (supply units too) and our gold.
             // (Fighting units only against their whole budget read an even army as a third of theirs: never bold.)
             ours = Purchases ? me.money : 0f;
-            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Strength > 0) ours += Value(u.cost, u.Strength);
+            foreach (Unit u in map.ownUnits) if (u != null && u.Strength > 0) ours += Value(u.cost, 6);
             // Ground seen: the enemy's buildings seen within fogUnknownTurns (all, without fog).
             int theirs = 0, seen = 0;
             bool fog = GameController.gc != null && GameController.gc.fogOfWar;
