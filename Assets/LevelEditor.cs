@@ -212,8 +212,14 @@ public class LevelEditor : MonoBehaviour
     }
 
     /// <summary>Units renamed since saves were written: old name, new name.</summary>
-    public static readonly System.Collections.Generic.Dictionary<string, string> renamedUnits = new System.Collections.Generic.Dictionary<string, string> {
-        { "Truck Variant", "Truck" }, { "Gunship Variant", "Gunship" }, { "Gunner Anti Air Variant", "Gunner Anti Air" } };
+    /// <summary>
+    /// The name a unit saved as <paramref name="name"/> goes by now, if it has none of that name: the same name without a
+    /// trailing " Variant" (prefab variants that were renamed to their plain names, "Truck Variant" → "Truck"). Null: none.
+    /// </summary>
+    public static string RenamedUnit(string name) {
+        const string suffix = " Variant";
+        return name != null && name.EndsWith(suffix) ? name.Substring(0, name.Length - suffix.Length).Trim() : null;
+    }
 
     public static Unit loadUnit(string name) {
         name = name.Replace("(Clone)","").Trim();
@@ -222,9 +228,8 @@ public class LevelEditor : MonoBehaviour
                 return t;
             }
         }
-        string now;
-        if (renamedUnits.TryGetValue(name, out now)) return loadUnit(now);
-        return null;
+        string now = RenamedUnit(name);
+        return now != null ? loadUnit(now) : null;
     }
 
     internal static Unit PlaceNewUnit(Player p, String unit_name, HexTile t) {

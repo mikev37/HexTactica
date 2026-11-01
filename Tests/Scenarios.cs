@@ -381,6 +381,8 @@ public static class Scenarios {
              "Who can be in the campaign's central reserve (AICampaign.ReserveMember). Mobile (campaignMobileReserve): the tank, the recon, the gunship and the APC carrying a grunt (the grunt goes with it); a grunt on foot cannot. Off: the tank, the recon and the grunt on foot; not the gunship or the APC.");
         make("ai-keep-hq-clear", "keepHQClear", (a, o) => { Put("Gunship Variant", a, 5, 0); Put("Grunt", a, 1, 0); Put("Grunt", o, -3, 6); },
              "The cost of standing in the way of a capture (AITactical.CaptureBlockCost): Blue's gunship, which cannot take buildings, ending its turn on Red's HQ while a Blue grunt is two turns from it pays half the HQ's worth; the grunt does not; nothing with captureBlockCost off, or with no unit that can take it within two turns. (In RiverCrossing a gunship stood on Red's empty HQ while the grunt that would have taken it walked back to supply.)");
+        make("ui-transport-cargo", "transportCargo", (a, o) => { Put("APC", a, 0, 0); Put("Grunt", a, 1, 0); Put("Grunt", a, -1, 0); Put("Grunt", a, 0, 1); Rig.PlaceAirfield(a, -3, 2); Put("Transport Plane", a, -3, 3); Put("Grunt", a, -2, 3); Put("Grunt", o, 5, 0); },
+             "Transport visuals. Cargo slots: two grunts board an APC (slots 0 and 1); the first gets off and a third boards: it takes the free slot 0, not the second's slot 1. A unit that dies aboard (its transport destroyed) stays the size it rode at (it does not grow back to full size). A unit put down from a transport plane appears dropHeight above its tile and comes down onto it.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -1161,6 +1163,44 @@ public static class Scenarios {
                 float gunFar = cost(true, gun);
                 detail = "the gunship on Red's HQ, the grunt two turns off: costs " + gunOn.ToString("0") + "; the grunt itself " + gruntOn.ToString("0") + "; with captureBlockCost off " + gunOff.ToString("0") + "; with the grunt far away " + gunFar.ToString("0");
                 return gunOn > 0f && gruntOn == 0f && gunOff == 0f && gunFar == 0f;
+            }
+            case "transportCargo": {
+                Unit apc = Rig.At(0, 0).occupier, ga = Rig.At(1, 0).occupier, gb = Rig.At(-1, 0).occupier, gc3 = Rig.At(0, 1).occupier;
+                Unit plane = Rig.At(-3, 3).occupier, para = Rig.At(-2, 3).occupier;
+                foreach (HexTile t in Rig.hg.tiles) if (t.unitPlacement == null) { t.unitPlacement = Rig.New<Transform>(); t.unitPlacement.position = new Vector3(t.x, t.y, 0f); }
+                System.Reflection.MethodInfo updateM = typeof(Unit).GetMethod("Update", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                // One frame of the unit's sprite logic. (The harness has no animator: the walking part at the end of a
+                // frame fails on it, after the parts checked here have run.)
+                Action<Unit> frame = u => { try { updateM.Invoke(u, null); } catch (System.Reflection.TargetInvocationException e) { if (!(e.InnerException is NullReferenceException)) throw; } };
+                object update = updateM;
+                List<string> r = new List<string>();
+                // Slots.
+                Transporting.Load(apc, ga); ga.FinishBoarding();
+                Transporting.Load(apc, gb); gb.FinishBoarding();
+                int sa = ga.cargoSlot, sb = gb.cargoSlot;
+                List<HexTile> off = Transporting.UnloadOptions(apc, ga);
+                bool unloaded = off.Count > 0 && Transporting.Unload(apc, ga, off[0]);
+                Transporting.Load(apc, gc3); gc3.FinishBoarding();
+                bool slots = sa == 0 && sb == 1 && unloaded && gc3.cargoSlot == 0 && gb.cargoSlot == 1;
+                r.Add("slots: first " + sa + ", second " + sb + "; first off " + unloaded + "; third boards into " + gc3.cargoSlot);
+                // Dying aboard.
+                gb.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+                apc.Perish();
+                if (update != null) for (int i = 0; i < 3; i++) frame(gb);
+                bool small = Math.Abs(gb.transform.localScale.x - 0.45f) < 1e-4f && gb.Strength <= 0;
+                r.Add("its transport destroyed, the second grunt's scale " + gb.transform.localScale.x.ToString("0.00") + " (dead " + (gb.Strength <= 0) + ")");
+                // The drop.
+                bool boarded = Transporting.Load(plane, para); para.FinishBoarding();
+                List<HexTile> drop = Transporting.UnloadOptions(plane, para);
+                bool dropped = boarded && drop.Count > 0 && Transporting.Unload(plane, para, drop[0]);
+                Vector3 land = para.tile != null ? para.tile.unitPlacement.position : new Vector3();
+                float startAbove = para.transform.position.y - land.y;
+                if (update != null) frame(para);
+                float after = Vector2.Distance(para.transform.position, land);
+                bool drops = dropped && Math.Abs(startAbove - plane.dropHeight) < 1e-3f && after < 0.02f;
+                r.Add("boarded the plane " + boarded + ", put down " + dropped + ": appears " + startAbove.ToString("0.00") + " above its tile (dropHeight " + plane.dropHeight + "), after coming down " + after.ToString("0.00") + " away");
+                detail = string.Join("; ", r.ToArray());
+                return slots && small && drops;
             }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
