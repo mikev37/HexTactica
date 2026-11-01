@@ -886,7 +886,9 @@ namespace HexTactica.AI {
                 if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f || e.trasnporter != null || !In(e)) continue;
                 HashSet<HexTile> pos;
                 positions.TryGetValue(e, out pos);
-                HashSet<HexTile>[] s = map.EnemySpace(e, pos);
+                // Driven back (or beside one that is) for this option only: worked out here, never from or into the cache.
+                bool knockedHere = knocked != null && (e == knocked || e.tile.Distance(knockedFrom) <= e.moveRange + 1 || e.tile.Distance(knocked.tile) <= e.moveRange + 1);
+                HashSet<HexTile>[] s = knockedHere ? AIMap.SpaceFrom(e, e.tile, pos) : map.EnemySpace(e, pos);
                 theirMove.UnionWith(s[0]);
                 theirStrike.UnionWith(s[1]);
                 if (byTarget) {

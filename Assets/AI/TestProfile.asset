@@ -186,6 +186,7 @@ MonoBehaviour:
   coverByTarget: 1
   spaceIncremental: 1
   parallelForecast: 1
+  keepCaches: 1
   forecastRoleWorth: 0
   roleWorthMin: 0.5
   roleWorthMax: 2

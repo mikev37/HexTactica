@@ -42,6 +42,11 @@ public static class Tests {
         // PARALLEL=n: worker threads for forecasts (0: none; default: the machine's cores less one).
         string par = Environment.GetEnvironmentVariable("PARALLEL");
         if (par != null) HexTactica.AI.AIParallel.Workers = int.Parse(par);
+        // AIVERIFY=1: every cache the AI's map keeps is checked against a fresh one (reported at the end).
+        if (Environment.GetEnvironmentVariable("AIVERIFY") != null) {
+            HexTactica.AI.AIMap.Verify = true;
+            AppDomain.CurrentDomain.ProcessExit += (o, e) => Console.WriteLine("AIVERIFY: " + HexTactica.AI.AIMap.VerifyReport());
+        }
         string probe = Environment.GetEnvironmentVariable("PROBE");
         if (probe == "export") { Scenarios.Export(); return 0; }
         if (probe == "game") {

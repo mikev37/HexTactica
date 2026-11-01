@@ -154,10 +154,17 @@ namespace HexTactica.AI {
         /// <summary>Tiles the supply chain's links are moving to this turn, and which supply unit: nobody else ends there.</summary>
         public readonly Dictionary<HexTile, Unit> chainTiles = new Dictionary<HexTile, Unit>();
 
-        public AIMap(Player player, AIProfile profile) {
+        public AIMap(Player player, AIProfile profile) : this(player, profile, null) { }
+
+        /// <summary>
+        /// With <paramref name="carry"/> (keepCaches: last turn's map for the same side), the caches it ended with that
+        /// what happened since leaves standing are kept (AIMapCache).
+        /// </summary>
+        public AIMap(Player player, AIProfile profile, AIMap carry) {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
             AIScore.Use(this.profile);
+            if (carry != null && carry.player == player && carry.profile == this.profile && this.profile.keepCaches) Adopt(carry);
             Rebuild();
         }
 
@@ -234,14 +241,13 @@ namespace HexTactica.AI {
         readonly Dictionary<Unit, HashSet<HexTile>> baseReach = new Dictionary<Unit, HashSet<HexTile>>(), baseReachBlocked = new Dictionary<Unit, HashSet<HexTile>>();
 
         void Rebuild(bool recalculateThreat) {
-            replyCache.positions.Clear();
-            baseReach.Clear(); baseReachBlocked.Clear();
+            // keepCaches: only what the board's changes since the last read could have changed (AIMapCache).
+            if (profile.keepCaches) { ReadDelta(); PruneUnitCaches(); }
+            else { replyCache.positions.Clear(); baseReach.Clear(); baseReachBlocked.Clear(); thisTurnFields.Clear(); horizonFields.Clear(); ourSpace.Clear(); everything = true; }
             theaters.Clear();
             theaterRadius.Clear();
             space = null;
             denialBaseline = null;
-            thisTurnFields.Clear();
-            horizonFields.Clear();
             approaches.Clear();
             costHome.Clear();
             enemyFire.Clear();
@@ -1057,8 +1063,6 @@ namespace HexTactica.AI {
         /// every other unit can reach and where it can stop.
         /// </summary>
         public void InvalidateAllFields() {
-            thisTurnFields.Clear();
-            horizonFields.Clear();
             approaches.Clear();
             costHome.Clear();
         }

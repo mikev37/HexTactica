@@ -668,6 +668,8 @@ namespace HexTactica.AI {
         public bool spaceIncremental = true;
         [Tooltip("Speed only: a unit's options are forecast at once on worker threads (AIParallel), each on its own copy of the board. Same answers.")]
         public bool parallelForecast = true;
+        [Tooltip("Speed only: the map keeps, after each action and from turn to turn, the caches that what changed on the board leaves standing (reach, move fields, space, supply networks: AIMapCache), instead of working everything out again. Same answers.")]
+        public bool keepCaches = true;
 
         [Tooltip("The forecast prices each unit by its role, not its price alone (AIWorld.RoleWorth): what it does against the other side's units, weighted by how little else can hurt them, against its side's average, as a multiplier from roleWorthMin to roleWorthMax (kills still count double on top). The enemy's reply then goes for what we can least spare.")]
         public bool forecastRoleWorth = false;
