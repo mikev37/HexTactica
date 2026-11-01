@@ -1,0 +1,663 @@
+fileFormatVersion: 2
+guid: 334aac41849b9ef4e8e8420f05e08c11
+importerOverride:
+  nativeImporterType: 2089858483
+  scriptedImporterType:
+    serializedVersion: 2
+    Hash: b10b55a1aa6a1aa32521bc0cab59632e
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: b2a9591990af98743ba3ff7cf1000886, type: 3}
+  textureImporterSettings:
+    alphaSource: 1
+    mipMapMode: 0
+    enableMipMap: 1
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+    convertToNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+    swizzle: 50462976
+    isReadable: 0
+    streamingMipmaps: 0
+    streamingMipmapsPriority: 0
+    vTOnly: 0
+    ignoreMipmapLimit: 0
+    nPOTScale: 1
+    sRGBTexture: 1
+    spriteMode: 2
+    spriteExtrude: 1
+    spriteMeshType: 1
+    alignment: 0
+    spritePivot: {x: 0.5, y: 0.5}
+    spritePixelsToUnits: 100
+    spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+    spriteGenerateFallbackPhysicsShape: 0
+    generateCubemap: 6
+    cubemapConvolution: 0
+    seamlessCubemap: 0
+    alphaIsTransparency: 1
+    spriteTessellationMethod: 0
+    spriteTessellationDetail: -1
+    spriteGeometrySubdivision: 0
+    textureType: 8
+    textureShape: 1
+    singleChannelComponent: 0
+    flipbookRows: 0
+    flipbookColumns: 0
+    ignorePngGamma: 0
+    cookieMode: 0
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 0
+    wrapV: 0
+    wrapW: 0
+    normalMap: 0
+    textureFormat: 0
+    maxTextureSize: 0
+    lightmap: 0
+    compressionQuality: 0
+    linearTexture: 0
+    grayScaleToAlpha: 0
+    rGBM: 0
+    cubemapConvolutionSteps: 0
+    cubemapConvolutionExponent: 0
+    maxTextureSizeSet: 0
+    compressionQualitySet: 0
+    textureFormatSet: 0
+    applyGammaDecoding: 0
+  singleSpriteImportData:
+  - name: 
+    originalName: 
+    pivot: {x: 0, y: 0}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    spriteID: b8af9d0494a248a4b8621e7f3d5a9491
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 0, y: 0}
+    spritePosition: {x: 0, y: 0}
+  multiSpriteImportData: []
+  layeredSpriteImportData:
+  - name: missileboxfront copy
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 4
+      width: 327
+      height: 288
+    spriteID: ec055a3f30b5ecc429d46935dc44847c
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 4}
+    spritePosition: {x: 33, y: 146}
+  - name: missileboxfront
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 300
+      width: 327
+      height: 288
+    spriteID: b7045842c4e382048b930c644aa5076a
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 300}
+    spritePosition: {x: 33, y: 146}
+  - name: missiletop
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 1780
+      width: 312
+      height: 191
+    spriteID: e4ccda7f9763f0241ac84308edf77378
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 1780}
+    spritePosition: {x: 89, y: 183}
+  - name: missilebot
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 596
+      width: 312
+      height: 191
+    spriteID: 63e09a6e83d6f424ab96284e71607d10
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 596}
+    spritePosition: {x: 41, y: 221}
+  - name: missileboxBot color
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 596
+      width: 327
+      height: 288
+    spriteID: bb50305dd9e8d594588c1171eed65849
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 596}
+    spritePosition: {x: 33, y: 146}
+  - name: missileboxBot
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 892
+      width: 327
+      height: 288
+    spriteID: e4dfc11d8dbb1794e8ab0d4508055294
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 892}
+    spritePosition: {x: 33, y: 146}
+  - name: Radar
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 1451
+      width: 99
+      height: 99
+    spriteID: b3234b99128b92342b3fb554c1ed440b
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 1451}
+    spritePosition: {x: 162, y: 317}
+  - name: Mount color
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 1558
+      width: 21
+      height: 149
+    spriteID: eab3b4fb3e261534b97eb6580f257c0e
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 1558}
+    spritePosition: {x: 239, y: 202}
+  - name: Mount
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 1193
+      width: 152
+      height: 250
+    spriteID: 3415e0c55bbd86a42b6e195e4e2d7ca9
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 1193}
+    spritePosition: {x: 108, y: 152}
+  - name: missileboxfront copy
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 1188
+      width: 327
+      height: 288
+    spriteID: 0c8870ce890b85d4588e402dd7a4720e
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 1188}
+    spritePosition: {x: 33, y: 222}
+  - name: missileboxfront
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 1484
+      width: 327
+      height: 288
+    spriteID: 2b6167da7ad8ad749926676f2688333c
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 1484}
+    spritePosition: {x: 33, y: 222}
+  - name: missiletop
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 795
+      width: 312
+      height: 191
+    spriteID: eede425930c796e4b80f47b6bf52ce74
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 795}
+    spritePosition: {x: 89, y: 259}
+  - name: missilebot
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 994
+      width: 312
+      height: 191
+    spriteID: a08df11020bd96c4696f753b7d451660
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 994}
+    spritePosition: {x: 41, y: 297}
+  - name: missileboxBot color
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 4
+      width: 327
+      height: 288
+    spriteID: f31aeef92ee97d84a99ba208c0e4a7a8
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 4}
+    spritePosition: {x: 33, y: 222}
+  - name: missileboxBot
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 339
+      y: 300
+      width: 327
+      height: 288
+    spriteID: f0fb8bc4a01188646bc6ccf3afba00e4
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 339, y: 300}
+    spritePosition: {x: 33, y: 222}
+  spriteImportData: []
+  rigSpriteImportData: []
+  sharedRigSpriteImportData: []
+  mosaicSpriteImportData: []
+  sharedRigCharacterData:
+    bones: []
+    parts: []
+    dimension: {x: 0, y: 0}
+    characterGroups: []
+    pivot: {x: 0, y: 0}
+    boneReadOnly: 0
+  characterData:
+    bones: []
+    parts: []
+    dimension: {x: 0, y: 0}
+    characterGroups: []
+    pivot: {x: 0, y: 0}
+    boneReadOnly: 0
+  platformSettings: []
+  mosaicLayers: 1
+  characterMode: 1
+  documentPivot: {x: 0, y: 0}
+  documentAlignment: 7
+  importHiddenLayers: 0
+  layerMappingOption: 2
+  generatePhysicsShape: 0
+  paperDollMode: 0
+  keepDupilcateSpriteName: 1
+  generateTileAssets: 0
+  tilePaletteCellLayout: 0
+  tilePaletteHexagonLayout: 0
+  tilePaletteCellSize: {x: 1, y: 1, z: 0}
+  tilePaletteCellSizing: 0
+  transparencySortMode: 0
+  transparencySortAxis: {x: 0, y: 0, z: 1}
+  tileTemplate: {instanceID: 0}
+  padding: 4
+  spriteSizeExpand: 0
+  skeletonAssetReferenceID: 
+  pipeline: {instanceID: 0}
+  pipelineVersion: 
+  spriteCategoryList:
+    categories: []
+  spritePackingTag: 
+  resliceFromLayer: 0
+  pSDLayerImportSetting: []
+  psdLayers:
+  - name: MissileFrontBox
+    spriteName: 
+    isGroup: 1
+    parentIndex: -1
+    spriteID: 154b70e5dbef2aa4bba584499a6d155d
+    layerID: 256
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 1
+  - name: missileboxfront copy
+    spriteName: missileboxfront copy
+    isGroup: 0
+    parentIndex: 0
+    spriteID: ec055a3f30b5ecc429d46935dc44847c
+    layerID: 268
+    mosaicPosition: {x: 4, y: 4}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missileboxfront
+    spriteName: missileboxfront
+    isGroup: 0
+    parentIndex: 0
+    spriteID: b7045842c4e382048b930c644aa5076a
+    layerID: 254
+    mosaicPosition: {x: 4, y: 300}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missiletop
+    spriteName: missiletop
+    isGroup: 0
+    parentIndex: 0
+    spriteID: e4ccda7f9763f0241ac84308edf77378
+    layerID: 252
+    mosaicPosition: {x: 4, y: 1780}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missilebot
+    spriteName: missilebot
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 63e09a6e83d6f424ab96284e71607d10
+    layerID: 251
+    mosaicPosition: {x: 339, y: 596}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missileboxBot color
+    spriteName: missileboxBot color
+    isGroup: 0
+    parentIndex: 0
+    spriteID: bb50305dd9e8d594588c1171eed65849
+    layerID: 267
+    mosaicPosition: {x: 4, y: 596}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missileboxBot
+    spriteName: missileboxBot
+    isGroup: 0
+    parentIndex: 0
+    spriteID: e4dfc11d8dbb1794e8ab0d4508055294
+    layerID: 247
+    mosaicPosition: {x: 4, y: 892}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: Radar
+    spriteName: Radar
+    isGroup: 0
+    parentIndex: -1
+    spriteID: b3234b99128b92342b3fb554c1ed440b
+    layerID: 245
+    mosaicPosition: {x: 339, y: 1451}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: Mount color
+    spriteName: Mount color
+    isGroup: 0
+    parentIndex: -1
+    spriteID: eab3b4fb3e261534b97eb6580f257c0e
+    layerID: 266
+    mosaicPosition: {x: 339, y: 1558}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: Mount
+    spriteName: Mount
+    isGroup: 0
+    parentIndex: -1
+    spriteID: 3415e0c55bbd86a42b6e195e4e2d7ca9
+    layerID: 241
+    mosaicPosition: {x: 339, y: 1193}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: MissileBackBox
+    spriteName: 
+    isGroup: 1
+    parentIndex: -1
+    spriteID: 6d2c7d59578a7b248842dbabdb6db704
+    layerID: 276
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 1
+  - name: missileboxfront copy
+    spriteName: missileboxfront copy
+    isGroup: 0
+    parentIndex: 10
+    spriteID: 0c8870ce890b85d4588e402dd7a4720e
+    layerID: 275
+    mosaicPosition: {x: 4, y: 1188}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missileboxfront
+    spriteName: missileboxfront
+    isGroup: 0
+    parentIndex: 10
+    spriteID: 2b6167da7ad8ad749926676f2688333c
+    layerID: 274
+    mosaicPosition: {x: 4, y: 1484}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missiletop
+    spriteName: missiletop
+    isGroup: 0
+    parentIndex: 10
+    spriteID: eede425930c796e4b80f47b6bf52ce74
+    layerID: 273
+    mosaicPosition: {x: 339, y: 795}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missilebot
+    spriteName: missilebot
+    isGroup: 0
+    parentIndex: 10
+    spriteID: a08df11020bd96c4696f753b7d451660
+    layerID: 272
+    mosaicPosition: {x: 339, y: 994}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missileboxBot color
+    spriteName: missileboxBot color
+    isGroup: 0
+    parentIndex: 10
+    spriteID: f31aeef92ee97d84a99ba208c0e4a7a8
+    layerID: 271
+    mosaicPosition: {x: 339, y: 4}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: missileboxBot
+    spriteName: missileboxBot
+    isGroup: 0
+    parentIndex: 10
+    spriteID: f0fb8bc4a01188646bc6ccf3afba00e4
+    layerID: 270
+    mosaicPosition: {x: 339, y: 300}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  mosaicPSDLayers: []
+  rigPSDLayers: []
+  sharedRigPSDLayers: []
+  importFileNodeState: 1
+  platformSettingsDirtyTick: 0
+  spriteSizeExpandChanged: 0
+  generateGOHierarchy: 0
+  textureAssetName: 
+  prefabAssetName: 
+  spriteLibAssetName: 
+  skeletonAssetName: 
+  secondarySpriteTextures: []
