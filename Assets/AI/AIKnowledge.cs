@@ -13,7 +13,8 @@ namespace HexTactica.AI {
     ///     (AISigint), by their worth and strength.
     ///   - Confidence: the share of what it can have that we know of, times how much of its ground we have
     ///     seen lately (its buildings: where new units come from). Without fog, everything is known.
-    ///   - Force ratio: our fighting strength against the larger of what it can have and what we know of.
+    ///   - Force ratio: what we have (every unit's worth and strength, and our gold) against the larger of
+    ///     what it can have and what we know of — the same footing on both sides.
     ///   - Aggression: confidence times how far the ratio is past even, toward knowledgeAllOutRatio. It
     ///     scales down the fear of the fog. All out (confidence and ratio both past their marks): every
     ///     front attacks, task forces leave our supply, the enemy HQ comes first and the reserve is released.
@@ -69,8 +70,10 @@ namespace HexTactica.AI {
             known = 0f;
             foreach (KeyValuePair<Unit, float> kv in now) { tracked[kv.Key] = kv.Value; known += kv.Value; }
             estimate = Mathf.Max(known, start + built - destroyed);
-            ours = 0f;
-            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null) ours += Value(u.cost, u.Strength);
+            // Ours on the same footing as the estimate of theirs: every unit we have (supply units too) and our gold.
+            // (Fighting units only against their whole budget read an even army as a third of theirs: never bold.)
+            ours = me.money;
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Strength > 0) ours += Value(u.cost, u.Strength);
             // Ground seen: the enemy's buildings seen within fogUnknownTurns (all, without fog).
             int theirs = 0, seen = 0;
             bool fog = GameController.gc != null && GameController.gc.fogOfWar;
