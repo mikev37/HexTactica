@@ -1268,6 +1268,9 @@ public class AIPlayer : MonoBehaviour {
         int enemyReach = 0;
         foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) enemyReach = Mathf.Max(enemyReach, (e.moveAndAttack ? e.moveRange : 0) + e.AttackRange);
         int r = unit.moveRange + Mathf.Max(1, unit.AttackRange) + enemyReach + 1;
+        // reuseRadiusCap: only changes this close count (the unit's own reach plus one, at most the cap). Not the same
+        // answers: a change farther off that the full radius would have caught is missed (VERIFYREUSE counts those).
+        if (Profile.reuseRadiusCap > 0) r = Mathf.Min(Profile.reuseRadiusCap, unit.moveRange + Mathf.Max(1, unit.AttackRange) + 1);
         HexTile at = unit.tile;
         Func<HexTile, bool> near = t => t != null && t.Distance(at) <= r;
         foreach (KeyValuePair<Unit, KeyValuePair<HexTile, int>> kv in firstBoard) {

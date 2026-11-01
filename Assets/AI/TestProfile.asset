@@ -188,6 +188,7 @@ MonoBehaviour:
   parallelForecast: 1
   keepCaches: 1
   vacatedReach: 1
+  reuseRadiusCap: 0
   forecastRoleWorth: 0
   roleWorthMin: 0.5
   roleWorthMax: 2

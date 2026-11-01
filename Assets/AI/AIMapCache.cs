@@ -77,6 +77,22 @@ namespace HexTactica.AI {
             marks = now; terrainSig = ts; buildingSig = bs;
         }
 
+        /// <summary>
+        /// The map's shape as land movement sees it: every tile's terrain, damage and road, and every building's place,
+        /// kind, damage and health. Read once per board read (cheap: one pass over the tiles).
+        /// </summary>
+        long LayoutSignature() {
+            if (layoutRead == readCount) return layoutSig;
+            long ts = 17;
+            if (HexGenerator.hg != null && HexGenerator.hg.tiles != null)
+                foreach (HexTile t in HexGenerator.hg.tiles) if (t != null) ts = ts * 31 + ((t.terrain != null ? t.terrain.GetHashCode() : 0) ^ (t.damage * 7919) ^ (t.road ? 104729 : 0));
+            foreach (Building b in Building.all)
+                if (b != null && b.tile != null) ts = ts * 31 + (b.tile.GetHashCode() ^ ((int)b.type * 977) ^ (b.damage * 7919) ^ (b.health * 31337));
+            layoutSig = ts; layoutRead = readCount;
+            return ts;
+        }
+        long layoutSig; int layoutRead = -1, readCount;
+
         /// <summary>No changed tile within <paramref name="reach"/> + 1 of <paramref name="origin"/>.</summary>
         bool Untouched(HexTile origin, int reach) {
             if (origin == null) return false;
