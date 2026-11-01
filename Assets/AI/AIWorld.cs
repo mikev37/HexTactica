@@ -1022,6 +1022,7 @@ namespace HexTactica.AI {
         /// at ground attackers beside it does: the blows it takes would land on someone else if it stepped back. Artillery,
         /// anti-air, aircraft that cannot answer the ground, supply units: every blow they draw is lost for nothing.
         /// </summary>
+        public static bool ShieldsForTest(Unit u) { return Shields(u); }
         internal static bool Shields(Unit u) {
             if (u == null || u.Hub != null || u.Firepower <= 0 || !u.retaliates || u.MinRange >= 1 || u.AttackRange < 1) return false;
             int ground = (1 << (int)Locomotion.Boots) | (1 << (int)Locomotion.Wheels) | (1 << (int)Locomotion.Treads);

@@ -385,6 +385,12 @@ public static class Scenarios {
              "Transport visuals. Cargo slots: two grunts board an APC (slots 0 and 1); the first gets off and a third boards: it takes the free slot 0, not the second's slot 1. A unit that dies aboard (its transport destroyed) stays the size it rode at (it does not grow back to full size). A unit put down from a transport plane appears dropHeight above its tile and comes down onto it.");
         make("rule-faction-roster", "factionRoster", (a, o) => { Rig.PlaceBuilding("HQ", a, -4, 0); Rig.PlaceBuilding("ArmyBase", a, -2, 2); Put("Grunt", o, 5, 0); },
              "Factions (Faction, Building.Offered): Blue's HQ and Factory keep their base lists. Given a faction that replaces the Grunt with its own version, drops the first other unit the HQ lists, and adds an extra unit made at Factories (the ArmyBase): the HQ offers the version where the Grunt was, not the Grunt or the dropped unit; the ArmyBase offers the version in its Grunt's place and the extra; without the faction, the base lists. The version is bought and placed under its own name, is allowed where the scenario allows the Grunt, and its name and the faction's survive a save (LevelEditor.loadUnit, PlayerData.factionName).");
+        make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
+             "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
+        make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
+             "What each unit does for its side (AIWorld.RoleWorth, forecastRoleWorth): the damage it can do to each enemy unit, in that unit's worth, weighted by how little else on its side can hurt it, per point of its own worth, against its side's average, kept within roleWorthMin..roleWorthMax. Blue's only anti-air (the missile truck) against Red's gunship and bomber is worth more than its price, more than a grunt; the supply unit counts at its price (1); every multiplier is within 0.5..2. The forecast prices the truck by it (AIWorld.Value).");
+        make("ai-self-preservation-scope", "selfPreservationScope", (a, o) => { Put("Grunt", a, -4, 0); Put("Tank", a, -4, 2); Put("Artillery", a, -5, 2); Put("Anti Air Missile Truck", a, -5, 1); Put("Supplies", a, -6, 1); Put("Tank", o, 0, 0); Put("Tank", o, 0, 2); },
+             "Which units shield anything by standing in reach (AIWorld.Shields, selfPreservationShieldless): those that fire back at ground attackers beside them (the grunt, the tank); not the artillery, the anti-air truck or the supply unit. With self-preservation on, the truck standing where both Red tanks could reach pays for it; priced as the reply prices blows (selfPreservationDiscount) it pays no more than undiscounted.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -517,6 +523,8 @@ public static class Scenarios {
              "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a Blue grunt ending its turn where (a grunt does no damage to a gunship since main's airborne damage floor of 0) that unit could reach it tonight expects the share of its damage from the share of the places it could be (unseen) from which it could; less the more moves it has had, but never nothing (it is not forgotten); a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
         makeFog("fog-ai-risk-by-price", "fogPrice", (a, o) => { Put("Bomber", a, -3, 0); Put("Conscript", a, -4, 2); Put("Recon", a, -1, 0); Put("Gunner Anti Air", o, 1, 0); Put("Grunt", o, 1, 2); Put("Tank", o, 5, -4); },
              "Blue saw a Red anti-air gunner and a Red grunt, then lost both (their tiles seen empty since). The fog risk of a stop is the strength each lost unit could take there (its own damage against the unit in question, by the share of its places from which it reaches) times the unit's worth: next to where they may be, a bomber's risk comes only from the anti-air gunner (a grunt cannot hit it), and a bomber's risk in gold is many times a conscript's for the same tile.", "Human");
+        makeFog("fog-ai-unknown-ground", "fogUnknownGround", (a, o) => { Put("Tank", a, -5, 0); Put("Conscript", a, -5, 2); Put("Grunt", o, 4, 0); Put("Tank", o, 4, 2); },
+             "Unknown ground (fogUncertainty): Blue has never seen east of the middle, and none of Red's units. At a stop beside that ground, the fog's loss is the average damage of the kinds Red fields by the share of unknown ground near, times the share of Red's forces Blue cannot place: none when every Red unit is placed (0), the most when none is (1), and nothing with fogUncertainty off (and fogAggression 1). (With none of Red's kinds seen, it fears what Blue fields.) Priced at the unit's worth: the tank's risk far above the conscript's.", "Human");
         makeFog("game-log-replay", "gameLogReplay", (a, o) => { Put("Grunt", a, -3, 0); Put("Tank", a, -4, 2); Put("Grunt", o, 3, 0); Put("Tank", o, 4, -2); },
              "Replaying a recorded game: three rounds of the AI against itself are recorded (game.log and a board for every turn), then replayed. The replay has a turn for every board saved, each with its round, its side and what the log says happened in it; it shows each board exactly as it was at the start of that turn, forward and back; nobody plays (every AI off, clicks on the board and the recording ignored); it can be seen as either side sees it (that side's fog) or with everything shown; closing it puts the fog as it was.", "Full");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
@@ -1219,6 +1227,45 @@ public static class Scenarios {
                 r.Add("without the faction again: " + names(hq.Purchasable()));
                 detail = string.Join("; ", r.ToArray());
                 return roster && allowed && bought && saved && off;
+            }
+            case "coverByTarget": {
+                Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
+                Func<bool, Unit, int> cover = (on, x) => {
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.coverByTarget = on;
+                    HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
+                    return HexTactica.AI.AIWorld.Evaluate(x, x.tile, new AttackAppraisal(), m, m.replyCache, false, true).gunCover;
+                };
+                int tOn = cover(true, truck), tOff = cover(false, truck), gOn = cover(true, gun);
+                detail = "missile truck covers " + tOn + " tiles with coverByTarget, " + tOff + " without; artillery " + gOn;
+                return tOn == 0 && tOff > 0 && gOn > 0;
+            }
+            case "roleWorth": {
+                Unit truck = Rig.At(-4, 0).occupier, grunt = Rig.At(-4, 2).occupier, sup = Rig.At(-6, 1).occupier;
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.forecastRoleWorth = true;
+                HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
+                Dictionary<Unit, float> r = HexTactica.AI.AIWorld.RoleWorth(m, prof);
+                bool within = true; List<string> all = new List<string>();
+                foreach (KeyValuePair<Unit, float> kv in r) { if (kv.Value < 0.5f - 1e-4f || kv.Value > 2f + 1e-4f) within = false; all.Add(kv.Key.owner.personal_name + " " + kv.Key.name.Replace("(Clone)", "") + " x" + kv.Value.ToString("0.00")); }
+                float plain = HexTactica.AI.AIWorld.Value(truck);
+                HexTactica.AI.AIWorld.Roles = r;
+                float priced = HexTactica.AI.AIWorld.Value(truck);
+                HexTactica.AI.AIWorld.Roles = null;
+                detail = string.Join(", ", all.ToArray()) + "; the truck's forecast worth " + plain.ToString("0") + " -> " + priced.ToString("0");
+                return r[truck] > 1f && r[truck] > r[grunt] && Math.Abs(r[sup] - 1f) < 1e-4f && within && priced > plain;
+            }
+            case "selfPreservationScope": {
+                Unit grunt = Rig.At(-4, 0).occupier, tank = Rig.At(-4, 2).occupier, gun = Rig.At(-5, 2).occupier, truck = Rig.At(-5, 1).occupier, sup = Rig.At(-6, 1).occupier;
+                Func<Unit, bool> sh = HexTactica.AI.AIWorld.ShieldsForTest;
+                bool scope = sh(grunt) && sh(tank) && !sh(gun) && !sh(truck) && !sh(sup);
+                HexTile exposed = Rig.At(-2, 0);
+                Func<bool, float> risk = disc => {
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.selfPreservationWeight = 1f; prof.selfPreservationDiscount = disc;
+                    HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
+                    return HexTactica.AI.AIWorld.Evaluate(truck, exposed, new AttackAppraisal(), m, m.replyCache, false, true).selfRisk;
+                };
+                float on = risk(true), off = risk(false);
+                detail = "shields: grunt " + sh(grunt) + ", tank " + sh(tank) + ", artillery " + sh(gun) + ", missile truck " + sh(truck) + ", supplies " + sh(sup) + "; the truck at " + Pos(exposed) + " pays " + on.ToString("0") + " for its exposure priced as the reply prices it, " + off.ToString("0") + " undiscounted";
+                return scope && on > 0f && on <= off;
             }
             case "transportCargo": {
                 Unit apc = Rig.At(0, 0).occupier, ga = Rig.At(1, 0).occupier, gb = Rig.At(-1, 0).occupier, gc3 = Rig.At(0, 1).occupier;
@@ -2217,6 +2264,27 @@ public static class Scenarios {
                 r.Add("fogThreat off: nothing " + (off == 0f));
                 detail = string.Join("; ", r.ToArray());
                 return saw && lost && phantom && notBelieved && zones && unknown && scout && wrong == 0 && pairs > 0 && off == 0f;
+            }
+            case "fogUnknownGround": {
+                PinVision();
+                Unit bomber = Rig.At(-5, 0).occupier, conscript = Rig.At(-5, 2).occupier;   // (the dear one is a tank)
+                HexTile near = Rig.At(-2, 1);
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                Func<bool, float, Unit, float[]> at = (on, unc, x) => {
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.fogUncertainty = on; prof.fogAggression = 1f;
+                    float[] res = new float[2];
+                    BoardView v = FogOfWar.Conceal(a, true, prof.fogMemoryTurns);
+                    using (v != null ? v.Enter() : null) if (v != null) {
+                        HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, prof);
+                        m.fogUncertainty = unc;
+                        res[0] = m.FogLoss(x, near); res[1] = HexTactica.AI.AIFog.FogRisk(x, near, m, prof);
+                    }
+                    return res;
+                };
+                float[] b1 = at(true, 1f, bomber), b0 = at(true, 0f, bomber), bh = at(true, 0.5f, bomber), bOff = at(false, 1f, bomber), c1 = at(true, 1f, conscript);
+                bool unseen = !FogOfWar.Sees(a, Rig.At(4, 0).occupier);
+                detail = "Red unseen " + unseen + "; at " + Pos(near) + " the tank's fog loss " + b1[0].ToString("0.##") + " strength (" + b1[1].ToString("0") + " gold) with none of Red placed, " + bh[0].ToString("0.##") + " with half, " + b0[0].ToString("0.##") + " with all, " + bOff[0].ToString("0.##") + " with fogUncertainty off; the conscript's " + c1[0].ToString("0.##") + " (" + c1[1].ToString("0") + " gold)";
+                return unseen && b1[0] > 0f && bh[0] > 0f && bh[0] < b1[0] && b0[0] == 0f && bOff[0] == 0f && b1[1] > 2f * Mathf.Max(1f, c1[1]);
             }
             case "fogPrice": {
                 PinVision();
