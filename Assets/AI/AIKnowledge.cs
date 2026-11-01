@@ -30,6 +30,20 @@ namespace HexTactica.AI {
         bool started;
         readonly Dictionary<Unit, float> tracked = new Dictionary<Unit, float>();
 
+        /// <summary>A unit's death, and who saw it (the enemy units we count as destroyed are those we saw die).</summary>
+        sealed class Death { public Unit unit; public Player owner; public int cost, strength; public List<Player> seenBy; }
+        static readonly List<Death> deaths = new List<Death>();
+        static AIKnowledge() {
+            Unit.Died += u => {
+                if (u == null) return;
+                Death d = new Death { unit = u, owner = u.owner, cost = u.cost, strength = Mathf.Max(1, u.Strength), seenBy = new List<Player>() };
+                bool fog = GameController.gc != null && GameController.gc.fogOfWar;
+                if (GameController.gc != null) foreach (Player q in GameController.gc.players) if (q != null && q != u.owner && (!fog || (u.tile != null && FogOfWar.Sees(q, u)))) d.seenBy.Add(q);
+                lock (deaths) deaths.Add(d);
+            };
+        }
+        int deathsRead = -1;
+
         /// <summary>Once a turn, before the plan: the estimate brought up to date for <paramref name="map"/>'s side.</summary>
         public void Update(AIMap map, AIProfile p) {
             Player me = map.player;
@@ -38,10 +52,11 @@ namespace HexTactica.AI {
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : new List<Unit>();
             if (!started) {
                 // The starting budget is known: the enemy's gold and its units as the game began.
-                foreach (Player q in foes) start += q.money;
+                // (Gold counts only where it can buy anything: with purchases off it is worth nothing to either side.)
+                if (Purchases) foreach (Player q in foes) start += q.money;
                 foreach (Unit u in all) if (u != null && u.owner != null && u.owner != me && u.Strength > 0) start += Value(u.cost, u.Strength);
                 started = true;
-            } else {
+            } else if (Purchases) {
                 // A turn's worth of building: its income, as far as its production slots could spend it.
                 foreach (Player q in foes) {
                     int income = 0, slotCap = 0;
@@ -62,17 +77,23 @@ namespace HexTactica.AI {
             foreach (Unit e in map.enemyUnits) if (e != null && e.Strength > 0) now[e] = Value(e.cost, e.Strength);
             FogOfWar.Knowledge k = FogOfWar.current;
             if (k != null) foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.unit != null && ph.kind != null && !now.ContainsKey(ph.unit)) now[ph.unit] = Value(ph.kind.cost, ph.strength);
-            // Destroyed: a unit we knew of that is gone from the game.
-            HashSet<Unit> alive = new HashSet<Unit>();
-            foreach (Unit u in all) if (u != null && u.Strength > 0) alive.Add(u);
-            foreach (KeyValuePair<Unit, float> kv in tracked) if (kv.Key == null || !alive.Contains(kv.Key)) destroyed += kv.Value;
+            // Destroyed: an enemy unit we saw die (one that died where we could not see it is still feared:
+            // we cannot know). At the worth we last knew it at, else its cost at the strength it died with.
+            lock (deaths) {
+                if (deathsRead < 0) deathsRead = deaths.Count;   // (deaths before this game began are not ours)
+                for (; deathsRead < deaths.Count; deathsRead++) {
+                    Death d = deaths[deathsRead];
+                    if (d.owner == null || d.owner == me || !d.seenBy.Contains(me)) continue;
+                    float v; destroyed += tracked.TryGetValue(d.unit, out v) ? v : Value(d.cost, d.strength);
+                }
+            }
             tracked.Clear();
             known = 0f;
             foreach (KeyValuePair<Unit, float> kv in now) { tracked[kv.Key] = kv.Value; known += kv.Value; }
             estimate = Mathf.Max(known, start + built - destroyed);
             // Ours on the same footing as the estimate of theirs: every unit we have (supply units too) and our gold.
             // (Fighting units only against their whole budget read an even army as a third of theirs: never bold.)
-            ours = me.money;
+            ours = Purchases ? me.money : 0f;
             foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Strength > 0) ours += Value(u.cost, u.Strength);
             // Ground seen: the enemy's buildings seen within fogUnknownTurns (all, without fog).
             int theirs = 0, seen = 0;
@@ -94,6 +115,8 @@ namespace HexTactica.AI {
             allOut = confidence >= p.knowledgeAllOutConfidence && ratio >= p.knowledgeAllOutRatio;
             releaseReserve = confidence >= p.knowledgeReserveConfidence;
         }
+
+        static bool Purchases { get { return GameController.gc == null || GameController.gc.purchasesAllowed; } }
 
         static float Value(int cost, int strength) { return Mathf.Max(1f, cost / 6f) * Mathf.Max(0, strength); }
 
