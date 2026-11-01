@@ -383,6 +383,8 @@ public static class Scenarios {
              "The cost of standing in the way of a capture (AITactical.CaptureBlockCost): Blue's gunship, which cannot take buildings, ending its turn on Red's HQ while a Blue grunt is two turns from it pays half the HQ's worth; the grunt does not; nothing with captureBlockCost off, or with no unit that can take it within two turns. (In RiverCrossing a gunship stood on Red's empty HQ while the grunt that would have taken it walked back to supply.)");
         make("ui-transport-cargo", "transportCargo", (a, o) => { Put("APC", a, 0, 0); Put("Grunt", a, 1, 0); Put("Grunt", a, -1, 0); Put("Grunt", a, 0, 1); Rig.PlaceAirfield(a, -3, 2); Put("Transport Plane", a, -3, 3); Put("Grunt", a, -2, 3); Put("Grunt", o, 5, 0); },
              "Transport visuals. Cargo slots: two grunts board an APC (slots 0 and 1); the first gets off and a third boards: it takes the free slot 0, not the second's slot 1. A unit that dies aboard (its transport destroyed) stays the size it rode at (it does not grow back to full size). A unit put down from a transport plane appears dropHeight above its tile and comes down onto it.");
+        make("rule-faction-roster", "factionRoster", (a, o) => { Rig.PlaceBuilding("HQ", a, -4, 0); Rig.PlaceBuilding("ArmyBase", a, -2, 2); Put("Grunt", o, 5, 0); },
+             "Factions (Faction, Building.Offered): Blue's HQ and Factory keep their base lists. Given a faction that replaces the Grunt with its own version, drops the first other unit the HQ lists, and adds an extra unit made at Factories (the ArmyBase): the HQ offers the version where the Grunt was, not the Grunt or the dropped unit; the ArmyBase offers the version in its Grunt's place and the extra; without the faction, the base lists. The version is bought and placed under its own name, is allowed where the scenario allows the Grunt, and its name and the faction's survive a save (LevelEditor.loadUnit, PlayerData.factionName).");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -1163,6 +1165,60 @@ public static class Scenarios {
                 float gunFar = cost(true, gun);
                 detail = "the gunship on Red's HQ, the grunt two turns off: costs " + gunOn.ToString("0") + "; the grunt itself " + gruntOn.ToString("0") + "; with captureBlockCost off " + gunOff.ToString("0") + "; with the grunt far away " + gunFar.ToString("0");
                 return gunOn > 0f && gruntOn == 0f && gunOff == 0f && gunFar == 0f;
+            }
+            case "factionRoster": {
+                Building hq = Rig.At(-4, 0).building, fac = Rig.At(-2, 2).building;
+                Func<List<Unit>, string> names = list => string.Join(", ", list.ConvertAll(u => u.name.Replace("(Clone)", "").Trim()).ToArray());
+                List<Unit> baseHQ = hq.Purchasable(), baseFac = fac.Purchasable();
+                Unit grunt = baseHQ.Find(u => u.name.Replace("(Clone)", "").Trim() == "Grunt");
+                Unit dropped = baseHQ.Find(u => u != grunt);
+                Unit version = PrefabLoader.Load("Grunt"); version.name = "Grunt - Testland";
+                Unit extra = PrefabLoader.Load("Tank"); extra.name = "Heavy Tank - Testland";
+                Faction f = ScriptableObject.CreateInstance<Faction>(); f.name = "Testland";
+                f.replacements.Add(new Faction.Replacement { original = grunt, replacement = version });
+                f.removed.Add(dropped);
+                f.extras.Add(new Faction.Extra { unit = extra, builtAt = new List<BuildingType> { BuildingType.Factory } });
+                l.ai.faction = f;
+                List<Unit> hqF = hq.Purchasable(), facF = fac.Purchasable();
+                bool roster = grunt != null && dropped != null
+                    && hqF.Contains(version) && !hqF.Contains(grunt) && !hqF.Contains(dropped) && !hqF.Contains(extra)
+                    && facF.Contains(extra) && facF.Contains(version) && !facF.Exists(u => u.name.Replace("(Clone)", "").Trim() == "Grunt")
+                    && hqF.Count == baseHQ.Count - 1 && facF.Count == baseFac.Count + 1;
+                List<string> r = new List<string>();
+                r.Add("HQ base: " + names(baseHQ) + "; with the faction: " + names(hqF));
+                r.Add("ArmyBase base: " + names(baseFac) + "; with the faction: " + names(facF));
+                // Allowed where the scenario allows the Grunt.
+                List<string> wasAllowed = GameController.gc.allowedUnits;
+                GameController.gc.allowedUnits = new List<string> { "Grunt" };
+                bool allowed = hq.CanBuild(version) && !fac.CanBuild(extra);
+                GameController.gc.allowedUnits = wasAllowed;
+                r.Add("allowed units 'Grunt': the version " + (allowed ? "allowed, the extra not" : "WRONG"));
+                // Bought under its own name.
+                l.ai.money = 100000;
+                Unit made = BuildingController.bc.Produce(hq, version);
+                string madeName = made != null ? made.name.Replace("(Clone)", "").Trim() : "nothing";
+                bool bought = made != null && madeName == "Grunt - Testland";
+                r.Add("bought: " + madeName);
+                // Saved by name, loaded by name.
+                LevelEditor was = LevelEditor.singleton;
+                bool saved;
+                try {
+                    LevelEditor ed = Rig.New<LevelEditor>();
+                    ed.allUnit = new List<Unit>();
+                    ed.allFaction = new List<Faction> { f };
+                    LevelEditor.singleton = ed;
+                    PlayerData pd = new PlayerData(l.ai);
+                    string json = JsonUtility.ToJson(pd);
+                    Faction back = LevelEditor.FindFaction(pd.factionName);
+                    Unit loaded = LevelEditor.loadUnit(madeName + "(Clone)");
+                    saved = pd.factionName == "Testland" && back == f && loaded == version;
+                    r.Add("saved faction '" + pd.factionName + "', found again " + (back == f) + "; unit '" + madeName + "' loads as the version " + (loaded == version));
+                } finally { LevelEditor.singleton = was; }
+                l.ai.faction = null;
+                bool off = names(hq.Purchasable()) == names(baseHQ);
+                r.Add("without the faction again: " + names(hq.Purchasable()));
+                detail = string.Join("; ", r.ToArray());
+                return roster && allowed && bought && saved && off;
             }
             case "transportCargo": {
                 Unit apc = Rig.At(0, 0).occupier, ga = Rig.At(1, 0).occupier, gb = Rig.At(-1, 0).occupier, gc3 = Rig.At(0, 1).occupier;

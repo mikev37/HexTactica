@@ -420,7 +420,7 @@ public class AIPlayer : MonoBehaviour {
         Building hq = GameController.HQOf(player);
         if (hq == null || BuildingController.bc == null || hq.buildable == null) return;
         Unit pick = null;
-        foreach (Unit b in hq.buildable) {
+        foreach (Unit b in hq.Offered(player)) {
             if (b == null) continue;
             SupplyPoint sp = b.Hub;
             if (sp == null || sp.producer || LocomotionRules.NeedsBase(b.locomotion) || !hq.CanBuild(b)) continue;

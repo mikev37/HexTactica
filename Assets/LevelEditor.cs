@@ -20,6 +20,8 @@ public class LevelEditor : MonoBehaviour
     public List<TerrainData> allTerrain;
     public List<Unit> allUnit;
     public List<Building> allBuilding;
+    [Tooltip("Every faction a save may name (a player's faction is saved by name); their own units load by name too")]
+    public List<Faction> allFaction;
 
 	// Start is called before the first frame update
 	void Start()
@@ -228,8 +230,18 @@ public class LevelEditor : MonoBehaviour
                 return t;
             }
         }
+        // A faction's own units (its versions and extras) need not be on allUnit.
+        if (singleton.allFaction != null) foreach (Faction f in singleton.allFaction) if (f != null) foreach (Unit t in f.OwnUnits()) if (t.name.Equals(name)) return t;
         string now = RenamedUnit(name);
         return now != null ? loadUnit(now) : null;
+    }
+
+    /// <summary>The faction saved as <paramref name="name"/> (allFaction), or null: none, or one not listed.</summary>
+    public static Faction FindFaction(string name) {
+        if (string.IsNullOrEmpty(name) || singleton == null || singleton.allFaction == null) return null;
+        foreach (Faction f in singleton.allFaction) if (f != null && f.name == name) return f;
+        Debug.LogWarning("Faction '" + name + "' is not on the LevelEditor's allFaction list: the player gets the base units");
+        return null;
     }
 
     internal static Unit PlaceNewUnit(Player p, String unit_name, HexTile t) {
