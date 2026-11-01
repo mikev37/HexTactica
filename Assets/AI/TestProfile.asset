@@ -241,3 +241,11 @@ MonoBehaviour:
   productionSpendAll: 1
   woundedWorldCompare: 1
   coordinationReuse: 1
+  campaignMobileReserve: 1
+  campaignReserveMinMove: 5
+  campaignKnowledge: 1
+  knowledgeAllOutRatio: 2
+  knowledgeAllOutConfidence: 0.6
+  knowledgeReserveConfidence: 0.6
+  productionTimeToFront: 1
+  productionTimeHorizon: 3

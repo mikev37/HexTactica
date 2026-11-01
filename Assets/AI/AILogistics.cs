@@ -222,7 +222,8 @@ namespace HexTactica.AI {
             foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && (onFront.Contains(u) || Threatened(u, map))) l.protectUnits.Add(u);
             // A campaign front beyond our supply with no supply of its own — no chain link, none of its own —
             // does not go beyond our supply (AITactical.CampaignStep): it scouts and presses near it.
-            foreach (Task t in l.tasks) if (!t.ordinary) t.front.noSupply = t.gap && t.chain.Count == 0 && t.tactical.Count == 0;
+            // All out (AIKnowledge): it goes anyway.
+            foreach (Task t in l.tasks) if (!t.ordinary) t.front.noSupply = t.gap && t.chain.Count == 0 && t.tactical.Count == 0 && !map.AllOut;
             SupplyNetwork.Result all = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
             foreach (SupplyPoint h in all.connectedHubs) {
                 if (h == null || h.producer || h.myUnit == null) continue;

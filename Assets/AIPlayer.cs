@@ -478,6 +478,12 @@ public class AIPlayer : MonoBehaviour {
         AIPerf.End("prepare: board read (AIMap)", __p); }
         // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
         if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);
+        // How well we know the enemy, and how bold that lets us be (AIProfile.campaignKnowledge).
+        if (Profile.campaign && Profile.campaignKnowledge) {
+            knowledge.Update(map, Profile);
+            map.knowledge = knowledge;
+            if (Trace != null) Trace("   " + knowledge);
+        }
 
         // Forget the intentions of units that no longer exist.
         List<Unit> stale = new List<Unit>();
@@ -790,6 +796,9 @@ public class AIPlayer : MonoBehaviour {
         }
         return all;
     }
+
+    /// <summary>What we know of the enemy's forces, kept from turn to turn (AIKnowledge).</summary>
+    readonly AIKnowledge knowledge = new AIKnowledge();
 
     /// <summary>Last turn's chain trucks (AILogistics.chainTrucks): a truck keeps the link it was coming for.</summary>
     Dictionary<SupplyPoint, Unit> lastChainTrucks;

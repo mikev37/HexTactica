@@ -375,6 +375,10 @@ public static class Scenarios {
              "The ai-campaign-objectives board, spread (objectiveSpread 1): the campaign is planned, then all but one of Blue's supply units are lost and it is planned again from the first plan. The objectives it holds never need more supply units, beyond those they have, than we have free: those least by priority are given up until they fit (AICampaign.Allocate).");
         make("profile-asset-matches-code", "profileAsset", (a, o) => { Put("Grunt", o, 4, 0); },
              "The game's AI profile (Assets/AI/TestProfile.asset) has every setting the code has, at the code's default, but campaign on: what is tested is what is played.");
+        make("ai-knowledge-all-out", "knowledgeAllOut", (a, o) => { Put("Tank", a, -4, 0); Put("Tank", a, -4, 1); Put("Tank", a, -3, -1); Put("Grunt", a, -3, 0); Put("Grunt", o, 4, 0); },
+             "How well Blue knows Red's forces (AIKnowledge): without fog everything is known (confidence 1), and three tanks and a grunt against one grunt is far more than knowledgeAllOutRatio: all out, the reserve released, no fear of the fog. With fog on and Red's grunt unseen, confidence is low: not all out, the reserve held.");
+        make("ai-mobile-reserve", "mobileReserve", (a, o) => { Put("Tank", a, -5, -1); Put("Recon", a, -5, 2); Unit apc = Put("APC", a, -4, 2); Unit rider = Put("Grunt", a, -6, 2); Put("Grunt", a, -4, -2); Put("Grunt", a, -5, 1); Put("Gunship Variant", a, -6, 1); Put("Grunt", o, 6, -3); },
+             "Who can be in the campaign's central reserve (AICampaign.ReserveMember). Mobile (campaignMobileReserve): the tank, the recon, the gunship and the APC carrying a grunt (the grunt goes with it); a grunt on foot cannot. Off: the tank, the recon and the grunt on foot; not the gunship or the APC.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -543,6 +547,8 @@ public static class Scenarios {
              "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
         makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
              "A scenario allowing only Grunts: Blue's HQ offers only the Grunt; it builds one, and refuses a Tank even with the money.", "on", "Grunt");
+        makeBuy("ai-buy-time-to-fight", "buyTimeToFight", (a, o) => { Rig.PlaceBuilding("City", a, 4, 3); Put("Grunt", o, -3, -1); Put("Grunt", a, -4, 1); },
+             "Blue has gold for one Grunt; its HQ builds Grunts, a distant city of its own builds Conscripts (made able to for this test). The Red grunt is beside Blue's HQ, the city ten tiles off. With productionTimeToFront a Conscript at the city is worth less by the turns it would take to get to the fight, so the Grunt at the HQ is bought; without it, the cheaper Conscript at the city is.", "on", "Grunt,Conscript");
         makeBuy("ai-buys-units", "aiBuys", (a, o) => { Put("Tank", o, 3, 0); Put("Grunt", o, 3, 1); Put("Grunt", a, -4, 0); },
              "An AI with money (10,000), purchases on, Grunt and Tank allowed: at the end of its turn it buys an allowed unit at its HQ (one: the HQ has one tile to build on), never a unit the scenario does not allow.", "on", "Grunt,Tank");
         make("attrition-rule-transport-load", "transportLoad", (a, o) => {
@@ -1117,6 +1123,32 @@ public static class Scenarios {
                 detail = asset.Count + " settings in the asset; missing " + missing.Count + (missing.Count > 0 ? " (" + string.Join(", ", missing.ToArray()) + ")" : "") + "; differing " + differ.Count + (differ.Count > 0 ? " (" + string.Join(", ", differ.ToArray()) + ")" : "");
                 return missing.Count == 0 && differ.Count == 0;
             }
+            case "knowledgeAllOut": {
+                Func<bool, AIKnowledge> read = fogOn => {
+                    gc.fogOfWar = fogOn; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                    AIKnowledge k = new AIKnowledge();
+                    BoardView v = fogOn ? FogOfWar.Conceal(a, true, prof.fogMemoryTurns) : null;
+                    using (v != null ? v.Enter() : null) { AIMap m = new AIMap(a, prof); k.Update(m, prof); }
+                    return k;
+                };
+                AIKnowledge clear = read(false), fogged = read(true);
+                gc.fogOfWar = false; FogOfWar.Reset();
+                detail = "no fog: " + clear + " | fog, Red unseen: " + fogged;
+                return clear.confidence >= 0.99f && clear.allOut && clear.releaseReserve && clear.aggression > 0.9f && !fogged.allOut && !fogged.releaseReserve;
+            }
+            case "mobileReserve": {
+                Unit apc = Rig.At(-4, 2).occupier, rider = Rig.At(-6, 2).occupier, tank = Rig.At(-5, -1).occupier, recon = Rig.At(-5, 2).occupier, gun = Rig.At(-6, 1).occupier, foot = Rig.At(-4, -2).occupier;
+                rider.TeleportTo(Rig.At(-4, 1), 0);
+                Transporting.Load(apc, rider);
+                Func<bool, Unit, bool> member = (mobile, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.campaignMobileReserve = mobile; return AICampaign.ReserveMember(u, prof); };
+                Func<bool, string> list = mobile => string.Join(", ", new[] { tank, recon, gun, apc, foot }.Where(u => member(mobile, u)).Select(u => GameController.UnitName(u)).ToArray());
+                string on = list(true), off = list(false);
+                detail = "rider aboard the APC " + (rider.trasnporter == apc) + "; mobile reserve may hold: " + on + " || off: " + off;
+                bool mob = member(true, tank) && member(true, recon) && member(true, gun) && member(true, apc) && !member(true, foot) && !member(true, rider);
+                bool old = member(false, tank) && member(false, recon) && !member(false, gun) && !member(false, apc) && member(false, foot);
+                return rider.trasnporter == apc && mob && old;
+            }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
                 prof.campaign = true;
@@ -1175,6 +1207,25 @@ public static class Scenarios {
                 detail = "purchases " + gc.PurchasesSetting + ", allowed '" + gc.AllowedUnitsSetting + "'; offered: " + string.Join(",", offered.ToArray()) + "; tank " + (madeTank != null ? "built" : "refused") + ", grunt " + (madeGrunt != null ? "built" : "refused");
                 if (l.meta.Get("check", "") == "purchasesOff") return offered.Count == 0 && madeTank == null && madeGrunt == null;
                 return offered.Count == 1 && offered[0] == "Grunt" && madeTank == null && madeGrunt != null;
+            }
+            case "buyTimeToFight": {
+                Building city = Rig.At(4, 3).building, hq = GameController.HQOf(l.ai);
+                Unit conscript = PrefabLoader.Load("Conscript"), grunt = PrefabLoader.Load("Grunt");
+                city.buildable = new List<Unit> { conscript };
+                hq.buildable = new List<Unit> { grunt };
+                Func<bool, string> buy = on => {
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                    prof.productionTimeToFront = on;
+                    l.ai.money = grunt.cost;
+                    List<string> said = new List<string>();
+                    List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, prof), prof, x => said.Add(x.Trim()));
+                    string r = got.Count == 0 ? "nothing" : string.Join(", ", got.ConvertAll(u => GameController.UnitName(u) + " at " + Pos(u.tile)).ToArray());
+                    foreach (Unit u in got) u.Perish();
+                    return r + " [" + string.Join(" / ", said.FindAll(x => x.Contains(" buys ")).ToArray()) + "]";
+                };
+                string withTime = buy(true), without = buy(false);
+                detail = "with time to the fight: " + withTime + "; without: " + without;
+                return withTime.StartsWith("Grunt") && without.StartsWith("Conscript");
             }
             case "aiBuys": {
                 l.ai.money = 10000;
