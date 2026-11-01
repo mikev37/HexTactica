@@ -1044,9 +1044,13 @@ public class Unit : MonoBehaviour
     }
 
     private bool dead;
+    /// <summary>A unit is dying (before it leaves the board: its tile, owner and strength are still as they were).</summary>
+    public static event System.Action<Unit> Died;
+
     private void DieActual() {
         if (dead) return;
         dead = true;
+        if (Died != null) Died(this);
         SupplyPoint ownHub = Hub;
         if (ownHub != null && ownHub.producer && owner != null) owner.hadHQ = true;
         Strength = 0;
