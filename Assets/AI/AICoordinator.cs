@@ -78,6 +78,7 @@ namespace HexTactica.AI {
             List<PlanStep> result = new List<PlanStep>();
 
             // ---- pass 1: each unit's favourite and menu.
+            long __p1 = AIPerf.Begin();
             List<Menu> menus = new List<Menu>();
             Action<string> savedLog = AITactical.DecisionLog;
             Dictionary<Unit, HexTile> savedIntents = AITactical.Intents;
@@ -116,6 +117,9 @@ namespace HexTactica.AI {
                 AITactical.Intents = savedIntents;
                 AITactical.LastChosen = savedLast;
             }
+            AIPerf.End("coordination: pass 1, every unit in contact decides (" + menus.Count + " units)", __p1);
+            long __p2 = AIPerf.Begin();
+            int plansForecast = 0, groupsTried = 0;
             if (log != null && menus.Count > 0) {
                 log("   coordination pass 1: " + menus.Count + " units in contact");
                 foreach (Menu m in menus) {
@@ -170,6 +174,7 @@ namespace HexTactica.AI {
                 int full = (1 << n) - 1;
                 for (int mask = 1; mask <= full; mask++) {
                     if (CountBits(mask) < 2) continue;
+                    groupsTried++;
                     Battle b = new Battle { target = t };
                     HashSet<HexTile> claimed = new HashSet<HexTile>();
                     float left = t.Strength;
@@ -213,6 +218,7 @@ namespace HexTactica.AI {
                     if (!b.kills && (profile.coordKillsOnly || mask != full)) continue;
                     if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, retreats).score;
                     b.joint = AIPlan.Evaluate(b.steps, map, false, retreats).score - empty;
+                    plansForecast++;
                     float sum = 0f;
                     foreach (PlanStep st in b.steps) sum += alone(st);
                     b.synergy = b.joint - sum;
@@ -221,6 +227,8 @@ namespace HexTactica.AI {
                 }
             }
 
+            AIPerf.End("coordination: pass 2, battle plans (" + targets.Count + " targets, " + groupsTried + " groups tried, " + plansForecast + " forecast, " + single.Count + " single steps)", __p2);
+            if (log != null) log("   coordination pass 2: " + targets.Count + " targets, " + groupsTried + " groups of attackers tried, " + plansForecast + " plans forecast, " + single.Count + " single steps forecast");
             // ---- pass 3: best plans first; no shared units, tiles or targets.
             battles.Sort((a, b) => {
                 int c = b.surplus.CompareTo(a.surplus);

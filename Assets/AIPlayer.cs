@@ -250,7 +250,8 @@ public class AIPlayer : MonoBehaviour {
                 if (!unit.active) continue;
                 long __d = AIPerf.Begin();
                 AIAction action = DecideFor(unit);
-                AIPerf.End("decide: " + (unit.Hub != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport" : "fighting unit"), __d);
+                AIPerf.End("decide: " + (unit.Hub != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport"
+                    : unit.locomotion == Locomotion.Jet ? "jet" : unit.locomotion == Locomotion.Rotor ? "helicopter" : "fighting unit"), __d);
                 action = KeepLinks(action);
                 // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
                 // still fresh, and decides again if its transport puts it down this turn (Run).

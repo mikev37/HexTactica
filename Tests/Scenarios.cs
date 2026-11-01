@@ -3230,6 +3230,30 @@ public static class Scenarios {
         Action<AIProfile> both = pr => { ApplyProfileAsset(pr); if (tweak != null) tweak(pr); };
         ScenarioFile.Loaded l = ScenarioFile.Load(path, "Full", both, both);
         GameController gc = Rig.gc;
+        // PERFADD=Fighter:2,Bomber:2 — that many of each for both sides, on and beside their airports (jets on a map with none).
+        string add = Environment.GetEnvironmentVariable("PERFADD");
+        if (!string.IsNullOrEmpty(add))
+            foreach (Player side in new[] { l.ai, l.other }) {
+                List<HexTile> spots = new List<HexTile>();
+                foreach (Building b in Building.all) if (b != null && b.owner == side && b.tile != null && b.name.StartsWith("Airport")) { foreach (HexTile t in b.Footprint) spots.Add(t); foreach (HexTile t in b.tile.neighbors) if (t != null) spots.Add(t); }
+                // No airport of its own: around its HQ.
+                Building hq = GameController.HQOf(side);
+                if (spots.Count == 0 && hq != null) foreach (HexTile t in AIPath.TilesInRangeShared(hq.tile, 1, 3)) if (t != null) spots.Add(t);
+                int placed = 0;
+                foreach (string part in add.Split(',')) {
+                    string[] kv = part.Split(':');
+                    int n = kv.Length > 1 ? int.Parse(kv[1]) : 1;
+                    for (int i = 0; i < n; i++) {
+                        HexTile at = spots.Find(t => t.occupier == null && t.terrain != null);
+                        if (at == null) break;
+                        Unit u = Rig.Spawn(PrefabLoader.Load(kv[0].Trim()), side, at.x, at.y);
+                        PrefabLoader.AttachHubIfAny(kv[0].Trim(), u);
+                        u.active = true; placed++;
+                    }
+                }
+                Console.WriteLine("  " + side.personal_name + ": " + placed + " placed (" + (spots.Count > 0 ? "beside its airport or HQ" : "nowhere to put them") + ")");
+            }
+        if (!string.IsNullOrEmpty(add)) Console.WriteLine("added for each side: " + add);
         AIPerf.Enabled = Environment.GetEnvironmentVariable("SECTIONS") != null;
         AIPerf.CallerDepth = int.Parse(Environment.GetEnvironmentVariable("PERFCALLERS") ?? "0");
         Console.WriteLine(Path.GetFileName(path) + ": " + Rig.hg.tiles.Count + " tiles, Blue " + l.ai.units.Count + " units, Red " + l.other.units.Count);
@@ -3864,10 +3888,13 @@ public static class Scenarios {
         // kind removed (half) or all of them (full). Unset: Red has no units and does nothing (unopposed).
         string enemy = Environment.GetEnvironmentVariable("ENEMY");
         bool opposed = enemy == "half" || enemy == "full";
-        // Both sides play the game's profile (Assets/AI/TestProfile.asset, the campaign AI), Blue with SET's changes on top.
+        // Blue: the campaign AI (Assets/AI/TestProfile.asset, the game's profile, with SET's changes on top).
+        // Red: the baseline it is measured against — the same profile with the campaign off (SET_RED changes it).
         Action<AIProfile> blueProfile = pr => { ApplyProfileAsset(pr); if (tweak != null) tweak(pr); };
-        ScenarioFile.Loaded l = opposed ? ScenarioFile.Load(Find(file), "Full", blueProfile, ApplyProfileAsset) : ScenarioFile.Load(Find(file), "Human", blueProfile);
-        if (opposed) Console.WriteLine("both sides: TestProfile.asset (campaign " + l.other.GetComponent<AIPlayer>().Profile.campaign + "), Blue with SET on top");
+        Action<AIProfile> redTweak = Tests.Tweak(Environment.GetEnvironmentVariable("SET_RED"));
+        Action<AIProfile> redProfile = pr => { ApplyProfileAsset(pr); pr.campaign = false; if (redTweak != null) redTweak(pr); };
+        ScenarioFile.Loaded l = opposed ? ScenarioFile.Load(Find(file), "Full", blueProfile, redProfile) : ScenarioFile.Load(Find(file), "Human", blueProfile);
+        if (opposed) Console.WriteLine("Blue: TestProfile.asset (campaign " + l.ai.GetComponent<AIPlayer>().Profile.campaign + ") with SET; Red, the baseline: TestProfile.asset with campaign " + l.other.GetComponent<AIPlayer>().Profile.campaign + (redTweak != null ? " and SET_RED" : ""));
         Rig.gc.fogOfWar = (Environment.GetEnvironmentVariable("FOG") ?? "off") == "on"; FogOfWar.Reset();
         if (!opposed) { foreach (Unit u in new List<Unit>(l.other.units)) if (u != null) u.Perish(); }
         else if (enemy == "half") {
