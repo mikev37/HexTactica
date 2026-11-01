@@ -59,12 +59,20 @@ namespace HexTactica.AI {
             AIProfile p = map.profile;
             if (k == null || k.player != map.player || p == null || !p.fogThreat) return null;
             AISigint s = new AISigint(p);
+            s.map = map;
             s.BuildZones(k, map);
             s.BuildUnknown(k, map);
             return s.Empty ? null : s;
         }
 
         AISigint(AIProfile p) { profile = p; }
+        AIMap map;
+
+        /// <summary>
+        /// How much unknown ground is feared: with fogUncertainty and the turn's estimate of the enemy (AIMap.fogUncertainty),
+        /// the share of the enemy's forces we cannot place; otherwise 1 - fogAggression.
+        /// </summary>
+        float UnknownWeight { get { return profile.fogUncertainty && map != null && map.fogUncertainty >= 0f ? map.fogUncertainty : 1f - Mathf.Clamp01(profile.fogAggression); } }
 
         void BuildZones(FogOfWar.Knowledge k, AIMap map) {
             foreach (FogOfWar.Phantom ph in k.phantoms) {
@@ -97,7 +105,7 @@ namespace HexTactica.AI {
         }
 
         void BuildUnknown(FogOfWar.Knowledge k, AIMap map) {
-            if (profile.fogAggression >= 1f) return;
+            if (profile.fogAggression >= 1f && !profile.fogUncertainty) return;
             kinds.AddRange(k.enemyKinds);
             if (kinds.Count == 0) {
                 // Nothing of theirs seen yet: assume they field what we do.
@@ -182,12 +190,13 @@ namespace HexTactica.AI {
                     loss += dmg * f / Mathf.Max(1, sharers);
                 }
             }
-            if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && profile.fogAggression < 1f) {
+            float uw = UnknownWeight;
+            if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && uw > 0f) {
                 float d = Density(at);
                 if (d > 0f) {
                     float dmg = 0f;
                     foreach (FogOfWar.Kind kd in kinds) dmg += Mathf.Min(u.Strength, kd.Damage(6, u, at));
-                    loss += dmg / kinds.Count * d * (1f - Mathf.Clamp01(profile.fogAggression));
+                    loss += dmg / kinds.Count * d * uw;
                 }
             }
             return Mathf.Min(u.Strength, loss);
@@ -217,7 +226,7 @@ namespace HexTactica.AI {
             float best = 0f;
             // The share of a lost unit's places that is this tile, the highest of them.
             foreach (Zone z in zones) if (z.positions.Contains(t)) best = Mathf.Max(best, 1f / z.positions.Count);
-            if (best <= 0f && unknown.Contains(t)) best = 1f - Mathf.Clamp01(profile.fogAggression);
+            if (best <= 0f && unknown.Contains(t)) best = UnknownWeight;
             return best;
         }
 

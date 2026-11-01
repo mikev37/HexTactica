@@ -479,11 +479,17 @@ public class AIPlayer : MonoBehaviour {
         // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
         if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);
         // How well we know the enemy, and how bold that lets us be (AIProfile.campaignKnowledge).
-        if (Profile.campaign && Profile.campaignKnowledge) {
+        bool knows = Profile.campaign && Profile.campaignKnowledge;
+        if (knows || Profile.fogUncertainty) {
             knowledge.Update(map, Profile);
-            map.knowledge = knowledge;
-            if (Trace != null) Trace("   " + knowledge);
+            if (knows) map.knowledge = knowledge;
+            // How much of the enemy we cannot place: the fog's unknown ground is feared by that share (AISigint).
+            if (Profile.fogUncertainty) map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
+            if (Trace != null) Trace("   " + knowledge + (Profile.fogUncertainty ? "; unknown ground feared at " + map.fogUncertainty.ToString("0.00") : ""));
         }
+        // What each unit does for its side (forecastRoleWorth), for this turn's forecasts.
+        roleWorth = Profile.forecastRoleWorth ? AIWorld.RoleWorth(map, Profile) : null;
+        AIWorld.Roles = roleWorth;
 
         // Forget the intentions of units that no longer exist.
         List<Unit> stale = new List<Unit>();
@@ -1225,7 +1231,9 @@ public class AIPlayer : MonoBehaviour {
         HexTactica.AI.AILogistics.ProtectUnitsNow = logistics != null ? logistics.protectUnits : null;
         AISupplyChain.ProtectUnits = HexTactica.AI.AILogistics.ProtectUnitsNow;
         AITransportPlanner.ChainLinks = logistics != null ? new HashSet<SupplyPoint>(logistics.chainOf.Keys) : null;
+        AIWorld.Roles = roleWorth;
     }
+    Dictionary<Unit, float> roleWorth;
 
     /// <summary>Decisions made in the coordination pass (AICoordinator), kept for the unit's turn, and their logged reasoning.</summary>
     readonly Dictionary<Unit, AIAction> firstLook = new Dictionary<Unit, AIAction>();

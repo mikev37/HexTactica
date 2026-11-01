@@ -224,8 +224,9 @@ namespace HexTactica.AI {
             // already removed or weakened the enemies in hp.
             float selfExposure = 0f;
             AIProfile sp0 = map.profile;
-            if (sp0.selfPreservationWeight > 0f && hp[u] > 0f && GameController.Targetable(u)) {
+            if (sp0.selfPreservationWeight > 0f && hp[u] > 0f && GameController.Targetable(u) && (!sp0.selfPreservationShieldless || !Shields(u))) {
                 List<float> blows = new List<float>();
+                float k0 = sp0.replyBreakpoints && sp0.selfPreservationDiscount ? 1f - sp0.replyDiscount : 1f;
                 foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in positions) {
                     Unit e = kv.Key;
                     if (hp[e] <= 0f) continue;
@@ -233,7 +234,10 @@ namespace HexTactica.AI {
                     if (fire == null) continue;
                     int dmg, back;
                     CombatMath.Exchange(e, Hp(hp[e]), fire, u, Hp(hp[u]), uAt, out dmg, out back);
-                    if (dmg > 0) blows.Add(dmg);
+                    // (selfPreservationDiscount: priced as the reply prices a blow — fire that cannot be answered
+                    // from range is certain, the rest discounted by replyDiscount. Undiscounted, a blow that only
+                    // could land cost twice one the forecast landed, and a unit was better off being shot.)
+                    if (dmg > 0) blows.Add(dmg * (back == 0 && fire.Distance(uAt) > 1 ? 1f : k0));
                 }
                 blows.Sort((x, y) => y.CompareTo(x));
                 float sum = 0f, wgt = 1f;
@@ -376,6 +380,12 @@ namespace HexTactica.AI {
             // The self-preservation term, net of what the reply already took from this unit.
             if (selfExposure > 0f) {
                 float already = (hpBeforeReply - Mathf.Max(0f, hp[u])) * Value(u) + (hp[u] <= 0f ? sp0.deathPremium * Value(u) : 0f);
+                if (breakpoints && sp0.selfPreservationDiscount) {
+                    // What the reply took from it as the world counts it: the certain part in full, the rest discounted.
+                    float k1 = 1f - sp0.replyDiscount, hc = Mathf.Max(0f, hpCertain[u]), hf = Mathf.Max(0f, hp[u]);
+                    already = ((hpBeforeReply - hc) + k1 * (hc - hf)) * Value(u)
+                            + (hc <= 0f ? sp0.deathPremium : hf <= 0f ? k1 * sp0.deathPremium : 0f) * Value(u);
+                }
                 w.selfRisk = Mathf.Max(0f, selfExposure - already) * sp0.selfPreservationWeight;
             }
 
@@ -739,6 +749,14 @@ namespace HexTactica.AI {
         static readonly HashSet<HexTile> scratchOurMove = new HashSet<HexTile>(), scratchOurStrike = new HashSet<HexTile>(),
                                          scratchTheirMove = new HashSet<HexTile>(), scratchTheirStrike = new HashSet<HexTile>();
         static readonly Dictionary<Unit, HashSet<HexTile>> scratchFireOf = new Dictionary<Unit, HashSet<HexTile>>();
+        static readonly Dictionary<HexTile, int> scratchMoveKinds = new Dictionary<HexTile, int>();
+
+        /// <summary>The locomotions <paramref name="x"/> can fire on, as bits (1 &lt;&lt; Locomotion).</summary>
+        internal static int AttackKinds(Unit x) {
+            int m = 0;
+            if (x != null && x.attacksLocomotion != null) foreach (Locomotion l in x.attacksLocomotion) m |= 1 << (int)l;
+            return m;
+        }
 
         static void Space(Outcome w, Unit u, HexTile uAt, HexTile from, bool moving, AIMap map,
                           Dictionary<Unit, HashSet<HexTile>> positions, Dictionary<Unit, float> hp) {
@@ -760,6 +778,10 @@ namespace HexTactica.AI {
             }
             HashSet<HexTile> theirMove = scratchTheirMove, theirStrike = scratchTheirStrike;
             theirMove.Clear(); theirStrike.Clear();
+            // (coverByTarget: which kinds of enemy could move onto each tile, as locomotion bits.)
+            bool byTarget = prof.coverByTarget;
+            Dictionary<HexTile, int> moveKinds = scratchMoveKinds;
+            moveKinds.Clear();
             foreach (Unit e in map.enemyUnits) {
                 if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f || e.trasnporter != null || !In(e)) continue;
                 HashSet<HexTile> pos;
@@ -767,13 +789,25 @@ namespace HexTactica.AI {
                 HashSet<HexTile>[] s = map.EnemySpace(e, pos);
                 theirMove.UnionWith(s[0]);
                 theirStrike.UnionWith(s[1]);
+                if (byTarget) {
+                    int bit = 1 << (int)e.locomotion;
+                    foreach (HexTile t in s[0]) { int m; moveKinds.TryGetValue(t, out m); moveKinds[t] = m | bit; }
+                }
             }
+            // A gun covers a tile only for the enemies it can fire on: an anti-air battery (range 7, aircraft
+            // only) earned no man's land for every tile of ground an enemy tank could drive to, and rolled
+            // forward into the enemy's guns for it (Korea: a missile truck took a forecast 4-point hit for
+            // 78 tiles of ground it cannot shoot).
+            Func<Unit, HexTile, bool> covers = (x, t) => {
+                if (!byTarget) return theirMove.Contains(t);
+                int m; return moveKinds.TryGetValue(t, out m) && (m & AttackKinds(x)) != 0;
+            };
             // Artillery's zone of control: every tile the enemy could move to next turn that this
             // gun will cover from where it ends up. It cannot move and fire, so where it stands now
             // is where it shoots from next turn. Inside enemy guns' range is already priced by the
             // reply; outside it, this pulls the battery as close as it can get — no man's land, held.
             if (prof.artilleryCoverValue > 0f && !u.moveAndAttack && u.AttackRange >= 2 && u.Firepower > 0 && hp[u] > 0f) {
-                foreach (HexTile t in AIPath.TilesInRangeShared(uAt, u.MinRange, u.AttackRange)) if (theirMove.Contains(t)) w.gunCover++;
+                foreach (HexTile t in AIPath.TilesInRangeShared(uAt, u.MinRange, u.AttackRange)) if (covers(u, t)) w.gunCover++;
                 w.score += w.gunCover * prof.artilleryCoverValue;
             }
             // Mutual cover: every tile next to one of our units that the enemy could move onto next
@@ -787,7 +821,7 @@ namespace HexTactica.AI {
                     foreach (HexTile n in fAt.neighbors) {
                         if (n == null || !theirMove.Contains(n)) continue;
                         bool covered = false;
-                        foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in fireOf) if (kv.Key != f && kv.Value.Contains(n)) { covered = true; break; }
+                        foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in fireOf) if (kv.Key != f && kv.Value.Contains(n) && (!byTarget || covers(kv.Key, n))) { covered = true; break; }
                         if (covered) w.covered++; else w.exposed++;
                     }
                 }
@@ -931,7 +965,67 @@ namespace HexTactica.AI {
 
         /// <summary>Material per strength point; HQs at their (deliberately enormous) cost.</summary>
         internal static float Value(Unit x) {
-            return AIScore.Worth(x);
+            float m;
+            return Roles != null && x != null && Roles.TryGetValue(x, out m) ? AIScore.Worth(x) * m : AIScore.Worth(x);
+        }
+
+        /// <summary>
+        /// forecastRoleWorth: each unit's worth in the forecast times what it does for its side against the other
+        /// (RoleWorth), set for the turn by AIPlayer (null: price alone). Every Think may run on its own thread.
+        /// </summary>
+        [ThreadStatic] public static Dictionary<Unit, float> Roles;
+
+        /// <summary>
+        /// What each unit on the board does for its side, against what the other side fields, as a multiplier on its
+        /// price (roleWorthMin..roleWorthMax): the damage it can do to each enemy unit, in that unit's worth, weighted
+        /// by how little else on its side can hurt that unit (as production weighs a purchase, AIProduction.Scarcity),
+        /// per point of its own worth, against its side's average. An anti-air battery with the enemy's aircraft to
+        /// shoot and nothing else that can is worth more than its price; a grunt among many, less. Units that do not
+        /// fight (supply, transports): 1.
+        /// </summary>
+        public static Dictionary<Unit, float> RoleWorth(AIMap map, AIProfile p) {
+            Dictionary<Unit, float> r = new Dictionary<Unit, float>();
+            RoleSide(map.ownUnits, map.enemyUnits, p, r);
+            RoleSide(map.enemyUnits, map.ownUnits, p, r);
+            return r;
+        }
+
+        static void RoleSide(List<Unit> side, List<Unit> foes, AIProfile p, Dictionary<Unit, float> into) {
+            Func<Unit, bool> fights = x => x != null && x.tile != null && x.Strength > 0 && x.Firepower > 0 && x.Hub == null;
+            float k = Mathf.Max(0.01f, p.productionCounterUnits);
+            Dictionary<Unit, float> need = new Dictionary<Unit, float>();
+            foreach (Unit e in foes) {
+                if (e == null || e.tile == null || e.Strength <= 0) continue;
+                float cover = 0f;
+                foreach (Unit a in side) if (fights(a)) cover += Mathf.Min(e.Strength, Unit.calculateDamage(a, e, e.tile, 0)) / 6f;
+                need[e] = 1f / (1f + cover / k);
+            }
+            Dictionary<Unit, float> ratio = new Dictionary<Unit, float>();
+            float sum = 0f; int n = 0;
+            foreach (Unit a in side) {
+                if (!fights(a)) continue;
+                float done = 0f;
+                foreach (KeyValuePair<Unit, float> kv in need) done += Mathf.Min(kv.Key.Strength, Unit.calculateDamage(a, kv.Key, kv.Key.tile, 0)) * AIScore.Worth(kv.Key) * kv.Value;
+                float x = done / (AIScore.Worth(a) * 6f);
+                ratio[a] = x; sum += x; n++;
+            }
+            float mean = n > 0 ? sum / n : 0f;
+            foreach (Unit a in side) {
+                if (a == null) continue;
+                float x;
+                into[a] = mean > 0f && ratio.TryGetValue(a, out x) ? Mathf.Clamp(x / mean, p.roleWorthMin, p.roleWorthMax) : 1f;
+            }
+        }
+
+        /// <summary>
+        /// Does <paramref name="u"/> shield anything by standing in reach (selfPreservationShieldless)? A unit that fires back
+        /// at ground attackers beside it does: the blows it takes would land on someone else if it stepped back. Artillery,
+        /// anti-air, aircraft that cannot answer the ground, supply units: every blow they draw is lost for nothing.
+        /// </summary>
+        internal static bool Shields(Unit u) {
+            if (u == null || u.Hub != null || u.Firepower <= 0 || !u.retaliates || u.MinRange >= 1 || u.AttackRange < 1) return false;
+            int ground = (1 << (int)Locomotion.Boots) | (1 << (int)Locomotion.Wheels) | (1 << (int)Locomotion.Treads);
+            return (AttackKinds(u) & ground) != 0;
         }
 
         /// <summary>
