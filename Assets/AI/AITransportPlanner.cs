@@ -65,13 +65,18 @@ namespace HexTactica.AI {
     /// </summary>
     public static class AITransportPlanner {
 
+        /// <summary>The supply chain's links this turn (AIPlayer, from AILogistics.chainOf); null: none.</summary>
+        [ThreadStatic] public static HashSet<SupplyPoint> ChainLinks;
+
         /// <summary>
-        /// A supply unit aboard a transport stays aboard if it is the first supply unit aboard: a transport
-        /// only ever sets down its second. Aboard, a supply unit's supply reaches as far as its transport can
-        /// move; set down, only as far as it can walk.
+        /// A link of the supply chain aboard a transport, the first supply unit aboard it, stays aboard: aboard,
+        /// its supply reaches as far as its transport can move, set down only as far as it can walk, and for the
+        /// chain that reach is what matters most. Other supply units may be set down when that is worth more
+        /// (the transport's other uses: taxiing units, bringing assault infantry up).
         /// </summary>
         public static bool KeepsAboard(Unit cargo) {
             if (cargo == null || cargo.Hub == null || cargo.Hub.producer || cargo.trasnporter == null || cargo.trasnporter.tile == null) return false;
+            if (ChainLinks == null || !ChainLinks.Contains(cargo.Hub)) return false;
             foreach (Unit c in cargo.trasnporter.transported) {
                 if (c == cargo) return true;
                 if (c != null && c.Hub != null && !c.Hub.producer) return false;   // another supply unit is the first
@@ -416,7 +421,7 @@ namespace HexTactica.AI {
             Unit cargo = plan.cargo;
             bool aboard = cargo.trasnporter == transport;
 
-            // A transport keeps its first supply unit aboard (it sets down only a second): aboard, a supply unit's
+            // A chain link stays aboard its transport (AITransportPlanner.KeepsAboard): aboard, a supply unit's
             // supply reaches as far as its transport can move; set down it reaches only as far as it can walk.
             if (plan.stayAboard || (aboard && KeepsAboard(cargo))) {
                 // A supply leap: drive to the drop-off and stay there with the supply unit aboard.

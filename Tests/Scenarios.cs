@@ -390,7 +390,7 @@ public static class Scenarios {
         make("attrition-rule-air-base", "attritionAirBase", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, -3, 3); f.fuel = 2; f.Strength = 4; Put("Grunt", o, 4, 0); },
              "A Fighter on its own airport's runway (fuel 2, strength 4) is refuelled to 14 and healed to 5.");
         make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit g = Put("Fighter", a, 2, 0); g.fuel = 6; Put("AirTanker", a, 1, 0); Put("AirTanker", a, -2, 4); Put("AirTanker", a, -3, 4); Put("Grunt", o, 5, 0); },
-             "Two Fighters beside an air tanker with 2 supplies: each turn both are refuelled and resupplied, and the tanker spends one supply for the turn (not one each): 1 left, then 0; the third turn it is empty and the fighters burn 3. Its supplies never drain on their own: a second tanker beside nothing keeps its 2, and a tanker beside another tanker gives it nothing (its fuel burns as usual).");
+             "Two Fighters beside an air tanker with 2 supplies. The tanker's supplies run down a turn at a time like any aircraft's, and while it started the turn with some it refuels and resupplies the aircraft beside it at no further cost: turn 1 both fighters are filled (tanker 1 left), turn 2 again (0 left); turn 3 it has none, the fighters burn 3, and the tanker loses a strength as any aircraft out of supplies. Two tankers side by side do not feed each other: both run down.");
         make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
         make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
@@ -546,7 +546,7 @@ public static class Scenarios {
         make("attrition-rule-recon-transport", "reconTransport", (a, o) => { Put("Recon", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "The recon truck (1 slot, carries Boots) takes a grunt, drives, and puts it down beside it, as the APC does.");
         make("attrition-rule-alarms", "alarms", (a, o) => { Put("Grunt", a, -5, 0); Put("Grunt", a, 5, 0); Put("Tank", a, -4, 1); Rig.PlaceAirfield(a, -3, 2); Put("Fighter", a, -3, 3); Put("Fighter", a, -5, 2); Put("AirTanker", a, -2, 0); Put("Grunt", o, 6, -3); },
-             "The alarm icon's conditions (fuel and ammo alarms from a third of a full load down): a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo. A fighter with no supplies over our own ground in supply is starving (the network does not feed aircraft), one on our airport's runway is not; an air tanker with no supplies is not (they are what it gives others).");
+             "The alarm icon's conditions (fuel and ammo alarms from a third of a full load down): a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo. A fighter with no supplies over our own ground in supply is starving (the network does not feed aircraft), one on our airport's runway is not; an air tanker with no supplies away from base is starving too, like any aircraft.");
         make("attrition-rule-portrait-layout", "portraitLayout", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 4, 0); },
              "The UI pictures of units and tiles (SpritePortrait): every sprite of the unit is placed as on the board and the whole fitted into the box. A 2x1 hull, a 1x1 turret turned 90 degrees above its right half and a mirrored flag, fitted into 100x100 with a 4 px margin: scale 46, centred, the turret at 90 degrees, the flag flipped.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -1212,7 +1212,7 @@ public static class Scenarios {
                 Unit onBase = Rig.At(-3, 3).occupier, overHome = Rig.At(-5, 2).occupier, tankerU = Rig.At(-2, 0).occupier;
                 onBase.supplies = 0; overHome.supplies = 0; tankerU.supplies = 0;
                 bool airGround = overHome.tile.isSupplied(l.ai);
-                bool a4 = airGround && UnitAlarmIcon.Starving(overHome) && !UnitAlarmIcon.Starving(onBase) && !UnitAlarmIcon.Starving(tankerU);
+                bool a4 = airGround && UnitAlarmIcon.Starving(overHome) && !UnitAlarmIcon.Starving(onBase) && UnitAlarmIcon.Starving(tankerU);
                 string air = "; fighter over our ground in supply (" + airGround + ") starving " + UnitAlarmIcon.Starving(overHome) + ", on the runway " + UnitAlarmIcon.Starving(onBase) + "; empty tanker " + UnitAlarmIcon.Starving(tankerU);
                 float share = UnitAlarmSprites.Instance.lowShare;
                 bool a2 = UnitAlarmIcon.Low(0, tank.fuelMax, share) && UnitAlarmIcon.Low(0, tank.ammoMax, share);
@@ -2199,12 +2199,12 @@ public static class Scenarios {
                 endTurn(); endTurn();
                 string second = "fighters " + f.fuel + "/" + g.fuel + ", tanker " + t.supplies;
                 bool ok2 = f.fuel == f.fuelMax && g.fuel == g.fuelMax && t.supplies == 0;
-                int before = f.fuel, idleFuel = idle.fuel;
+                int before = f.fuel, tStr = t.Strength;
                 endTurn(); endTurn();
-                bool ok3 = f.fuel == before - f.minFuelPerTurn && t.supplies == 0;
-                bool noDrain = idle.supplies == 2 && pair.supplies == 2 && idle.fuel < idleFuel;
-                detail = "tankers side by side " + besideIdle + "; turn 1: " + first + "; turn 2: " + second + "; turn 3: fighter " + before + " -> " + f.fuel + "; idle tankers' supplies " + idle.supplies + "/" + pair.supplies + ", the idle one's fuel " + idleFuel + " -> " + idle.fuel;
-                return ok1 && ok2 && ok3 && noDrain && besideIdle;
+                bool ok3 = f.fuel == before - f.minFuelPerTurn && t.supplies == 0 && t.Strength == tStr - 1;
+                bool pairDrain = idle.supplies == 0 && pair.supplies == 0;
+                detail = "tankers side by side " + besideIdle + "; turn 1: " + first + "; turn 2: " + second + "; turn 3: fighter " + before + " -> " + f.fuel + ", tanker strength " + tStr + " -> " + t.Strength + "; the side-by-side tankers' supplies after three turns " + idle.supplies + "/" + pair.supplies;
+                return ok1 && ok2 && ok3 && pairDrain && besideIdle;
             }
             case "attritionShip": {
                 Unit away = Rig.At(1, 2).occupier, dock = Rig.At(-1, 0).occupier;

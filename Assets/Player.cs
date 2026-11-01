@@ -42,7 +42,9 @@ public class Player : MonoBehaviour
 
         // Snapshot the list: attrition can remove units mid-iteration.
         List<Unit> roster = new List<Unit>(units);
-        tankersServing.Clear();
+        // Air tankers resupply this turn if they started it with supplies (whatever order the roster runs in).
+        tankersStocked.Clear();
+        foreach (Unit t in roster) if (t != null && t.airTanker && t.supplies > 0) tankersStocked.Add(t);
         for (int i = 0; i < roster.Count; i++) {
             Unit u = roster[i];
             if (u == null || u.tile == null) continue;
@@ -51,13 +53,11 @@ public class Player : MonoBehaviour
             if (u.trasnporter != null) continue;
             Upkeep(u, roster, selfSupplying);
         }
-        // An air tanker spends one supply for each turn it resupplied anyone, however many it served.
-        foreach (Unit t in tankersServing) if (t != null) t.supplies = Mathf.Max(0, t.supplies - 1);
-        tankersServing.Clear();
+        tankersStocked.Clear();
     }
 
-    /// <summary>The air tankers that resupplied an aircraft this turn start (StartTurn spends a supply from each).</summary>
-    readonly HashSet<Unit> tankersServing = new HashSet<Unit>();
+    /// <summary>The air tankers that started this turn with supplies: they resupply the aircraft beside them (StartTurn).</summary>
+    readonly HashSet<Unit> tankersStocked = new HashSet<Unit>();
 
     enum Fed { Resupplied, Starved, Aloft }
 
@@ -143,9 +143,9 @@ public class Player : MonoBehaviour
     /// <summary>Upkeep of an aircraft or ship away from its base (see StartTurn).</summary>
     void Aloft(Unit u, List<Unit> roster) {
         // Its own supplies run down a turn at a time (enough to reach a base, usually); out of
-        // them, it weakens a strength a turn, like any unit out of supply. Not an air tanker's: its
-        // supplies are what it gives others (a turn of resupplying each), and they do not drain.
-        if (u.suppliesMax > 0 && !u.airTanker) {
+        // them, it weakens a strength a turn, like any unit out of supply. An air tanker too: while it has
+        // supplies it also resupplies the aircraft beside it, at no further cost.
+        if (u.suppliesMax > 0) {
             if (u.supplies > 0) u.supplies--;
             else {
                 u.Strength = Mathf.Max(0, u.Strength - 1);
@@ -157,7 +157,6 @@ public class Player : MonoBehaviour
             if (tanker != null) {
                 u.fuel = u.fuelMax;
                 u.supplies = u.suppliesMax;
-                tankersServing.Add(tanker);
                 u.PlayRefuelHop(tanker);
             } else {
                 u.fuel = Mathf.Max(0, u.fuel - u.minFuelPerTurn);
@@ -169,12 +168,12 @@ public class Player : MonoBehaviour
         }
     }
 
-    /// <summary>A friendly air tanker beside <paramref name="u"/> with supplies left to give (a turn of resupplying for each supply). A tanker is never resupplied by another.</summary>
-    static Unit TankerBeside(Unit u, List<Unit> roster) {
+    /// <summary>A friendly air tanker beside <paramref name="u"/> that started the turn with supplies. A tanker is never resupplied by another.</summary>
+    Unit TankerBeside(Unit u, List<Unit> roster) {
         if (u.airTanker) return null;
         for (int i = 0; i < roster.Count; i++) {
             Unit t = roster[i];
-            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
+            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || !tankersStocked.Contains(t)) continue;
             if (u.tile.neighbors.Contains(t.tile)) return t;
         }
         return null;
