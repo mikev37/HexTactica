@@ -91,7 +91,7 @@ namespace HexTactica.AI {
             // (ghost) moves are the same and nothing changed on or beside the network (an enemy there cuts it; one gone,
             // or a supply unit killed, retreated or carried off, is a change of marks or tiles and solves it afresh).
             string ghosts = GhostKey();
-            bool keep = profile.keepCaches && !everything && realSupply != null && supply != null && ghosts == lastGhosts
+            bool keep = profile.keepCaches && !buildingsChanged && realSupply != null && supply != null && ghosts == lastGhosts
                      && HubsUnchanged(player) && NetworkUntouched(realSupply) && NetworkUntouched(supply);
             supplyChanged = !keep;
             if (keep && Verify) {
@@ -105,9 +105,13 @@ namespace HexTactica.AI {
             }
             if (!keep) {
                 realSupply = SupplyNetwork.Solve(player, false);
+                supply = ghost.Count > 0 ? SupplyNetwork.SolveMoved(player, ghost) : realSupply;
+            }
+            // The planner reads hub.connected: published from the network every read (kept or not), except by a
+            // speculative read (the real board's objects are not written while the opponent plays).
+            if (!speculative) {
                 for (int i = 0; i < realSupply.connectedHubs.Count; i++) realSupply.connectedHubs[i].connected = true;
                 for (int i = 0; i < realSupply.strandedHubs.Count; i++) realSupply.strandedHubs[i].connected = false;
-                supply = ghost.Count > 0 ? SupplyNetwork.SolveMoved(player, ghost) : realSupply;
             }
             lastGhosts = ghosts;
             ComputeSupplyRead();
@@ -255,7 +259,7 @@ namespace HexTactica.AI {
 
         void ComputeSupplyRead() {
             hubStake.Clear();
-            bool keep = profile.keepCaches && !everything;
+            bool keep = profile.keepCaches && !buildingsChanged;
             // Static supply (buildings and producers): kept like ours.
             if (keep && staticSupply != null && HubsUnchanged(player) && NetworkUntouched(staticSupply)) {
                 if (Verify) { Count(Checked, "static supply"); if (!SameDepth(SupplyNetwork.SolveStatic(player), staticSupply)) Count(Mismatches, "static supply"); }

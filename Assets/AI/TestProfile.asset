@@ -189,6 +189,9 @@ MonoBehaviour:
   keepCaches: 1
   vacatedReach: 1
   reuseRadiusCap: 0
+  speculate: 1
+  speculateAfterShare: 0.7
+  speculateQuietFrames: 20
   forecastRoleWorth: 0
   roleWorthMin: 0.5
   roleWorthMax: 2

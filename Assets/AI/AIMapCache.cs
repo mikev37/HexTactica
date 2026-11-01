@@ -27,15 +27,22 @@ namespace HexTactica.AI {
         struct Mark {
             public HexTile tile; public int strength, fuel, ammo, suppressed, supplies; public Unit rides; public bool active;
             public bool Same(Mark o) { return tile == o.tile && strength == o.strength && fuel == o.fuel && ammo == o.ammo && suppressed == o.suppressed && supplies == o.supplies && rides == o.rides && active == o.active; }
+            /// <summary>What a unit's reach depends on: where it stands, what carries it, its fuel (its step budget) and ammunition (whether it can fire). Not its strength, nor whether it has acted.</summary>
+            public bool SameReach(Mark o) { return tile == o.tile && rides == o.rides && fuel == o.fuel && ammo == o.ammo; }
         }
         Dictionary<Unit, Mark> marks;
-        long terrainSig, buildingSig;
+        long terrainSig;
         /// <summary>Tiles whose occupant changed since the last read (keepCaches).</summary>
         readonly HashSet<HexTile> changedTiles = new HashSet<HexTile>();
         /// <summary>Units whose mark changed (or that appeared or went) since the last read.</summary>
         readonly HashSet<Unit> changedUnits = new HashSet<Unit>();
-        /// <summary>Terrain or buildings changed (or there is no earlier read): nothing is kept.</summary>
+        /// <summary>Units whose reach could have changed: moved, boarded or put down, fuel or ammunition changed, appeared or went.</summary>
+        readonly HashSet<Unit> movedUnits = new HashSet<Unit>();
+        /// <summary>Terrain or the buildings' layout changed (or there is no earlier read): nothing is kept.</summary>
         bool everything = true;
+        /// <summary>A building's owner, damage or store changed: no supply network is kept (capture progress alone changes none).</summary>
+        bool buildingsChanged = true;
+        long supplySig;
 
         /// <summary>AIVERIFY: check every cache kept against a fresh one.</summary>
         public static bool Verify;
@@ -56,25 +63,27 @@ namespace HexTactica.AI {
             Dictionary<Unit, Mark> now = new Dictionary<Unit, Mark>();
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
             if (all != null) foreach (Unit u in all) if (u != null && (u.tile != null || u.trasnporter != null) && u.Strength > 0) now[u] = MarkOf(u);
-            long ts = 17, bs = 17;
-            if (HexGenerator.hg != null && HexGenerator.hg.tiles != null)
-                foreach (HexTile t in HexGenerator.hg.tiles) if (t != null) ts = ts * 31 + ((t.terrain != null ? t.terrain.GetHashCode() : 0) ^ (t.damage * 7919) ^ (t.road ? 104729 : 0));
+            // The layout (terrain and buildings' places, kinds, damage) for movement; owners, damage and stores for supply.
+            long ts = LayoutSignature(), bs = 17;
             foreach (Building b in Building.all)
-                if (b != null) bs = bs * 31 + ((b.owner != null ? b.owner.GetHashCode() : 1) ^ (b.capturePoints * 131) ^ ((b.capturingPlayer != null ? b.capturingPlayer.GetHashCode() : 3) * 7) ^ (b.damage * 7919) ^ (b.health * 31337) ^ (b.supplies * 65537));
+                if (b != null) bs = bs * 31 + ((b.owner != null ? b.owner.GetHashCode() : 1) ^ (b.damage * 7919) ^ (b.health * 31337) ^ (b.supplies * 65537));
             bool first = marks == null;
-            everything = first || ts != terrainSig || bs != buildingSig;
+            everything = first || ts != terrainSig;
+            buildingsChanged = everything || bs != supplySig;
+            movedUnits.Clear();
             if (!first) {
                 foreach (KeyValuePair<Unit, Mark> kv in now) {
                     Mark was;
-                    if (!marks.TryGetValue(kv.Key, out was)) { changedUnits.Add(kv.Key); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); continue; }
+                    if (!marks.TryGetValue(kv.Key, out was)) { changedUnits.Add(kv.Key); movedUnits.Add(kv.Key); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); continue; }
                     if (was.Same(kv.Value)) continue;
                     changedUnits.Add(kv.Key);
+                    if (!was.SameReach(kv.Value)) movedUnits.Add(kv.Key);
                     if (was.tile != kv.Value.tile || was.rides != kv.Value.rides) { if (was.tile != null) changedTiles.Add(was.tile); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); }
                 }
                 foreach (KeyValuePair<Unit, Mark> kv in marks)
-                    if (!now.ContainsKey(kv.Key)) { changedUnits.Add(kv.Key); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); }
+                    if (!now.ContainsKey(kv.Key)) { changedUnits.Add(kv.Key); movedUnits.Add(kv.Key); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); }
             }
-            marks = now; terrainSig = ts; buildingSig = bs;
+            marks = now; terrainSig = ts; supplySig = bs;
         }
 
         /// <summary>
@@ -134,7 +143,7 @@ namespace HexTactica.AI {
                 Unit u = kv.Key;
                 // (Its move tiles are only those it can finish on: a friend it could pass through stands on others, as far
                 // as its movement reaches. A step costs at least one point: no farther than its move range.)
-                if (changedUnits.Contains(u) || u.tile == null || !Untouched(u.tile, Mathf.Max(Farthest(u.tile, kv.Value[0]), u.moveRange))) { drop.Add(u); continue; }
+                if (movedUnits.Contains(u) || u.tile == null || !Untouched(u.tile, Mathf.Max(Farthest(u.tile, kv.Value[0]), u.moveRange))) { drop.Add(u); continue; }
                 if (Verify) { Count(Checked, "space"); HashSet<HexTile>[] f = SpaceFrom(u, u.tile, null); if (!f[0].SetEquals(kv.Value[0]) || !f[1].SetEquals(kv.Value[1])) Count(Mismatches, "space"); }
             }
             foreach (Unit u in drop) ourSpace.Remove(u);
@@ -144,7 +153,7 @@ namespace HexTactica.AI {
             List<Unit> drop = new List<Unit>();
             foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in d) {
                 Unit e = kv.Key;
-                if (changedUnits.Contains(e) || e.tile == null || !Untouched(e.tile, Mathf.Max(Farthest(e.tile, kv.Value), e.moveRange))) { drop.Add(e); continue; }
+                if (movedUnits.Contains(e) || e.tile == null || !Untouched(e.tile, Mathf.Max(Farthest(e.tile, kv.Value), e.moveRange))) { drop.Add(e); continue; }
                 if (Verify) {
                     Count(Checked, kind);
                     HashSet<HexTile> f = AIWorld.Positions(e, d == baseReachBlocked);
@@ -159,7 +168,7 @@ namespace HexTactica.AI {
             List<Unit> drop = new List<Unit>();
             foreach (KeyValuePair<Unit, MoveField> kv in d) {
                 Unit u = kv.Key;
-                if (changedUnits.Contains(u) || u.tile == null || !Untouched(u.tile, Farthest(u.tile, kv.Value.Tiles))) { drop.Add(u); continue; }
+                if (movedUnits.Contains(u) || u.tile == null || !Untouched(u.tile, Farthest(u.tile, kv.Value.Tiles))) { drop.Add(u); continue; }
                 if (Verify) {
                     Count(Checked, kind);
                     MoveField f = fresh(kv.Value);
@@ -173,7 +182,7 @@ namespace HexTactica.AI {
 
         /// <summary>Take over last turn's caches (keepCaches): the first read prunes what changed since.</summary>
         void Adopt(AIMap c) {
-            marks = c.marks; terrainSig = c.terrainSig; buildingSig = c.buildingSig;
+            marks = c.marks; terrainSig = c.terrainSig; supplySig = c.supplySig;
             foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in c.baseReach) baseReach[kv.Key] = kv.Value;
             foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in c.baseReachBlocked) baseReachBlocked[kv.Key] = kv.Value;
             foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in c.replyCache.positions) replyCache.positions[kv.Key] = kv.Value;

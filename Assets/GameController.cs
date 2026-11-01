@@ -248,8 +248,12 @@ public class GameController : MonoBehaviour
         finally { ThreatReach.End(); }
     }
 
+    /// <summary>A turn is about to end (before captures resolve): the player ending it.</summary>
+    public static event System.Action<Player> TurnEnding;
+
     public void EndTurn() {
         if (gameOver) return;
+        if (TurnEnding != null) TurnEnding(activePlayer);
         // Infantry that ended the turn on a building without attacking captures it.
         Building.ResolveCaptures(activePlayer);
         if (gameOver) return;
