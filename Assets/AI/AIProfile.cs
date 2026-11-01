@@ -675,6 +675,12 @@ namespace HexTactica.AI {
         [Tooltip("A decision made in the coordination pass (and a supply unit's turn-start plan, reuseGhostPlans) is reused when nothing within this many tiles of the unit changed: the unit's own reach plus one, at most this. 0: the full radius (its reach plus the farthest enemy reach: the same answers). Faster, not the same answers.")]
         [Range(0, 20)]
         public int reuseRadiusCap = 0;
+        [Tooltip("Speed only: while the opponent plays (once it has moved speculateAfterShare of its units and the board has been still speculateQuietFrames frames), the AI warms its map's caches on a worker thread at low priority; its turn keeps what still stands (keepCaches). Same answers.")]
+        public bool speculate = true;
+        [Range(0f, 1f)]
+        public float speculateAfterShare = 0.7f;
+        [Range(1, 600)]
+        public int speculateQuietFrames = 20;
 
         [Tooltip("The forecast prices each unit by its role, not its price alone (AIWorld.RoleWorth): what it does against the other side's units, weighted by how little else can hurt them, against its side's average, as a multiplier from roleWorthMin to roleWorthMax (kills still count double on top). The enemy's reply then goes for what we can least spare.")]
         public bool forecastRoleWorth = false;

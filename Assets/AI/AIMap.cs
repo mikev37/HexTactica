@@ -160,12 +160,32 @@ namespace HexTactica.AI {
         /// With <paramref name="carry"/> (keepCaches: last turn's map for the same side), the caches it ended with that
         /// what happened since leaves standing are kept (AIMapCache).
         /// </summary>
-        public AIMap(Player player, AIProfile profile, AIMap carry) {
+        public AIMap(Player player, AIProfile profile, AIMap carry) : this(player, profile, carry, false) { }
+
+        /// <summary>
+        /// <paramref name="speculative"/>: read while the opponent is still playing (AIPlayer's speculation), only to
+        /// warm caches for the turn's own map: the game's threat field is not recalculated and nothing on the real
+        /// board's objects is written.
+        /// </summary>
+        public AIMap(Player player, AIProfile profile, AIMap carry, bool speculative) {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
+            this.speculative = speculative;
             AIScore.Use(this.profile);
             if (carry != null && carry.player == player && carry.profile == this.profile && this.profile.keepCaches) Adopt(carry);
-            Rebuild();
+            Rebuild(!speculative);
+        }
+        /// <summary>Read while the opponent plays, to warm caches only (see the constructor).</summary>
+        public readonly bool speculative;
+
+        /// <summary>
+        /// Speculation: work out now what the turn's own map will most likely ask for (every enemy's reach, every
+        /// unit's move field and space), so the turn's map takes it over (keepCaches keeps what still stands).
+        /// </summary>
+        public void Warm() {
+            foreach (Unit e in enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) BaseReach(e, profile.forecastOwnSideBlocks);
+            foreach (Unit u in ownUnits) if (u != null && u.tile != null) { ReachThisTurn(u); SpaceOf(u); }
+            foreach (Unit e in enemyUnits) if (e != null && e.tile != null) ReachThisTurn(e);
         }
 
         /// <summary>Full refresh. Called once per AI turn, and after any capture or kill that reshapes supply.</summary>
