@@ -42,7 +42,7 @@ namespace HexTactica.AI {
 
         [Header("Campaign (objectives and task forces)")]
         [Tooltip("Plan the war as objectives read from the map — defend our HQ, secure a building, clear an enemy group, scout what the fog hides — each with a task force and supply fit to achieve it, and fight fronts made from them (AICampaign). Off: fronts where the fighting is (AIStrategic).")]
-        public bool campaign = false;
+        public bool campaign = true;
         [Tooltip("How evenly the campaign spreads the army. 0: all in — enough at home not to be overrun, everything else on the single best objective. 1: every objective it can meet, and what is left spread over all of them.")]
         [Range(0f, 1f)]
         public float objectiveSpread = 0.5f;
@@ -103,6 +103,18 @@ namespace HexTactica.AI {
         public float campaignScoutEscort = 0f;
         [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
         public bool campaignReserve = true;
+        [Tooltip("Campaign: the central reserve is mobile — aircraft, combat ships, loaded transports (with what they carry) and fast ground units (campaignReserveMinMove or more); infantry on foot and other slow units stay with the ordinary fronts. Off: every spare fighting unit on the ground, as before.")]
+        public bool campaignMobileReserve = true;
+        [Tooltip("Campaign, mobile reserve: the least movement a ground unit needs to be in the reserve (a tank: 6, a recon: 8; a grunt: 3).")]
+        public int campaignReserveMinMove = 5;
+        [Tooltip("Campaign: estimate how well the enemy's forces are known and how they compare to ours (AIKnowledge): fear of the fog scales down with it, and once both are high enough the army goes all out — every front attacks, task forces leave our supply, the enemy HQ comes first, the reserve is released. The reserve is also released once confidence passes knowledgeReserveConfidence. Off: none of it.")]
+        public bool campaignKnowledge = true;
+        [Tooltip("All out (campaignKnowledge): our fighting strength at least this many times what the enemy could have.")]
+        public float knowledgeAllOutRatio = 2f;
+        [Tooltip("All out (campaignKnowledge): at least this confidence in our knowledge of the enemy's forces (0..1; 1 without fog).")]
+        public float knowledgeAllOutConfidence = 0.6f;
+        [Tooltip("The reserve is released (campaignKnowledge) once confidence in our knowledge of the enemy reaches this: the reserve is for an enemy whose potential is unknown.")]
+        public float knowledgeReserveConfidence = 0.6f;
         [Tooltip("Campaign: the share of units on no task force kept with the ordinary fronts as the active reserve (the rest gather as the central reserve).")]
         [Range(0f, 1f)]
         public float campaignActiveReserveShare = 0.1f;
@@ -146,6 +158,10 @@ namespace HexTactica.AI {
         [Tooltip("Buying: each unit of a kind we already have (or have planned this turn) makes another worth this much (1: no variety rule; what we lack against the enemy, AIProduction.Scarcity, already gives diminishing returns).")]
         [Range(0f, 1f)]
         public float productionVariety = 0.97f;
+        [Tooltip("Production: a fighting unit is worth less the longer it would take to reach the fight from where it is built — its value divided by (1 + turns to the nearest known enemy / productionTimeHorizon), by its own movement. A slow unit built far from the front (a conscript at a distant city) no longer outbids one that gets there. Off: where it is built does not matter.")]
+        public bool productionTimeToFront = true;
+        [Tooltip("Production, productionTimeToFront: turns to the fight that halve a unit's worth.")]
+        public float productionTimeHorizon = 3f;
         [Tooltip("Buying: a fighting unit is worth at least this share of its own full worth, so a slot is filled when gold allows even if nothing scores against the enemy.")]
         public float productionFloor = 0.05f;
         [Tooltip("Buying: a unit's presence on the field — actions the enemy must spend on it, ground it holds and sees — as this share of its own full worth, added to what it would do in exchanges.")]

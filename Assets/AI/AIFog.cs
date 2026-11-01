@@ -30,7 +30,9 @@ namespace HexTactica.AI {
         /// price (AIScore.Risk, AIMap.ExpectedLoss) has it already.
         /// </summary>
         public static float FogRisk(Unit unit, HexTile stop, AIMap map, AIProfile p) {
-            return map.FogLoss(unit, stop) * AIScore.Worth(unit) * p.riskWeight;
+            // Less, the better we know the enemy and the more we outmatch it (AIKnowledge.aggression).
+            float bold = map.knowledge != null ? 1f - Mathf.Clamp01(map.knowledge.aggression) : 1f;
+            return map.FogLoss(unit, stop) * AIScore.Worth(unit) * p.riskWeight * bold;
         }
 
         public static bool IsRecon(Unit u) { return u != null && u.moveRange >= 6 && u.Firepower <= 2; }
