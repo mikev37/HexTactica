@@ -30,8 +30,8 @@ namespace HexTactica.Testing {
         static string PathFor(string name) {
             string p = Path.Combine(AssetsRoot, "Units", name + ".prefab");
             string now;
-            // A unit renamed since the file was saved loads as the game loads it (LevelEditor.renamedUnits).
-            if (!File.Exists(p) && LevelEditor.renamedUnits.TryGetValue(name, out now)) return Path.Combine(AssetsRoot, "Units", now + ".prefab");
+            // A unit renamed since the file was saved loads as the game loads it (LevelEditor.RenamedUnit).
+            if (!File.Exists(p) && (now = LevelEditor.RenamedUnit(name)) != null) return Path.Combine(AssetsRoot, "Units", now + ".prefab");
             return p;
         }
 
@@ -92,8 +92,8 @@ namespace HexTactica.Testing {
                 Doc b = Read(baseName, depth + 1);
                 Doc v = new Doc { unit = new Dictionary<string, string>(b.unit), unitId = b.unitId, hub = b.hub != null ? new Dictionary<string, string>(b.hub) : null, hubId = b.hubId, carries = new List<Locomotion>(b.carries) };
                 string[] lines = doc.Split('\n');
-                int carriesSize = -1;
-                Dictionary<int, int> carriesAt = new Dictionary<int, int>();
+                int carriesSize = -1, attacksSize = -1;
+                Dictionary<int, int> carriesAt = new Dictionary<int, int>(), attacksAt = new Dictionary<int, int>();
                 for (int i = 0; i + 2 < lines.Length; i++) {
                     if (!lines[i].TrimStart().StartsWith("- target:")) continue;
                     int fi = lines[i].IndexOf("fileID: ");
@@ -112,17 +112,50 @@ namespace HexTactica.Testing {
                         if (int.TryParse(path.Substring(19).TrimEnd(']'), out k) && int.TryParse(value, out val)) carriesAt[k] = val;
                         continue;
                     }
+                    if (into == v.unit && path == "attacksLocomotion.Array.size") { int n; if (int.TryParse(value, out n)) attacksSize = n; continue; }
+                    if (into == v.unit && path.StartsWith("attacksLocomotion.Array.data[")) {
+                        int k, val;
+                        if (int.TryParse(path.Substring("attacksLocomotion.Array.data[".Length).TrimEnd(']'), out k) && int.TryParse(value, out val)) attacksAt[k] = val;
+                        continue;
+                    }
                     if (path.Contains(".") || value.Length == 0) continue;
                     into[path] = value;
+                }
+                if (attacksSize >= 0 || attacksAt.Count > 0) {
+                    // The base's checklist (as the prefab saved it, else every kind), with this variant's changes, packed back as Unity writes it.
+                    List<int> was = new List<int>();
+                    string baseHex;
+                    if (v.unit.TryGetValue("attacksLocomotion", out baseHex)) was = PackedInts(baseHex.Trim());
+                    else foreach (Locomotion l in Enum.GetValues(typeof(Locomotion))) was.Add((int)l);
+                    int size = attacksSize >= 0 ? attacksSize : was.Count;
+                    System.Text.StringBuilder hex = new System.Text.StringBuilder();
+                    for (int k = 0; k < size; k++) {
+                        int val = attacksAt.ContainsKey(k) ? attacksAt[k] : (k < was.Count ? was[k] : 0);
+                        for (int byteI = 0; byteI < 4; byteI++) hex.Append(((val >> (8 * byteI)) & 0xFF).ToString("x2"));
+                    }
+                    v.unit["attacksLocomotion"] = hex.ToString();
                 }
                 if (carriesSize >= 0) {
                     List<Locomotion> c = new List<Locomotion>();
                     for (int k = 0; k < carriesSize; k++) c.Add(carriesAt.ContainsKey(k) ? (Locomotion)carriesAt[k] : (k < v.carries.Count ? v.carries[k] : Locomotion.Boots));
                     v.carries = c;
                 } else foreach (KeyValuePair<int, int> kv in carriesAt) if (kv.Key < v.carries.Count) v.carries[kv.Key] = (Locomotion)kv.Value;
+                // Seen from a prefab built on this one, its objects have Unity's derived ids (the source object's id
+                // XOR the prefab instance's, top bit clear): a variant of a variant (Transport Helo on Gunship on
+                // Tank) targets those.
+                string inst = DocId(doc);
+                v.unitId = Derived(v.unitId, inst);
+                v.hubId = Derived(v.hubId, inst);
                 return v;
             }
             throw new Exception("no Unit component in " + name);
+        }
+
+        /// <summary>Unity's id for an object of a nested prefab: (source id XOR instance id) with the top bit clear.</summary>
+        static string Derived(string id, string instance) {
+            long a, b;
+            if (id == null || instance == null || !long.TryParse(id, out a) || !long.TryParse(instance, out b)) return id;
+            return ((a ^ b) & long.MaxValue).ToString();
         }
 
         /// <summary>The id of a YAML document ("!u!114 &amp;9081080694409079478" gives 9081080694409079478).</summary>
@@ -159,6 +192,12 @@ namespace HexTactica.Testing {
             }
             // Lists: the locomotion types a transport carries.
             u.carries = new List<Locomotion>(d.carries);
+            // What it can attack (Unit.attacksLocomotion), as the prefab ticks it; a prefab that never saved the field keeps the default (all).
+            string attacks;
+            if (unitFields.TryGetValue("attacksLocomotion", out attacks)) {
+                u.attacksLocomotion = new List<Locomotion>();
+                foreach (int v in PackedInts((attacks ?? "").Trim())) u.attacksLocomotion.Add((Locomotion)v);
+            }
             return u;
         }
 
@@ -315,7 +354,7 @@ namespace HexTactica.Testing {
 
         /// <summary>The asset in <paramref name="dir"/> whose meta carries <paramref name="guid"/> (name without extensions).</summary>
         static string AssetByGuid(string dir, string pattern, string guid) {
-            foreach (string meta in Directory.GetFiles(dir, pattern)) {
+            foreach (string meta in Directory.GetFiles(dir, pattern, SearchOption.AllDirectories)) {
                 if (File.ReadAllText(meta).Contains("guid: " + guid)) {
                     string n = Path.GetFileName(meta);
                     return n.Substring(0, n.IndexOf('.'));

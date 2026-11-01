@@ -317,6 +317,8 @@ namespace HexTactica.AI {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 o.turnsAway = TurnsAway(o, forces, map);
                 o.priority = o.priority / Mathf.Max(1f, o.turnsAway + 1f);   // +1: taking it
+                // All out (AIKnowledge): the enemy HQ first.
+                if (map.AllOut && o.kind == CampaignKind.Secure && o.building != null && o.building.IsHQ) o.priority *= 10f;
             }
             List<CampaignObjective> beyond = new List<CampaignObjective>(candidates);
             // The band widens step by step: campaignMaxTurns, or the nearest objective's distance if that is
@@ -868,7 +870,31 @@ namespace HexTactica.AI {
             // (Only supply units joined to the network count: one cut off serves no front.)
             SupplyNetwork.Result joined = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
             int hubsLeft = 0; foreach (SupplyPoint h in hubPool) if (joined.connectedHubs.Contains(h)) hubsLeft++;
-            foreach (CampaignObjective o in objectives) if (o.lasting) hubsLeft -= o.needHubs;
+            // What those already held still need beyond the supply units they kept (theirs have left hubPool:
+            // counting their whole need again promised the same supply units twice).
+            System.Func<CampaignObjective, int> stillNeeds = o => {
+                int has = 0; foreach (SupplyPoint h in o.hubs) if (joined.connectedHubs.Contains(h)) has++;
+                return Mathf.Max(0, o.needHubs - has);
+            };
+            foreach (CampaignObjective o in objectives) if (o.lasting) hubsLeft -= stillNeeds(o);
+            // Never more promised than we have: while those held need more supply units than are free, the
+            // least by priority of them is given up — its units and supply units go back to the pool, for the
+            // rest and for what can still be taken on. (Held objectives were never checked again: the supply
+            // they were promised went negative, as far as -5, and every front was left a link short.)
+            while (hubsLeft < 0) {
+                CampaignObjective drop = null;
+                foreach (CampaignObjective o in objectives) {
+                    if (!o.lasting || o.kind == CampaignKind.DefendHQ || o.respond || stillNeeds(o) <= 0) continue;
+                    if (drop == null || o.priority < drop.priority || (o.priority == drop.priority && string.CompareOrdinal(o.Id, drop.Id) > 0)) drop = o;
+                }
+                if (drop == null) break;
+                hubsLeft += stillNeeds(drop);
+                foreach (SupplyPoint h in drop.hubs) { hubPool.Add(h); if (joined.connectedHubs.Contains(h)) hubsLeft++; }
+                foreach (Unit u in drop.units) if (u != null && !pool.Contains(u)) pool.Add(u);
+                objectives.Remove(drop);
+                if (Debug != null) Debug("given up: " + drop.Id + " (priority " + drop.priority.ToString("0.00") + "): held objectives needed more supply units than we have");
+                drop.units.Clear(); drop.hubs.Clear(); drop.assignedPower = 0f;
+            }
             foreach (CampaignObjective o in candidates) {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 if (pursued >= maxPursued || pool.Count == 0) break;
@@ -1281,6 +1307,8 @@ namespace HexTactica.AI {
             // No holding and waiting (AIProfile.regroup): a task force strikes first; its expensive units pull
             // back when they lack the superiority (AITactical.Regrouping), and the reserve comes up.
             if (p.regroup && p.campaignStrikeFirst) foreach (Front f in fronts) if (f.campaign) f.posture = Posture.Aggressive;
+            // All out (AIKnowledge): every front attacks.
+            if (map.AllOut) foreach (Front f in fronts) f.posture = Posture.Aggressive;
             // Everything not on a task force: the ordinary fronts (AIStrategic.BuildFronts), which fight
             // and push on as the ordinary AI does. (A single front at home with no objective left them
             // standing there.)
@@ -1294,8 +1322,14 @@ namespace HexTactica.AI {
             reserveFront = null;
             if (p.campaignReserve) {
                 List<Unit> spare = new List<Unit>();
-                foreach (Unit u in map.ownUnits)
-                    if (u != null && u.tile != null && !taken.Contains(u) && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1) && u.trasnporter == null && !LocomotionRules.IsAirborne(u.locomotion) && !LocomotionRules.IsNaval(u.locomotion)) spare.Add(u);
+                Dictionary<Unit, List<Unit>> aboard = new Dictionary<Unit, List<Unit>>();
+                foreach (Unit u in map.ownUnits) {
+                    if (u == null || u.tile == null || taken.Contains(u) || u.Hub != null || u.trasnporter != null) continue;
+                    if (!ReserveMember(u, p)) continue;
+                    List<Unit> riders = p.campaignMobileReserve && Transporting.IsTransport(u) ? u.transported.FindAll(c => c != null && c.Firepower > 0 && c.Hub == null) : null;
+                    if (riders != null && riders.Count > 0) aboard[u] = riders;
+                    spare.Add(u);
+                }
                 int release = Mathf.Max(1, p.campaignReleaseTurns);
                 List<Unit> calm = spare.FindAll(u => map.TurnsToContact(u) > release);
                 int active = spare.Count - calm.Count;
@@ -1306,7 +1340,24 @@ namespace HexTactica.AI {
                 // Committed (AIProfile.regroup): to the front most pressed — the enemy that can strike its units
                 // tonight more than regroupCommitRatio of their power — all of it, toward that front's units.
                 Front pressed = null; float worst = 0f;
-                if (p.regroup && calm.Count > 0)
+                // Released (AIKnowledge.releaseReserve): the enemy's forces are known well enough; the reserve goes where
+                // it is best suited — all out, the enemy HQ's task force; else the campaign front shortest of what it needs.
+                string released = null;
+                if (map.knowledge != null && map.knowledge.releaseReserve && calm.Count > 0) {
+                    Front to = null; float most = float.NegativeInfinity;
+                    foreach (Front f in fronts) {
+                        if (!f.campaign || f.reserve || f.objectiveTile == null || f.campaignObjective == null) continue;
+                        float shortBy = f.campaignObjective.needPower - f.campaignObjective.assignedPower;
+                        float v = (map.AllOut && f.objectiveIsHQ ? 1e6f : 0f) + shortBy;
+                        if (to == null || v > most) { to = f; most = v; }
+                    }
+                    if (to != null) {
+                        List<Unit> mine = new List<Unit>(); foreach (Unit u in to.assigned) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0) mine.Add(u);
+                        HexTile c = mine.Count > 0 ? Centre(mine) : to.objectiveTile;
+                        if (c != null) { rally = map.AllOut && to.objectiveIsHQ ? to.objectiveTile : c; pressed = to; released = to.campaignObjective.Id; }
+                    }
+                }
+                if (p.regroup && calm.Count > 0 && released == null)
                     foreach (Front f in fronts) {
                         float ours = 0f, theirs = 0f; HashSet<Unit> seenE = new HashSet<Unit>(); List<Unit> mine = new List<Unit>();
                         foreach (Unit u in f.assigned) {
@@ -1321,15 +1372,22 @@ namespace HexTactica.AI {
                     }
                 if (rally != null) {
                     Front r = new Front { center = rally, objectiveTile = rally, priority = 0.5f };
+                    // Released onto a building to take (all out, the enemy HQ): it is that building, so the rules for
+                    // units that cannot take it hold (CampaignStep, the objective's pull: beside it, not on it). (Aimed
+                    // at the HQ's tile as a bare tile, the released gunships were pulled onto it and stood there while
+                    // the grunt that would have taken it walked back to supply.)
+                    if (pressed != null && released != null && rally == pressed.objectiveTile && pressed.objective != null) { r.objective = pressed.objective; r.objectiveIsHQ = pressed.objectiveIsHQ; r.objectiveValue = pressed.objectiveValue; }
                     r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
                     r.reserve = true;
                     r.assigned.AddRange(calm);
                     foreach (Unit u in calm) taken.Add(u);
+                    // What a reserve transport carries goes with it.
+                    foreach (Unit u in calm) { List<Unit> rs; if (aboard.TryGetValue(u, out rs)) foreach (Unit c in rs) { r.assigned.Add(c); taken.Add(c); } }
                     AIStrategic.Finish(new List<Front> { r }, map, p, memory, assaulting);
                     fronts.Add(r);
                     reserveFront = r;
                 }
-                reserveNote = "reserve: central " + calm.Count + (rally != null ? (pressed != null ? " committed to the front at (" : " gathering at (") + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
+                reserveNote = "reserve" + (p.campaignMobileReserve ? " (mobile)" : "") + ": central " + calm.Count + (rally != null ? (released != null ? " released to " + released + " at (" : pressed != null ? " committed to the front at (" : " gathering at (") + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
             }
             HashSet<Unit> was = AIStrategic.Exclude;
             AIStrategic.Exclude = taken;
@@ -1354,6 +1412,22 @@ namespace HexTactica.AI {
                 if (home.center != null) { fronts.Add(home); AIStrategic.Finish(new List<Front> { home }, map, p, memory, assaulting); }
             }
             return fronts;
+        }
+
+        /// <summary>
+        /// Can <paramref name="u"/> (on no task force, not aboard anything) be in the central reserve? Mobile
+        /// (campaignMobileReserve): aircraft and combat ships, a transport carrying fighting units (they go with it),
+        /// and ground units with campaignReserveMinMove movement or more; infantry on foot and other slow units stay
+        /// with the ordinary fronts. Otherwise: any fighting unit on the ground, not a transport.
+        /// </summary>
+        public static bool ReserveMember(Unit u, AIProfile p) {
+            if (u == null || u.tile == null || u.Hub != null || u.trasnporter != null) return false;
+            bool air = LocomotionRules.IsAirborne(u.locomotion), sea = LocomotionRules.IsNaval(u.locomotion);
+            bool unarmedTransport = Transporting.IsTransport(u) && u.Firepower <= 1;
+            if (!p.campaignMobileReserve) return u.Firepower > 0 && !unarmedTransport && !air && !sea;
+            if ((air || sea) && u.Firepower > 0) return true;
+            if (Transporting.IsTransport(u) && u.transported.Exists(c => c != null && c.Firepower > 0 && c.Hub == null)) return true;
+            return !air && !sea && !unarmedTransport && u.Firepower > 0 && u.moveRange >= p.campaignReserveMinMove;
         }
 
         /// <summary>The central reserve this turn (AIProfile.campaignReserve), and a line for the trace.</summary>

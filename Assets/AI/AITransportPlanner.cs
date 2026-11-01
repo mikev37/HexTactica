@@ -65,6 +65,25 @@ namespace HexTactica.AI {
     /// </summary>
     public static class AITransportPlanner {
 
+        /// <summary>The supply chain's links this turn (AIPlayer, from AILogistics.chainOf); null: none.</summary>
+        [ThreadStatic] public static HashSet<SupplyPoint> ChainLinks;
+
+        /// <summary>
+        /// A link of the supply chain aboard a transport, the first supply unit aboard it, stays aboard: aboard,
+        /// its supply reaches as far as its transport can move, set down only as far as it can walk, and for the
+        /// chain that reach is what matters most. Other supply units may be set down when that is worth more
+        /// (the transport's other uses: taxiing units, bringing assault infantry up).
+        /// </summary>
+        public static bool KeepsAboard(Unit cargo) {
+            if (cargo == null || cargo.Hub == null || cargo.Hub.producer || cargo.trasnporter == null || cargo.trasnporter.tile == null) return false;
+            if (ChainLinks == null || !ChainLinks.Contains(cargo.Hub)) return false;
+            foreach (Unit c in cargo.trasnporter.transported) {
+                if (c == cargo) return true;
+                if (c != null && c.Hub != null && !c.Hub.producer) return false;   // another supply unit is the first
+            }
+            return true;
+        }
+
         /// <summary>
         /// First turn a unit can act from a tile, given when it gets there. Arriving during
         /// turn k (by moving) means acting from it on k+1; starting the turn there means now.
@@ -340,6 +359,7 @@ namespace HexTactica.AI {
 
             // --- Walking plan: just step along it.
             if (!plan.usesTransport) {
+                if (KeepsAboard(cargo)) return AIAction.Wait(cargo, "supply stays aboard its transport");
                 if (cargo.trasnporter != null) {
                     // Aboard but the plan says walk: get off.
                     List<HexTile> options = Transporting.UnloadOptions(cargo.trasnporter, cargo);
@@ -401,7 +421,9 @@ namespace HexTactica.AI {
             Unit cargo = plan.cargo;
             bool aboard = cargo.trasnporter == transport;
 
-            if (plan.stayAboard) {
+            // A chain link stays aboard its transport (AITransportPlanner.KeepsAboard): aboard, a supply unit's
+            // supply reaches as far as its transport can move; set down it reaches only as far as it can walk.
+            if (plan.stayAboard || (aboard && KeepsAboard(cargo))) {
                 // A supply leap: drive to the drop-off and stay there with the supply unit aboard.
                 // A passenger riding along with the supply (infantry): let out where the link stops.
                 Unit rider = null;

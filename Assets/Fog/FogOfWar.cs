@@ -362,6 +362,8 @@ public static class FogOfWar {
         public int moveRange, attackRange, minRange, visionRange, elevationMin, elevationMax, terrainScramble;
         public bool moveAndAttack, amphibious, airborne;
         public Locomotion locomotion;
+        /// <summary>What it can attack (Unit.attacksLocomotion), as seen.</summary>
+        public List<Locomotion> attacks;
 
         public static Kind Of(Unit u) {
             string n = u.name ?? "";
@@ -371,7 +373,8 @@ public static class FogOfWar {
                 name = n.Trim(), cost = u.cost, firepower = u.Firepower, veterancy = u.Veterancy, piercing = u.Piercing, targeting = u.Targeting,
                 moveRange = u.moveRange, attackRange = u.AttackRange, minRange = u.MinRange, visionRange = u.visionRange,
                 elevationMin = u.elevationMin, elevationMax = u.elevationMax, moveAndAttack = u.moveAndAttack, amphibious = u.amphibious,
-                airborne = LocomotionRules.IsAirborne(u.locomotion), locomotion = u.locomotion, terrainScramble = u.terrainScramble
+                airborne = LocomotionRules.IsAirborne(u.locomotion), locomotion = u.locomotion, terrainScramble = u.terrainScramble,
+                attacks = u.attacksLocomotion != null ? new List<Locomotion>(u.attacksLocomotion) : new List<Locomotion>()
             };
         }
 
@@ -398,13 +401,15 @@ public static class FogOfWar {
         /// </summary>
         public int Damage(int strength, Unit defender, HexTile tile) {
             if (strength <= 0 || firepower <= 0 || defender == null) return 0;
+            if (attacks == null || !attacks.Contains(defender.locomotion)) return 0;
             float cover = 0;
-            float destruction = firepower + veterancy;
+            float destruction = firepower + veterancy + defender.Vulnerability;
             float penetration = Mathf.Max(1, defender.Armor - piercing);
             float acquire = Mathf.Max(1, defender.Evasion - targeting);
             if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion))
                 cover = Math.Min(defender.Concealment, tile.EffectiveCover);
-            return (int)Mathf.Max(1, Mathf.Floor((destruction / penetration / acquire - cover) * strength / 6f));
+            int minDamage = LocomotionRules.IsAirborne(defender.locomotion) ? 0 : 1;
+            return (int)Mathf.Max(minDamage, Mathf.Floor((destruction / penetration / acquire - cover) * strength / 6f));
         }
     }
 

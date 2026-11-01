@@ -20,6 +20,8 @@ public class LevelEditor : MonoBehaviour
     public List<TerrainData> allTerrain;
     public List<Unit> allUnit;
     public List<Building> allBuilding;
+    [Tooltip("Every faction a save may name (a player's faction is saved by name); their own units load by name too")]
+    public List<Faction> allFaction;
 
 	// Start is called before the first frame update
 	void Start()
@@ -212,8 +214,14 @@ public class LevelEditor : MonoBehaviour
     }
 
     /// <summary>Units renamed since saves were written: old name, new name.</summary>
-    public static readonly System.Collections.Generic.Dictionary<string, string> renamedUnits = new System.Collections.Generic.Dictionary<string, string> {
-        { "Truck Variant", "Truck" }, { "Gunship Variant", "Gunship" }, { "Gunner Anti Air Variant", "Gunner Anti Air" } };
+    /// <summary>
+    /// The name a unit saved as <paramref name="name"/> goes by now, if it has none of that name: the same name without a
+    /// trailing " Variant" (prefab variants that were renamed to their plain names, "Truck Variant" → "Truck"). Null: none.
+    /// </summary>
+    public static string RenamedUnit(string name) {
+        const string suffix = " Variant";
+        return name != null && name.EndsWith(suffix) ? name.Substring(0, name.Length - suffix.Length).Trim() : null;
+    }
 
     public static Unit loadUnit(string name) {
         name = name.Replace("(Clone)","").Trim();
@@ -222,8 +230,17 @@ public class LevelEditor : MonoBehaviour
                 return t;
             }
         }
-        string now;
-        if (renamedUnits.TryGetValue(name, out now)) return loadUnit(now);
+        // A faction's own units (its versions and extras) need not be on allUnit.
+        if (singleton.allFaction != null) foreach (Faction f in singleton.allFaction) if (f != null) foreach (Unit t in f.OwnUnits()) if (t.name.Equals(name)) return t;
+        string now = RenamedUnit(name);
+        return now != null ? loadUnit(now) : null;
+    }
+
+    /// <summary>The faction saved as <paramref name="name"/> (allFaction), or null: none, or one not listed.</summary>
+    public static Faction FindFaction(string name) {
+        if (string.IsNullOrEmpty(name) || singleton == null || singleton.allFaction == null) return null;
+        foreach (Faction f in singleton.allFaction) if (f != null && f.name == name) return f;
+        Debug.LogWarning("Faction '" + name + "' is not on the LevelEditor's allFaction list: the player gets the base units");
         return null;
     }
 

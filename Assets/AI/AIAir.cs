@@ -203,7 +203,7 @@ namespace HexTactica.AI {
         static bool BesideTanker(Unit u, HexTile at) {
             if (u.airTanker || !LocomotionRules.IsAirborne(u.locomotion) || u.owner == null) return false;
             foreach (Unit t in u.owner.units) {
-                if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.refuelStock <= 0) continue;
+                if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
                 if (at.neighbors.Contains(t.tile)) return true;
             }
             return false;
@@ -324,7 +324,7 @@ namespace HexTactica.AI {
                 if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
                 if (Margin(u, t, toBase, bases, LandingOf(u, map), map) < 0) continue;
                 float v = 0f;
-                if (u.refuelStock > 0) {
+                if (u.supplies > 0) {
                     foreach (Unit x in map.ownUnits) {
                         if (x == null || x == u || x.airTanker || !LocomotionRules.IsAirborne(x.locomotion) || x.tile == null || x.fuelMax <= 0) continue;
                         if (!t.neighbors.Contains(x.tile)) continue;
@@ -338,7 +338,7 @@ namespace HexTactica.AI {
                 if (best == null || v > bestValue || (v == bestValue && CombatMath.Precedes(t, best))) { best = t; bestValue = v; }
             }
             if (best == null || best == u.tile) return AIAction.Wait(u, "tanker: holds");
-            return AIAction.Move(u, best, bestValue, u.refuelStock > 0 ? "tanker: beside the thirstiest aircraft" : "tanker: empty, home to refill");
+            return AIAction.Move(u, best, bestValue, u.supplies > 0 ? "tanker: beside the thirstiest aircraft" : "tanker: empty, home to refill");
         }
     }
 }

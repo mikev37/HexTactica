@@ -174,6 +174,8 @@ namespace HexTactica.Testing {
                 f.SetValue(u, f.GetValue(source));
             }
             u.carries = source.carries != null ? new List<Locomotion>(source.carries) : new List<Locomotion>();
+            // Unity's Instantiate copies lists: a check that changes one unit's checklist must not change its kind's.
+            u.attacksLocomotion = source.attacksLocomotion != null ? new List<Locomotion>(source.attacksLocomotion) : new List<Locomotion>();
             u.name = source.name;
             return u;
         }
