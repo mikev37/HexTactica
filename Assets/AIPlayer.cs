@@ -238,6 +238,8 @@ public class AIPlayer : MonoBehaviour {
         SupplyNetwork.PutDownHypothetical = Profile.hubLinkPenalty > 0f;
         using (v.Enter()) {
             if (prepare) PrepareTurnOnBoard();
+            // Each thought may run on another thread: the turn's thread-static settings go with it.
+            ApplyTurnStatics();
             if (refresh && map != null) {
                 long __f = AIPerf.Begin();
                 map.RefreshAfterAction();
@@ -649,16 +651,28 @@ public class AIPlayer : MonoBehaviour {
         if (Trace != null) foreach (AIAir.Landing l in map.landings.Values) Trace("   landing reserved: " + l);
         planned.Clear();
         noAssist.Clear();
+        firstLook.Clear(); firstLookLog.Clear(); firstBoard = null;
         long __c = AIPerf.Begin();
         if (Profile.coordination || Profile.coordinationPasses) {
+            Action<string> realLog = AITactical.DecisionLog;
             List<PlanStep> steps = Profile.coordinationPasses
                 ? AICoordinator.Plan(map, Profile, u => {
                       AIWorld.NoAssist = null;
                       AITactical.Assignments = assignments;
                       Front f = FrontOf(u);
-                      return AITactical.Decide(u, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective);
+                      // Kept (with its reasoning, when logging) for when the unit's turn comes (Profile.coordinationReuse).
+                      System.Text.StringBuilder said = realLog != null ? new System.Text.StringBuilder() : null;
+                      Action<string> was = AITactical.DecisionLog;
+                      if (said != null) AITactical.DecisionLog = x => said.AppendLine(x);
+                      AIAction act;
+                      try { act = AITactical.Decide(u, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective); }
+                      finally { AITactical.DecisionLog = was; }
+                      firstLook[u] = act;
+                      if (said != null) firstLookLog[u] = said.ToString().TrimEnd();
+                      return act;
                   }, noAssist, Trace)
                 : AIPlan.Choose(map, Profile, Trace);
+            if (firstLook.Count > 0) firstBoard = BoardMarks();
             // Planned units act first, in plan order; everyone else keeps the usual order after them.
             List<Unit> first = new List<Unit>();
             planOrder.Clear();
@@ -1164,7 +1178,93 @@ public class AIPlayer : MonoBehaviour {
             return AITactical.DecideIdleTransport(unit, map, Profile);
         }
 
+        // Its decision from the coordination pass, if nothing near it has changed since (Profile.coordinationReuse).
+        AIAction early;
+        if (firstLook.TryGetValue(unit, out early)) {
+            firstLook.Remove(unit);
+            string why = !Profile.coordinationReuse ? "reuse off" : noAssist.Contains(unit) ? "deciding again without assist credit" : planned.ContainsKey(unit) ? "in a battle plan" : null;
+            if (Profile.coordinationReuse && !noAssist.Contains(unit) && !planned.ContainsKey(unit) && NothingNearChanged(unit, early, out why)) {
+                if (VerifyReuse) {
+                    AIAction fresh = AITactical.Decide(unit, map, Profile, posture, front, objective);
+                    bool same = fresh.kind == early.kind && fresh.destination == early.destination && fresh.target == early.target;
+                    reuseChecked++; if (!same) reuseDiffered++;
+                    if (Trace != null && !same) Trace("   reuse check: " + unit.name.Replace("(Clone)", "") + D(unit.tile) + " pass 1 " + early.kind + " " + D(early.destination) + " vs now " + fresh.kind + " " + D(fresh.destination));
+                }
+                reused++;
+                string said;
+                if (AITactical.DecisionLog != null && firstLookLog.TryGetValue(unit, out said)) AITactical.DecisionLog(said + "\n      (reused from the coordination pass: nothing within its reach or the enemy's changed since)");
+                if (early.destination != null && early.destination != unit.tile) intents[unit] = early.destination; else intents.Remove(unit);
+                return early;
+            }
+            notReused++;
+            string kind = why == null ? "?" : why.Contains(" near it changed") ? "a unit within reach changed" : why;
+            int nk; notReusedWhy.TryGetValue(kind, out nk); notReusedWhy[kind] = nk + 1;
+            if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + " decides again: " + why);
+        }
         return AITactical.Decide(unit, map, Profile, posture, front, objective);
+    }
+
+    /// <summary>
+    /// The per-turn settings the AI's helpers read from thread-static fields (who the logistics protects, the chain's
+    /// links), set again at the start of every thought: in the game each thought is a task of its own, and the thread
+    /// that prepared the turn need not be the one that thinks next. (With the campaign on, a threaded game differed
+    /// from an unthreaded one from turn 3: the later thoughts had none of these.)
+    /// </summary>
+    void ApplyTurnStatics() {
+        HexTactica.AI.AILogistics.Protect = logistics != null ? logistics.dutied : null;
+        AISupplyChain.ProtectOnly = HexTactica.AI.AILogistics.Protect;
+        HexTactica.AI.AILogistics.ProtectUnitsNow = logistics != null ? logistics.protectUnits : null;
+        AISupplyChain.ProtectUnits = HexTactica.AI.AILogistics.ProtectUnitsNow;
+        AITransportPlanner.ChainLinks = logistics != null ? new HashSet<SupplyPoint>(logistics.chainOf.Keys) : null;
+    }
+
+    /// <summary>Decisions made in the coordination pass (AICoordinator), kept for the unit's turn, and their logged reasoning.</summary>
+    readonly Dictionary<Unit, AIAction> firstLook = new Dictionary<Unit, AIAction>();
+    readonly Dictionary<Unit, string> firstLookLog = new Dictionary<Unit, string>();
+    /// <summary>Where every unit on the board stood, and its strength, when those decisions were made.</summary>
+    Dictionary<Unit, KeyValuePair<HexTile, int>> firstBoard;
+    /// <summary>Counts for the harness: decisions reused, made again, and (VerifyReuse) checked against a fresh one and found different.</summary>
+    public static int reused, notReused, reuseChecked, reuseDiffered;
+    public static readonly Dictionary<string, int> notReusedWhy = new Dictionary<string, int>();
+    /// <summary>Harness: each reused decision is also made afresh and compared (costs the time reuse saves).</summary>
+    public static bool VerifyReuse;
+
+    static string D(HexTile t) { return t == null ? "-" : "(" + t.x + "," + t.y + ")"; }
+
+    Dictionary<Unit, KeyValuePair<HexTile, int>> BoardMarks() {
+        Dictionary<Unit, KeyValuePair<HexTile, int>> d = new Dictionary<Unit, KeyValuePair<HexTile, int>>();
+        foreach (Unit u in map.ownUnits) if (u != null) d[u] = new KeyValuePair<HexTile, int>(u.tile, u.Strength);
+        foreach (Unit u in map.enemyUnits) if (u != null) d[u] = new KeyValuePair<HexTile, int>(u.tile, u.Strength);
+        return d;
+    }
+
+    /// <summary>
+    /// Has nothing changed, since the coordination pass, within reach of <paramref name="unit"/>'s decision — its
+    /// own move and fire, plus the farthest any enemy can move and fire — and is that decision still open (its
+    /// tile free, its target where it was)?
+    /// </summary>
+    bool NothingNearChanged(Unit unit, AIAction early, out string why) {
+        why = null;
+        if (firstBoard == null) { why = "no record of the board"; return false; }
+        KeyValuePair<HexTile, int> me;
+        if (!firstBoard.TryGetValue(unit, out me) || me.Key != unit.tile || me.Value != unit.Strength) { why = "it has moved or been hurt"; return false; }
+        int enemyReach = 0;
+        foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) enemyReach = Mathf.Max(enemyReach, (e.moveAndAttack ? e.moveRange : 0) + e.AttackRange);
+        int r = unit.moveRange + Mathf.Max(1, unit.AttackRange) + enemyReach + 1;
+        HexTile at = unit.tile;
+        Func<HexTile, bool> near = t => t != null && t.Distance(at) <= r;
+        foreach (KeyValuePair<Unit, KeyValuePair<HexTile, int>> kv in firstBoard) {
+            Unit u = kv.Key;
+            HexTile now = u != null && u.Strength > 0 ? u.tile : null;
+            int str = u != null ? u.Strength : 0;
+            if (now == kv.Value.Key && str == kv.Value.Value) continue;
+            if (near(kv.Value.Key) || near(now)) { why = (u != null ? u.name.Replace("(Clone)", "") : "a unit") + " near it changed (" + D(kv.Value.Key) + " -> " + D(now) + ")"; return false; }
+        }
+        foreach (Unit u in map.enemyUnits) if (u != null && u.tile != null && !firstBoard.ContainsKey(u) && near(u.tile)) { why = "an enemy appeared near it at " + D(u.tile); return false; }
+        foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && !firstBoard.ContainsKey(u) && near(u.tile)) { why = "a new unit of ours near it at " + D(u.tile); return false; }
+        if (early.destination != null && early.destination != unit.tile && early.destination.occupier != null) { why = "its tile is taken"; return false; }
+        if (early.target != null && (early.target.Strength <= 0 || early.target.tile == null)) { why = "its target is gone"; return false; }
+        return true;
     }
 
     /// <summary>

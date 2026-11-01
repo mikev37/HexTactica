@@ -240,3 +240,4 @@ MonoBehaviour:
   productionSupplySuperiority: 1
   productionSpendAll: 1
   woundedWorldCompare: 1
+  coordinationReuse: 1
