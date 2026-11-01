@@ -273,7 +273,7 @@ namespace HexTactica.AI {
                     Leap ride = FindLeap(h, map, net, steps, plan.frontSteps, trucksUsed, taken);
                     if (ride == null) {
                         // No better tile for its truck: it holds aboard where the truck stands, a link still
-                        // (trucks do not set supply down: AITransportPlanner.KeepsAboard).
+                        // (a transport keeps its first supply unit aboard: AITransportPlanner.KeepsAboard).
                         HexTile at = u.trasnporter.tile;
                         if (!IsTruck(u.trasnporter) || at == null || taken.Contains(at) || trucksUsed.Contains(u.trasnporter)) { plan.spare.Add(h); continue; }
                         ride = new Leap { truck = u.trasnporter, tile = at, board = null };

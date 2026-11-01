@@ -1334,7 +1334,7 @@ public class AIPlayer : MonoBehaviour {
     }
 
     /// <summary>
-    /// A supply unit aboard a land transport is not set down (AITransportPlanner.KeepsAboard): whatever
+    /// A transport's first supply unit is not set down (AITransportPlanner.KeepsAboard): whatever
     /// <paramref name="plan"/> wanted for it, its transport drives it there and it stays aboard (the transport
     /// stops on the destination, or the free tile beside it nearest its way). Other cargo: the plan as it was.
     /// </summary>
@@ -1357,7 +1357,7 @@ public class AIPlayer : MonoBehaviour {
         return new TransportPlan { cargo = cargo, transport = truck, rendezvous = truck.tile, dropoff = stop, destination = stop, stayAboard = true, value = plan != null ? plan.value : 0f, score = plan != null ? plan.score : 0f };
     }
 
-    /// <summary>A plan that drops cargo next to wherever its transport is now (never a supply unit from a land transport: AITransportPlanner.KeepsAboard).</summary>
+    /// <summary>A plan that drops cargo next to wherever its transport is now (never a transport's first supply unit: AITransportPlanner.KeepsAboard).</summary>
     TransportPlan UnloadHere(Unit cargo) {
         Unit transport = cargo != null ? cargo.trasnporter : null;
         if (transport == null || transport.tile == null) return null;
@@ -1634,7 +1634,7 @@ public class AIPlayer : MonoBehaviour {
         int d = HexTactica.AI.AILogistics.NearestOf(t, unit, map, out near);
         if (near != null && d > 2 * Mathf.Max(1, unit.moveRange)) {
             if (unit.trasnporter != null) {
-                // Aboard: its truck takes it toward the front (trucks do not set supply down).
+                // Aboard: its truck takes it toward the front (a transport keeps its first supply unit aboard).
                 TransportPlan go = KeepAboard(new TransportPlan { cargo = unit, destination = near }, unit);
                 if (go != null) { transportAssignments[go.transport] = go; reservedTransports.Add(go.transport); }
                 action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": its truck takes it to the front (" + d + " away)");

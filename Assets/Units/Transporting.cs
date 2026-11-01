@@ -9,8 +9,9 @@ using UnityEngine;
 ///
 /// Boarding is from beside the transport, onto its tile, so the unit must be able to step onto
 /// that tile itself (a grunt cannot board a ship on open water) unless the transport stands on a
-/// friendly building's tile that serves it (a ship at a dock, an aircraft on a runway). Getting off
-/// is onto any neighbouring tile the unit can stand on.
+/// friendly building's tile that serves it (a ship at a dock, an aircraft on a runway). A transport
+/// plane (an aircraft that needs a base) takes on cargo only on such a building. Getting off is onto
+/// any neighbouring tile the unit can stand on.
 /// </summary>
 public static class Transporting {
 
@@ -58,10 +59,14 @@ public static class Transporting {
     /// </summary>
     public static bool CanBoardOnto(Unit cargo, HexTile from, HexTile t, Unit transport) {
         if (cargo == null || t == null) return false;
+        Building b = t.building;
+        bool servicing = b != null && b.owner == cargo.owner && transport != null && b.Services(transport);
+        // An aircraft that needs a base (a transport plane, not a helicopter) takes on cargo only standing on
+        // one of our buildings that services it (a runway).
+        if (transport != null && LocomotionRules.IsAirborne(transport.locomotion) && LocomotionRules.NeedsBase(transport.locomotion) && !LocomotionRules.ResuppliedInSupply(transport.locomotion)) return servicing;
         if (from == t) return true;
         if (cargo.CanEnter(t) && LocomotionRules.BridgeStep(from, t, cargo.locomotion)) return true;
-        Building b = t.building;
-        return b != null && b.owner == cargo.owner && transport != null && b.Services(transport);
+        return servicing;
     }
 
     /// <summary>Boarding: the cargo beside (or on) the transport, and able to step onto its tile (see CanBoardOnto).</summary>

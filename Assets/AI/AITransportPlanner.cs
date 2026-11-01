@@ -66,13 +66,17 @@ namespace HexTactica.AI {
     public static class AITransportPlanner {
 
         /// <summary>
-        /// A supply unit aboard a land transport (truck, APC, helicopter — not a ship, which must put it ashore):
-        /// it stays aboard. Aboard, its supply reaches as far as its transport can move; set down, only as far as
-        /// it can walk. The AI never sets it down.
+        /// A supply unit aboard a transport stays aboard if it is the first supply unit aboard: a transport
+        /// only ever sets down its second. Aboard, a supply unit's supply reaches as far as its transport can
+        /// move; set down, only as far as it can walk.
         /// </summary>
         public static bool KeepsAboard(Unit cargo) {
-            return cargo != null && cargo.Hub != null && !cargo.Hub.producer && cargo.trasnporter != null && cargo.trasnporter.tile != null
-                && !LocomotionRules.IsNaval(cargo.trasnporter.locomotion);
+            if (cargo == null || cargo.Hub == null || cargo.Hub.producer || cargo.trasnporter == null || cargo.trasnporter.tile == null) return false;
+            foreach (Unit c in cargo.trasnporter.transported) {
+                if (c == cargo) return true;
+                if (c != null && c.Hub != null && !c.Hub.producer) return false;   // another supply unit is the first
+            }
+            return true;
         }
 
         /// <summary>
@@ -412,8 +416,8 @@ namespace HexTactica.AI {
             Unit cargo = plan.cargo;
             bool aboard = cargo.trasnporter == transport;
 
-            // Trucks do not set supply down: aboard, a supply unit's supply reaches as far as its transport can
-            // move; set down it reaches only as far as it can walk.
+            // A transport keeps its first supply unit aboard (it sets down only a second): aboard, a supply unit's
+            // supply reaches as far as its transport can move; set down it reaches only as far as it can walk.
             if (plan.stayAboard || (aboard && KeepsAboard(cargo))) {
                 // A supply leap: drive to the drop-off and stay there with the supply unit aboard.
                 // A passenger riding along with the supply (infantry): let out where the link stops.
