@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"rule-attacks-locomotion","kind":"rules","opponent":"Human","rounds":"4","check":"attacksLocomotion","question":"Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can. With jets ticked (the default), the fighter can be attacked too.","rules":"standard"},
+"test":{"name":"rule-attacks-locomotion","kind":"rules","opponent":"Human","rounds":"4","check":"attacksLocomotion","question":"Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion, read from the prefab): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can (boots ticked). With boots unticked too, the grunt cannot be attacked either.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
@@ -179,7 +179,7 @@
 ],
 "units":[
 {"x":0,"y":0,"z":0,"Strength":6,"Veterancy":0,"personalName":"Artillery","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Artillery","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
-{"x":2,"y":0,"z":-2,"Strength":6,"Veterancy":0,"personalName":"Fighter","active":true,"owner_id":0,"supplies":3,"fuel":14,"ammo":6,"gameobject_name":"Fighter","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
+{"x":2,"y":0,"z":-2,"Strength":6,"Veterancy":0,"personalName":"Fighter","active":true,"owner_id":0,"supplies":3,"fuel":36,"ammo":6,"gameobject_name":"Fighter","transporterIndexPlusOne":0,"refuelStockPlusOne":1},
 {"x":2,"y":1,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0,"refuelStockPlusOne":1}
 ]
 }

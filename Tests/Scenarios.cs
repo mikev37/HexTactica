@@ -376,15 +376,15 @@ public static class Scenarios {
         make("rule-fob-battery", "battery", (a, o) => { Building f = Rig.PlaceBuilding("FOB", a, -4, 0); f.supplies = 0; Put("Grunt", a, -3, 1); },
              "A Blue FOB inside the HQ's supply charges 1 a turn; cut off (the HQ lost), it supplies its area for as many turns as it stored, then stops.");
         make("rule-production", "production", (a, o) => { },
-             "Blue's HQ builds a Grunt for 2000 of 3000: it appears on the HQ, spent for the turn, money 1000.");
+             "Blue's HQ builds a Grunt from 3000: it appears on the HQ, spent for the turn, money 3000 less the Grunt's cost.");
         // Air and sea (attrition: these do not test capture).
         Action<int, int, int, int> water = (x0, x1, y0, y1) => { for (int x = x0; x <= x1; x++) for (int y = y0; y <= y1; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Water"); } };
         make("attrition-rule-air-fuel", "attritionAirFuel", (a, o) => { Unit f = Put("Fighter", a, -4, 1); f.fuel = 5; f.Strength = 4; Put("Grunt", o, 4, 0); },
              "A Fighter (fuel 5, burns 3 a turn; 3 supplies aboard) inside the HQ's supply but off any airport: not healed or refuelled, its own supplies down to 2 and 2 fuel after a turn, ditched the next.");
         make("attrition-rule-air-base", "attritionAirBase", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, -3, 3); f.fuel = 2; f.Strength = 4; Put("Grunt", o, 4, 0); },
              "A Fighter on its own airport's runway (fuel 2, strength 4) is refuelled to 14 and healed to 5.");
-        make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit t = Put("AirTanker", a, 1, 0); t.refuelStock = 1; Put("Grunt", o, 5, 0); },
-             "A Fighter starting its turn beside an air tanker with 1 refuel left is refuelled (tanker 0); the next turn the tanker is empty and the fighter burns 3.");
+        make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit t = Put("AirTanker", a, 1, 0); t.supplies = 1; Put("Grunt", o, 5, 0); },
+             "A Fighter starting its turn beside an air tanker with 1 supply left is refuelled and resupplied (the tanker spends that supply: 0); the next turn the tanker is empty and the fighter burns 3.");
         make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
         make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
@@ -421,7 +421,7 @@ public static class Scenarios {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
              "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox, with campaignTransitTimeBox on; off by default) and leaves it alone for 6 turns (campaignGiveUpTurns 6; 0 by default). With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2) and, with nothing barring the objective by default (campaignGiveUpTurns 0), formed again at once.");
         make("rule-attacks-locomotion", "attacksLocomotion", (a, o) => { Put("Artillery", a, 0, 0); Put("Fighter", o, 2, 0); Put("Grunt", o, 2, 1); },
-             "Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can. With jets ticked (the default), the fighter can be attacked too.");
+             "Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion, read from the prefab): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can (boots ticked). With boots unticked too, the grunt cannot be attacked either.");
         make("ui-fuel-warning-tiles", "fuelWarning", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 10; Put("Grunt", o, 5, 0); },
              "A fighter at (0,0) with 10 fuel (1 a tile, 3 a turn in the air), Blue's airport at (-3,2). A move tile it could not get back to a building that refuels it from before running dry next turn is marked with the move warning (Unit.WouldDitchFrom): (3,0) is — 3 tiles flown and a turn's burn leave 4, and the airfield is further than that — (-2,1) is not, nor is the airport itself. With 3 fuel every tile is, but the airport.");
         make("ai-regroup-press-with-reserves", "aiRegroupPress", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
@@ -488,7 +488,7 @@ public static class Scenarios {
         makeFog("fog-ai-knowledge", "fogKnowledge", (a, o) => { Put("Tank", a, -2, 0); Put("Recon", a, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 2, -5); Put("Tank", o, 5, -2); },
              "The AI playing by the fog: thinking, it knows only what Blue sees — a hidden enemy is off the board (not in its read of the board, not targetable, not blocking) and one seen lately stands where it was last seen, unless that tile is in sight and empty; everything is put back afterwards. An ambush tile (out of the enemy's sight, in reach of an enemy) is worth something, an exposed one is not; a stop that brings unseen tiles into sight is worth more than one that does not. With fogFair off it knows everything.", "Human");
         makeFog("fog-ai-sigint", "fogSigint", (a, o) => { Put("Gunship Variant", a, -3, 0); Put("Grunt", a, -4, 2); Put("Recon", a, -1, 0); Put("Grunt", o, 1, 0); Put("Tank", o, 5, -4); },
-             "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a gunship ending its turn where that unit could reach it tonight (from anywhere it could have gone, not seen now) expects a loss, less the more moves it has had, and none once it has had more than sigintMoves; a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
+             "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a Blue grunt ending its turn where (a grunt does no damage to a gunship since main's airborne damage floor of 0) that unit could reach it tonight (from anywhere it could have gone, not seen now) expects a loss, less the more moves it has had, and none once it has had more than sigintMoves; a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
         makeFog("game-log-replay", "gameLogReplay", (a, o) => { Put("Grunt", a, -3, 0); Put("Tank", a, -4, 2); Put("Grunt", o, 3, 0); Put("Tank", o, 4, -2); },
              "Replaying a recorded game: three rounds of the AI against itself are recorded (game.log and a board for every turn), then replayed. The replay has a turn for every board saved, each with its round, its side and what the log says happened in it; it shows each board exactly as it was at the start of that turn, forward and back; nobody plays (every AI off, clicks on the board and the recording ignored); it can be seen as either side sees it (that side's fog) or with everything shown; closing it puts the fog as it was.", "Full");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
@@ -549,7 +549,7 @@ public static class Scenarios {
                  Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0);
                  Rig.At(3, -2).terrain = T("Bridge"); Rig.At(3, -2).road = true; Put("Grunt", a, 3, -2);
                  Rig.PlaceBuilding("City", a, -3, 2); Put("Grunt", a, -3, 2); Put("Supplies", a, -4, 3); },
-             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit ten times, becomes water: no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it earns, supplies and builds nothing until repaired. Water takes no damage.");
+             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit until it falls into what its data says (TerrainData.destroyedInto, down to a water terrain that takes no damage), leaves no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it earns, supplies and builds nothing until repaired. Water takes no damage.");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a runway beside a Blue airport does not capture the airport: the runway is a building of its own.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
@@ -652,8 +652,9 @@ public static class Scenarios {
                 Unit grunt = null;
                 foreach (Unit u in hq.buildable) if (u.name == "Grunt") grunt = u;
                 Unit made = Rig.bc.Produce(hq, grunt);
-                detail = made == null ? "nothing built" : "built " + made.name + " on " + Pos(made.tile) + ", active " + made.active + ", money " + a.money;
-                return made != null && made.tile == hq.tile && !made.active && a.money == 1000;
+                int price = grunt != null ? grunt.cost : 0;
+                detail = made == null ? "nothing built" : "built " + made.name + " (cost " + price + ") on " + Pos(made.tile) + ", active " + made.active + ", money " + a.money;
+                return made != null && made.tile == hq.tile && !made.active && a.money == 3000 - price;
             }
             case "service":
                 detail = "SKIP: obsolete file (aircraft no longer use supplies); replaced by attrition-rule-air-*; yours to delete";
@@ -937,12 +938,17 @@ public static class Scenarios {
             }
             case "attacksLocomotion": {
                 Unit art = Rig.At(0, 0).occupier, jet = Rig.At(2, 0).occupier, grunt = Rig.At(2, 1).occupier;
-                bool jetDefault = art.CanAttack(jet);
+                // The prefab's own checklist (main's Artillery leaves jets unticked); the check unticks jets itself whatever it says.
+                bool prefabJets = art.attacksLocomotion.Contains(Locomotion.Jet), prefabBoots = art.attacksLocomotion.Contains(Locomotion.Boots);
                 art.attacksLocomotion.Remove(Locomotion.Jet);
-                bool jetOff = art.CanAttack(jet), gruntOn = art.CanAttackFrom(art.tile, grunt), valid = art.validTarget(jet.tile);
+                bool jetOff = art.CanAttack(jet), valid = art.validTarget(jet.tile);
                 int dmg = Unit.calculateDamage(art, jet, jet.tile, 0);
-                detail = "jets ticked: " + jetDefault + "; unticked: fighter " + jetOff + " (damage " + dmg + ", valid target " + valid + "), grunt " + gruntOn;
-                return jetDefault && !jetOff && dmg == 0 && !valid && gruntOn;
+                bool gruntOn = art.CanAttackFrom(art.tile, grunt);
+                art.attacksLocomotion.Remove(Locomotion.Boots);
+                bool gruntOff = art.CanAttackFrom(art.tile, grunt);
+                int gruntDmg = Unit.calculateDamage(art, grunt, grunt.tile, 0);
+                detail = "prefab ticks jets " + prefabJets + ", boots " + prefabBoots + "; jets unticked: fighter " + jetOff + " (damage " + dmg + ", valid target " + valid + "); boots ticked: grunt " + gruntOn + "; boots unticked: grunt " + gruntOff + " (damage " + gruntDmg + ")";
+                return prefabBoots && !jetOff && dmg == 0 && !valid && gruntOn && !gruntOff && gruntDmg == 0;
             }
             case "fuelWarning": {
                 Unit f = Rig.At(0, 0).occupier;
@@ -1672,7 +1678,7 @@ public static class Scenarios {
                     if (!inList) continue;
                     System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(line, "^  - .*guid: ([0-9a-f]+)");
                     if (!g.Success) break;
-                    foreach (string meta in Directory.GetFiles(Path.Combine(root, "Tiles"), "*.asset.meta"))
+                    foreach (string meta in Directory.GetFiles(Path.Combine(root, "Tiles"), "*.asset.meta", SearchOption.AllDirectories))
                         if (File.ReadAllText(meta).Contains("guid: " + g.Groups[1].Value)) sceneTerrain.Add(Path.GetFileName(meta).Replace(".asset.meta", ""));
                 }
                 LevelEditor was = LevelEditor.singleton;
@@ -1916,14 +1922,14 @@ public static class Scenarios {
                 r.Add("not believed where it was " + notBelieved + ", known to be about " + phantom);
                 if (Environment.GetEnvironmentVariable("SIGDBG") != null) with(null, m => { if (m.sigint != null) foreach (string line in m.sigint.Describe()) r.Add(line); return 0f; });
                 Action<AIProfile> calm = c => { c.fogAggression = 1f; };
-                float nearLoss = with(calm, m => m.FogLoss(gun, near)), farLoss = with(calm, m => m.FogLoss(gun, far));
-                float inRisk = with(calm, m => m.ExpectedLoss(gun, near));
+                float nearLoss = with(calm, m => m.FogLoss(grunt, near)), farLoss = with(calm, m => m.FogLoss(grunt, far));
+                float inRisk = with(calm, m => m.ExpectedLoss(grunt, near));
                 FogOfWar.Turn += 2; FogOfWar.Refresh();
-                float later = with(calm, m => m.FogLoss(gun, near));
+                float later = with(calm, m => m.FogLoss(grunt, near));
                 FogOfWar.Turn += 2 * prof.sigintMoves; FogOfWar.Refresh();
-                float forgotten = with(calm, m => m.FogLoss(gun, near));
+                float forgotten = with(calm, m => m.FogLoss(grunt, near));
                 FogOfWar.Turn -= 2 + 2 * prof.sigintMoves; FogOfWar.Refresh();
-                r.Add(string.Format("gunship's loss to it next to where it may be {0:0.00}, a move later {1:0.00}, after {2} moves {3:0.00}; out of its reach {4:0.00}; in the risk priced {5}",
+                r.Add(string.Format("Blue grunt's loss to it next to where it may be {0:0.00}, a move later {1:0.00}, after {2} moves {3:0.00}; out of its reach {4:0.00}; in the risk priced {5}",
                     nearLoss, later, prof.sigintMoves + 2, forgotten, farLoss, inRisk >= nearLoss && nearLoss > 0f));
                 bool zones = nearLoss > 0f && later > 0f && later < nearLoss && forgotten == 0f && farLoss == 0f && inRisk >= nearLoss;
                 // Unknown ground (lost units left out: sigintMoves 0): Red's tank was never seen, nor the ground far east.
@@ -2046,9 +2052,11 @@ public static class Scenarios {
                 // The bridge falls with a grunt on it.
                 HexTile bridge = Rig.At(3, -2);
                 Unit onBridge = bridge.occupier;
-                for (int i = 0; i < 10; i++) bridge.RegisterCombat();
-                bool fell = bridge.terrain.name == "Water" && !bridge.road && bridge.occupier == null && onBridge.Strength <= 0 && !a.units.Contains(onBridge);
-                r.Add("bridge: " + bridge.terrain.name + ", road " + bridge.road + ", grunt lost " + (onBridge.Strength <= 0) + " " + fell);
+                // The bridge's own data says what it falls into (Bridge -> BridgeCollapsed -> Shallows on main): hit it until it is a terrain that takes no damage.
+                List<string> stagesSeen = new List<string> { bridge.terrain.name };
+                for (int i = 0; i < 40 && bridge.terrain.health > 0; i++) { bridge.RegisterCombat(); if (stagesSeen[stagesSeen.Count - 1] != bridge.terrain.name) stagesSeen.Add(bridge.terrain.name); }
+                bool fell = bridge.terrain.health == 0 && bridge.terrain.elevation < 0 && !bridge.road && bridge.occupier == null && onBridge.Strength <= 0 && !a.units.Contains(onBridge);
+                r.Add("bridge: " + string.Join(" -> ", stagesSeen.ToArray()) + ", road " + bridge.road + ", grunt lost " + (onBridge.Strength <= 0) + " " + fell);
                 // The city takes the hits; destroyed it stops working.
                 HexTile ct = Rig.At(-3, 2);
                 Building city = ct.building;
@@ -2066,8 +2074,9 @@ public static class Scenarios {
                 r.Add("city: ground untouched, destroyed " + destroyed + ", turn's income " + earned + " (the HQ's " + hqIncome + "), no supply or production " + stopped + "; repaired by 1: income " + earnedAgain + " " + back);
                 // Water takes nothing.
                 HexTile w = bridge;
+                TerrainData wasWater = w.terrain;
                 w.RegisterCombat();
-                bool water = w.terrain.name == "Water" && w.damage == 0;
+                bool water = w.terrain == wasWater && w.damage == 0;
                 r.Add("water takes no damage " + water);
                 detail = string.Join("; ", r.ToArray());
                 return parts && hit && badlands && undo && repaired && fell && stopped && back && water;
@@ -2142,9 +2151,10 @@ public static class Scenarios {
             }
             case "attritionTanker": {
                 Unit f = Rig.At(0, 0).occupier, t = Rig.At(1, 0).occupier;
+                t.supplies = 1;   // the scenario file does not keep a unit's supplies
                 endTurn(); endTurn();
-                string first = "fighter fuel " + f.fuel + ", tanker refuels left " + t.refuelStock;
-                bool ok1 = f.fuel == f.fuelMax && t.refuelStock == 0;
+                string first = "fighter fuel " + f.fuel + ", tanker supplies left " + t.supplies;
+                bool ok1 = f.fuel == f.fuelMax && t.supplies == 0;
                 endTurn(); endTurn();
                 detail = "after a turn " + first + "; after two fighter fuel " + f.fuel;
                 return ok1 && f.fuel == f.fuelMax - f.minFuelPerTurn;

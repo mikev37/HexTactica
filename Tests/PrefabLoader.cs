@@ -159,6 +159,12 @@ namespace HexTactica.Testing {
             }
             // Lists: the locomotion types a transport carries.
             u.carries = new List<Locomotion>(d.carries);
+            // What it can attack (Unit.attacksLocomotion), as the prefab ticks it; a prefab that never saved the field keeps the default (all).
+            string attacks;
+            if (unitFields.TryGetValue("attacksLocomotion", out attacks)) {
+                u.attacksLocomotion = new List<Locomotion>();
+                foreach (int v in PackedInts((attacks ?? "").Trim())) u.attacksLocomotion.Add((Locomotion)v);
+            }
             return u;
         }
 
@@ -315,7 +321,7 @@ namespace HexTactica.Testing {
 
         /// <summary>The asset in <paramref name="dir"/> whose meta carries <paramref name="guid"/> (name without extensions).</summary>
         static string AssetByGuid(string dir, string pattern, string guid) {
-            foreach (string meta in Directory.GetFiles(dir, pattern)) {
+            foreach (string meta in Directory.GetFiles(dir, pattern, SearchOption.AllDirectories)) {
                 if (File.ReadAllText(meta).Contains("guid: " + guid)) {
                     string n = Path.GetFileName(meta);
                     return n.Substring(0, n.IndexOf('.'));
