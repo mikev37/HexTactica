@@ -36,9 +36,9 @@ namespace HexTactica.AI {
         static AIKnowledge() {
             Unit.Died += u => {
                 if (u == null) return;
-                Death d = new Death { unit = u, owner = u.owner, cost = u.cost, strength = Mathf.Max(1, u.Strength), seenBy = new List<Player>() };
+                Death d = new Death { unit = u, owner = u.owner, cost = u.cost, strength = u.Strength > 0 ? u.Strength : 6, seenBy = new List<Player>() };
                 bool fog = GameController.gc != null && GameController.gc.fogOfWar;
-                if (GameController.gc != null) foreach (Player q in GameController.gc.players) if (q != null && q != u.owner && (!fog || (u.tile != null && FogOfWar.Sees(q, u)))) d.seenBy.Add(q);
+                if (GameController.gc != null) foreach (Player q in GameController.gc.players) if (q != null && q != u.owner && (!fog || (u.tile != null && (u.trasnporter != null ? u.trasnporter.tile != null && FogOfWar.SeesAt(q, u.trasnporter, u.trasnporter.tile) : FogOfWar.SeesAt(q, u, u.tile))))) d.seenBy.Add(q);
                 lock (deaths) deaths.Add(d);
             };
         }
