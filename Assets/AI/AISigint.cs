@@ -9,13 +9,17 @@ namespace HexTactica.AI {
     /// empty: gunships flew into an anti-air unit it had never seen, and a supply unit parked next
     /// to a wall of fog as if nothing could be in it.
     ///
-    ///   - Remembered units (sigint): an enemy unit seen before and not seen now is still about.
-    ///     After m enemy moves it can be on any tile it can stand on within m moves of where it was
-    ///     last seen (its movement points and step costs, ignoring who is in the way; tiles we see
-    ///     now excluded, since it would be seen there), and tonight it can fire on whatever is within its reach of those tiles. It
-    ///     is counted at its full damage against the unit in question, at the strength it was last
-    ///     seen with, times a confidence that falls with every move it has had (sigintDecay), shared
-    ///     among our units in its reach as a real enemy's attack is. Forgotten after sigintMoves.
+    ///   - Remembered units (sigint): an enemy unit seen before and not seen now is still about, until
+    ///     we see it die — it does not fade with time. After m enemy moves it is on one of the tiles it
+    ///     can stand on within m moves of where it was last seen (its movement points and step costs,
+    ///     ignoring who is in the way; tiles we see now excluded, since it would be seen there), any of
+    ///     them alike. A tile it could fire on tonight from a share of those places is threatened with
+    ///     that share of its damage: a move after it was seen the places are few and the estimate sharp;
+    ///     the longer it is unseen, the more places, and the thinner its threat on any one tile. Its
+    ///     damage is its own kind's against the unit in question (what it can attack, what it does to
+    ///     it), at the strength it was last seen with, shared among our units in its reach as a real
+    ///     enemy's attack is. The cost of a stop is that strength times the unit's worth, so an
+    ///     expensive unit (a bomber) needs much more to go where a cheap one (a conscript) would.
     ///   - Unknown ground: a tile never seen, or not seen for fogUnknownTurns turns, may hide
     ///     anything the enemy has been seen to field (or, before anything has been seen, what we
     ///     field). A stop costs the average damage of those kinds, times the share of the ground
@@ -29,9 +33,12 @@ namespace HexTactica.AI {
 
         sealed class Zone {
             public FogOfWar.Phantom phantom;
+            /// <summary>The highest share of its places from which it could fire on a tile (for Presence and diagnostics).</summary>
             public float weight;
             /// <summary>Tiles it could stand on, and the tiles it could fire on tonight.</summary>
             public HashSet<HexTile> positions, fire;
+            /// <summary>For each tile it could fire on tonight: the share of its places from which it could.</summary>
+            public Dictionary<HexTile, float> share;
             /// <summary>Our units already standing in its reach (its one attack is shared among them).</summary>
             public int exposed;
         }
@@ -61,15 +68,23 @@ namespace HexTactica.AI {
 
         void BuildZones(FogOfWar.Knowledge k, AIMap map) {
             foreach (FogOfWar.Phantom ph in k.phantoms) {
-                if (ph.kind == null || ph.last == null || ph.moves > profile.sigintMoves) continue;
+                if (ph.kind == null || ph.last == null) continue;
                 if (ph.kind.firepower <= 0) continue;
-                float w = Mathf.Pow(Mathf.Clamp01(profile.sigintDecay), ph.moves - 1);
-                if (w < 0.02f) continue;
-                HashSet<HexTile> pos = Spread(ph.last, ph.moves * Mathf.Max(0, ph.kind.moveRange), ph.kind, k.visibleTiles);
-                if (pos.Count == 0) continue;
+                HashSet<HexTile> pos = Spread(ph.last, Mathf.Max(1, ph.moves) * Mathf.Max(0, ph.kind.moveRange), ph.kind, k.visibleTiles);
+                if (pos.Count == 0) continue;   // nowhere unseen it could be: it is not about
                 int reach = (ph.kind.moveAndAttack ? ph.kind.moveRange : 0) + Mathf.Max(0, ph.kind.attackRange);
-                HashSet<HexTile> fire = Grow(pos, reach);
-                Zone z = new Zone { phantom = ph, weight = w, positions = pos, fire = fire };
+                // From how many of its places it could fire on each tile tonight.
+                Dictionary<HexTile, int> count = new Dictionary<HexTile, int>();
+                foreach (HexTile r in pos)
+                    foreach (HexTile t in AIPath.TilesInRangeShared(r, 0, reach)) {
+                        if (t == null) continue;
+                        int c; count.TryGetValue(t, out c); count[t] = c + 1;
+                    }
+                Dictionary<HexTile, float> share = new Dictionary<HexTile, float>(count.Count);
+                float most = 0f;
+                foreach (KeyValuePair<HexTile, int> kv in count) { float f = kv.Value / (float)pos.Count; share[kv.Key] = f; if (f > most) most = f; }
+                HashSet<HexTile> fire = new HashSet<HexTile>(count.Keys);
+                Zone z = new Zone { phantom = ph, weight = most, positions = pos, fire = fire, share = share };
                 foreach (Unit u in map.ownUnits)
                     if (u != null && u.tile != null && u.trasnporter == null && fire.Contains(u.tile)) z.exposed++;
                 zones.Add(z);
@@ -161,9 +176,10 @@ namespace HexTactica.AI {
                 foreach (Zone z in list) {
                     int dmg = Mathf.Min(u.Strength, z.phantom.kind.Damage(z.phantom.strength, u, at));
                     if (dmg <= 0) continue;
+                    float f; if (!z.share.TryGetValue(at, out f) || f <= 0f) continue;
                     bool inAlready = u.tile != null && u.trasnporter == null && z.fire.Contains(u.tile);
                     int sharers = z.exposed + (inAlready ? 0 : 1);
-                    loss += dmg * z.weight / Mathf.Max(1, sharers);
+                    loss += dmg * f / Mathf.Max(1, sharers);
                 }
             }
             if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && profile.fogAggression < 1f) {
@@ -199,7 +215,8 @@ namespace HexTactica.AI {
         /// <summary>Could an enemy we have lost track of be standing on <paramref name="t"/>? (Its confidence, the highest.)</summary>
         public float Presence(HexTile t) {
             float best = 0f;
-            foreach (Zone z in zones) if (z.weight > best && z.positions.Contains(t)) best = z.weight;
+            // The share of a lost unit's places that is this tile, the highest of them.
+            foreach (Zone z in zones) if (z.positions.Contains(t)) best = Mathf.Max(best, 1f / z.positions.Count);
             if (best <= 0f && unknown.Contains(t)) best = 1f - Mathf.Clamp01(profile.fogAggression);
             return best;
         }
@@ -207,7 +224,7 @@ namespace HexTactica.AI {
         /// <summary>For diagnostics: one line per remembered unit and the unknown ground.</summary>
         public IEnumerable<string> Describe() {
             foreach (Zone z in zones)
-                yield return string.Format("{0} last seen ({1},{2}) str {3}, {4} moves ago: weight {5:0.00}, {6} tiles to hide on, fires on {7}, {8} of ours exposed",
+                yield return string.Format("{0} last seen ({1},{2}) str {3}, {4} moves ago: at most {5:0.00} of its places reach a tile, {6} tiles to hide on, fires on {7}, {8} of ours exposed",
                     z.phantom.kind.name, z.phantom.last.x, z.phantom.last.y, z.phantom.strength, z.phantom.moves, z.weight, z.positions.Count, z.fire.Count, z.exposed);
             yield return string.Format("unknown ground: {0} tiles, {1} kinds, reach {2}", unknown.Count, kinds.Count, unknownReach);
         }

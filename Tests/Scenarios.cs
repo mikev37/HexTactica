@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using HexTactica.AI;
 using HexTactica.Harness;
@@ -372,6 +373,8 @@ public static class Scenarios {
                  Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
                  Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
              "The ai-campaign-objectives board, spread (objectiveSpread 1): the campaign is planned, then all but one of Blue's supply units are lost and it is planned again from the first plan. The objectives it holds never need more supply units, beyond those they have, than we have free: those least by priority are given up until they fit (AICampaign.Allocate).");
+        make("profile-asset-matches-code", "profileAsset", (a, o) => { Put("Grunt", o, 4, 0); },
+             "The game's AI profile (Assets/AI/TestProfile.asset) has every setting the code has, at the code's default, but campaign on: what is tested is what is played.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -501,7 +504,9 @@ public static class Scenarios {
         makeFog("fog-ai-knowledge", "fogKnowledge", (a, o) => { Put("Tank", a, -2, 0); Put("Recon", a, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 2, -5); Put("Tank", o, 5, -2); },
              "The AI playing by the fog: thinking, it knows only what Blue sees — a hidden enemy is off the board (not in its read of the board, not targetable, not blocking) and one seen lately stands where it was last seen, unless that tile is in sight and empty; everything is put back afterwards. An ambush tile (out of the enemy's sight, in reach of an enemy) is worth something, an exposed one is not; a stop that brings unseen tiles into sight is worth more than one that does not. With fogFair off it knows everything.", "Human");
         makeFog("fog-ai-sigint", "fogSigint", (a, o) => { Put("Gunship Variant", a, -3, 0); Put("Grunt", a, -4, 2); Put("Recon", a, -1, 0); Put("Grunt", o, 1, 0); Put("Tank", o, 5, -4); },
-             "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a Blue grunt ending its turn where (a grunt does no damage to a gunship since main's airborne damage floor of 0) that unit could reach it tonight (from anywhere it could have gone, not seen now) expects a loss, less the more moves it has had, and none once it has had more than sigintMoves; a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
+             "What the fog may hide (fogThreat): Blue saw a Red grunt, which then went out of sight, and its last tile has been seen empty since. It is not believed there any more, but it is still about: a Blue grunt ending its turn where (a grunt does no damage to a gunship since main's airborne damage floor of 0) that unit could reach it tonight expects the share of its damage from the share of the places it could be (unseen) from which it could; less the more moves it has had, but never nothing (it is not forgotten); a tile out of its reach expects nothing from it. Ground not seen lately may hide any kind of unit the enemy has been seen to field: priced by fogAggression (0: in full, 1: not at all), more next to more unknown ground. A scouting stop that would look where the lost unit may be is worth more. The damage priced is the game's own (Unit.calculateDamage) for every pair of kinds on the board. With fogThreat off there is nothing.", "Human");
+        makeFog("fog-ai-risk-by-price", "fogPrice", (a, o) => { Put("Bomber", a, -3, 0); Put("Conscript", a, -4, 2); Put("Recon", a, -1, 0); Put("Gunner Anti Air", o, 1, 0); Put("Grunt", o, 1, 2); Put("Tank", o, 5, -4); },
+             "Blue saw a Red anti-air gunner and a Red grunt, then lost both (their tiles seen empty since). The fog risk of a stop is the strength each lost unit could take there (its own damage against the unit in question, by the share of its places from which it reaches) times the unit's worth: next to where they may be, a bomber's risk comes only from the anti-air gunner (a grunt cannot hit it), and a bomber's risk in gold is many times a conscript's for the same tile.", "Human");
         makeFog("game-log-replay", "gameLogReplay", (a, o) => { Put("Grunt", a, -3, 0); Put("Tank", a, -4, 2); Put("Grunt", o, 3, 0); Put("Tank", o, 4, -2); },
              "Replaying a recorded game: three rounds of the AI against itself are recorded (game.log and a board for every turn), then replayed. The replay has a turn for every board saved, each with its round, its side and what the log says happened in it; it shows each board exactly as it was at the start of that turn, forward and back; nobody plays (every AI off, clicks on the board and the recording ignored); it can be seen as either side sees it (that side's fog) or with everything shown; closing it puts the fog as it was.", "Full");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
@@ -1096,6 +1101,21 @@ public static class Scenarios {
                 Func<AICampaign, string> list = c => string.Join(", ", c.objectives.ConvertAll(x => x.Id + " " + x.hubs.Count + "/" + x.needHubs).ToArray());
                 detail = "first plan: " + list(first) + " (supply owed/free " + before + ", needs " + needBefore + "); with one supply unit left: " + list(second) + " (owed/free " + after + ")" + (gaveUp.Count > 0 ? "; " + string.Join("; ", gaveUp.ToArray()) : "; none given up");
                 return fits;
+            }
+            case "profileAsset": {
+                Dictionary<string, string> asset = ProfileAsset();
+                AIProfile def = ScriptableObject.CreateInstance<AIProfile>();
+                List<string> missing = new List<string>(), differ = new List<string>();
+                foreach (System.Reflection.FieldInfo fi in typeof(AIProfile).GetFields()) {
+                    if (fi.IsStatic || (fi.FieldType != typeof(bool) && fi.FieldType != typeof(int) && fi.FieldType != typeof(float))) continue;
+                    string v;
+                    if (!asset.TryGetValue(fi.Name, out v)) { missing.Add(fi.Name); continue; }
+                    double want = fi.FieldType == typeof(bool) ? ((bool)fi.GetValue(def) ? 1 : 0) : Convert.ToDouble(fi.GetValue(def));
+                    if (fi.Name == "campaign") want = 1;
+                    double have; if (!double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out have) || Math.Abs(have - want) > 1e-4) differ.Add(fi.Name + " " + v + " (code " + want + ")");
+                }
+                detail = asset.Count + " settings in the asset; missing " + missing.Count + (missing.Count > 0 ? " (" + string.Join(", ", missing.ToArray()) + ")" : "") + "; differing " + differ.Count + (differ.Count > 0 ? " (" + string.Join(", ", differ.ToArray()) + ")" : "");
+                return missing.Count == 0 && differ.Count == 0;
             }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
@@ -2007,15 +2027,18 @@ public static class Scenarios {
                 FogOfWar.Turn -= 2 + 2 * prof.sigintMoves; FogOfWar.Refresh();
                 r.Add(string.Format("Blue grunt's loss to it next to where it may be {0:0.00}, a move later {1:0.00}, after {2} moves {3:0.00}; out of its reach {4:0.00}; in the risk priced {5}",
                     nearLoss, later, prof.sigintMoves + 2, forgotten, farLoss, inRisk >= nearLoss && nearLoss > 0f));
-                bool zones = nearLoss > 0f && later > 0f && later < nearLoss && forgotten == 0f && farLoss == 0f && inRisk >= nearLoss;
-                // Unknown ground (lost units left out: sigintMoves 0): Red's tank was never seen, nor the ground far east.
+                // Not forgotten: spread thinner over more places the longer it is unseen, never to nothing.
+                bool zones = nearLoss > 0f && later > 0f && later < nearLoss && forgotten > 0f && forgotten <= later && farLoss == 0f && inRisk >= nearLoss;
+                // Unknown ground (what it adds over the lost unit, fogAggression 1): Red's tank was never seen, nor the ground far east.
                 HexTile edge = Rig.At(2, 3), home = Rig.At(-6, 1);
-                float u0 = with(c => { c.fogAggression = 0f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, edge));
-                float uHalf = with(c => { c.fogAggression = 0.5f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, edge));
-                float u1 = with(c => { c.fogAggression = 1f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, edge));
-                float uHome = with(c => { c.fogAggression = 0f; c.sigintMoves = 0; }, m => m.FogLoss(grunt, home));
+                float uBase = with(c => { c.fogAggression = 1f; }, m => m.FogLoss(grunt, edge));
+                float u0 = with(c => { c.fogAggression = 0f; }, m => m.FogLoss(grunt, edge)) - uBase;
+                float uHalf = with(c => { c.fogAggression = 0.5f; }, m => m.FogLoss(grunt, edge)) - uBase;
+                float u1 = 0f;
+                float uHome = with(c => { c.fogAggression = 0f; }, m => m.FogLoss(grunt, home)) - with(c => { c.fogAggression = 1f; }, m => m.FogLoss(grunt, home));
                 r.Add(string.Format("grunt by unknown ground: fogAggression 0 {0:0.00}, 0.5 {1:0.00}, 1 {2:0.00}; at home {3:0.00}", u0, uHalf, u1, uHome));
-                bool unknown = u0 > 0f && Mathf.Abs(uHalf - u0 / 2f) < 0.01f + u0 * 0.01f && u1 == 0f && uHome < u0;
+                // (Capped at the grunt's strength, so the half is checked only below the cap.)
+                bool unknown = u0 > 0f && uHalf > 0f && uHalf <= u0 && (u0 + uBase >= grunt.Strength || Mathf.Abs(uHalf - u0 / 2f) < 0.01f + u0 * 0.01f) && uHome < u0;
                 // Scouting where it may be.
                 float scoutWith = with(c => { c.fogAggression = 1f; }, m => HexTactica.AI.AIFog.ScoutValue(recon, Rig.At(1, 1), m.profile, m));
                 float scoutWithout = with(c => { c.fogAggression = 1f; c.scoutThreatBonus = 0f; }, m => HexTactica.AI.AIFog.ScoutValue(recon, Rig.At(1, 1), m.profile, m));
@@ -2033,6 +2056,28 @@ public static class Scenarios {
                 r.Add("fogThreat off: nothing " + (off == 0f));
                 detail = string.Join("; ", r.ToArray());
                 return saw && lost && phantom && notBelieved && zones && unknown && scout && wrong == 0 && pairs > 0 && off == 0f;
+            }
+            case "fogPrice": {
+                PinVision();
+                Unit bomber = Rig.At(-3, 0).occupier, conscript = Rig.At(-4, 2).occupier, aaU = Rig.At(1, 0).occupier, gr = Rig.At(1, 2).occupier;
+                AIProfile prof = a.GetComponent<AIPlayer>().Profile;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                bool saw = FogOfWar.Sees(a, aaU) && FogOfWar.Sees(a, gr);
+                aaU.TeleportTo(Rig.At(4, 1), 0); gr.TeleportTo(Rig.At(4, 3), 0);
+                FogOfWar.Turn += 2; FogOfWar.Changed(); FogOfWar.Refresh();
+                bool lost = !FogOfWar.Sees(a, aaU) && !FogOfWar.Sees(a, gr);
+                HexTile near = Rig.At(2, 1);
+                float bLoss = 0f, cLoss = 0f, bGold = 0f, cGold = 0f, bFromGrunt = 0f; List<string> lines = new List<string>();
+                BoardView v = FogOfWar.Conceal(a, true, prof.fogMemoryTurns);
+                using (v != null ? v.Enter() : null) if (v != null) {
+                    HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, prof);
+                    bLoss = m.FogLoss(bomber, near); cLoss = m.FogLoss(conscript, near);
+                    bGold = HexTactica.AI.AIFog.FogRisk(bomber, near, m, prof); cGold = HexTactica.AI.AIFog.FogRisk(conscript, near, m, prof);
+                    if (m.sigint != null) foreach (string line in m.sigint.Describe()) lines.Add(line);
+                }
+                bFromGrunt = FogOfWar.Kind.Of(gr).Damage(gr.Strength, bomber, near);
+                detail = "saw both " + saw + ", lost both " + lost + "; at " + Pos(near) + ": bomber " + bLoss.ToString("0.##") + " strength (" + bGold.ToString("0") + " gold), conscript " + cLoss.ToString("0.##") + " strength (" + cGold.ToString("0") + " gold); a grunt's damage to a bomber " + bFromGrunt + "; " + string.Join("; ", lines.ToArray());
+                return saw && lost && bLoss > 0f && bFromGrunt == 0f && bGold > 3f * Mathf.Max(1f, cGold);
             }
             case "gameLogReplay": {
                 List<string> r = new List<string>();
@@ -3182,7 +3227,8 @@ public static class Scenarios {
     /// action), timed, per side and turn, with the slowest steps and what they did.
     /// </summary>
     public static void Perf(string path, int rounds, Action<AIProfile> tweak) {
-        ScenarioFile.Loaded l = ScenarioFile.Load(path, "Full", tweak, tweak);
+        Action<AIProfile> both = pr => { ApplyProfileAsset(pr); if (tweak != null) tweak(pr); };
+        ScenarioFile.Loaded l = ScenarioFile.Load(path, "Full", both, both);
         GameController gc = Rig.gc;
         AIPerf.Enabled = Environment.GetEnvironmentVariable("SECTIONS") != null;
         AIPerf.CallerDepth = int.Parse(Environment.GetEnvironmentVariable("PERFCALLERS") ?? "0");
@@ -3786,6 +3832,30 @@ public static class Scenarios {
     /// fighting unit is, the share of the land it supplies, where its supply units are; and the round
     /// the HQ falls. Does it get its supply to the enemy HQ, and how fast?
     /// </summary>
+    /// <summary>The values in Assets/AI/TestProfile.asset (the profile the game's scene uses) onto <paramref name="p"/>.</summary>
+    public static void ApplyProfileAsset(AIProfile p) {
+        foreach (KeyValuePair<string, string> kv in ProfileAsset()) {
+            System.Reflection.FieldInfo fi = typeof(AIProfile).GetField(kv.Key);
+            if (fi == null || fi.IsStatic) continue;
+            try {
+                if (fi.FieldType == typeof(bool)) fi.SetValue(p, kv.Value.Trim() == "1");
+                else if (fi.FieldType == typeof(int)) fi.SetValue(p, int.Parse(kv.Value, System.Globalization.CultureInfo.InvariantCulture));
+                else if (fi.FieldType == typeof(float)) fi.SetValue(p, float.Parse(kv.Value, System.Globalization.CultureInfo.InvariantCulture));
+            } catch (FormatException) { }
+        }
+    }
+
+    static Dictionary<string, string> ProfileAsset() {
+        Dictionary<string, string> d = new Dictionary<string, string>();
+        string path = Path.Combine(PrefabLoader.AssetsRoot, "AI", "TestProfile.asset");
+        if (!File.Exists(path)) return d;
+        foreach (string line in File.ReadAllLines(path)) {
+            Match m = Regex.Match(line, @"^  (\w+):\s*(.*)$");
+            if (m.Success) d[m.Groups[1].Value] = m.Groups[2].Value.Trim();
+        }
+        return d;
+    }
+
     public static void Unopposed(string file, Action<AIProfile> tweak, int rounds) {
         // Standard rules (under attrition a side with no fighting units is out at once), no purchases.
         if (Environment.GetEnvironmentVariable("RULES") == null) Environment.SetEnvironmentVariable("RULES", "standard");
@@ -3794,7 +3864,10 @@ public static class Scenarios {
         // kind removed (half) or all of them (full). Unset: Red has no units and does nothing (unopposed).
         string enemy = Environment.GetEnvironmentVariable("ENEMY");
         bool opposed = enemy == "half" || enemy == "full";
-        ScenarioFile.Loaded l = opposed ? ScenarioFile.Load(Find(file), "Full", tweak, null) : ScenarioFile.Load(Find(file), "Human", tweak);
+        // Both sides play the game's profile (Assets/AI/TestProfile.asset, the campaign AI), Blue with SET's changes on top.
+        Action<AIProfile> blueProfile = pr => { ApplyProfileAsset(pr); if (tweak != null) tweak(pr); };
+        ScenarioFile.Loaded l = opposed ? ScenarioFile.Load(Find(file), "Full", blueProfile, ApplyProfileAsset) : ScenarioFile.Load(Find(file), "Human", blueProfile);
+        if (opposed) Console.WriteLine("both sides: TestProfile.asset (campaign " + l.other.GetComponent<AIPlayer>().Profile.campaign + "), Blue with SET on top");
         Rig.gc.fogOfWar = (Environment.GetEnvironmentVariable("FOG") ?? "off") == "on"; FogOfWar.Reset();
         if (!opposed) { foreach (Unit u in new List<Unit>(l.other.units)) if (u != null) u.Perish(); }
         else if (enemy == "half") {

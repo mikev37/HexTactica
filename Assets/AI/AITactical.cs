@@ -144,6 +144,13 @@ namespace HexTactica.AI {
             public float rest;
             public float hqThreat;
             public AIWorld.Outcome world;
+            /// <summary>The terms added to the world score after the forecast (logged with it: ByWorld).</summary>
+            public System.Text.StringBuilder extras;
+            public void Extra(string name, float v) {
+                if (v == 0f) return;
+                if (extras == null) extras = new System.Text.StringBuilder();
+                extras.Append(' ').Append(name).Append(' ').Append(v >= 0f ? "+" : "").Append(v.ToString("0"));
+            }
         }
 
         /// <summary>
@@ -447,23 +454,26 @@ namespace HexTactica.AI {
             float bestWorld = float.NegativeInfinity;
             foreach (Option o in options) {
                 o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
+                o.extras = null;
+                float x;
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
                 // Runways and docks are kept clear for the aircraft and ships that land there.
-                o.world.score -= AIAir.RunwayBlockCost(unit, o.stop, map);
+                x = -AIAir.RunwayBlockCost(unit, o.stop, map); o.world.score += x; o.Extra("runway", x);
                 // Fog of war (played by): seeing from there, and not being seen there.
-                o.world.score += AIFog.StopValue(unit, o.stop, map, profile);
+                x = AIFog.StopValue(unit, o.stop, map, profile); o.world.score += x; o.Extra("sight", x);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
-                o.world.score -= AIFog.FogRisk(unit, o.stop, map, profile);
+                x = -AIFog.FogRisk(unit, o.stop, map, profile); o.world.score += x;
+                if (x != 0f) o.Extra("fog(" + map.FogLoss(unit, o.stop).ToString("0.##") + " str)", x);
                 // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal — and,
                 // on a campaign front, what starving on the way back to supply would cost, on the same
                 // scale (otherwise only a tie-break, and the lean always won).
-                o.world.score += CampaignStep(unit, o.stop, map, profile) * worth;
+                x = CampaignStep(unit, o.stop, map, profile) * worth; o.world.score += x; o.Extra("campaign", x);
                 // Starving (every unit): the strength it would lose before it got back to supply, on the scale
                 // the rest of the world is scored on (otherwise only a tie-break: a grunt sat out of supply
                 // and lost a point a turn).
-                if (profile.worldStarvation) o.world.score -= AIScore.StrandingCost(unit, o.stop, 0, map);
+                if (profile.worldStarvation) { x = -AIScore.StrandingCost(unit, o.stop, 0, map); o.world.score += x; o.Extra("starve", x); }
                 if (context.front != null && context.front.campaign) {
-                    if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) o.world.score -= AIScore.OutOfSupplyCost(unit, o.stop, map);
+                    if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) { x = -AIScore.OutOfSupplyCost(unit, o.stop, map); o.world.score += x; o.Extra("outOfSupply", x); }
                 }
             }
             // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
@@ -475,8 +485,11 @@ namespace HexTactica.AI {
                 // (Not the enemy HQ: taking it ends the game.)
                 foreach (Option o in options) {
                     float other = o.world.buildings - Mathf.Max(0f, o.world.buildingsHQ);
-                    if (!o.shot.valid && other > 0f && o.world.score >= bestShot)
+                    if (!o.shot.valid && other > 0f && o.world.score >= bestShot) {
+                        float was = o.world.score;
                         o.world.score = Mathf.Max(o.world.score - other, bestShot - Mathf.Max(profile.worldTieMin, profile.worldTie * worth) - 1f);
+                        o.Extra("fightFirst", o.world.score - was);
+                    }
                 }
             }
             foreach (Option o in options) bestWorld = Mathf.Max(bestWorld, o.world.score);
@@ -526,10 +539,11 @@ namespace HexTactica.AI {
                     sb.Append("\n      ").Append(o == best ? "> " : kept.Contains(o) ? "  " : "x ").Append(D(o.stop))
                       .Append(o.shot.valid ? " hit " + o.shot.target.name + D(o.shot.target.tile) + " " + o.shot.outcome.damageToDefender + "/" + o.shot.outcome.damageToAttacker : " no shot")
                       .Append(" world ").Append(o.world.Summary());
+                    if (o.extras != null) sb.Append(" | after forecast:").Append(o.extras);
                     if (kept.Contains(o)) sb.Append(" | deny ").Append(o.denial.gold.ToString("0")).Append(" pos ").Append(float.IsNegativeInfinity(o.positional) ? "-" : o.positional.ToString("0"));
                 }
                 if (best != null && !shown.GetRange(0, Mathf.Min(5, shown.Count)).Contains(best))
-                    sb.Append("\n      > ").Append(D(best.stop)).Append(" world ").Append(best.world.Summary()).Append(" | pos ").Append(best.rest.ToString("0"));
+                    sb.Append("\n      > ").Append(D(best.stop)).Append(" world ").Append(best.world.Summary()).Append(best.extras != null ? " | after forecast:" + best.extras : "").Append(" | pos ").Append(best.rest.ToString("0"));
                 DecisionLog(sb.ToString());
             }
 
