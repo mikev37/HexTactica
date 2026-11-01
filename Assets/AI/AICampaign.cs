@@ -1372,6 +1372,11 @@ namespace HexTactica.AI {
                     }
                 if (rally != null) {
                     Front r = new Front { center = rally, objectiveTile = rally, priority = 0.5f };
+                    // Released onto a building to take (all out, the enemy HQ): it is that building, so the rules for
+                    // units that cannot take it hold (CampaignStep, the objective's pull: beside it, not on it). (Aimed
+                    // at the HQ's tile as a bare tile, the released gunships were pulled onto it and stood there while
+                    // the grunt that would have taken it walked back to supply.)
+                    if (pressed != null && released != null && rally == pressed.objectiveTile && pressed.objective != null) { r.objective = pressed.objective; r.objectiveIsHQ = pressed.objectiveIsHQ; r.objectiveValue = pressed.objectiveValue; }
                     r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
                     r.reserve = true;
                     r.assigned.AddRange(calm);
