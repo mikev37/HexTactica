@@ -452,8 +452,15 @@ namespace HexTactica.AI {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = map.replyCache;
             float bestWorld = float.NegativeInfinity;
+            // Every option's forecast, at once on worker threads (profile.parallelForecast, AIParallel): each is
+            // independent of the others, and each lands on its own option.
+            bool narrate = DecisionLog != null;
+            if (profile.parallelForecast) {
+                map.TheaterOf(unit);
+                AIParallel.For(options.Count, i => options[i].world = AIWorld.Evaluate(unit, options[i].stop, options[i].shot, map, cache, narrate, true));
+            }
             foreach (Option o in options) {
-                o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
+                if (!profile.parallelForecast) o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, narrate, true);
                 o.extras = null;
                 float x;
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
@@ -465,7 +472,7 @@ namespace HexTactica.AI {
                 x = AIFog.StopValue(unit, o.stop, map, profile); o.world.score += x; o.Extra("sight", x);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
                 x = -AIFog.FogRisk(unit, o.stop, map, profile); o.world.score += x;
-                if (x != 0f) o.Extra("fog(" + map.FogLoss(unit, o.stop).ToString("0.##") + " str)", x);
+                if (x != 0f) o.Extra("fog(" + map.MoveFogLoss(unit, o.stop).ToString("0.##") + " str)", x);
                 // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal — and,
                 // on a campaign front, what starving on the way back to supply would cost, on the same
                 // scale (otherwise only a tie-break, and the lean always won).

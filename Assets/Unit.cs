@@ -845,7 +845,7 @@ public class Unit : MonoBehaviour
 
     internal void updateThreat() {
         int valueGain = 0;
-        List<HexTile> moves = tile.ReachableThisTurn(this);
+        List<HexTile> moves = ThreatReach.Of(this);
         if (moveAndAttack) {
             HashSet<HexTile> tiles = new HashSet<HexTile>();
             

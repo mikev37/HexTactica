@@ -134,7 +134,7 @@ public class AIPlayer : MonoBehaviour {
         if (GameController.gc.gameOver) return;
         if (LevelEditor.singleton != null &&
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
-        if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; Abandon(); return; }
+        if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; Abandon(); MaybeSpeculate(); return; }
 
         // A thought under way: act on it once it is ready (the frame is free meanwhile).
         if (thinking != null) {
@@ -472,18 +472,99 @@ public class AIPlayer : MonoBehaviour {
         return v;
     }
 
+    // ------------------------------------------------------------------ speculation
+
+    /// <summary>
+    /// Speculation (profile.speculate): while the opponent plays, once it has moved most of its units
+    /// (speculateAfterShare) and the board has stood still a moment (speculateQuietFrames), the AI reads the board as it
+    /// stands on a worker thread at low priority and warms its map's caches (every enemy's reach, every unit's move field
+    /// and space, the supply networks). Its turn's map takes them over and keeps only what still stands once its turn
+    /// has started (AIMapCache: the same answers as working everything out then). The real board is never written; the
+    /// main thread only copies the board (as a thought does, well under a millisecond); a speculation still running when
+    /// the turn comes is dropped, nothing waits for it; a newer still board starts a newer one.
+    /// </summary>
+    void MaybeSpeculate() {
+        if (!Profile.speculate || !Profile.keepCaches) return;
+        GameController gc = GameController.gc;
+        Player opponent = gc != null ? gc.activePlayer : null;
+        if (opponent == null || opponent == player) return;
+        // The board as it stands: if anything moved, wait for it to be still.
+        long mark = 17; int units = 0, acted = 0;
+        foreach (Unit u in UnitController.uc.units) {
+            if (u == null || u.Strength <= 0) continue;
+            mark = mark * 31 + ((u.tile != null ? u.tile.GetHashCode() : 7) ^ (u.Strength * 131));
+            if (u.owner == opponent && u.tile != null) { units++; if (!u.active) acted++; }
+        }
+        if (mark != stillMark) { stillMark = mark; stillSince = Time.frameCount; return; }
+        if (Time.frameCount - stillSince < Profile.speculateQuietFrames) return;
+        if (units > 0 && acted < Profile.speculateAfterShare * units) return;
+        if (speculating != null && !speculating.IsCompleted) return;
+        if (speculatedMark == mark) return;
+        StartSpeculation(mark, false);
+    }
+
+    void StartSpeculation(long mark, bool inLine) {
+        BoardView v = NewView();
+        AIMap carry = map;
+        int generation = ++speculationGeneration;
+        Action work = () => {
+            using (v.Enter()) {
+                AIMap m = new AIMap(player, Profile, carry, true);
+                m.Warm();
+                lock (speculationLock) if (generation == speculationGeneration) { speculation = m; speculatedMark = mark; }
+            }
+        };
+        if (inLine) { work(); return; }
+        speculating = Task.Run(() => {
+            System.Threading.Thread t = System.Threading.Thread.CurrentThread;
+            System.Threading.ThreadPriority was = t.Priority;
+            try { t.Priority = System.Threading.ThreadPriority.BelowNormal; work(); }
+            catch (Exception e) { UnityEngine.Debug.LogWarning("AI speculation dropped: " + e.Message); }
+            finally { t.Priority = was; }
+        });
+    }
+
+    /// <summary>The finished speculation for this turn, if any (taken once); one still running is dropped.</summary>
+    AIMap TakeSpeculation() {
+        lock (speculationLock) {
+            AIMap m = speculation;
+            speculation = null;
+            speculationGeneration++;   // a speculation still running finds itself out of date and is not kept
+            speculatedMark = 0;
+            if (m != null) speculationsUsed++;
+            return m;
+        }
+    }
+
+    /// <summary>Harness: speculate now, in line, on the board as it stands (the opponent's turn is ending).</summary>
+    public void SpeculateNow() { if (Profile.speculate && Profile.keepCaches) StartSpeculation(1, true); }
+
+    readonly object speculationLock = new object();
+    AIMap speculation;
+    Task speculating;
+    int speculationGeneration, stillSince;
+    long stillMark, speculatedMark;
+    /// <summary>For the harness: speculations taken over by a turn.</summary>
+    public static int speculationsUsed;
+
     void PrepareTurnOnBoard() {
         { long __p = AIPerf.Begin();
-        map = new AIMap(player, Profile);
+        map = new AIMap(player, Profile, TakeSpeculation() ?? map);
         AIPerf.End("prepare: board read (AIMap)", __p); }
         // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
         if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);
         // How well we know the enemy, and how bold that lets us be (AIProfile.campaignKnowledge).
-        if (Profile.campaign && Profile.campaignKnowledge) {
+        bool knows = Profile.campaign && Profile.campaignKnowledge;
+        if (knows || Profile.fogUncertainty) {
             knowledge.Update(map, Profile);
-            map.knowledge = knowledge;
-            if (Trace != null) Trace("   " + knowledge);
+            if (knows) map.knowledge = knowledge;
+            // How much of the enemy we cannot place: the fog's unknown ground is feared by that share (AISigint).
+            if (Profile.fogUncertainty) map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
+            if (Trace != null) Trace("   " + knowledge + (Profile.fogUncertainty ? "; unknown ground feared at " + map.fogUncertainty.ToString("0.00") : ""));
         }
+        // What each unit does for its side (forecastRoleWorth), for this turn's forecasts.
+        roleWorth = Profile.forecastRoleWorth ? AIWorld.RoleWorth(map, Profile) : null;
+        AIWorld.Roles = roleWorth;
 
         // Forget the intentions of units that no longer exist.
         List<Unit> stale = new List<Unit>();
@@ -1225,7 +1306,9 @@ public class AIPlayer : MonoBehaviour {
         HexTactica.AI.AILogistics.ProtectUnitsNow = logistics != null ? logistics.protectUnits : null;
         AISupplyChain.ProtectUnits = HexTactica.AI.AILogistics.ProtectUnitsNow;
         AITransportPlanner.ChainLinks = logistics != null ? new HashSet<SupplyPoint>(logistics.chainOf.Keys) : null;
+        AIWorld.Roles = roleWorth;
     }
+    Dictionary<Unit, float> roleWorth;
 
     /// <summary>Decisions made in the coordination pass (AICoordinator), kept for the unit's turn, and their logged reasoning.</summary>
     readonly Dictionary<Unit, AIAction> firstLook = new Dictionary<Unit, AIAction>();
@@ -1260,6 +1343,9 @@ public class AIPlayer : MonoBehaviour {
         int enemyReach = 0;
         foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) enemyReach = Mathf.Max(enemyReach, (e.moveAndAttack ? e.moveRange : 0) + e.AttackRange);
         int r = unit.moveRange + Mathf.Max(1, unit.AttackRange) + enemyReach + 1;
+        // reuseRadiusCap: only changes this close count (the unit's own reach plus one, at most the cap). Not the same
+        // answers: a change farther off that the full radius would have caught is missed (VERIFYREUSE counts those).
+        if (Profile.reuseRadiusCap > 0) r = Mathf.Min(Profile.reuseRadiusCap, unit.moveRange + Mathf.Max(1, unit.AttackRange) + 1);
         HexTile at = unit.tile;
         Func<HexTile, bool> near = t => t != null && t.Distance(at) <= r;
         foreach (KeyValuePair<Unit, KeyValuePair<HexTile, int>> kv in firstBoard) {

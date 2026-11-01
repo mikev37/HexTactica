@@ -7,6 +7,7 @@ Player.cs
 Faction.cs
 SupplyPoint.cs
 GameController.cs
+ThreatReach.cs
 UnitController.cs
 AIPlayer.cs
 GoTo.cs
@@ -28,6 +29,8 @@ AI/AIHeap.cs
 AI/AIPath.cs
 AI/AIProfile.cs
 AI/AIPerf.cs
+AI/AIParallel.cs
+AI/AIMapCache.cs
 AI/AIMap.cs
 AI/AIMapRead.cs
 AI/AIAction.cs
