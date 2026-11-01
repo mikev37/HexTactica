@@ -158,7 +158,7 @@ namespace HexTactica.AI {
         [Tooltip("Buying: each unit of a kind we already have (or have planned this turn) makes another worth this much (1: no variety rule; what we lack against the enemy, AIProduction.Scarcity, already gives diminishing returns).")]
         [Range(0f, 1f)]
         public float productionVariety = 0.97f;
-        [Tooltip("Production: a fighting unit is worth less the longer it would take to reach the fight from where it is built — its value divided by (1 + turns to the nearest known enemy / productionTimeHorizon), by its own movement. A slow unit built far from the front (a conscript at a distant city) no longer outbids one that gets there. Off: where it is built does not matter.")]
+        [Tooltip("Production: a fighting unit is worth less the longer it would take to reach the fight from where it is built — 1 / (1 + turns to the nearest known enemy / productionTimeHorizon), by its own movement — relative to the quickest fighting unit we could build anywhere (that one keeps its full worth, so fighting units as a whole lose nothing against supply). A slow unit built far from the front (a conscript at a distant city) no longer outbids one that gets there. Off: where it is built does not matter.")]
         public bool productionTimeToFront = true;
         [Tooltip("Production, productionTimeToFront: turns to the fight that halve a unit's worth.")]
         public float productionTimeHorizon = 3f;

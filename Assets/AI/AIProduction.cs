@@ -154,6 +154,13 @@ namespace HexTactica.AI {
                 timeFactor[key] = f;
                 return f;
             };
+            // Relative to the quickest to the fight of what we can build anywhere: where and what we build shifts
+            // toward what gets there, but fighting units as a whole lose nothing against supply units and trucks.
+            // (Scaled absolutely, every fighting unit lost half its worth on a big map and the gold went to saving
+            // for supply units: an army of twelve stood still for twenty turns.)
+            float quickest = 0f;
+            if (profile.productionTimeToFront && fight.Count > 0)
+                foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) if (Kind(t) == 0 && t.cost > 0 && t.CanEnter(sl.tile)) quickest = Mathf.Max(quickest, toFight(t, sl.tile));
             int money = p.money;
             int supplyPlanned = 0, trucksPlanned = 0;
             Dictionary<string, int> picked = new Dictionary<string, int>();
@@ -177,8 +184,8 @@ namespace HexTactica.AI {
                         float fv = ValueVs(t, sl.tile, foes) * mix * (1f + shortBy) * profile.productionFrontWeight;
                         if (fv > v) { v = fv; tag = f.front.Id; }
                     }
-                    if (profile.productionTimeToFront) {
-                        float tf = toFight(t, sl.tile);
+                    if (profile.productionTimeToFront && quickest > 0f) {
+                        float tf = Mathf.Min(1f, toFight(t, sl.tile) / quickest);
                         if (tf < 1f) { v *= tf; tag = (tag ?? "") + (tag != null ? ", " : "") + "x" + tf.ToString("0.00") + " for its time to the fight"; }
                     }
                 } else if (kindOf == 1) {
