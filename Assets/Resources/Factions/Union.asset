@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c3bed2011b60ed4286bf063ebaffdfb, type: 3}
+  m_Name: Union
+  m_EditorClassIdentifier: 
+  icon: {fileID: 0}
+  description: Heavy Tanks and wheeled vehicles
+  unitlist: []
+  replacements:
+  - original: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
+    replacement: {fileID: 4137968761995083456, guid: f6e15dc107eefe946888fcfc0b3c50de, type: 3}
+  - original: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+    replacement: {fileID: 8506708234393995858, guid: ef7a7cb11f182894a98a05cbffe928ed, type: 3}
+  - original: {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
+    replacement: {fileID: 3190354371702607758, guid: 236e08e3bbb890d429fce53831c1c69d, type: 3}
+  - original: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+    replacement: {fileID: 4517949214126955610, guid: bd4b508b21acedd4ba0af6dc35345ad6, type: 3}
+  removed: []
+  extras: []

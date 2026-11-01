@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c3bed2011b60ed4286bf063ebaffdfb, type: 3}
+  m_Name: Rebels
+  m_EditorClassIdentifier: 
+  icon: {fileID: 0}
+  description: Low Tech but sneaky
+  unitlist: []
+  replacements:
+  - original: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
+    replacement: {fileID: 6661928408031301294, guid: ecb0f3ee07ea2714c8e67ffa41791f6b, type: 3}
+  - original: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+    replacement: {fileID: 5549624872470083748, guid: 7d4765216d156ad4ea2aa4287eca80e9, type: 3}
+  - original: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+    replacement: {fileID: 1176828579860061444, guid: 3ae4c30f8c245c742b722f658f08299c, type: 3}
+  - original: {fileID: 9081080694409079478, guid: bef79f3571dc6a548ad283decf31b0d7, type: 3}
+    replacement: {fileID: 2273720086581548995, guid: 33f255ce931aa2b45a65cb0458762fd2, type: 3}
+  removed:
+  - {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
+  - {fileID: 9081080694409079478, guid: 23e1a5730bfd3039f29b7eb74e603542, type: 3}
+  - {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
+  - {fileID: 7449712608029447455, guid: dbb30092720cd474980b26d55a460bf3, type: 3}
+  extras: []

@@ -14,5 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
   description: 'Artillery and helicopters: Russia inspired  '
-  unitlist:
-  - {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+  unitlist: []
+  replacements:
+  - original: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
+    replacement: {fileID: 3624083210642868703, guid: dc7e2393dcaa3b04bac0ecad38448472, type: 3}
+  - original: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+    replacement: {fileID: 6993089846422214828, guid: dfdbc18e3c82e4d44bc9bb222d9531b8, type: 3}
+  - original: {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
+    replacement: {fileID: 4030959649037521614, guid: b11728ac684e1ed4e8cae8baa710c637, type: 3}
+  - original: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+    replacement: {fileID: 5949392838037145499, guid: 3718dea7d1fa68546909d9dd90b49a1b, type: 3}
+  - original: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
+    replacement: {fileID: 6447051321008996683, guid: 7803d7d7a6b43e14eb6cac51dbd26d5e, type: 3}
+  removed:
+  - {fileID: 6711033188123618812, guid: 0ce975b05de89eb41b42a36469e4dd0c, type: 3}
+  extras: []
