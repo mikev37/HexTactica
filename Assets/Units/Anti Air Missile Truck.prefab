@@ -1760,6 +1760,10 @@ PrefabInstance:
       value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: cost
+      value: 12000
+      objectReference: {fileID: 0}
+    - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: ammoMax
       value: 3
       objectReference: {fileID: 0}
