@@ -365,6 +365,13 @@ public static class Scenarios {
              "Blue's army stands beyond the HQ's supply, its one supply unit a link of the chain on foot, an empty truck by the HQ (campaign logistics). The truck is the link's (AILogistics.chainTrucks): it comes for it and the link boards it within two turns; once aboard, it is never set down (AITransportPlanner.KeepsAboard).");
         make("rule-transport-plane-boards-on-runway", "planeBoarding", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Put("Transport Plane", a, -3, 3); Put("Grunt", a, -2, 3); Put("Transport Plane", a, 2, 0); Put("Grunt", a, 3, 0); Put("Transport Helo", a, 2, -3); Put("Grunt", a, 3, -3); Put("Grunt", o, 5, 1); },
              "A transport plane (an aircraft that needs a base and is not a helicopter) takes on cargo only standing on one of our buildings that services it: a grunt beside one on our runway can board it, a grunt beside one over open ground cannot. A transport helicopter over open ground still can (Transporting.CanBoardOnto).");
+        make("ai-campaign-supply-not-overpromised", "campaignNoOverpromise", (a, o) => {
+                 for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(0, y); if (w != null && Math.Abs(y) != 4 && y != 0) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("City", null, -1, -5); Rig.PlaceBuilding("City", null, 2, 3);
+                 foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
+                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
+                 Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
+             "The ai-campaign-objectives board, spread (objectiveSpread 1): the campaign is planned, then all but one of Blue's supply units are lost and it is planned again from the first plan. The objectives it holds never need more supply units, beyond those they have, than we have free: those least by priority are given up until they fit (AICampaign.Allocate).");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -1059,6 +1066,36 @@ public static class Scenarios {
                 bool baseOk = Transporting.CanBoardFrom(planeBase, gBase), openOk = Transporting.CanBoardFrom(planeOpen, gOpen), heloOk = Transporting.CanBoardFrom(helo, gHelo);
                 detail = "plane " + planeBase.locomotion + " on our runway (" + onRunway + "): grunt boards " + baseOk + "; plane over open ground: grunt boards " + openOk + "; helicopter (" + helo.locomotion + ") over open ground: grunt boards " + heloOk + " (slots " + helo.transportSlots + ", carries " + string.Join(",", helo.carries.ConvertAll(x => x.ToString()).ToArray()) + ", can carry " + Transporting.CanCarry(helo, gHelo) + ", beside " + helo.tile.neighbors.Contains(gHelo.tile) + ", grunt enters " + gHelo.CanEnter(helo.tile) + ")";
                 return onRunway && baseOk && !openOk && heloOk;
+            }
+            case "campaignNoOverpromise": {
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                prof.campaign = true; prof.objectiveSpread = 1f;
+                AIMap m = new AIMap(l.ai, prof);
+                AICampaign first = AICampaign.Plan(m, prof, null);
+                Func<AICampaign, AIMap, string> promised = (c, mm) => {
+                    SupplyNetwork.Result net = SupplyNetwork.SolveAll(l.ai, new Dictionary<SupplyPoint, HexTile>());
+                    int free = 0, owed = 0;
+                    HashSet<SupplyPoint> given = new HashSet<SupplyPoint>();
+                    foreach (CampaignObjective x in c.objectives) foreach (SupplyPoint h in x.hubs) given.Add(h);
+                    foreach (SupplyPoint h in mm.ownHubs) if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && net.connectedHubs.Contains(h) && !given.Contains(h)) free++;
+                    foreach (CampaignObjective x in c.objectives) { if (!x.lasting) continue; int has = 0; foreach (SupplyPoint h in x.hubs) if (net.connectedHubs.Contains(h)) has++; owed += Math.Max(0, x.needHubs - has); }
+                    return owed + "/" + free;
+                };
+                string before = promised(first, m);
+                int needBefore = 0; foreach (CampaignObjective x in first.objectives) if (x.lasting) needBefore += x.needHubs;
+                Rig.At(-6, 1).occupier.Perish(); Rig.At(-6, -1).occupier.Perish();
+                AIMap m2 = new AIMap(l.ai, prof);
+                List<string> gaveUp = new List<string>();
+                Action<string> was = AICampaign.Debug;
+                AICampaign.Debug = x => { if (x.StartsWith("given up")) gaveUp.Add(x); };
+                AICampaign second;
+                try { second = AICampaign.Plan(m2, prof, first); } finally { AICampaign.Debug = was; }
+                string after = promised(second, m2);
+                string[] pa = after.Split('/');
+                bool fits = int.Parse(pa[0]) <= int.Parse(pa[1]);
+                Func<AICampaign, string> list = c => string.Join(", ", c.objectives.ConvertAll(x => x.Id + " " + x.hubs.Count + "/" + x.needHubs).ToArray());
+                detail = "first plan: " + list(first) + " (supply owed/free " + before + ", needs " + needBefore + "); with one supply unit left: " + list(second) + " (owed/free " + after + ")" + (gaveUp.Count > 0 ? "; " + string.Join("; ", gaveUp.ToArray()) : "; none given up");
+                return fits;
             }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();

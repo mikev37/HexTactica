@@ -868,7 +868,31 @@ namespace HexTactica.AI {
             // (Only supply units joined to the network count: one cut off serves no front.)
             SupplyNetwork.Result joined = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
             int hubsLeft = 0; foreach (SupplyPoint h in hubPool) if (joined.connectedHubs.Contains(h)) hubsLeft++;
-            foreach (CampaignObjective o in objectives) if (o.lasting) hubsLeft -= o.needHubs;
+            // What those already held still need beyond the supply units they kept (theirs have left hubPool:
+            // counting their whole need again promised the same supply units twice).
+            System.Func<CampaignObjective, int> stillNeeds = o => {
+                int has = 0; foreach (SupplyPoint h in o.hubs) if (joined.connectedHubs.Contains(h)) has++;
+                return Mathf.Max(0, o.needHubs - has);
+            };
+            foreach (CampaignObjective o in objectives) if (o.lasting) hubsLeft -= stillNeeds(o);
+            // Never more promised than we have: while those held need more supply units than are free, the
+            // least by priority of them is given up — its units and supply units go back to the pool, for the
+            // rest and for what can still be taken on. (Held objectives were never checked again: the supply
+            // they were promised went negative, as far as -5, and every front was left a link short.)
+            while (hubsLeft < 0) {
+                CampaignObjective drop = null;
+                foreach (CampaignObjective o in objectives) {
+                    if (!o.lasting || o.kind == CampaignKind.DefendHQ || o.respond || stillNeeds(o) <= 0) continue;
+                    if (drop == null || o.priority < drop.priority || (o.priority == drop.priority && string.CompareOrdinal(o.Id, drop.Id) > 0)) drop = o;
+                }
+                if (drop == null) break;
+                hubsLeft += stillNeeds(drop);
+                foreach (SupplyPoint h in drop.hubs) { hubPool.Add(h); if (joined.connectedHubs.Contains(h)) hubsLeft++; }
+                foreach (Unit u in drop.units) if (u != null && !pool.Contains(u)) pool.Add(u);
+                objectives.Remove(drop);
+                if (Debug != null) Debug("given up: " + drop.Id + " (priority " + drop.priority.ToString("0.00") + "): held objectives needed more supply units than we have");
+                drop.units.Clear(); drop.hubs.Clear(); drop.assignedPower = 0f;
+            }
             foreach (CampaignObjective o in candidates) {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 if (pursued >= maxPursued || pool.Count == 0) break;
