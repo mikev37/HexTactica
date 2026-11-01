@@ -459,6 +459,8 @@ namespace HexTactica.AI {
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
                 // Runways and docks are kept clear for the aircraft and ships that land there.
                 x = -AIAir.RunwayBlockCost(unit, o.stop, map); o.world.score += x; o.Extra("runway", x);
+                // A building to take is kept clear for those who can take it (AIProfile.captureBlockCost).
+                x = -CaptureBlockCost(unit, o.stop, map); o.world.score += x; o.Extra("blocksCapture", x);
                 // Fog of war (played by): seeing from there, and not being seen there.
                 x = AIFog.StopValue(unit, o.stop, map, profile); o.world.score += x; o.Extra("sight", x);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
@@ -471,9 +473,11 @@ namespace HexTactica.AI {
                 // Starving (every unit): the strength it would lose before it got back to supply, on the scale
                 // the rest of the world is scored on (otherwise only a tie-break: a grunt sat out of supply
                 // and lost a point a turn).
-                if (profile.worldStarvation) { x = -AIScore.StrandingCost(unit, o.stop, 0, map); o.world.score += x; o.Extra("starve", x); }
+                // All out (AIKnowledge): going hungry is a price worth paying, the bolder the less it weighs.
+                float hunger = map.AllOut ? 1f - Mathf.Clamp01(map.knowledge.aggression) : 1f;
+                if (profile.worldStarvation) { x = -AIScore.StrandingCost(unit, o.stop, 0, map) * hunger; o.world.score += x; o.Extra("starve", x); }
                 if (context.front != null && context.front.campaign) {
-                    if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) { x = -AIScore.OutOfSupplyCost(unit, o.stop, map); o.world.score += x; o.Extra("outOfSupply", x); }
+                    if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) { x = -AIScore.OutOfSupplyCost(unit, o.stop, map) * hunger; o.world.score += x; o.Extra("outOfSupply", x); }
                 }
             }
             // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
@@ -563,6 +567,22 @@ namespace HexTactica.AI {
         }
 
         static string D(HexTile t) { return t == null ? "-" : "(" + t.x + "," + t.y + ")"; }
+
+        /// <summary>
+        /// A unit that cannot take buildings, ending its turn on one that is not ours while a unit of ours that can take
+        /// it could get there within two turns, is in its way: half the building's worth (AIProfile.captureBlockCost).
+        /// (A gunship stood on the enemy's empty HQ while the grunt that would have taken it walked back to supply.)
+        /// </summary>
+        public static float CaptureBlockCost(Unit unit, HexTile stop, AIMap map) {
+            if (!map.profile.captureBlockCost || unit == null || stop == null || Building.CanCapture(unit)) return 0f;
+            Building b = stop.building;
+            if (b == null || !b.Capturable || b.owner == unit.owner) return 0f;
+            foreach (Unit c in map.ownUnits) {
+                if (c == null || c == unit || c.tile == null || !Building.CanCapture(c) || c.moveRange <= 0) continue;
+                if (map.Travel(c, c.tile, stop) <= 2 * c.moveRange) return 0.5f * AIWorld.BuildingWorth(b, map);
+            }
+            return 0f;
+        }
 
         /// <summary>
         /// A deterministic number in [-1, 1) for this seed, unit (by where it stands and whose it
