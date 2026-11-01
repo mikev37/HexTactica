@@ -538,8 +538,8 @@ namespace HexTactica.AI {
         public bool coordinationPasses = true;
         [Tooltip("A unit's decision from the coordination pass (every unit in contact decides once before anyone acts) is kept for its turn, unless something within its reach or the enemy's has moved, been hurt or appeared since, or its tile or target is gone. Off: every unit decides again on its turn.")]
         public bool coordinationReuse = true;
-        [Tooltip("A unit that cannot take buildings pays half a building's worth for ending its turn on one that is not ours while a unit of ours that can take it is within two turns of it: it keeps out of the way (AITactical.CaptureBlockCost). Off: no such cost.")]
-        public bool captureBlockCost = true;
+        [Tooltip("A unit that cannot take buildings pays half a building's worth for ending its turn on one that is not ours while a unit of ours that can take it is within two turns of it: it keeps out of the way (AITactical.CaptureBlockCost). Off (the default): only a task force's own objective building is kept clear, by CampaignStep and the objective's pull.")]
+        public bool captureBlockCost = false;
 
         [Tooltip("Attack options each unit keeps for battle plans.")]
         public int coordOffensiveOptions = 3;
