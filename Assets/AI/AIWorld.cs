@@ -288,9 +288,13 @@ namespace HexTactica.AI {
                 Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f; int bestDamage = 0, bestBack = 0;
                 bool bestPinned = false;
                 float home = weighs ? Exposure(e, hp[e], e.tile, map, hp, ourPos) : 0f;
+                // Nothing of ours beyond the furthest tile it could fire from, plus its range, can be its target:
+                // skipped before looking for a firing tile (the same answer: FiringTile finds none there).
+                int outOfReach = (e.moveAndAttack ? FarthestFrom(e.tile, pos) : 0) + e.AttackRange;
                 foreach (Unit d in map.ownUnits) {
                     if (d == null || d.tile == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d) || (d != u && !In(d))) continue;
                     HexTile dAt = ourPos(d);
+                    if (dAt.Distance(e.tile) > outOfReach) continue;
                     HexTile fire = FiringTile(e, dAt, pos, taken);
                     if (fire == null) continue;
                     // The game's own exchange: cover on the defender's tile, retaliation without
@@ -758,6 +762,42 @@ namespace HexTactica.AI {
             return m;
         }
 
+        /// <summary>
+        /// Everyone of ours but the acting unit, as the board stands (spaceIncremental): each unit's move and strike tiles
+        /// (AIMap.SpaceOf), how many of them reach each tile, how many tiles count (spaceContestedOnly), and which units
+        /// strike each tile (mutual cover). Worked out once per acting unit and board read, not once per option: an option
+        /// only moves the acting unit, kills some of ours in the forecast, or re-reads those near a unit driven back.
+        /// </summary>
+        sealed class OwnSpace {
+            public AIMap map; public Unit u; public HashSet<Unit> theater;
+            public readonly Dictionary<Unit, HashSet<HexTile>[]> sets = new Dictionary<Unit, HashSet<HexTile>[]>();
+            public readonly Dictionary<HexTile, int>[] count = { new Dictionary<HexTile, int>(), new Dictionary<HexTile, int>() };
+            public readonly Dictionary<HexTile, List<Unit>> coverers = new Dictionary<HexTile, List<Unit>>();
+            public int union, version;
+        }
+        [ThreadStatic] static OwnSpace ownSpace;
+        [ThreadStatic] static List<KeyValuePair<HashSet<HexTile>[], int>> scratchChanges;
+        [ThreadStatic] static Dictionary<HexTile, int> scratchDeltaMove, scratchDeltaStrike;
+
+        static OwnSpace OwnSpaceFor(Unit u, AIMap map) {
+            OwnSpace o = ownSpace;
+            if (o != null && o.map == map && o.u == u && o.theater == Theater && o.version == map.SpaceVersion) return o;
+            o = new OwnSpace { map = map, u = u, theater = Theater, version = map.SpaceVersion };
+            AIProfile prof = map.profile;
+            foreach (Unit x in map.ownUnits) {
+                if (x == null || x == u || x.tile == null || x.Strength <= 0 || x.trasnporter != null || !In(x)) continue;
+                HashSet<HexTile>[] s = map.SpaceOf(x);
+                o.sets[x] = s;
+                for (int k = 0; k < 2; k++) foreach (HexTile t in s[k]) { int c; o.count[k].TryGetValue(t, out c); o.count[k][t] = c + 1; }
+                if (x.Firepower > 0 && x.Hub == null)
+                    foreach (HexTile t in s[1]) { List<Unit> l; if (!o.coverers.TryGetValue(t, out l)) o.coverers[t] = l = new List<Unit>(); l.Add(x); }
+            }
+            for (int k = 0; k < 2; k++)
+                foreach (HexTile t in o.count[k].Keys) if (!prof.spaceContestedOnly || map.EnemyStrikeTurns(t) <= prof.enemyReachTurns) o.union++;
+            ownSpace = o;
+            return o;
+        }
+
         static void Space(Outcome w, Unit u, HexTile uAt, HexTile from, bool moving, AIMap map,
                           Dictionary<Unit, HashSet<HexTile>> positions, Dictionary<Unit, float> hp) {
             AIProfile prof = map.profile;
@@ -767,7 +807,50 @@ namespace HexTactica.AI {
             ourMove.Clear(); ourStrike.Clear();
             Dictionary<Unit, HashSet<HexTile>> fireOf = scratchFireOf;
             fireOf.Clear();
+            // spaceIncremental: the same counts from a per-board tally of everyone else, adjusted for this option.
+            OwnSpace inc = prof.spaceIncremental ? OwnSpaceFor(u, map) : null;
+            int ourCount = 0;
+            HashSet<HexTile>[] uSpace = null;
+            Dictionary<Unit, HashSet<HexTile>[]> freshSpace = null;
+            if (inc != null) {
+                Func<HexTile, bool> counts = t => !prof.spaceContestedOnly || map.EnemyStrikeTurns(t) <= prof.enemyReachTurns;
+                // Out of this option: units of the tally killed in the forecast, and those near a unit driven back (re-read).
+                List<KeyValuePair<HashSet<HexTile>[], int>> changes = scratchChanges ?? (scratchChanges = new List<KeyValuePair<HashSet<HexTile>[], int>>());
+                changes.Clear();
+                foreach (KeyValuePair<Unit, HashSet<HexTile>[]> kv in inc.sets) {
+                    Unit x = kv.Key;
+                    bool dead = !hp.ContainsKey(x) || hp[x] <= 0f;
+                    bool fresh = !dead && knocked != null && (x.tile.Distance(knockedFrom) <= x.moveRange + x.AttackRange + 1 || x.tile.Distance(knocked.tile) <= x.moveRange + x.AttackRange + 1);
+                    if (!dead && !fresh) continue;
+                    changes.Add(new KeyValuePair<HashSet<HexTile>[], int>(kv.Value, -1));
+                    if (fresh) {
+                        HashSet<HexTile>[] fs = AIMap.SpaceFrom(x, x.tile, null);
+                        (freshSpace ?? (freshSpace = new Dictionary<Unit, HashSet<HexTile>[]>()))[x] = fs;
+                        changes.Add(new KeyValuePair<HashSet<HexTile>[], int>(fs, 1));
+                    }
+                }
+                if (u.tile != null && hp.ContainsKey(u) && hp[u] > 0f && u.trasnporter == null) {
+                    uSpace = AIMap.SpaceFrom(u, uAt, null);
+                    changes.Add(new KeyValuePair<HashSet<HexTile>[], int>(uSpace, 1));
+                }
+                ourCount = inc.union;
+                Dictionary<HexTile, int>[] delta = { scratchDeltaMove ?? (scratchDeltaMove = new Dictionary<HexTile, int>()), scratchDeltaStrike ?? (scratchDeltaStrike = new Dictionary<HexTile, int>()) };
+                delta[0].Clear(); delta[1].Clear();
+                foreach (KeyValuePair<HashSet<HexTile>[], int> ch in changes)
+                    for (int k = 0; k < 2; k++)
+                        foreach (HexTile t in ch.Key[k]) {
+                            int d0; delta[k].TryGetValue(t, out d0); delta[k][t] = d0 + ch.Value;
+                        }
+                for (int k = 0; k < 2; k++)
+                    foreach (KeyValuePair<HexTile, int> kv in delta[k]) {
+                        if (kv.Value == 0 || !counts(kv.Key)) continue;
+                        int b; inc.count[k].TryGetValue(kv.Key, out b);
+                        bool was = b > 0, now = b + kv.Value > 0;
+                        if (was && !now) ourCount--; else if (!was && now) ourCount++;
+                    }
+            }
             foreach (Unit x in map.ownUnits) {
+                if (inc != null) break;
                 if (x == null || x.tile == null || !hp.ContainsKey(x) || hp[x] <= 0f || x.trasnporter != null || (x != u && !In(x))) continue;
                 // Near a unit driven back, reach is re-run on this board (the cached read is from before).
                 bool fresh = knocked != null && (x.tile.Distance(knockedFrom) <= x.moveRange + x.AttackRange + 1 || x.tile.Distance(knocked.tile) <= x.moveRange + x.AttackRange + 1);
@@ -821,17 +904,33 @@ namespace HexTactica.AI {
                     foreach (HexTile n in fAt.neighbors) {
                         if (n == null || !theirMove.Contains(n)) continue;
                         bool covered = false;
+                        if (inc != null) {
+                            // The tally's units that strike n (alive, not re-read), a re-read one by its fresh reach, and ours.
+                            List<Unit> by;
+                            if (inc.coverers.TryGetValue(n, out by))
+                                foreach (Unit x in by) {
+                                    if (x == f || !hp.ContainsKey(x) || hp[x] <= 0f || (freshSpace != null && freshSpace.ContainsKey(x))) continue;
+                                    if (!byTarget || covers(x, n)) { covered = true; break; }
+                                }
+                            if (!covered && freshSpace != null)
+                                foreach (KeyValuePair<Unit, HashSet<HexTile>[]> kv in freshSpace)
+                                    if (kv.Key != f && kv.Key.Firepower > 0 && kv.Key.Hub == null && kv.Value[1].Contains(n) && (!byTarget || covers(kv.Key, n))) { covered = true; break; }
+                            if (!covered && uSpace != null && u != f && u.Firepower > 0 && u.Hub == null && uSpace[1].Contains(n) && (!byTarget || covers(u, n))) covered = true;
+                        } else
                         foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in fireOf) if (kv.Key != f && kv.Value.Contains(n) && (!byTarget || covers(kv.Key, n))) { covered = true; break; }
                         if (covered) w.covered++; else w.exposed++;
                     }
                 }
                 w.score += (w.covered - w.exposed) * prof.coverTileValue;
             }
-            if (prof.spaceContestedOnly) {
-                ourMove.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
-                ourStrike.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
+            if (inc != null) w.ourSpace = ourCount;
+            else {
+                if (prof.spaceContestedOnly) {
+                    ourMove.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
+                    ourStrike.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
+                }
+                w.ourSpace = ourMove.Count + ourStrike.Count;
             }
-            w.ourSpace = ourMove.Count + ourStrike.Count;
             w.theirSpace = theirMove.Count + theirStrike.Count;
 
             // Enemy supply with our unit on its new tile — re-solved only where it could change
@@ -1078,6 +1177,20 @@ namespace HexTactica.AI {
             SupplyPoint sp = x != null ? x.Hub : null;
             return sp != null && sp.producer;
         }
+
+        /// <summary>The farthest of <paramref name="pos"/> from <paramref name="from"/> (hex distance), worked out once per set.</summary>
+        static int FarthestFrom(HexTile from, HashSet<HexTile> pos) {
+            if (pos == null) return 0;
+            Dictionary<HashSet<HexTile>, KeyValuePair<HexTile, int>> c = farthest ?? (farthest = new Dictionary<HashSet<HexTile>, KeyValuePair<HexTile, int>>());
+            KeyValuePair<HexTile, int> kv;
+            if (c.TryGetValue(pos, out kv) && kv.Key == from) return kv.Value;
+            int far = 0;
+            foreach (HexTile t in pos) { int d = from.Distance(t); if (d > far) far = d; }
+            if (c.Count > 4096) c.Clear();
+            c[pos] = new KeyValuePair<HexTile, int>(from, far);
+            return far;
+        }
+        [ThreadStatic] static Dictionary<HashSet<HexTile>, KeyValuePair<HexTile, int>> farthest;
 
         internal static HexTile FiringTile(Unit e, HexTile target, HashSet<HexTile> pos, HashSet<HexTile> taken) {
             if (!e.moveAndAttack) {
