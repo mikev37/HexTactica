@@ -218,6 +218,21 @@ namespace HexTactica.AI {
                     HashSet<HexTile> b = map.BaseReach(e, map.profile.forecastOwnSideBlocks);
                     if (Unaffected(b, e, moving ? from : null, moving ? uAt : null, goneHere, u, uAt)) { positions[e] = b; if (!near) lock (map.cacheLock) cache.positions[e] = b; continue; }
                 }
+                // Our unit leaving its tile is the same for every option of this decision: where the enemy could go with
+                // that tile free is worked out once (per board read, unit and tile). Our unit standing on its new tile
+                // changes it only if that tile is one of them (it would block it). (vacatedReach; AIVERIFY checks it.)
+                if (moving && knocked == null && goneHere.Count == 0 && map.profile.vacatedReach) {
+                    HashSet<HexTile> r1 = VacatedReach(e, u, from, map);
+                    if (!r1.Contains(uAt) && uAt != e.tile) {
+                        if (AIMap.Verify) {
+                            HashSet<HexTile> full = PositionsOnBoard(e, u, from, uAt, moving, stopWas, goneHere, ownSideBlocks: map.profile.forecastOwnSideBlocks);
+                            AIMap.CountCheck("vacated reach", !full.SetEquals(r1));
+                        }
+                        positions[e] = r1;
+                        if (!near && mayCache) lock (map.cacheLock) cache.positions[e] = r1;
+                        continue;
+                    }
+                }
                 p = PositionsOnBoard(e, u, from, uAt, moving, stopWas, goneHere, ownSideBlocks: map.profile.forecastOwnSideBlocks);
                 positions[e] = p;
                 if (!near && mayCache) lock (map.cacheLock) cache.positions[e] = p;
@@ -1258,6 +1273,25 @@ namespace HexTactica.AI {
             foreach (HexTile n in t.neighbors) if (n != null && (reach.Contains(n) || n == e.tile)) return true;
             return false;
         }
+
+        /// <summary>Where <paramref name="e"/> could go with our <paramref name="u"/> off <paramref name="from"/> (and on no other tile), once per board read.</summary>
+        static HashSet<HexTile> VacatedReach(Unit e, Unit u, HexTile from, AIMap map) {
+            VacatedKey k = vacatedKey;
+            if (vacated == null || k.map != map || k.version != map.SpaceVersion || k.u != u || k.from != from) {
+                vacated = new Dictionary<Unit, HashSet<HexTile>>();
+                vacatedKey = new VacatedKey { map = map, version = map.SpaceVersion, u = u, from = from };
+            }
+            HashSet<HexTile> r;
+            if (vacated.TryGetValue(e, out r)) return r;
+            Unit was = from.occupier;
+            try { if (was == u) from.occupier = null; r = Positions(e, map.profile.forecastOwnSideBlocks); }
+            finally { from.occupier = was; }
+            vacated[e] = r;
+            return r;
+        }
+        struct VacatedKey { public AIMap map; public int version; public Unit u; public HexTile from; }
+        [ThreadStatic] static VacatedKey vacatedKey;
+        [ThreadStatic] static Dictionary<Unit, HashSet<HexTile>> vacated;
 
         static HashSet<HexTile> PositionsOnBoard(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, bool ownSideBlocks = false) {
             Dictionary<HexTile, Unit> restore = new Dictionary<HexTile, Unit>();
