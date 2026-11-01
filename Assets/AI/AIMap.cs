@@ -189,6 +189,11 @@ namespace HexTactica.AI {
         /// </summary>
         public HashSet<Unit> TheaterOf(Unit u) {
             if (!profile.theaterForecast || u == null || u.tile == null) return null;
+            lock (cacheLock) return TheaterOfLocked(u);
+        }
+        /// <summary>The map's lazily filled caches are shared by forecasts on worker threads (AIParallel): filled under this lock.</summary>
+        internal readonly object cacheLock = new object();
+        HashSet<Unit> TheaterOfLocked(Unit u) {
             HashSet<Unit> th;
             if (theaters.TryGetValue(u, out th)) return th;
             th = new HashSet<Unit>();
@@ -215,14 +220,15 @@ namespace HexTactica.AI {
         /// <summary>How far from <paramref name="u"/> its theatre reaches (int.MaxValue: no theatre).</summary>
         public int TheaterRadius(Unit u) {
             int r;
-            return TheaterOf(u) != null && theaterRadius.TryGetValue(u, out r) ? r : int.MaxValue;
+            if (TheaterOf(u) == null) return int.MaxValue;
+            lock (cacheLock) return theaterRadius.TryGetValue(u, out r) ? r : int.MaxValue;
         }
 
         /// <summary>Where each enemy could move to tonight on the board as it stands (AIWorld.Positions), once per board read.</summary>
         public HashSet<HexTile> BaseReach(Unit e, bool ownSideBlocks) {
             Dictionary<Unit, HashSet<HexTile>> d = ownSideBlocks ? baseReachBlocked : baseReach;
             HashSet<HexTile> r;
-            if (!d.TryGetValue(e, out r)) { r = AIWorld.Positions(e, ownSideBlocks); d[e] = r; }
+            lock (cacheLock) if (!d.TryGetValue(e, out r)) { r = AIWorld.Positions(e, ownSideBlocks); d[e] = r; }
             return r;
         }
         readonly Dictionary<Unit, HashSet<HexTile>> baseReach = new Dictionary<Unit, HashSet<HexTile>>(), baseReachBlocked = new Dictionary<Unit, HashSet<HexTile>>();
@@ -556,7 +562,7 @@ namespace HexTactica.AI {
             if (SupplyDepth(from) > 0) return 0;
             if (u.moveRange <= 0) return 99;
             Dictionary<HexTile, int> cost;
-            if (!costHome.TryGetValue(u, out cost)) {
+            lock (cacheLock) if (!costHome.TryGetValue(u, out cost)) {
                 List<HexTile> supplied = new List<HexTile>(supply.depth.Keys);
                 Dictionary<HexTile, HexTile> unused;
                 cost = AIPath.CostToReach(u, supplied, u.moveRange * Mathf.Max(1, profile.planningHorizon), out unused);
@@ -581,8 +587,9 @@ namespace HexTactica.AI {
         public HexTile FiringTileNextTurn(Unit mover, Unit target, HexTile from) {
             if (mover == null || target == null || target.tile == null || from == null) return null;
             Dictionary<Unit, Approach> byTarget;
-            if (!approaches.TryGetValue(mover, out byTarget)) { byTarget = new Dictionary<Unit, Approach>(); approaches[mover] = byTarget; }
             Approach ap;
+            lock (cacheLock) {
+            if (!approaches.TryGetValue(mover, out byTarget)) { byTarget = new Dictionary<Unit, Approach>(); approaches[mover] = byTarget; }
             if (!byTarget.TryGetValue(target, out ap)) {
                 List<HexTile> ring = new List<HexTile>();
                 List<HexTile> inRange = AIPath.TilesInRange(target.tile, mover.MinRange, mover.AttackRange);
@@ -595,6 +602,7 @@ namespace HexTactica.AI {
                 ap = new Approach();
                 ap.cost = AIPath.CostToReach(mover, ring, Mathf.Max(0, mover.moveRange), out ap.firingTile);
                 byTarget[target] = ap;
+            }
             }
             int c;
             if (!ap.cost.TryGetValue(from, out c)) return null;
@@ -776,8 +784,11 @@ namespace HexTactica.AI {
         /// ignored: this is the shape of the map, not tonight's traffic). Cached for the turn.
         /// </summary>
         public Dictionary<HexTile, int> LandSteps(HexTile to) {
-            Dictionary<HexTile, int> d;
             if (to == null) return null;
+            lock (cacheLock) return LandStepsLocked(to);
+        }
+        Dictionary<HexTile, int> LandStepsLocked(HexTile to) {
+            Dictionary<HexTile, int> d;
             if (landSteps.TryGetValue(to, out d)) return d;
             d = new Dictionary<HexTile, int>();
             Queue<HexTile> q = new Queue<HexTile>();
@@ -1016,17 +1027,21 @@ namespace HexTactica.AI {
 
         public MoveField ReachThisTurn(Unit u) {
             MoveField f;
-            if (thisTurnFields.TryGetValue(u, out f)) return f;
-            f = AIPath.ThisTurn(u);
-            thisTurnFields[u] = f;
+            lock (cacheLock) {
+                if (thisTurnFields.TryGetValue(u, out f)) return f;
+                f = AIPath.ThisTurn(u);
+                thisTurnFields[u] = f;
+            }
             return f;
         }
 
         public MoveField ReachHorizon(Unit u) {
             MoveField f;
-            if (horizonFields.TryGetValue(u, out f)) return f;
-            f = AIPath.MultiTurn(u, profile.planningHorizon);
-            horizonFields[u] = f;
+            lock (cacheLock) {
+                if (horizonFields.TryGetValue(u, out f)) return f;
+                f = AIPath.MultiTurn(u, profile.planningHorizon);
+                horizonFields[u] = f;
+            }
             return f;
         }
 

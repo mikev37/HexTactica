@@ -95,8 +95,8 @@ namespace HexTactica.AI {
         }
 
         /// <summary>The enemy unit our shot is forecast to drive back, while Evaluate runs (forecastKnockback).</summary>
-        static Unit knocked;
-        static HexTile knockedFrom;
+        [ThreadStatic] static Unit knocked;
+        [ThreadStatic] static HexTile knockedFrom;
 
         /// <param name="space">Also score space (AIProfile.spaceTileValue / spaceSupplyValue): used when choosing a move.</param>
         public static Outcome Evaluate(Unit u, HexTile stop, AttackAppraisal shot, AIMap map, Cache cache, bool narrate, bool space) {
@@ -141,7 +141,7 @@ namespace HexTactica.AI {
         /// The units the forecast plays out (profile.theaterForecast; null: every unit). Units outside
         /// stand and score as they are, the same for every option of the unit deciding.
         /// </summary>
-        static HashSet<Unit> Theater;
+        [ThreadStatic] static HashSet<Unit> Theater;
         static bool In(Unit x) { return Theater == null || Theater.Contains(x); }
 
         static Outcome EvaluateOnBoard(Unit u, HexTile stop, AttackAppraisal shot, AIMap map, Cache cache, bool narrate, bool space) {
@@ -199,20 +199,28 @@ namespace HexTactica.AI {
                 if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f) continue;
                 if (e.Firepower <= 0 || !e.CanAttack(e.tile)) continue;
                 bool near = e.moveAndAttack && (e.tile.Distance(uAt) <= e.moveRange + 1 || e.tile.Distance(from) <= e.moveRange + 1 || NearAny(e, gone, uAt));
-                HashSet<HexTile> p;
+                HashSet<HexTile> p = null;
                 if (e == knocked) near = true;   // it stands somewhere else in this forecast
-                if (!near && cache.positions.TryGetValue(e, out p)) { positions[e] = p; continue; }
+                // Near a unit driven back (it left one tile and took another for this option): worked out here, not
+                // read from the board's cache. And nothing worked out while one is driven back goes into the cache:
+                // the next option would read this one's board (and, forecast on several threads, whichever got there first).
+                bool knockedNear = knocked != null && e.moveAndAttack && (e.tile.Distance(knockedFrom) <= e.moveRange + 1 || e.tile.Distance(knocked.tile) <= e.moveRange + 1);
+                if (knockedNear) near = true;
+                bool mayCache = knocked == null;
+                bool cached;
+                lock (map.cacheLock) cached = !near && cache.positions.TryGetValue(e, out p);
+                if (cached) { positions[e] = p; continue; }
                 HashSet<Unit> goneHere = map.profile.forecastDeadBlock ? NoneGone : gone;
                 // Near, but nothing this option changes on the board (the tile our unit leaves, the
                 // one it takes, units it kills) lies in or beside where the enemy could go: that is
                 // exactly where it could go on the board as it stands, worked out once per board.
                 if (knocked == null) {
                     HashSet<HexTile> b = map.BaseReach(e, map.profile.forecastOwnSideBlocks);
-                    if (Unaffected(b, e, moving ? from : null, moving ? uAt : null, goneHere, u, uAt)) { positions[e] = b; if (!near) cache.positions[e] = b; continue; }
+                    if (Unaffected(b, e, moving ? from : null, moving ? uAt : null, goneHere, u, uAt)) { positions[e] = b; if (!near) lock (map.cacheLock) cache.positions[e] = b; continue; }
                 }
                 p = PositionsOnBoard(e, u, from, uAt, moving, stopWas, goneHere, ownSideBlocks: map.profile.forecastOwnSideBlocks);
                 positions[e] = p;
-                if (!near) cache.positions[e] = p;
+                if (!near && mayCache) lock (map.cacheLock) cache.positions[e] = p;
             }
 
             AIPerf.End("forecast: enemy positions", __t); __t = AIPerf.Begin();
@@ -750,10 +758,16 @@ namespace HexTactica.AI {
         /// supply cut. Ours with our unit on its new tile; theirs with their movement re-run around it
         /// (the same reachable positions the reply used).
         /// </summary>
-        static readonly HashSet<HexTile> scratchOurMove = new HashSet<HexTile>(), scratchOurStrike = new HashSet<HexTile>(),
-                                         scratchTheirMove = new HashSet<HexTile>(), scratchTheirStrike = new HashSet<HexTile>();
-        static readonly Dictionary<Unit, HashSet<HexTile>> scratchFireOf = new Dictionary<Unit, HashSet<HexTile>>();
-        static readonly Dictionary<HexTile, int> scratchMoveKinds = new Dictionary<HexTile, int>();
+        // Scratch sets, one set per thread (forecasts run on worker threads too: AIParallel).
+        [ThreadStatic] static HashSet<HexTile> scratchOurMoveT, scratchOurStrikeT, scratchTheirMoveT, scratchTheirStrikeT;
+        [ThreadStatic] static Dictionary<Unit, HashSet<HexTile>> scratchFireOfT;
+        [ThreadStatic] static Dictionary<HexTile, int> scratchMoveKindsT;
+        static HashSet<HexTile> scratchOurMove { get { return scratchOurMoveT ?? (scratchOurMoveT = new HashSet<HexTile>()); } }
+        static HashSet<HexTile> scratchOurStrike { get { return scratchOurStrikeT ?? (scratchOurStrikeT = new HashSet<HexTile>()); } }
+        static HashSet<HexTile> scratchTheirMove { get { return scratchTheirMoveT ?? (scratchTheirMoveT = new HashSet<HexTile>()); } }
+        static HashSet<HexTile> scratchTheirStrike { get { return scratchTheirStrikeT ?? (scratchTheirStrikeT = new HashSet<HexTile>()); } }
+        static Dictionary<Unit, HashSet<HexTile>> scratchFireOf { get { return scratchFireOfT ?? (scratchFireOfT = new Dictionary<Unit, HashSet<HexTile>>()); } }
+        static Dictionary<HexTile, int> scratchMoveKinds { get { return scratchMoveKindsT ?? (scratchMoveKindsT = new Dictionary<HexTile, int>()); } }
 
         /// <summary>The locomotions <paramref name="x"/> can fire on, as bits (1 &lt;&lt; Locomotion).</summary>
         internal static int AttackKinds(Unit x) {
@@ -782,6 +796,9 @@ namespace HexTactica.AI {
         static OwnSpace OwnSpaceFor(Unit u, AIMap map) {
             OwnSpace o = ownSpace;
             if (o != null && o.map == map && o.u == u && o.theater == Theater && o.version == map.SpaceVersion) return o;
+            // Never made while a forecast has a unit driven back on the board: the units near it would be tallied
+            // from where it stands for this option only (that option re-reads them; the old way, for this call).
+            if (knocked != null) return null;
             o = new OwnSpace { map = map, u = u, theater = Theater, version = map.SpaceVersion };
             AIProfile prof = map.profile;
             foreach (Unit x in map.ownUnits) {

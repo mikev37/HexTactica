@@ -28,6 +28,7 @@ AI/AIHeap.cs
 AI/AIPath.cs
 AI/AIProfile.cs
 AI/AIPerf.cs
+AI/AIParallel.cs
 AI/AIMap.cs
 AI/AIMapRead.cs
 AI/AIAction.cs
