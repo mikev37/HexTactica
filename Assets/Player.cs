@@ -162,12 +162,12 @@ public class Player : MonoBehaviour
         }
     }
 
-    /// <summary>A friendly air tanker beside <paramref name="u"/> with supplies left to give.</summary>
+    /// <summary>A friendly air tanker beside <paramref name="u"/> with supplies left to give (it spends a supply per aircraft it refuels).</summary>
     static Unit TankerBeside(Unit u, List<Unit> roster) {
         if (u.airTanker) return null;
         for (int i = 0; i < roster.Count; i++) {
             Unit t = roster[i];
-            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.refuelStock <= 0) continue;
+            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
             if (u.tile.neighbors.Contains(t.tile)) return t;
         }
         return null;

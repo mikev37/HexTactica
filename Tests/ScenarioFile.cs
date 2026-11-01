@@ -47,10 +47,20 @@ public static class ScenarioFile {
     static readonly Dictionary<string, TerrainData> terrain = new Dictionary<string, TerrainData>();
 
     /// <summary>A terrain asset from Assets/Tiles, read from its YAML.</summary>
+    /// <summary>Where the terrain asset called <paramref name="name"/> is: Assets/Tiles or any folder under it (biomes have their own).</summary>
+    static string TerrainPath(string name) {
+        string root = Path.Combine(PrefabLoader.AssetsRoot, "Tiles");
+        string flat = Path.Combine(root, name + ".asset");
+        if (File.Exists(flat) || !Directory.Exists(root)) return flat;
+        string[] found = Directory.GetFiles(root, name + ".asset", SearchOption.AllDirectories);
+        System.Array.Sort(found, System.StringComparer.Ordinal);
+        return found.Length > 0 ? found[0] : flat;
+    }
+
     public static TerrainData Terrain(string name) {
         TerrainData td;
         if (terrain.TryGetValue(name, out td)) return td;
-        string path = Path.Combine(PrefabLoader.AssetsRoot, "Tiles", name + ".asset");
+        string path = TerrainPath(name);
         string now;
         // A terrain renamed since the file was saved loads as the game loads it (LevelEditor.loadTerrain).
         if (!File.Exists(path) && LevelEditor.renamed.TryGetValue(name, out now)) { td = Terrain(now); terrain[name] = td; return td; }
@@ -80,7 +90,7 @@ public static class ScenarioFile {
             td.damageStates = new Sprite[states];
             for (int i = 0; i < states; i++) td.damageStates[i] = new Sprite();
             if (into != null)
-                foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.AssetsRoot, "Tiles"), "*.asset.meta"))
+                foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.AssetsRoot, "Tiles"), "*.asset.meta", SearchOption.AllDirectories))
                     if (File.ReadAllText(meta).Contains("guid: " + into)) { td.destroyedInto = Terrain(Path.GetFileName(meta).Replace(".asset.meta", "")); break; }
         } else {
             throw new Exception("No terrain asset " + path);
