@@ -87,7 +87,11 @@ namespace HexTactica.AI {
             Unit u = h.myUnit;
             Unit truck = u.trasnporter;
             HexTile board = null;
-            if (truck != null) { if (!IsTruck(truck) || truck.transported.Count > 1) return null; }
+            if (truck != null) {
+                if (!IsTruck(truck)) return null;
+                // Another supply unit aboard: not this one's leap (a rider riding along is no matter).
+                foreach (Unit c in truck.transported) if (c != null && c != u && c.Hub != null && !c.Hub.producer) return null;
+            }
             else {
                 MoveField walk = map.ReachThisTurn(u);
                 int bestD = int.MaxValue;
@@ -273,7 +277,7 @@ namespace HexTactica.AI {
                     Leap ride = FindLeap(h, map, net, steps, plan.frontSteps, trucksUsed, taken);
                     if (ride == null) {
                         // No better tile for its truck: it holds aboard where the truck stands, a link still
-                        // (a transport keeps its first supply unit aboard: AITransportPlanner.KeepsAboard).
+                        // (a chain link stays aboard: AITransportPlanner.KeepsAboard).
                         HexTile at = u.trasnporter.tile;
                         if (!IsTruck(u.trasnporter) || at == null || taken.Contains(at) || trucksUsed.Contains(u.trasnporter)) { plan.spare.Add(h); continue; }
                         ride = new Leap { truck = u.trasnporter, tile = at, board = null };

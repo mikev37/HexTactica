@@ -52,11 +52,13 @@ namespace HexTactica.AI {
         /// <summary>
         /// Each chain link's own truck (claimed before any front's supply unit gets a ride): the truck it is
         /// aboard, or the one coming for it. Aboard, a link's supply reaches as far as its truck can move, so a
-        /// chain link is the first supply unit to ride; and once aboard it stays aboard (a transport sets down only
-        /// a second). A truck claimed for a link stays with it from turn to turn while both are there
+        /// chain link is the first supply unit to ride; and once aboard it stays aboard
+        /// (AITransportPlanner.KeepsAboard). A truck claimed for a link stays with it from turn to turn while both are there
         /// (<see cref="PreviousChainTrucks"/>).
         /// </summary>
         public readonly Dictionary<SupplyPoint, Unit> chainTrucks = new Dictionary<SupplyPoint, Unit>();
+        /// <summary>Where each chain link is planned to stand this turn (as the chains were chosen): where its truck takes it, for infantry riding along.</summary>
+        public readonly Dictionary<SupplyPoint, HexTile> linkTiles = new Dictionary<SupplyPoint, HexTile>();
         /// <summary>Last turn's <see cref="chainTrucks"/> (set by AIPlayer): a truck keeps the link it was coming for.</summary>
         [System.ThreadStatic] public static Dictionary<SupplyPoint, Unit> PreviousChainTrucks;
         /// <summary>
@@ -179,7 +181,7 @@ namespace HexTactica.AI {
             foreach (Task t in l.tasks) {
                 if (pool.Count == 0) { t.gap = t.short_ = t.unsupplied > 0f; continue; }
                 AISupplyChain.Plan p = Chain(map, t, pool, null, reservedTrucks, new HashSet<SupplyPoint>());
-                foreach (SupplyPoint h in p.links.Keys) { if (!pool.Contains(h)) continue; t.chain.Add(h); l.chainOf[h] = t; }
+                foreach (KeyValuePair<SupplyPoint, HexTile> lk in p.links) { if (!pool.Contains(lk.Key)) continue; t.chain.Add(lk.Key); l.chainOf[lk.Key] = t; l.linkTiles[lk.Key] = lk.Value; }
                 foreach (SupplyPoint h in t.chain) pool.Remove(h);
                 t.gap = p.reachSteps > 0 && t.unsupplied > 0f;
             }
@@ -294,10 +296,12 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// The chain links' trucks (<see cref="chainTrucks"/>): a link aboard keeps its truck; a truck that was
-        /// coming for a link last turn keeps coming; then each link still on foot gets the free truck nearest it
-        /// (by the truck's travel to a tile beside it), the nearest pairs first. Claimed trucks leave
-        /// <paramref name="trucks"/>.
+        /// The chain links' trucks (<see cref="chainTrucks"/>): a link aboard keeps its truck; a link on foot gets
+        /// one only when it has work to do — a fighting unit supplied only through it, a duty, or its front with
+        /// units out of supply (Task.unsupplied, Task.gap); while everyone is supplied without it, it needs no truck, and the truck is free for
+        /// other work. Of those, a truck that was coming for a link last turn keeps coming; then each gets the free
+        /// truck nearest it (by the truck's travel to a tile beside it), the nearest pairs first. Claimed trucks
+        /// leave <paramref name="trucks"/>.
         /// </summary>
         static void ClaimChainTrucks(AILogistics l, AIMap map, List<Unit> trucks) {
             List<SupplyPoint> onFoot = new List<SupplyPoint>();
@@ -309,7 +313,7 @@ namespace HexTactica.AI {
                     if (IsCarrier(carrier)) { l.chainTrucks[h] = carrier; trucks.Remove(carrier); }
                     continue;
                 }
-                onFoot.Add(h);
+                if (l.dutied.Contains(h) || kv.Value.gap || kv.Value.unsupplied > 0f || SuppliesSomeone(h, map)) onFoot.Add(h);
             }
             onFoot.Sort((a, b) => AIMap.CompareUnits(a.myUnit, b.myUnit));
             Dictionary<SupplyPoint, Unit> was = PreviousChainTrucks;
@@ -331,6 +335,16 @@ namespace HexTactica.AI {
                 if (bestH == null) break;
                 l.chainTrucks[bestH] = bestT; trucks.Remove(bestT); onFoot.Remove(bestH);
             }
+        }
+
+        /// <summary>A fighting unit of ours is supplied now only through <paramref name="h"/>.</summary>
+        static bool SuppliesSomeone(SupplyPoint h, AIMap map) {
+            SupplyNetwork.Result all = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
+            if (!all.connectedHubs.Contains(h)) return false;
+            SupplyNetwork.Result w = SupplyNetwork.SolveWithout(map.player, h);
+            foreach (Unit u in map.ownUnits)
+                if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && all.DepthAt(u.tile) > 0 && w.DepthAt(u.tile) <= 0) return true;
+            return false;
         }
 
         /// <summary>The truck's travel to a free tile beside <paramref name="u"/> (0: it can board from where it stands); int.MaxValue: none.</summary>

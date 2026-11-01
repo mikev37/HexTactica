@@ -51,10 +51,10 @@ public class UnitAlarmIcon : MonoBehaviour {
     /// fed if that building resupplies or the supply network reaches it there (for kinds the network feeds);
     /// helicopters (LocomotionRules.ResuppliedInSupply) fed on ground in supply; other aircraft and ships
     /// (LocomotionRules.NeedsBase) fed only by such a building, whatever ground they are over; the rest by
-    /// the supply network. An air tanker's supplies are what it gives others: it never starves for them.
+    /// the supply network. An air tanker like any aircraft.
     /// </summary>
     public static bool Starving(Unit u) {
-        if (u == null || u.suppliesMax <= 0 || u.supplies > 0 || u.owner == null || u.airTanker) return false;
+        if (u == null || u.suppliesMax <= 0 || u.supplies > 0 || u.owner == null) return false;
         Unit at = u;
         while (at.trasnporter != null) at = at.trasnporter;
         return at.tile != null && UnfedAt(at);

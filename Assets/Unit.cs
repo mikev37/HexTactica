@@ -83,7 +83,7 @@ public class Unit : MonoBehaviour
     internal void Prime() { hubCache = GetComponent<SupplyPoint>(); hubKnown = true; nameCache = base.name; }
     [Tooltip("Ground unit able to move into and through water tiles that border land")]
     public bool amphibious;
-    [Tooltip("Air tanker: refuels and resupplies friendly air units (not other tankers) that start their turn beside it. Each turn it does so spends one of its supplies: suppliesMax is how many turns of it the tanker has before it must go back to base. It never resupplies itself in the air, and its supplies do not drain.")]
+    [Tooltip("Air tanker: refuels and resupplies friendly air units (not other tankers) that start their turn beside it, as long as it has supplies. Its own supplies run down a turn at a time like any aircraft's (resupplying others costs nothing more), so suppliesMax is how many turns it can do it away from base.")]
     public bool airTanker;
     /// <summary>Fired this turn: an infantry unit that attacked does not capture the building it stands on.</summary>
     [System.NonSerialized] public bool attackedThisTurn;
