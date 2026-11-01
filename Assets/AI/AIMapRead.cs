@@ -145,6 +145,8 @@ namespace HexTactica.AI {
 
         // ---- space: tiles each of our units could move to, and could strike, next turn.
         readonly Dictionary<Unit, HashSet<HexTile>[]> ourSpace = new Dictionary<Unit, HashSet<HexTile>[]>();
+        /// <summary>Bumped whenever the reach above is read afresh (AIWorld's per-board tallies key on it).</summary>
+        public int SpaceVersion;
 
         /// <summary>Movement tiles [0] and strike tiles [1] of one of our units from where it stands. Cached per board read.</summary>
         /// <summary>
@@ -241,6 +243,7 @@ namespace HexTactica.AI {
             theirConnected.Clear();
             enemyPlayers.Clear();
             ourSpace.Clear();
+            SpaceVersion++;
             enemySpace.Clear();
             HashSet<Player> enemies = new HashSet<Player>();
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
