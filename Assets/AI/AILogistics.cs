@@ -52,8 +52,8 @@ namespace HexTactica.AI {
         /// <summary>
         /// Each chain link's own truck (claimed before any front's supply unit gets a ride): the truck it is
         /// aboard, or the one coming for it. Aboard, a link's supply reaches as far as its truck can move, so a
-        /// chain link is the first supply unit to ride; and once aboard it stays aboard (trucks do not set
-        /// supply down). A truck claimed for a link stays with it from turn to turn while both are there
+        /// chain link is the first supply unit to ride; and once aboard it stays aboard (a transport sets down only
+        /// a second). A truck claimed for a link stays with it from turn to turn while both are there
         /// (<see cref="PreviousChainTrucks"/>).
         /// </summary>
         public readonly Dictionary<SupplyPoint, Unit> chainTrucks = new Dictionary<SupplyPoint, Unit>();

@@ -363,6 +363,8 @@ public static class Scenarios {
                  Put("Supplies", a, -4, 0); Put("Truck Variant", a, -6, 3);
                  Put("Grunt", a, 1, 0); Put("Grunt", a, 1, 1); Put("Tank", a, 2, -1); Put("Grunt", o, 5, 2); },
              "Blue's army stands beyond the HQ's supply, its one supply unit a link of the chain on foot, an empty truck by the HQ (campaign logistics). The truck is the link's (AILogistics.chainTrucks): it comes for it and the link boards it within two turns; once aboard, it is never set down (AITransportPlanner.KeepsAboard).");
+        make("rule-transport-plane-boards-on-runway", "planeBoarding", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Put("Transport Plane", a, -3, 3); Put("Grunt", a, -2, 3); Put("Transport Plane", a, 2, 0); Put("Grunt", a, 3, 0); Put("Transport Helo", a, 2, -3); Put("Grunt", a, 3, -3); Put("Grunt", o, 5, 1); },
+             "A transport plane (an aircraft that needs a base and is not a helicopter) takes on cargo only standing on one of our buildings that services it: a grunt beside one on our runway can board it, a grunt beside one over open ground cannot. A transport helicopter over open ground still can (Transporting.CanBoardOnto).");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -1050,6 +1052,13 @@ public static class Scenarios {
                 }
                 detail = string.Join("; ", r.ToArray()) + "; the truck claimed for it " + claimed + ", boarded on turn " + boardedOn + ", set down " + setDown;
                 return claimed && boardedOn >= 0 && boardedOn <= 1 && !setDown;
+            }
+            case "planeBoarding": {
+                Unit planeBase = Rig.At(-3, 3).occupier, gBase = Rig.At(-2, 3).occupier, planeOpen = Rig.At(2, 0).occupier, gOpen = Rig.At(3, 0).occupier, helo = Rig.At(2, -3).occupier, gHelo = Rig.At(3, -3).occupier;
+                bool onRunway = Building.ServicingUnder(planeBase) != null;
+                bool baseOk = Transporting.CanBoardFrom(planeBase, gBase), openOk = Transporting.CanBoardFrom(planeOpen, gOpen), heloOk = Transporting.CanBoardFrom(helo, gHelo);
+                detail = "plane " + planeBase.locomotion + " on our runway (" + onRunway + "): grunt boards " + baseOk + "; plane over open ground: grunt boards " + openOk + "; helicopter (" + helo.locomotion + ") over open ground: grunt boards " + heloOk + " (slots " + helo.transportSlots + ", carries " + string.Join(",", helo.carries.ConvertAll(x => x.ToString()).ToArray()) + ", can carry " + Transporting.CanCarry(helo, gHelo) + ", beside " + helo.tile.neighbors.Contains(gHelo.tile) + ", grunt enters " + gHelo.CanEnter(helo.tile) + ")";
+                return onRunway && baseOk && !openOk && heloOk;
             }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
