@@ -42,6 +42,8 @@ namespace HexTactica.AI {
         /// <summary>AIVERIFY: caches kept that differed from a fresh one, and caches kept and checked, by kind.</summary>
         public static readonly Dictionary<string, int> Mismatches = new Dictionary<string, int>(), Checked = new Dictionary<string, int>();
         static void Count(Dictionary<string, int> d, string k) { lock (d) { int n; d.TryGetValue(k, out n); d[k] = n + 1; } }
+        /// <summary>AIVERIFY: one check of <paramref name="kind"/>, and whether it differed.</summary>
+        public static void CountCheck(string kind, bool differed) { Count(Checked, kind); if (differed) Count(Mismatches, kind); }
 
         static Mark MarkOf(Unit u) {
             return new Mark { tile = u.tile, strength = u.Strength, fuel = u.fuel, ammo = u.ammo, suppressed = u.suppressed, supplies = u.supplies, rides = u.trasnporter, active = u.active };
