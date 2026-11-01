@@ -3960,6 +3960,22 @@ public static class Scenarios {
             List<string> kinds = new List<string>(byKind.Keys); kinds.Sort(StringComparer.Ordinal);
             foreach (string k in kinds) { List<Unit> g = byKind[k]; g.Sort((a, b) => CombatMath.CompareTiles(a.tile, b.tile)); for (int i = 1; i < g.Count; i += 2) g[i].Perish(); }
         }
+        // DEATHLOG=1: every unit's death, how it died, and whether the other side could see it.
+        if (Environment.GetEnvironmentVariable("DEATHLOG") != null) {
+            Unit lastAtk = null, lastDef = null;
+            Unit.Attacking += (atk, def, surprise) => { lastAtk = atk; lastDef = def; };
+            Unit.Died += u => {
+                if (u == null) return;
+                string how = u == lastDef ? "killed by " + (lastAtk != null ? lastAtk.owner.personal_name + " " + GameController.UnitName(lastAtk) : "?")
+                           : u == lastAtk ? "died attacking " + (lastDef != null ? GameController.UnitName(lastDef) : "?")
+                           : u.trasnporter != null ? "aboard " + GameController.UnitName(u.trasnporter) + " (it died)"
+                           : u.Strength <= 0 && u.fuelMax > 0 && u.fuel <= 0 ? "out of fuel"
+                           : "attrition or terrain (supplies " + u.supplies + "/" + u.suppliesMax + ", fuel " + u.fuel + ")";
+                Player other = null; foreach (Player q in Rig.gc.players) if (q != null && q != u.owner) other = q;
+                bool seen = !Rig.gc.fogOfWar || (u.tile != null && (u.trasnporter != null ? u.trasnporter.tile != null && FogOfWar.SeesAt(other, u.trasnporter, u.trasnporter.tile) : FogOfWar.SeesAt(other, u, u.tile)));
+                Console.WriteLine("   death: day " + Rig.gc.days + " " + (u.owner != null ? u.owner.personal_name : "?") + " " + GameController.UnitName(u) + " at " + (u.tile != null ? "(" + u.tile.x + "," + u.tile.y + ")" : "-") + ", " + how + "; " + (other != null ? other.personal_name : "?") + " saw it " + seen + " (turn of " + (Rig.gc.activePlayer != null ? Rig.gc.activePlayer.personal_name : "?") + ")");
+            };
+        }
         int redStart = 0, blueStart = 0; foreach (Unit x in l.other.units) if (x != null && x.tile != null) redStart++; foreach (Unit x in l.ai.units) if (x != null && x.tile != null) blueStart++;
         if (opposed) Console.WriteLine("opposed (" + enemy + "): Red " + redStart + " units, Blue " + blueStart);
         Building theirs = GameController.HQOf(l.other);

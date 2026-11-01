@@ -8,7 +8,8 @@ namespace HexTactica.AI {
     ///
     ///   - What the enemy can have: its starting budget (gold and units, known from the start), plus what
     ///     its buildings could have paid for each turn since (their income, as far as its production slots
-    ///     could spend it), less what we have destroyed of it.
+    ///     could spend it), less what we have destroyed of it: units we saw die, and the strength lost (less
+    ///     healed) by those we know of.
     ///   - What we know of: its units we see or believe where they were, and those we have lost track of
     ///     (AISigint), by their worth and strength.
     ///   - Confidence: the share of what it can have that we know of, times how much of its ground we have
@@ -87,6 +88,10 @@ namespace HexTactica.AI {
                     float v; destroyed += tracked.TryGetValue(d.unit, out v) ? v : Value(d.cost, d.strength);
                 }
             }
+            // Hurt (or healed) since last turn, for those we know of both turns: the strength lost counts as destroyed.
+            // (Only deaths counted, the damage done before a killing blow was never taken off: with Red wiped out, it
+            // still "could have" a quarter of its army.)
+            foreach (KeyValuePair<Unit, float> kv in now) { float was; if (tracked.TryGetValue(kv.Key, out was)) destroyed += was - kv.Value; }
             tracked.Clear();
             known = 0f;
             foreach (KeyValuePair<Unit, float> kv in now) { tracked[kv.Key] = kv.Value; known += kv.Value; }
@@ -107,8 +112,16 @@ namespace HexTactica.AI {
                 if (!fog || (k != null && k.visibleTiles.Contains(b.tile)) || (last >= 0 && FogOfWar.Turn - last < p.fogUnknownTurns)) seen++;
             }
             buildingsSeen = theirs > 0 ? seen / (float)theirs : 1f;
-            float share = estimate > 0f ? Mathf.Clamp01(known / estimate) : 1f;
-            confidence = fog ? share * (0.5f + 0.5f * buildingsSeen) : 1f;
+            // What could be out there that we do not know of, against the larger of what they could have and what we
+            // have: 1 when nothing of theirs is unaccounted for, 0 when all of it is. (The share of their potential we
+            // know of read 0 once the last of a beaten army was out of sight, with a few units' worth unaccounted for
+            // against an army eight times as strong.)
+            float unknown = Mathf.Max(0f, estimate - known);
+            float share = 1f - Mathf.Clamp01(unknown / Mathf.Max(1f, Mathf.Max(estimate, ours)));
+            // Their buildings, where new units come from: how much of them we have seen lately — only where they can
+            // build (with purchases off they add nothing).
+            float ground = Purchases ? 0.5f + 0.5f * buildingsSeen : 1f;
+            confidence = fog ? share * ground : 1f;
             ratio = estimate > 0f ? ours / estimate : 99f;
             float past = Mathf.Clamp01((ratio - 1f) / Mathf.Max(0.01f, p.knowledgeAllOutRatio - 1f));
             aggression = Mathf.Clamp01(confidence) * past;
