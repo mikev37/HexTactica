@@ -45,12 +45,30 @@ public class UnitAlarmIcon : MonoBehaviour {
         return max > 0 && have <= Mathf.Floor(max * share + 1e-4f);
     }
 
-    /// <summary>Out of supplies and out of supply: it loses a strength point each turn (its transport's supply, if aboard).</summary>
+    /// <summary>
+    /// Out of supplies and not resupplied where it stands: it loses a strength point each turn (aboard, as its
+    /// transport fares). The same reading as Player's turn upkeep: on one of our buildings that services it,
+    /// fed if that building resupplies or the supply network reaches it there (for kinds the network feeds);
+    /// helicopters (LocomotionRules.ResuppliedInSupply) fed on ground in supply; other aircraft and ships
+    /// (LocomotionRules.NeedsBase) fed only by such a building, whatever ground they are over; the rest by
+    /// the supply network. An air tanker's supplies are what it gives others: it never starves for them.
+    /// </summary>
     public static bool Starving(Unit u) {
-        if (u == null || u.suppliesMax <= 0 || u.supplies > 0 || u.owner == null) return false;
+        if (u == null || u.suppliesMax <= 0 || u.supplies > 0 || u.owner == null || u.airTanker) return false;
         Unit at = u;
         while (at.trasnporter != null) at = at.trasnporter;
-        if (u.locomotion == Locomotion.Jet) return at.tile != null && at.tile.building != null && at.tile.building.services.Contains(u.locomotion);
-        else return at.tile != null && !at.tile.isSupplied(u.owner);
+        return at.tile != null && UnfedAt(at);
+    }
+
+    static bool UnfedAt(Unit x) {
+        bool supplied = x.tile.isSupplied(x.owner);
+        Building service = Building.ServicingUnder(x);
+        if (service != null) {
+            bool network = (LocomotionRules.ResuppliedInSupply(x.locomotion) || !LocomotionRules.NeedsBase(x.locomotion)) && supplied;
+            return !(network || service.resupply);
+        }
+        if (LocomotionRules.ResuppliedInSupply(x.locomotion) && supplied) return false;
+        if (LocomotionRules.NeedsBase(x.locomotion)) return true;
+        return !supplied;
     }
 }

@@ -66,6 +66,16 @@ namespace HexTactica.AI {
     public static class AITransportPlanner {
 
         /// <summary>
+        /// A supply unit aboard a land transport (truck, APC, helicopter — not a ship, which must put it ashore):
+        /// it stays aboard. Aboard, its supply reaches as far as its transport can move; set down, only as far as
+        /// it can walk. The AI never sets it down.
+        /// </summary>
+        public static bool KeepsAboard(Unit cargo) {
+            return cargo != null && cargo.Hub != null && !cargo.Hub.producer && cargo.trasnporter != null && cargo.trasnporter.tile != null
+                && !LocomotionRules.IsNaval(cargo.trasnporter.locomotion);
+        }
+
+        /// <summary>
         /// First turn a unit can act from a tile, given when it gets there. Arriving during
         /// turn k (by moving) means acting from it on k+1; starting the turn there means now.
         /// Timing must mirror execution exactly or ride-versus-walk comparisons are off by one.
@@ -340,6 +350,7 @@ namespace HexTactica.AI {
 
             // --- Walking plan: just step along it.
             if (!plan.usesTransport) {
+                if (KeepsAboard(cargo)) return AIAction.Wait(cargo, "supply stays aboard its transport");
                 if (cargo.trasnporter != null) {
                     // Aboard but the plan says walk: get off.
                     List<HexTile> options = Transporting.UnloadOptions(cargo.trasnporter, cargo);
@@ -401,7 +412,9 @@ namespace HexTactica.AI {
             Unit cargo = plan.cargo;
             bool aboard = cargo.trasnporter == transport;
 
-            if (plan.stayAboard) {
+            // Trucks do not set supply down: aboard, a supply unit's supply reaches as far as its transport can
+            // move; set down it reaches only as far as it can walk.
+            if (plan.stayAboard || (aboard && KeepsAboard(cargo))) {
                 // A supply leap: drive to the drop-off and stay there with the supply unit aboard.
                 // A passenger riding along with the supply (infantry): let out where the link stops.
                 Unit rider = null;

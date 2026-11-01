@@ -50,6 +50,16 @@ namespace HexTactica.AI {
         public readonly Dictionary<SupplyPoint, Task> tacticalOf = new Dictionary<SupplyPoint, Task>();
         public readonly Dictionary<SupplyPoint, Ride> rides = new Dictionary<SupplyPoint, Ride>();
         /// <summary>
+        /// Each chain link's own truck (claimed before any front's supply unit gets a ride): the truck it is
+        /// aboard, or the one coming for it. Aboard, a link's supply reaches as far as its truck can move, so a
+        /// chain link is the first supply unit to ride; and once aboard it stays aboard (trucks do not set
+        /// supply down). A truck claimed for a link stays with it from turn to turn while both are there
+        /// (<see cref="PreviousChainTrucks"/>).
+        /// </summary>
+        public readonly Dictionary<SupplyPoint, Unit> chainTrucks = new Dictionary<SupplyPoint, Unit>();
+        /// <summary>Last turn's <see cref="chainTrucks"/> (set by AIPlayer): a truck keeps the link it was coming for.</summary>
+        [System.ThreadStatic] public static Dictionary<SupplyPoint, Unit> PreviousChainTrucks;
+        /// <summary>
         /// What each supply unit joined to the network is doing for the war: the fighting units supplied
         /// only through it — in contact (front-line combat) counting most, then on a campaign front — and
         /// a campaign front's chain links. The ordinary fronts' units count for nothing: they are not left
@@ -242,6 +252,7 @@ namespace HexTactica.AI {
             List<Unit> trucks = new List<Unit>();
             foreach (Unit u in map.ownUnits) if (IsCarrier(u) && u.active && (reservedTrucks == null || !reservedTrucks.Contains(u))) trucks.Add(u);
             trucks.Sort(AIMap.CompareUnits);
+            ClaimChainTrucks(l, map, trucks);
             foreach (Task t in l.tasks) {
                 // Far: more than two of its moves from where a truck would set it down.
                 List<SupplyPoint> far = new List<SupplyPoint>();
@@ -277,8 +288,61 @@ namespace HexTactica.AI {
                     l.rides[h] = new Ride { truck = pick, to = drops[h], task = t };
                 }
             }
-            l.freeTrucks = trucks.Count;
+            // Free: empty and claimed by no one (a loaded truck, or one claimed for a link, is not).
+            l.freeTrucks = 0; foreach (Unit tr in trucks) if (tr.transported.Count == 0) l.freeTrucks++;
             return l;
+        }
+
+        /// <summary>
+        /// The chain links' trucks (<see cref="chainTrucks"/>): a link aboard keeps its truck; a truck that was
+        /// coming for a link last turn keeps coming; then each link still on foot gets the free truck nearest it
+        /// (by the truck's travel to a tile beside it), the nearest pairs first. Claimed trucks leave
+        /// <paramref name="trucks"/>.
+        /// </summary>
+        static void ClaimChainTrucks(AILogistics l, AIMap map, List<Unit> trucks) {
+            List<SupplyPoint> onFoot = new List<SupplyPoint>();
+            foreach (KeyValuePair<SupplyPoint, Task> kv in l.chainOf) {
+                SupplyPoint h = kv.Key;
+                if (h == null || h.producer || h.myUnit == null || h.myUnit.tile == null) continue;
+                Unit carrier = h.myUnit.trasnporter;
+                if (carrier != null) {
+                    if (IsCarrier(carrier)) { l.chainTrucks[h] = carrier; trucks.Remove(carrier); }
+                    continue;
+                }
+                onFoot.Add(h);
+            }
+            onFoot.Sort((a, b) => AIMap.CompareUnits(a.myUnit, b.myUnit));
+            Dictionary<SupplyPoint, Unit> was = PreviousChainTrucks;
+            if (was != null)
+                foreach (SupplyPoint h in new List<SupplyPoint>(onFoot)) {
+                    Unit tr;
+                    if (!was.TryGetValue(h, out tr) || tr == null || !trucks.Contains(tr) || tr.transported.Count > 0 || !Transporting.CanCarry(tr, h.myUnit)) continue;
+                    l.chainTrucks[h] = tr; trucks.Remove(tr); onFoot.Remove(h);
+                }
+            while (onFoot.Count > 0) {
+                SupplyPoint bestH = null; Unit bestT = null; int bestD = int.MaxValue;
+                foreach (SupplyPoint h in onFoot)
+                    foreach (Unit tr in trucks) {
+                        if (tr.transported.Count > 0 || !Transporting.CanCarry(tr, h.myUnit)) continue;
+                        int d = TruckTo(tr, h.myUnit, map);
+                        if (d >= int.MaxValue) continue;
+                        if (d < bestD || (d == bestD && (AIMap.CompareUnits(h.myUnit, bestH.myUnit) < 0 || (h == bestH && AIMap.CompareUnits(tr, bestT) < 0)))) { bestD = d; bestH = h; bestT = tr; }
+                    }
+                if (bestH == null) break;
+                l.chainTrucks[bestH] = bestT; trucks.Remove(bestT); onFoot.Remove(bestH);
+            }
+        }
+
+        /// <summary>The truck's travel to a free tile beside <paramref name="u"/> (0: it can board from where it stands); int.MaxValue: none.</summary>
+        static int TruckTo(Unit tr, Unit u, AIMap map) {
+            if (Transporting.CanBoardFrom(tr, u)) return 0;
+            int d = int.MaxValue;
+            foreach (HexTile n in u.tile.neighbors) {
+                if (n == null || (n.occupier != null && n.occupier != tr) || !tr.CanEnter(n)) continue;
+                int t = map.Travel(tr, tr.tile, n);
+                if (t < d) d = t;
+            }
+            return d;
         }
 
         /// <summary>More than two of its moves from the nearest of the front's units.</summary>

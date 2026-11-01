@@ -83,11 +83,8 @@ public class Unit : MonoBehaviour
     internal void Prime() { hubCache = GetComponent<SupplyPoint>(); hubKnown = true; nameCache = base.name; }
     [Tooltip("Ground unit able to move into and through water tiles that border land")]
     public bool amphibious;
-    [Tooltip("Air tanker: refuels friendly air units that start their turn beside it, one refuelStock for each")]
+    [Tooltip("Air tanker: refuels and resupplies friendly air units (not other tankers) that start their turn beside it. Each turn it does so spends one of its supplies: suppliesMax is how many turns of it the tanker has before it must go back to base. It never resupplies itself in the air, and its supplies do not drain.")]
     public bool airTanker;
-    [Tooltip("Air tanker: refuels it can give before it must go back to base")]
-    public int refuelStock;
-    public int refuelStockMax;
     /// <summary>Fired this turn: an infantry unit that attacked does not capture the building it stands on.</summary>
     [System.NonSerialized] public bool attackedThisTurn;
 
@@ -709,7 +706,6 @@ public class Unit : MonoBehaviour
         fuel = fuelMax;
         ammo = ammoMax;
         supplies = suppliesMax;
-        refuelStock = refuelStockMax;
     }
 
     /// <summary>
@@ -1222,14 +1218,11 @@ public struct UnitData {
     /// would be loaded into the first unit on the roster.
     /// </summary>
     public int transporterIndexPlusOne;
-    /// <summary>An air tanker's refuels left, plus one (zero: an older save, keep the prefab's).</summary>
-    public int refuelStockPlusOne;
     /// <summary>Suppressed strength pips (zero in older saves, which is right: nothing was suppressed).</summary>
     public int suppressed;
     public UnitData(Unit t) {
         suppressed = t.suppressed;
         transporterIndexPlusOne = 0;
-        refuelStockPlusOne = t.refuelStock + 1;
         x = t.tile.x;
         y = t.tile.y;
         z = t.tile.z;
@@ -1267,7 +1260,6 @@ public struct UnitData {
         ut.supplies = supplies;
         ut.fuel = fuel;
         ut.ammo = ammo;
-        if (refuelStockPlusOne > 0) ut.refuelStock = refuelStockPlusOne - 1;
         ut.suppressed = Mathf.Clamp(suppressed, 0, Strength);
         return ut;
     }

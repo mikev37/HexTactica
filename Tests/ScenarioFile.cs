@@ -146,8 +146,8 @@ public static class ScenarioFile {
                 if (!f) sb.Append(',');
                 f = false;
                 string prefab = u.name.Replace("(Clone)", "");
-                sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":0,\"refuelStockPlusOne\":{11}}}",
-                    u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab, u.refuelStock + 1));
+                sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":0}}",
+                    u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab));
             }
         }
         sb.Append("\n]\n}\n");
@@ -260,7 +260,6 @@ public static class ScenarioFile {
             if (u.ContainsKey("ammo") && int.TryParse(u["ammo"], out n)) unit.ammo = n;
             if (u.ContainsKey("fuel") && int.TryParse(u["fuel"], out n)) unit.fuel = n;
             if (u.ContainsKey("suppressed") && int.TryParse(u["suppressed"], out n)) unit.suppressed = Math.Min(n, unit.Strength);
-            if (u.ContainsKey("refuelStockPlusOne") && int.TryParse(u["refuelStockPlusOne"], out n) && n > 0) unit.refuelStock = n - 1;
         }
         foreach (KeyValuePair<Unit, int> kv in aboard) {
             Unit transport = kv.Value >= 0 && kv.Value < byIndex.Count ? byIndex[kv.Value] : null;

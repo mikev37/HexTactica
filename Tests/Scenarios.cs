@@ -359,6 +359,10 @@ public static class Scenarios {
                  Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
                  Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
              "The ai-campaign-objectives board with the task forces spread (objectiveSpread 1): the campaign's supply by logistics (AIProfile.campaignLogistics). Fronts in order of their number of units, largest first; each front's chain takes only supply units that bring supply nearer it, the largest front's first; every supply unit left is one front's own, shared by number of units; no supply unit has two jobs, and none is left without one.");
+        make("ai-chain-link-rides-its-truck", "chainTruck", (a, o) => {
+                 Put("Supplies", a, -4, 0); Put("Truck Variant", a, -6, 3);
+                 Put("Grunt", a, 1, 0); Put("Grunt", a, 1, 1); Put("Tank", a, 2, -1); Put("Grunt", o, 5, 2); },
+             "Blue's army stands beyond the HQ's supply, its one supply unit a link of the chain on foot, an empty truck by the HQ (campaign logistics). The truck is the link's (AILogistics.chainTrucks): it comes for it and the link boards it within two turns; once aboard, it is never set down (AITransportPlanner.KeepsAboard).");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -383,8 +387,8 @@ public static class Scenarios {
              "A Fighter (fuel 5, burns 3 a turn; 3 supplies aboard) inside the HQ's supply but off any airport: not healed or refuelled, its own supplies down to 2 and 2 fuel after a turn, ditched the next.");
         make("attrition-rule-air-base", "attritionAirBase", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, -3, 3); f.fuel = 2; f.Strength = 4; Put("Grunt", o, 4, 0); },
              "A Fighter on its own airport's runway (fuel 2, strength 4) is refuelled to 14 and healed to 5.");
-        make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit t = Put("AirTanker", a, 1, 0); t.supplies = 1; Put("Grunt", o, 5, 0); },
-             "A Fighter starting its turn beside an air tanker with 1 supply left is refuelled and resupplied (the tanker spends that supply: 0); the next turn the tanker is empty and the fighter burns 3.");
+        make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit g = Put("Fighter", a, 2, 0); g.fuel = 6; Put("AirTanker", a, 1, 0); Put("AirTanker", a, -2, 4); Put("AirTanker", a, -3, 4); Put("Grunt", o, 5, 0); },
+             "Two Fighters beside an air tanker with 2 supplies: each turn both are refuelled and resupplied, and the tanker spends one supply for the turn (not one each): 1 left, then 0; the third turn it is empty and the fighters burn 3. Its supplies never drain on their own: a second tanker beside nothing keeps its 2, and a tanker beside another tanker gives it nothing (its fuel burns as usual).");
         make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
         make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
@@ -539,8 +543,8 @@ public static class Scenarios {
              "Indirect fire suppresses instead of driving back. Artillery hits a tank hard enough that it would have retreated: it stays where it is, takes the same damage, and half its unsuppressed pips (rounded up) are suppressed. Attacked again that turn, it fires back with its strength less the suppressed pips (none at all when every pip is suppressed). A second artillery hit suppresses half of what is left. A hit too light to push it (a veteran) suppresses nothing. Its own turn starting, every pip comes back. Direct fire still drives back. Indirect fire is any attacker with a minimum range (it cannot fire on the next tile), not one that reaches far: a tank reaching two tiles still drives back.");
         make("attrition-rule-recon-transport", "reconTransport", (a, o) => { Put("Recon", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "The recon truck (1 slot, carries Boots) takes a grunt, drives, and puts it down beside it, as the APC does.");
-        make("attrition-rule-alarms", "alarms", (a, o) => { Put("Grunt", a, -5, 0); Put("Grunt", a, 5, 0); Put("Tank", a, -4, 1); Put("Grunt", o, 6, -3); },
-             "The alarm icon's conditions (fuel and ammo alarms from a third of a full load down): a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo.");
+        make("attrition-rule-alarms", "alarms", (a, o) => { Put("Grunt", a, -5, 0); Put("Grunt", a, 5, 0); Put("Tank", a, -4, 1); Rig.PlaceAirfield(a, -3, 2); Put("Fighter", a, -3, 3); Put("Fighter", a, -5, 2); Put("AirTanker", a, -2, 0); Put("Grunt", o, 6, -3); },
+             "The alarm icon's conditions (fuel and ammo alarms from a third of a full load down): a grunt with no supplies out of supply is starving, one with none inside supply is not (it is fed next turn); a tank with no fuel is out of fuel, with no ammunition out of ammo. A fighter with no supplies over our own ground in supply is starving (the network does not feed aircraft), one on our airport's runway is not; an air tanker with no supplies is not (they are what it gives others).");
         make("attrition-rule-portrait-layout", "portraitLayout", (a, o) => { Put("Grunt", a, -3, 0); Put("Grunt", o, 4, 0); },
              "The UI pictures of units and tiles (SpritePortrait): every sprite of the unit is placed as on the board and the whole fitted into the box. A 2x1 hull, a 1x1 turret turned 90 degrees above its right half and a mirrored flag, fitted into 100x100 with a 4 px margin: scale 46, centred, the turret at 90 degrees, the flag flipped.");
         make("rule-sandbox-turns", "sandboxTurns", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -1026,6 +1030,27 @@ public static class Scenarios {
                 detail += "; " + lg.tasks.Count + " fronts, largest first " + ordered + "; " + seen.Count + " of " + hubs + " supply units given one job each " + once + "; shared by size " + shared;
                 return lg.tasks.Count >= 2 && ordered && once && seen.Count == hubs && shared;
             }
+            case "chainTruck": {
+                Unit hub = Rig.At(-4, 0).occupier, truck = Rig.At(-6, 3).occupier;
+                AIPlayer ap = l.ai.GetComponent<AIPlayer>();
+                ap.Profile.campaign = true;
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; AITactical.DecisionLog = Console.WriteLine; }
+                List<string> r = new List<string>();
+                int boardedOn = -1; bool setDown = false, claimed = false;
+                for (int turn = 0; turn < 4 && !gc.gameOver; turn++) {
+                    ScenarioFile.PlayTurn();
+                    if (hub.tile == null) { r.Add("supply unit lost"); break; }
+                    HexTactica.AI.AILogistics lg = ap.CurrentLogistics;
+                    if (lg != null) foreach (KeyValuePair<SupplyPoint, Unit> kv in lg.chainTrucks) if (kv.Key.myUnit == hub && kv.Value == truck) claimed = true;
+                    bool aboard = hub.trasnporter == truck;
+                    if (aboard && boardedOn < 0) boardedOn = turn;
+                    if (!aboard && boardedOn >= 0) setDown = true;
+                    r.Add("turn " + turn + ": supply " + (aboard ? "aboard at " + Pos(truck.tile) : "on foot at " + Pos(hub.tile) + ", truck at " + Pos(truck.tile)) + (lg != null ? (lg.chainOf.ContainsKey(hub.Hub) ? " [chain link]" : " [not a link]") : " [no logistics]"));
+                    if (!gc.gameOver) ScenarioFile.PlayTurn();
+                }
+                detail = string.Join("; ", r.ToArray()) + "; the truck claimed for it " + claimed + ", boarded on turn " + boardedOn + ", set down " + setDown;
+                return claimed && boardedOn >= 0 && boardedOn <= 1 && !setDown;
+            }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
                 prof.campaign = true;
@@ -1175,14 +1200,19 @@ public static class Scenarios {
                 home.supplies = 0; far.supplies = 0; tank.fuel = 0; tank.ammo = 0;
                 bool homeSupplied = home.tile.isSupplied(l.ai), farSupplied = far.tile.isSupplied(l.ai);
                 bool a1 = !UnitAlarmIcon.Starving(home) && UnitAlarmIcon.Starving(far);
+                Unit onBase = Rig.At(-3, 3).occupier, overHome = Rig.At(-5, 2).occupier, tankerU = Rig.At(-2, 0).occupier;
+                onBase.supplies = 0; overHome.supplies = 0; tankerU.supplies = 0;
+                bool airGround = overHome.tile.isSupplied(l.ai);
+                bool a4 = airGround && UnitAlarmIcon.Starving(overHome) && !UnitAlarmIcon.Starving(onBase) && !UnitAlarmIcon.Starving(tankerU);
+                string air = "; fighter over our ground in supply (" + airGround + ") starving " + UnitAlarmIcon.Starving(overHome) + ", on the runway " + UnitAlarmIcon.Starving(onBase) + "; empty tanker " + UnitAlarmIcon.Starving(tankerU);
                 float share = UnitAlarmSprites.Instance.lowShare;
                 bool a2 = UnitAlarmIcon.Low(0, tank.fuelMax, share) && UnitAlarmIcon.Low(0, tank.ammoMax, share);
                 int third = tank.ammoMax / 3;
                 bool a3 = UnitAlarmIcon.Low(third, tank.ammoMax, share) && !UnitAlarmIcon.Low(third + 1, tank.ammoMax, share) && !UnitAlarmIcon.Low(tank.fuelMax, tank.fuelMax, share)
                        && !UnitAlarmIcon.Low(0, 0, share);
                 detail = "grunt in supply (" + homeSupplied + ") starving " + UnitAlarmIcon.Starving(home) + "; out of supply (" + farSupplied + ") starving " + UnitAlarmIcon.Starving(far)
-                       + "; tank empty: fuel and ammo alarms " + a2 + "; ammo " + third + "/" + tank.ammoMax + " alarm, " + (third + 1) + " not, full fuel not, a unit carrying none never " + a3;
-                return homeSupplied && !farSupplied && a1 && a2 && a3;
+                       + "; tank empty: fuel and ammo alarms " + a2 + "; ammo " + third + "/" + tank.ammoMax + " alarm, " + (third + 1) + " not, full fuel not, a unit carrying none never " + a3 + air;
+                return homeSupplied && !farSupplied && a1 && a2 && a3 && a4;
             }
             case "portraitLayout": {
                 var parts = new List<SpriteLayout.Part> {
@@ -2150,14 +2180,22 @@ public static class Scenarios {
                 return ok1 && !ditched && f.tile != null && f.fuel == f.fuelMax - f.minFuelPerTurn;
             }
             case "attritionTanker": {
-                Unit f = Rig.At(0, 0).occupier, t = Rig.At(1, 0).occupier;
-                t.supplies = 1;   // the scenario file does not keep a unit's supplies
+                Unit f = Rig.At(0, 0).occupier, g = Rig.At(2, 0).occupier, t = Rig.At(1, 0).occupier, idle = Rig.At(-3, 4).occupier, pair = Rig.At(-2, 4).occupier;
+                t.supplies = 2; idle.supplies = 2; pair.supplies = 2;
+                bool besideIdle = idle.tile.neighbors.Contains(pair.tile);
                 endTurn(); endTurn();
-                string first = "fighter fuel " + f.fuel + ", tanker supplies left " + t.supplies;
-                bool ok1 = f.fuel == f.fuelMax && t.supplies == 0;
+                string first = "fighters " + f.fuel + "/" + g.fuel + ", tanker " + t.supplies;
+                bool ok1 = f.fuel == f.fuelMax && g.fuel == g.fuelMax && t.supplies == 1;
+                f.fuel = 6; g.fuel = 6;
                 endTurn(); endTurn();
-                detail = "after a turn " + first + "; after two fighter fuel " + f.fuel;
-                return ok1 && f.fuel == f.fuelMax - f.minFuelPerTurn;
+                string second = "fighters " + f.fuel + "/" + g.fuel + ", tanker " + t.supplies;
+                bool ok2 = f.fuel == f.fuelMax && g.fuel == g.fuelMax && t.supplies == 0;
+                int before = f.fuel, idleFuel = idle.fuel;
+                endTurn(); endTurn();
+                bool ok3 = f.fuel == before - f.minFuelPerTurn && t.supplies == 0;
+                bool noDrain = idle.supplies == 2 && pair.supplies == 2 && idle.fuel < idleFuel;
+                detail = "tankers side by side " + besideIdle + "; turn 1: " + first + "; turn 2: " + second + "; turn 3: fighter " + before + " -> " + f.fuel + "; idle tankers' supplies " + idle.supplies + "/" + pair.supplies + ", the idle one's fuel " + idleFuel + " -> " + idle.fuel;
+                return ok1 && ok2 && ok3 && noDrain && besideIdle;
             }
             case "attritionShip": {
                 Unit away = Rig.At(1, 2).occupier, dock = Rig.At(-1, 0).occupier;
@@ -2400,7 +2438,7 @@ public static class Scenarios {
             Put("HQ", other, 6, 0); Put("Grunt", other, 4, -1); Put("Grunt", other, 4, 1); Put("Tank", other, 5, 0);
             ScenarioFile.Save(Path.Combine(Dir, "hub-stays-out-of-reach.dat"),
                 Test("hub-stays-out-of-reach", "behaviour", "Legacy", 4, "hubSafe",
-                     "Our army stands beyond HQ supply with the enemy close. The supply unit should bring supply forward without ever ending our turn where an enemy can attack it."),
+                     "Our army stands beyond HQ supply with the enemy close. The supply unit should bring supply forward without ending our turn where an enemy can attack it whenever it had a tile it could reach that turn where none could (a turn with no such tile is not judged)."),
                 ai, other, ai);
             n++;
         }
@@ -2644,16 +2682,31 @@ public static class Scenarios {
         detail = "";
         switch (check) {
             case "hubSafe": {
+                // The rule: the supply unit never ends our turn where an enemy can hit it when it had a tile it
+                // could reach that turn where none could (read at the start of our turn). With none, it is not judged.
                 Unit hub = First(l.ai, "Supplies");
+                int unjudged = 0;
                 for (int r = 0; r < rounds && !gc.gameOver; r++) {
+                    if (hub == null || hub.tile == null) { detail = "supply unit destroyed"; return false; }
+                    AIMap before = new AIMap(l.ai, AIProfile.Default);
+                    MoveField reach = before.ReachThisTurn(hub);
+                    List<string> safe = new List<string>();
+                    foreach (HexTile t in reach.Tiles) {
+                        if (t != hub.tile && (!reach.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(hub, t) || t.occupier != null)) continue;
+                        float tl; if (!AIWorld.Evaluate(hub, t, new AttackAppraisal(), before, new AIWorld.Cache(), true).lost.TryGetValue(hub, out tl)) tl = 0f;
+                        if (tl <= 0f) safe.Add(D(t));
+                    }
                     ScenarioFile.PlayTurn();                      // ours
                     if (hub == null || hub.tile == null) { detail = "supply unit destroyed"; return false; }
                     AIWorld.Outcome w = Reply(hub, new AIMap(l.ai, AIProfile.Default));
                     float lost; w.lost.TryGetValue(hub, out lost);
-                    if (lost > 0f) { detail = "round " + r + ": supply unit at " + D(hub.tile) + " can be hit for " + lost.ToString("0.#") + " " + w.Summary(); return false; }
+                    if (lost > 0f) {
+                        if (safe.Count > 0) { detail = "round " + r + ": supply unit at " + D(hub.tile) + " can be hit for " + lost.ToString("0.#") + " though it could have ended on " + safe.Count + " safe tiles (" + string.Join(" ", safe.GetRange(0, Math.Min(5, safe.Count)).ToArray()) + ") " + w.Summary(); return false; }
+                        unjudged++;
+                    }
                     if (!gc.gameOver) ScenarioFile.PlayTurn();    // theirs
                 }
-                detail = "never ended our turn in reach; at " + D(hub.tile) + " s" + hub.Strength;
+                detail = "never ended our turn in reach with a safe tile to go to" + (unjudged > 0 ? " (" + unjudged + " turns with none: not judged)" : "") + "; at " + (hub.tile != null ? D(hub.tile) : "-") + " s" + hub.Strength + (gc.gameOver ? ", game over" : "");
                 return true;
             }
             case "tankSurvivesReply": {
