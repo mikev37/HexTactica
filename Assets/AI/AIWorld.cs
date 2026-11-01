@@ -582,6 +582,15 @@ namespace HexTactica.AI {
         ///     it — and the control that would cost us. Standing on our own building blocks a tile
         ///     and contests it (they can then only bring it down to 0).
         /// </summary>
+        /// <summary>Buildings' per-option working sets (one per thread: every Think may run on its own).</summary>
+        sealed class BuildingScratch {
+            public readonly Dictionary<HexTile, List<Unit>> ourInfantry = new Dictionary<HexTile, List<Unit>>();
+            public readonly HashSet<HexTile> theirInfantry = new HashSet<HexTile>(), enemyEnds = new HashSet<HexTile>(), claimed = new HashSet<HexTile>(), claimedHere = new HashSet<HexTile>();
+            public readonly List<KeyValuePair<Unit, HashSet<HexTile>>> capturers = new List<KeyValuePair<Unit, HashSet<HexTile>>>();
+            public void Clear() { ourInfantry.Clear(); theirInfantry.Clear(); enemyEnds.Clear(); claimed.Clear(); claimedHere.Clear(); capturers.Clear(); }
+        }
+        [ThreadStatic] static BuildingScratch buildingScratch;
+
         static void Buildings(Outcome w, Unit u, HexTile uAt, HexTile from, AttackAppraisal shot, AIMap map,
                               Dictionary<Unit, HashSet<HexTile>> positions, Dictionary<Unit, float> hp, Dictionary<Unit, HexTile> endsAt, bool narrate) {
             Player us = u.owner;
@@ -589,6 +598,30 @@ namespace HexTactica.AI {
             float total = 0f, hqPart = 0f;
             StringBuilder note = narrate ? new StringBuilder() : null;
             int radius = Theater != null ? map.TheaterRadius(u) : int.MaxValue;
+            // Worked out once for this option, not once per building (it was every unit of both sides
+            // for each of the board's buildings — 68 on Korea — and a set of all our tiles for each one
+            // we hold, for every option of every unit). The same answers, building by building:
+            //   - our infantry by the tile it ends on (alive after the reply), the acting unit apart;
+            BuildingScratch bs = buildingScratch ?? (buildingScratch = new BuildingScratch());
+            bs.Clear();
+            bool uCaptures = hp.ContainsKey(u) && hp[u] > 0f && Building.CanCapture(u);
+            foreach (Unit x in map.ownUnits) {
+                if (x == null || x.tile == null || !hp.ContainsKey(x) || hp[x] <= 0f) continue;
+                bs.claimed.Add(ourAt(x));
+                if (x == u || !Building.CanCapture(x)) continue;
+                List<Unit> l; if (!bs.ourInfantry.TryGetValue(x.tile, out l)) bs.ourInfantry[x.tile] = l = new List<Unit>();
+                l.Add(x);
+            }
+            //   - their infantry where it stands now, and where every enemy still alive ends the reply;
+            foreach (Unit e in map.enemyUnits) {
+                if (e == null || e.tile == null) continue;
+                if (Building.CanCapture(e)) bs.theirInfantry.Add(e.tile);
+                float ehp; if (hp.TryGetValue(e, out ehp) && ehp <= 0f) continue;
+                bs.enemyEnds.Add(endsAt.ContainsKey(e) ? endsAt[e] : e.tile);
+            }
+            //   - their infantry free to capture next turn (alive, not having attacked in the reply), in the reply's order.
+            foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in positions)
+                if (Building.CanCapture(kv.Key) && hp[kv.Key] > 0f && !endsAt.ContainsKey(kv.Key)) bs.capturers.Add(kv);
             foreach (Building b in Building.all) {
                 if (b == null || b.tile == null || !b.Capturable) continue;
                 // Outside the theatre: nothing this unit does reaches it (the same for every option).
@@ -598,16 +631,21 @@ namespace HexTactica.AI {
                 List<HexTile> fp = b.Footprint;
                 // Ours on it at the end of our turn (capturing) and theirs on it (contesting).
                 int ourStrength = 0; bool ourInfantry = false, theirInfantry = false, touched = false;
-                foreach (Unit x in map.ownUnits) {
-                    if (x == null || x.tile == null || !hp.ContainsKey(x) || hp[x] <= 0f || !Building.CanCapture(x)) continue;
-                    HexTile at = ourAt(x);
-                    if (!fp.Contains(at)) { if (x == u && fp.Contains(from)) touched = true; continue; }
-                    ourInfantry = true;
-                    if (x == u) { touched = true; if (shot.valid) continue; }
-                    else if (x.attackedThisTurn) continue;
-                    ourStrength += Mathf.Max(1, Hp(hp[x]));
+                foreach (HexTile t in fp) {
+                    List<Unit> l;
+                    if (bs.ourInfantry.TryGetValue(t, out l)) foreach (Unit x in l) {
+                        ourInfantry = true;
+                        if (x.attackedThisTurn) continue;
+                        ourStrength += Mathf.Max(1, Hp(hp[x]));
+                    }
+                    if (bs.theirInfantry.Contains(t)) theirInfantry = true;
                 }
-                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && fp.Contains(e.tile) && Building.CanCapture(e)) theirInfantry = true;
+                if (uCaptures) {
+                    if (fp.Contains(uAt)) {
+                        ourInfantry = true; touched = true;
+                        if (!shot.valid) ourStrength += Mathf.Max(1, Hp(hp[u]));
+                    } else if (fp.Contains(from)) touched = true;
+                }
                 int signedNow = b.owner == us || (b.owner == null && b.capturingPlayer == us) ? b.capturePoints : -b.capturePoints;
                 float now = Control(b, us, b.owner, signedNow);
                 Player ownerAfter = b.owner;
@@ -625,12 +663,7 @@ namespace HexTactica.AI {
                 // counts most. (A grunt had to be told to stay on the enemy HQ; the world did not say so.)
                 if (b.owner != us && (map.profile.buildingVacantShare > 0f || map.profile.buildingOccupyShare > 0f)) {
                     bool enemyOn = false;
-                    foreach (Unit e in map.enemyUnits) {
-                        if (e == null || e.tile == null) continue;
-                        float ehp; if (hp.TryGetValue(e, out ehp) && ehp <= 0f) continue;
-                        HexTile at = endsAt.ContainsKey(e) ? endsAt[e] : e.tile;
-                        if (fp.Contains(at)) { enemyOn = true; break; }
-                    }
+                    foreach (HexTile t in fp) if (bs.enemyEnds.Contains(t)) { enemyOn = true; break; }
                     bool capturing = ourStrength > 0 || (ourInfantry && !touched);
                     float hold = (enemyOn ? 0f : map.profile.buildingVacantShare) + (ourInfantry ? map.profile.buildingOccupyShare * (capturing ? 2f : 1f) : 0f);
                     if (hold > 0f) {
@@ -644,15 +677,13 @@ namespace HexTactica.AI {
                 if (!ours) continue;
                 int threat = 0;
                 Player enemy = null;
-                HashSet<HexTile> claimed = new HashSet<HexTile>();
-                foreach (Unit x in map.ownUnits) if (x != null && x.tile != null && hp.ContainsKey(x) && hp[x] > 0f) claimed.Add(ourAt(x));
-                foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in positions) {
+                bs.claimedHere.Clear();
+                foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in bs.capturers) {
                     Unit e = kv.Key;
-                    if (!Building.CanCapture(e) || hp[e] <= 0f || endsAt.ContainsKey(e)) continue;
                     HexTile onto = null;
-                    foreach (HexTile t in fp) if (!claimed.Contains(t) && (kv.Value.Contains(t) || e.tile == t)) { onto = t; break; }
+                    foreach (HexTile t in fp) if (!bs.claimed.Contains(t) && !bs.claimedHere.Contains(t) && (kv.Value.Contains(t) || e.tile == t)) { onto = t; break; }
                     if (onto == null) continue;
-                    claimed.Add(onto);
+                    bs.claimedHere.Add(onto);
                     threat += Mathf.Max(1, Hp(hp[e]));
                     enemy = e.owner;
                 }
