@@ -10,24 +10,33 @@ namespace HexTactica.AI {
     /// </summary>
     public static class AIPerf {
         public static bool Enabled;
-        static readonly Dictionary<string, double> ms = new Dictionary<string, double>();
-        static readonly Dictionary<string, int> calls = new Dictionary<string, int>();
-        static readonly Dictionary<string, long> bytes = new Dictionary<string, long>();
-        static readonly Stack<long> allocAt = new Stack<long>();
+        /// <summary>One thread's tallies (forecasts run on worker threads too: AIParallel). Report sums every thread's.</summary>
+        sealed class Tally {
+            public readonly Dictionary<string, double> ms = new Dictionary<string, double>();
+            public readonly Dictionary<string, int> calls = new Dictionary<string, int>();
+            public readonly Dictionary<string, long> bytes = new Dictionary<string, long>();
+            public readonly Stack<long> allocAt = new Stack<long>();
+        }
+        [System.ThreadStatic] static Tally mine;
+        static readonly List<Tally> all = new List<Tally>();
+        static Tally Mine { get { if (mine == null) { mine = new Tally(); lock (all) all.Add(mine); } return mine; } }
 
         public static long Begin() {
             if (!Enabled) return 0;
-            allocAt.Push(System.GC.GetAllocatedBytesForCurrentThread());
+            Mine.allocAt.Push(System.GC.GetAllocatedBytesForCurrentThread());
             return Stopwatch.GetTimestamp();
         }
 
         public static void End(string section, long started) {
             if (!Enabled) return;
+            Tally t = Mine;
             double d = (Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency;
-            long b = allocAt.Count > 0 ? System.GC.GetAllocatedBytesForCurrentThread() - allocAt.Pop() : 0;
-            double v; ms.TryGetValue(section, out v); ms[section] = v + d;
-            int c; calls.TryGetValue(section, out c); calls[section] = c + 1;
-            long bb; bytes.TryGetValue(section, out bb); bytes[section] = bb + b;
+            long b = t.allocAt.Count > 0 ? System.GC.GetAllocatedBytesForCurrentThread() - t.allocAt.Pop() : 0;
+            lock (t) {
+                double v; t.ms.TryGetValue(section, out v); t.ms[section] = v + d;
+                int c; t.calls.TryGetValue(section, out c); t.calls[section] = c + 1;
+                long bb; t.bytes.TryGetValue(section, out bb); t.bytes[section] = bb + b;
+            }
         }
 
         /// <summary>When CallerDepth is set (PERFCALLERS in the harness): " from A < B < C", the methods that asked (outside AIPath and MoveField).</summary>
@@ -46,9 +55,18 @@ namespace HexTactica.AI {
             return " from " + string.Join(" < ", names.ToArray());
         }
 
-        public static void Reset() { ms.Clear(); calls.Clear(); bytes.Clear(); allocAt.Clear(); }
+        public static void Reset() { lock (all) foreach (Tally t in all) lock (t) { t.ms.Clear(); t.calls.Clear(); t.bytes.Clear(); t.allocAt.Clear(); } }
 
+        /// <summary>Every thread's time summed (on worker threads, time spent in parallel with the thinking thread).</summary>
         public static string Report() {
+            Dictionary<string, double> ms = new Dictionary<string, double>();
+            Dictionary<string, int> calls = new Dictionary<string, int>();
+            Dictionary<string, long> bytes = new Dictionary<string, long>();
+            lock (all) foreach (Tally t in all) lock (t) foreach (KeyValuePair<string, double> kv in t.ms) {
+                double v; ms.TryGetValue(kv.Key, out v); ms[kv.Key] = v + kv.Value;
+                int c; calls.TryGetValue(kv.Key, out c); calls[kv.Key] = c + t.calls[kv.Key];
+                long b; bytes.TryGetValue(kv.Key, out b); bytes[kv.Key] = b + t.bytes[kv.Key];
+            }
             List<KeyValuePair<string, double>> rows = new List<KeyValuePair<string, double>>(ms);
             rows.Sort((a, b) => b.Value.CompareTo(a.Value));
             StringBuilder sb = new StringBuilder("      sections:");

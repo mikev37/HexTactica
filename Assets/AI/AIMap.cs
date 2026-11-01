@@ -154,11 +154,38 @@ namespace HexTactica.AI {
         /// <summary>Tiles the supply chain's links are moving to this turn, and which supply unit: nobody else ends there.</summary>
         public readonly Dictionary<HexTile, Unit> chainTiles = new Dictionary<HexTile, Unit>();
 
-        public AIMap(Player player, AIProfile profile) {
+        public AIMap(Player player, AIProfile profile) : this(player, profile, null) { }
+
+        /// <summary>
+        /// With <paramref name="carry"/> (keepCaches: last turn's map for the same side), the caches it ended with that
+        /// what happened since leaves standing are kept (AIMapCache).
+        /// </summary>
+        public AIMap(Player player, AIProfile profile, AIMap carry) : this(player, profile, carry, false) { }
+
+        /// <summary>
+        /// <paramref name="speculative"/>: read while the opponent is still playing (AIPlayer's speculation), only to
+        /// warm caches for the turn's own map: the game's threat field is not recalculated and nothing on the real
+        /// board's objects is written.
+        /// </summary>
+        public AIMap(Player player, AIProfile profile, AIMap carry, bool speculative) {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
+            this.speculative = speculative;
             AIScore.Use(this.profile);
-            Rebuild();
+            if (carry != null && carry.player == player && carry.profile == this.profile && this.profile.keepCaches) Adopt(carry);
+            Rebuild(!speculative);
+        }
+        /// <summary>Read while the opponent plays, to warm caches only (see the constructor).</summary>
+        public readonly bool speculative;
+
+        /// <summary>
+        /// Speculation: work out now what the turn's own map will most likely ask for (every enemy's reach, every
+        /// unit's move field and space), so the turn's map takes it over (keepCaches keeps what still stands).
+        /// </summary>
+        public void Warm() {
+            foreach (Unit e in enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) BaseReach(e, profile.forecastOwnSideBlocks);
+            foreach (Unit u in ownUnits) if (u != null && u.tile != null) { ReachThisTurn(u); SpaceOf(u); }
+            foreach (Unit e in enemyUnits) if (e != null && e.tile != null) ReachThisTurn(e);
         }
 
         /// <summary>Full refresh. Called once per AI turn, and after any capture or kill that reshapes supply.</summary>
@@ -189,6 +216,11 @@ namespace HexTactica.AI {
         /// </summary>
         public HashSet<Unit> TheaterOf(Unit u) {
             if (!profile.theaterForecast || u == null || u.tile == null) return null;
+            lock (cacheLock) return TheaterOfLocked(u);
+        }
+        /// <summary>The map's lazily filled caches are shared by forecasts on worker threads (AIParallel): filled under this lock.</summary>
+        internal readonly object cacheLock = new object();
+        HashSet<Unit> TheaterOfLocked(Unit u) {
             HashSet<Unit> th;
             if (theaters.TryGetValue(u, out th)) return th;
             th = new HashSet<Unit>();
@@ -215,27 +247,28 @@ namespace HexTactica.AI {
         /// <summary>How far from <paramref name="u"/> its theatre reaches (int.MaxValue: no theatre).</summary>
         public int TheaterRadius(Unit u) {
             int r;
-            return TheaterOf(u) != null && theaterRadius.TryGetValue(u, out r) ? r : int.MaxValue;
+            if (TheaterOf(u) == null) return int.MaxValue;
+            lock (cacheLock) return theaterRadius.TryGetValue(u, out r) ? r : int.MaxValue;
         }
 
         /// <summary>Where each enemy could move to tonight on the board as it stands (AIWorld.Positions), once per board read.</summary>
         public HashSet<HexTile> BaseReach(Unit e, bool ownSideBlocks) {
             Dictionary<Unit, HashSet<HexTile>> d = ownSideBlocks ? baseReachBlocked : baseReach;
             HashSet<HexTile> r;
-            if (!d.TryGetValue(e, out r)) { r = AIWorld.Positions(e, ownSideBlocks); d[e] = r; }
+            lock (cacheLock) if (!d.TryGetValue(e, out r)) { r = AIWorld.Positions(e, ownSideBlocks); d[e] = r; }
             return r;
         }
         readonly Dictionary<Unit, HashSet<HexTile>> baseReach = new Dictionary<Unit, HashSet<HexTile>>(), baseReachBlocked = new Dictionary<Unit, HashSet<HexTile>>();
 
         void Rebuild(bool recalculateThreat) {
-            replyCache.positions.Clear();
-            baseReach.Clear(); baseReachBlocked.Clear();
+            readCount++;
+            // keepCaches: only what the board's changes since the last read could have changed (AIMapCache).
+            if (profile.keepCaches) { ReadDelta(); PruneUnitCaches(); }
+            else { replyCache.positions.Clear(); baseReach.Clear(); baseReachBlocked.Clear(); thisTurnFields.Clear(); horizonFields.Clear(); ourSpace.Clear(); everything = true; }
             theaters.Clear();
             theaterRadius.Clear();
             space = null;
             denialBaseline = null;
-            thisTurnFields.Clear();
-            horizonFields.Clear();
             approaches.Clear();
             costHome.Clear();
             enemyFire.Clear();
@@ -281,11 +314,24 @@ namespace HexTactica.AI {
         public AISigint sigint;
         /// <summary>How well we know the enemy's forces and how they compare (AIProfile.campaignKnowledge); null when off.</summary>
         public AIKnowledge knowledge;
+        /// <summary>fogUncertainty: the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge); -1 unset.</summary>
+        public float fogUncertainty = -1f;
         /// <summary>All out (AIKnowledge): enemy known and much weaker.</summary>
         public bool AllOut { get { return knowledge != null && knowledge.allOut; } }
 
         /// <summary>Strength <paramref name="u"/> should expect to lose on <paramref name="at"/> to enemies the fog may hide (AISigint).</summary>
-        public float FogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at) : 0f; }
+        /// <summary>
+        /// What the fog may cost <paramref name="u"/> at <paramref name="at"/>, in strength. Unknown ground counts here only
+        /// without fogUncertainty (the old way: fogAggression, in every use of the loss); with it, only in MoveFogLoss.
+        /// </summary>
+        public float FogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at, UnknownEverywhere) : 0f; }
+        /// <summary>
+        /// The fog's cost for a unit choosing where to move (AIFog.FogRisk): lost units, and unknown ground by how much of the
+        /// enemy we cannot place (fogUncertainty). The only place unknown ground is feared with fogUncertainty on: supply,
+        /// trucks, regrouping, targeting and the coordinator price only the enemy we have seen.
+        /// </summary>
+        public float MoveFogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at, true) : 0f; }
+        bool UnknownEverywhere { get { return profile == null || !profile.fogUncertainty; } }
 
         /// <summary>
         /// Model of tonight's enemy fire, one enemy unit at a time.
@@ -375,7 +421,7 @@ namespace HexTactica.AI {
 
         /// <param name="exclude">An enemy that will not be firing tonight — typically the
         /// target of a shot that kills it.</param>
-        public float ExpectedLoss(Unit u, HexTile at, Unit exclude) { return ExpectedLoss(u, at, exclude, true); }
+        public float ExpectedLoss(Unit u, HexTile at, Unit exclude) { return ExpectedLoss(u, at, exclude, UnknownEverywhere); }
 
         /// <summary>
         /// Same, from the enemy we see and remember only — not from ground we have not seen (AISigint).
@@ -543,7 +589,7 @@ namespace HexTactica.AI {
             if (SupplyDepth(from) > 0) return 0;
             if (u.moveRange <= 0) return 99;
             Dictionary<HexTile, int> cost;
-            if (!costHome.TryGetValue(u, out cost)) {
+            lock (cacheLock) if (!costHome.TryGetValue(u, out cost)) {
                 List<HexTile> supplied = new List<HexTile>(supply.depth.Keys);
                 Dictionary<HexTile, HexTile> unused;
                 cost = AIPath.CostToReach(u, supplied, u.moveRange * Mathf.Max(1, profile.planningHorizon), out unused);
@@ -568,8 +614,9 @@ namespace HexTactica.AI {
         public HexTile FiringTileNextTurn(Unit mover, Unit target, HexTile from) {
             if (mover == null || target == null || target.tile == null || from == null) return null;
             Dictionary<Unit, Approach> byTarget;
-            if (!approaches.TryGetValue(mover, out byTarget)) { byTarget = new Dictionary<Unit, Approach>(); approaches[mover] = byTarget; }
             Approach ap;
+            lock (cacheLock) {
+            if (!approaches.TryGetValue(mover, out byTarget)) { byTarget = new Dictionary<Unit, Approach>(); approaches[mover] = byTarget; }
             if (!byTarget.TryGetValue(target, out ap)) {
                 List<HexTile> ring = new List<HexTile>();
                 List<HexTile> inRange = AIPath.TilesInRange(target.tile, mover.MinRange, mover.AttackRange);
@@ -582,6 +629,7 @@ namespace HexTactica.AI {
                 ap = new Approach();
                 ap.cost = AIPath.CostToReach(mover, ring, Mathf.Max(0, mover.moveRange), out ap.firingTile);
                 byTarget[target] = ap;
+            }
             }
             int c;
             if (!ap.cost.TryGetValue(from, out c)) return null;
@@ -756,16 +804,34 @@ namespace HexTactica.AI {
         /// </summary>
         // ------------------------------------------------------------ travel distance
 
-        readonly Dictionary<HexTile, Dictionary<HexTile, int>> landSteps = new Dictionary<HexTile, Dictionary<HexTile, int>>();
+        /// <summary>
+        /// Land steps depend only on the terrain (elevation, roads, bridges) and the buildings standing on it (their
+        /// service tiles): kept for the whole game, one table per layout (AIMapCache.LayoutSignature), shared by both
+        /// sides — a bridge falling, a road broken or a building destroyed makes a new layout and a new table.
+        /// </summary>
+        Dictionary<HexTile, Dictionary<HexTile, int>> landSteps { get {
+            long sig = LayoutSignature();
+            lock (landByLayout) {
+                if (landLayout != sig || landShared == null) { landShared = new Dictionary<HexTile, Dictionary<HexTile, int>>(); landLayout = sig; }
+                return landShared;
+            }
+        } }
+        static readonly object landByLayout = new object();
+        static Dictionary<HexTile, Dictionary<HexTile, int>> landShared;
+        static long landLayout;
 
         /// <summary>
         /// Steps over land from every tile to <paramref name="to"/>, one a tile, around water (units
         /// ignored: this is the shape of the map, not tonight's traffic). Cached for the turn.
         /// </summary>
         public Dictionary<HexTile, int> LandSteps(HexTile to) {
-            Dictionary<HexTile, int> d;
             if (to == null) return null;
-            if (landSteps.TryGetValue(to, out d)) return d;
+            lock (cacheLock) return LandStepsLocked(to);
+        }
+        Dictionary<HexTile, int> LandStepsLocked(HexTile to) {
+            Dictionary<HexTile, int> d;
+            Dictionary<HexTile, Dictionary<HexTile, int>> table = landSteps;
+            lock (landByLayout) if (table.TryGetValue(to, out d)) return d;
             d = new Dictionary<HexTile, int>();
             Queue<HexTile> q = new Queue<HexTile>();
             d[to] = 0; q.Enqueue(to);
@@ -779,7 +845,7 @@ namespace HexTactica.AI {
                     q.Enqueue(n);
                 }
             }
-            landSteps[to] = d;
+            lock (landByLayout) table[to] = d;
             return d;
         }
 
@@ -1003,17 +1069,21 @@ namespace HexTactica.AI {
 
         public MoveField ReachThisTurn(Unit u) {
             MoveField f;
-            if (thisTurnFields.TryGetValue(u, out f)) return f;
-            f = AIPath.ThisTurn(u);
-            thisTurnFields[u] = f;
+            lock (cacheLock) {
+                if (thisTurnFields.TryGetValue(u, out f)) return f;
+                f = AIPath.ThisTurn(u);
+                thisTurnFields[u] = f;
+            }
             return f;
         }
 
         public MoveField ReachHorizon(Unit u) {
             MoveField f;
-            if (horizonFields.TryGetValue(u, out f)) return f;
-            f = AIPath.MultiTurn(u, profile.planningHorizon);
-            horizonFields[u] = f;
+            lock (cacheLock) {
+                if (horizonFields.TryGetValue(u, out f)) return f;
+                f = AIPath.MultiTurn(u, profile.planningHorizon);
+                horizonFields[u] = f;
+            }
             return f;
         }
 
@@ -1029,8 +1099,6 @@ namespace HexTactica.AI {
         /// every other unit can reach and where it can stop.
         /// </summary>
         public void InvalidateAllFields() {
-            thisTurnFields.Clear();
-            horizonFields.Clear();
             approaches.Clear();
             costHome.Clear();
         }

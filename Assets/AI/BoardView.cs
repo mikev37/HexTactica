@@ -86,6 +86,22 @@ public sealed class BoardView {
         if (u.transported != null) foreach (Unit c in u.transported) Collect(c, into);
     }
 
+    /// <summary>
+    /// A copy of this view, for thinking on another thread at the same time (AIParallel): its own units' tiles and
+    /// strengths, occupiers, published supply and buildings; the fog and sight it stood for are shared (never written
+    /// while thinking). Any thread: it reads only this view.
+    /// </summary>
+    public BoardView Clone() {
+        BoardView v = new BoardView(unitHas.Length, tileHas.Length, bHas.Length);
+        System.Array.Copy(unitTile, v.unitTile, unitTile.Length); System.Array.Copy(unitStrength, v.unitStrength, unitStrength.Length); System.Array.Copy(unitHas, v.unitHas, unitHas.Length);
+        System.Array.Copy(tileOccupier, v.tileOccupier, tileOccupier.Length); System.Array.Copy(tileHas, v.tileHas, tileHas.Length);
+        for (int i = 0; i < tileSupply.Length; i++) if (tileSupply[i] != null) v.tileSupply[i] = new Dictionary<Player, int>(tileSupply[i]);
+        System.Array.Copy(bOwner, v.bOwner, bOwner.Length); System.Array.Copy(bCapturing, v.bCapturing, bCapturing.Length); System.Array.Copy(bPoints, v.bPoints, bPoints.Length); System.Array.Copy(bHas, v.bHas, bHas.Length);
+        v.Fog = Fog; v.sights = sights;
+        foreach (Player p in knowsAll) v.knowsAll.Add(p);
+        return v;
+    }
+
     /// <summary>Think on this view on this thread until disposed (views nest: the one before comes back).</summary>
     public IDisposable Enter() { return new Entered(this); }
 

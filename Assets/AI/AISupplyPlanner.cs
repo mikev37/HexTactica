@@ -263,9 +263,11 @@ namespace HexTactica.AI {
             reply.lost.TryGetValue(hub.myUnit, out simulated);
             dRisk = Mathf.Max(map.ExpectedLoss(hub.myUnit, at), simulated) * AIScore.Worth(hub.myUnit) * profile.riskWeight;
             total -= dRisk;
-            if (DebugLog != null)
-                breakdown[at] = string.Format("({0},{1}) total {2:0} = supplied {3:0} + forward {4:0} + intent {5:0} + connection {6:0} - risk {7:0} (expected loss {8:0.0}, simulated {9:0.0})",
+            if (DebugLog != null) {
+                string line = string.Format("({0},{1}) total {2:0} = supplied {3:0} + forward {4:0} + intent {5:0} + connection {6:0} - risk {7:0} (expected loss {8:0.0}, simulated {9:0.0})",
                     at.x, at.y, total, dSupplied, dForward, dIntent, dConnect, dRisk, map.ExpectedLoss(hub.myUnit, at), simulated);
+                lock (breakdown) breakdown[at] = line;
+            }
 
             // Restore the real field, since the solve above published onto the board.
             SupplyNetwork.Solve(map.player, false);
@@ -343,9 +345,11 @@ namespace HexTactica.AI {
             reply.lost.TryGetValue(hub.myUnit, out simulated);
             float risk = simulated * hubWorth;
             total -= risk;
-            if (DebugLog != null)
-                breakdown[at] = string.Format("({0},{1}) total {2:0} = resupply {3:0} + heal {4:0} + spared {5:0} ({6} units) + relays {7:0} + forward {8:0} + intent {9:0} + ground {14:0} - stranded {10:0} - hit {11:0} ({12:0.0} strength) [{13}]",
+            if (DebugLog != null) {
+                string line = string.Format("({0},{1}) total {2:0} = resupply {3:0} + heal {4:0} + spared {5:0} ({6} units) + relays {7:0} + forward {8:0} + intent {9:0} + ground {14:0} - stranded {10:0} - hit {11:0} ({12:0.0} strength) [{13}]",
                     at.x, at.y, total, resupply, heal, spared, supplied, relays, forward, intent, stranded, risk, simulated, map.TileRead(at), ground);
+                lock (breakdown) breakdown[at] = line;
+            }
             SupplyNetwork.Solve(map.player, false);
             return total;
         }
@@ -377,11 +381,16 @@ namespace HexTactica.AI {
             if (unit.tile != null && !candidates.Contains(unit.tile)) candidates.Add(unit.tile);
             if (candidates.Count == 0) return null;
 
+            long __s = AIPerf.Begin();
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(map.player, hub);
+            AIPerf.End("supply plan: network without it", __s); __s = AIPerf.Begin();
             Dictionary<HexTile, float> proxy = new Dictionary<HexTile, float>();
-            for (int i = 0; i < candidates.Count; i++) {
-                proxy[candidates[i]] = ProxyValue(hub, candidates[i], map, without);
-            }
+            // Each tile's value on its own: at once on worker threads (profile.parallelForecast, AIParallel).
+            float[] pv = new float[candidates.Count];
+            if (profile.parallelForecast) AIParallel.For(candidates.Count, i => pv[i] = ProxyValue(hub, candidates[i], map, without));
+            else for (int i = 0; i < candidates.Count; i++) pv[i] = ProxyValue(hub, candidates[i], map, without);
+            for (int i = 0; i < candidates.Count; i++) proxy[candidates[i]] = pv[i];
+            AIPerf.End("supply plan: rough value of every tile", __s);
 
             candidates.Sort((a, b) => {
                 int c = proxy[b].CompareTo(proxy[a]);
@@ -395,9 +404,12 @@ namespace HexTactica.AI {
 
             // Exact evaluation of the shortlist only.
             Dictionary<HexTile, float> exact = new Dictionary<HexTile, float>();
-            for (int i = 0; i < shortlist.Count; i++) {
-                exact[shortlist[i]] = ExactValue(hub, shortlist[i], map, profile);
-            }
+            __s = AIPerf.Begin();
+            float[] ev = new float[shortlist.Count];
+            if (profile.parallelForecast) AIParallel.For(shortlist.Count, i => ev[i] = ExactValue(hub, shortlist[i], map, profile));
+            else for (int i = 0; i < shortlist.Count; i++) ev[i] = ExactValue(hub, shortlist[i], map, profile);
+            for (int i = 0; i < shortlist.Count; i++) exact[shortlist[i]] = ev[i];
+            AIPerf.End("supply plan: exact value of the shortlist", __s);
 
             if (DebugLog != null) {
                 List<HexTile> order = new List<HexTile>(exact.Keys);

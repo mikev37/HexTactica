@@ -39,6 +39,26 @@ public static class Tests {
         if (args.Length > 0) PrefabLoader.AssetsRoot = args[0];
         if (args.Length > 1) Scenarios.Dir = args[1];
         ApplySet();
+        // PARALLEL=n: worker threads for forecasts (0: none; default: the machine's cores less one).
+        string par = Environment.GetEnvironmentVariable("PARALLEL");
+        if (par != null) HexTactica.AI.AIParallel.Workers = int.Parse(par);
+        // SPECULATE=1: at the end of each turn, every other AI side speculates in line on the board as it stands (in the
+        // game it does so on a worker thread while the opponent plays), and its next turn takes the warmed caches over.
+        if (Environment.GetEnvironmentVariable("SPECULATE") != null)
+            GameController.TurnEnding += ending => {
+                long __s = HexTactica.AI.AIPerf.Begin();
+                if (GameController.gc != null) foreach (Player q in GameController.gc.players) {
+                    if (q == null || q == ending) continue;
+                    AIPlayer ai = q.GetComponent<AIPlayer>();
+                    if (ai != null && ai.enabled) ai.SpeculateNow();
+                }
+                HexTactica.AI.AIPerf.End("speculation (in the opponent's turn)", __s);
+            };
+        // AIVERIFY=1: every cache the AI's map keeps is checked against a fresh one (reported at the end).
+        if (Environment.GetEnvironmentVariable("AIVERIFY") != null) {
+            HexTactica.AI.AIMap.Verify = true;
+            AppDomain.CurrentDomain.ProcessExit += (o, e) => Console.WriteLine("AIVERIFY: " + HexTactica.AI.AIMap.VerifyReport());
+        }
         string probe = Environment.GetEnvironmentVariable("PROBE");
         if (probe == "export") { Scenarios.Export(); return 0; }
         if (probe == "game") {
