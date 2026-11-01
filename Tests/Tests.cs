@@ -39,6 +39,9 @@ public static class Tests {
         if (args.Length > 0) PrefabLoader.AssetsRoot = args[0];
         if (args.Length > 1) Scenarios.Dir = args[1];
         ApplySet();
+        // PARALLEL=n: worker threads for forecasts (0: none; default: the machine's cores less one).
+        string par = Environment.GetEnvironmentVariable("PARALLEL");
+        if (par != null) HexTactica.AI.AIParallel.Workers = int.Parse(par);
         string probe = Environment.GetEnvironmentVariable("PROBE");
         if (probe == "export") { Scenarios.Export(); return 0; }
         if (probe == "game") {

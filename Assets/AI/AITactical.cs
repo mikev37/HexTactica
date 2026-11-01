@@ -452,8 +452,15 @@ namespace HexTactica.AI {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = map.replyCache;
             float bestWorld = float.NegativeInfinity;
+            // Every option's forecast, at once on worker threads (profile.parallelForecast, AIParallel): each is
+            // independent of the others, and each lands on its own option.
+            bool narrate = DecisionLog != null;
+            if (profile.parallelForecast) {
+                map.TheaterOf(unit);
+                AIParallel.For(options.Count, i => options[i].world = AIWorld.Evaluate(unit, options[i].stop, options[i].shot, map, cache, narrate, true));
+            }
             foreach (Option o in options) {
-                o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, DecisionLog != null, true);
+                if (!profile.parallelForecast) o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, narrate, true);
                 o.extras = null;
                 float x;
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).

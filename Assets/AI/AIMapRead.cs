@@ -158,18 +158,20 @@ namespace HexTactica.AI {
             KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]> kv;
             // No move tiles handed in (a unit that does not fire tonight): its reach on the board as
             // it stands, which is the same for every forecast on this board.
-            if (enemySpace.TryGetValue(e, out kv) && ReferenceEquals(kv.Key, positions)) return kv.Value;
+            lock (cacheLock) if (enemySpace.TryGetValue(e, out kv) && ReferenceEquals(kv.Key, positions)) return kv.Value;
             HashSet<HexTile>[] s = SpaceFrom(e, e.tile, positions);
-            enemySpace[e] = new KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>(positions, s);
+            lock (cacheLock) enemySpace[e] = new KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>(positions, s);
             return s;
         }
         readonly Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>> enemySpace = new Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>>();
 
         public HashSet<HexTile>[] SpaceOf(Unit x) {
             HashSet<HexTile>[] s;
-            if (ourSpace.TryGetValue(x, out s)) return s;
-            s = SpaceFrom(x, x.tile, null);
-            ourSpace[x] = s;
+            lock (cacheLock) {
+                if (ourSpace.TryGetValue(x, out s)) return s;
+                s = SpaceFrom(x, x.tile, null);
+                ourSpace[x] = s;
+            }
             return s;
         }
 
@@ -206,7 +208,7 @@ namespace HexTactica.AI {
             SupplyPoint hub = hubUnit != null ? hubUnit.Hub : null;
             if (hub == null || hub.producer || hubUnit.owner == null) return 0f;
             float v;
-            if (hubStake.TryGetValue(hub, out v)) return v;
+            lock (cacheLock) if (hubStake.TryGetValue(hub, out v)) return v;
             Player o = hubUnit.owner;
             SupplyNetwork.Result with = o == player ? supply : SupplyNetwork.Solve(o, false);
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(o, hub);
@@ -216,7 +218,7 @@ namespace HexTactica.AI {
                 if (x == null || x.tile == null || x == hubUnit || x.Strength <= 0) continue;
                 if (with.DepthAt(x.tile) > 0 && without.DepthAt(x.tile) <= 0) v += AIScore.Worth(x);
             }
-            hubStake[hub] = v;
+            lock (cacheLock) hubStake[hub] = v;
             return v;
         }
 
