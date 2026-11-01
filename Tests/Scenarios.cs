@@ -379,6 +379,8 @@ public static class Scenarios {
              "How well Blue knows Red's forces (AIKnowledge): without fog everything is known (confidence 1), and three tanks and a grunt against one grunt is far more than knowledgeAllOutRatio: all out, the reserve released, no fear of the fog. With fog on and Red's grunt unseen, confidence is low: not all out, the reserve held.");
         make("ai-mobile-reserve", "mobileReserve", (a, o) => { Put("Tank", a, -5, -1); Put("Recon", a, -5, 2); Unit apc = Put("APC", a, -4, 2); Unit rider = Put("Grunt", a, -6, 2); Put("Grunt", a, -4, -2); Put("Grunt", a, -5, 1); Put("Gunship Variant", a, -6, 1); Put("Grunt", o, 6, -3); },
              "Who can be in the campaign's central reserve (AICampaign.ReserveMember). Mobile (campaignMobileReserve): the tank, the recon, the gunship and the APC carrying a grunt (the grunt goes with it); a grunt on foot cannot. Off: the tank, the recon and the grunt on foot; not the gunship or the APC.");
+        make("ai-keep-hq-clear", "keepHQClear", (a, o) => { Put("Gunship Variant", a, 5, 0); Put("Grunt", a, 1, 0); Put("Grunt", o, -3, 6); },
+             "The cost of standing in the way of a capture (AITactical.CaptureBlockCost): Blue's gunship, which cannot take buildings, ending its turn on Red's HQ while a Blue grunt is two turns from it pays half the HQ's worth; the grunt does not; nothing with captureBlockCost off, or with no unit that can take it within two turns. (In RiverCrossing a gunship stood on Red's empty HQ while the grunt that would have taken it walked back to supply.)");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
         make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
@@ -1148,6 +1150,17 @@ public static class Scenarios {
                 bool mob = member(true, tank) && member(true, recon) && member(true, gun) && member(true, apc) && !member(true, foot) && !member(true, rider);
                 bool old = member(false, tank) && member(false, recon) && !member(false, gun) && !member(false, apc) && member(false, foot);
                 return rider.trasnporter == apc && mob && old;
+            }
+            case "keepHQClear": {
+                Unit gun = Rig.At(5, 0).occupier, g = Rig.At(1, 0).occupier;
+                Building hq = GameController.HQOf(l.other);
+                Func<bool, Unit, float> cost = (on, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.captureBlockCost = on; return AITactical.CaptureBlockCost(u, hq.tile, new AIMap(a, prof)); };
+                float gunOn = cost(true, gun), gruntOn = cost(true, g), gunOff = cost(false, gun);
+                // With the grunt far away (more than two of its turns), nobody is kept waiting.
+                g.TeleportTo(Rig.At(-6, 4), 0);
+                float gunFar = cost(true, gun);
+                detail = "the gunship on Red's HQ, the grunt two turns off: costs " + gunOn.ToString("0") + "; the grunt itself " + gruntOn.ToString("0") + "; with captureBlockCost off " + gunOff.ToString("0") + "; with the grunt far away " + gunFar.ToString("0");
+                return gunOn > 0f && gruntOn == 0f && gunOff == 0f && gunFar == 0f;
             }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
