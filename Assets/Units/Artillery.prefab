@@ -190,7 +190,7 @@ MonoBehaviour:
   visionRange: 2
   stealthRange: 0
   move_display: {fileID: 0}
-  locomotion: 1
+  locomotion: 2
   moveRange: 6
   terrainScramble: 1
   minFuelPerTurn: 0
