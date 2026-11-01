@@ -230,16 +230,22 @@ public class GameController : MonoBehaviour
         List<Unit> snapshot = new List<Unit>(UnitController.uc.units);
         // (A unit off the board — carried, or concealed by fog of war — threatens nothing.)
         // Each side's reach is worked out on the board as it knows it (fog of war): one copy per side.
+        // (Each unit's movement is kept from the last recalculation while nothing near it changed: ThreatReach, real board only.)
         if (FogOfWar.On && BoardView.Current == null && gc != null && gc.players != null) {
             foreach (Player p in gc.players) {
                 if (p == null) continue;
-                using (FogOfWar.Concealing(p))
-                    foreach (Unit x in snapshot) if (x != null && x.owner == p && x.tile != null) x.updateThreat();
+                using (FogOfWar.Concealing(p)) {
+                    ThreatReach.Begin(p);
+                    try { foreach (Unit x in snapshot) if (x != null && x.owner == p && x.tile != null) x.updateThreat(); }
+                    finally { ThreatReach.End(); }
+                }
             }
             foreach (Unit x in snapshot) if (x != null && (x.owner == null || !gc.players.Contains(x.owner)) && x.tile != null) x.updateThreat();
             return;
         }
-        snapshot.ForEach(x => { if (x != null && x.tile != null) x.updateThreat(); });
+        if (BoardView.Current == null) ThreatReach.Begin(null); else ThreatReach.End();
+        try { snapshot.ForEach(x => { if (x != null && x.tile != null) x.updateThreat(); }); }
+        finally { ThreatReach.End(); }
     }
 
     public void EndTurn() {
