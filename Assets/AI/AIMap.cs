@@ -279,6 +279,10 @@ namespace HexTactica.AI {
 
         /// <summary>What the fog may hide (AISigint), or null: nothing to price.</summary>
         public AISigint sigint;
+        /// <summary>How well we know the enemy's forces and how they compare (AIProfile.campaignKnowledge); null when off.</summary>
+        public AIKnowledge knowledge;
+        /// <summary>All out (AIKnowledge): enemy known and much weaker.</summary>
+        public bool AllOut { get { return knowledge != null && knowledge.allOut; } }
 
         /// <summary>Strength <paramref name="u"/> should expect to lose on <paramref name="at"/> to enemies the fog may hide (AISigint).</summary>
         public float FogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at) : 0f; }

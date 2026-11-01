@@ -42,6 +42,9 @@ public class Player : MonoBehaviour
 
         // Snapshot the list: attrition can remove units mid-iteration.
         List<Unit> roster = new List<Unit>(units);
+        // Air tankers resupply this turn if they started it with supplies (whatever order the roster runs in).
+        tankersStocked.Clear();
+        foreach (Unit t in roster) if (t != null && t.airTanker && t.supplies > 0) tankersStocked.Add(t);
         for (int i = 0; i < roster.Count; i++) {
             Unit u = roster[i];
             if (u == null || u.tile == null) continue;
@@ -50,7 +53,11 @@ public class Player : MonoBehaviour
             if (u.trasnporter != null) continue;
             Upkeep(u, roster, selfSupplying);
         }
+        tankersStocked.Clear();
     }
+
+    /// <summary>The air tankers that started this turn with supplies: they resupply the aircraft beside them (StartTurn).</summary>
+    readonly HashSet<Unit> tankersStocked = new HashSet<Unit>();
 
     enum Fed { Resupplied, Starved, Aloft }
 
@@ -117,7 +124,6 @@ public class Player : MonoBehaviour
         u.ammo = u.ammoMax;
         u.fuel = u.fuelMax;
         u.supplies = u.suppliesMax;
-        u.refuelStock = u.refuelStockMax;
     }
 
     /// <summary>
@@ -130,14 +136,15 @@ public class Player : MonoBehaviour
         int heal = network ? (b.healStacksWithSupply ? 1 + b.healPerTurn : Mathf.Max(1, b.healPerTurn)) : b.healPerTurn;
         if (mayHeal && heal > 0) u.Strength = Mathf.Min(6, u.Strength + heal);
         if (network || b.rearm) u.ammo = u.ammoMax;
-        if (network || b.refuel) { u.fuel = u.fuelMax; u.refuelStock = u.refuelStockMax; }
+        if (network || b.refuel) u.fuel = u.fuelMax;
         if (network || b.resupply) u.supplies = u.suppliesMax;
     }
 
     /// <summary>Upkeep of an aircraft or ship away from its base (see StartTurn).</summary>
     void Aloft(Unit u, List<Unit> roster) {
         // Its own supplies run down a turn at a time (enough to reach a base, usually); out of
-        // them, it weakens a strength a turn, like any unit out of supply.
+        // them, it weakens a strength a turn, like any unit out of supply. An air tanker too: while it has
+        // supplies it also resupplies the aircraft beside it, at no further cost.
         if (u.suppliesMax > 0) {
             if (u.supplies > 0) u.supplies--;
             else {
@@ -150,7 +157,6 @@ public class Player : MonoBehaviour
             if (tanker != null) {
                 u.fuel = u.fuelMax;
                 u.supplies = u.suppliesMax;
-                tanker.supplies = Mathf.Max(0, tanker.supplies - 1);
                 u.PlayRefuelHop(tanker);
             } else {
                 u.fuel = Mathf.Max(0, u.fuel - u.minFuelPerTurn);
@@ -162,12 +168,12 @@ public class Player : MonoBehaviour
         }
     }
 
-    /// <summary>A friendly air tanker beside <paramref name="u"/> with supplies left to give.</summary>
-    static Unit TankerBeside(Unit u, List<Unit> roster) {
+    /// <summary>A friendly air tanker beside <paramref name="u"/> that started the turn with supplies. A tanker is never resupplied by another.</summary>
+    Unit TankerBeside(Unit u, List<Unit> roster) {
         if (u.airTanker) return null;
         for (int i = 0; i < roster.Count; i++) {
             Unit t = roster[i];
-            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.refuelStock <= 0) continue;
+            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || !tankersStocked.Contains(t)) continue;
             if (u.tile.neighbors.Contains(t.tile)) return t;
         }
         return null;
@@ -258,7 +264,8 @@ public struct PlayerData {
     public string personal_name;
     public long id;
     public Color displayColor;
-    public Faction faction;
+    /// <summary>The faction's asset name (a reference does not survive a save): resolved through LevelEditor.FindFaction.</summary>
+    public string factionName;
     public bool AI;
     public int money;
     public bool eliminated;
@@ -266,7 +273,7 @@ public struct PlayerData {
         personal_name = t.personal_name;
         id = t.id;
         displayColor = t.displayColor;
-        faction = t.faction;
+        factionName = t.faction != null ? t.faction.name : "";
         AI = t.GetComponent<AIPlayer>();
         money = t.money;
         eliminated = t.eliminated;
@@ -286,7 +293,8 @@ public struct PlayerData {
         }
         output.personal_name = that.personal_name;
         output.displayColor = that.displayColor;
-        output.faction = that.faction;
+        // (A save that names none — older ones, or a side without a faction — leaves the side's faction as the scene set it.)
+        if (!string.IsNullOrEmpty(that.factionName)) output.faction = LevelEditor.FindFaction(that.factionName);
         output.money = that.money;
         output.eliminated = that.eliminated;
         if (AI && output.GetComponent<AIPlayer>() == null) {

@@ -18,7 +18,7 @@ MonoBehaviour:
   choiceMode: 2
   campaign: 1
   objectiveSpread: 0.5
-  objectiveForceRatio: 1.5
+  objectiveForceRatio: 1.1
   objectiveHorizonTurns: 10
   objectiveReplanLoss: 0.5
   routeDanger: 3
@@ -46,7 +46,7 @@ MonoBehaviour:
   campaignDipTurns: 1
   worldStarvation: 1
   campaignLogistics: 1
-  campaignFallbackRatio: 0.5
+  campaignFallbackRatio: 0
   worldTie: 0.25
   worldTieMin: 250
   attackTie: 0.5
@@ -199,7 +199,7 @@ MonoBehaviour:
   fogThreat: 1
   sigintMoves: 6
   sigintDecay: 0.7
-  fogAggression: 0.2
+  fogAggression: 1
   fogUnknownTurns: 6
   scoutUnits: 0
   scoutPull: 0.3
@@ -207,3 +207,46 @@ MonoBehaviour:
   noiseSeed: 0
   decisionNoise: 0.15
   annotateBoard: 1
+  campaignReleaseTurns: 2
+  campaignDefendHQ: 0
+  campaignEnemyNearestOnly: 1
+  campaignChainToUnits: 1
+  campaignScoutEscort: 0
+  campaignReserve: 1
+  campaignActiveReserveShare: 0.1
+  regroup: 1
+  regroupExpensiveCost: 3000
+  regroupRisk: 2
+  strategicReplaceWeight: 0.3
+  strategicReplaceTurns: 3
+  strategicReplaceCap: 10
+  campaignStrikeFirst: 0
+  regroupTransportScreens: 1
+  regroupCommitRatio: 1
+  hqCaptureWeight: 2
+  hqThreatNear: 0.02
+  hqThreatOn: 0.1
+  buildingVacantShare: 0.02
+  buildingOccupyShare: 0.1
+  holdEnemyHQRule: 0
+  productionVariety: 0.97
+  productionFloor: 0.05
+  productionPresence: 0.25
+  productionDefenceWeight: 0.5
+  productionFrontWeight: 1
+  productionSupplyWeight: 1
+  productionSupplyExtra: 2
+  productionSupplyCap: 0
+  productionSupplySuperiority: 1
+  productionSpendAll: 1
+  woundedWorldCompare: 1
+  coordinationReuse: 1
+  campaignMobileReserve: 1
+  campaignReserveMinMove: 5
+  campaignKnowledge: 1
+  knowledgeAllOutRatio: 2
+  knowledgeAllOutConfidence: 0.6
+  knowledgeReserveConfidence: 0.6
+  productionTimeToFront: 1
+  productionTimeHorizon: 3
+  captureBlockCost: 0

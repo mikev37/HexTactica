@@ -83,11 +83,8 @@ public class Unit : MonoBehaviour
     internal void Prime() { hubCache = GetComponent<SupplyPoint>(); hubKnown = true; nameCache = base.name; }
     [Tooltip("Ground unit able to move into and through water tiles that border land")]
     public bool amphibious;
-    [Tooltip("Air tanker: refuels friendly air units that start their turn beside it, one refuelStock for each")]
+    [Tooltip("Air tanker: refuels and resupplies friendly air units (not other tankers) that start their turn beside it, as long as it has supplies. Its own supplies run down a turn at a time like any aircraft's (resupplying others costs nothing more), so suppliesMax is how many turns it can do it away from base.")]
     public bool airTanker;
-    [Tooltip("Air tanker: refuels it can give before it must go back to base")]
-    public int refuelStock;
-    public int refuelStockMax;
     /// <summary>Fired this turn: an infantry unit that attacked does not capture the building it stands on.</summary>
     [System.NonSerialized] public bool attackedThisTurn;
 
@@ -220,6 +217,12 @@ public class Unit : MonoBehaviour
     public List<Transform> cargoSlots = new List<Transform>();
     [Tooltip("Scale of a carried unit's sprites while aboard")]
     public float cargoScale = 0.45f;
+    [Tooltip("Aircraft transport (a plane, not a helicopter): what a unit it puts down wears on the way down — attached to the unit when it is dropped, removed when it lands. Optional.")]
+    public GameObject parachutePrefab;
+    [Tooltip("Aircraft transport: how far above its tile a unit it puts down appears, before settling onto it (world units).")]
+    public float dropHeight = 0.6f;
+    [Tooltip("Aircraft transport: how fast a unit it puts down comes down to its tile (world units a second).")]
+    public float dropSpeed = 0.6f;
 
     // Boarding animation state: the unit's own scale, and whether it is still settling.
     Vector3 homeScale = Vector3.one;
@@ -300,8 +303,19 @@ public class Unit : MonoBehaviour
             transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale * cargoScale, Time.deltaTime * 2f);
             return;
         }
-        // Just unloaded: grow back while walking off.
-        if (scaleKnown && transform.localScale != homeScale) transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale, Time.deltaTime * 2f);
+        // Dropped from a plane: coming down onto its tile, then the parachute goes.
+        if (dropFrom != null) {
+            if (tile == null || tile.unitPlacement == null) { EndDrop(); }
+            else {
+                Vector3 to = tile.unitPlacement.position;
+                float speed = dropFrom != null ? Mathf.Max(0.05f, dropFrom.dropSpeed) : 0.6f;
+                transform.position = Vector3.MoveTowards(transform.position, to, Time.deltaTime * speed);
+                if (Vector2.Distance(transform.position, to) <= 0.01f) { transform.position = to; spriteTile = tile; EndDrop(); }
+                else return;
+            }
+        }
+        // Just unloaded: grow back while walking off. (Not one that died aboard: it stays the size it rode at.)
+        if (scaleKnown && !diedAboard && transform.localScale != homeScale) transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale, Time.deltaTime * 2f);
         if(Strength <=0) {
             if( deathRattleTimer <= 0) {
                 Die();
@@ -501,7 +515,11 @@ public class Unit : MonoBehaviour
     /// <summary>The last step of boarding: into the transport's slot and its sorting group.</summary>
     void SettleAboard(Unit transport) {
         if (animator != null) animator.SetBool("Moving", false);
-        int slot = Mathf.Max(0, transport.transported.IndexOf(this));
+        // The first cargo slot no other unit aboard is sitting in. (By its place in the list, a unit boarding
+        // after another had got off took the slot of one still aboard: the two were drawn on top of each other.)
+        int slot = 0;
+        while (transport.transported.Exists(c => c != null && c != this && c.cargoSlot == slot)) slot++;
+        cargoSlot = slot;
         Transform at = transport.cargoSlots != null && slot < transport.cargoSlots.Count && transport.cargoSlots[slot] != null
                      ? transport.cargoSlots[slot] : transport.transform;
         // Into the slot, sliding there from where it stands (Update). A slot (or transport) scaled to
@@ -533,6 +551,18 @@ public class Unit : MonoBehaviour
         return false;
     }
 
+    /// <summary>The plane that dropped it, while it comes down (animation only), and the parachute it wears.</summary>
+    [System.NonSerialized] Unit dropFrom;
+    [System.NonSerialized] GameObject chute;
+
+    void EndDrop() {
+        dropFrom = null;
+        if (chute != null) { Destroy(chute); chute = null; }
+    }
+
+    /// <summary>The cargo slot its sprite sits in aboard a transport (SettleAboard); -1 when not aboard.</summary>
+    [System.NonSerialized] public int cargoSlot = -1;
+
     /// <summary>The transport this unit was put down from, while its sprite still rides it to the end of its move (animation only).</summary>
     [System.NonSerialized] Unit disembarkFrom;
 
@@ -552,6 +582,7 @@ public class Unit : MonoBehaviour
     void FinishDisembark() {
         Unit transport = disembarkFrom;
         disembarkFrom = null;
+        cargoSlot = -1;
         foreach (GameObject g in hiddenUI) if (g != null) g.SetActive(true);
         hiddenUI.Clear();
         // ... and the strength pips whatever happened in between (a supply unit was put down without them).
@@ -559,6 +590,15 @@ public class Unit : MonoBehaviour
         transform.SetParent(null, true);
         transform.rotation = Quaternion.identity;
         if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
+        // Put down from a plane: it appears a little above its tile, wearing the plane's parachute if it has one,
+        // and drifts down onto it (Update).
+        if (transport != null && tile != null && tile.unitPlacement != null && LocomotionRules.IsAirborne(transport.locomotion) && !LocomotionRules.ResuppliedInSupply(transport.locomotion)) {
+            dropFrom = transport;
+            transform.position = tile.unitPlacement.position + Vector3.up * transport.dropHeight;
+            if (scaleKnown) transform.localScale = homeScale;
+            if (path != null) path.Clear();
+            if (transport.parachutePrefab != null) chute = GameObject.Instantiate(transport.parachutePrefab, transform.position, Quaternion.identity, transform);
+        }
         if (Hub != null && transport != null) {
             bool still = false;
             foreach (Unit c in transport.transported) if (c != null && c != this && c.Hub != null) still = true;
@@ -709,7 +749,6 @@ public class Unit : MonoBehaviour
         fuel = fuelMax;
         ammo = ammoMax;
         supplies = suppliesMax;
-        refuelStock = refuelStockMax;
     }
 
     /// <summary>
@@ -1048,9 +1087,16 @@ public class Unit : MonoBehaviour
     }
 
     private bool dead;
+    /// <summary>A unit is dying (before it leaves the board: its tile, owner and strength are still as they were).</summary>
+    public static event System.Action<Unit> Died;
+
     private void DieActual() {
         if (dead) return;
         dead = true;
+        if (Died != null) Died(this);
+        // Dying aboard: it stays small where it rode (Update does not grow it back) and plays its own death there,
+        // not taken down unseen with its transport's sprite (FallAboard).
+        if (trasnporter != null) diedAboard = true;
         SupplyPoint ownHub = Hub;
         if (ownHub != null && ownHub.producer && owner != null) owner.hadHQ = true;
         Strength = 0;
@@ -1058,7 +1104,10 @@ public class Unit : MonoBehaviour
         if (UnitController.uc != null) UnitController.uc.units.Remove(this);
         // Anything being carried goes down with the transport.
         for (int i = transported.Count - 1; i >= 0; i--) {
-            if (transported[i] != null) transported[i].DieActual();
+            Unit c = transported[i];
+            if (c == null) continue;
+            c.DieActual();
+            if (GameController.gc == null || !GameController.gc.headless) c.FallAboard();
         }
         transported.Clear();
         if (trasnporter != null) { trasnporter.transported.Remove(this); trasnporter = null; }
@@ -1132,9 +1181,28 @@ public class Unit : MonoBehaviour
     bool deathPlayed;
 
     /// <summary>The death on screen, once: the explosion and the animation trigger (whose end, DeathResolve, removes the unit). Removed anyway after a few seconds, in case the animation never ends.</summary>
+    /// <summary>Died aboard a transport (DieActual): kept at the size it rode at.</summary>
+    [System.NonSerialized] bool diedAboard;
+
+    /// <summary>
+    /// Its transport died with it aboard: off the transport's sprite (so it is not destroyed with it), where and as
+    /// small as it rode, and its own death played there.
+    /// </summary>
+    void FallAboard() {
+        if (this == null || gameObject == null) return;
+        transform.SetParent(null, true);
+        if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
+        Die();
+    }
+
     private void Die(string trigger = "Die") {
         if (deathPlayed) return;
         deathPlayed = true;
+        // Died aboard (starved, say): off the transport's sprite where it rode, staying small, so it plays its own death.
+        if (diedAboard && transform.parent != null && (GameController.gc == null || !GameController.gc.headless)) {
+            transform.SetParent(null, true);
+            if (cargoGroup != null) { Destroy(cargoGroup); cargoGroup = null; }
+        }
         // Off the board and out of every list first, whatever brought it here (a unit whose strength
         // reached 0 some other way was destroyed while still listed, and saving the board then
         // read a destroyed unit).
@@ -1222,14 +1290,11 @@ public struct UnitData {
     /// would be loaded into the first unit on the roster.
     /// </summary>
     public int transporterIndexPlusOne;
-    /// <summary>An air tanker's refuels left, plus one (zero: an older save, keep the prefab's).</summary>
-    public int refuelStockPlusOne;
     /// <summary>Suppressed strength pips (zero in older saves, which is right: nothing was suppressed).</summary>
     public int suppressed;
     public UnitData(Unit t) {
         suppressed = t.suppressed;
         transporterIndexPlusOne = 0;
-        refuelStockPlusOne = t.refuelStock + 1;
         x = t.tile.x;
         y = t.tile.y;
         z = t.tile.z;
@@ -1267,7 +1332,6 @@ public struct UnitData {
         ut.supplies = supplies;
         ut.fuel = fuel;
         ut.ammo = ammo;
-        if (refuelStockPlusOne > 0) ut.refuelStock = refuelStockPlusOne - 1;
         ut.suppressed = Mathf.Clamp(suppressed, 0, Strength);
         return ut;
     }

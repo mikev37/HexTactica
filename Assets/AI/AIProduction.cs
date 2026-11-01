@@ -132,6 +132,35 @@ namespace HexTactica.AI {
                 foreach (HexTile x in b.Footprint)
                     if (x.occupier == null && AIAir.MayBuildOn(x, map)) { bool any = false; foreach (Unit t in b.Purchasable()) if (t.cost > 0 && t.CanEnter(x)) { any = true; break; } if (any) slots.Add(new Slot { b = b, tile = x }); }
 
+            // Where the fight is (productionTimeToFront): the enemy units we know of, else the enemy's HQ.
+            List<HexTile> fight = new List<HexTile>();
+            if (profile.productionTimeToFront) {
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) fight.Add(e.tile);
+                FogOfWar.Knowledge fk = FogOfWar.current;
+                if (fk != null) foreach (FogOfWar.Phantom ph in fk.phantoms) if (ph.last != null && ph.kind != null && ph.kind.firepower > 0) fight.Add(ph.last);
+                if (fight.Count == 0) foreach (Building b in Building.all) if (b != null && b.IsHQ && b.tile != null && (FogOfWar.OwnerAsSeen(p, b) ?? b.owner) != p && b.owner != null) fight.Add(b.tile);
+            }
+            Dictionary<string, float> timeFactor = new Dictionary<string, float>();
+            // Its worth there: divided by (1 + turns to the fight / horizon), by its own movement.
+            System.Func<Unit, HexTile, float> toFight = (t, at) => {
+                if (fight.Count == 0 || t.moveRange <= 0) return 1f;
+                string key = GameController.UnitName(t) + "@" + at.x + "," + at.y;
+                float f;
+                if (timeFactor.TryGetValue(key, out f)) return f;
+                int d = int.MaxValue;
+                foreach (HexTile x in fight) d = Mathf.Min(d, map.Travel(t, at, x));
+                int turns = Mathf.Max(0, Mathf.CeilToInt(Mathf.Max(0, d - Mathf.Max(1, t.AttackRange)) / (float)t.moveRange) - 1);
+                f = 1f / (1f + turns / Mathf.Max(0.1f, profile.productionTimeHorizon));
+                timeFactor[key] = f;
+                return f;
+            };
+            // Relative to the quickest to the fight of what we can build anywhere: where and what we build shifts
+            // toward what gets there, but fighting units as a whole lose nothing against supply units and trucks.
+            // (Scaled absolutely, every fighting unit lost half its worth on a big map and the gold went to saving
+            // for supply units: an army of twelve stood still for twenty turns.)
+            float quickest = 0f;
+            if (profile.productionTimeToFront && fight.Count > 0)
+                foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) if (Kind(t) == 0 && t.cost > 0 && t.CanEnter(sl.tile)) quickest = Mathf.Max(quickest, toFight(t, sl.tile));
             int money = p.money;
             int supplyPlanned = 0, trucksPlanned = 0;
             Dictionary<string, int> picked = new Dictionary<string, int>();
@@ -154,6 +183,10 @@ namespace HexTactica.AI {
                         float shortBy = Mathf.Max(0f, f.front.needPower - f.front.assignedPower) / Mathf.Max(1f, f.front.needPower);
                         float fv = ValueVs(t, sl.tile, foes) * mix * (1f + shortBy) * profile.productionFrontWeight;
                         if (fv > v) { v = fv; tag = f.front.Id; }
+                    }
+                    if (profile.productionTimeToFront && quickest > 0f) {
+                        float tf = Mathf.Min(1f, toFight(t, sl.tile) / quickest);
+                        if (tf < 1f) { v *= tf; tag = (tag ?? "") + (tag != null ? ", " : "") + "x" + tf.ToString("0.00") + " for its time to the fight"; }
                     }
                 } else if (kindOf == 1) {
                     if (hubsHave + supplyPlanned >= supplyCap) return new KeyValuePair<float, string>(-1f, null);

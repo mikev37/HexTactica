@@ -549,7 +549,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>A building's worth to whoever holds it, in gold (AIProfile building values; an HQ that can change hands: the game).</summary>
-        internal static float BuildingWorth(Building b, AIMap map) {
+        public static float BuildingWorth(Building b, AIMap map) {
             if (b == null || !b.Capturable) return 0f;
             if (b.IsHQ) return map.BoardStake * Mathf.Max(0f, map.profile.hqCaptureWeight);
             AIProfile p = map.profile;

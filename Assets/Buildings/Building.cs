@@ -244,13 +244,23 @@ public class Building : MonoBehaviour {
 
     public bool CanProduce { get { return Functioning && buildable != null && buildable.Count > 0; } }
 
-    /// <summary>Can this building build <paramref name="u"/> now: on its list, and purchases allow it (rules and the scenario's allowed units)?</summary>
-    public bool CanBuild(Unit u) { return u != null && CanProduce && buildable.Contains(u) && GameController.MayPurchase(u); }
+    /// <summary>The units this building offers <paramref name="p"/>: its list mapped through p's faction (Faction.Offer), whatever purchases allow.</summary>
+    public List<Unit> Offered(Player p) { return Faction.Offer(p != null ? p.faction : null, type, buildable); }
+
+    /// <summary>
+    /// Can this building build <paramref name="u"/> now: offered to its owner (its list, through the owner's faction), and purchases
+    /// allow it (rules and the scenario's allowed units; a faction's version of a unit is allowed where the unit it replaces is)?
+    /// </summary>
+    public bool CanBuild(Unit u) {
+        if (u == null || !CanProduce || !Offered(owner).Contains(u)) return false;
+        Faction f = owner != null ? owner.faction : null;
+        return GameController.MayPurchase(u) || (f != null && f.BaseOf(u) != u && GameController.MayPurchase(f.BaseOf(u)));
+    }
 
     /// <summary>The units this building may build now.</summary>
     public List<Unit> Purchasable() {
         List<Unit> list = new List<Unit>();
-        if (buildable != null) foreach (Unit u in buildable) if (CanBuild(u)) list.Add(u);
+        if (CanProduce) foreach (Unit u in Offered(owner)) if (CanBuild(u)) list.Add(u);
         return list;
     }
 

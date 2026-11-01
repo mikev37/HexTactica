@@ -42,7 +42,7 @@ namespace HexTactica.AI {
 
         [Header("Campaign (objectives and task forces)")]
         [Tooltip("Plan the war as objectives read from the map — defend our HQ, secure a building, clear an enemy group, scout what the fog hides — each with a task force and supply fit to achieve it, and fight fronts made from them (AICampaign). Off: fronts where the fighting is (AIStrategic).")]
-        public bool campaign = false;
+        public bool campaign = true;
         [Tooltip("How evenly the campaign spreads the army. 0: all in — enough at home not to be overrun, everything else on the single best objective. 1: every objective it can meet, and what is left spread over all of them.")]
         [Range(0f, 1f)]
         public float objectiveSpread = 0.5f;
@@ -103,6 +103,18 @@ namespace HexTactica.AI {
         public float campaignScoutEscort = 0f;
         [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
         public bool campaignReserve = true;
+        [Tooltip("Campaign: the central reserve is mobile — aircraft, combat ships, loaded transports (with what they carry) and fast ground units (campaignReserveMinMove or more); infantry on foot and other slow units stay with the ordinary fronts. Off: every spare fighting unit on the ground, as before.")]
+        public bool campaignMobileReserve = true;
+        [Tooltip("Campaign, mobile reserve: the least movement a ground unit needs to be in the reserve (a tank: 6, a recon: 8; a grunt: 3).")]
+        public int campaignReserveMinMove = 5;
+        [Tooltip("Campaign: estimate how well the enemy's forces are known and how they compare to ours (AIKnowledge): fear of the fog scales down with it, and once both are high enough the army goes all out — every front attacks, task forces leave our supply, the enemy HQ comes first, the reserve is released. The reserve is also released once confidence passes knowledgeReserveConfidence. Off: none of it.")]
+        public bool campaignKnowledge = true;
+        [Tooltip("All out (campaignKnowledge): our fighting strength at least this many times what the enemy could have.")]
+        public float knowledgeAllOutRatio = 2f;
+        [Tooltip("All out (campaignKnowledge): at least this confidence in our knowledge of the enemy's forces (0..1; 1 without fog).")]
+        public float knowledgeAllOutConfidence = 0.6f;
+        [Tooltip("The reserve is released (campaignKnowledge) once confidence in our knowledge of the enemy reaches this: the reserve is for an enemy whose potential is unknown.")]
+        public float knowledgeReserveConfidence = 0.6f;
         [Tooltip("Campaign: the share of units on no task force kept with the ordinary fronts as the active reserve (the rest gather as the central reserve).")]
         [Range(0f, 1f)]
         public float campaignActiveReserveShare = 0.1f;
@@ -146,6 +158,10 @@ namespace HexTactica.AI {
         [Tooltip("Buying: each unit of a kind we already have (or have planned this turn) makes another worth this much (1: no variety rule; what we lack against the enemy, AIProduction.Scarcity, already gives diminishing returns).")]
         [Range(0f, 1f)]
         public float productionVariety = 0.97f;
+        [Tooltip("Production: a fighting unit is worth less the longer it would take to reach the fight from where it is built — 1 / (1 + turns to the nearest known enemy / productionTimeHorizon), by its own movement — relative to the quickest fighting unit we could build anywhere (that one keeps its full worth, so fighting units as a whole lose nothing against supply). A slow unit built far from the front (a conscript at a distant city) no longer outbids one that gets there. Off: where it is built does not matter.")]
+        public bool productionTimeToFront = true;
+        [Tooltip("Production, productionTimeToFront: turns to the fight that halve a unit's worth.")]
+        public float productionTimeHorizon = 3f;
         [Tooltip("Buying: a fighting unit is worth at least this share of its own full worth, so a slot is filled when gold allows even if nothing scores against the enemy.")]
         public float productionFloor = 0.05f;
         [Tooltip("Buying: a unit's presence on the field — actions the enemy must spend on it, ground it holds and sees — as this share of its own full worth, added to what it would do in exchanges.")]
@@ -520,6 +536,10 @@ namespace HexTactica.AI {
 
         [Tooltip("Coordinated strikes in passes (AICoordinator): each unit's best attacks, a survive move and a retreat; battle plans of two or more units on one target from non-conflicting tiles, forecast as one board; best plans act first.")]
         public bool coordinationPasses = true;
+        [Tooltip("A unit's decision from the coordination pass (every unit in contact decides once before anyone acts) is kept for its turn, unless something within its reach or the enemy's has moved, been hurt or appeared since, or its tile or target is gone. Off: every unit decides again on its turn.")]
+        public bool coordinationReuse = true;
+        [Tooltip("A unit that cannot take buildings pays half a building's worth for ending its turn on one that is not ours while a unit of ours that can take it is within two turns of it: it keeps out of the way (AITactical.CaptureBlockCost). Off (the default): only a task force's own objective building is kept clear, by CampaignStep and the objective's pull.")]
+        public bool captureBlockCost = false;
 
         [Tooltip("Attack options each unit keeps for battle plans.")]
         public int coordOffensiveOptions = 3;
@@ -686,15 +706,15 @@ namespace HexTactica.AI {
 
         [Tooltip("Price what the fog may hide (AISigint): enemies seen before and lost track of, somewhere within reach of where they were last seen, and ground not seen lately, which may hide anything the enemy fields.")]
         public bool fogThreat = true;
-        [Tooltip("Enemy moves an enemy unit lost track of is still counted as about (fogThreat).")]
+        [Tooltip("Enemy moves an enemy unit lost track of is still counted near an objective by the campaign (AICampaign). The tactical fog risk (AISigint) keeps it until it is seen again or dies.")]
         [Range(1, 12)]
         public int sigintMoves = 6;
-        [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen (fogThreat): it may have gone anywhere, or elsewhere.")]
+        [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen: the campaign's estimate of enemy power near an objective (AICampaign). The tactical fog risk (AISigint) does not fade it: it spreads it over where the unit could be.")]
         [Range(0f, 1f)]
         public float sigintDecay = 0.7f;
-        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields; 1: unknown ground is empty, as before. 0.2 beat fogThreat off on the big maps in 18 of 24 games (0.5: 4 of 8, 1: 4 of 8).")]
+        [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields (the average of those kinds' damage, by the share of unknown ground near: a threat from anywhere, with no position); 1: unknown ground is empty. Default 1 since lost units are tracked by where they could be (AISigint): the average over every kind feared expansion everywhere while the enemy stood in a known place. (0.2 had beaten fogThreat off on the big maps, 18 of 24, before that.)")]
         [Range(0f, 1f)]
-        public float fogAggression = 0.2f;
+        public float fogAggression = 1f;
         [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
         [Range(1, 20)]
         public int fogUnknownTurns = 6;
