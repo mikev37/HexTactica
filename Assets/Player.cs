@@ -264,7 +264,8 @@ public struct PlayerData {
     public string personal_name;
     public long id;
     public Color displayColor;
-    public Faction faction;
+    /// <summary>The faction's asset name (a reference does not survive a save): resolved through LevelEditor.FindFaction.</summary>
+    public string factionName;
     public bool AI;
     public int money;
     public bool eliminated;
@@ -272,7 +273,7 @@ public struct PlayerData {
         personal_name = t.personal_name;
         id = t.id;
         displayColor = t.displayColor;
-        faction = t.faction;
+        factionName = t.faction != null ? t.faction.name : "";
         AI = t.GetComponent<AIPlayer>();
         money = t.money;
         eliminated = t.eliminated;
@@ -292,7 +293,8 @@ public struct PlayerData {
         }
         output.personal_name = that.personal_name;
         output.displayColor = that.displayColor;
-        output.faction = that.faction;
+        // (A save that names none — older ones, or a side without a faction — leaves the side's faction as the scene set it.)
+        if (!string.IsNullOrEmpty(that.factionName)) output.faction = LevelEditor.FindFaction(that.factionName);
         output.money = that.money;
         output.eliminated = that.eliminated;
         if (AI && output.GetComponent<AIPlayer>() == null) {

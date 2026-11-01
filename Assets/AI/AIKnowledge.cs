@@ -67,7 +67,7 @@ namespace HexTactica.AI {
                         if (owner != q) continue;
                         income += b.income;
                         int dearest = 0;
-                        if (b.buildable != null) foreach (Unit t in b.buildable) if (t != null) dearest = Mathf.Max(dearest, t.cost);
+                        foreach (Unit t in b.Offered(q)) if (t != null) dearest = Mathf.Max(dearest, t.cost);
                         if (dearest > 0) slotCap += dearest * Mathf.Max(1, b.Footprint.Count);
                     }
                     built += Mathf.Min(income, slotCap > 0 ? slotCap : income);
