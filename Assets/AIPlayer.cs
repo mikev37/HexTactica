@@ -474,7 +474,7 @@ public class AIPlayer : MonoBehaviour {
 
     void PrepareTurnOnBoard() {
         { long __p = AIPerf.Begin();
-        map = new AIMap(player, Profile);
+        map = new AIMap(player, Profile, map);
         AIPerf.End("prepare: board read (AIMap)", __p); }
         // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
         if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);
