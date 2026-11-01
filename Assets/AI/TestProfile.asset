@@ -206,7 +206,7 @@ MonoBehaviour:
   sigintMoves: 6
   sigintDecay: 0.7
   fogAggression: 1
-  fogUncertainty: 0
+  fogUncertainty: 1
   fogUnknownTurns: 6
   scoutUnits: 0
   scoutPull: 0.3

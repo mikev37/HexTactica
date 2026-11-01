@@ -465,7 +465,7 @@ namespace HexTactica.AI {
                 x = AIFog.StopValue(unit, o.stop, map, profile); o.world.score += x; o.Extra("sight", x);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
                 x = -AIFog.FogRisk(unit, o.stop, map, profile); o.world.score += x;
-                if (x != 0f) o.Extra("fog(" + map.FogLoss(unit, o.stop).ToString("0.##") + " str)", x);
+                if (x != 0f) o.Extra("fog(" + map.MoveFogLoss(unit, o.stop).ToString("0.##") + " str)", x);
                 // The campaign's lean (AIProfile.campaignStep): steps toward the task force's goal — and,
                 // on a campaign front, what starving on the way back to supply would cost, on the same
                 // scale (otherwise only a tie-break, and the lean always won).
