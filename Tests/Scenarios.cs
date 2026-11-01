@@ -427,6 +427,12 @@ public static class Scenarios {
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
         make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
              "A Red grunt attacked by a Blue tank beside it retreats straight back, to one of the three tiles on its far side; with those three taken it is pinned, never sliding sideways (still beside the tank).");
+        make("ai-land-steps-layout", "landStepsLayout", (a, o) => {
+                 water(0, 0, -7, 7);
+                 Rig.At(0, 0).terrain = T("Bridge");
+                 Rig.At(-1, 0).terrain = T("Road"); Rig.At(1, 0).terrain = T("Road");
+                 Put("Grunt", a, -3, 0); Put("Grunt", o, 4, 0); },
+             "Land steps (the map's shape for strategy) are kept for the whole game, one table per layout of terrain and buildings, shared by both sides. A river with one bridge: from the east shore's road, the west shore's road is two steps over the bridge. The bridge is destroyed (it becomes shallows): the table is worked out again, and the west shore is no longer reachable by land; a new map read on the same layout reuses the same table.");
         make("rule-bridge-road-only", "bridgeRoad", (a, o) => {
                  water(0, 0, -7, 7);
                  Rig.At(0, 0).terrain = T("Bridge");
@@ -1266,6 +1272,22 @@ public static class Scenarios {
                 float on = risk(true), off = risk(false);
                 detail = "shields: grunt " + sh(grunt) + ", tank " + sh(tank) + ", artillery " + sh(gun) + ", missile truck " + sh(truck) + ", supplies " + sh(sup) + "; the truck at " + Pos(exposed) + " pays " + on.ToString("0") + " for its exposure priced as the reply prices it, " + off.ToString("0") + " undiscounted";
                 return scope && on > 0f && on <= off;
+            }
+            case "landStepsLayout": {
+                HexTile bridge = Rig.At(0, 0), west = Rig.At(-1, 0), east = Rig.At(1, 0);
+                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                HexTactica.AI.AIMap m1 = new HexTactica.AI.AIMap(l.ai, prof);
+                Dictionary<HexTile, int> before = m1.LandSteps(east);
+                int over; bool reached = before.TryGetValue(west, out over);
+                HexTactica.AI.AIMap m2 = new HexTactica.AI.AIMap(l.ai, prof);
+                bool shared = ReferenceEquals(m2.LandSteps(east), before);
+                string was = bridge.terrain.name;
+                bridge.DestroyTerrain();
+                HexTactica.AI.AIMap m3 = new HexTactica.AI.AIMap(l.ai, prof);
+                Dictionary<HexTile, int> after = m3.LandSteps(east);
+                bool cut = !after.ContainsKey(west);
+                detail = "west shore " + (reached ? over + " steps" : "unreachable") + " from the east over the " + was + "; another read shares the table " + shared + "; bridge now " + bridge.terrain.name + ": west shore " + (cut ? "unreachable" : after[west] + " steps") + " (a new table " + !ReferenceEquals(after, before) + ")";
+                return reached && over == 2 && shared && cut && !ReferenceEquals(after, before);
             }
             case "transportCargo": {
                 Unit apc = Rig.At(0, 0).occupier, ga = Rig.At(1, 0).occupier, gb = Rig.At(-1, 0).occupier, gc3 = Rig.At(0, 1).occupier;

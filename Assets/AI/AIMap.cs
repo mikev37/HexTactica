@@ -241,6 +241,7 @@ namespace HexTactica.AI {
         readonly Dictionary<Unit, HashSet<HexTile>> baseReach = new Dictionary<Unit, HashSet<HexTile>>(), baseReachBlocked = new Dictionary<Unit, HashSet<HexTile>>();
 
         void Rebuild(bool recalculateThreat) {
+            readCount++;
             // keepCaches: only what the board's changes since the last read could have changed (AIMapCache).
             if (profile.keepCaches) { ReadDelta(); PruneUnitCaches(); }
             else { replyCache.positions.Clear(); baseReach.Clear(); baseReachBlocked.Clear(); thisTurnFields.Clear(); horizonFields.Clear(); ourSpace.Clear(); everything = true; }
@@ -783,7 +784,21 @@ namespace HexTactica.AI {
         /// </summary>
         // ------------------------------------------------------------ travel distance
 
-        readonly Dictionary<HexTile, Dictionary<HexTile, int>> landSteps = new Dictionary<HexTile, Dictionary<HexTile, int>>();
+        /// <summary>
+        /// Land steps depend only on the terrain (elevation, roads, bridges) and the buildings standing on it (their
+        /// service tiles): kept for the whole game, one table per layout (AIMapCache.LayoutSignature), shared by both
+        /// sides — a bridge falling, a road broken or a building destroyed makes a new layout and a new table.
+        /// </summary>
+        Dictionary<HexTile, Dictionary<HexTile, int>> landSteps { get {
+            long sig = LayoutSignature();
+            lock (landByLayout) {
+                if (landLayout != sig || landShared == null) { landShared = new Dictionary<HexTile, Dictionary<HexTile, int>>(); landLayout = sig; }
+                return landShared;
+            }
+        } }
+        static readonly object landByLayout = new object();
+        static Dictionary<HexTile, Dictionary<HexTile, int>> landShared;
+        static long landLayout;
 
         /// <summary>
         /// Steps over land from every tile to <paramref name="to"/>, one a tile, around water (units
@@ -795,7 +810,8 @@ namespace HexTactica.AI {
         }
         Dictionary<HexTile, int> LandStepsLocked(HexTile to) {
             Dictionary<HexTile, int> d;
-            if (landSteps.TryGetValue(to, out d)) return d;
+            Dictionary<HexTile, Dictionary<HexTile, int>> table = landSteps;
+            lock (landByLayout) if (table.TryGetValue(to, out d)) return d;
             d = new Dictionary<HexTile, int>();
             Queue<HexTile> q = new Queue<HexTile>();
             d[to] = 0; q.Enqueue(to);
@@ -809,7 +825,7 @@ namespace HexTactica.AI {
                     q.Enqueue(n);
                 }
             }
-            landSteps[to] = d;
+            lock (landByLayout) table[to] = d;
             return d;
         }
 
