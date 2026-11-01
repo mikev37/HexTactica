@@ -1366,8 +1366,9 @@ public static class Scenarios {
                     foreach (bool fog in new[] { false, true }) {
                         int hammered = 0, torn = 0;
                         Func<bool, List<string>> play = threaded => {
-                            // As the game's profiles are by default: notes written on the board as the AI thinks.
-                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", pr => pr.annotateBoard = true, pr => pr.annotateBoard = true);
+                            // As the game plays: its profile (TestProfile.asset, the campaign AI), notes written on the board as the AI thinks.
+                            Action<AIProfile> asPlayed = pr => { ApplyProfileAsset(pr); pr.annotateBoard = true; };
+                            ScenarioFile.Loaded g = ScenarioFile.Load(Find(map), "Full", asPlayed, asPlayed);
                             foreach (HexTile t in Rig.hg.tiles) if (t.textField == null) t.textField = Rig.New<UnityEngine.UI.Text>();
                             Rig.gc.fogOfWar = fog; FogOfWar.Reset();
                             AIPlayer.HarnessThreads = threaded;
@@ -3255,6 +3256,7 @@ public static class Scenarios {
             }
         if (!string.IsNullOrEmpty(add)) Console.WriteLine("added for each side: " + add);
         AIPerf.Enabled = Environment.GetEnvironmentVariable("SECTIONS") != null;
+        AIPlayer.VerifyReuse = Environment.GetEnvironmentVariable("VERIFYREUSE") != null;
         AIPerf.CallerDepth = int.Parse(Environment.GetEnvironmentVariable("PERFCALLERS") ?? "0");
         Console.WriteLine(Path.GetFileName(path) + ": " + Rig.hg.tiles.Count + " tiles, Blue " + l.ai.units.Count + " units, Red " + l.other.units.Count);
         for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
@@ -3279,6 +3281,10 @@ public static class Scenarios {
                 steps.Count > 0 ? steps[0].Key : 0, steps.Count > 0 ? steps[steps.Count / 2].Key : 0, GC.GetTotalMemory(true) / 1048576.0,
                 (GC.GetAllocatedBytesForCurrentThread() - alloc0) / 1048576.0));
             for (int i = 0; i < Math.Min(5, steps.Count); i++) Console.WriteLine(string.Format("      {0,7:0} ms  {1}", steps[i].Key, steps[i].Value));
+            Console.WriteLine(string.Format("      coordination-pass decisions: {0} reused, {1} made again" + (AIPlayer.VerifyReuse ? ", {2} checked against a fresh decision, {3} different" : ""), AIPlayer.reused, AIPlayer.notReused, AIPlayer.reuseChecked, AIPlayer.reuseDiffered));
+            if (AIPlayer.notReusedWhy.Count > 0) Console.WriteLine("        made again because: " + string.Join("; ", AIPlayer.notReusedWhy.Select(kv => kv.Key + " " + kv.Value).ToArray()));
+            AIPlayer.notReusedWhy.Clear();
+            AIPlayer.reused = AIPlayer.notReused = AIPlayer.reuseChecked = AIPlayer.reuseDiffered = 0;
             if (AIPerf.Enabled) { Console.WriteLine(AIPerf.Report()); AIPerf.Reset(); }
         }
     }

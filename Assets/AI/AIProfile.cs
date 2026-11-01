@@ -520,6 +520,8 @@ namespace HexTactica.AI {
 
         [Tooltip("Coordinated strikes in passes (AICoordinator): each unit's best attacks, a survive move and a retreat; battle plans of two or more units on one target from non-conflicting tiles, forecast as one board; best plans act first.")]
         public bool coordinationPasses = true;
+        [Tooltip("A unit's decision from the coordination pass (every unit in contact decides once before anyone acts) is kept for its turn, unless something within its reach or the enemy's has moved, been hurt or appeared since, or its tile or target is gone. Off: every unit decides again on its turn.")]
+        public bool coordinationReuse = true;
 
         [Tooltip("Attack options each unit keeps for battle plans.")]
         public int coordOffensiveOptions = 3;
