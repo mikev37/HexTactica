@@ -1543,14 +1543,6 @@ public static class Scenarios {
                 try { update.Invoke(overlay, null); previewOk = dest.isSupplied(a); }
                 finally { dest.state = UIState.FREE; gc.activeUnit = null; update.Invoke(overlay, null); }
                 r.Add("Blue is a human here " + human + "; the player's preview: destination " + (previewOk ? "supplied" : "UNSUPPLIED"));
-                // The same what-if on one of the AI's board copies reads the supply unit as put down there (AIProfile.hubLinkPenalty):
-                // it changes that copy only.
-                Dictionary<SupplyPoint, HexTile> preview = new Dictionary<SupplyPoint, HexTile> { { cargo.Hub, dest } };
-                BoardView thought = BoardView.Snapshot(); thought.putDownHypothetical = true;
-                bool aiReads;
-                using (thought.Enter()) aiReads = SupplyNetwork.SolveMoved(a, preview).connectedHubs.Contains(cargo.Hub);
-                bool realReads = SupplyNetwork.SolveMoved(a, preview).connectedHubs.Contains(cargo.Hub);
-                r.Add("the same what-if on an AI board copy: " + (aiReads ? "linked (carried)" : "cut off (put down there)") + "; on the real board: " + (realReads ? "linked (carried)" : "CUT OFF"));
                 // The move made.
                 List<HexTile> drive = new List<HexTile>(); for (int x = 1; x <= 7; x++) drive.Add(Rig.At(x, 2));
                 truck.MoveAlong(drive, false, false); truck.FinishActive();
@@ -1572,7 +1564,7 @@ public static class Scenarios {
                     }
                 }
                 detail = string.Join(" | ", r.ToArray());
-                return start && human && previewOk && afterOk && restored && !aiReads && realReads;
+                return start && human && previewOk && afterOk && restored;
             }
             case "fogSupplyShown": {
                 // HQ at -13; FOB at -4 linked to it by supply units at -10,0 and -7,0; a Blue grunt at 3,0 at the edge of the
@@ -4032,8 +4024,25 @@ public static class Scenarios {
         // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
         Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
         Unit.RanInto += rh; Unit.Attacking += sh;
+        double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
+        // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.
+        int[] supplyDrops = new int[2], boards = new int[2], drops = new int[2], aboardTurns = new int[2], transportsBought = new int[2];
+        foreach (Player pl in new[] { l.ai, l.other }) {
+            AIPlayer ap = pl.GetComponent<AIPlayer>(); if (ap == null) continue;
+            int side = pl == l.ai ? 0 : 1;
+            ap.onDecision += (u, act, did) => {
+                if (!did) return;
+                if (act.kind == HexTactica.AI.AIActionKind.Unload && act.target != null) { if (act.target.Hub != null) supplyDrops[side]++; else drops[side]++; }
+                if (act.kind == HexTactica.AI.AIActionKind.Load && act.unit != null && act.unit.Hub == null) boards[side]++;
+            };
+        }
         for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
+            bool blueMoves = gc.activePlayer == l.ai;
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             ScenarioFile.PlayTurn();
+            double secs = sw.Elapsed.TotalSeconds;
+            if (blueMoves) { thinkBlue += secs; worstBlue = Math.Max(worstBlue, secs); } else { thinkRed += secs; worstRed = Math.Max(worstRed, secs); }
+            foreach (Player pl in new[] { l.ai, l.other }) foreach (Unit u in pl.units) if (u != null && u.tile != null && u.trasnporter != null && u.Hub == null) aboardTurns[pl == l.ai ? 0 : 1]++;
             if (Environment.GetEnvironmentVariable("BOARD") != null) {
                 List<string> b = new List<string>();
                 foreach (Player p in new[] { l.ai, l.other }) foreach (Unit u in p.units) if (u != null && u.tile != null)
@@ -4051,6 +4060,9 @@ public static class Scenarios {
         foreach (Unit u in l.ai.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airBlue++;
         foreach (Unit u in l.other.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airRed++;
         Console.WriteLine("aircraft: ditched Blue " + ditchBlue + " Red " + ditchRed + "; still flying Blue " + airBlue + " Red " + airRed);
+        Console.WriteLine(string.Format("think time: Blue {0:0.0} s (worst turn {1:0.0} s), Red {2:0.0} s (worst turn {3:0.0} s)", thinkBlue, worstBlue, thinkRed, worstRed));
+        Console.WriteLine(string.Format("transports: supply put down Blue {0} Red {1}; fighting units boarded Blue {2} Red {3}, put down Blue {4} Red {5}; unit-turns aboard Blue {6} Red {7}",
+            supplyDrops[0], supplyDrops[1], boards[0], boards[1], drops[0], drops[1], aboardTurns[0], aboardTurns[1]));
         string folder = HexTactica.Harness.GameLog.Folder;
         if (root != null) HexTactica.Harness.GameLog.Stop();
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")

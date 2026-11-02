@@ -47,13 +47,6 @@ public sealed class BoardView {
     /// <summary>Players that play without the fog (AIProfile.fogFair off), worked out when the view was made.</summary>
     internal readonly HashSet<Player> knowsAll = new HashSet<Player>();
 
-    /// <summary>
-    /// The AI's reading of a supply what-if on this copy of the board (AIProfile.hubLinkPenalty): a supply unit aboard a
-    /// transport, asked about on another tile than its transport's, is taken as put down there (it links as one on foot)
-    /// rather than carried there. Set by the AI on the copies it thinks on; the real board (no copy: the game, the
-    /// player's displays) never has it, so it cannot change what the player is shown.
-    /// </summary>
-    public bool putDownHypothetical;
 
     /// <summary>Fog of war's sight as it was when the view was made (it is never worked out again inside one).</summary>
     internal object sights;
@@ -115,7 +108,7 @@ public sealed class BoardView {
         System.Array.Copy(tileOccupier, v.tileOccupier, tileOccupier.Length); System.Array.Copy(tileHas, v.tileHas, tileHas.Length);
         for (int i = 0; i < tileSupply.Length; i++) if (tileSupply[i] != null) v.tileSupply[i] = new Dictionary<Player, int>(tileSupply[i]);
         System.Array.Copy(bOwner, v.bOwner, bOwner.Length); System.Array.Copy(bCapturing, v.bCapturing, bCapturing.Length); System.Array.Copy(bPoints, v.bPoints, bPoints.Length); System.Array.Copy(bHas, v.bHas, bHas.Length);
-        v.Fog = Fog; v.sights = sights; v.putDownHypothetical = putDownHypothetical;
+        v.Fog = Fog; v.sights = sights;
         foreach (Player p in knowsAll) v.knowsAll.Add(p);
         return v;
     }

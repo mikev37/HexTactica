@@ -202,6 +202,7 @@ MonoBehaviour:
   hubPricing: 1
   hubLinkPenalty: 1
   hubPricingForward: 1
+  supplyStaysAboard: 1
   ghostSupply: 1
   transportWorthwhileSaving: 2
   loadedTransportRisk: 2.5

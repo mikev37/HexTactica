@@ -209,7 +209,7 @@ public static class SupplyNetwork {
                 } else if (PlannedAboard != null && PlannedAboard.ContainsKey(hub) && moved != null && moved.ContainsKey(hub)) {
                     // Planned aboard a transport at that tile (a supply leap).
                     if (!WithinMoveOfSupply(PlannedAboard[hub], at, result)) continue;
-                } else if (hub.myUnit != null && hub.myUnit.trasnporter != null && !PutDown(hub, at)) {
+                } else if (hub.myUnit != null && hub.myUnit.trasnporter != null) {
                     // Aboard: linked if the transport could carry it onto supplied ground in one move.
                     if (!WithinMoveOfSupply(hub.myUnit.trasnporter, at, result)) continue;
                 } else if (!result.IsSupplied(at)) continue;
@@ -352,7 +352,7 @@ public static class SupplyNetwork {
     /// <summary>
     /// The network as the game plays it on this thread until disposed: none of the AI's per-thread what-if settings
     /// (AssumeLinked, PlannedAboard, RecordLinked); what they were is put back after. (The put-down reading is not one
-    /// of them: it belongs to the AI's board copies, BoardView.putDownHypothetical.) For the player's supply displays,
+    /// of them any more: a supply unit aboard is always read as carried.) For the player's supply displays,
     /// and around each of the AI's thoughts (which set them for themselves).
     /// </summary>
     public static System.IDisposable AsPlayed() { return new WhatIfOff(); }
@@ -364,18 +364,6 @@ public static class SupplyNetwork {
         public void Dispose() { RecordLinked = record; AssumeLinked = assume; AssumeLinkedVia = assumeVia; PlannedAboard = aboard; }
     }
 
-    /// <summary>
-    /// A supply unit aboard a transport that a hypothetical network puts on a tile other than its
-    /// transport's: it is put down there, so it links as one on the ground does. (The planner asking
-    /// "what if it were dropped there" was told it would still be linked as cargo — the transport
-    /// within a move of supply — and a truck cut off a whole network putting its root down.)
-    /// </summary>
-    static bool PutDown(SupplyPoint hub, HexTile at) {
-        BoardView v = BoardView.current;
-        if (v == null || !v.putDownHypothetical) return false;   // the AI's reading, on its own board copies only
-        Unit carrier = hub.myUnit != null ? hub.myUnit.trasnporter : null;
-        return carrier != null && at != null && carrier.tile != null && at != carrier.tile;
-    }
 
     static HexTile TileOf(SupplyPoint hub, SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
         if (hub == movedHub && hypotheticalTile != null) return hypotheticalTile;

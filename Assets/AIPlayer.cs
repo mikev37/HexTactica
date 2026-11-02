@@ -260,6 +260,7 @@ public class AIPlayer : MonoBehaviour {
                 AIPerf.End("decide: " + (unit.Hub != null ? "supply unit" : Transporting.IsTransport(unit) && unit.Firepower <= 1 ? "transport"
                     : unit.locomotion == Locomotion.Jet ? "jet" : unit.locomotion == Locomotion.Rotor ? "helicopter" : "fighting unit"), __d);
                 action = KeepLinks(action);
+                action = SupplyStaysAboard(unit, action);
                 // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
                 // still fresh, and decides again if its transport puts it down this turn (Run).
                 if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
@@ -472,10 +473,25 @@ public class AIPlayer : MonoBehaviour {
     /// The board this AI thinks on, copied now (main thread): as this side knows it under fog of war
     /// (AIProfile.fogFair), else as it is. Its simulations change only the copy.
     /// </summary>
+    /// <summary>
+    /// A supply unit aboard a transport is not put down (AIProfile.supplyStaysAboard): an unloading of one becomes the
+    /// transport's move without it (or a wait), unless the transport would be destroyed where it stops. A transport
+    /// carried by another (with a supply unit inside) may still be put down: only supply units themselves stay in.
+    /// </summary>
+    AIAction SupplyStaysAboard(Unit deciding, AIAction a) {
+        if (!Profile.supplyStaysAboard || a.kind != AIActionKind.Unload || a.target == null || a.target.Hub == null || a.target.Hub.producer) return a;
+        Unit transport = a.unit;
+        if (transport == null || transport.tile == null) return a;
+        HexTile stop = a.via ?? transport.tile;
+        if (map != null && map.ExpectedLoss(transport, stop) >= transport.Strength - 0.01f) return a;   // it would go down with its transport
+        string why = "supply stays aboard (was: " + a.reason + ")";
+        if (a.via != null && a.via != transport.tile && deciding == transport) return AIAction.Move(transport, a.via, a.score, why);
+        return AIAction.Wait(deciding, why);
+    }
+
     BoardView NewView() {
         long __v = AIPerf.Begin();
         BoardView v = FogOfWar.Conceal(player, true, Profile.fogMemoryTurns) ?? BoardView.Snapshot();
-        v.putDownHypothetical = Profile.hubLinkPenalty > 0f;   // the AI's supply what-ifs, on its own copy only
         AIPerf.End("main thread: copy the board", __v);
         return v;
     }
