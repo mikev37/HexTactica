@@ -516,6 +516,13 @@ public static class Scenarios {
                  Rig.At(-1, 0).terrain = T("Road"); Rig.At(1, 0).terrain = T("Road");
                  Put("Grunt", a, -1, 1); Put("Grunt", o, 4, 3); },
              "A river with one bridge, a road tile at each end and grass beside them. A bridge joins only those roads: no stepping onto it from the grass beside it, or off it onto the grass across; a unit driven back off it goes onto the road.");
+        make("rule-bridge-water", "bridgeWater", (a, o) => {
+                 water(0, 0, -7, 7);
+                 Rig.At(0, 0).terrain = T("Bridge");
+                 Rig.At(-1, 0).terrain = T("Road"); Rig.At(1, 0).terrain = T("Road");
+                 Unit boat = Put("Gunboat", a, 0, 0); boat.elevationMax = 0;
+                 Put("Grunt", a, -1, 0); Put("Grunt", o, 4, 3); },
+             "A river with one bridge and a road at each end; a gunboat that can stand on water and bridges (elevation -2 to 0) on the bridge, and a grunt on the road beside it. Between a bridge and the water under it the boat may always step (the bridge's road-only rule is for land): it reaches the water from the bridge, and back onto it. The grunt still cannot step into the water, and still cannot step off the bridge onto the grass.");
         make("rule-swap-sides", "swapSides", (a, o) => { Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Artillery", o, 3, 0); Building c = Rig.PlaceBuilding("City", o, 2, 2); c.capturingPlayer = a; },
              "HexTactica > Swap Sides of Scenario File on this file: every unit and building changes to the other side (the HQs too, and who was capturing what); the player list and terrain are unchanged.");
         make("rule-building-service", "buildingService", (a, o) => {
@@ -973,6 +980,22 @@ public static class Scenarios {
                 detail = "onto the bridge from grass " + !noGrassOn + ", from road " + roadOn + "; off onto grass " + !noGrassOff + "; path onto it from " + (via != null ? Pos(via) : "nowhere")
                        + ", to the grass across from " + (grassFrom != null ? Pos(grassFrom) : "nowhere") + "; hit from the west road it falls back to " + (back != null ? Pos(back) : "nowhere");
                 return noGrassOn && roadOn && noGrassOff && via == westRoad && grassFrom != null && grassFrom != bridge && back == eastRoad;
+            }
+            case "bridgeWater": {
+                Unit boat = Rig.At(0, 0).occupier, g = Rig.At(-1, 0).occupier;
+                HexTile bridge = Rig.At(0, 0);
+                HexTile wet = bridge.neighbors.Find(t => t != null && t.terrain != null && t.terrain.elevation < 0);
+                HexTile grass = bridge.neighbors.Find(t => t != null && t.terrain != null && t.terrain.elevation > 0 && !t.terrain.road);
+                HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurn(boat);
+                int reach = 0; foreach (HexTile t in f.Tiles) if (t != bridge && f.ReachableThisTurn(t)) reach++;
+                bool off = wet != null && HexTactica.AI.AIPath.StepCost(boat, bridge, wet) != int.MaxValue && f.ReachableThisTurn(wet);
+                bool on = wet != null && HexTactica.AI.AIPath.StepCost(boat, wet, bridge) != int.MaxValue;
+                bool gruntDry = wet != null && !g.CanEnter(wet);
+                g.TeleportTo(Rig.At(1, 0), 0);
+                bool gruntRoadOnly = grass == null || HexTactica.AI.AIPath.StepCost(g, bridge, grass) == int.MaxValue;
+                detail = "boat on the bridge reaches " + reach + " tiles; off into the water " + off + ", back onto the bridge " + on
+                       + "; the grunt cannot enter the water " + gruntDry + ", cannot step off the bridge onto grass " + gruntRoadOnly;
+                return off && on && reach > 0 && gruntDry && gruntRoadOnly;
             }
             case "swapSides": {
                 string text = File.ReadAllText(l.path);
