@@ -151,8 +151,14 @@ sticky / flexible replanning (`objectiveReplanLoss` 0.25 / 0.75): mixed results.
 - **ChanceMeeting, new Red v old Blue, rounds 12–24** (log: section 7): new Red's objectives switch every 1–2 turns and
   are all Hold/Clear (road junctions in its own rear, chasing Blue's raiders) — no Secure from turn 20 to 32; its main
   front (19–23 units) is Aggressive at local ratio 0.75–0.85 but attacks only 2–5 times a turn (old Blue 3–7); all 9 of
-  its transports sit as supply links. Leading suspect: `capturerLives` dropping cities (expected nightly loss and
-  starving make a capture look impossible near a contested city). Second: `campaignGatherWithBody`. Not confirmed.
+  its transports sit as supply links. **Investigated (campaign reasons now in the duel trace as `campaign: not taken on ...`):
+  `capturerLives` is not the cause** — it rejected nothing for Red all game, and with it off Red did worse (65,833 v
+  97,833). Red's Secure objectives were dropped 17 times for "needs N supply units, N free" (Holds 50 times): its supply
+  chain held 9–11 of its 11–12 supply units as links, clustered within 1–2 tiles of each other ((3,0), (1,2), (5,1), (5,2),
+  (3,2), (4,3), (3,3) all "hold"), leaving 0–2 spare. The old AI as Red (other game) held 8–9 links, spread further
+  apart, with 4 spare, and pursued Secure FOB (0,-10) with them. Suspects (today's supply changes): `unifiedLinkPlacement`
+  (a link aboard a transport now moves only if it brings supply nearer, so it never leapfrogs: aboard links pile up and
+  hold) and `boardSpentTransports` (cut-off supply units board and become links). Not yet tested.
 - **ChanceMeeting, new Blue (before fixes):** supply never linked until turn 7 because held supply transports acted
   before the supply units and their "wait" spent them, and the chain only boarded transports that had not acted
   (both fixed). Five single-unit task forces went in under fog (tiny unseen estimates) and stayed in when needs jumped
@@ -174,10 +180,11 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
 
 ## 7. Open work, in the order I'd take it
 
-1. **Confirm the ChanceMeeting regression** (new Red v old Blue, `OLD=Blue`, fog on, traced): add `AICampaign.Debug`
-   ("not taken on: ... none free would live to take it") to the duel trace, then one game with `SET_RED="capturerLives=false"`
-   and one with `SET_RED="campaignGatherWithBody=false"`. Read the logs; fix the cause (likely: `TurnsToTake`'s nightly
-   loss is too pessimistic, or should count the task force taking it together).
+1. **The ChanceMeeting regression** (new Red v old Blue: `OLD=Blue`, fog on, traced): run with
+   `SET_RED="unifiedLinkPlacement=false"` and with `SET_RED="boardSpentTransports=false"`; read the chain lines
+   (`chain toward ...: ... holds; spare N`) and `campaign: not taken on ... supply units` counts. The fix is likely a
+   spacing rule for links (the owner's: as far apart as possible while one transport move from the nearest node) and
+   releasing links that add no supplied ground, so supply units are free for objectives.
 2. **Cut-off supply units walk toward supplied ground or a transport** before anything else (shared gap).
 3. Cap held supply transports at one per supply unit; release the rest to troops.
 4. Campaign (each change in the new AI, tested against the old):
