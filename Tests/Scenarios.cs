@@ -1723,17 +1723,19 @@ public static class Scenarios {
             case "buyTransports": {
                 Building bas = Rig.At(-11, 0).building;
                 List<string> r = new List<string>();
+                bool boughtTransport = false;
                 Func<int, string> buy = money => {
                     l.ai.money = money;
                     AIPlayer ap = l.ai.GetComponent<AIPlayer>();
                     List<string> said = new List<string>();
                     if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIProduction.DebugValues = Console.WriteLine;
                     List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, ap.Profile), ap.Profile, x => said.Add(x.Trim()));
+                    foreach (Unit u in got) if (Transporting.IsTransport(u) && u.Firepower <= 1) boughtTransport = true;   // by what it does, not its name
                     string res = string.Join(", ", got.ConvertAll(u => GameController.UnitName(u) + " at " + Pos(u.tile)).ToArray());
                     return res + " [" + string.Join(" / ", said.FindAll(x => x.Contains(" buys ") || x.Contains("riders waiting")).ToArray()) + "]";
                 };
                 string first = buy(20000);
-                bool apc = first.Contains("APC") || first.Contains("Transport");
+                bool apc = boughtTransport;
                 r.Add("four grunts far from the fight, 20000 gold: " + first);
                 // An empty APC beside the base, and no riders waiting beyond its room: what is bought there fills it.
                 foreach (Unit u in new List<Unit>(l.ai.units)) if (u != null && u.tile != null && (u.tile.building != null || (GameController.UnitName(u) == "Grunt" && u.tile.Distance(bas.tile) > 1))) u.Perish();

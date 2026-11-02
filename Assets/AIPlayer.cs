@@ -381,6 +381,8 @@ public class AIPlayer : MonoBehaviour {
             AIPerf.End("act: execute", __x);
             // Cargo put down that has not acted this turn: it decides next, from where it landed
             // (getting off costs nothing: it moves, attacks or captures as any fresh unit would).
+            // Put down this turn: it does not get back in this turn (it was put down to strike).
+            if (did && action.kind == AIActionKind.Unload && action.target != null) putDownThisTurn.Add(action.target);
             if (Profile.freshUnload && did && action.kind == AIActionKind.Unload && action.target != null && action.target.active
                 && action.target.trasnporter == null && action.target.tile != null && !queue.Contains(action.target))
                 queue.Insert(0, action.target);
@@ -478,8 +480,20 @@ public class AIPlayer : MonoBehaviour {
     /// </summary>
     /// <summary>Fighting units an empty transport has set out to fetch this turn (AIAssault.Fetch): one transport each.</summary>
     readonly HashSet<Unit> soughtRiders = new HashSet<Unit>();
+    /// <summary>This turn's transports earmarked for supply (AIAssault.SupplyTransports).</summary>
+    HashSet<Unit> supplyTransports = new HashSet<Unit>();
+    /// <summary>Units put down from a transport this turn: they do not get back in until next turn.</summary>
+    readonly HashSet<Unit> putDownThisTurn = new HashSet<Unit>();
 
     /// <summary>Is <paramref name="t"/> one of the campaign's supply trucks this turn (a chain truck, or a ride)?</summary>
+    /// <summary>Where each transport on a supply ride this turn is taking its supply unit (the logistics' rides and the chain links' places).</summary>
+    Dictionary<Unit, HexTile> SupplyGoing() {
+        Dictionary<Unit, HexTile> d = new Dictionary<Unit, HexTile>();
+        if (logistics == null) return d;
+        foreach (KeyValuePair<SupplyPoint, HexTactica.AI.AILogistics.Ride> kv in RidesAlong()) if (kv.Value.truck != null && kv.Value.to != null) d[kv.Value.truck] = kv.Value.to;
+        return d;
+    }
+
     bool IsLogisticsTruck(Unit t) {
         if (logistics == null || t == null) return false;
         foreach (Unit x in logistics.chainTrucks.Values) if (x == t) return true;
@@ -691,11 +705,20 @@ public class AIPlayer : MonoBehaviour {
         transportAssignments.Clear();
         reservedTransports.Clear();
         soughtRiders.Clear();
+        putDownThisTurn.Clear();
+        AIAssault.Planned.Clear();
         // The trucks the logistics claimed for the fronts' own supply units: theirs before any fighting
         // unit picks a ride (a fighting unit may ride along, below).
         if (logistics != null) foreach (HexTactica.AI.AILogistics.Ride r in logistics.rides.Values) reservedTransports.Add(r.truck);
         // And the chain links' trucks: each kept for its link (AILogistics.chainTrucks).
         if (logistics != null) foreach (Unit tr in logistics.chainTrucks.Values) reservedTransports.Add(tr);
+        // Transports earmarked for supply this turn (by what they carry, AIAssault.SupplyTransports): supply first, troops after.
+        supplyTransports = Profile.assaultRides ? AIAssault.SupplyTransports(player, map, reservedTransports) : new HashSet<Unit>();
+        if (Trace != null && Profile.assaultRides) {
+            List<string> st = new List<string>(); foreach (Unit t in supplyTransports) st.Add(t.name.Replace("(Clone)", "") + D(t.tile));
+            st.Sort(string.CompareOrdinal);
+            Trace("   transports for supply: " + (st.Count == 0 ? "none" : string.Join(", ", st.ToArray())) + (AIAssault.NoBuildMap() ? " (nothing is built on this map: every one that can carry supply)" : ""));
+        }
 
         // Units riding a transport stay in the queue: a hub aboard is the one that tells
         // its transport where to go. Excluding them meant a loaded hub was never planned
@@ -760,7 +783,19 @@ public class AIPlayer : MonoBehaviour {
         // decided first and handed them their plans: only when some fighting unit could ride this
         // turn, so with nobody to carry the turn order (and the game) is what it was without rides.
         bool anyRider = false;
-        if (Profile.combatRides) foreach (Unit u in queue) if (MayRide(u)) { anyRider = true; break; }
+        if (Profile.combatRides && (!Profile.assaultRides || Profile.assaultArmedRides)) foreach (Unit u in queue) if (MayRide(u)) { anyRider = true; break; }
+        if (Profile.assaultRides) {
+            // Riding to the assault: a transport with troops aboard goes before what it carries (they get off where it
+            // stops); an empty one after everyone else, so all who get in this turn are in before it leaves.
+            List<Unit> loaded = new List<Unit>(), empty = new List<Unit>();
+            foreach (Unit u in queue) {
+                if (!Transporting.IsTransport(u)) continue;
+                if (AIAssault.Riders(u).Count > 0) loaded.Add(u);
+                else if (u.transported.Count == 0 && u.Firepower <= 1) empty.Add(u);
+            }
+            for (int i = loaded.Count - 1; i >= 0; i--) { queue.Remove(loaded[i]); queue.Insert(0, loaded[i]); }
+            foreach (Unit u in empty) { queue.Remove(u); queue.Add(u); }
+        }
         if (anyRider) {
             List<Unit> carriers = new List<Unit>();
             foreach (Unit u in queue) if (Transporting.IsTransport(u) && u.Firepower <= 1) carriers.Add(u);
@@ -889,6 +924,8 @@ public class AIPlayer : MonoBehaviour {
         // A transport with a supply unit aboard is that supply unit's (campaignLogistics): the supply logic drives it.
         AIAction carried;
         if (CarriesSupply(unit, out carried)) return map != null ? AIAir.Guard(unit, carried, map) : carried;
+        // Put down this turn to strike (assaultRides): it makes the strike its transport planned for it.
+        if (Profile.assaultRides) { AIAction? done = AIAssault.CarryOut(unit, map); if (done.HasValue) return done.Value; }
         AIAction a = DecideForUnit(unit);
         // A decision path that does not go through the tactical choice (which already leaves out tiles
         // reserved for a landing this turn) chose one: the unit decides again the ordinary way, so an
@@ -1050,7 +1087,7 @@ public class AIPlayer : MonoBehaviour {
         // Riding to the assault (assaultRides): aboard, it stays in until it is put down to strike; far from the fight,
         // it gets in a transport.
         if (Profile.assaultRides && unit.Hub == null) {
-            if (unit.trasnporter != null && unit.trasnporter.Firepower <= 1) {
+            if (unit.trasnporter != null && !AIAssault.CarriesHub(unit.trasnporter)) {
                 Front rf = FrontOf(unit);
                 AIAssault.HasFront = rf != null;
                 HexTile rground = rf == null ? null : rf.staging && rf.stagingTile != null ? rf.stagingTile : rf.objectiveTile;
@@ -1066,7 +1103,7 @@ public class AIPlayer : MonoBehaviour {
                 bool goes = bf == null || (bf.posture == Posture.Aggressive && !bf.staging)
                          || (ground != null && map.Travel(unit, unit.tile, ground) > Profile.assaultBoardTurns * Mathf.Max(1, unit.moveRange));
                 long __ab = AIPerf.Begin();
-                AIAction? ba = goes || AIAssault.Wounded(unit, Profile) ? AIAssault.Board(unit, map, Profile, busy) : null;
+                AIAction? ba = !putDownThisTurn.Contains(unit) && (goes || AIAssault.Wounded(unit, Profile)) ? AIAssault.Board(unit, map, Profile, busy, supplyTransports, SupplyGoing(), ground) : null;
                 AIPerf.End("assault: boarding", __ab);
                 if (ba.HasValue) return ba.Value;
             }
@@ -1315,7 +1352,7 @@ public class AIPlayer : MonoBehaviour {
         // An armed transport (a recon carrying a marine) whose rider asked to be put down here: it lets it off
         // first, then fights as it will. (A marine rode beside the enemy HQ for four turns, never let off.)
         // Riding to the assault (assaultRides): a transport with fighting units aboard and no supply duty.
-        if (Profile.assaultRides && Transporting.IsTransport(unit) && unit.Firepower <= 1 && !transportAssignments.ContainsKey(unit)) {
+        if (Profile.assaultRides && Transporting.IsTransport(unit) && !transportAssignments.ContainsKey(unit)) {
             List<Unit> riders = AIAssault.Riders(unit);
             if (riders.Count > 0) {
                 Front rf = FrontOf(riders[0]);
@@ -1329,6 +1366,7 @@ public class AIPlayer : MonoBehaviour {
                 long __as = AIPerf.Begin();
                 AIAction? ra = AIAssault.TransportAction(unit, goal, rf != null && rf.posture == Posture.Aggressive, map, Profile, !attacking);
                 AIPerf.End("assault: transport with riders", __as);
+                if (Trace != null) Trace("   assault ride: " + unit.name.Replace("(Clone)", "") + " goal " + D(goal) + (ra.HasValue ? " -> " + ra.Value.kind + " (" + ra.Value.reason + ")" : " -> nothing: decides as it would empty"));
                 if (ra.HasValue) return ra.Value;
             }
         }
@@ -1356,12 +1394,17 @@ public class AIPlayer : MonoBehaviour {
                 TransportPlan drop = UnloadHere(unit.transported[0]);
                 if (drop != null) return AITransportPlanner.TransportAction(unit, drop, map);
             }
-            // An empty troop transport (not a truck: trucks carry the supply) goes back for more riders.
-            if (Profile.assaultRides && unit.transported.Count == 0 && !AIAssault.IsTruck(unit) && (logistics == null || !IsLogisticsTruck(unit))) {
+            // An empty transport not held for supply goes back for more riders.
+            if (Profile.assaultRides && unit.transported.Count == 0 && !supplyTransports.Contains(unit) && (logistics == null || !IsLogisticsTruck(unit))) {
                 long __af = AIPerf.Begin();
                 AIAction? fa = AIAssault.Fetch(unit, map, Profile, soughtRiders);
                 AIPerf.End("assault: empty transport fetches", __af);
                 if (fa.HasValue) return fa.Value;
+            }
+            // Held for supply with no ride planned: it keeps within a move of the supply units it could carry.
+            if (Profile.assaultRides && unit.transported.Count == 0 && supplyTransports.Contains(unit)) {
+                AIAction? keep = AIAssault.StayWithSupply(unit, map);
+                if (keep.HasValue) return keep.Value;
             }
             return AITactical.DecideIdleTransport(unit, map, Profile);
         }

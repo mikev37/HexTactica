@@ -593,8 +593,8 @@ namespace HexTactica.AI {
 
         [Tooltip("Riding to the assault (AIAssault), as a player uses transports: a fighting unit far from the fight gets into a transport with room (one carrying no supply unit, not on supply duty) and stays aboard while it moves up with the army, out of the enemy's reach; riders are put down only where they can strike this turn (getting off costs nothing: they still move and fight) and when the wave goes in; empty transports (not trucks, which carry the supply) go back for more. Replaces combatRides' hop to supplied ground for fighting units.")]
         public bool assaultRides = true;
-        [Tooltip("With assaultRides on, fighting units still take combatRides' ride in an armed transport (a recon taxi); assault rides keep the unarmed transports.")]
-        public bool assaultArmedRides = true;
+        [Tooltip("With assaultRides on, fighting units also take combatRides' hop (in and out the same turn) in an armed transport. Off: assault rides carry them in armed transports too, aboard until they can strike.")]
+        public bool assaultArmedRides = false;
         [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
         public int assaultBoardTurns = 2;
         [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth what it adds to the riders it would carry (the nearest of them): each one's value times the turns sooner it reaches the fight riding than walking, over productionLifeRef (at most its whole value) — times this (more than 1: it goes back for more, and carries the wounded, over its life). 0: not bought for riders.")]
