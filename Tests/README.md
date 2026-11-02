@@ -262,6 +262,61 @@ records the same way and checks that the last snapshot reloads to the same board
 
 ---
 
+## Old AI against new AI: how changes are tested
+
+The AI is judged against a fixed earlier version of itself, not against the same code with a feature's flag off.
+Flag-off comparisons proved misleading: fixes to one feature (turn order, supply ordering, capture rules) changed
+shared code underneath both sides, so "flag off" was a hybrid that never existed as a version.
+
+**The approach**
+
+- `Assets/OldAI` holds a whole earlier AI, kept in isolation under the `HexTactica.OldAI` namespace, played by the
+  `OldAIPlayer` component. It shares no AI code with the current AI (`Assets/AI`, `AIPlayer`, namespace
+  `HexTactica.AI`); its static state is its own.
+- Changes are made on the new AI only. When a change works — it plays better against the old AI on the test maps
+  and is not slower — the new AI is copied over the old one at that point, and becomes the baseline the next
+  change has to beat.
+- Current baseline: `claude/campaign-2` at `49a2dbb` (before the transport assault feature).
+
+**Refreshing the baseline** (at a breakpoint)
+
+1. Copy `Assets/AI/*.cs` to `Assets/OldAI/` and `Assets/AIPlayer.cs` to `Assets/OldAI/OldAIPlayer.cs`.
+2. In the copies: `namespace HexTactica.AI` → `namespace HexTactica.OldAI`, `using HexTactica.AI;` →
+   `using HexTactica.OldAI;`, `HexTactica.AI.` → `HexTactica.OldAI.`, the word `AIPlayer` → `OldAIPlayer`; wrap
+   `OldAIPlayer.cs` in `namespace HexTactica.OldAI { }`. Keep the existing `.meta` files (new ones need new GUIDs).
+3. Mission objectives (`AIMissionObjective` and its subclasses in the scene) hold the rules; each AI reads them its
+   own way: the old AI's reading is `OldAI/OldMission.cs`. Update it from the new AI's reading if that changed.
+4. Add any new files to `Tests/logicfiles.txt`, compile, run the suite.
+
+**What both AIs share (the world, not AI code)**
+
+- The game rules and data: units, buildings, tiles, supply (`SupplyNetwork`), fog (`FogOfWar`).
+- `Assets/World/BoardView.cs`: the copies of the board an AI thinks on (the game code reads through the current copy).
+- `Assets/World/AIController.cs`: `IAIController` / `AIControl.Of(player)`, all the game asks of whichever AI plays a
+  side (playing or not, thinking time, fog fairness). Game code never names an AI's type.
+
+**Known shared state, left as it is**
+
+`SupplyNetwork` still carries four thread-static switches only the AIs set, around their own planning:
+`RecordLinked`, `AssumeLinked`, `AssumeLinkedVia`, `PlannedAboard`. Both AIs use them; each sets and restores them
+on its own thread, so they do not leak between the two. Moving them into per-AI helpers would not change how the
+old AI plays, so they are left in place. Revisit if a change to the new AI changes what they mean (then the old AI
+would be planning with the new meaning). The old AI's other switch, `PutDownHypothetical`, is gone from the game
+rules: the old AI plans with the rules as they are.
+
+**Running old against new**
+
+`OLD=Blue` or `OLD=Red` plays that side with the old AI in a duel (the other side is the current AI):
+
+```
+OLD=Red PURCHASES=on FOG=off PROBE=duel FILE=Assets/Resources/Scenarios/RiverCrossing.dat ROUNDS=25 bash Tests/run.sh Assets
+```
+
+Play each map from both sides (scenarios are not symmetric: look at each side's buildings and units before reading a
+result). Test maps: RiverCrossing (no-build, fog off), ChanceMeeting (no-build, fog on), Biomes (build, fog off).
+`DUELTRACE=1` logs every decision of both sides; the end of the log gives units, material (cost × strength),
+buildings, income, gold and think time per side.
+
 ## Running the tests
 
 ```
