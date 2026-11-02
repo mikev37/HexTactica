@@ -155,6 +155,10 @@ MonoBehaviour:
   assaultRides: 1
   assaultArmedRides: 0
   assaultCarryOut: 1
+  assaultBoardWeighs: 1
+  assaultOrderWithLine: 1
+  assaultFrontlineOut: 1
+  assaultFireThenUnload: 1
   assaultBoardTurns: 2
   assaultWaveRatio: 1
   assaultMedevacStrength: 3

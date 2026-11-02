@@ -436,9 +436,14 @@ public static class Scenarios {
                  Transporting.Load(apc, g1); Transporting.Load(apc, g2);
                  Put("Tank", a, -5, 1); Put("APC", a, -5, 4); Put("Grunt", a, -6, 4);
                  Put("Artillery", o, 5, 0); },
-             "Riding to the assault (assaultRides): an APC carrying two grunts moves up with them aboard, out of the enemy's reach, and puts them down only where they can strike that turn (getting off costs nothing: whether they then attack is their own call), or to hold the line once their front holds its ground (here, with the enemy gone); nothing else puts them down. Also reports whether a grunt far from the fight gets into the empty APC beside it. Blue plays four turns against a standing Red artillery piece (which cannot fire back at a unit beside it).");
-        make("ai-medevac", "medevac", (a, o) => { Put("Grunt", a, 3, 3); Put("APC", a, 1, 3); Rig.PlaceBuilding("City", a, -6, 4); Put("Grunt", o, 6, -6); },
-             "Medevac (assaultRides, assaultMedevacStrength): a Blue grunt down to strength 2, an empty APC two tiles off, Blue's city nine tiles off (three turns' walk and more): within three Blue turns the APC has carried it onto a building that mends it, and once there it does not ride off to the fight while still wounded (strength 3 or less).");
+             "Riding to the assault (assaultRides): an APC carrying two grunts moves up with them aboard, out of the enemy's reach, and puts them down only where they can strike that turn (getting off costs nothing: whether they then attack is their own call), to hold the line once their front holds its ground (here, with the enemy gone), or once at the front line (in contact next turn: they get off and decide for themselves); nothing else puts them down. Also reports whether a grunt far from the fight gets into the empty APC beside it. Blue plays four turns against a standing Red artillery piece (which cannot fire back at a unit beside it).");
+        make("ai-armed-transport", "armedTransport", (a, o) => {
+                 Unit rc = Put("Recon", a, -3, 0); Unit g = Put("Grunt", a, -3, 1); Transporting.Load(rc, g);
+                 Put("Tank", a, -4, 1);
+                 Put("Grunt", o, 2, 0); },
+             "An armed transport with a rider (assaultFireThenUnload, assaultFrontlineOut): a Blue recon carrying a grunt, a Blue tank, a Red grunt standing in the open. On Blue's turn (no coordinated plans: the transport's own choice) the recon stops where it can fire as well as put its rider down, fires on the Red grunt first and lets its rider out after (its rider still has its whole turn). Then: a recon whose assault move was set aside for its ordinary one (a fallback) has its rider get off to decide for itself.");
+        make("ai-medevac", "medevac", (a, o) => { Put("Grunt", a, 0, -5); Put("APC", a, -1, -4); Rig.PlaceBuilding("City", a, -6, 4); Put("Grunt", o, 6, -6); },
+             "Medevac (assaultRides, assaultMedevacStrength): a Blue grunt down to strength 2, away from Red's HQ (boarding is weighed against its own move: a wounded unit a turn from taking a building would go and take it), an empty APC beside it, Blue's city nine tiles off (three turns' walk and more): within three Blue turns the APC has carried it onto a building that mends it, and once there it does not ride off to the fight while still wounded (strength 3 or less).");
         {
             Blank(14);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
@@ -1656,6 +1661,7 @@ public static class Scenarios {
                 return d1 == "[ooo... ]" && d2 == "[oo.... ]" && d3 == "[ooooo. ]" && dh == "[       ]" && dotFilled && dotEmpty && ownShown && redHidden && redSeen;
             }
             case "assaultRide": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
                 // Blue: an APC with two grunts aboard at (-6,0) and a tank at (-5,1); an empty APC at (-5,4) beside a grunt
                 // at (-6,4). Red: an artillery piece at (5,0), standing. Blue plays four turns (Red does nothing).
                 Unit apc = Rig.At(-6, 0).occupier, apc2 = Rig.At(-5, 4).occupier, walker = Rig.At(-6, 4).occupier;
@@ -1694,15 +1700,49 @@ public static class Scenarios {
                 int rodeUp = 0, assaultDrops = 0, otherDrops = 0;
                 foreach (string w in why) {
                     if (w.Contains("assault ride: moves up")) rodeUp++;
-                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else if (!w.Contains("holds the line")) otherDrops++; }
+                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else if (!w.Contains("holds the line") && !w.Contains("at the front line") && !w.Contains("not its assault ride")) otherDrops++; }
                 }
                 detail = string.Join(" | ", r.ToArray()) + " || moved up with riders aboard " + rodeUp + " times; put down to strike " + assaultDrops + ", put down otherwise " + otherDrops + "; landed " + landed + " (attacked the turn they landed " + struckOnLanding + ": the rider's own call); walker boarded " + walkerBoarded;
                 return landed > 0 && assaultDrops >= 1 && otherDrops == 0;
             }
+            case "armedTransport": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
+                Unit rc = Rig.At(-3, 0).occupier;
+                Unit g = rc.transported.Count > 0 ? rc.transported[0] : null;
+                g.active = true;
+                // The transport's own choice (no coordinated plan, which may also send the recon in and set its ride aside).
+                AIProfile ap0 = a.GetComponent<AIPlayer>().Profile; ap0.coordination = false; ap0.coordinationPasses = false;
+                List<string> events = new List<string>();
+                Action<Unit, Unit, bool> att = (x, d, sur) => { if (x.owner == a) events.Add(GameController.UnitName(x) + " fires" + (x == g ? (g.trasnporter == null ? " (off)" : " (aboard)") : "")); };
+                Unit.Attacking += att;
+                AIPlayer bai = a.GetComponent<AIPlayer>();
+                System.Action<Unit, HexTactica.AI.AIAction, bool> dec = (u, act, did) => { if (did && (u == rc || u == g)) events.Add(GameController.UnitName(u) + " " + act.kind + ": " + act.reason); };
+                if (bai != null) bai.onDecision += dec;
+                try { ScenarioFile.PlayTurn(); }
+                finally { Unit.Attacking -= att; if (bai != null) bai.onDecision -= dec; }
+                int reconFired = events.FindIndex(x => x == "Recon fires");
+                int gruntOff = events.FindIndex(x => x.StartsWith("Grunt") && !x.Contains("aboard") || x.StartsWith("Recon Unload"));
+                bool firstFire = reconFired >= 0 && (gruntOff < 0 || reconFired < gruntOff) && g.trasnporter == null;
+                // A fallback: the recon (having acted) with the grunt aboard again, its assault move set aside.
+                if (g.tile != null && rc.tile != null && g.trasnporter == null && Transporting.CanCarry(rc, g)) {
+                    HexTile beside = rc.tile.neighbors.Find(t => t != null && (t.occupier == null || t.occupier == g) && g.CanEnter(t));
+                    if (beside != null && g.tile.Distance(rc.tile) > 1) g.TeleportTo(beside, 0);
+                    Transporting.Load(rc, g);
+                }
+                rc.active = false; g.active = true;
+                HexTactica.AI.AIAssault.FellBack.Clear(); HexTactica.AI.AIAssault.FellBack.Add(rc);
+                AIAction? fb = null;
+                if (g.trasnporter == rc) fb = HexTactica.AI.AIAssault.RiderAction(g, true, new AIMap(a, bai.Profile), bai.Profile);
+                HexTactica.AI.AIAssault.FellBack.Clear();
+                bool fellBackOut = fb.HasValue && fb.Value.kind == HexTactica.AI.AIActionKind.Unload && fb.Value.reason.Contains("not its assault ride");
+                detail = string.Join(" / ", events.ToArray()) + " || the recon fired before its rider got off, the rider off by the end of the turn: " + firstFire
+                       + "; fallback: " + (fb.HasValue ? fb.Value.kind + " - " + fb.Value.reason : g.trasnporter == rc ? "nothing" : "(could not put the grunt back aboard)");
+                return firstFire && fellBackOut;
+            }
             case "medevac": {
-                // Blue: a grunt down to strength 2 at (3,3), an empty APC at (1,3), Blue's city at (-6,4), out of the grunt's
+                // Blue: a grunt down to strength 2 at (0,-5), an empty APC at (-1,-4), Blue's city at (-6,4), out of the grunt's
                 // walk for three turns. Red: a grunt far off.
-                Unit hurt = Rig.At(3, 3).occupier; Building city = Rig.At(-6, 4).building;
+                Unit hurt = Rig.At(0, -5).occupier; Building city = Rig.At(-6, 4).building;
                 hurt.Strength = 2;
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
                 List<string> r = new List<string>();
