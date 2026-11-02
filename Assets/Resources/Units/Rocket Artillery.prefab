@@ -949,7 +949,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: Firepower
-      value: 6
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: locomotion

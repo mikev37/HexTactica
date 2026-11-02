@@ -1773,7 +1773,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: Piercing
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: Firepower
@@ -1792,9 +1792,21 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
-      propertyPath: Vulnerability
-      value: 1
+      propertyPath: elevationMax
+      value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: weaponImpact
+      value: 
+      objectReference: {fileID: 158503137770955053, guid: 4c9c08dca2d76ee4295c6a46d7725af4, type: 3}
+    - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: Vulnerability
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: deathExplosion
+      value: 
+      objectReference: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: transportSlots
       value: 0
