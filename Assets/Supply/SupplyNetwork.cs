@@ -29,6 +29,9 @@ public static class SupplyNetwork {
     /// </summary>
     public static bool StoreOnlyWhenNeeded = true;
 
+    /// <summary>Under fog, the supply the screen shows (borders, out-of-supply icons) is worked out on the board as the screen's player knows it (HexTile.supplyShown): enemy units it does not see do not cut it. Off: the true network is shown.</summary>
+    public static bool ShownAsKnown = true;
+
     /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
     public static bool FlagsFollowPublish = true;
 
@@ -272,7 +275,7 @@ public static class SupplyNetwork {
 
         // Publish onto the board — but never a counterfactual network missing a hub.
         if (excluded == null && !staticOnly && moved == null && !onlyMoved) {
-            Publish(player, result);
+            Publish(player, result, () => Solve(player, false, movedHub, hypotheticalTile, excluded, staticOnly, moved, onlyMoved));
             // The real network on the real board: each supply unit's linked/cut-off flag follows it now, not only at the
             // start of the turn (the cut-off icon read a flag set then, while the borders showed every move since).
             // Never from a thought (a board copy: the hub objects are shared) or a "what if it stood there".
@@ -296,11 +299,23 @@ public static class SupplyNetwork {
     }
 
     /// <summary>Put <paramref name="result"/> on the board as <paramref name="player"/>'s supply (the tiles' fields and their borders).</summary>
-    static void Publish(Player player, Result result) {
+    static void Publish(Player player, Result result, System.Func<Result> again) {
         HexGenerator.forAllTiles(t => {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });
+        // What the screen shows (real board only): the same network worked out on the board as the screen's player
+        // knows it, under fog — an enemy it does not see neither cuts supply nor gives it (it would give it away).
+        if (BoardView.current == null) {
+            Result shown = result;
+            Player viewer = ShownAsKnown && FogOfWar.On ? FogOfWar.Viewer : null;
+            if (viewer != null && again != null) using (FogOfWar.Concealing(viewer)) shown = again();
+            HexGenerator.forAllTiles(t => {
+                if (t.supplyShown == null) t.supplyShown = new Dictionary<Player, int>();
+                t.supplyShown[player] = shown.DepthAt(t);
+                return 0;
+            });
+        }
         // (Into a board copy, if one is entered: only it changes. The displays are woken for the real board only.)
         if (BoardView.current == null) {
             Published++;
@@ -314,7 +329,7 @@ public static class SupplyNetwork {
     /// </summary>
     public static Result SolvePreview(Player player, Dictionary<SupplyPoint, HexTile> moved) {
         Result r = Solve(player, false, null, null, null, false, moved);
-        Publish(player, r);
+        Publish(player, r, () => Solve(player, false, null, null, null, false, moved));
         return r;
     }
 
@@ -333,6 +348,20 @@ public static class SupplyNetwork {
     [System.ThreadStatic] public static SupplyPoint AssumeLinked;
     /// <summary>With <see cref="AssumeLinked"/>: it counts as aboard this transport — linked only where the transport could reach supplied ground in one move.</summary>
     [System.ThreadStatic] public static Unit AssumeLinkedVia;
+
+    /// <summary>
+    /// The network as the game plays it on this thread until disposed: none of the AI's what-if rules (PutDownHypothetical,
+    /// AssumeLinked, PlannedAboard, RecordLinked); what they were is put back after. For the player's supply displays,
+    /// and around each of the AI's thoughts (which set them for themselves).
+    /// </summary>
+    public static System.IDisposable AsPlayed() { return new WhatIfOff(); }
+    sealed class WhatIfOff : System.IDisposable {
+        readonly bool putDown = PutDownHypothetical, record = RecordLinked;
+        readonly SupplyPoint assume = AssumeLinked; readonly Unit assumeVia = AssumeLinkedVia;
+        readonly Dictionary<SupplyPoint, Unit> aboard = PlannedAboard;
+        public WhatIfOff() { PutDownHypothetical = false; RecordLinked = false; AssumeLinked = null; AssumeLinkedVia = null; PlannedAboard = null; }
+        public void Dispose() { PutDownHypothetical = putDown; RecordLinked = record; AssumeLinked = assume; AssumeLinkedVia = assumeVia; PlannedAboard = aboard; }
+    }
 
     /// <summary>Set (per thread) by an AI that plans this way (AIProfile.hubLinkPenalty): see PutDown.</summary>
     [System.ThreadStatic] public static bool PutDownHypothetical;

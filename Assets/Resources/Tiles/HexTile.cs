@@ -78,6 +78,20 @@ public class HexTile : MonoBehaviour
         return supply[myPlayer] > 0;
     }
 
+    /// <summary>
+    /// Each player's supply as the screen's player knows the board (SupplyNetwork.ShownAsKnown, real board only):
+    /// under fog an enemy that player does not see does not cut supply here, nor does an enemy supply unit it does
+    /// not see give supply. Null (or no entry): the same as <see cref="supply"/>.
+    /// </summary>
+    [System.NonSerialized] public Dictionary<Player, int> supplyShown;
+
+    /// <summary>Supplied as the screen shows it (supply borders, a unit's out-of-supply icon): see supplyShown.</summary>
+    internal bool isSuppliedShown(Player myPlayer) {
+        int d;
+        if (BoardView.current == null && supplyShown != null && supplyShown.TryGetValue(myPlayer, out d)) return d > 0;
+        return isSupplied(myPlayer);
+    }
+
     public AITileData aiData;
 
     [Header("Movement Variables")]

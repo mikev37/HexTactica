@@ -235,7 +235,16 @@ public class AIPlayer : MonoBehaviour {
     /// one has something to do.
     /// </summary>
     Thought Think(BoardView v, bool prepare, bool refresh) {
-        SupplyNetwork.PutDownHypothetical = Profile.hubLinkPenalty > 0f;
+        // The supply solver's what-if rules are the AI's, for this thought only: a thought redone on the main thread
+        // (a failed one, Collect) left them on there, and the player's supply preview then counted a truck's supply
+        // as put down where the truck was going (cut off) rather than carried (linked).
+        using (SupplyNetwork.AsPlayed()) {
+            SupplyNetwork.PutDownHypothetical = Profile.hubLinkPenalty > 0f;
+            return ThinkInner(v, prepare, refresh);
+        }
+    }
+
+    Thought ThinkInner(BoardView v, bool prepare, bool refresh) {
         using (v.Enter()) {
             if (prepare) PrepareTurnOnBoard();
             // Each thought may run on another thread: the turn's thread-static settings go with it.
