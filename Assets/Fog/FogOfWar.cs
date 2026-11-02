@@ -536,8 +536,9 @@ public static class FogOfWar {
     /// <summary>
     /// Whose view the screen shows: GameController.fogViewer when set (a player's index), else the
     /// human player (the one whose turn it is, when several share the screen; during an AI's turn,
-    /// the last human to play). Null: fog is off, the level editor is open, or nobody is human
-    /// (everything is shown).
+    /// the last human to play). Null: fog is off, the level editor is open, nobody is human, or the
+    /// fog is not shown on screen (GameController.fogShownOnScreen off): everything is shown. Only the
+    /// screen: what each side knows and plays by (Sees, Knowledge) does not depend on it.
     /// </summary>
     public static Player Viewer {
         get {
@@ -558,6 +559,7 @@ public static class FogOfWar {
     static Player FindViewer(GameController gc) {
         {
             if (LevelEditor.singleton != null && (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement || LevelEditor.singleton.building_placement)) return null;
+            if (!gc.fogShownOnScreen) return null;
             if (gc.fogViewer >= 0 && gc.fogViewer < gc.players.Count) return gc.players[gc.fogViewer];
             if (gc.activePlayer != null && IsHuman(gc.activePlayer)) lastHuman = gc.activePlayer;
             if (lastHuman != null && gc.players.Contains(lastHuman)) return lastHuman;

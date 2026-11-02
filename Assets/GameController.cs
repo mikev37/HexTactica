@@ -24,6 +24,8 @@ public class GameController : MonoBehaviour
     public bool fogOfWar;
     [Tooltip("Whose view the screen shows under fog of war: -1 the human player (the one whose turn it is when several share the screen); 0, 1, ... always that player's (to watch an AI game through one side's eyes).")]
     public int fogViewer = -1;
+    [Tooltip("Show the fog of war on screen. Off: the screen shows the whole board (every unit, every building's real owner) while each side, AI or human, still plays by what it sees — to watch how the AIs play under fog, turn by turn.")]
+    public bool fogShownOnScreen = true;
 
     /// <summary>"on" / "off" from a scenario (anything else: off).</summary>
     public static bool ParseFog(string s) {
