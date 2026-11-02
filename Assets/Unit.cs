@@ -217,7 +217,7 @@ public class Unit : MonoBehaviour
     public List<Transform> cargoSlots = new List<Transform>();
     [Tooltip("Scale of a carried unit's sprites while aboard")]
     public float cargoScale = 0.45f;
-    [Tooltip("Aircraft transport (a plane, not a helicopter): what a unit it puts down wears on the way down — attached to the unit when it is dropped, removed when it lands. Optional.")]
+    [Tooltip("Aircraft transport (a plane, not a helicopter): what a unit it puts down wears on the way down — attached when it is dropped, removed when it lands. Optional: empty uses the shared one, Resources/Units/Prefabs/Parachute (GameAssets.Parachute).")]
     public GameObject parachutePrefab;
     [Tooltip("Aircraft transport: how far above its tile a unit it puts down appears, before settling onto it (world units).")]
     public float dropHeight = 0.6f;
@@ -597,7 +597,9 @@ public class Unit : MonoBehaviour
             transform.position = tile.unitPlacement.position + Vector3.up * transport.dropHeight;
             if (scaleKnown) transform.localScale = homeScale;
             if (path != null) path.Clear();
-            if (transport.parachutePrefab != null) chute = GameObject.Instantiate(transport.parachutePrefab, transform.position, Quaternion.identity, transform);
+            // One parachute for every plane (GameAssets.Parachute: Resources/Units/Prefabs/Parachute); a transport's own overrides it.
+            GameObject chutePrefab = transport.parachutePrefab != null ? transport.parachutePrefab : GameAssets.Parachute;
+            if (chutePrefab != null) chute = GameObject.Instantiate(chutePrefab, transform.position, Quaternion.identity, transform);
         }
         if (Hub != null && transport != null) {
             bool still = false;

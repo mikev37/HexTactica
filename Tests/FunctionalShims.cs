@@ -294,7 +294,19 @@ namespace UnityEngine {
         public GradientAlphaKey[] alphaKeys { get { return (GradientAlphaKey[])_a.Clone(); } set { _a = (GradientAlphaKey[])value.Clone(); } }
         public void SetKeys(GradientColorKey[] c, GradientAlphaKey[] a) { colorKeys = c; alphaKeys = a; }
     }
-    public static class Resources { public static T Load<T>(string path) where T : class { return null; } public static T GetBuiltinResource<T>(string path) where T : class { return null; } }
+    public static class Resources {
+        public static T Load<T>(string path) where T : class { return null; }
+        public static T GetBuiltinResource<T>(string path) where T : class { return null; }
+        /// <summary>The harness's Resources folder: what it finds under that path, by type (PrefabLoader; null: nothing).</summary>
+        public static System.Func<System.Type, string, object[]> Provider;
+        public static T[] LoadAll<T>(string path) where T : class {
+            object[] found = Provider != null ? Provider(typeof(T), path) : null;
+            if (found == null) return new T[0];
+            System.Collections.Generic.List<T> r = new System.Collections.Generic.List<T>();
+            foreach (object o in found) { T t = o as T; if (t != null) r.Add(t); }
+            return r.ToArray();
+        }
+    }
     public class LineRenderer : Renderer {
         public Gradient colorGradient;
         public int positionCount;
@@ -397,7 +409,7 @@ namespace UnityEngine {
         public static void InitState(int seed) { }
     }
 
-    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class TooltipAttribute : Attribute { public TooltipAttribute(string s) { } }
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)] public class TooltipAttribute : Attribute { public TooltipAttribute(string s) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class HeaderAttribute : Attribute { public HeaderAttribute(string s) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class RangeAttribute : Attribute { public RangeAttribute(float a, float b) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class TextAreaAttribute : Attribute { public TextAreaAttribute(int a, int b) { } }

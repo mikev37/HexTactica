@@ -27,12 +27,52 @@ namespace HexTactica.Testing {
             return File.Exists(PathFor(name));
         }
 
+        /// <summary>
+        /// Resources.LoadAll as the harness has it (GameAssets): unit and building prefabs as their game objects, terrains,
+        /// from the project's Resources folders.
+        /// </summary>
+        public static object[] ResourcesProvider(Type type, string path) {
+            List<object> r = new List<object>();
+            if (type == typeof(GameObject) && path == "Units") {
+                foreach (string f in Directory.GetFiles(Root("Units"), "*.prefab", SearchOption.AllDirectories)) {
+                    string n = Path.GetFileNameWithoutExtension(f);
+                    try { Unit u = Load(n); u.name = n; u.gameObject.name = n; r.Add(u.gameObject); } catch (Exception) { }
+                }
+            } else if (type == typeof(GameObject) && path == "Buildings") {
+                foreach (string f in Directory.GetFiles(Path.Combine(Root("Buildings"), "Prefabs"), "*.prefab")) {
+                    string n = Path.GetFileNameWithoutExtension(f);
+                    try { Building b = LoadBuilding(n); b.name = n; b.gameObject.name = n; r.Add(b.gameObject); } catch (Exception) { }
+                }
+            } else if (type == typeof(TerrainData) && path == "Tiles") {
+                foreach (string f in Directory.GetFiles(Root("Tiles"), "*.asset", SearchOption.AllDirectories)) {
+                    try { TerrainData t = ScenarioFile.Terrain(Path.GetFileNameWithoutExtension(f)); if (t != null) r.Add(t); } catch (Exception) { }
+                }
+            }
+            return r.ToArray();
+        }
+
+        /// <summary>A folder of the project's assets: under Resources (where the game loads them by name), else at the top.</summary>
+        public static string Root(string sub) {
+            string r = Path.Combine(AssetsRoot, "Resources", sub);
+            return Directory.Exists(r) ? r : Path.Combine(AssetsRoot, sub);
+        }
+
+        /// <summary>Every unit prefab by name, in any folder under Units (faction variants have their own folders).</summary>
+        static Dictionary<string, string> unitFiles;
         static string PathFor(string name) {
-            string p = Path.Combine(AssetsRoot, "Units", name + ".prefab");
+            if (unitFiles == null) {
+                unitFiles = new Dictionary<string, string>();
+                foreach (string f in Directory.GetFiles(Root("Units"), "*.prefab", SearchOption.AllDirectories)) {
+                    string n = Path.GetFileNameWithoutExtension(f);
+                    if (!unitFiles.ContainsKey(n)) unitFiles[n] = f;
+                }
+            }
+            string p;
+            if (unitFiles.TryGetValue(name, out p)) return p;
             string now;
             // A unit renamed since the file was saved loads as the game loads it (LevelEditor.RenamedUnit).
-            if (!File.Exists(p) && (now = LevelEditor.RenamedUnit(name)) != null) return Path.Combine(AssetsRoot, "Units", now + ".prefab");
-            return p;
+            if ((now = LevelEditor.RenamedUnit(name)) != null && unitFiles.TryGetValue(now, out p)) return p;
+            return Path.Combine(Root("Units"), name + ".prefab");
         }
 
         /// <summary>A fresh archetype built from the prefab. Throws if the prefab is missing.</summary>
@@ -87,7 +127,7 @@ namespace HexTactica.Testing {
                 int sp = doc.IndexOf("m_SourcePrefab:");
                 int spEnd = sp >= 0 ? doc.IndexOf('\n', sp) : -1;
                 string guid = sp >= 0 ? GuidIn(spEnd >= 0 ? doc.Substring(sp, spEnd - sp) : doc.Substring(sp)) : null;
-                string baseName = guid != null ? AssetByGuid(Path.Combine(AssetsRoot, "Units"), "*.prefab.meta", guid) : null;
+                string baseName = guid != null ? AssetByGuid(Path.Combine(Root("Units")), "*.prefab.meta", guid) : null;
                 if (baseName == null || baseName == name) continue;
                 Doc b = Read(baseName, depth + 1);
                 Doc v = new Doc { unit = new Dictionary<string, string>(b.unit), unitId = b.unitId, hub = b.hub != null ? new Dictionary<string, string>(b.hub) : null, hubId = b.hubId, carries = new List<Locomotion>(b.carries) };
@@ -244,7 +284,7 @@ namespace HexTactica.Testing {
         static readonly Dictionary<string, Building> buildingCache = new Dictionary<string, Building>();
 
         public static bool HasBuilding(string name) {
-            return File.Exists(Path.Combine(AssetsRoot, "Buildings", "Prefabs", name + ".prefab"));
+            return File.Exists(Path.Combine(Root("Buildings"), "Prefabs", name + ".prefab"));
         }
 
         /// <summary>
@@ -294,7 +334,7 @@ namespace HexTactica.Testing {
         }
 
         static Building ParseBuilding(string name) {
-            string path = Path.Combine(AssetsRoot, "Buildings", "Prefabs", name + ".prefab");
+            string path = Path.Combine(Root("Buildings"), "Prefabs", name + ".prefab");
             string text = File.ReadAllText(path);
             string doc = null;
             foreach (string d in text.Split(new[] { "\n--- " }, StringSplitOptions.None)) if (d.Contains("\n  supplyRange:")) doc = d;
@@ -332,12 +372,12 @@ namespace HexTactica.Testing {
                 } else if (l.StartsWith("  buildable:")) {
                     for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) {
                         string g = GuidIn(lines[j]);
-                        string unit = g != null ? AssetByGuid(Path.Combine(AssetsRoot, "Units"), "*.prefab.meta", g) : null;
+                        string unit = g != null ? AssetByGuid(Path.Combine(Root("Units")), "*.prefab.meta", g) : null;
                         if (unit != null && Has(unit)) { Unit arch = Load(unit); AttachHubIfAny(unit, arch); b.buildable.Add(arch); }   // as in Unity: the prefab carries its SupplyPoint
                     }
                 } else if (l.StartsWith("  ground:") || l.StartsWith("  serviceGround:")) {
                     string g = GuidIn(l);
-                    string terrain = g != null ? AssetByGuid(Path.Combine(AssetsRoot, "Tiles"), "*.asset.meta", g) : null;
+                    string terrain = g != null ? AssetByGuid(Path.Combine(Root("Tiles")), "*.asset.meta", g) : null;
                     TerrainData td = terrain != null ? ScenarioFile.Terrain(terrain) : null;
                     if (l.StartsWith("  ground:")) b.ground = td; else b.serviceGround = td;
                 }

@@ -11,8 +11,10 @@ set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ASSETS="$(cd "${1:-$HERE/../Assets}" && pwd)"
 command -v mcs >/dev/null || { echo "mcs not found: install mono-mcs"; exit 2; }
+# (Units, buildings, terrain and scenarios live in Assets/Resources: loaded by name in the game, Resources.LoadAll.)
+UNITS="$ASSETS/Resources/Units"; [ -d "$UNITS" ] || UNITS="$ASSETS/Units"
 for p in Supplies Grunt Tank Artillery; do
-  [ -f "$ASSETS/Units/$p.prefab" ] || { echo "Missing $ASSETS/Units/$p.prefab — run against your project's Assets folder."; exit 2; }
+  [ -f "$UNITS/$p.prefab" ] || { echo "Missing $UNITS/$p.prefab — run against your project's Assets folder."; exit 2; }
 done
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
