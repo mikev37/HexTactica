@@ -3066,7 +3066,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hextile: {fileID: 1846999963862011126, guid: 2c71dd49a7631da40909807c380fc021, type: 3}
   off: 0
-  width: 35
+  width: 27
   tiles: []
 --- !u!4 &601518213
 Transform:
@@ -7489,7 +7489,7 @@ MonoBehaviour:
   personal_name: Red
   id: 0
   displayColor: {r: 1, g: 0, b: 0, a: 0}
-  faction: {fileID: 11400000, guid: ca30e5df0e733ba439cc74659d8fae56, type: 2}
+  faction: {fileID: 11400000, guid: 3ed06345dfd9e16418eca0a09d0a601c, type: 2}
   mainPlayer: 1
   units: []
   money: 0
