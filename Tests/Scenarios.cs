@@ -399,6 +399,16 @@ public static class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, "rule-supply-fob-refresh.dat"), test, ai, other, ai);
             n++;
         }
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, -4, 0); Rig.PlaceBuilding("FOB", ai, 5, -2);
+            Dictionary<string, string> test = Test("rule-fob-prefers-hq", "rules", "Human", 4, "fobPrefersHQ", "The HQ first (SupplyNetwork.StoreOnlyWhenNeeded): a forward base cut off from the HQ's supply spends a point of its store only on a turn it feeds a unit nothing else supplies. HQ at -13, FOB at -4 (cut off, store 4): with nobody near it, it keeps its store; a grunt that the HQ's supply also reaches costs it nothing; a grunt only it supplies costs a point; linked to the HQ by a supply unit, it refills a point. A second cut-off FOB with nobody near spends nothing (the old rule: a point every turn).");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "rule-fob-prefers-hq.dat"), test, ai, other, ai);
+            n++;
+        }
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1454,6 +1464,36 @@ public static class Scenarios {
                                 && s3.strandedHubs.Contains(cargo.Hub) && truckTileSupplied;
                 bool upToDate = st5 == "board up to date" && st6a == "board up to date" && staleNow == "board up to date" && st8 == "board up to date";
                 return fobRules && upToDate && before6 == "linked" && s7.connectedHubs.Contains(cargo2.Hub) && cargo2.Hub.connected;
+            }
+            case "fobPrefersHQ": {
+                // HQ at -13 (its supply reaches -10 on grassland). FOB at -4, its own range covering -11..3, cut off.
+                Building fob = Rig.At(-4, 0).building;
+                List<string> r = new List<string>();
+                Func<string, int> turn = what => { int before = fob.supplies; SupplyNetwork.Solve(a, true); r.Add(what + ": store " + before + " -> " + fob.supplies); return before - fob.supplies; };
+                fob.supplies = 4;
+                int empty = turn("nobody near it");
+                Unit g = Put("Grunt", a, -11, 0);
+                bool overlapSupplied = SupplyNetwork.Solve(a, false).IsSupplied(g.tile);
+                int overlap = turn("a grunt at -11,0, inside the HQ's supply too (" + (SupplyNetwork.SolveStatic(a).IsSupplied(g.tile) ? "it is" : "IT IS NOT") + ")");
+                Unit g2 = Put("Grunt", a, 0, 1);
+                bool onlyStore = !SupplyNetwork.SolveStatic(a).IsSupplied(g2.tile) && SupplyNetwork.Solve(a, false).IsSupplied(g2.tile);
+                int needed = turn("and a grunt at 0,1, which only the FOB supplies (supplied " + onlyStore + ")");
+                // Linked to the HQ: a supply unit between them.
+                Put("Supplies", a, -10, 0); Put("Supplies", a, -7, 0);
+                SupplyNetwork.Result lr = SupplyNetwork.Solve(a, false);
+                bool linked = lr.connectedBuildings.Contains(fob);
+                int refill = turn("supply units at -10,0 and -7,0 link it to the HQ (linked " + linked + ")");
+                // Switch off: the old rule (every cut-off building with store spends every turn).
+                SupplyNetwork.StoreOnlyWhenNeeded = false;
+                Building f2 = Rig.At(5, -2).building; f2.supplies = 3; int b2 = f2.supplies; fob.supplies = 4;
+                SupplyNetwork.Solve(a, true);
+                int oldRule = b2 - f2.supplies;
+                SupplyNetwork.StoreOnlyWhenNeeded = true;
+                f2.supplies = 3; fob.supplies = 4; SupplyNetwork.Solve(a, true);
+                int newRule = 3 - f2.supplies;
+                r.Add("a second FOB at 5,-2 cut off with nobody near: spends " + newRule + " (old rule " + oldRule + ")");
+                detail = string.Join("; ", r.ToArray());
+                return empty == 0 && overlapSupplied && overlap == 0 && onlyStore && needed == 1 && linked && refill == -1 && newRule == 0 && oldRule == 1;
             }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
