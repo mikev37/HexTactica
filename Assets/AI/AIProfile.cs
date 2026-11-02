@@ -115,6 +115,14 @@ namespace HexTactica.AI {
         public bool campaignChainToUnits = true;
         [Tooltip("Campaign: a scouting trip's escort, as this share of the enemy that could fight there times objectiveForceRatio (0: the scout alone; was 0.5).")]
         public float campaignScoutEscort = 0f;
+        [Tooltip("Campaign: a task force's unit within this many turns of an enemy unit is engaged (it fights to survive); the others are staged (on the staging ground) or en route.")]
+        public int campaignEngagedTurns = 2;
+        [Tooltip("Campaign: a task force with most of its units not engaged whose enemy estimate has risen to campaignSurgeRatio times what it was formed against stops: its units that are not engaged pull back to its staging ground (until there, at most campaignSurgeWithdrawTurns), then are planned afresh.")]
+        public bool campaignSurgeAbort = true;
+        [Tooltip("Campaign: the rise in a task force's enemy estimate, over what it was formed against, that stops it (campaignSurgeAbort).")]
+        public float campaignSurgeRatio = 1.5f;
+        [Tooltip("Campaign: turns at most that a stopped task force's units pull back to its staging ground before they are planned afresh (campaignSurgeAbort).")]
+        public int campaignSurgeWithdrawTurns = 2;
         [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
         public bool campaignReserve = true;
         [Tooltip("Campaign: the central reserve is mobile — aircraft, combat ships, loaded transports (with what they carry) and fast ground units (campaignReserveMinMove or more); infantry on foot and other slow units stay with the ordinary fronts. Off: every spare fighting unit on the ground, as before.")]

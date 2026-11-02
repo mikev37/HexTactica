@@ -132,7 +132,9 @@ Transports: `assaultRides`, `assaultBoardTurns` 2, `assaultTransportWeight` 2, `
 `assaultBoardWeighs`, `assaultOrderWithLine`, `assaultFrontlineOut`, `assaultFireThenUnload`.
 Supply: `supplyStaysAboard`, `unifiedLinkPlacement`, `boardSpentTransports`, `keepBuildSlotsClear` (now mostly
 redundant: unified placement no longer parks supply on the HQ).
-Campaign: `capturerLives`, `campaignGatherWithBody`.
+Campaign: `capturerLives`, `campaignGatherWithBody`, `campaignSurgeAbort` (+ `campaignEngagedTurns` 2, `campaignSurgeRatio` 1.5,
+`campaignSurgeWithdrawTurns` 2). Game (not AI): `GameController.fogShownOnScreen` (off: the screen shows everything, sides
+still play by their fog).
 Turn: `waitTwice`. Production: `productionOverkill`, `productionLifetime` (+ `productionLifeMax` 8, `productionLifeRef`
 3, `productionReachRef` 6), `productionShieldCut` 0.6, `productionShieldRatio` 2, `productionDefenceFade` 20.
 Speed (meant to give identical decisions, faster): `parallelForecast`, `speculate`, `keepCaches`, `vacatedReach`, ...
@@ -197,6 +199,19 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   Links were not placed worse (without spacing Blue also had links at (-6,5), (-6,8), (-4,8), which lived while its
   army held there); they were left holding after the army in front of them was beaten. Logs: scratchpad
   `games/cm-fwd-cur-b.log`, `games/cm-fwd-sp0-b.log`; tools `camp.py` (campaign per turn), `losses.py` (hits per turn).
+
+- **Plan unit status and the surge stop (`campaignSurgeAbort`, 2 Nov):** each task force sorts its units into staged /
+  en route / engaged (within `campaignEngagedTurns` 2 of an enemy unit), shown in its trace line with the estimate it
+  was formed against. A task force with most units not engaged whose estimate rises to 1.5× that stops; its en-route
+  units pull back to its staging ground (Defensive front, up to 2 turns) and the objective is planned afresh.
+  Old v new, traced, 25 rounds (logs `games/surge-*` v `games/base-*`): identical games on RiverCrossing (both
+  sides), Biomes (both sides) and ChanceMeeting new Blue (it never fired). ChanceMeeting new Red: fired on turn 6
+  (Secure@0,-10, one Grunt, estimate 3,169 → 18,155), re-formed with 4 units that gathered before going in; new Red
+  **220,166 v 63,666** (was 157,500 v 141,916). Why it rarely fires: on ChanceMeeting every plan's units are within 2
+  turns of an enemy from turn 5. New Blue's Hold@-6,9 had all 3 units engaged when its estimate jumped (2.2k → 13k),
+  then was kept 8 turns at 5–14k v need 33–48k: the broken check compares power with the power it formed with, not
+  with its need. Medevac (RiverCrossing): 3 units carried to cities, all at strength 3; each stayed one heal, then left
+  at 4–5.
 
 ## 7. Open work, in the order I'd take it
 
