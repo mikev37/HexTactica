@@ -925,7 +925,7 @@ public class AIPlayer : MonoBehaviour {
         AIAction carried;
         if (CarriesSupply(unit, out carried)) return map != null ? AIAir.Guard(unit, carried, map) : carried;
         // Put down this turn to strike (assaultRides): it makes the strike its transport planned for it.
-        if (Profile.assaultRides) { AIAction? done = AIAssault.CarryOut(unit, map); if (done.HasValue) return done.Value; }
+        if (Profile.assaultRides && Profile.assaultCarryOut) { AIAction? done = AIAssault.CarryOut(unit, map); if (done.HasValue) return done.Value; }
         AIAction a = DecideForUnit(unit);
         // A decision path that does not go through the tactical choice (which already leaves out tiles
         // reserved for a landing this turn) chose one: the unit decides again the ordinary way, so an

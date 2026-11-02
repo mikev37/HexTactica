@@ -595,6 +595,8 @@ namespace HexTactica.AI {
         public bool assaultRides = true;
         [Tooltip("With assaultRides on, fighting units also take combatRides' hop (in and out the same turn) in an armed transport. Off: assault rides carry them in armed transports too, aboard until they can strike.")]
         public bool assaultArmedRides = false;
+        [Tooltip("Riding to the assault: a rider put down to strike makes the strike its transport planned (where to stand, what to hit or take). Off: it decides afresh where it lands.")]
+        public bool assaultCarryOut = true;
         [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
         public int assaultBoardTurns = 2;
         [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth what it adds to the riders it would carry (the nearest of them): each one's value times the turns sooner it reaches the fight riding than walking, over productionLifeRef (at most its whole value) — times this (more than 1: it goes back for more, and carries the wounded, over its life). 0: not bought for riders.")]
