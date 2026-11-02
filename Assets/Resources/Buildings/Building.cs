@@ -238,6 +238,9 @@ public class Building : MonoBehaviour {
     void Start() {
         if (sprite != null && intactSprite == null) intactSprite = sprite.sprite;
         RefreshCondition();
+        // A forward base's store as green circles above it (BuildingStorePips; made in code, no prefab change).
+        if (BuildingStorePips.HasStore(this) && GetComponent<BuildingStorePips>() == null && (GameController.gc == null || !GameController.gc.headless))
+            gameObject.AddComponent<BuildingStorePips>().building = this;
     }
 
     public bool IsHQ { get { return type == BuildingType.HQ; } }

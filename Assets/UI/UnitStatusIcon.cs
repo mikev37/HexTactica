@@ -108,7 +108,7 @@ public class UnitStatusIcon : MonoBehaviour {
             case UnitStatusKind.Unsupplied:
                 return unit.tile != null
                     && unit.owner != null
-                    && !unit.tile.isSupplied(unit.owner);
+                    && !unit.tile.isSuppliedShown(unit.owner);
 
             case UnitStatusKind.HubDisconnected:
                 return hub != null && !hub.connected;

@@ -409,6 +409,28 @@ public static class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, "rule-fob-prefers-hq.dat"), test, ai, other, ai);
             n++;
         }
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, -4, 0);
+            Dictionary<string, string> test = Test("rule-supply-preview-fob", "rules", "Human", 4, "previewFob", "The player's supply preview for a truck carrying supplies, linked through a forward base: HQ at -13, FOB at -4 linked to it by two supply units, a truck carrying supplies at 1,2 moved forward to 7,2. Picked (the preview), the destination shows supplied, as it is once the move is made, even with the AI's what-if rule (a supply unit put down where it is moved to) left on the main thread; and an AI turn thought on the main thread no longer leaves that rule on.");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "rule-supply-preview-fob.dat"), test, ai, other, ai);
+            n++;
+        }
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, -4, 0);
+            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is.");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "fog-rule-supply-shown.dat"), test, ai, other, ai);
+            n++;
+        }
+        make("ui-fob-store-pips", "fobStorePips", (a, o) => { Rig.PlaceBuilding("FOB", a, -4, 0); Rig.PlaceBuilding("FOB", o, 4, 0); },
+             "A forward base's store shown as green circles above it (BuildingStorePips): Blue's FOB with 3 of 6 in store shows 3 filled of 6; after spending one, 2; after refilling three, 5. The HQ keeps no store and shows none. Under fog Blue sees its own FOB's circles always, Red's only while a Blue unit sees it.");
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1494,6 +1516,117 @@ public static class Scenarios {
                 r.Add("a second FOB at 5,-2 cut off with nobody near: spends " + newRule + " (old rule " + oldRule + ")");
                 detail = string.Join("; ", r.ToArray());
                 return empty == 0 && overlapSupplied && overlap == 0 && onlyStore && needed == 1 && linked && refill == -1 && newRule == 0 && oldRule == 1;
+            }
+            case "previewFob": {
+                // HQ at -13; FOB at -4, linked to the HQ by supply units at -10,0 and -7,0. A truck carrying supplies at 1,2
+                // (inside the FOB's supply) is moved forward to 7,2 by the player: picked (the preview), then made.
+                List<string> r = new List<string>();
+                Building fob = Rig.At(-4, 0).building; fob.supplies = 4;
+                Put("Supplies", a, -10, 0); Put("Supplies", a, -7, 0);
+                Unit truck = Put("Truck", a, 1, 2); Unit cargo = Put("Supplies", a, 1, 3);
+                Transporting.Load(truck, cargo);
+                foreach (HexTile t in Rig.hg.tiles) if (t.unitPlacement == null) { t.unitPlacement = Rig.New<Transform>(); t.unitPlacement.position = new Vector3(t.x, t.y, 0f); }
+                HexTile dest = Rig.At(7, 2);
+                SupplyNetwork.Result now = SupplyNetwork.Solve(a, false);
+                bool start = now.connectedBuildings.Contains(fob) && now.connectedHubs.Contains(cargo.Hub);
+                r.Add("FOB linked " + now.connectedBuildings.Contains(fob) + ", truck's supplies " + (now.connectedHubs.Contains(cargo.Hub) ? "linked" : "cut off"));
+                // The player's view: Red plays the AI here, Blue is the player's (the overlay shows only a human's unit).
+                bool wasHumanAI = a.GetComponent<AIPlayer>() != null;
+                AIPlayer blueAI = a.GetComponent<AIPlayer>();
+                if (blueAI != null) blueAI.enabled = false;
+                SupplyOverlay overlay = Rig.New<SupplyOverlay>();
+                System.Reflection.MethodInfo update = typeof(SupplyOverlay).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                bool human = FogOfWar.IsHuman(a);
+                // As a thought redone on the main thread used to leave it: the AI's put-down rule on.
+                SupplyNetwork.PutDownHypothetical = true;
+                gc.activeUnit = truck;
+                dest.state = UIState.MOVE_CONFIRM;
+                string shown;
+                bool previewOk;
+                try {
+                    update.Invoke(overlay, null);
+                    previewOk = dest.isSupplied(a);
+                    shown = "preview with the AI's rule left on the main thread: destination " + (previewOk ? "supplied" : "UNSUPPLIED") + " (as the overlay shows it); the main thread's own setting is left as it was (" + (SupplyNetwork.PutDownHypothetical ? "on" : "off") + ")";
+                } finally { dest.state = UIState.FREE; gc.activeUnit = null; SupplyNetwork.PutDownHypothetical = false; }
+                r.Add("Blue is a human here " + human + "; " + shown);
+                List<HexTile> drive = new List<HexTile>(); for (int x = 1; x <= 7; x++) drive.Add(Rig.At(x, 2));
+                truck.MoveAlong(drive, false, false); truck.FinishActive();
+                update.Invoke(overlay, null);
+                SupplyNetwork.Result after = SupplyNetwork.Solve(a, false);
+                bool afterOk = after.connectedHubs.Contains(cargo.Hub) && after.IsSupplied(dest);
+                r.Add("after the move: " + (after.connectedHubs.Contains(cargo.Hub) ? "linked" : "CUT OFF") + ", destination " + (after.IsSupplied(dest) ? "supplied" : "UNSUPPLIED"));
+                // An AI turn played on the main thread leaves the main thread's supply rules as they were.
+                if (blueAI != null) blueAI.enabled = true;
+                AIPlayer redAI = o.GetComponent<AIPlayer>();
+                bool restored = true;
+                if (blueAI != null) { blueAI.PlayWholeTurn(); restored = !SupplyNetwork.PutDownHypothetical; r.Add("after an AI turn thought on the main thread, the rule is " + (restored ? "off" : "STILL ON")); }
+                detail = string.Join(" | ", r.ToArray());
+                return start && human && previewOk && afterOk && restored;
+            }
+            case "fogSupplyShown": {
+                // HQ at -13; FOB at -4 linked to it by supply units at -10,0 and -7,0; a Blue grunt at 3,0 at the edge of the
+                // FOB's supply. A line of Red grunts at x=-1 (y -3..3), out of Blue's sight, cuts the FOB's supply to the grunt. Blue is the screen's player.
+                List<string> r = new List<string>();
+                Building fob = Rig.At(-4, 0).building; fob.supplies = 4;
+                Put("Supplies", a, -10, 0); Put("Supplies", a, -7, 0);
+                Unit g = Put("Grunt", a, 3, 0);
+                AIPlayer blueAI = a.GetComponent<AIPlayer>(); if (blueAI != null) blueAI.enabled = false;
+                gc.activePlayer = a;
+                SupplyNetwork.Solve(a, false);
+                bool before = g.tile.isSupplied(a) && g.tile.isSuppliedShown(a);
+                List<Unit> wall = new List<Unit>();
+                for (int y = -3; y <= 3; y++) wall.Add(Put("Grunt", o, -1, y));
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool unseen = true; foreach (Unit w in wall) if (FogOfWar.Sees(a, w)) unseen = false;
+                SupplyNetwork.Solve(a, false);
+                bool trulyCut = !g.tile.isSupplied(a), shownSupplied = g.tile.isSuppliedShown(a);
+                r.Add("viewer " + (FogOfWar.Viewer != null ? FogOfWar.Viewer.personal_name : "none") + "; before the wall the grunt is supplied " + before + "; the wall unseen by Blue " + unseen + ": truly cut off " + trulyCut + " (its upkeep goes by this), shown supplied " + shownSupplied + " (the screen does not give the wall away)");
+                // Seen: a Blue recon beside the wall.
+                Unit rec = Put("Recon", a, 0, 1);
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                SupplyNetwork.Solve(a, false);
+                bool seenNow = FogOfWar.Sees(a, wall[3]), shownCut = !g.tile.isSuppliedShown(a);
+                r.Add("a Blue recon beside it sees the wall " + seenNow + ": shown cut off " + shownCut);
+                // Fog off: the screen shows the true network.
+                gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
+                SupplyNetwork.Solve(a, false);
+                bool fogOff = g.tile.isSuppliedShown(a) == g.tile.isSupplied(a);
+                r.Add("fog off: shown as it is " + fogOff);
+                if (blueAI != null) blueAI.enabled = true;
+                detail = string.Join(" | ", r.ToArray());
+                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff;
+            }
+            case "fobStorePips": {
+                // A FOB (Blue) with 3 of 6 in store, Blue's HQ, and a Red FOB with 5. Blue is the screen's player.
+                Building fob = Rig.At(-4, 0).building, hq = GameController.HQOf(a), red = Rig.At(4, 0).building;
+                fob.supplies = 3; red.supplies = 5;
+                AIPlayer blueAI = a.GetComponent<AIPlayer>(); if (blueAI != null) blueAI.enabled = false;
+                gc.activePlayer = a;
+                List<string> r = new List<string>();
+                BuildingStorePips pips = fob.gameObject.AddComponent<BuildingStorePips>(); pips.building = fob;
+                System.Reflection.MethodInfo late = typeof(BuildingStorePips).GetMethod("LateUpdate", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.FieldInfo cf = typeof(BuildingStorePips).GetField("circles", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                Func<string> drawn = () => {
+                    late.Invoke(pips, null);
+                    List<SpriteRenderer> cs = (List<SpriteRenderer>)cf.GetValue(pips);
+                    int on = 0, full = 0;
+                    foreach (SpriteRenderer c in cs) if (c.gameObject.activeSelf) { on++; if (c.color.a > 0.9f) full++; }
+                    return full + " filled of " + on;
+                };
+                string d1 = drawn();
+                fob.SpendSupply(1); string d2 = drawn();
+                fob.Replenish(3); string d3 = drawn();
+                bool hqNone = !BuildingStorePips.HasStore(hq);
+                r.Add("Blue FOB 3 of 6: " + d1 + "; spends one: " + d2 + "; refills three: " + d3 + "; the HQ has none " + hqNone);
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool ownShown = BuildingStorePips.ShownTo(fob), redHidden = !BuildingStorePips.ShownTo(red);
+                Unit spot = Put("Recon", a, 2, 0); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool redSeen = BuildingStorePips.ShownTo(red);
+                gc.fogOfWar = false; FogOfWar.Reset();
+                r.Add("fog: our own FOB's shown " + ownShown + ", Red's FOB out of sight hidden " + redHidden + ", in sight shown " + redSeen);
+                if (blueAI != null) blueAI.enabled = true;
+                detail = string.Join(" | ", r.ToArray());
+                return d1 == "3 filled of 6" && d2 == "2 filled of 6" && d3 == "5 filled of 6" && hqNone && ownShown && redHidden && redSeen;
             }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
