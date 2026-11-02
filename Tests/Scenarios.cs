@@ -436,7 +436,22 @@ public static class Scenarios {
                  Transporting.Load(apc, g1); Transporting.Load(apc, g2);
                  Put("Tank", a, -5, 1); Put("APC", a, -5, 4); Put("Grunt", a, -6, 4);
                  Put("Artillery", o, 5, 0); },
-             "Riding to the assault (assaultRides): an APC carrying two grunts moves up with them aboard, out of the enemy's reach, and puts them down only where they can strike that turn (getting off costs nothing: whether they then attack is their own call); nothing else puts them down. Also reports whether a grunt far from the fight gets into the empty APC beside it. Blue plays four turns against a standing Red artillery piece (which cannot fire back at a unit beside it).");
+             "Riding to the assault (assaultRides): an APC carrying two grunts moves up with them aboard, out of the enemy's reach, and puts them down only where they can strike that turn (getting off costs nothing: whether they then attack is their own call), or to hold the line once their front holds its ground (here, with the enemy gone); nothing else puts them down. Also reports whether a grunt far from the fight gets into the empty APC beside it. Blue plays four turns against a standing Red artillery piece (which cannot fire back at a unit beside it).");
+        make("ai-medevac", "medevac", (a, o) => { Put("Grunt", a, 3, 3); Put("APC", a, 1, 3); Rig.PlaceBuilding("City", a, -6, 4); Put("Grunt", o, 6, -6); },
+             "Medevac (assaultRides, assaultMedevacStrength): a Blue grunt down to strength 2, an empty APC two tiles off, Blue's city nine tiles off (three turns' walk and more): within three Blue turns the APC has carried it onto a building that mends it, and once there it does not ride off to the fight while still wounded (strength 3 or less).");
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("ArmyBase", ai, -11, 0);
+            foreach (int[] g in new[] { new[] { -10, 2 }, new[] { -9, 2 }, new[] { -10, 3 }, new[] { -9, 3 } }) Put("Grunt", ai, g[0], g[1]);
+            Put("APC", ai, -12, 1);
+            Put("Tank", other, 11, 0); Put("Grunt", other, 11, 1);
+            Dictionary<string, string> test = Test("ai-buy-transports", "rules", "Human", 4, "buyTransports", "Buying for riders (assaultTransportWeight, assaultFillBonus): four Blue grunts far from the fight and an APC that is already carrying... nothing: with 20,000 gold Blue buys at least one transport at its army base for the riders without room; then, with an empty APC beside the base, the infantry it buys there is worth more for filling it.");
+            test["purchases"] = "on";
+            ScenarioFile.Save(Path.Combine(Dir, "ai-buy-transports.dat"), test, ai, other, ai);
+            n++;
+        }
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1679,10 +1694,54 @@ public static class Scenarios {
                 int rodeUp = 0, assaultDrops = 0, otherDrops = 0;
                 foreach (string w in why) {
                     if (w.Contains("assault ride: moves up")) rodeUp++;
-                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else otherDrops++; }
+                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else if (!w.Contains("holds the line")) otherDrops++; }
                 }
                 detail = string.Join(" | ", r.ToArray()) + " || moved up with riders aboard " + rodeUp + " times; put down to strike " + assaultDrops + ", put down otherwise " + otherDrops + "; landed " + landed + " (attacked the turn they landed " + struckOnLanding + ": the rider's own call); walker boarded " + walkerBoarded;
-                return landed > 0 && assaultDrops == landed && otherDrops == 0;
+                return landed > 0 && assaultDrops >= 1 && otherDrops == 0;
+            }
+            case "medevac": {
+                // Blue: a grunt down to strength 2 at (3,3), an empty APC at (1,3), Blue's city at (-6,4), out of the grunt's
+                // walk for three turns. Red: a grunt far off.
+                Unit hurt = Rig.At(3, 3).occupier; Building city = Rig.At(-6, 4).building;
+                hurt.Strength = 2;
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
+                List<string> r = new List<string>();
+                int reachedTurn = -1, blueTurns = 0; bool leftHurt = false;
+                for (int turn = 0; turn < 12 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    bool on = hurt.trasnporter == null && hurt.tile != null && Building.ServicingUnder(hurt) != null;
+                    if (on && reachedTurn < 0) reachedTurn = blueTurns;
+                    else if (reachedTurn > 0 && hurt.trasnporter != null && hurt.Strength <= 3 && Building.ServicingUnder(hurt.trasnporter) == null) leftHurt = true;
+                    r.Add("grunt " + (hurt.trasnporter != null ? "aboard" : "at " + Pos(hurt.tile)) + " strength " + hurt.Strength);
+                }
+                detail = string.Join(" | ", r.ToArray()) + "; on a building that mends it from Blue turn " + reachedTurn + (leftHurt ? ", but RODE OFF while still wounded" : ", and did not ride off while wounded (whether it stays on the building is its own call)");
+                return reachedTurn > 0 && reachedTurn <= 3 && !leftHurt;
+            }
+            case "buyTransports": {
+                Building bas = Rig.At(-11, 0).building;
+                List<string> r = new List<string>();
+                Func<int, string> buy = money => {
+                    l.ai.money = money;
+                    AIPlayer ap = l.ai.GetComponent<AIPlayer>();
+                    List<string> said = new List<string>();
+                    if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIProduction.DebugValues = Console.WriteLine;
+                    List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, ap.Profile), ap.Profile, x => said.Add(x.Trim()));
+                    string res = string.Join(", ", got.ConvertAll(u => GameController.UnitName(u) + " at " + Pos(u.tile)).ToArray());
+                    return res + " [" + string.Join(" / ", said.FindAll(x => x.Contains(" buys ") || x.Contains("riders waiting")).ToArray()) + "]";
+                };
+                string first = buy(20000);
+                bool apc = first.Contains("APC") || first.Contains("Transport");
+                r.Add("four grunts far from the fight, 20000 gold: " + first);
+                // An empty APC beside the base, and no riders waiting beyond its room: what is bought there fills it.
+                foreach (Unit u in new List<Unit>(l.ai.units)) if (u != null && u.tile != null && (u.tile.building != null || (GameController.UnitName(u) == "Grunt" && u.tile.Distance(bas.tile) > 1))) u.Perish();
+                string second = buy(5000);
+                bool fill = second.Contains("fills the transport");
+                r.Add("then, an APC empty beside the base, 5000 gold: " + second);
+                detail = string.Join(" | ", r.ToArray());
+                return apc && fill;
             }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
@@ -4086,6 +4145,7 @@ public static class Scenarios {
         // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
         Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
         Unit.RanInto += rh; Unit.Attacking += sh;
+        if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
         double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
         // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.
         int[] supplyDrops = new int[2], boards = new int[2], drops = new int[2], aboardTurns = new int[2], transportsBought = new int[2];
@@ -4100,6 +4160,7 @@ public static class Scenarios {
         }
         for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
             bool blueMoves = gc.activePlayer == l.ai;
+            if (Environment.GetEnvironmentVariable("DUELTRACE") != null) Console.WriteLine("== turn " + turn + " " + (blueMoves ? "Blue" : "Red"));
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             ScenarioFile.PlayTurn();
             double secs = sw.Elapsed.TotalSeconds;

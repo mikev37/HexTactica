@@ -595,8 +595,12 @@ namespace HexTactica.AI {
         public bool assaultRides = true;
         [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
         public int assaultBoardTurns = 2;
-        [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth the riders it would carry times the share of their way to the fight it saves them (its travel against theirs), times this. 0: not bought for riders.")]
-        public float assaultTransportWeight = 0.5f;
+        [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth what it adds to the riders it would carry (the nearest of them): each one's value times the turns sooner it reaches the fight riding than walking, over productionLifeRef (at most its whole value) — times this (more than 1: it goes back for more, and carries the wounded, over its life). 0: not bought for riders.")]
+        public float assaultTransportWeight = 2f;
+        [Tooltip("Riding to the assault: infantry bought at a base beside which an empty troop transport waits (or one is bought this turn) is worth this much more, until the transport's room is filled — it gets in next turn and rides.")]
+        public float assaultFillBonus = 0.5f;
+        [Tooltip("Riding to the assault: an empty troop transport first picks up a fighting unit of ours down to this strength (not already on a building that services it) and carries it to the nearest of our buildings that does, to mend. 0: no medevac.")]
+        public int assaultMedevacStrength = 3;
         [Tooltip("Riding to the assault: riders are put down when their front attacks, or where ours (with them) are at least this many times theirs within three tiles.")]
         public float assaultWaveRatio = 1f;
 

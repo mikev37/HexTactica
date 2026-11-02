@@ -16,6 +16,9 @@ namespace HexTactica.AI {
     /// </summary>
     public static class AIProduction {
 
+        /// <summary>Harness tracing of candidate values.</summary>
+        public static System.Action<string> DebugValues;
+
         public static List<Unit> Buy(Player p, AIMap map, AIProfile profile, System.Action<string> trace) { return Buy(p, map, profile, trace, null); }
 
         /// <summary>
@@ -147,7 +150,20 @@ namespace HexTactica.AI {
                     if (u.trasnporter == null && u.Hub == null && u.Firepower > 0 && u.locomotion == Locomotion.Boots && map.TurnsToContact(u) > profile.assaultBoardTurns) waitingRiders.Add(u);
                 }
             }
+            if (trace != null && profile.assaultRides) trace("   riders waiting for a transport: " + waitingRiders.Count + ", room in empty troop transports " + troopRoom);
             int troopPlanned = 0;
+            // Room in empty troop transports beside each base (assaultFillBonus), and infantry planned there this turn.
+            Dictionary<Building, int> roomAt = new Dictionary<Building, int>(), fillPlanned = new Dictionary<Building, int>();
+            if (profile.assaultRides && profile.assaultFillBonus > 0f)
+                foreach (Building b in sites) {
+                    int room = 0;
+                    foreach (Unit u in map.ownUnits) {
+                        if (u == null || u.tile == null || !Transporting.IsTransport(u) || u.Firepower > 1 || u.transported.Count > 0 || GameController.UnitName(u) == "Truck") continue;
+                        bool beside = false; foreach (HexTile f in b.Footprint) if (f.Distance(u.tile) <= 1) beside = true;
+                        if (beside) room += Mathf.Max(1, u.transportSlots);
+                    }
+                    if (room > 0) roomAt[b] = room;
+                }
             float riderWorth = 0f; foreach (Unit u in waitingRiders) riderWorth += AIScore.Worth(u);
             if (waitingRiders.Count > 0) riderWorth /= waitingRiders.Count;
 
@@ -192,18 +208,34 @@ namespace HexTactica.AI {
             // What a unit would add in this slot, given what is planned so far.
             System.Func<Unit, Slot, KeyValuePair<float, string>> worth = (t, sl) => {
                 int kindOf = Kind(t);
-                // A troop transport (assaultRides): the riders waiting for room, times the share of their way it saves them.
+                // A troop transport (assaultRides): what it adds to the riders waiting for room (the nearest of them, as many as
+                // it carries) — each one's value, times the turns sooner it reaches the fight riding (fetched from where it
+                // stands) than walking, over the turns its value is measured on (productionLifeRef), at most all of it.
                 if (waitingRiders.Count > 0 && t.cost > 0 && t.CanEnter(sl.tile) && Transporting.IsTransport(t) && t.Firepower <= 1 && GameController.UnitName(t) != "Truck" && fight.Count > 0) {
                     int short_ = waitingRiders.Count - troopRoom - troopPlanned;
-                    Unit rider = waitingRiders[0];
-                    if (short_ > 0 && Transporting.CanCarry(t, rider)) {
-                        int walk = int.MaxValue, ride = int.MaxValue;
-                        foreach (HexTile x in fight) { walk = Mathf.Min(walk, map.Travel(rider, sl.tile, x)); ride = Mathf.Min(ride, map.Travel(t, sl.tile, x)); }
-                        float walkTurns = walk / (float)Mathf.Max(1, rider.moveRange), rideTurns = ride / (float)Mathf.Max(1, t.moveRange);
-                        float saved = walk < int.MaxValue / 2 ? Mathf.Clamp01((walkTurns - rideTurns) / Mathf.Max(1f, walkTurns)) : 0f;
+                    if (short_ > 0) {
+                        List<Unit> near = new List<Unit>(waitingRiders);
+                        near.Sort((x, y) => sl.tile.Distance(x.tile).CompareTo(sl.tile.Distance(y.tile)));
                         int carried = Mathf.Min(Mathf.Max(1, t.transportSlots), short_);
-                        float tv = carried * riderWorth * 6f * saved * profile.assaultTransportWeight;
-                        if (tv > 0f) return new KeyValuePair<float, string>(tv, "riders: " + short_ + " far from the fight without room, saves " + (saved * 100f).ToString("0") + "% of their way");
+                        float tv = 0f; int counted = 0;
+                        for (int i = 0; i < near.Count && counted < carried; i++) {
+                            Unit rider = near[i];
+                            int walk = int.MaxValue, ride = int.MaxValue;
+                            foreach (HexTile x in fight) { walk = Mathf.Min(walk, map.Travel(rider, rider.tile, x)); ride = Mathf.Min(ride, map.Travel(t, rider.tile, x)); }
+                            int fetch = map.Travel(t, sl.tile, rider.tile);
+                            // (A transport not yet bought has no owner: whether it carries its kind.)
+                            if (!Transporting.CarriesKind(t, rider) || walk >= int.MaxValue / 2 || ride >= int.MaxValue / 2 || fetch >= int.MaxValue / 2) continue;
+                            float walkTurns = walk / (float)Mathf.Max(1, rider.moveRange);
+                            float rideTurns = 1f + (fetch + ride) / (float)Mathf.Max(1, t.moveRange);   // built this turn, out next
+                            // Each turn sooner at the fight is a turn of what it does there (its value is over productionLifeRef turns).
+                            float gain = Mathf.Clamp01((walkTurns - rideTurns) / Mathf.Max(1f, profile.productionLifeRef));
+                            if (gain <= 0f) continue;
+                            tv += Value(rider, rider.tile, map) * gain;
+                            counted++;
+                        }
+                        tv *= profile.assaultTransportWeight;
+                        if (DebugValues != null) DebugValues(GameController.UnitName(t) + " at " + sl.tile.x + "," + sl.tile.y + " for riders: " + tv.ToString("0") + " (" + counted + " riders)");
+                        if (tv > 0f) return new KeyValuePair<float, string>(tv, "riders: " + short_ + " far from the fight without room");
                     }
                 }
                 if (kindOf < 0 || t.cost <= 0 || !t.CanEnter(sl.tile)) return new KeyValuePair<float, string>(-1f, null);
@@ -213,6 +245,11 @@ namespace HexTactica.AI {
                 float v = 0f; string tag = null;
                 if (kindOf == 0) {
                     v = Value(t, sl.tile, map) * mix;
+                    // Beside an empty troop transport (or one bought here this turn): it fills it.
+                    if (profile.assaultRides && profile.assaultFillBonus > 0f && t.locomotion == Locomotion.Boots) {
+                        int room, filled; roomAt.TryGetValue(sl.b, out room); fillPlanned.TryGetValue(sl.b, out filled);
+                        if (room > filled) { v *= 1f + profile.assaultFillBonus; tag = "fills the transport beside it"; }
+                    }
                     foreach (KeyValuePair<AILogistics.Task, Building> kv in nearest[0]) {
                         if (kv.Value != sl.b) continue;
                         AILogistics.Task f = kv.Key;
@@ -256,6 +293,8 @@ namespace HexTactica.AI {
             };
             System.Action<Unit, Slot, int> plan = (t, sl, d) => {
                 count(t, d);
+                if (Transporting.IsTransport(t) && t.Firepower <= 1 && GameController.UnitName(t) != "Truck") { int r0; roomAt.TryGetValue(sl.b, out r0); roomAt[sl.b] = r0 + d * Mathf.Max(1, t.transportSlots); }
+                if (t.locomotion == Locomotion.Boots && Kind(t) == 0) { int f0; fillPlanned.TryGetValue(sl.b, out f0); fillPlanned[sl.b] = f0 + d; }
                 if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); if (tierCount != null) tierCount[Tier(t)] += d; }
             };
 
@@ -299,9 +338,12 @@ namespace HexTactica.AI {
                 foreach (Slot sl in slots) {
                     if (sl.pick == null) continue;
                     Unit was = sl.pick; plan(was, sl, -1);
+                    // (Within its role: a transport bought for riders is not traded for a fighting unit, nor the other way.)
+                    bool troopWas = Transporting.IsTransport(was) && was.Firepower <= 1;
                     foreach (Unit t in sl.b.Purchasable()) {
                         int extra = t.cost - was.cost;
                         if (extra <= 0 || extra > money) continue;
+                        if ((Transporting.IsTransport(t) && t.Firepower <= 1) != troopWas || Kind(t) != Kind(was) && !troopWas) continue;
                         KeyValuePair<float, string> w = worth(t, sl);
                         float gain = w.Key - sl.value;
                         if (gain <= 0f) continue;
