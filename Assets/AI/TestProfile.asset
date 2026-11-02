@@ -23,6 +23,7 @@ MonoBehaviour:
   objectiveReplanLoss: 0.5
   capturerLives: 1
   keepBuildSlotsClear: 1
+  unifiedLinkPlacement: 1
   routeDanger: 3
   scoutRadius: 3
   scoutAreas: 2
