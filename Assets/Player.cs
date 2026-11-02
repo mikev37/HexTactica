@@ -45,16 +45,29 @@ public class Player : MonoBehaviour
         // Air tankers resupply this turn if they started it with supplies (whatever order the roster runs in).
         tankersStocked.Clear();
         foreach (Unit t in roster) if (t != null && t.airTanker && t.supplies > 0) tankersStocked.Add(t);
-        for (int i = 0; i < roster.Count; i++) {
-            Unit u = roster[i];
-            if (u == null || u.tile == null) continue;
-            u.attackedThisTurn = false;
-            // Carried units get what their transport gets (below), never anything of their own.
-            if (u.trasnporter != null) continue;
-            Upkeep(u, roster, selfSupplying);
-        }
+        InUpkeep = true;
+        try {
+            for (int i = 0; i < roster.Count; i++) {
+                Unit u = roster[i];
+                if (u == null || u.tile == null) continue;
+                u.attackedThisTurn = false;
+                // Carried units get what their transport gets (below), never anything of their own.
+                if (u.trasnporter != null) continue;
+                Upkeep(u, roster, selfSupplying);
+            }
+        } finally { InUpkeep = false; }
         tankersStocked.Clear();
+        // Units lost to attrition while feeding (Unit.ResupplyOnAnyDeath): every side's supply now they are gone.
+        if (ResupplyAfterUpkeep) {
+            ResupplyAfterUpkeep = false;
+            if (GameController.gc != null) foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        }
     }
+
+    /// <summary>A side's turn-start upkeep is feeding its units (StartTurn): deaths then wait to re-solve supply until it is done.</summary>
+    public static bool InUpkeep;
+    /// <summary>A unit died during upkeep: re-solve every side's supply when it is done.</summary>
+    public static bool ResupplyAfterUpkeep;
 
     /// <summary>The air tankers that started this turn with supplies: they resupply the aircraft beside them (StartTurn).</summary>
     readonly HashSet<Unit> tankersStocked = new HashSet<Unit>();
@@ -274,7 +287,7 @@ public struct PlayerData {
         id = t.id;
         displayColor = t.displayColor;
         factionName = t.faction != null ? t.faction.name : "";
-        AI = t.GetComponent<AIPlayer>();
+        AI = AIControl.Of(t) != null;
         money = t.money;
         eliminated = t.eliminated;
     }
@@ -297,7 +310,7 @@ public struct PlayerData {
         if (!string.IsNullOrEmpty(that.factionName)) output.faction = LevelEditor.FindFaction(that.factionName);
         output.money = that.money;
         output.eliminated = that.eliminated;
-        if (AI && output.GetComponent<AIPlayer>() == null) {
+        if (AI && AIControl.Of(output) == null) {
             output.gameObject.AddComponent<AIPlayer>();
         }
         return output;

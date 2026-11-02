@@ -35,8 +35,13 @@ public class FogView : MonoBehaviour {
     int ringFor = -1;
 
     static bool snap;
-    /// <summary>A board was just loaded (a scenario, a save): show its fog at once, without fading in.</summary>
-    public static void BoardLoaded() { snap = true; }
+    static int reloadFrames;
+    /// <summary>
+    /// A board was just loaded (a scenario, a save): show its fog at once, without fading in — and work sight out again
+    /// over the next frames too: loading swaps which sides an AI plays at the end of its frame (a removed AIPlayer goes
+    /// only then), and until then the screen's player (FogOfWar.Viewer) is not yet the one the scenario leaves.
+    /// </summary>
+    public static void BoardLoaded() { snap = true; reloadFrames = 3; }
 
     static readonly int[,] Steps = { { 1, -1 }, { 1, 0 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { 0, -1 } };
     Sprite builtIn;
@@ -51,6 +56,8 @@ public class FogView : MonoBehaviour {
         // Something moved that did not say so: work sight out again.
         int sig = Signature();
         if (sig != lastSignature) { lastSignature = sig; FogOfWar.Changed(); }
+        bool reloading = reloadFrames > 0;
+        if (reloading) { reloadFrames--; FogOfWar.Changed(); }
         FogOfWar.Refresh();
 
         Player viewer = FogOfWar.Viewer;
@@ -63,7 +70,7 @@ public class FogView : MonoBehaviour {
         if (!fog && covers.Count == 0 && !AnyBeyondShown()) { snap = false; return; }
 
         FogSettings set = FogSettings.Instance;
-        bool instant = snap || Time.timeSinceLevelLoad < 0.5f;
+        bool instant = snap || reloading || Time.timeSinceLevelLoad < 0.5f;
         snap = false;
         float step = Time.deltaTime / Mathf.Max(0.01f, set.fadeSeconds);
         foreach (HexTile t in hg.tiles) {

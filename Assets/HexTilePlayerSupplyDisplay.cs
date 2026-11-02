@@ -51,11 +51,11 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
         // cut), never in the fog.
         Player viewer = FogOfWar.Viewer;
         bool shown = viewer == null || viewer == myPlayer || FogOfWar.TileVisible(viewer, myTile);
-        if (shown && myTile.isSupplied(myPlayer)) {
+        if (shown && myTile.isSuppliedShown(myPlayer)) {
             List<HexTile> neighbors = myTile.neighbors;
             for (int i = 0; i < neighbors.Count; i++) {
                 HexTile tile = neighbors[i];
-                if (tile == null || tile.isSupplied(myPlayer)) continue;
+                if (tile == null || tile.isSuppliedShown(myPlayer)) continue;
                 if (tile.x == myTile.x) {
                     if (tile.z > myTile.z) u = true; else d = true;
                 } else if (tile.x > myTile.x) {

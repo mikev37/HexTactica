@@ -49,7 +49,7 @@ public static class ScenarioFile {
     /// <summary>A terrain asset from Assets/Tiles, read from its YAML.</summary>
     /// <summary>Where the terrain asset called <paramref name="name"/> is: Assets/Tiles or any folder under it (biomes have their own).</summary>
     static string TerrainPath(string name) {
-        string root = Path.Combine(PrefabLoader.AssetsRoot, "Tiles");
+        string root = Path.Combine(PrefabLoader.Root("Tiles"));
         string flat = Path.Combine(root, name + ".asset");
         if (File.Exists(flat) || !Directory.Exists(root)) return flat;
         string[] found = Directory.GetFiles(root, name + ".asset", SearchOption.AllDirectories);
@@ -90,7 +90,7 @@ public static class ScenarioFile {
             td.damageStates = new Sprite[states];
             for (int i = 0; i < states; i++) td.damageStates[i] = new Sprite();
             if (into != null)
-                foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.AssetsRoot, "Tiles"), "*.asset.meta", SearchOption.AllDirectories))
+                foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Tiles")), "*.asset.meta", SearchOption.AllDirectories))
                     if (File.ReadAllText(meta).Contains("guid: " + into)) { td.destroyedInto = Terrain(Path.GetFileName(meta).Replace(".asset.meta", "")); break; }
         } else {
             throw new Exception("No terrain asset " + path);
@@ -139,16 +139,17 @@ public static class ScenarioFile {
         }
         sb.Append("\n],\n\"units\":[");
         f = true;
-        foreach (Player p in new[] { ai, other }) {
-            long id = p == ai ? AI_ID : OTHER_ID;
-            foreach (Unit u in p.units) {
-                if (u == null || u.tile == null) continue;
-                if (!f) sb.Append(',');
-                f = false;
-                string prefab = u.name.Replace("(Clone)", "");
-                sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":0}}",
-                    u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab));
-            }
+        // Every unit in file order first, so cargo can name its transport's place (transporterIndexPlusOne, as the game writes it).
+        List<Unit> order = new List<Unit>();
+        foreach (Player p in new[] { ai, other }) foreach (Unit u in p.units) if (u != null && u.tile != null) order.Add(u);
+        foreach (Unit u in order) {
+            long id = u.owner == ai ? AI_ID : OTHER_ID;
+            if (!f) sb.Append(',');
+            f = false;
+            string prefab = u.name.Replace("(Clone)", "");
+            int carrier = u.trasnporter != null ? order.IndexOf(u.trasnporter) + 1 : 0;
+            sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":{11}}}",
+                u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab, carrier));
         }
         sb.Append("\n]\n}\n");
         Directory.CreateDirectory(Path.GetDirectoryName(path));
@@ -166,7 +167,7 @@ public static class ScenarioFile {
     }
 
     /// <summary>The flat objects inside the array named <paramref name="key"/>.</summary>
-    static List<Dictionary<string, string>> Array(string json, string key) {
+    internal static List<Dictionary<string, string>> Array(string json, string key) {
         List<Dictionary<string, string>> list = new List<Dictionary<string, string>>();
         int i = json.IndexOf("\"" + key + "\"");
         if (i < 0) return list;
@@ -304,8 +305,10 @@ public static class ScenarioFile {
         Player active = gc.activePlayer;
         if (active == null || active.eliminated) { gc.EndTurn(); return; }
         AIPlayer full = active.gameObject.GetComponent<AIPlayer>();
+        HexTactica.OldAI.OldAIPlayer old = active.gameObject.GetComponent<HexTactica.OldAI.OldAIPlayer>();
         BaselineAIPlayer baseline = active.gameObject.GetComponent<BaselineAIPlayer>();
-        if (full != null) full.PlayWholeTurn();
+        if (old != null && old.enabled) old.PlayWholeTurn();
+        else if (full != null) full.PlayWholeTurn();
         else if (baseline != null) baseline.PlayWholeTurn();
         else gc.EndTurn();
     }

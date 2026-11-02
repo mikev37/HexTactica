@@ -21,6 +21,12 @@ MonoBehaviour:
   objectiveForceRatio: 1.1
   objectiveHorizonTurns: 10
   objectiveReplanLoss: 0.5
+  capturerLives: 1
+  keepBuildSlotsClear: 1
+  unifiedLinkPlacement: 1
+  waitTwice: 1
+  boardSpentTransports: 1
+  chainLinkSpacing: 2
   routeDanger: 3
   scoutRadius: 3
   scoutAreas: 2
@@ -28,6 +34,7 @@ MonoBehaviour:
   campaignPull: 1
   campaignStep: 1
   campaignGatherShare: 0.8
+  campaignGatherWithBody: 1
   campaignStagingRadius: 0
   campaignDrawTurns: 0
   campaignTimeBox: 6
@@ -152,6 +159,18 @@ MonoBehaviour:
   buySupply: 1
   buyUnits: 1
   combatRides: 1
+  assaultRides: 1
+  assaultArmedRides: 0
+  assaultCarryOut: 1
+  assaultBoardWeighs: 1
+  assaultOrderWithLine: 1
+  assaultFrontlineOut: 1
+  assaultFireThenUnload: 1
+  assaultBoardTurns: 2
+  assaultWaveRatio: 1
+  assaultMedevacStrength: 3
+  assaultTransportWeight: 2
+  assaultFillBonus: 0.5
   idleTransportScreens: 0
   freshUnload: 1
   theaterForecast: 1
@@ -202,6 +221,7 @@ MonoBehaviour:
   hubPricing: 1
   hubLinkPenalty: 1
   hubPricingForward: 1
+  supplyStaysAboard: 1
   ghostSupply: 1
   transportWorthwhileSaving: 2
   loadedTransportRisk: 2.5
@@ -248,6 +268,15 @@ MonoBehaviour:
   productionFloor: 0.05
   productionPresence: 0.25
   productionDefenceWeight: 0.5
+  productionOverkill: 1
+  productionShieldCut: 0.6
+  productionShieldRatio: 2
+  productionTierCosts: {x: 5000, y: 11000}
+  productionDefenceFade: 20
+  productionLifetime: 1
+  productionLifeMax: 8
+  productionLifeRef: 3
+  productionReachRef: 6
   productionFrontWeight: 1
   productionSupplyWeight: 1
   productionSupplyExtra: 2

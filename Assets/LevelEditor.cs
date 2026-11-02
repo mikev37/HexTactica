@@ -155,11 +155,12 @@ public class LevelEditor : MonoBehaviour
         if (obj.GetField("units")) {
             JSONObjectEnumerator numunit =
                 obj.GetField("units").GetEnumerator();
+            List<UnitData> all = new List<UnitData>();
             while (numunit.MoveNext()) {
                 Debug.Log(numunit.Current.Print());
-                UnitData ud = JsonUtility.FromJson<UnitData>(numunit.Current.Print());
-                ud.load();
+                all.Add(JsonUtility.FromJson<UnitData>(numunit.Current.Print()));
             }
+            UnitData.LoadAll(all);
         }
         GameController.BoardLoaded();
         if (HexTactica.Harness.ScenarioLoader.RecordGames && GameController.gc != null && !GameController.gc.headless) {
@@ -185,7 +186,9 @@ public class LevelEditor : MonoBehaviour
     }
 
     static TerrainData FindTerrain(string name) {
-        if (singleton == null || string.IsNullOrEmpty(name)) return null;
+        if (string.IsNullOrEmpty(name)) return null;
+        // The Resources folder has every terrain (GameAssets); the scene's lists, when filled, come first.
+        if (singleton == null) return GameAssets.Terrain(name);
         if (singleton.allTerrain != null)
             foreach (TerrainData t in singleton.allTerrain)
                 if (t != null && t.name.Equals(name)) return t;
@@ -201,16 +204,16 @@ public class LevelEditor : MonoBehaviour
                 for (int n = 0; d != null && n < 16; d = d.destroyedInto, n++)
                     if (d.name.Equals(name)) return d;
             }
-        return null;
+        return GameAssets.Terrain(name);
     }
 
     public static Building loadBuilding(string name) {
-        name = name.Replace("(Clone)", "");
-        if (singleton.allBuilding == null) return null;
-        foreach (Building b in singleton.allBuilding) {
-            if (b != null && b.name.Equals(name)) return b;
-        }
-        return null;
+        name = name.Replace("(Clone)", "").Trim();
+        if (singleton != null && singleton.allBuilding != null)
+            foreach (Building b in singleton.allBuilding) {
+                if (b != null && b.name.Equals(name)) return b;
+            }
+        return GameAssets.Building(name);
     }
 
     /// <summary>Units renamed since saves were written: old name, new name.</summary>
@@ -223,30 +226,60 @@ public class LevelEditor : MonoBehaviour
         return name != null && name.EndsWith(suffix) ? name.Substring(0, name.Length - suffix.Length).Trim() : null;
     }
 
+    /// <summary>
+    /// The unit prefab saved as <paramref name="name"/>: in the scene's list (allUnit) if it is filled, else from the
+    /// Resources folder (GameAssets: every unit, faction variants included). A name not found that ends in " Variant" is
+    /// tried without it (prefab variants renamed to plain names since the save: "Truck Variant" → "Truck").
+    /// </summary>
     public static Unit loadUnit(string name) {
         name = name.Replace("(Clone)","").Trim();
-        foreach (Unit t in singleton.allUnit) {
-            if (t.name.Equals(name)) {
-                return t;
-            }
-        }
+        if (singleton != null && singleton.allUnit != null)
+            foreach (Unit t in singleton.allUnit) if (t != null && t.name.Equals(name)) return t;
         // A faction's own units (its versions and extras) need not be on allUnit.
-        if (singleton.allFaction != null) foreach (Faction f in singleton.allFaction) if (f != null) foreach (Unit t in f.OwnUnits()) if (t.name.Equals(name)) return t;
+        if (singleton != null && singleton.allFaction != null) foreach (Faction f in singleton.allFaction) if (f != null) foreach (Unit t in f.OwnUnits()) if (t.name.Equals(name)) return t;
+        Unit r = GameAssets.Unit(name);
+        if (r != null) return r;
         string now = RenamedUnit(name);
         return now != null ? loadUnit(now) : null;
     }
 
-    /// <summary>The faction saved as <paramref name="name"/> (allFaction), or null: none, or one not listed.</summary>
+    /// <summary>The faction saved as <paramref name="name"/>: in the scene's list (allFaction) if there, else from the Resources folder; null if none.</summary>
     public static Faction FindFaction(string name) {
-        if (string.IsNullOrEmpty(name) || singleton == null || singleton.allFaction == null) return null;
-        foreach (Faction f in singleton.allFaction) if (f != null && f.name == name) return f;
-        Debug.LogWarning("Faction '" + name + "' is not on the LevelEditor's allFaction list: the player gets the base units");
-        return null;
+        if (string.IsNullOrEmpty(name)) return null;
+        if (singleton != null && singleton.allFaction != null) foreach (Faction f in singleton.allFaction) if (f != null && f.name == name) return f;
+        Faction r = GameAssets.Faction(name);
+        if (r == null) Debug.LogWarning("Faction '" + name + "' is in neither the LevelEditor's allFaction list nor Resources/Factions: the player gets the base units");
+        return r;
     }
 
+    /// <summary>
+    /// Place the unit saved as <paramref name="unit_name"/> for <paramref name="p"/>: as <paramref name="p"/>'s faction
+    /// fields it (a base unit becomes the faction's version of it, Faction.Map — the visually right one), the unit as
+    /// named when the faction has no version of it.
+    /// </summary>
     internal static Unit PlaceNewUnit(Player p, String unit_name, HexTile t) {
+        Unit unit = UnitFor(p, unit_name);
+        return unit != null ? UnitController.uc.CreateUnit(p, unit, t) : null;
+    }
+
+    /// <summary>The prefab <paramref name="p"/> fields for a unit saved as <paramref name="unit_name"/> (its faction's version of it, see PlaceNewUnit); null if there is none of that name.</summary>
+    internal static Unit UnitFor(Player p, String unit_name) {
         Unit unit = loadUnit(unit_name);
-        return UnitController.uc.CreateUnit(p, unit, t);
+        Faction f = p != null ? p.faction : null;
+        if (f != null && unit != null) {
+            // Saved as another faction's version ("Grunt Empire Variant" for a side now Federation): back to the base unit first.
+            Unit b = f.BaseOf(unit);
+            if (b == unit) foreach (Faction any in AllFactions()) { Unit x = any.BaseOf(unit); if (x != unit) { b = x; break; } }
+            Unit own = f.Map(b);
+            if (own != null) unit = own;
+        }
+        return unit;
+    }
+
+    /// <summary>Every faction known: the scene's list (allFaction), then the Resources folder's.</summary>
+    static IEnumerable<Faction> AllFactions() {
+        if (singleton != null && singleton.allFaction != null) foreach (Faction f in singleton.allFaction) if (f != null) yield return f;
+        foreach (Faction f in GameAssets.AllFactions) yield return f;
     }
 
     internal static Unit PlaceNewUnit(Player p, Unit unit, HexTile t) {

@@ -104,6 +104,7 @@ namespace UnityEngine {
         public static bool operator !=(Color x, Color y) { return !(x == y); }
         public override bool Equals(object o) { return o is Color && (Color)o == this; } public override int GetHashCode() { return 0; }
         public static Color white { get { return new Color(1, 1, 1, 1); } }
+        public static Color Lerp(Color x, Color y, float t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return new Color(x.r + (y.r - x.r) * t, x.g + (y.g - x.g) * t, x.b + (y.b - x.b) * t, x.a + (y.a - x.a) * t); }
         public static Color black { get { return new Color(0, 0, 0, 1); } }
         public static Color gray { get { return new Color(.5f, .5f, .5f, 1); } }
         public static Color red { get { return new Color(1, 0, 0, 1); } }
@@ -173,7 +174,7 @@ namespace UnityEngine {
         public T GetComponentInChildren<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
-        public T[] GetComponents<T>() where T : class { T c = gameObject.GetComponent<T>(); return c != null ? new T[] { c } : new T[0]; }
+        public T[] GetComponents<T>() where T : class { return gameObject.GetComponents<T>(); }
         public T AddComponent<T>() where T : class, new() { return gameObject.AddComponent<T>(); }
     }
 
@@ -232,6 +233,14 @@ namespace UnityEngine {
             return null;
         }
 
+        /// <summary>Every component that is a <typeparamref name="T"/>, as Unity gives them (not only the first).</summary>
+        public T[] GetComponents<T>() where T : class {
+            MainThreadOnly.Check("GetComponents");
+            List<T> all = new List<T>();
+            for (int i = 0; i < components.Count; i++) { T t = components[i] as T; if (t != null) all.Add(t); }
+            return all.ToArray();
+        }
+
         public T AddComponent<T>() where T : class, new() {
             MainThreadOnly.Check("AddComponent");
             T made = new T();
@@ -240,11 +249,14 @@ namespace UnityEngine {
             return made;
         }
 
-        public static GameObject Instantiate(GameObject g) { return g; }
-        public static T Instantiate<T>(T o) where T : Object { return o; }
-        public static T Instantiate<T>(T o, Transform p) where T : Object { return o; }
-        public static T Instantiate<T>(T o, Vector3 p, Quaternion q) where T : Object { return o; }
-        public static T Instantiate<T>(T o, Vector3 p, Quaternion q, Transform t) where T : Object { return o; }
+        /// <summary>When set (a check that runs the game's own code that makes units), Instantiate copies through it; null: the object itself.</summary>
+        public static Func<Object, Object> Cloner;
+        static T Copy<T>(T o) where T : Object { if (Cloner == null || o == null) return o; T c = Cloner(o) as T; return c ?? o; }
+        public static GameObject Instantiate(GameObject g) { return Copy(g); }
+        public static T Instantiate<T>(T o) where T : Object { return Copy(o); }
+        public static T Instantiate<T>(T o, Transform p) where T : Object { return Copy(o); }
+        public static T Instantiate<T>(T o, Vector3 p, Quaternion q) where T : Object { return Copy(o); }
+        public static T Instantiate<T>(T o, Vector3 p, Quaternion q, Transform t) where T : Object { return Copy(o); }
         public static void Destroy(Object o) { }
         public static GameObject Find(string n) { return null; }
     }
@@ -294,7 +306,19 @@ namespace UnityEngine {
         public GradientAlphaKey[] alphaKeys { get { return (GradientAlphaKey[])_a.Clone(); } set { _a = (GradientAlphaKey[])value.Clone(); } }
         public void SetKeys(GradientColorKey[] c, GradientAlphaKey[] a) { colorKeys = c; alphaKeys = a; }
     }
-    public static class Resources { public static T Load<T>(string path) where T : class { return null; } public static T GetBuiltinResource<T>(string path) where T : class { return null; } }
+    public static class Resources {
+        public static T Load<T>(string path) where T : class { return null; }
+        public static T GetBuiltinResource<T>(string path) where T : class { return null; }
+        /// <summary>The harness's Resources folder: what it finds under that path, by type (PrefabLoader; null: nothing).</summary>
+        public static System.Func<System.Type, string, object[]> Provider;
+        public static T[] LoadAll<T>(string path) where T : class {
+            object[] found = Provider != null ? Provider(typeof(T), path) : null;
+            if (found == null) return new T[0];
+            System.Collections.Generic.List<T> r = new System.Collections.Generic.List<T>();
+            foreach (object o in found) { T t = o as T; if (t != null) r.Add(t); }
+            return r.ToArray();
+        }
+    }
     public class LineRenderer : Renderer {
         public Gradient colorGradient;
         public int positionCount;
@@ -327,7 +351,8 @@ namespace UnityEngine {
         public static bool verbose = false;
         public static void Log(object o) { if (verbose) Console.WriteLine("[log] " + o); }
         public static void LogWarning(object o) { Console.WriteLine("[warn] " + o); }
-        public static void LogError(object o) { Console.WriteLine("[error] " + o); }
+        public static int errors;
+        public static void LogError(object o) { System.Threading.Interlocked.Increment(ref errors); Console.WriteLine("[error] " + o); }
     }
     public static class Screen { public static int width { get { return 1920; } } public static int height { get { return 1080; } } }
     public static class GUI {
@@ -388,7 +413,24 @@ namespace UnityEngine {
     }
     public static class JsonUtility {
         public static string ToJson(object o) { return "{}"; }
-        public static T FromJson<T>(string s) { return default(T); }
+        /// <summary>Unity's: the public fields of <typeparamref name="T"/> (numbers, bools, strings, enums) from a JSON object; others left at their defaults.</summary>
+        public static T FromJson<T>(string s) {
+            object o = Activator.CreateInstance(typeof(T));
+            Defective.JSON.JSONObject j = new Defective.JSON.JSONObject(s);
+            foreach (System.Reflection.FieldInfo f in typeof(T).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)) {
+                Defective.JSON.JSONObject v = j.GetField(f.Name);
+                if (v == null) continue;
+                Type t = f.FieldType;
+                if (t == typeof(string)) f.SetValue(o, v.stringValue);
+                else if (t == typeof(int)) f.SetValue(o, (int)v.longValue);
+                else if (t == typeof(long)) f.SetValue(o, v.longValue);
+                else if (t == typeof(float)) f.SetValue(o, v.floatValue);
+                else if (t == typeof(double)) f.SetValue(o, (double)v.floatValue);
+                else if (t == typeof(bool)) f.SetValue(o, v.boolValue);
+                else if (t.IsEnum) f.SetValue(o, Enum.ToObject(t, (int)v.longValue));
+            }
+            return (T)o;
+        }
     }
     public static class Random {
         public static float Range(float a, float b) { return a; }
@@ -397,7 +439,7 @@ namespace UnityEngine {
         public static void InitState(int seed) { }
     }
 
-    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class TooltipAttribute : Attribute { public TooltipAttribute(string s) { } }
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)] public class TooltipAttribute : Attribute { public TooltipAttribute(string s) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class HeaderAttribute : Attribute { public HeaderAttribute(string s) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class RangeAttribute : Attribute { public RangeAttribute(float a, float b) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class TextAreaAttribute : Attribute { public TextAreaAttribute(int a, int b) { } }

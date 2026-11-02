@@ -61,8 +61,8 @@ public class TurnBanner : MonoBehaviour {
 
     /// <summary>Is <paramref name="p"/> (an AI) thinking, as the line should say it?</summary>
     bool Thinking(Player p) {
-        AIPlayer ai = p.GetComponent<AIPlayer>();
-        float f = ai != null && ai.enabled ? ai.ThinkingFor : -1f;
+        IAIController ai = AIControl.Of(p);
+        float f = ai != null ? ai.ThinkingFor : -1f;
         // A unit of its still on the way: moving, whatever it is working out meanwhile.
         bool acting = GameController.gc != null && GameController.gc.activeUnit != null && GameController.gc.activeUnit.path != null && GameController.gc.activeUnit.path.Count > 0;
         if (acting) return false;

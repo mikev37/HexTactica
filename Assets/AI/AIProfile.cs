@@ -53,6 +53,18 @@ namespace HexTactica.AI {
         [Tooltip("A task force reduced below this share of the power it was formed with sends the campaign back to planning.")]
         [Range(0f, 1f)]
         public float objectiveReplanLoss = 0.5f;
+        [Tooltip("Campaign: a building's task force has a capturer only in a unit that lives to take it (its way there, starving out of supply, the capture's points, the enemy there). Off: any unit that can capture.")]
+        public bool capturerLives = true;
+        [Tooltip("A ground transport never ends its turn on a building of ours that builds units (it would take the slot, and nothing could be bought there).")]
+        public bool keepBuildSlotsClear = true;
+        [Tooltip("Supply chain: a supply unit aboard a transport is placed as one on foot is — the tile its transport reaches that brings supplied ground nearest the objective, only if better than holding. Off: the furthest linked tile toward the objective.")]
+        public bool unifiedLinkPlacement = true;
+        [Tooltip("A unit that would wait is first set aside and decides again after every other unit has moved; only if it would wait again does it skip its turn.")]
+        public bool waitTwice = true;
+        [Tooltip("A supply unit gets into a transport that has already acted this turn as readily as a fresh one (aboard it is linked as cargo, and rides next turn); a fresh one is still preferred.")]
+        public bool boardSpentTransports = true;
+        [Tooltip("Supply chain: a link within this many tiles of another node of ours (a link kept before it, rearmost first, or a supply building) is released as spare, free for other duties. 0: off.")]
+        public int chainLinkSpacing = 2;
         [Tooltip("The way to an objective: steps of detour worth taking to avoid one tile the enemy can strike next turn (so a middle held in strength is gone round).")]
         public float routeDanger = 3f;
         [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]
@@ -73,6 +85,8 @@ namespace HexTactica.AI {
         [Tooltip("A task force goes once the healthy power on its staging ground is this share of its need (objectiveForceRatio times the enemy there): it needs 1.5 to one, goes at 0.8 of that (1.2 to one).")]
         [Range(0f, 1f)]
         public float campaignGatherShare = 0.8f;
+        [Tooltip("Gathering: a unit past the staging ground counts as gathered only with the body (within the staging radius of the task force's centre too). Off: anywhere past it counts (a lone unit up front could send the front in).")]
+        public bool campaignGatherWithBody = true;
         [Tooltip("How large a staging ground is: hexes around the staging tile. 0: one move of our typical unit.")]
         public int campaignStagingRadius = 0;
         [Tooltip("A task force takes only units within this many turns of its staging tile, and none fighting elsewhere. 0: frontReachTurns.")]
@@ -168,6 +182,24 @@ namespace HexTactica.AI {
         public float productionPresence = 0.25f;
         [Tooltip("Buying: what a unit would take from the enemy counts this much against what it would do to them.")]
         public float productionDefenceWeight = 0.5f;
+        [Tooltip("Buying: what a unit does to an enemy is counted over its whole life — the kills it makes at each strength from 6 down to 1 (damage falls with strength) — so firepower beyond a kill (a bomber, rockets) counts: they still kill when worn down. Off: only at full strength, capped at a kill.")]
+        public bool productionOverkill = true;
+        [Tooltip("Buying: a unit of a higher tier (productionTierCosts) is hit less the more lower-tier units we have to screen it: what it would take from the enemy is cut by up to productionShieldCut (all of it for a unit that fires from range or flies, half for one that must close), in proportion to how many of its tier productionShieldRatio lower-tier units could each cover. Infantry screens tanks, AA and gunships; those screen bombers, rockets, missiles and fighters. 0: off.")]
+        public float productionShieldCut = 0.6f;
+        [Tooltip("Buying (productionShieldCut): lower-tier units it takes to screen one unit of a tier.")]
+        public float productionShieldRatio = 2f;
+        [Tooltip("Buying (productionShieldCut): the costs from which a unit is tier 1, and tier 2.")]
+        public Vector2 productionTierCosts = new Vector2(5000f, 11000f);
+        [Tooltip("Buying: a fighting unit is worth what it does in a shot times the turns it expects to live — 6 strength over what it would take a turn (each enemy's shot, cut by our screen, productionShieldCut), between 1 and productionLifeMax — over productionLifeRef turns: a rocket behind a screen keeps firing, a grunt in front trades and dies. Replaces the one exchange (what it does less productionDefenceWeight of what it takes) and productionDefenceFade. Off: the one exchange.")]
+        public bool productionLifetime = true;
+        [Tooltip("Buying (productionLifetime): how often a unit gets a shot: its reach (attack range, plus its move for one that moves and fires in a turn) over this many tiles, at most 1 — rockets reach six tiles from where they stand every turn, a grunt has to walk up first. 0: off.")]
+        public float productionReachRef = 6f;
+        [Tooltip("Buying (productionLifetime): the most turns a unit is expected to live.")]
+        public float productionLifeMax = 8f;
+        [Tooltip("Buying (productionLifetime): turns of life a unit's worth is measured against (a unit expected to live this long keeps the worth of one exchange).")]
+        public float productionLifeRef = 3f;
+        [Tooltip("Buying: the weight on what a unit would take (productionDefenceWeight) falls as our army grows — halved at this many fighting units — so attack counts for more than holding on. 0: off.")]
+        public float productionDefenceFade = 20f;
         [Tooltip("Buying: a front's want (the units that do most against its enemy, at its nearest producer) counts this much.")]
         public float productionFrontWeight = 1f;
         [Tooltip("Buying: a supply unit's (or truck's) value — the fighting units it would supply, or the force a front waiting on supply needs — counts this much.")]
@@ -573,6 +605,31 @@ namespace HexTactica.AI {
         [Tooltip("Fighting units out of contact ride a free transport to the front when that gets them there sooner than walking (the same walk-or-ride planner supply units use), and get off where the ride ends.")]
         public bool combatRides = true;
 
+        [Tooltip("Riding to the assault (AIAssault), as a player uses transports: a fighting unit far from the fight gets into a transport with room (one carrying no supply unit, not on supply duty) and stays aboard while it moves up with the army, out of the enemy's reach; riders are put down only where they can strike this turn (getting off costs nothing: they still move and fight) and when the wave goes in; empty transports (not trucks, which carry the supply) go back for more. Replaces combatRides' hop to supplied ground for fighting units.")]
+        public bool assaultRides = true;
+        [Tooltip("With assaultRides on, fighting units also take combatRides' hop (in and out the same turn) in an armed transport. Off: assault rides carry them in armed transports too, aboard until they can strike.")]
+        public bool assaultArmedRides = false;
+        [Tooltip("Riding to the assault: a rider put down to strike makes the strike its transport planned (where to stand, what to hit or take). Off: it decides afresh where it lands.")]
+        public bool assaultCarryOut = true;
+        [Tooltip("Riding to the assault: getting in a transport is weighed against the unit's own move (only a walk gives way to a ride that gets it nearer; a strike, a capture or a hold stands). Off: it boards before deciding anything else.")]
+        public bool assaultBoardWeighs = true;
+        [Tooltip("Riding to the assault, turn order: coordinated plans, artillery firing, then fighting units other than infantry that have something in reach (tanks, gunships), then transports with riders, each followed at once by its riders; then the rest. Off: transports with riders first.")]
+        public bool assaultOrderWithLine = true;
+        [Tooltip("Riding to the assault: a rider whose transport has reached the front line (in contact next turn) gets off and decides for itself; a rider whose transport fell back to its ordinary move always does.")]
+        public bool assaultFrontlineOut = true;
+        [Tooltip("Riding to the assault: an armed transport (recon, IFV, battle copter) fires first and lets its riders out after, unless what it takes back would destroy it.")]
+        public bool assaultFireThenUnload = true;
+        [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
+        public int assaultBoardTurns = 2;
+        [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth what it adds to the riders it would carry (the nearest of them): each one's value times the turns sooner it reaches the fight riding than walking, over productionLifeRef (at most its whole value) — times this (more than 1: it goes back for more, and carries the wounded, over its life). 0: not bought for riders.")]
+        public float assaultTransportWeight = 2f;
+        [Tooltip("Riding to the assault: infantry bought at a base beside which an empty troop transport waits (or one is bought this turn) is worth this much more, until the transport's room is filled — it gets in next turn and rides.")]
+        public float assaultFillBonus = 0.5f;
+        [Tooltip("Riding to the assault: an empty troop transport first picks up a fighting unit of ours down to this strength (not already on a building that services it) and carries it to the nearest of our buildings that does, to mend. 0: no medevac.")]
+        public int assaultMedevacStrength = 3;
+        [Tooltip("Riding to the assault: riders are put down when their front attacks, or where ours (with them) are at least this many times theirs within three tiles.")]
+        public float assaultWaveRatio = 1f;
+
         [Tooltip("An empty transport is credited, like a fighting unit, for drawing fire off friends and blocking the enemy's way (FirstStrikeCredit, SpaceDenial). Off: it is not, and keeps out of reach.")]
         public bool idleTransportScreens = false;
 
@@ -709,6 +766,9 @@ namespace HexTactica.AI {
 
         [Tooltip("With value-added pricing, still credit coverage of contested ground and of where units are heading.")]
         public bool hubPricingForward = true;
+
+        [Tooltip("A supply unit aboard a transport stays aboard: aboard, it links as far as its transport can drive and spreads its supply from wherever the transport stands, so it is never put down (a supply unit inside a transport inside another may be, with its own transport). The one exception: its transport would be destroyed where it stops. Off: plans could end in 'carry and drop off'.")]
+        public bool supplyStaysAboard = true;
 
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;

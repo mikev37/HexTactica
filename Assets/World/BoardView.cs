@@ -47,6 +47,7 @@ public sealed class BoardView {
     /// <summary>Players that play without the fog (AIProfile.fogFair off), worked out when the view was made.</summary>
     internal readonly HashSet<Player> knowsAll = new HashSet<Player>();
 
+
     /// <summary>Fog of war's sight as it was when the view was made (it is never worked out again inside one).</summary>
     internal object sights;
 
@@ -70,6 +71,10 @@ public sealed class BoardView {
         List<HexTile> tiles = HexGenerator.hg != null && HexGenerator.hg.tiles != null ? HexGenerator.hg.tiles : new List<HexTile>();
         foreach (HexTile t in tiles) if (t != null && t.viewId < 0) t.viewId = nextTile++;
         foreach (Building b in Building.all) if (b != null) { if (b.viewId < 0) b.viewId = nextBuilding++; b.Prime(); }
+        // The prefabs a thought may name (what buildings build, what factions field): their names too, read on this
+        // thread now (Unity allows an object's name only on the main thread; a faction matches its units by name).
+        foreach (Building b in Building.all) if (b != null && b.buildable != null) foreach (Unit u in b.buildable) if (u != null) u.Prime();
+        if (gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && p.faction != null) PrimeFaction(p.faction);
 
         BoardView v = new BoardView(nextUnit, nextTile, nextBuilding);
         foreach (Unit u in units) { int i = u.viewId; v.unitTile[i] = u.RealTile; v.unitStrength[i] = u.RealStrength; v.unitHas[i] = true; }
@@ -78,6 +83,12 @@ public sealed class BoardView {
         if (gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.KnowsAll(p)) v.knowsAll.Add(p);
         v.sights = FogOfWar.SightsNow();
         return v;
+    }
+
+    static void PrimeFaction(Faction f) {
+        if (f.replacements != null) foreach (Faction.Replacement r in f.replacements) if (r != null) { if (r.original != null) r.original.Prime(); if (r.replacement != null) r.replacement.Prime(); }
+        if (f.removed != null) foreach (Unit u in f.removed) if (u != null) u.Prime();
+        if (f.extras != null) foreach (Faction.Extra e in f.extras) if (e != null && e.unit != null) e.unit.Prime();
     }
 
     static void Collect(Unit u, List<Unit> into) {

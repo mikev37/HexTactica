@@ -122,27 +122,15 @@ namespace HexTactica.Harness {
                 }
             }
 
+            // Transports first, then their cargo aboard them (UnitData.LoadAll: the file may list cargo first).
             List<UnitData> unitData = new List<UnitData>();
-            List<Unit> made = new List<Unit>();   // by position in the file (null: an HQ that became a building)
             if (obj.GetField("units")) {
                 JSONObjectEnumerator units = obj.GetField("units").GetEnumerator();
-                while (units.MoveNext()) {
-                    UnitData ud = JsonUtility.FromJson<UnitData>(units.Current.Print());
-                    unitData.Add(ud);
-                    made.Add(ud.load());
-                }
+                while (units.MoveNext()) unitData.Add(JsonUtility.FromJson<UnitData>(units.Current.Print()));
             }
+            UnitData.LoadAll(unitData);
 
             string redKind = ApplyTestBlock(obj);
-
-            // Second pass: re-establish transport links now that every unit exists.
-            for (int i = 0; i < unitData.Count; i++) {
-                int idx = unitData[i].transporterIndexPlusOne - 1;
-                if (idx < 0 || idx >= made.Count) continue;
-                Unit cargo = made[i];
-                Unit transport = made[idx];
-                if (cargo != null && transport != null) Transporting.Load(transport, cargo);
-            }
 
             GameController.BoardLoaded();
 

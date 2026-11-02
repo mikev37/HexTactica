@@ -277,6 +277,7 @@ public static class Scenarios {
     /// </summary>
     public static void Logistics(string name, Action<AIProfile> blue, Action<AIProfile> red, string root) {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
+        UseOldAI(l);
         if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
         GameController gc = Rig.gc;
         int rounds = l.meta.GetInt("rounds", 60);
@@ -385,6 +386,82 @@ public static class Scenarios {
              "Transport visuals. Cargo slots: two grunts board an APC (slots 0 and 1); the first gets off and a third boards: it takes the free slot 0, not the second's slot 1. A unit that dies aboard (its transport destroyed) stays the size it rode at (it does not grow back to full size). A unit put down from a transport plane appears dropHeight above its tile and comes down onto it.");
         make("rule-faction-roster", "factionRoster", (a, o) => { Rig.PlaceBuilding("HQ", a, -4, 0); Rig.PlaceBuilding("ArmyBase", a, -2, 2); Put("Grunt", o, 5, 0); },
              "Factions (Faction, Building.Offered): Blue's HQ and Factory keep their base lists. Given a faction that replaces the Grunt with its own version, drops the first other unit the HQ lists, and adds an extra unit made at Factories (the ArmyBase): the HQ offers the version where the Grunt was, not the Grunt or the dropped unit; the ArmyBase offers the version in its Grunt's place and the extra; without the faction, the base lists. The version is bought and placed under its own name, is allowed where the scenario allows the Grunt, and its name and the faction's survive a save (LevelEditor.loadUnit, PlayerData.factionName).");
+        make("rule-faction-load", "factionLoad", (a, o) => { Put("Grunt", o, 5, 0); },
+             "Loading from the Resources folder, with nothing listed on the scene's LevelEditor: the Grunt, a faction's 'Grunt Federation Variant', the City and Grassland are found by name. A scenario's Grunt placed for a Federation side becomes the Federation's version (also when saved as another faction's version); for a side without a faction it stays the Grunt. The build menu calls the version 'Grunt' (and 'Gunship Variant' 'Gunship'). On the AI's thinking thread, after the board is copied, the faction matches its units by name without a call Unity allows only on the main thread.");
+        make("rule-load-cargo", "loadCargo", (a, o) => { Put("Grunt", o, 5, 0); },
+             "Loading a scenario as the game does (ScenarioLoader; the in-game load shares UnitData.LoadAll): Korea, whose trucks are listed after the supplies they carry, on the same tile, with the scene's LevelEditor listing only the older units. Every unit in the file is made (the rocket artillery, missile trucks and trucks from the Resources folder), the supplies are aboard their trucks and not active, every other unit is on its own tile, and nothing is logged as an error.");
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, 0, 0);
+            Dictionary<string, string> test = Test("rule-supply-fob-refresh", "rules", "Human", 4, "supplyFob", "Supply around a forward base, and the board kept up to date. HQ at -13, FOB at 0 with a store. Nothing linking them: the FOB is cut off and gives from its store (the ground around it is supplied), and supply units standing there, or aboard a truck there, are cut off (a supply unit links only to supply that comes from the HQ). After each kind of move the supply shown on the board is the network as it is: a truck carrying supply units driven by the player (its supply moves with it), a supply unit walking, an enemy blocking a corridor killed; and a supply unit's cut-off flag (the cut-off icon) follows the network, not the start of the turn. Also reports whether an enemy Blue does not see, under fog, cuts Blue's supply.");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "rule-supply-fob-refresh.dat"), test, ai, other, ai);
+            n++;
+        }
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, -4, 0); Rig.PlaceBuilding("FOB", ai, 5, -2);
+            Dictionary<string, string> test = Test("rule-fob-prefers-hq", "rules", "Human", 4, "fobPrefersHQ", "The HQ first (SupplyNetwork.StoreOnlyWhenNeeded): a forward base cut off from the HQ's supply spends a point of its store only on a turn it feeds a unit nothing else supplies. HQ at -13, FOB at -4 (cut off, store 4): with nobody near it, it keeps its store; a grunt that the HQ's supply also reaches costs it nothing; a grunt only it supplies costs a point; linked to the HQ by a supply unit, it refills a point. A second cut-off FOB with nobody near spends nothing (the old rule: a point every turn).");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "rule-fob-prefers-hq.dat"), test, ai, other, ai);
+            n++;
+        }
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, -4, 0);
+            Dictionary<string, string> test = Test("rule-supply-preview-fob", "rules", "Human", 4, "previewFob", "The player's supply preview for a truck carrying supplies, linked through a forward base: HQ at -13, FOB at -4 linked to it by two supply units, a truck carrying supplies at 1,2 moved forward to 7,2. Picked (the preview), the destination shows supplied, as it is once the move is made, even with the AI's what-if rule (a supply unit put down where it is moved to) left on the main thread; and an AI turn thought on the main thread no longer leaves that rule on.");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "rule-supply-preview-fob.dat"), test, ai, other, ai);
+            n++;
+        }
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, -4, 0);
+            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is.");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "fog-rule-supply-shown.dat"), test, ai, other, ai);
+            n++;
+        }
+        make("ui-fob-store-pips", "fobStorePips", (a, o) => { Rig.PlaceBuilding("FOB", a, -4, 0); Rig.PlaceBuilding("FOB", o, 4, 0); },
+             "A forward base's store shown as supply pips (SupplyDot, one per circle of a pip row under the building, as HealthDot for strength): Blue's FOB with 3 of 6 in store shows 3 filled and 3 faint, the seventh hidden; after spending one, 2; after refilling three, 5. The HQ keeps no store and shows none. A pip named 'circle (4)' is the fifth: filled with 5 in store, faint with 2. Under fog Blue sees its own FOB's pips always, Red's only while a Blue unit sees it.");
+        make("ai-assault-ride", "assaultRide", (a, o) => {
+                 Unit apc = Put("APC", a, -6, 0); Unit g1 = Put("Grunt", a, -6, 1); Unit g2 = Put("Grunt", a, -7, 1);
+                 Transporting.Load(apc, g1); Transporting.Load(apc, g2);
+                 Put("Tank", a, -5, 1); Put("APC", a, -5, 4); Put("Grunt", a, -6, 4);
+                 Put("Artillery", o, 5, 0); },
+             "Riding to the assault (assaultRides): an APC carrying two grunts moves up with them aboard, out of the enemy's reach, and puts them down only where they can strike that turn (getting off costs nothing: whether they then attack is their own call), to hold the line once their front holds its ground (here, with the enemy gone), or once at the front line (in contact next turn: they get off and decide for themselves); nothing else puts them down. Also reports whether a grunt far from the fight gets into the empty APC beside it. Blue plays four turns against a standing Red artillery piece (which cannot fire back at a unit beside it).");
+        make("ai-armed-transport", "armedTransport", (a, o) => {
+                 Unit rc = Put("Recon", a, -3, 0); Unit g = Put("Grunt", a, -3, 1); Transporting.Load(rc, g);
+                 Put("Tank", a, -4, 1);
+                 Put("Grunt", o, 2, 0); },
+             "An armed transport with a rider (assaultFireThenUnload, assaultFrontlineOut): a Blue recon carrying a grunt, a Blue tank, a Red grunt standing in the open. On Blue's turn (no coordinated plans: the transport's own choice) the recon stops where it can fire as well as put its rider down, fires on the Red grunt first and lets its rider out after (its rider still has its whole turn). Then: a recon whose assault move was set aside for its ordinary one (a fallback) has its rider get off to decide for itself.");
+        make("ai-capturer-lives", "capturerLives", (a, o) => { Put("Grunt", a, 3, 3); Put("APC", a, 1, 3); Rig.PlaceBuilding("City", a, -6, 4); Put("Grunt", o, 6, -6); },
+             "A capturer that lives to take it (capturerLives, AIAssault.TurnsToTake): a Blue grunt down to strength 2 a tile from Red's HQ, out of supply, an empty APC beside it and Blue's city far behind. Taking the HQ needs 20 points (brought down from 10, then up to 10) at 2 a turn while it starves: it would be gone first. So it is not the HQ's capturer and it does not go and stand on it; it rides to mend. Then a full-strength grunt in the same place: it would take the HQ in time, and the campaign makes it the capturer.");
+        make("ai-gather-with-body", "gatherWithBody", (a, o) => { Put("Grunt", a, -5, 2); Put("Tank", a, 3, -2); Put("Tank", o, 5, 2); Put("Grunt", o, 6, 1); },
+             "Gathering counts the body, not a lone unit up front (campaignGatherWithBody): Blue has a grunt back home and a tank alone near Red's force; together they make the task force's need, but they are not together. With the rule the front does not go in on its first turn (it gathers); without it, the lone tank ahead counts and it goes.");
+        make("ai-medevac", "medevac", (a, o) => { Put("Grunt", a, 0, -5); Put("APC", a, -1, -4); Rig.PlaceBuilding("City", a, -6, 4); Put("Grunt", o, 6, -6); },
+             "Medevac (assaultRides, assaultMedevacStrength): a Blue grunt down to strength 2, away from Red's HQ (boarding is weighed against its own move: a wounded unit a turn from taking a building would go and take it), an empty APC beside it, Blue's city nine tiles off (three turns' walk and more): within three Blue turns the APC has carried it onto a building that mends it, and once there it does not ride off to the fight while still wounded (strength 3 or less).");
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("ArmyBase", ai, -11, 0);
+            foreach (int[] g in new[] { new[] { -10, 2 }, new[] { -9, 2 }, new[] { -10, 3 }, new[] { -9, 3 } }) Put("Grunt", ai, g[0], g[1]);
+            Put("APC", ai, -12, 1);
+            Put("Tank", other, 11, 0); Put("Grunt", other, 11, 1);
+            Dictionary<string, string> test = Test("ai-buy-transports", "rules", "Human", 4, "buyTransports", "Buying for riders (assaultTransportWeight, assaultFillBonus): four Blue grunts far from the fight and an APC that is already carrying... nothing: with 20,000 gold Blue buys at least one transport at its army base for the riders without room; then, with an empty APC beside the base, the infantry it buys there is worth more for filling it.");
+            test["purchases"] = "on";
+            ScenarioFile.Save(Path.Combine(Dir, "ai-buy-transports.dat"), test, ai, other, ai);
+            n++;
+        }
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1234,6 +1311,522 @@ public static class Scenarios {
                 detail = string.Join("; ", r.ToArray());
                 return roster && allowed && bought && saved && off;
             }
+            case "factionLoad": {
+                List<string> r = new List<string>();
+                LevelEditor was = LevelEditor.singleton;
+                bool lookups, placed, other, shown, threaded;
+                try {
+                    // Nothing listed on the scene's LevelEditor: everything comes from the Resources folder.
+                    LevelEditor ed = Rig.New<LevelEditor>();
+                    ed.allUnit = new List<Unit>(); ed.allBuilding = new List<Building>(); ed.allTerrain = new List<TerrainData>(); ed.allFaction = new List<Faction>();
+                    LevelEditor.singleton = ed;
+                    Unit gruntR = LevelEditor.loadUnit("Grunt"), variantR = LevelEditor.loadUnit("Grunt Federation Variant(Clone)");
+                    Building cityR = LevelEditor.loadBuilding("City");
+                    TerrainData grassR = LevelEditor.loadTerrain("Grassland");
+                    lookups = gruntR != null && variantR != null && variantR.name == "Grunt Federation Variant" && cityR != null && grassR != null;
+                    r.Add("from Resources with empty lists: Grunt " + (gruntR != null) + ", 'Grunt Federation Variant' " + (variantR != null ? variantR.name : "MISSING") + ", City " + (cityR != null) + ", Grassland " + (grassR != null));
+
+                    // Fresh prefab copies (no name read yet), as a faction asset holds them.
+                    Unit original = PrefabLoader.Load("Grunt"), version = PrefabLoader.Load("Grunt Federation Variant");
+                    Faction fed = ScriptableObject.CreateInstance<Faction>(); fed.name = "Federation";
+                    fed.replacements.Add(new Faction.Replacement { original = original, replacement = version });
+                    Unit otherVersion = PrefabLoader.Load("Grunt"); otherVersion.name = "Grunt Testland Variant";
+                    Faction test = ScriptableObject.CreateInstance<Faction>(); test.name = "Testland";
+                    test.replacements.Add(new Faction.Replacement { original = PrefabLoader.Load("Grunt"), replacement = otherVersion });
+                    ed.allFaction = new List<Faction> { fed, test };
+                    // (As Unity loads an asset: no name read yet. The harness loader names its copies, which reads it.)
+                    System.Reflection.FieldInfo cache = typeof(Unit).GetField("nameCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    cache.SetValue(original, null); cache.SetValue(version, null);
+                    Building hqB = Rig.At(-6, 0).building;
+                    List<Unit> offered = hqB != null && hqB.buildable != null ? new List<Unit>(hqB.buildable) : new List<Unit>();
+                    foreach (Unit ou in offered) if (ou != null) cache.SetValue(ou, null);
+                    List<string> offeredAs = new List<string>();
+                    l.ai.faction = fed;
+
+                    // Thinking on another thread, after the board is copied, the faction matches units by name:
+                    // the names must have been read on the main thread (Unity: "GetName can only be called from the main thread").
+                    int before = UnityEngine.MainThreadOnly.violations;
+                    string threadErr = null; Unit mapped = null, based = null;
+                    BoardView view = BoardView.Snapshot();
+                    System.Threading.Thread th = new System.Threading.Thread(() => {
+                        try { using (view.Enter()) { mapped = fed.Map(original); based = fed.BaseOf(version); foreach (Unit ou in offered) { Unit m = fed.Map(ou); offeredAs.Add(m != null ? m.name : "none"); } } }
+                        catch (Exception e) { threadErr = e.GetBaseException().Message; }
+                    });
+                    th.Start(); th.Join();
+                    threaded = threadErr == null && UnityEngine.MainThreadOnly.violations == before && mapped == version && based == original && offered.Count > 1 && offeredAs.Count == offered.Count;
+                    r.Add("on a thinking thread: the faction maps Grunt to " + (mapped != null ? mapped.name : "nothing") + ", back to " + (based != null ? based.name : "nothing") + ", the HQ's " + offered.Count + " units to " + string.Join("/", offeredAs.ToArray()) + (threadErr != null ? ", FAILED: " + threadErr : ", no main-thread-only call"));
+
+                    foreach (HexTile t in Rig.hg.tiles) if (t.unitPlacement == null) { t.unitPlacement = Rig.New<Transform>(); t.unitPlacement.position = new Vector3(t.x, t.y, 0f); }
+                    // A scenario loading a Grunt for a Federation side places the Federation's version; the build menu calls it Grunt.
+                    Unit ua = LevelEditor.PlaceNewUnit(l.ai, "Grunt", Rig.At(-1, 0));
+                    string an = ua != null ? ua.name.Replace("(Clone)", "").Trim() : "nothing";
+                    placed = an == "Grunt Federation Variant";
+                    Unit ub = LevelEditor.PlaceNewUnit(l.ai, "Grunt Testland Variant(Clone)", Rig.At(-1, 1));
+                    string bn = ub != null ? ub.name.Replace("(Clone)", "").Trim() : "nothing";
+                    other = bn == "Grunt Federation Variant";
+                    Unit uc2 = LevelEditor.PlaceNewUnit(l.other, "Grunt", Rig.At(1, 0));
+                    string cn = uc2 != null ? uc2.name.Replace("(Clone)", "").Trim() : "nothing";
+                    placed &= cn == "Grunt";
+                    r.Add("loaded 'Grunt' for Federation Blue: " + an + "; 'Grunt Testland Variant' for Blue: " + bn + "; 'Grunt' for factionless Red: " + cn);
+                    string d1 = GameController.DisplayName(version, l.ai), d2 = GameController.DisplayName(original, l.ai), d3 = GameController.DisplayName(PrefabLoader.Load("Gunship Variant"), l.other);
+                    shown = d1 == "Grunt" && d2 == "Grunt" && d3 == "Gunship";
+                    r.Add("shown as: '" + d1 + "', '" + d2 + "', 'Gunship Variant' as '" + d3 + "'");
+                } finally { LevelEditor.singleton = was; l.ai.faction = null; }
+                detail = string.Join("; ", r.ToArray());
+                return lookups && threaded && placed && other && shown;
+            }
+            case "loadCargo": {
+                // The game's own loader (HexTactica > Load Scenario File: ScenarioLoader, which shares UnitData.LoadAll with the
+                // in-game load) on Korea, whose trucks are listed after the supplies aboard them, on the same tile. The scene's
+                // LevelEditor lists the older units only (as the scene does): the rest come from the Resources folder.
+                List<string> r = new List<string>();
+                LevelEditor was = LevelEditor.singleton;
+                int errorsBefore = UnityEngine.Debug.errors;
+                bool ok;
+                try {
+                    LevelEditor ed = Rig.New<LevelEditor>();
+                    ed.allUnit = new List<Unit>();
+                    foreach (string n in new[] { "Grunt", "Conscript", "Marine", "Tank", "APC", "Artillery", "Recon", "Supplies", "Fighter", "Bomber", "Stealth Fighter", "Gunner Anti Air" }) { Unit u = PrefabLoader.Load(n); u.name = n; ed.allUnit.Add(u); }
+                    ed.allFaction = new List<Faction>();
+                    LevelEditor.singleton = ed;
+                    string path = Path.Combine(PrefabLoader.Root("Scenarios"), "Korea.dat");
+                    Dictionary<string, int> want = new Dictionary<string, int>(), carried = new Dictionary<string, int>();
+                    int wantAboard = 0;
+                    foreach (Dictionary<string, string> u in ScenarioFile.Array(File.ReadAllText(path), "units")) {
+                        string n = u["gameobject_name"].Replace("(Clone)", "").Trim();
+                        int k; want.TryGetValue(n, out k); want[n] = k + 1;
+                        if (u.ContainsKey("transporterIndexPlusOne") && u["transporterIndexPlusOne"] != "0") wantAboard++;
+                    }
+                    // (Tiles given what the game's tile prefab has — sprites, road pieces, a placement point — and new
+                    // ones made that way: the board grows to the map's size.)
+                    Action<HexTile> dress = t => {
+                        foreach (System.Reflection.FieldInfo fi in typeof(HexTile).GetFields()) {
+                            if (fi.GetValue(t) != null) continue;
+                            if (fi.FieldType == typeof(SpriteRenderer)) fi.SetValue(t, Rig.New<SpriteRenderer>());
+                            else if (fi.FieldType == typeof(Transform)) fi.SetValue(t, Rig.New<Transform>());
+                            else if (fi.FieldType == typeof(UnityEngine.UI.Text)) fi.SetValue(t, Rig.New<UnityEngine.UI.Text>());
+                        }
+                    };
+                    Rig.hg.makeTile = at => {
+                        HexTile t = Rig.New<HexTile>();
+                        t.neighbors = new List<HexTile>(); t.aiData = new AITileData();
+                        t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>();
+                        t.terrain = ScenarioFile.Terrain("Grassland");
+                        dress(t);
+                        return t;
+                    };
+                    foreach (HexTile t in Rig.hg.tiles) dress(t);
+                    bool loaded;
+                    // (Instantiate copies a unit as Unity does: its own lists, its supply hub.)
+                    UnityEngine.GameObject.Cloner = obj => {
+                        GameObject g = obj as GameObject; Unit src = g != null ? g.GetComponent<Unit>() : null;
+                        if (src == null) return null;
+                        Unit c = Rig.Clone(src);
+                        c.path = new List<HexTile>(); c.transported = new List<Unit>();
+                        PrefabLoader.AttachHubIfAny(src.name.Replace("(Clone)", "").Trim(), c);
+                        return c.gameObject;
+                    };
+                    try { loaded = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); } finally { Rig.hg.makeTile = null; UnityEngine.GameObject.Cloner = null; }
+                    Dictionary<string, int> got = new Dictionary<string, int>();
+                    int aboard = 0, aboardActive = 0, misplaced = 0;
+                    foreach (Unit u in Rig.uc.units) {
+                        if (u == null) continue;
+                        string n = u.name.Replace("(Clone)", "").Trim();
+                        int k; got.TryGetValue(n, out k); got[n] = k + 1;
+                        if (u.trasnporter != null) { aboard++; if (u.active) aboardActive++; if (u.tile != u.trasnporter.tile || u.tile.occupier == u || !u.trasnporter.transported.Contains(u)) misplaced++; }
+                        else if (u.tile == null || u.tile.occupier != u) misplaced++;
+                    }
+                    List<string> counts = new List<string>(); bool all = true;
+                    foreach (KeyValuePair<string, int> kv in want) { int g; got.TryGetValue(kv.Key, out g); if (g != kv.Value) all = false; if (g != kv.Value || kv.Key == "Rocket Artillery" || kv.Key == "Anti Air Missile Truck" || kv.Key == "Truck" || kv.Key == "Supplies") counts.Add(kv.Key + " " + g + "/" + kv.Value); }
+                    int errors = UnityEngine.Debug.errors - errorsBefore;
+                    ok = loaded && all && aboard == wantAboard && aboardActive == 0 && misplaced == 0 && errors == 0;
+                    r.Add("loaded " + loaded + "; " + string.Join(", ", counts.ToArray()) + (all ? " (every unit in the file)" : " (MISSING units)") + "; aboard " + aboard + "/" + wantAboard + ", of them active " + aboardActive + "; misplaced " + misplaced + "; errors logged " + errors);
+                } finally { LevelEditor.singleton = was; }
+                detail = string.Join("; ", r.ToArray());
+                return ok;
+            }
+            case "supplyFob": {
+                List<string> r = new List<string>();
+                Building fob = Rig.At(0, 0).building;
+                System.Reflection.MethodInfo die = typeof(Unit).GetMethod("DieActual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                // The field the board shows (published) against one worked out afresh (not published).
+                Func<string> stale = () => {
+                    SupplyNetwork.Result fresh = SupplyNetwork.SolveAll(a, new Dictionary<SupplyPoint, HexTile>());
+                    int n = 0; HexTile first = null;
+                    foreach (HexTile t in Rig.hg.tiles) if ((t.supply[a] > 0) != fresh.IsSupplied(t)) { n++; if (first == null) first = t; }
+                    return n == 0 ? "board up to date" : "BOARD STALE on " + n + " tiles (first " + first.x + "," + first.y + ": shows " + (first.supply[a] > 0 ? "supplied" : "unsupplied") + ")";
+                };
+                Func<SupplyNetwork.Result, string> row = res => { string o2 = ""; for (int x = -13; x <= 13; x++) o2 += res.DepthAt(Rig.At(x, 0)) > 0 ? (Rig.At(x, 0).building != null ? "B" : res.DepthAt(Rig.At(x, 0)).ToString("X")) : "."; return o2; };
+                Func<SupplyPoint, SupplyNetwork.Result, string> st = (h, res) => res.connectedHubs.Contains(h) ? "linked" : res.strandedHubs.Contains(h) ? "CUT OFF" : "?";
+                fob.supplies = 6;
+                SupplyNetwork.Result s0 = SupplyNetwork.Solve(a, false);
+                r.Add("1. HQ at -13, FOB at 0 (range " + fob.supplyRange + ", store 6), no supply units. Row y=0 depth: " + row(s0) + "; FOB " + (s0.connectedBuildings.Contains(fob) ? "linked" : s0.strandedBuildings.Contains(fob) ? "cut off, giving from its store" : "?"));
+                // Supply units on foot between them.
+                Unit h1 = Put("Supplies", a, -6, 0);
+                SupplyNetwork.Result s1 = SupplyNetwork.Solve(a, false);
+                r.Add("2. Supplies on foot at -6: " + st(h1.Hub, s1) + "; FOB " + (s1.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s1));
+                Unit h2 = Put("Supplies", a, 3, 0);
+                SupplyNetwork.Result s2 = SupplyNetwork.Solve(a, false);
+                r.Add("3. Supplies on foot at 3 (in the FOB's area): " + st(h2.Hub, s2) + "; row " + row(s2));
+                // A truck carrying supplies, beside the FOB.
+                Unit truck = Put("Truck", a, 2, 3);
+                Unit cargo = Put("Supplies", a, 2, 4);
+                bool boarded = Transporting.Load(truck, cargo);
+                SupplyNetwork.Result s3 = SupplyNetwork.Solve(a, false);
+                bool truckTileSupplied = s3.IsSupplied(truck.tile);
+                r.Add("4. Truck at 2,3 carrying supplies (boarded " + boarded + "): its supplies " + st(cargo.Hub, s3) + ", truck's tile " + (s3.IsSupplied(truck.tile) ? "supplied" : "UNSUPPLIED"));
+                // Moved as the player moves it (HexTile: CompleteMove then FinishActive).
+                SupplyNetwork.Solve(a, false);
+                truck.MoveAlong(new List<HexTile> { Rig.At(2, 3), Rig.At(3, 3), Rig.At(4, 3), Rig.At(5, 3) }, false, false);
+                truck.FinishActive();
+                string st5 = stale(); r.Add("5. Truck driven to 5,3 (as the player moves it): " + st5);
+                SupplyNetwork.Solve(a, false);
+                // The supply unit on foot moves.
+                h2.MoveAlong(new List<HexTile> { Rig.At(3, 0), Rig.At(4, 0), Rig.At(5, 0) }, false, false);
+                h2.FinishActive();
+                string st6a = stale(); r.Add("6. Supplies on foot walked to 5,0: " + st6a);
+                Unit truck2 = Put("Truck", a, -11, 2);
+                Unit cargo2 = Put("Supplies", a, -11, 3);
+                Transporting.Load(truck2, cargo2);
+                SupplyNetwork.Result s6 = SupplyNetwork.Solve(a, false);
+                string before6 = st(cargo2.Hub, s6);
+                List<HexTile> drive = new List<HexTile>(); for (int x = -11; x <= -7; x++) drive.Add(Rig.At(x, 2));
+                truck2.MoveAlong(drive, false, false);
+                truck2.FinishActive();
+                string staleNow = stale();
+                SupplyNetwork.Result s7 = SupplyNetwork.Solve(a, false);
+                r.Add("6b. Truck carrying linked supplies (" + before6 + ") driven -11,2 to -7,2 as the player moves it: " + staleNow + "; afterwards its supplies " + st(cargo2.Hub, s7) + ", hub.connected flag says " + cargo2.Hub.connected);
+                // An enemy unit standing in the corridor, then killed by the player (not a supply unit).
+                Unit blocker = Put("Grunt", o, -3, 0);
+                foreach (int[] w in new[] { new[] { -3, -1 }, new[] { -3, 1 }, new[] { -2, -1 }, new[] { -4, 1 } }) Put("Grunt", o, w[0], w[1]);
+                SupplyNetwork.Result s4 = SupplyNetwork.Solve(a, false);
+                r.Add("7. Red grunts across the corridor at x=-3: FOB " + (s4.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s4));
+                die.Invoke(blocker, null);
+                string st8 = stale(); r.Add("8. The Red grunt at -3,0 killed (not a supply unit): " + st8);
+                SupplyNetwork.Solve(a, false);
+                // Fog: an enemy Blue does not see, blocking.
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Refresh();
+                Unit hidden = Put("Grunt", o, -3, 0);
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                bool seen = FogOfWar.Sees(a, hidden);
+                SupplyNetwork.Result s5 = SupplyNetwork.Solve(a, false);
+                r.Add("9. Fog on, a Red grunt back at -3,0, seen by Blue " + seen + ": FOB " + (s5.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s5));
+                gc.fogOfWar = false; FogOfWar.Reset();
+                detail = string.Join(" | ", r.ToArray());
+                bool fobRules = s0.strandedBuildings.Contains(fob) && s0.IsSupplied(Rig.At(5, 0)) && !s1.connectedHubs.Contains(h1.Hub) && !s2.connectedHubs.Contains(h2.Hub)
+                                && s3.strandedHubs.Contains(cargo.Hub) && truckTileSupplied;
+                bool upToDate = st5 == "board up to date" && st6a == "board up to date" && staleNow == "board up to date" && st8 == "board up to date";
+                return fobRules && upToDate && before6 == "linked" && s7.connectedHubs.Contains(cargo2.Hub) && cargo2.Hub.connected;
+            }
+            case "fobPrefersHQ": {
+                // HQ at -13 (its supply reaches -10 on grassland). FOB at -4, its own range covering -11..3, cut off.
+                Building fob = Rig.At(-4, 0).building;
+                List<string> r = new List<string>();
+                Func<string, int> turn = what => { int before = fob.supplies; SupplyNetwork.Solve(a, true); r.Add(what + ": store " + before + " -> " + fob.supplies); return before - fob.supplies; };
+                fob.supplies = 4;
+                int empty = turn("nobody near it");
+                Unit g = Put("Grunt", a, -11, 0);
+                bool overlapSupplied = SupplyNetwork.Solve(a, false).IsSupplied(g.tile);
+                int overlap = turn("a grunt at -11,0, inside the HQ's supply too (" + (SupplyNetwork.SolveStatic(a).IsSupplied(g.tile) ? "it is" : "IT IS NOT") + ")");
+                Unit g2 = Put("Grunt", a, 0, 1);
+                bool onlyStore = !SupplyNetwork.SolveStatic(a).IsSupplied(g2.tile) && SupplyNetwork.Solve(a, false).IsSupplied(g2.tile);
+                int needed = turn("and a grunt at 0,1, which only the FOB supplies (supplied " + onlyStore + ")");
+                // Linked to the HQ: a supply unit between them.
+                Put("Supplies", a, -10, 0); Put("Supplies", a, -7, 0);
+                SupplyNetwork.Result lr = SupplyNetwork.Solve(a, false);
+                bool linked = lr.connectedBuildings.Contains(fob);
+                int refill = turn("supply units at -10,0 and -7,0 link it to the HQ (linked " + linked + ")");
+                // Switch off: the old rule (every cut-off building with store spends every turn).
+                SupplyNetwork.StoreOnlyWhenNeeded = false;
+                Building f2 = Rig.At(5, -2).building; f2.supplies = 3; int b2 = f2.supplies; fob.supplies = 4;
+                SupplyNetwork.Solve(a, true);
+                int oldRule = b2 - f2.supplies;
+                SupplyNetwork.StoreOnlyWhenNeeded = true;
+                f2.supplies = 3; fob.supplies = 4; SupplyNetwork.Solve(a, true);
+                int newRule = 3 - f2.supplies;
+                r.Add("a second FOB at 5,-2 cut off with nobody near: spends " + newRule + " (old rule " + oldRule + ")");
+                detail = string.Join("; ", r.ToArray());
+                return empty == 0 && overlapSupplied && overlap == 0 && onlyStore && needed == 1 && linked && refill == -1 && newRule == 0 && oldRule == 1;
+            }
+            case "previewFob": {
+                // HQ at -13; FOB at -4, linked to the HQ by supply units at -10,0 and -7,0. A truck carrying supplies at 1,2
+                // (inside the FOB's supply) is moved forward to 7,2 by the player: picked (the preview), then made.
+                List<string> r = new List<string>();
+                Building fob = Rig.At(-4, 0).building; fob.supplies = 4;
+                Put("Supplies", a, -10, 0); Put("Supplies", a, -7, 0);
+                Unit truck = Put("Truck", a, 1, 2); Unit cargo = Put("Supplies", a, 1, 3);
+                Transporting.Load(truck, cargo);
+                foreach (HexTile t in Rig.hg.tiles) if (t.unitPlacement == null) { t.unitPlacement = Rig.New<Transform>(); t.unitPlacement.position = new Vector3(t.x, t.y, 0f); }
+                HexTile dest = Rig.At(7, 2);
+                SupplyNetwork.Result now = SupplyNetwork.Solve(a, false);
+                bool start = now.connectedBuildings.Contains(fob) && now.connectedHubs.Contains(cargo.Hub);
+                r.Add("FOB linked " + now.connectedBuildings.Contains(fob) + ", truck's supplies " + (now.connectedHubs.Contains(cargo.Hub) ? "linked" : "cut off"));
+                // The player's view: Red plays the AI here, Blue is the player's (the overlay shows only a human's unit).
+                bool wasHumanAI = a.GetComponent<AIPlayer>() != null;
+                AIPlayer blueAI = a.GetComponent<AIPlayer>();
+                if (blueAI != null) blueAI.enabled = false;
+                SupplyOverlay overlay = Rig.New<SupplyOverlay>();
+                System.Reflection.MethodInfo update = typeof(SupplyOverlay).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                bool human = FogOfWar.IsHuman(a);
+                gc.activeUnit = truck;
+                dest.state = UIState.MOVE_CONFIRM;
+                bool previewOk;
+                try { update.Invoke(overlay, null); previewOk = dest.isSupplied(a); }
+                finally { dest.state = UIState.FREE; gc.activeUnit = null; update.Invoke(overlay, null); }
+                r.Add("Blue is a human here " + human + "; the player's preview: destination " + (previewOk ? "supplied" : "UNSUPPLIED"));
+                // The move made.
+                List<HexTile> drive = new List<HexTile>(); for (int x = 1; x <= 7; x++) drive.Add(Rig.At(x, 2));
+                truck.MoveAlong(drive, false, false); truck.FinishActive();
+                SupplyNetwork.Result after = SupplyNetwork.Solve(a, false);
+                bool afterOk = after.connectedHubs.Contains(cargo.Hub) && after.IsSupplied(dest);
+                r.Add("after the move: " + (after.connectedHubs.Contains(cargo.Hub) ? "linked" : "CUT OFF") + ", destination " + (after.IsSupplied(dest) ? "supplied" : "UNSUPPLIED"));
+                // An AI turn played on the main thread leaves the player's preview as it was.
+                bool restored = true;
+                if (blueAI != null) {
+                    blueAI.enabled = true; blueAI.PlayWholeTurn(); blueAI.enabled = false;
+                    if (truck.tile != null && cargo.trasnporter == truck) {
+                        HexTile d2 = null; foreach (HexTile n in truck.tile.neighbors) if (n != null && n.occupier == null && n.terrain != null && n.terrain.elevation >= 0) { d2 = n; break; }
+                        if (d2 != null) {
+                            gc.activeUnit = truck; d2.state = UIState.MOVE_CONFIRM;
+                            try { update.Invoke(overlay, null); restored = d2.isSupplied(a) == SupplyNetwork.SolveMoved(a, new Dictionary<SupplyPoint, HexTile> { { cargo.Hub, d2 } }).IsSupplied(d2); }
+                            finally { d2.state = UIState.FREE; gc.activeUnit = null; update.Invoke(overlay, null); }
+                            r.Add("after an AI turn thought on the main thread, the preview matches the game's rules " + restored);
+                        }
+                    }
+                }
+                detail = string.Join(" | ", r.ToArray());
+                return start && human && previewOk && afterOk && restored;
+            }
+            case "fogSupplyShown": {
+                // HQ at -13; FOB at -4 linked to it by supply units at -10,0 and -7,0; a Blue grunt at 3,0 at the edge of the
+                // FOB's supply. A line of Red grunts at x=-1 (y -3..3), out of Blue's sight, cuts the FOB's supply to the grunt. Blue is the screen's player.
+                List<string> r = new List<string>();
+                Building fob = Rig.At(-4, 0).building; fob.supplies = 4;
+                Put("Supplies", a, -10, 0); Put("Supplies", a, -7, 0);
+                Unit g = Put("Grunt", a, 3, 0);
+                AIPlayer blueAI = a.GetComponent<AIPlayer>(); if (blueAI != null) blueAI.enabled = false;
+                gc.activePlayer = a;
+                SupplyNetwork.Solve(a, false);
+                bool before = g.tile.isSupplied(a) && g.tile.isSuppliedShown(a);
+                List<Unit> wall = new List<Unit>();
+                for (int y = -3; y <= 3; y++) wall.Add(Put("Grunt", o, -1, y));
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool unseen = true; foreach (Unit w in wall) if (FogOfWar.Sees(a, w)) unseen = false;
+                SupplyNetwork.Solve(a, false);
+                bool trulyCut = !g.tile.isSupplied(a), shownSupplied = g.tile.isSuppliedShown(a);
+                r.Add("viewer " + (FogOfWar.Viewer != null ? FogOfWar.Viewer.personal_name : "none") + "; before the wall the grunt is supplied " + before + "; the wall unseen by Blue " + unseen + ": truly cut off " + trulyCut + " (its upkeep goes by this), shown supplied " + shownSupplied + " (the screen does not give the wall away)");
+                // Seen: a Blue recon beside the wall.
+                Unit rec = Put("Recon", a, 0, 1);
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                SupplyNetwork.Solve(a, false);
+                bool seenNow = FogOfWar.Sees(a, wall[3]), shownCut = !g.tile.isSuppliedShown(a);
+                r.Add("a Blue recon beside it sees the wall " + seenNow + ": shown cut off " + shownCut);
+                // Fog off: the screen shows the true network.
+                gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
+                SupplyNetwork.Solve(a, false);
+                bool fogOff = g.tile.isSuppliedShown(a) == g.tile.isSupplied(a);
+                r.Add("fog off: shown as it is " + fogOff);
+                if (blueAI != null) blueAI.enabled = true;
+                detail = string.Join(" | ", r.ToArray());
+                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff;
+            }
+            case "fobStorePips": {
+                // A FOB (Blue) with 3 of 6 in store, Blue's HQ, and a Red FOB with 5. Blue is the screen's player.
+                Building fob = Rig.At(-4, 0).building, hq = GameController.HQOf(a), red = Rig.At(4, 0).building;
+                fob.supplies = 3; red.supplies = 5;
+                AIPlayer blueAI = a.GetComponent<AIPlayer>(); if (blueAI != null) blueAI.enabled = false;
+                gc.activePlayer = a;
+                List<string> r = new List<string>();
+                Func<Building, string> row = bb => { string o2 = ""; for (int i = 0; i < 7; i++) { SupplyDot.State st = SupplyDot.StateOf(bb, i); o2 += st == SupplyDot.State.Filled ? "o" : st == SupplyDot.State.Empty ? "." : " "; } return "[" + o2 + "]"; };
+                string d1 = row(fob);
+                fob.SpendSupply(1); string d2 = row(fob);
+                fob.Replenish(3); string d3 = row(fob);
+                string dh = row(hq);
+                r.Add("Blue FOB pips (o filled, . room, blank hidden) 3 of 6: " + d1 + "; spends one: " + d2 + "; refills three: " + d3 + "; the HQ: " + dh);
+                // A pip as it is set up on a building: the circle's own sprite, faded toward its state.
+                SupplyDot dot = Rig.New<SupplyDot>(); dot.building = fob; dot.gameObject.name = "circle (4)";
+                SpriteRenderer sr = dot.gameObject.AddComponent<SpriteRenderer>(); sr.color = Color.white;
+                System.Reflection.BindingFlags bf = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                typeof(SupplyDot).GetMethod("Start", bf).Invoke(dot, null);
+                for (int i = 0; i < 200; i++) typeof(SupplyDot).GetMethod("Update", bf).Invoke(dot, null);
+                bool dotFilled = dot.iter == 4 && sr.color.a > 0.9f && sr.color.g > 0.8f;
+                fob.supplies = 2;
+                for (int i = 0; i < 200; i++) typeof(SupplyDot).GetMethod("Update", bf).Invoke(dot, null);
+                bool dotEmpty = sr.color.a < 0.3f && sr.color.a > 0.2f;
+                fob.supplies = 5;
+                r.Add("pip 'circle (4)': place " + dot.iter + ", with 5 in store filled " + dotFilled + ", with 2 faint " + dotEmpty);
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool ownShown = SupplyDot.ShownTo(fob), redHidden = !SupplyDot.ShownTo(red);
+                Unit spot = Put("Recon", a, 2, 0); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool redSeen = SupplyDot.ShownTo(red);
+                gc.fogOfWar = false; FogOfWar.Reset();
+                r.Add("fog: our own FOB's shown " + ownShown + ", Red's FOB out of sight hidden " + redHidden + ", in sight shown " + redSeen);
+                if (blueAI != null) blueAI.enabled = true;
+                detail = string.Join(" | ", r.ToArray());
+                return d1 == "[ooo... ]" && d2 == "[oo.... ]" && d3 == "[ooooo. ]" && dh == "[       ]" && dotFilled && dotEmpty && ownShown && redHidden && redSeen;
+            }
+            case "assaultRide": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
+                // Blue: an APC with two grunts aboard at (-6,0) and a tank at (-5,1); an empty APC at (-5,4) beside a grunt
+                // at (-6,4). Red: an artillery piece at (5,0), standing. Blue plays four turns (Red does nothing).
+                Unit apc = Rig.At(-6, 0).occupier, apc2 = Rig.At(-5, 4).occupier, walker = Rig.At(-6, 4).occupier;
+                List<Unit> riders = new List<Unit>(apc.transported);
+                List<string> r = new List<string>();
+                int earlyDrops = 0, struckOnLanding = 0, landed = 0;
+                HashSet<Unit> aboardAtStart = new HashSet<Unit>();
+                HashSet<Unit> attackedThisTurn = new HashSet<Unit>();
+                Action<Unit, Unit, bool> att = (x, d, sur) => { if (x.owner == a) attackedThisTurn.Add(x); };
+                Unit.Attacking += att;
+                List<string> why = new List<string>();
+                AIPlayer bai = a.GetComponent<AIPlayer>();
+                System.Action<Unit, HexTactica.AI.AIAction, bool> dec = (u, act, did) => { if (did && (act.kind == HexTactica.AI.AIActionKind.Unload || act.kind == HexTactica.AI.AIActionKind.Load || riders.Contains(u) || u == apc)) why.Add(u.name.Replace("(Clone)", "") + " " + act.kind + " " + Pos(act.destination) + ": " + act.reason); };
+                if (bai != null) bai.onDecision += dec;
+                bool walkerBoarded = false;
+                try {
+                    for (int turn = 0; turn < 8 && !gc.gameOver; turn++) {
+                        bool blue = gc.activePlayer == a;
+                        if (blue) { aboardAtStart.Clear(); foreach (Unit u in riders) if (u.trasnporter != null) aboardAtStart.Add(u); attackedThisTurn.Clear(); }
+                        ScenarioFile.PlayTurn();
+                        if (!blue) continue;
+                        string line = "Blue turn: APC at " + Pos(apc.tile) + " carrying " + apc.transported.Count;
+                        foreach (Unit u in riders) {
+                            if (!aboardAtStart.Contains(u) || u.trasnporter != null || u.tile == null) continue;
+                            landed++;
+                            int nearest = int.MaxValue; foreach (Unit e in o.units) if (e != null && e.tile != null) nearest = Math.Min(nearest, u.tile.Distance(e.tile));
+                            bool struck = attackedThisTurn.Contains(u);
+                            if (struck) struckOnLanding++; else if (nearest > 1) earlyDrops++;
+                            line += "; " + u.name.Replace("(Clone)", "") + " put down at " + Pos(u.tile) + (struck ? ", attacked the same turn" : ", did not attack (" + nearest + " from the nearest enemy)");
+                        }
+                        if (walker.trasnporter == apc2) walkerBoarded = true;
+                        r.Add(line + "; walker " + (walker.trasnporter != null ? "aboard" : "at " + Pos(walker.tile)));
+                    }
+                } finally { Unit.Attacking -= att; if (bai != null) bai.onDecision -= dec; }
+                if (Environment.GetEnvironmentVariable("WHY") != null) foreach (string w in why) Console.WriteLine("    " + w);
+                int rodeUp = 0, assaultDrops = 0, otherDrops = 0;
+                foreach (string w in why) {
+                    if (w.Contains("assault ride: moves up")) rodeUp++;
+                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else if (!w.Contains("holds the line") && !w.Contains("at the front line") && !w.Contains("not its assault ride")) otherDrops++; }
+                }
+                detail = string.Join(" | ", r.ToArray()) + " || moved up with riders aboard " + rodeUp + " times; put down to strike " + assaultDrops + ", put down otherwise " + otherDrops + "; landed " + landed + " (attacked the turn they landed " + struckOnLanding + ": the rider's own call); walker boarded " + walkerBoarded;
+                return landed > 0 && assaultDrops >= 1 && otherDrops == 0;
+            }
+            case "armedTransport": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
+                Unit rc = Rig.At(-3, 0).occupier;
+                Unit g = rc.transported.Count > 0 ? rc.transported[0] : null;
+                g.active = true;
+                // The transport's own choice (no coordinated plan, which may also send the recon in and set its ride aside).
+                AIProfile ap0 = a.GetComponent<AIPlayer>().Profile; ap0.coordination = false; ap0.coordinationPasses = false;
+                List<string> events = new List<string>();
+                Action<Unit, Unit, bool> att = (x, d, sur) => { if (x.owner == a) events.Add(GameController.UnitName(x) + " fires" + (x == g ? (g.trasnporter == null ? " (off)" : " (aboard)") : "")); };
+                Unit.Attacking += att;
+                AIPlayer bai = a.GetComponent<AIPlayer>();
+                System.Action<Unit, HexTactica.AI.AIAction, bool> dec = (u, act, did) => { if (did && (u == rc || u == g)) events.Add(GameController.UnitName(u) + " " + act.kind + ": " + act.reason); };
+                if (bai != null) bai.onDecision += dec;
+                try { ScenarioFile.PlayTurn(); }
+                finally { Unit.Attacking -= att; if (bai != null) bai.onDecision -= dec; }
+                int reconFired = events.FindIndex(x => x == "Recon fires");
+                int gruntOff = events.FindIndex(x => x.StartsWith("Grunt") && !x.Contains("aboard") || x.StartsWith("Recon Unload"));
+                bool firstFire = reconFired >= 0 && (gruntOff < 0 || reconFired < gruntOff) && g.trasnporter == null;
+                // A fallback: the recon (having acted) with the grunt aboard again, its assault move set aside.
+                if (g.tile != null && rc.tile != null && g.trasnporter == null && Transporting.CanCarry(rc, g)) {
+                    HexTile beside = rc.tile.neighbors.Find(t => t != null && (t.occupier == null || t.occupier == g) && g.CanEnter(t));
+                    if (beside != null && g.tile.Distance(rc.tile) > 1) g.TeleportTo(beside, 0);
+                    Transporting.Load(rc, g);
+                }
+                rc.active = false; g.active = true;
+                HexTactica.AI.AIAssault.FellBack.Clear(); HexTactica.AI.AIAssault.FellBack.Add(rc);
+                AIAction? fb = null;
+                if (g.trasnporter == rc) fb = HexTactica.AI.AIAssault.RiderAction(g, true, new AIMap(a, bai.Profile), bai.Profile);
+                HexTactica.AI.AIAssault.FellBack.Clear();
+                bool fellBackOut = fb.HasValue && fb.Value.kind == HexTactica.AI.AIActionKind.Unload && fb.Value.reason.Contains("not its assault ride");
+                detail = string.Join(" / ", events.ToArray()) + " || the recon fired before its rider got off, the rider off by the end of the turn: " + firstFire
+                       + "; fallback: " + (fb.HasValue ? fb.Value.kind + " - " + fb.Value.reason : g.trasnporter == rc ? "nothing" : "(could not put the grunt back aboard)");
+                return firstFire && fellBackOut;
+            }
+            case "capturerLives": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AICampaign.Debug = Console.WriteLine; }
+                Unit hurt = Rig.At(3, 3).occupier; hurt.Strength = 2;
+                Building hq = GameController.HQOf(o);
+                AIPlayer bai = a.GetComponent<AIPlayer>();
+                AIMap m0 = new AIMap(a, bai.Profile);
+                int weak = HexTactica.AI.AIAssault.TurnsToTake(hurt, hq, m0);
+                List<string> r = new List<string> { "strength 2: turns to take the HQ " + weak };
+                bool stoodOnHq = false, mended = false;
+                for (int turn = 0; turn < 8 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    if (hurt.tile == hq.tile) stoodOnHq = true;
+                    if (hurt.tile != null && hurt.trasnporter == null && Building.ServicingUnder(hurt) != null) mended = true;
+                    r.Add("grunt " + (hurt.Strength <= 0 ? "dead" : hurt.trasnporter != null ? "aboard at " + Pos(hurt.tile) : "at " + Pos(hurt.tile)) + " strength " + hurt.Strength);
+                    if (mended) break;
+                }
+                // Full strength, same place: it can take it in time.
+                Unit fresh = Put("Grunt", a, 4, 1);
+                int strong = HexTactica.AI.AIAssault.TurnsToTake(fresh, hq, new AIMap(a, bai.Profile));
+                r.Add("a full-strength grunt at (4,1): turns to take the HQ " + strong);
+                detail = string.Join(" | ", r.ToArray());
+                return weak < 0 && !stoodOnHq && mended && hurt.Strength > 0 && strong >= 0;
+            }
+            case "gatherWithBody": {
+                AIPlayer bai = a.GetComponent<AIPlayer>();
+                List<string> lines = new List<string>();
+                Action<string> was = AIPlayer.Trace;
+                AIPlayer.Trace = x => { if (x.Contains(" front Front(") || x.Contains(" objective ") && x.Contains("gone in")) lines.Add(x.Trim()); if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) Console.WriteLine(x); };
+                try { ScenarioFile.PlayTurn(); } finally { AIPlayer.Trace = was; }
+                List<string> fronts = lines.FindAll(x => x.StartsWith("front Front("));
+                bool anyAggressiveNoStaging = fronts.Exists(x => x.Contains(" Aggressive ") && !x.Contains("staging at") && !x.Contains("ratio 99"));
+                bool gather = fronts.Exists(x => x.Contains("staging at"));
+                detail = string.Join(" / ", lines.ToArray());
+                return gather && !lines.Exists(x => x.Contains("gone in"));
+            }
+            case "medevac": {
+                // Blue: a grunt down to strength 2 at (0,-5), an empty APC at (-1,-4), Blue's city at (-6,4), out of the grunt's
+                // walk for three turns. Red: a grunt far off.
+                Unit hurt = Rig.At(0, -5).occupier; Building city = Rig.At(-6, 4).building;
+                hurt.Strength = 2;
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
+                List<string> r = new List<string>();
+                int reachedTurn = -1, blueTurns = 0; bool leftHurt = false;
+                for (int turn = 0; turn < 12 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    bool on = hurt.trasnporter == null && hurt.tile != null && Building.ServicingUnder(hurt) != null;
+                    if (on && reachedTurn < 0) reachedTurn = blueTurns;
+                    else if (reachedTurn > 0 && hurt.trasnporter != null && hurt.Strength <= 3 && Building.ServicingUnder(hurt.trasnporter) == null) leftHurt = true;
+                    r.Add("grunt " + (hurt.trasnporter != null ? "aboard" : "at " + Pos(hurt.tile)) + " strength " + hurt.Strength);
+                }
+                detail = string.Join(" | ", r.ToArray()) + "; on a building that mends it from Blue turn " + reachedTurn + (leftHurt ? ", but RODE OFF while still wounded" : ", and did not ride off while wounded (whether it stays on the building is its own call)");
+                return reachedTurn > 0 && reachedTurn <= 3 && !leftHurt;
+            }
+            case "buyTransports": {
+                Building bas = Rig.At(-11, 0).building;
+                List<string> r = new List<string>();
+                bool boughtTransport = false;
+                Func<int, string> buy = money => {
+                    l.ai.money = money;
+                    AIPlayer ap = l.ai.GetComponent<AIPlayer>();
+                    List<string> said = new List<string>();
+                    if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIProduction.DebugValues = Console.WriteLine;
+                    List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, ap.Profile), ap.Profile, x => said.Add(x.Trim()));
+                    foreach (Unit u in got) if (Transporting.IsTransport(u) && u.Firepower <= 1) boughtTransport = true;   // by what it does, not its name
+                    string res = string.Join(", ", got.ConvertAll(u => GameController.UnitName(u) + " at " + Pos(u.tile)).ToArray());
+                    return res + " [" + string.Join(" / ", said.FindAll(x => x.Contains(" buys ") || x.Contains("riders waiting")).ToArray()) + "]";
+                };
+                string first = buy(20000);
+                bool apc = boughtTransport;
+                r.Add("four grunts far from the fight, 20000 gold: " + first);
+                // An empty APC beside the base, and no riders waiting beyond its room: what is bought there fills it.
+                foreach (Unit u in new List<Unit>(l.ai.units)) if (u != null && u.tile != null && (u.tile.building != null || (GameController.UnitName(u) == "Grunt" && u.tile.Distance(bas.tile) > 1))) u.Perish();
+                string second = buy(5000);
+                bool fill = second.Contains("fills the transport");
+                r.Add("then, an APC empty beside the base, 5000 gold: " + second);
+                detail = string.Join(" | ", r.ToArray());
+                return apc && fill;
+            }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
                 Func<bool, Unit, int> cover = (on, x) => {
@@ -1394,6 +1987,9 @@ public static class Scenarios {
                 Func<bool, string> buy = on => {
                     AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
                     prof.productionTimeToFront = on;
+                    // (Valued by one exchange, as this was written for: under productionLifetime the Grunt is worth more
+                    // over its life than the Conscript wherever it is built, so the contrast would not show.)
+                    prof.productionLifetime = false; prof.productionOverkill = false; prof.productionShieldCut = 0f; prof.productionDefenceFade = 0f;
                     l.ai.money = grunt.cost;
                     List<string> said = new List<string>();
                     List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, prof), prof, x => said.Add(x.Trim()));
@@ -2004,7 +2600,7 @@ public static class Scenarios {
                     if (!inList) continue;
                     System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(line, "^  - .*guid: ([0-9a-f]+)");
                     if (!g.Success) break;
-                    foreach (string meta in Directory.GetFiles(Path.Combine(root, "Tiles"), "*.asset.meta", SearchOption.AllDirectories))
+                    foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Tiles")), "*.asset.meta", SearchOption.AllDirectories))
                         if (File.ReadAllText(meta).Contains("guid: " + g.Groups[1].Value)) sceneTerrain.Add(Path.GetFileName(meta).Replace(".asset.meta", ""));
                 }
                 LevelEditor was = LevelEditor.singleton;
@@ -2012,7 +2608,7 @@ public static class Scenarios {
                 ed.allTerrain = new List<TerrainData>();
                 foreach (string t in sceneTerrain) ed.allTerrain.Add(ScenarioFile.Terrain(t));
                 ed.allBuilding = new List<Building>();
-                foreach (string f in Directory.GetFiles(Path.Combine(root, "Buildings", "Prefabs"), "*.prefab"))
+                foreach (string f in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Buildings"), "Prefabs"), "*.prefab"))
                     try { ed.allBuilding.Add(PrefabLoader.LoadBuilding(Path.GetFileNameWithoutExtension(f))); } catch (Exception) { }
                 ed.allUnit = new List<Unit>();
                 LevelEditor.singleton = ed;
@@ -2386,6 +2982,7 @@ public static class Scenarios {
                 System.Action<Unit, Unit, HexTile> ran = (mover, hid, at) => bumps++;
                 System.Action<Unit, Unit, bool> shot = (att, def, surprise) => { shots++; if (!surprise && !FogOfWar.Sees(att.owner, def)) blindShots++; };
                 System.Action<Unit, HexTactica.AI.AIAction, bool> check = (u, act, did) => {
+                    if (!did) return;   // a decision set aside within the thought (a rider staying aboard), not an action on the board
                     actions++;
                     string why = null;
                     if (FogOfWar.current != null) why = "left concealed";
@@ -2395,7 +2992,7 @@ public static class Scenarios {
                         if (x.trasnporter == null && x.tile.occupier != x) { why = x.name + " not on its tile"; break; }
                     }
                     foreach (HexTile t in Rig.hg.tiles) if (t.occupier != null && t.occupier.tile != t) { why = "tile holds a unit that is elsewhere"; break; }
-                    if (why != null) { broken++; if (firstBroken == null) firstBroken = why; }
+                    if (why != null) { broken++; if (firstBroken == null) firstBroken = why + " after " + u.name.Replace("(Clone)", "") + " " + act.kind + " (" + act.reason + ")" + (u.trasnporter != null ? " aboard" : ""); }
                 };
                 Unit.Attacking += shot; Unit.RanInto += ran;
                 foreach (Player p in new[] { a, o }) { AIPlayer x = p.GetComponent<AIPlayer>(); if (x != null) x.onDecision += check; }
@@ -3154,6 +3751,9 @@ public static class Scenarios {
                 return order.Count >= 2 && order[0].StartsWith("Artillery");
             }
             case "dropAndAdvance": {
+                // (The hop to supplied ground of combatRides, which this documents: under assaultRides a rider stays aboard
+                // until it can strike — ai-assault-ride.)
+                l.ai.GetComponent<AIPlayer>().Profile.assaultRides = false;
                 Unit apc = First(l.ai, "APC");
                 Unit g = Put("Grunt", l.ai, apc.tile.neighbors.Find(t => t != null && t.occupier == null && t.terrain.elevation >= 0).x, apc.tile.neighbors.Find(t => t != null && t.occupier == null && t.terrain.elevation >= 0).y);
                 Transporting.Load(apc, g); g.FinishBoarding();
@@ -3162,6 +3762,7 @@ public static class Scenarios {
                 Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
                 Func<HexTile, int> hs = t => { int v; return t != null && fromHome.TryGetValue(t, out v) ? v : -1; };
                 string apcFrom = Pos(apc.tile);
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
                 ScenarioFile.PlayTurn();
                 bool off = g.trasnporter == null && g.tile != null;
                 int apart = off && apc.tile != null ? g.tile.Distance(apc.tile) : 0;
@@ -3169,6 +3770,8 @@ public static class Scenarios {
                 return off && apart >= 2;
             }
             case "combatRide": {
+                // (combatRides, which this documents: under assaultRides grunts take a free transport and ride it to the assault.)
+                l.ai.GetComponent<AIPlayer>().Profile.assaultRides = false;
                 if (Environment.GetEnvironmentVariable("SET") == null) l.ai.GetComponent<AIPlayer>().Profile.combatRides = true;
                 HexTile home = GameController.HQOf(l.ai).tile;
                 Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
@@ -3355,7 +3958,9 @@ public static class Scenarios {
         int failed = 0, passed = 0;
         string only = Environment.GetEnvironmentVariable("ONLY");
         Console.WriteLine("== Behaviour scenarios ==");
+        string onlyBehaviour = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "behaviour" ? "behaviour" : "-")) {
+            if (onlyBehaviour != null && !Path.GetFileName(f).Contains(onlyBehaviour)) continue;
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             bool ok = Judge(l, out detail);
@@ -3364,7 +3969,10 @@ public static class Scenarios {
         }
         Console.WriteLine();
         Console.WriteLine("== Building rules ==");
+        // NAME=<part of a file name>: only the rule checks whose file name contains it.
+        string onlyName = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "rules" ? "rules" : "-")) {
+            if (onlyName != null && !Path.GetFileName(f).Contains(onlyName)) continue;
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             bool ok = RuleCheck(l, out detail);
@@ -3608,6 +4216,7 @@ public static class Scenarios {
     /// </summary>
     public static void Duel(string name, int rounds, Action<AIProfile> blue, Action<AIProfile> red, string root) {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
+        UseOldAI(l);
         if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
         GameController gc = Rig.gc;
         Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
@@ -3621,8 +4230,27 @@ public static class Scenarios {
         // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
         Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
         Unit.RanInto += rh; Unit.Attacking += sh;
+        if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.OldAI.OldAIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; HexTactica.AI.AICampaign.Debug = x => { if (x.StartsWith("not taken on") || x.StartsWith("given up")) Console.WriteLine("   campaign: " + x); }; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
+        double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
+        // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.
+        int[] supplyDrops = new int[2], boards = new int[2], drops = new int[2], aboardTurns = new int[2], transportsBought = new int[2];
+        foreach (Player pl in new[] { l.ai, l.other }) {
+            AIPlayer ap = pl.GetComponent<AIPlayer>(); if (ap == null) continue;
+            int side = pl == l.ai ? 0 : 1;
+            ap.onDecision += (u, act, did) => {
+                if (!did) return;
+                if (act.kind == HexTactica.AI.AIActionKind.Unload && act.target != null) { if (act.target.Hub != null) supplyDrops[side]++; else drops[side]++; }
+                if (act.kind == HexTactica.AI.AIActionKind.Load && act.unit != null && act.unit.Hub == null) boards[side]++;
+            };
+        }
         for (int turn = 0; turn < rounds * 2 && !gc.gameOver; turn++) {
+            bool blueMoves = gc.activePlayer == l.ai;
+            if (Environment.GetEnvironmentVariable("DUELTRACE") != null) Console.WriteLine("== turn " + turn + " " + (blueMoves ? "Blue" : "Red"));
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             ScenarioFile.PlayTurn();
+            double secs = sw.Elapsed.TotalSeconds;
+            if (blueMoves) { thinkBlue += secs; worstBlue = Math.Max(worstBlue, secs); } else { thinkRed += secs; worstRed = Math.Max(worstRed, secs); }
+            foreach (Player pl in new[] { l.ai, l.other }) foreach (Unit u in pl.units) if (u != null && u.tile != null && u.trasnporter != null && u.Hub == null) aboardTurns[pl == l.ai ? 0 : 1]++;
             if (Environment.GetEnvironmentVariable("BOARD") != null) {
                 List<string> b = new List<string>();
                 foreach (Player p in new[] { l.ai, l.other }) foreach (Unit u in p.units) if (u != null && u.tile != null)
@@ -3631,8 +4259,9 @@ public static class Scenarios {
                 Console.WriteLine("  board after turn " + turn + ": " + string.Join(" | ", b.ToArray()));
             }
             if (gc.activePlayer == l.ai || gc.gameOver)
-                Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6}",
-                    gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other)));
+                Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6} | out of supply (unit-turns so far) Blue {5} Red {6}, lost to attrition Blue {7} Red {8}",
+                    gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other),
+                    l.ai.unitTurnsOutOfSupply, l.other.unitTurnsOutOfSupply, l.ai.unitsLostToAttrition, l.other.unitsLostToAttrition));
         }
         Unit.Ditched -= dh; Unit.RanInto -= rh; Unit.Attacking -= sh;
         if (gc.fogOfWar) Console.WriteLine("fog of war: ran into unseen units Blue " + ranBlue + " Red " + ranRed + "; shots fired unseen Blue " + hiddenShotsBlue + " Red " + hiddenShotsRed);
@@ -3640,6 +4269,19 @@ public static class Scenarios {
         foreach (Unit u in l.ai.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airBlue++;
         foreach (Unit u in l.other.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airRed++;
         Console.WriteLine("aircraft: ditched Blue " + ditchBlue + " Red " + ditchRed + "; still flying Blue " + airBlue + " Red " + airRed);
+        Console.WriteLine(string.Format("think time: Blue {0:0.0} s (worst turn {1:0.0} s), Red {2:0.0} s (worst turn {3:0.0} s)", thinkBlue, worstBlue, thinkRed, worstRed));
+        {
+            int bB = 0, bR = 0, iB = 0, iR = 0;
+            foreach (Building b in Building.all) {
+                if (b == null) continue;
+                if (b.owner == l.ai) { bB++; iB += b.income; } else if (b.owner == l.other) { bR++; iR += b.income; }
+            }
+            Console.WriteLine(string.Format("end: Blue {0} units, material {1}, {2} buildings (income {3}), gold {4} | Red {5} units, material {6}, {7} buildings (income {8}), gold {9}",
+                l.ai.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.ai), bB, iB, l.ai.money,
+                l.other.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.other), bR, iR, l.other.money));
+        }
+        Console.WriteLine(string.Format("transports: supply put down Blue {0} Red {1}; fighting units boarded Blue {2} Red {3}, put down Blue {4} Red {5}; unit-turns aboard Blue {6} Red {7}",
+            supplyDrops[0], supplyDrops[1], boards[0], boards[1], drops[0], drops[1], aboardTurns[0], aboardTurns[1]));
         string folder = HexTactica.Harness.GameLog.Folder;
         if (root != null) HexTactica.Harness.GameLog.Stop();
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")
@@ -3756,6 +4398,19 @@ public static class Scenarios {
             }
         }
         Console.WriteLine(string.Format("  A: {0}W {1}L {2}D", w, lo, d));
+    }
+
+    /// <summary>OLD=Blue or OLD=Red: that side is played by the old AI (HexTactica.OldAI, claude/campaign-2) with its own defaults.</summary>
+    static void UseOldAI(ScenarioFile.Loaded l) {
+        string oldSide = Environment.GetEnvironmentVariable("OLD");
+        if (string.IsNullOrEmpty(oldSide)) return;
+        Player op = oldSide == "Blue" ? l.ai : l.other;
+        AIPlayer cur = op.GetComponent<AIPlayer>();
+        if (cur != null) cur.enabled = false;
+        HexTactica.OldAI.OldAIPlayer o = op.gameObject.AddComponent<HexTactica.OldAI.OldAIPlayer>();
+        o.player = op;
+        o.profile = ScriptableObject.CreateInstance<HexTactica.OldAI.AIProfile>();
+        Console.WriteLine("old AI (claude/campaign-2) plays " + oldSide);
     }
 
     /// <summary>
@@ -4050,7 +4705,7 @@ public static class Scenarios {
         string[] maps = list("MAPS", "ChanceMeeting,BushWar,MountainPass,RiverCrossing,LogisticsZigzag,campaign-rough-legacy-ai-left,campaign-std-legacy-ai-left");
         // A scenario's name is looked for in Assets/Scenarios, then as the harness's own.
         for (int i = 0; i < maps.Length; i++) {
-            string game = Path.Combine(PrefabLoader.AssetsRoot, "Scenarios", maps[i] + ".dat");
+            string game = Path.Combine(PrefabLoader.Root("Scenarios"), maps[i] + ".dat");
             if (!File.Exists(maps[i]) && File.Exists(game)) maps[i] = game;
         }
         string fogSet = Environment.GetEnvironmentVariable("FOGS") ?? "alt";

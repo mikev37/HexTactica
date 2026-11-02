@@ -44,6 +44,20 @@ public class GameController : MonoBehaviour
         return u == null ? "" : u.name.Replace("(Clone)", "").Trim();
     }
 
+    /// <summary>
+    /// The name a player sees: a faction's version of a unit goes by the unit it stands in for ("Grunt Federation
+    /// Variant" → "Grunt"; Faction.BaseOf, <paramref name="owner"/>'s faction, else any faction that lists it); a unit
+    /// no faction lists by its own name, less a trailing " Variant".
+    /// </summary>
+    public static string DisplayName(Unit u, Player owner) {
+        if (u == null) return "";
+        Faction f = owner != null ? owner.faction : null;
+        Unit b = f != null ? f.BaseOf(u) : u;
+        if (b == u) foreach (Faction any in GameAssets.AllFactions) { Unit x = any.BaseOf(u); if (x != u) { b = x; break; } }
+        string n = UnitName(b);
+        return n.EndsWith(" Variant") ? n.Substring(0, n.Length - " Variant".Length).Trim() : n;
+    }
+
     /// <summary>May this unit be bought under the current rules and scenario?</summary>
     public static bool MayPurchase(Unit prefab) {
         if (prefab == null) return false;

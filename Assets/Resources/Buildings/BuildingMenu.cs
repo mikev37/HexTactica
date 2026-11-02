@@ -24,8 +24,7 @@ public class BuildingMenu : MonoBehaviour {
     /// <summary>The player whose turn it is plays by hand (no AI playing it).</summary>
     public static bool IsHumanTurn() {
         if (GameController.gc == null || GameController.gc.activePlayer == null) return false;
-        AIPlayer ai = GameController.gc.activePlayer.GetComponent<AIPlayer>();
-        return ai == null || !ai.enabled;
+        return AIControl.Of(GameController.gc.activePlayer) == null;
     }
 
     void OnGUI() {
@@ -40,7 +39,7 @@ public class BuildingMenu : MonoBehaviour {
         float y = box.y + 30f;
         foreach (Unit u in list) {
             if (u == null) continue;
-            string label = u.name.Replace("(Clone)", "") + "   " + u.cost;
+            string label = GameController.DisplayName(u, b.owner) + "   " + u.cost;
             GUI.enabled = b.owner.money >= u.cost;
             if (GUI.Button(new Rect(box.x + 10f, y, w - 20f, row - 4f), label)) {
                 if (BuildingController.bc != null && BuildingController.bc.Produce(b, u) != null) open = null;

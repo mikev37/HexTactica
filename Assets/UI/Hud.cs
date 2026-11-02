@@ -49,6 +49,8 @@ public class Hud : MonoBehaviour {
     [HideInInspector] public HudRow elevation;
     [Tooltip("A building's capture progress, shown only while there is some: a neutral building being taken (\"Capturing\": who, and their points of the threshold), or an owned one brought down (\"Held\": the points it has left). Left unset in an older prefab, it is made as a copy of the Owner row.")]
     public HudRow capture;
+    [Tooltip("A supply building's store (a forward base): the turns of supply it can give while cut off from the HQ, of the most it holds. Shown only for such a building, and under fog only while it is in sight. Left unset in an older prefab, it is made below the Owner row.")]
+    public HudRow store;
 
     [Header("Look")]
     [Tooltip("Values whose cap is below this are drawn as bullets; the rest as numbers.")]
@@ -104,7 +106,7 @@ public class Hud : MonoBehaviour {
             SpritePortrait.Compose(u.transform, unitPortrait.rectTransform, r => SpritePortrait.UnitPart(u, r));
         }
         if (unitBadge != null) unitBadge.color = u.owner != null ? u.owner.displayColor : empty;
-        if (unitName != null) unitName.text = u.name.Replace("(Clone)", "").Trim();
+        if (unitName != null) unitName.text = GameController.DisplayName(u, u.owner);   // a faction's version by the unit it stands in for ("Grunt")
         if (strength != null) strength.Set(u.Strength, 6, false, this);
         if (fuel != null) { if (u.fuelMax > 0) fuel.Set(u.fuel, u.fuelMax, false, this); else fuel.Show(false); }
         if (ammo != null) { if (u.ammoMax > 0) ammo.Set(u.ammo, u.ammoMax, false, this); else ammo.Show(false); }
@@ -156,6 +158,31 @@ public class Hud : MonoBehaviour {
             else owner.Show(false);
         }
         ShowCapture(b);
+        ShowStore(b);
+        // An older prefab's owner row was labelled "Building".
+        if (owner != null && owner.label != null && owner.label.text == "Building") owner.label.text = "Owner";
+    }
+
+    bool storeMade;
+
+    /// <summary>A forward base's store: its turns of supply left of the most it holds (its SupplyDot pips show the same above it).</summary>
+    void ShowStore(Building b) {
+        if (store == null && !storeMade) { storeMade = true; store = RowBelow(capture != null ? capture : owner, "Store"); }
+        if (store == null) return;
+        if (b == null || !SupplyDot.ShownTo(b)) { store.Show(false); return; }
+        store.Set(SupplyDot.Filled(b), b.suppliesMax, false, this);
+    }
+
+    /// <summary>A new row just below <paramref name="above"/>, styled like it (for rows an older prefab does not have).</summary>
+    HudRow RowBelow(HudRow above, string label) {
+        if (above == null || above.transform.parent == null) return null;
+        HudRow r = Row(above.transform.parent, label, above.icon != null ? above.icon.sprite : null, label, this);
+        r.transform.SetSiblingIndex(above.transform.GetSiblingIndex() + 1);
+        if (above.icon != null && r.icon != null) r.icon.color = above.icon.color;
+        Restyle(r.label, above.label);
+        Restyle(r.value, above.value);
+        r.gameObject.SetActive(false);
+        return r;
     }
 
     bool captureMade;
@@ -286,6 +313,7 @@ public class Hud : MonoBehaviour {
         h.moveCost = Row(tp, "MoveCost", A("icon_move"), "Move cost", h);
         h.owner = Row(tp, "Owner", A("icon_building"), "Owner", h);
         h.capture = Row(tp, "Capture", A("icon_building"), "Capture", h);
+        h.store = Row(tp, "Store", A("icon_supplies"), "Store", h);
         h.capture.gameObject.SetActive(false);
         return h;
     }

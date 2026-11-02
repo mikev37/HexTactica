@@ -217,7 +217,7 @@ public class Unit : MonoBehaviour
     public List<Transform> cargoSlots = new List<Transform>();
     [Tooltip("Scale of a carried unit's sprites while aboard")]
     public float cargoScale = 0.45f;
-    [Tooltip("Aircraft transport (a plane, not a helicopter): what a unit it puts down wears on the way down — attached to the unit when it is dropped, removed when it lands. Optional.")]
+    [Tooltip("Aircraft transport (a plane, not a helicopter): what a unit it puts down wears on the way down — attached when it is dropped, removed when it lands. Optional: empty uses the shared one, Resources/Units/Prefabs/Parachute (GameAssets.Parachute).")]
     public GameObject parachutePrefab;
     [Tooltip("Aircraft transport: how far above its tile a unit it puts down appears, before settling onto it (world units).")]
     public float dropHeight = 0.6f;
@@ -597,7 +597,9 @@ public class Unit : MonoBehaviour
             transform.position = tile.unitPlacement.position + Vector3.up * transport.dropHeight;
             if (scaleKnown) transform.localScale = homeScale;
             if (path != null) path.Clear();
-            if (transport.parachutePrefab != null) chute = GameObject.Instantiate(transport.parachutePrefab, transform.position, Quaternion.identity, transform);
+            // One parachute for every plane (GameAssets.Parachute: Resources/Units/Prefabs/Parachute); a transport's own overrides it.
+            GameObject chutePrefab = transport.parachutePrefab != null ? transport.parachutePrefab : GameAssets.Parachute;
+            if (chutePrefab != null) chute = GameObject.Instantiate(chutePrefab, transform.position, Quaternion.identity, transform);
         }
         if (Hub != null && transport != null) {
             bool still = false;
@@ -882,12 +884,25 @@ public class Unit : MonoBehaviour
         threatValue = valueGain;
     }
 
+    /// <summary>A transport carrying supply units re-solves its side's supply when it finishes acting (its cargo's supply moved with it).</summary>
+    public static bool ResupplyWithCargo = true;
+    /// <summary>Any unit's death re-solves every side's supply (it may have been blocking a corridor), not only a supply unit's its own.</summary>
+    public static bool ResupplyOnAnyDeath = true;
+
+    /// <summary>Does <paramref name="u"/> carry a supply unit (aboard it, or aboard what it carries)?</summary>
+    static bool CarriesSupply(Unit u) {
+        if (u == null || u.transported == null) return false;
+        foreach (Unit c in u.transported) if (c != null && (c.Hub != null || CarriesSupply(c))) return true;
+        return false;
+    }
+
     internal void FinishActive() {
         GameController.gc.activeUnit = null;
         active = false;
         FogOfWar.Refresh();
         GameController.RecalculateThreat();
-        if (Hub) {
+        // Its supply moved with it: a supply unit, or a transport carrying one (its cargo rode along).
+        if (Hub || (ResupplyWithCargo && CarriesSupply(this))) {
             owner.Resupply();
         }
         if (Finished != null) Finished(this);
@@ -1116,8 +1131,15 @@ public class Unit : MonoBehaviour
         FogOfWar.Changed();
         // Losing an HQ unit ends the game for its owner immediately, not at end of turn.
         if (GameController.gc != null) GameController.gc.CheckVictory();
-        if (Hub) {
-            owner.Resupply();
+        // Every side's supply: a supply unit lost shrinks its own; any unit lost may open a corridor it was
+        // blocking for the other side (an enemy standing in it severs it). Cargo goes down with it first, then this.
+        // (Not in the middle of a side's turn-start upkeep: that feeds every unit from the field solved when it began —
+        // a forward base spending its last point of store still feeds that turn — and re-solves when it is done.)
+        if (ResupplyOnAnyDeath && BoardView.current == null && GameController.gc != null && GameController.gc.players != null && (trasnporter == null || Hub != null) && !Player.InUpkeep) {
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        } else {
+            if (ResupplyOnAnyDeath && Player.InUpkeep) Player.ResupplyAfterUpkeep = true;
+            if (Hub) owner.Resupply();
         }
     }
 
@@ -1313,7 +1335,38 @@ public struct UnitData {
         }
     }
 
-    public Unit load() {
+    /// <summary>
+    /// Every unit of a save or scenario, by its place in the file (null: none made — an HQ that became a building, or a
+    /// unit the game cannot find). Units on the board first, then cargo straight into its transport (a file may list
+    /// cargo before its transport, on the same tile: placed first, it would take the transport's tile), cargo of cargo
+    /// after that. Cargo whose transport is missing goes on its tile, if free.
+    /// </summary>
+    public static List<Unit> LoadAll(List<UnitData> all) {
+        Unit[] made = new Unit[all.Count];
+        bool[] done = new bool[all.Count];
+        for (int i = 0; i < all.Count; i++)
+            if (all[i].transporterIndexPlusOne <= 0) { made[i] = all[i].load(); done[i] = true; }
+        for (bool progress = true; progress; ) {
+            progress = false;
+            for (int i = 0; i < all.Count; i++) {
+                if (done[i]) continue;
+                int t = all[i].transporterIndexPlusOne - 1;
+                bool bad = t < 0 || t >= all.Count || t == i;
+                if (!bad && !done[t]) continue;   // its transport is cargo itself, not yet made
+                Unit transport = bad ? null : made[t];
+                if (transport == null) Debug.LogError("Scenario unit '" + all[i].gameobject_name + "' was aboard unit " + t + ", which was not made: put on its tile instead");
+                made[i] = all[i].load(transport);
+                done[i] = true; progress = true;
+            }
+        }
+        for (int i = 0; i < all.Count; i++) if (!done[i]) { Debug.LogError("Scenario unit '" + all[i].gameobject_name + "' is aboard a loop of transports: put on its tile"); made[i] = all[i].load(); }
+        return new List<Unit>(made);
+    }
+
+    public Unit load() { return load(null); }
+
+    /// <summary>This unit, on its tile — or aboard <paramref name="transport"/> when given.</summary>
+    public Unit load(Unit transport) {
         Player player = null;
         UnitData that = this;
         GameController.gc.players.ForEach(pl => { if (pl.id == that.owner_id) player = pl; });
@@ -1324,7 +1377,14 @@ public struct UnitData {
             if (hq != null && BuildingController.bc != null && tile != null && tile.building == null) BuildingController.bc.Place(player, hq, tile);
             return null;
         }
-        Unit ut = LevelEditor.PlaceNewUnit(player, gameobject_name,tile);
+        // A unit the game cannot find, or whose tile is taken, is left out (said so) — not the rest of the board with it.
+        Unit prefab = LevelEditor.UnitFor(player, gameobject_name);
+        if (prefab == null || (transport == null && tile == null)) {
+            Debug.LogError("Scenario unit '" + gameobject_name + "' at " + x + "," + y + "," + z + (prefab == null ? ": no unit prefab of that name in Resources/Units or the LevelEditor's lists" : ": no such tile") + " — left out");
+            return null;
+        }
+        Unit ut = transport != null ? UnitController.uc.CreateAboard(player, prefab, transport) : UnitController.uc.CreateUnit(player, prefab, tile);
+        if (ut == null) { Debug.LogError("Scenario unit '" + gameobject_name + "' at " + x + "," + y + "," + z + ": its tile is taken by " + (tile.occupier != null ? tile.occupier.name : "?") + " — left out"); return null; }
         ut.Strength = Strength;
         ut.Veterancy = Veterancy;
         ut.personal_name = personalName;

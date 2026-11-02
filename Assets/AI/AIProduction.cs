@@ -16,6 +16,9 @@ namespace HexTactica.AI {
     /// </summary>
     public static class AIProduction {
 
+        /// <summary>Harness tracing of candidate values.</summary>
+        public static System.Action<string> DebugValues;
+
         public static List<Unit> Buy(Player p, AIMap map, AIProfile profile, System.Action<string> trace) { return Buy(p, map, profile, trace, null); }
 
         /// <summary>
@@ -86,6 +89,13 @@ namespace HexTactica.AI {
             if (p == null || map == null || BuildingController.bc == null) return bought;
             allFoes = Foes(p, map, profile);
             defenceWeightNow = profile.productionDefenceWeight;
+            overkillNow = profile.productionOverkill;
+            lifetimeNow = profile.productionLifetime; lifeMaxNow = Mathf.Max(1f, profile.productionLifeMax); lifeRefNow = profile.productionLifeRef; reachRefNow = profile.productionReachRef;
+            shieldCutNow = Mathf.Clamp01(profile.productionShieldCut); shieldRatioNow = Mathf.Max(0.1f, profile.productionShieldRatio); tierCostsNow = profile.productionTierCosts;
+            tierCount = new int[3];
+            int fightingNow = 0;
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1)) { tierCount[Tier(u)]++; fightingNow++; }
+            if (profile.productionDefenceFade > 0f && !profile.productionLifetime) defenceWeightNow = profile.productionDefenceWeight / (1f + fightingNow / profile.productionDefenceFade);
             presenceNow = Mathf.Max(0f, profile.productionPresence); floorNow = Mathf.Max(0f, profile.productionFloor);
             planned = new List<KeyValuePair<Unit, HexTile>>();
             scarce = Scarcity(allFoes, map, profile);
@@ -125,6 +135,37 @@ namespace HexTactica.AI {
                         if (near != null) nearest[kind][task] = near;
                     }
             int freeTrucks = logistics != null ? logistics.freeTrucks : 0;
+            // Riders waiting (assaultRides): our fighting units far from the fight, on foot, less the room in empty troop
+            // transports we have (not those held for supply, AIAssault.SupplyTransports). A transport bought takes its room off.
+            List<Unit> waitingRiders = new List<Unit>();
+            int troopRoom = 0;
+            HashSet<Unit> forSupply = profile.assaultRides ? AIAssault.SupplyTransports(map.player, map, null) : new HashSet<Unit>();
+            if (profile.assaultRides && profile.assaultTransportWeight > 0f) {
+                foreach (Unit u in map.ownUnits) {
+                    if (u == null || u.tile == null) continue;
+                    if (Transporting.IsTransport(u) && u.Firepower <= 1) {
+                        if (!forSupply.Contains(u)) troopRoom += Transporting.FreeWeight(u);
+                        continue;
+                    }
+                    if (u.trasnporter == null && u.Hub == null && u.Firepower > 0 && u.locomotion == Locomotion.Boots && map.TurnsToContact(u) > profile.assaultBoardTurns) waitingRiders.Add(u);
+                }
+            }
+            if (trace != null && profile.assaultRides) trace("   riders waiting for a transport: " + waitingRiders.Count + ", room in empty troop transports " + troopRoom);
+            int troopPlanned = 0;
+            // Room in empty troop transports beside each base (assaultFillBonus), and infantry planned there this turn.
+            Dictionary<Building, int> roomAt = new Dictionary<Building, int>(), fillPlanned = new Dictionary<Building, int>();
+            if (profile.assaultRides && profile.assaultFillBonus > 0f)
+                foreach (Building b in sites) {
+                    int room = 0;
+                    foreach (Unit u in map.ownUnits) {
+                        if (u == null || u.tile == null || !Transporting.IsTransport(u) || u.Firepower > 1 || u.transported.Count > 0 || forSupply.Contains(u)) continue;
+                        bool beside = false; foreach (HexTile f in b.Footprint) if (f.Distance(u.tile) <= 1) beside = true;
+                        if (beside) room += Mathf.Max(1, u.transportSlots);
+                    }
+                    if (room > 0) roomAt[b] = room;
+                }
+            float riderWorth = 0f; foreach (Unit u in waitingRiders) riderWorth += AIScore.Worth(u);
+            if (waitingRiders.Count > 0) riderWorth /= waitingRiders.Count;
 
             // The slots: every free tile of every building that can build.
             List<Slot> slots = new List<Slot>();
@@ -167,6 +208,36 @@ namespace HexTactica.AI {
             // What a unit would add in this slot, given what is planned so far.
             System.Func<Unit, Slot, KeyValuePair<float, string>> worth = (t, sl) => {
                 int kindOf = Kind(t);
+                // A troop transport (assaultRides): what it adds to the riders waiting for room (the nearest of them, as many as
+                // it carries) — each one's value, times the turns sooner it reaches the fight riding (fetched from where it
+                // stands) than walking, over the turns its value is measured on (productionLifeRef), at most all of it.
+                if (waitingRiders.Count > 0 && t.cost > 0 && t.CanEnter(sl.tile) && Transporting.IsTransport(t) && t.Firepower <= 1 && fight.Count > 0) {
+                    int short_ = waitingRiders.Count - troopRoom - troopPlanned;
+                    if (short_ > 0) {
+                        List<Unit> near = new List<Unit>(waitingRiders);
+                        near.Sort((x, y) => sl.tile.Distance(x.tile).CompareTo(sl.tile.Distance(y.tile)));
+                        int carried = Mathf.Min(Mathf.Max(1, t.transportSlots), short_);
+                        float tv = 0f; int counted = 0;
+                        for (int i = 0; i < near.Count && counted < carried; i++) {
+                            Unit rider = near[i];
+                            int walk = int.MaxValue, ride = int.MaxValue;
+                            foreach (HexTile x in fight) { walk = Mathf.Min(walk, map.Travel(rider, rider.tile, x)); ride = Mathf.Min(ride, map.Travel(t, rider.tile, x)); }
+                            int fetch = map.Travel(t, sl.tile, rider.tile);
+                            // (A transport not yet bought has no owner: whether it carries its kind.)
+                            if (!Transporting.CarriesKind(t, rider) || walk >= int.MaxValue / 2 || ride >= int.MaxValue / 2 || fetch >= int.MaxValue / 2) continue;
+                            float walkTurns = walk / (float)Mathf.Max(1, rider.moveRange);
+                            float rideTurns = 1f + (fetch + ride) / (float)Mathf.Max(1, t.moveRange);   // built this turn, out next
+                            // Each turn sooner at the fight is a turn of what it does there (its value is over productionLifeRef turns).
+                            float gain = Mathf.Clamp01((walkTurns - rideTurns) / Mathf.Max(1f, profile.productionLifeRef));
+                            if (gain <= 0f) continue;
+                            tv += Value(rider, rider.tile, map) * gain;
+                            counted++;
+                        }
+                        tv *= profile.assaultTransportWeight;
+                        if (DebugValues != null) DebugValues(GameController.UnitName(t) + " at " + sl.tile.x + "," + sl.tile.y + " for riders: " + tv.ToString("0") + " (" + counted + " riders)");
+                        if (tv > 0f) return new KeyValuePair<float, string>(tv, "riders: " + short_ + " far from the fight without room");
+                    }
+                }
                 if (kindOf < 0 || t.cost <= 0 || !t.CanEnter(sl.tile)) return new KeyValuePair<float, string>(-1f, null);
                 string name = GameController.UnitName(t);
                 int n, m; have.TryGetValue(name, out n); picked.TryGetValue(name, out m);
@@ -174,6 +245,11 @@ namespace HexTactica.AI {
                 float v = 0f; string tag = null;
                 if (kindOf == 0) {
                     v = Value(t, sl.tile, map) * mix;
+                    // Beside an empty troop transport (or one bought here this turn): it fills it.
+                    if (profile.assaultRides && profile.assaultFillBonus > 0f && t.locomotion == Locomotion.Boots) {
+                        int room, filled; roomAt.TryGetValue(sl.b, out room); fillPlanned.TryGetValue(sl.b, out filled);
+                        if (room > filled) { v *= 1f + profile.assaultFillBonus; tag = "fills the transport beside it"; }
+                    }
                     foreach (KeyValuePair<AILogistics.Task, Building> kv in nearest[0]) {
                         if (kv.Value != sl.b) continue;
                         AILogistics.Task f = kv.Key;
@@ -213,10 +289,13 @@ namespace HexTactica.AI {
             System.Action<Unit, int> count = (t, d) => {
                 string name = GameController.UnitName(t); int c; picked.TryGetValue(name, out c); picked[name] = c + d;
                 int k = Kind(t); if (k == 1) supplyPlanned += d; else if (k == 2) trucksPlanned += d;
+                if (Transporting.IsTransport(t) && t.Firepower <= 1) troopPlanned += d * Mathf.Max(1, t.transportSlots);
             };
             System.Action<Unit, Slot, int> plan = (t, sl, d) => {
                 count(t, d);
-                if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); }
+                if (Transporting.IsTransport(t) && t.Firepower <= 1) { int r0; roomAt.TryGetValue(sl.b, out r0); roomAt[sl.b] = r0 + d * Mathf.Max(1, t.transportSlots); }
+                if (t.locomotion == Locomotion.Boots && Kind(t) == 0) { int f0; fillPlanned.TryGetValue(sl.b, out f0); fillPlanned[sl.b] = f0 + d; }
+                if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); if (tierCount != null) tierCount[Tier(t)] += d; }
             };
 
             // Saving up: a supply unit (or truck) worth more for its cost than anything we can pay for now,
@@ -259,9 +338,12 @@ namespace HexTactica.AI {
                 foreach (Slot sl in slots) {
                     if (sl.pick == null) continue;
                     Unit was = sl.pick; plan(was, sl, -1);
+                    // (Within its role: a transport bought for riders is not traded for a fighting unit, nor the other way.)
+                    bool troopWas = Transporting.IsTransport(was) && was.Firepower <= 1;
                     foreach (Unit t in sl.b.Purchasable()) {
                         int extra = t.cost - was.cost;
                         if (extra <= 0 || extra > money) continue;
+                        if ((Transporting.IsTransport(t) && t.Firepower <= 1) != troopWas || Kind(t) != Kind(was) && !troopWas) continue;
                         KeyValuePair<float, string> w = worth(t, sl);
                         float gain = w.Key - sl.value;
                         if (gain <= 0f) continue;
@@ -334,10 +416,22 @@ namespace HexTactica.AI {
                 // Each enemy unit counted as much as our army lacks the means to fight it (Scarcity); on our
                 // own ground (at), not wherever it stands now (one remembered under the fog is not seen there).
                 float need = scarce != null && scarce.ContainsKey(e) ? scarce[e] : 1f;
-                offence += Mathf.Min(e.Strength, Unit.calculateDamage(t, e, at, 0)) * AIScore.Worth(e) * need;
+                offence += Kills(t, e, at) * AIScore.Worth(e) * need;
                 if (e.Firepower > 0) defence += Mathf.Min(6, Unit.calculateDamage(e, t, at, 0)) * worth;
             }
             if (enemies == 0) return worth * 6f;
+            float exposure = 1f - Shield(t);
+            if (lifetimeNow) {
+                // What it does in a shot, times the turns it lives (6 strength over what it takes a turn, behind our screen).
+                float perShot = offence / enemies;
+                float takes = worth > 0f ? defence / enemies / worth * exposure : 0f;
+                float life = Mathf.Clamp(6f / Mathf.Max(0.1f, takes), 1f, lifeMaxNow);
+                float reach = t.AttackRange + (t.moveAndAttack ? t.moveRange : 0);
+                float engaged = reachRefNow > 0f ? Mathf.Clamp01(reach / reachRefNow) : 1f;
+                float lived = perShot * engaged * life / Mathf.Max(0.5f, lifeRefNow) + presenceNow * worth * 6f;
+                return Mathf.Max(floorNow * worth * 6f, lived);
+            }
+            defence *= exposure;
             // A unit on the field is worth something even if it would lose every exchange: the enemy has to
             // spend actions on it and come forward to do so, and it sees and holds ground (presenceNow of its
             // own worth). Never below floorNow of its worth.
@@ -345,6 +439,42 @@ namespace HexTactica.AI {
             return Mathf.Max(floorNow * worth * 6f, raw);
         }
         [System.ThreadStatic] static float presenceNow, floorNow;
+        [System.ThreadStatic] static bool overkillNow, lifetimeNow;
+        [System.ThreadStatic] static float lifeMaxNow, lifeRefNow, reachRefNow;
+        [System.ThreadStatic] static float shieldCutNow, shieldRatioNow;
+        [System.ThreadStatic] static Vector2 tierCostsNow;
+        /// <summary>Our fighting units by tier (Tier), with what is planned this turn.</summary>
+        [System.ThreadStatic] static int[] tierCount;
+
+        /// <summary>
+        /// What <paramref name="t"/> takes from <paramref name="e"/> in a shot, in strength: at full strength, capped at
+        /// a kill; with productionOverkill, the mean over its life (its strength 6 down to 1: damage falls with strength,
+        /// so firepower beyond a kill keeps killing as it is worn down).
+        /// </summary>
+        static float Kills(Unit t, Unit e, HexTile at) {
+            if (!overkillNow) return Mathf.Min(e.Strength, Unit.calculateDamage(t, e, at, 0));
+            int full = Mathf.Max(1, t.Strength);
+            float sum = 0f;
+            for (int s = full; s >= 1; s--) sum += Mathf.Min(e.Strength, Unit.calculateDamage(t, e, at, full - s));
+            return sum / full;
+        }
+
+        /// <summary>0 cheap (infantry, recon), 1 the line (tanks, AA, gunships, artillery), 2 dear (bombers, rockets, missiles, fighters): AIProfile.productionTierCosts.</summary>
+        static int Tier(Unit t) { return t.cost >= tierCostsNow.y && tierCostsNow.y > 0f ? 2 : t.cost >= tierCostsNow.x && tierCostsNow.x > 0f ? 1 : 0; }
+
+        /// <summary>
+        /// How much of what <paramref name="t"/> would take from the enemy our screen keeps off it (AIProfile.productionShieldCut):
+        /// the lower-tier units we have, against productionShieldRatio of them for each of its tier (it included); all of
+        /// the cut for one that fires from range or flies, half for one that must close.
+        /// </summary>
+        static float Shield(Unit t) {
+            if (shieldCutNow <= 0f || tierCount == null) return 0f;
+            int tier = Tier(t);
+            if (tier == 0) return 0f;
+            int lower = 0; for (int i = 0; i < tier; i++) lower += tierCount[i];
+            float covered = Mathf.Clamp01(lower / (shieldRatioNow * (tierCount[tier] + 1)));
+            return shieldCutNow * covered * (t.AttackRange > 1 || LocomotionRules.IsAirborne(t.locomotion) ? 1f : 0.5f);
+        }
         [System.ThreadStatic] static float defenceWeightNow;
         static float defenceWeight { get { return defenceWeightNow > 0f ? defenceWeightNow : 0.5f; } }
 
