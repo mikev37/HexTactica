@@ -248,6 +248,17 @@ namespace HexTactica.AI {
         /// A fighting unit far from the fight (more than assaultBoardTurns from contact) beside, or a walk from, a transport
         /// with room that carries no supply unit and is not on supply duty: it gets in (the fullest such transport first).
         /// </summary>
+        /// <summary>Is <paramref name="t"/> a supply truck (saved scenarios may still call it "Truck Variant")? Trucks carry the supply; assault rides leave them alone.</summary>
+        public static bool IsTruck(Unit t) {
+            string n = GameController.UnitName(t);
+            return n == "Truck" || LevelEditor.RenamedUnit(n) == "Truck";
+        }
+
+        /// <summary>A transport assault rides may use: unarmed, not a supply truck.</summary>
+        public static bool TroopTransport(Unit t) {
+            return t != null && Transporting.IsTransport(t) && t.Firepower <= 1 && !IsTruck(t);
+        }
+
         public static AIAction? Board(Unit c, AIMap map, AIProfile profile, HashSet<Unit> busy) {
             if (c.trasnporter != null || c.tile == null || c.Hub != null || c.Firepower <= 0) return null;
             bool hurt = Wounded(c, profile);
@@ -259,7 +270,7 @@ namespace HexTactica.AI {
             MoveField now = null;
             Unit best = null; HexTile bestAt = null; int bestLoad = -1;
             foreach (Unit t in Transporting.AvailableFor(c.owner, c)) {
-                if (t == null || t.tile == null || busy.Contains(t) || t.Firepower > 1) continue;   // a fighting unit that carries one (a recon) fights
+                if (t == null || t.tile == null || busy.Contains(t) || t.Firepower > 1 || IsTruck(t)) continue;   // a fighting unit that carries one (a recon) fights
                 if (hurt && (t.transported.Count > 0 || Hospital(c, t, map) == null)) continue;   // the wounded: an empty one, with somewhere to mend
                 bool hub = false; foreach (Unit x in t.transported) if (x != null && x.Hub != null) hub = true;
                 if (hub) continue;
