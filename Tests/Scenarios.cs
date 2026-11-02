@@ -4226,6 +4226,16 @@ public static class Scenarios {
         foreach (Unit u in l.other.units) if (u != null && u.tile != null && LocomotionRules.IsAirborne(u.locomotion)) airRed++;
         Console.WriteLine("aircraft: ditched Blue " + ditchBlue + " Red " + ditchRed + "; still flying Blue " + airBlue + " Red " + airRed);
         Console.WriteLine(string.Format("think time: Blue {0:0.0} s (worst turn {1:0.0} s), Red {2:0.0} s (worst turn {3:0.0} s)", thinkBlue, worstBlue, thinkRed, worstRed));
+        {
+            int bB = 0, bR = 0, iB = 0, iR = 0;
+            foreach (Building b in Building.all) {
+                if (b == null) continue;
+                if (b.owner == l.ai) { bB++; iB += b.income; } else if (b.owner == l.other) { bR++; iR += b.income; }
+            }
+            Console.WriteLine(string.Format("end: Blue {0} units, material {1}, {2} buildings (income {3}), gold {4} | Red {5} units, material {6}, {7} buildings (income {8}), gold {9}",
+                l.ai.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.ai), bB, iB, l.ai.money,
+                l.other.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.other), bR, iR, l.other.money));
+        }
         Console.WriteLine(string.Format("transports: supply put down Blue {0} Red {1}; fighting units boarded Blue {2} Red {3}, put down Blue {4} Red {5}; unit-turns aboard Blue {6} Red {7}",
             supplyDrops[0], supplyDrops[1], boards[0], boards[1], drops[0], drops[1], aboardTurns[0], aboardTurns[1]));
         string folder = HexTactica.Harness.GameLog.Folder;
