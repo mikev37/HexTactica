@@ -252,6 +252,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 map.RefreshAfterAction();
                 AIPerf.End("act: board re-read (RefreshAfterAction)", __f);
             }
+            decide:
             while (queue.Count > 0) {
                 Unit unit = queue[0];
                 queue.RemoveAt(0);
@@ -270,7 +271,19 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": aboard, decides again if put down — " + action.reason);
                     continue;
                 }
+                // Waiting (waitTwice): the first time, set aside to decide again once everything else has moved (what it
+                // waits on — a supply unit, a rider, a gap — may have come about); waiting again, it skips its turn.
+                if (Profile.waitTwice && action.kind == AIActionKind.Wait && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
+                    waitedOnce.Add(unit); waitLater.Add(unit);
+                    if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": would wait (" + action.reason + "): decides again after the rest");
+                    continue;
+                }
                 return new Thought { unit = unit, action = action };
+            }
+            // Everything else has moved: those that would have waited decide again.
+            if (waitLater.Count > 0) {
+                queue.AddRange(waitLater); waitLater.Clear();
+                goto decide;
             }
             return new Thought { endTurn = true };
         }
@@ -498,6 +511,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
     readonly HashSet<Unit> soughtRiders = new HashSet<Unit>();
     /// <summary>This turn's transports earmarked for supply (AIAssault.SupplyTransports).</summary>
     HashSet<Unit> supplyTransports = new HashSet<Unit>();
+    /// <summary>Units that would have waited this turn, and those set aside to decide again after the rest (waitTwice).</summary>
+    readonly HashSet<Unit> waitedOnce = new HashSet<Unit>();
+    readonly List<Unit> waitLater = new List<Unit>();
     /// <summary>Units put down from a transport this turn: they do not get back in until next turn.</summary>
     readonly HashSet<Unit> putDownThisTurn = new HashSet<Unit>();
 
@@ -754,6 +770,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         reservedTransports.Clear();
         soughtRiders.Clear();
         putDownThisTurn.Clear();
+        waitedOnce.Clear(); waitLater.Clear();
         AIAssault.Planned.Clear();
         AIAssault.FellBack.Clear();
         // The trucks the logistics claimed for the fronts' own supply units: theirs before any fighting
