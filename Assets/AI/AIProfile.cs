@@ -597,6 +597,14 @@ namespace HexTactica.AI {
         public bool assaultArmedRides = false;
         [Tooltip("Riding to the assault: a rider put down to strike makes the strike its transport planned (where to stand, what to hit or take). Off: it decides afresh where it lands.")]
         public bool assaultCarryOut = true;
+        [Tooltip("Riding to the assault: getting in a transport is weighed against the unit's own move (only a walk gives way to a ride that gets it nearer; a strike, a capture or a hold stands). Off: it boards before deciding anything else.")]
+        public bool assaultBoardWeighs = true;
+        [Tooltip("Riding to the assault, turn order: coordinated plans, artillery firing, then fighting units other than infantry that have something in reach (tanks, gunships), then transports with riders, each followed at once by its riders; then the rest. Off: transports with riders first.")]
+        public bool assaultOrderWithLine = true;
+        [Tooltip("Riding to the assault: a rider whose transport has reached the front line (in contact next turn) gets off and decides for itself; a rider whose transport fell back to its ordinary move always does.")]
+        public bool assaultFrontlineOut = true;
+        [Tooltip("Riding to the assault: an armed transport (recon, IFV, battle copter) fires first and lets its riders out after, unless what it takes back would destroy it.")]
+        public bool assaultFireThenUnload = true;
         [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
         public int assaultBoardTurns = 2;
         [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth what it adds to the riders it would carry (the nearest of them): each one's value times the turns sooner it reaches the fight riding than walking, over productionLifeRef (at most its whole value) — times this (more than 1: it goes back for more, and carries the wounded, over its life). 0: not bought for riders.")]

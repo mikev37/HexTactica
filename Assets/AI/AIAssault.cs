@@ -36,6 +36,9 @@ namespace HexTactica.AI {
             return k.stand == c.tile ? AIAction.Strike(c, k.target, 0f, why) : AIAction.MoveStrike(c, k.stand, k.target, 0f, why);
         }
 
+        /// <summary>Transports with riders whose assault move was set aside this turn for the ordinary one (a fallback): their riders decide for themselves. Cleared each turn.</summary>
+        public static readonly HashSet<Unit> FellBack = new HashSet<Unit>();
+
         /// <summary>Harness tracing.</summary>
         public static System.Action<string> Debug;
 
@@ -186,6 +189,8 @@ namespace HexTactica.AI {
             List<HexTile> stops = new List<HexTile> { t.tile };
             foreach (HexTile x in reach.Tiles) if (x != t.tile && reach.ReachableThisTurn(x) && x.occupier == null && t.CanEnter(x) && AIAir.MayEndOn(t, x, map)) stops.Add(x);
             HexTile bestVia = null, bestDrop = null; Unit bestRider = null; int bestCount = 0; float bestRisk = float.MaxValue; Strike bestStrike = null;
+            Unit bestShot = null; int bestTook = 0;
+            bool firesFirst = profile.assaultFireThenUnload && t.Firepower > 1;
             // Riders' longest strike reach from a stop (a tile beside it, then their walk and fire, or a building's walk).
             int strikeReach = 1;
             foreach (Unit c in riders) strikeReach = Mathf.Max(strikeReach, 1 + (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange));
@@ -215,11 +220,22 @@ namespace HexTactica.AI {
                     }
                 }
                 if (count == 0 || !WaveGoesIn(via, count, frontAttacks, map, profile)) continue;
-                if (count > bestCount || (count == bestCount && (risk < bestRisk - 0.01f || (Mathf.Abs(risk - bestRisk) <= 0.01f && CombatMath.Precedes(via, bestVia))))) {
-                    bestCount = count; bestRisk = risk; bestVia = via; bestRider = first; bestDrop = firstDrop; bestStrike = firstStrike;
+                // An armed transport would rather stop where it can fire first too (and live through what comes back).
+                int took = 0; Unit shot = firesFirst && (t.moveAndAttack || via == t.tile) ? Shot(t, via, map, out took) : null;
+                bool better = count > bestCount
+                    || (count == bestCount && (shot != null) != (bestShot != null) ? shot != null
+                    : count == bestCount && (risk < bestRisk - 0.01f || (Mathf.Abs(risk - bestRisk) <= 0.01f && CombatMath.Precedes(via, bestVia))));
+                if (better) {
+                    bestCount = count; bestRisk = risk; bestVia = via; bestRider = first; bestDrop = firstDrop; bestStrike = firstStrike; bestShot = shot; bestTook = took;
                 }
             }
             if (bestVia != null) {
+                // An armed transport fires first and lets its riders out after (they still have their whole turn),
+                // unless what it takes back would destroy it, riders and all (assaultFireThenUnload).
+                if (bestShot != null) {
+                    string fw = "assault: fires on " + bestShot.name.Replace("(Clone)", "") + " (" + bestShot.tile.x + "," + bestShot.tile.y + ") first (takes " + bestTook + " back), then lets its " + riders.Count + " out to strike";
+                    return bestVia == t.tile ? AIAction.Strike(t, bestShot, 0f, fw) : AIAction.MoveStrike(t, bestVia, bestShot, 0f, fw);
+                }
                 Planned[bestRider] = bestStrike;
                 string why = "assault: puts " + bestRider.name.Replace("(Clone)", "") + " down to " + bestStrike.what + " (" + bestCount + " of " + riders.Count + " aboard strike from here)";
                 return bestVia == t.tile ? AIAction.Disembark(t, bestRider, bestDrop, why) : AIAction.MoveAndDisembark(t, bestVia, bestRider, bestDrop, why);
@@ -260,6 +276,21 @@ namespace HexTactica.AI {
             return AIAction.Wait(t, "assault ride: holds with " + riders.Count + " aboard");
         }
 
+        /// <summary>The armed transport's best shot from <paramref name="via"/>: what it does less what it takes back, never one that would destroy it. Null: none.</summary>
+        static Unit Shot(Unit t, HexTile via, AIMap map, out int took) {
+            took = 0; Unit shot = null; float best = 0f;
+            foreach (Unit e in map.enemyUnits) {
+                if (e == null || e.tile == null || e.Strength <= 0 || !t.CanTarget(e)) continue;
+                int d = via.Distance(e.tile);
+                if (d > t.AttackRange || d <= t.MinRange) continue;
+                CombatOutcome o = CombatMath.Resolve(t, e, via);
+                if (o.damageToDefender <= 0 || o.attackerDies || o.damageToAttacker >= t.Strength) continue;
+                float sc = o.damageToDefender * AIScore.Worth(e) - o.damageToAttacker * AIScore.Worth(t);
+                if (sc > best || (Mathf.Abs(sc - best) <= 0.01f && shot != null && CombatMath.Precedes(e.tile, shot.tile))) { shot = e; best = sc; took = o.damageToAttacker; }
+            }
+            return shot;
+        }
+
         /// <summary>The first fresh rider put down on the free tile beside <paramref name="t"/> where it is safest tonight.</summary>
         static AIAction? DigIn(Unit t, List<Unit> riders, AIMap map, string why) {
             foreach (Unit c in riders) {
@@ -286,6 +317,14 @@ namespace HexTactica.AI {
                 if (!WaveGoesIn(t.tile, 1, frontAttacks, map, profile)) break;
                 Planned[c] = k;
                 return AIAction.Disembark(t, c, n, "assault: gets off to " + k.what);
+            }
+            // Its transport fell back to its ordinary move, or it has reached the front line (in contact next turn): out,
+            // and it thinks for itself (assaultFrontlineOut) — the transport's plan no longer speaks for it.
+            bool fellBack = FellBack.Contains(t);
+            if (fellBack || (profile.assaultFrontlineOut && map.TurnsToContact(t) <= 1)) {
+                HexTile best = null; float bl = float.MaxValue;
+                foreach (HexTile n in Transporting.UnloadOptions(t, c)) { float l = map.ExpectedLoss(c, n); if (l < bl - 0.01f || (Mathf.Abs(l - bl) <= 0.01f && CombatMath.Precedes(n, best))) { bl = l; best = n; } }
+                if (best != null) return AIAction.Disembark(t, c, best, fellBack ? "its transport's move was not its assault ride: gets off at (" + best.x + "," + best.y + ") to decide for itself" : "at the front line: gets off at (" + best.x + "," + best.y + ") to decide for itself");
             }
             // Its front holding its ground, the transport there: out, to hold it.
             if (!frontAttacks && ground != null && t.tile.Distance(ground) <= 2) {
