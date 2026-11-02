@@ -30,6 +30,7 @@ MonoBehaviour:
   campaignPull: 1
   campaignStep: 1
   campaignGatherShare: 0.8
+  campaignGatherWithBody: 1
   campaignStagingRadius: 0
   campaignDrawTurns: 0
   campaignTimeBox: 6

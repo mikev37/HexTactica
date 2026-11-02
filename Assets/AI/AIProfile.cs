@@ -77,6 +77,8 @@ namespace HexTactica.AI {
         [Tooltip("A task force goes once the healthy power on its staging ground is this share of its need (objectiveForceRatio times the enemy there): it needs 1.5 to one, goes at 0.8 of that (1.2 to one).")]
         [Range(0f, 1f)]
         public float campaignGatherShare = 0.8f;
+        [Tooltip("Gathering: a unit past the staging ground counts as gathered only with the body (within the staging radius of the task force's centre too). Off: anywhere past it counts (a lone unit up front could send the front in).")]
+        public bool campaignGatherWithBody = true;
         [Tooltip("How large a staging ground is: hexes around the staging tile. 0: one move of our typical unit.")]
         public int campaignStagingRadius = 0;
         [Tooltip("A task force takes only units within this many turns of its staging tile, and none fighting elsewhere. 0: frontReachTurns.")]
