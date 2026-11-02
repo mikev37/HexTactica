@@ -22,6 +22,13 @@ using UnityEngine;
 /// </summary>
 public static class SupplyNetwork {
 
+    /// <summary>
+    /// The HQ first: a cut-off supply building (a FOB) spends a point of its store only on a turn it feeds a unit that
+    /// the HQ's network (or a building before it) does not supply; otherwise it keeps its store (its area is still
+    /// shown supplied). Off: every cut-off building with store spends a point a turn.
+    /// </summary>
+    public static bool StoreOnlyWhenNeeded = true;
+
     /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
     public static bool FlagsFollowPublish = true;
 
@@ -41,6 +48,8 @@ public static class SupplyNetwork {
         /// <summary>Supply buildings relaying the network, and cut-off ones living off their store.</summary>
         public readonly List<Building> connectedBuildings = new List<Building>();
         public readonly List<Building> strandedBuildings = new List<Building>();
+        /// <summary>The cut-off supply buildings that spend a point of store this turn (all of them, unless StoreOnlyWhenNeeded: those feeding a unit nothing else supplies).</summary>
+        public List<Building> spendingBuildings = new List<Building>();
         public int mobileHubs;
         /// <summary>
         /// With RecordLinked set when it was solved: the field before cut-off supply buildings gave
@@ -221,6 +230,8 @@ public static class SupplyNetwork {
         }
 
         if (RecordLinked) result.linked = new Dictionary<HexTile, int>(result.depth);
+        // Supply from the HQ's network, before any store is drawn on (for StoreOnlyWhenNeeded).
+        Dictionary<HexTile, int> fromNetwork = applyDrain && StoreOnlyWhenNeeded ? new Dictionary<HexTile, int>(result.depth) : null;
         // Cut-off supply buildings give out of their store while it lasts.
         if (!staticOnly) {
             for (int i = 0; i < relayBuildings.Count; i++) {
@@ -230,6 +241,24 @@ public static class SupplyNetwork {
                 FloodFromBuilding(b, result);
             }
         }
+        // Which cut-off buildings actually feed someone this turn: only those spend (the HQ's network first, then
+        // the buildings in order, each for the units nothing before it supplies).
+        List<Building> spending = result.strandedBuildings;
+        if (fromNetwork != null) {
+            spending = new List<Building>();
+            HashSet<HexTile> fed = new HashSet<HexTile>();
+            List<HexTile> standing = new List<HexTile>();
+            foreach (Unit u in player.units) if (u != null && u.tile != null && u.Strength > 0 && u.trasnporter == null) standing.Add(u.tile);
+            foreach (HexTile t in standing) { int d; if (fromNetwork.TryGetValue(t, out d) && d > 0) fed.Add(t); }
+            foreach (Building b in result.strandedBuildings) {
+                Result own = new Result();
+                FloodFromBuilding(b, own);
+                bool needed = false;
+                foreach (HexTile t in standing) if (!fed.Contains(t) && own.IsSupplied(t)) { needed = true; fed.Add(t); }
+                if (needed) spending.Add(b);
+            }
+        }
+        result.spendingBuildings = spending;
 
         // Hubs that never connected are cut off: a supply unit relays supply, it does not make it,
         // so a cut-off one supplies nothing (not even itself; it lives on what it carries, like any
@@ -260,7 +289,7 @@ public static class SupplyNetwork {
             }
             // A connected supply building charges its store; a cut-off one spends a turn of it.
             for (int i = 0; i < result.connectedBuildings.Count; i++) result.connectedBuildings[i].Replenish(result.connectedBuildings[i].chargePerTurn);
-            for (int i = 0; i < result.strandedBuildings.Count; i++) result.strandedBuildings[i].SpendSupply(1);
+            for (int i = 0; i < spending.Count; i++) spending[i].SpendSupply(1);
         }
 
         return result;
