@@ -1074,7 +1074,9 @@ public class AIPlayer : MonoBehaviour {
 
         // A fighting unit out of contact (an objective's or not): ride a transport toward the
         // objective if that is quicker than walking.
-        if (Profile.combatRides && !Profile.assaultRides && unit.Firepower > 0 && unit.Hub == null) {
+        // With assaultRides on, the old ride stays for armed transports (a recon taxi) when assaultArmedRides is on.
+        if (Profile.combatRides && (!Profile.assaultRides || Profile.assaultArmedRides) && unit.Firepower > 0 && unit.Hub == null
+            && (!Profile.assaultRides || unit.trasnporter == null || unit.trasnporter.Firepower > 1)) {
             AIAction ride;
             if (TryRide(unit, front, out ride)) return ride;
         }
@@ -1629,7 +1631,13 @@ public class AIPlayer : MonoBehaviour {
         List<HexTile> candidates = new List<HexTile>();
         foreach (HexTile t in HexGenerator.hg.tiles) if (t != null && (map.SupplyDepth(t) > 0 || t == unit.tile) && unit.CanEnter(t)) candidates.Add(t);
         System.Func<HexTile, float> valueOf = t => per * (from - map.Travel(unit, t, objectiveTile)) - AIScore.Risk(unit, t, map, Profile);
-        TransportPlan plan = AITransportPlanner.Plan(unit, map, Profile, valueOf, candidates, reservedTransports);
+        // Assault rides own the unarmed transports: this ride uses only armed ones.
+        HashSet<Unit> barred = reservedTransports;
+        if (Profile.assaultRides) {
+            barred = new HashSet<Unit>(reservedTransports);
+            foreach (Unit t in player.units) if (t != null && Transporting.IsTransport(t) && t.Firepower <= 1) barred.Add(t);
+        }
+        TransportPlan plan = AITransportPlanner.Plan(unit, map, Profile, valueOf, candidates, barred);
         if (plan == null) { if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + " ride: no plan (" + candidates.Count + " supplied tiles)"); return false; }
         if (!plan.usesTransport) {
             if (Trace != null && !aboard) Trace("   " + unit.name.Replace("(Clone)", "") + " ride: walking is as good: " + plan);
