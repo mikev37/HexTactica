@@ -59,6 +59,10 @@ namespace HexTactica.AI {
         public bool keepBuildSlotsClear = true;
         [Tooltip("Supply chain: a supply unit aboard a transport is placed as one on foot is — the tile its transport reaches that brings supplied ground nearest the objective, only if better than holding. Off: the furthest linked tile toward the objective.")]
         public bool unifiedLinkPlacement = true;
+        [Tooltip("A unit that would wait is first set aside and decides again after every other unit has moved; only if it would wait again does it skip its turn.")]
+        public bool waitTwice = true;
+        [Tooltip("A supply unit gets into a transport that has already acted this turn as readily as a fresh one (aboard it is linked as cargo, and rides next turn); a fresh one is still preferred.")]
+        public bool boardSpentTransports = true;
         [Tooltip("The way to an objective: steps of detour worth taking to avoid one tile the enemy can strike next turn (so a middle held in strength is gone round).")]
         public float routeDanger = 3f;
         [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]

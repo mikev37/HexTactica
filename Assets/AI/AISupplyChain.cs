@@ -96,7 +96,9 @@ namespace HexTactica.AI {
                 MoveField walk = map.ReachThisTurn(u);
                 int bestD = int.MaxValue;
                 foreach (Unit t in map.ownUnits) {
-                    if (!IsTruck(t) || t.transported.Count > 0 || !t.active || used.Contains(t) || (ReservedTrucks != null && ReservedTrucks.Contains(t)) || !Transporting.CanCarry(t, u)) continue;
+                    // (One that has acted this turn too (boardSpentTransports): aboard is better than on foot for a supply unit —
+                    // it is linked as cargo, and rides next turn. A fresh one is preferred: it can drive it on now.)
+                    if (!IsTruck(t) || t.transported.Count > 0 || (!t.active && !map.profile.boardSpentTransports) || used.Contains(t) || (ReservedTrucks != null && ReservedTrucks.Contains(t)) || !Transporting.CanCarry(t, u)) continue;
                     HexTile b = null;
                     if (Transporting.CanBoardFrom(t, u)) b = u.tile;
                     else foreach (HexTile n in t.tile.neighbors) {
@@ -104,18 +106,19 @@ namespace HexTactica.AI {
                         if (b == null || CombatMath.Precedes(n, b)) b = n;
                     }
                     if (b == null) continue;
-                    int d = u.tile.Distance(t.tile);
+                    int d = u.tile.Distance(t.tile) + (t.active ? 0 : 1000);   // a fresh one first
                     if (d < bestD || (d == bestD && AIMap.CompareUnits(t, truck) < 0)) { bestD = d; truck = t; board = b; }
                 }
                 if (truck == null) return null;
             }
             MoveField drive = map.ReachThisTurn(truck);
+            bool spent = !truck.active;   // it has acted: it holds where it stands, with the supply unit aboard
             float caution = Mathf.Max(1f, map.profile.loadedTransportRisk), tolerance = Mathf.Max(0f, map.profile.chainRiskTolerance);
             HexTile best = null; int bestSteps = int.MaxValue;
             int nT = 0, nOcc = 0, nAhead = 0, nRisk = 0, nUnlinked = 0;
             foreach (HexTile x in drive.Tiles) {
                 nT++;
-                if (x != truck.tile && (!drive.ReachableThisTurn(x) || !AIPath.CanFinishTurnOn(truck, x))) continue;
+                if (x != truck.tile && (spent || !drive.ReachableThisTurn(x) || !AIPath.CanFinishTurnOn(truck, x))) continue;
                 if (taken.Contains(x) || (x != truck.tile && x.occupier != null)) { nOcc++; continue; }
                 if (AIAir.BlocksBuildSlot(truck, x, map)) { nOcc++; continue; }   // a building slot of ours: kept clear
                 int sx = steps(x);
@@ -200,7 +203,7 @@ namespace HexTactica.AI {
         /// <summary>A free truck stands beside (or within this turn's walk of a tile beside) <paramref name="h"/>.</summary>
         static bool TruckBeside(SupplyPoint h, AIMap map) {
             foreach (Unit t in map.ownUnits) {
-                if (!IsTruck(t) || t.transported.Count > 0 || !t.active || (ReservedTrucks != null && ReservedTrucks.Contains(t))) continue;
+                if (!IsTruck(t) || t.transported.Count > 0 || (!t.active && !map.profile.boardSpentTransports) || (ReservedTrucks != null && ReservedTrucks.Contains(t))) continue;
                 if (t.tile.Distance(h.myUnit.tile) <= h.myUnit.moveRange + 1) return true;
             }
             return false;
@@ -412,6 +415,8 @@ namespace HexTactica.AI {
                     // supply unit linked: the rear link carried past the ones ahead of it (they are then
                     // free to move up or leap in turn — leapfrogging, as a player moves a column of trucks).
                     bool better = (leapReach < reach && leapReach < walkReach) || h == forceLeap;
+                    // Cut off on foot, linked aboard (boardSpentTransports): it gets in, whatever the reach.
+                    if (map.profile.boardSpentTransports && !net.connectedHubs.Contains(h) && after.connectedHubs.Contains(h)) better = true;
                     bool leapfrog = leapReach <= Mathf.Min(reach, walkReach) && steps(jump.tile) <= steps(u.tile) - Mathf.Max(2, jump.truck.moveRange / 2) && Harm(trial, map) <= Harm(placed, map);
                     if (after.connectedHubs.Contains(h) && (better || leapfrog) && (h == forceLeap || !map.profile.chainReconnects || Harm(trial, map) <= Harm(placed, map))) {
                         trucksUsed.Add(jump.truck);
