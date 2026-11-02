@@ -168,6 +168,24 @@ namespace HexTactica.AI {
         public float productionPresence = 0.25f;
         [Tooltip("Buying: what a unit would take from the enemy counts this much against what it would do to them.")]
         public float productionDefenceWeight = 0.5f;
+        [Tooltip("Buying: what a unit does to an enemy is counted over its whole life — the kills it makes at each strength from 6 down to 1 (damage falls with strength) — so firepower beyond a kill (a bomber, rockets) counts: they still kill when worn down. Off: only at full strength, capped at a kill.")]
+        public bool productionOverkill = true;
+        [Tooltip("Buying: a unit of a higher tier (productionTierCosts) is hit less the more lower-tier units we have to screen it: what it would take from the enemy is cut by up to productionShieldCut (all of it for a unit that fires from range or flies, half for one that must close), in proportion to how many of its tier productionShieldRatio lower-tier units could each cover. Infantry screens tanks, AA and gunships; those screen bombers, rockets, missiles and fighters. 0: off.")]
+        public float productionShieldCut = 0.6f;
+        [Tooltip("Buying (productionShieldCut): lower-tier units it takes to screen one unit of a tier.")]
+        public float productionShieldRatio = 2f;
+        [Tooltip("Buying (productionShieldCut): the costs from which a unit is tier 1, and tier 2.")]
+        public Vector2 productionTierCosts = new Vector2(5000f, 11000f);
+        [Tooltip("Buying: a fighting unit is worth what it does in a shot times the turns it expects to live — 6 strength over what it would take a turn (each enemy's shot, cut by our screen, productionShieldCut), between 1 and productionLifeMax — over productionLifeRef turns: a rocket behind a screen keeps firing, a grunt in front trades and dies. Replaces the one exchange (what it does less productionDefenceWeight of what it takes) and productionDefenceFade. Off: the one exchange.")]
+        public bool productionLifetime = true;
+        [Tooltip("Buying (productionLifetime): how often a unit gets a shot: its reach (attack range, plus its move for one that moves and fires in a turn) over this many tiles, at most 1 — rockets reach six tiles from where they stand every turn, a grunt has to walk up first. 0: off.")]
+        public float productionReachRef = 6f;
+        [Tooltip("Buying (productionLifetime): the most turns a unit is expected to live.")]
+        public float productionLifeMax = 8f;
+        [Tooltip("Buying (productionLifetime): turns of life a unit's worth is measured against (a unit expected to live this long keeps the worth of one exchange).")]
+        public float productionLifeRef = 3f;
+        [Tooltip("Buying: the weight on what a unit would take (productionDefenceWeight) falls as our army grows — halved at this many fighting units — so attack counts for more than holding on. 0: off.")]
+        public float productionDefenceFade = 20f;
         [Tooltip("Buying: a front's want (the units that do most against its enemy, at its nearest producer) counts this much.")]
         public float productionFrontWeight = 1f;
         [Tooltip("Buying: a supply unit's (or truck's) value — the fighting units it would supply, or the force a front waiting on supply needs — counts this much.")]

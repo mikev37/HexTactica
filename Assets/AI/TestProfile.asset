@@ -249,6 +249,15 @@ MonoBehaviour:
   productionFloor: 0.05
   productionPresence: 0.25
   productionDefenceWeight: 0.5
+  productionOverkill: 1
+  productionShieldCut: 0.6
+  productionShieldRatio: 2
+  productionTierCosts: {x: 5000, y: 11000}
+  productionDefenceFade: 20
+  productionLifetime: 1
+  productionLifeMax: 8
+  productionLifeRef: 3
+  productionReachRef: 6
   productionFrontWeight: 1
   productionSupplyWeight: 1
   productionSupplyExtra: 2

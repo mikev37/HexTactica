@@ -1794,6 +1794,9 @@ public static class Scenarios {
                 Func<bool, string> buy = on => {
                     AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
                     prof.productionTimeToFront = on;
+                    // (Valued by one exchange, as this was written for: under productionLifetime the Grunt is worth more
+                    // over its life than the Conscript wherever it is built, so the contrast would not show.)
+                    prof.productionLifetime = false; prof.productionOverkill = false; prof.productionShieldCut = 0f; prof.productionDefenceFade = 0f;
                     l.ai.money = grunt.cost;
                     List<string> said = new List<string>();
                     List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, prof), prof, x => said.Add(x.Trim()));
