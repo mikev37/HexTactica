@@ -431,6 +431,12 @@ public static class Scenarios {
         }
         make("ui-fob-store-pips", "fobStorePips", (a, o) => { Rig.PlaceBuilding("FOB", a, -4, 0); Rig.PlaceBuilding("FOB", o, 4, 0); },
              "A forward base's store shown as supply pips (SupplyDot, one per circle of a pip row under the building, as HealthDot for strength): Blue's FOB with 3 of 6 in store shows 3 filled and 3 faint, the seventh hidden; after spending one, 2; after refilling three, 5. The HQ keeps no store and shows none. A pip named 'circle (4)' is the fifth: filled with 5 in store, faint with 2. Under fog Blue sees its own FOB's pips always, Red's only while a Blue unit sees it.");
+        make("ai-assault-ride", "assaultRide", (a, o) => {
+                 Unit apc = Put("APC", a, -6, 0); Unit g1 = Put("Grunt", a, -6, 1); Unit g2 = Put("Grunt", a, -7, 1);
+                 Transporting.Load(apc, g1); Transporting.Load(apc, g2);
+                 Put("Tank", a, -5, 1); Put("APC", a, -5, 4); Put("Grunt", a, -6, 4);
+                 Put("Artillery", o, 5, 0); },
+             "Riding to the assault (assaultRides): an APC carrying two grunts moves up with them aboard, out of the enemy's reach, and puts them down only where they can strike that turn (getting off costs nothing: whether they then attack is their own call); nothing else puts them down. Also reports whether a grunt far from the fight gets into the empty APC beside it. Blue plays four turns against a standing Red artillery piece (which cannot fire back at a unit beside it).");
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1634,6 +1640,50 @@ public static class Scenarios {
                 detail = string.Join(" | ", r.ToArray());
                 return d1 == "[ooo... ]" && d2 == "[oo.... ]" && d3 == "[ooooo. ]" && dh == "[       ]" && dotFilled && dotEmpty && ownShown && redHidden && redSeen;
             }
+            case "assaultRide": {
+                // Blue: an APC with two grunts aboard at (-6,0) and a tank at (-5,1); an empty APC at (-5,4) beside a grunt
+                // at (-6,4). Red: an artillery piece at (5,0), standing. Blue plays four turns (Red does nothing).
+                Unit apc = Rig.At(-6, 0).occupier, apc2 = Rig.At(-5, 4).occupier, walker = Rig.At(-6, 4).occupier;
+                List<Unit> riders = new List<Unit>(apc.transported);
+                List<string> r = new List<string>();
+                int earlyDrops = 0, struckOnLanding = 0, landed = 0;
+                HashSet<Unit> aboardAtStart = new HashSet<Unit>();
+                HashSet<Unit> attackedThisTurn = new HashSet<Unit>();
+                Action<Unit, Unit, bool> att = (x, d, sur) => { if (x.owner == a) attackedThisTurn.Add(x); };
+                Unit.Attacking += att;
+                List<string> why = new List<string>();
+                AIPlayer bai = a.GetComponent<AIPlayer>();
+                System.Action<Unit, HexTactica.AI.AIAction, bool> dec = (u, act, did) => { if (did && (act.kind == HexTactica.AI.AIActionKind.Unload || act.kind == HexTactica.AI.AIActionKind.Load || riders.Contains(u) || u == apc)) why.Add(u.name.Replace("(Clone)", "") + " " + act.kind + " " + Pos(act.destination) + ": " + act.reason); };
+                if (bai != null) bai.onDecision += dec;
+                bool walkerBoarded = false;
+                try {
+                    for (int turn = 0; turn < 8 && !gc.gameOver; turn++) {
+                        bool blue = gc.activePlayer == a;
+                        if (blue) { aboardAtStart.Clear(); foreach (Unit u in riders) if (u.trasnporter != null) aboardAtStart.Add(u); attackedThisTurn.Clear(); }
+                        ScenarioFile.PlayTurn();
+                        if (!blue) continue;
+                        string line = "Blue turn: APC at " + Pos(apc.tile) + " carrying " + apc.transported.Count;
+                        foreach (Unit u in riders) {
+                            if (!aboardAtStart.Contains(u) || u.trasnporter != null || u.tile == null) continue;
+                            landed++;
+                            int nearest = int.MaxValue; foreach (Unit e in o.units) if (e != null && e.tile != null) nearest = Math.Min(nearest, u.tile.Distance(e.tile));
+                            bool struck = attackedThisTurn.Contains(u);
+                            if (struck) struckOnLanding++; else if (nearest > 1) earlyDrops++;
+                            line += "; " + u.name.Replace("(Clone)", "") + " put down at " + Pos(u.tile) + (struck ? ", attacked the same turn" : ", did not attack (" + nearest + " from the nearest enemy)");
+                        }
+                        if (walker.trasnporter == apc2) walkerBoarded = true;
+                        r.Add(line + "; walker " + (walker.trasnporter != null ? "aboard" : "at " + Pos(walker.tile)));
+                    }
+                } finally { Unit.Attacking -= att; if (bai != null) bai.onDecision -= dec; }
+                if (Environment.GetEnvironmentVariable("WHY") != null) foreach (string w in why) Console.WriteLine("    " + w);
+                int rodeUp = 0, assaultDrops = 0, otherDrops = 0;
+                foreach (string w in why) {
+                    if (w.Contains("assault ride: moves up")) rodeUp++;
+                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else otherDrops++; }
+                }
+                detail = string.Join(" | ", r.ToArray()) + " || moved up with riders aboard " + rodeUp + " times; put down to strike " + assaultDrops + ", put down otherwise " + otherDrops + "; landed " + landed + " (attacked the turn they landed " + struckOnLanding + ": the rider's own call); walker boarded " + walkerBoarded;
+                return landed > 0 && assaultDrops == landed && otherDrops == 0;
+            }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
                 Func<bool, Unit, int> cover = (on, x) => {
@@ -2789,6 +2839,7 @@ public static class Scenarios {
                 System.Action<Unit, Unit, HexTile> ran = (mover, hid, at) => bumps++;
                 System.Action<Unit, Unit, bool> shot = (att, def, surprise) => { shots++; if (!surprise && !FogOfWar.Sees(att.owner, def)) blindShots++; };
                 System.Action<Unit, HexTactica.AI.AIAction, bool> check = (u, act, did) => {
+                    if (!did) return;   // a decision set aside within the thought (a rider staying aboard), not an action on the board
                     actions++;
                     string why = null;
                     if (FogOfWar.current != null) why = "left concealed";
@@ -2798,7 +2849,7 @@ public static class Scenarios {
                         if (x.trasnporter == null && x.tile.occupier != x) { why = x.name + " not on its tile"; break; }
                     }
                     foreach (HexTile t in Rig.hg.tiles) if (t.occupier != null && t.occupier.tile != t) { why = "tile holds a unit that is elsewhere"; break; }
-                    if (why != null) { broken++; if (firstBroken == null) firstBroken = why; }
+                    if (why != null) { broken++; if (firstBroken == null) firstBroken = why + " after " + u.name.Replace("(Clone)", "") + " " + act.kind + " (" + act.reason + ")" + (u.trasnporter != null ? " aboard" : ""); }
                 };
                 Unit.Attacking += shot; Unit.RanInto += ran;
                 foreach (Player p in new[] { a, o }) { AIPlayer x = p.GetComponent<AIPlayer>(); if (x != null) x.onDecision += check; }
@@ -3557,6 +3608,9 @@ public static class Scenarios {
                 return order.Count >= 2 && order[0].StartsWith("Artillery");
             }
             case "dropAndAdvance": {
+                // (The hop to supplied ground of combatRides, which this documents: under assaultRides a rider stays aboard
+                // until it can strike — ai-assault-ride.)
+                l.ai.GetComponent<AIPlayer>().Profile.assaultRides = false;
                 Unit apc = First(l.ai, "APC");
                 Unit g = Put("Grunt", l.ai, apc.tile.neighbors.Find(t => t != null && t.occupier == null && t.terrain.elevation >= 0).x, apc.tile.neighbors.Find(t => t != null && t.occupier == null && t.terrain.elevation >= 0).y);
                 Transporting.Load(apc, g); g.FinishBoarding();
@@ -3565,6 +3619,7 @@ public static class Scenarios {
                 Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
                 Func<HexTile, int> hs = t => { int v; return t != null && fromHome.TryGetValue(t, out v) ? v : -1; };
                 string apcFrom = Pos(apc.tile);
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; }
                 ScenarioFile.PlayTurn();
                 bool off = g.trasnporter == null && g.tile != null;
                 int apart = off && apc.tile != null ? g.tile.Distance(apc.tile) : 0;
@@ -3572,6 +3627,8 @@ public static class Scenarios {
                 return off && apart >= 2;
             }
             case "combatRide": {
+                // (combatRides, which this documents: under assaultRides grunts take a free transport and ride it to the assault.)
+                l.ai.GetComponent<AIPlayer>().Profile.assaultRides = false;
                 if (Environment.GetEnvironmentVariable("SET") == null) l.ai.GetComponent<AIPlayer>().Profile.combatRides = true;
                 HexTile home = GameController.HQOf(l.ai).tile;
                 Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
@@ -3758,7 +3815,9 @@ public static class Scenarios {
         int failed = 0, passed = 0;
         string only = Environment.GetEnvironmentVariable("ONLY");
         Console.WriteLine("== Behaviour scenarios ==");
+        string onlyBehaviour = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "behaviour" ? "behaviour" : "-")) {
+            if (onlyBehaviour != null && !Path.GetFileName(f).Contains(onlyBehaviour)) continue;
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             bool ok = Judge(l, out detail);

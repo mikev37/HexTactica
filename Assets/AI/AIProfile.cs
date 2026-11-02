@@ -591,6 +591,15 @@ namespace HexTactica.AI {
         [Tooltip("Fighting units out of contact ride a free transport to the front when that gets them there sooner than walking (the same walk-or-ride planner supply units use), and get off where the ride ends.")]
         public bool combatRides = true;
 
+        [Tooltip("Riding to the assault (AIAssault), as a player uses transports: a fighting unit far from the fight gets into a transport with room (one carrying no supply unit, not on supply duty) and stays aboard while it moves up with the army, out of the enemy's reach; riders are put down only where they can strike this turn (getting off costs nothing: they still move and fight) and when the wave goes in; empty transports (not trucks, which carry the supply) go back for more. Replaces combatRides' hop to supplied ground for fighting units.")]
+        public bool assaultRides = true;
+        [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
+        public int assaultBoardTurns = 2;
+        [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth the riders it would carry times the share of their way to the fight it saves them (its travel against theirs), times this. 0: not bought for riders.")]
+        public float assaultTransportWeight = 0.5f;
+        [Tooltip("Riding to the assault: riders are put down when their front attacks, or where ours (with them) are at least this many times theirs within three tiles.")]
+        public float assaultWaveRatio = 1f;
+
         [Tooltip("An empty transport is credited, like a fighting unit, for drawing fire off friends and blocking the enemy's way (FirstStrikeCredit, SpaceDenial). Off: it is not, and keeps out of reach.")]
         public bool idleTransportScreens = false;
 

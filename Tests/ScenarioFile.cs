@@ -139,16 +139,17 @@ public static class ScenarioFile {
         }
         sb.Append("\n],\n\"units\":[");
         f = true;
-        foreach (Player p in new[] { ai, other }) {
-            long id = p == ai ? AI_ID : OTHER_ID;
-            foreach (Unit u in p.units) {
-                if (u == null || u.tile == null) continue;
-                if (!f) sb.Append(',');
-                f = false;
-                string prefab = u.name.Replace("(Clone)", "");
-                sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":0}}",
-                    u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab));
-            }
+        // Every unit in file order first, so cargo can name its transport's place (transporterIndexPlusOne, as the game writes it).
+        List<Unit> order = new List<Unit>();
+        foreach (Player p in new[] { ai, other }) foreach (Unit u in p.units) if (u != null && u.tile != null) order.Add(u);
+        foreach (Unit u in order) {
+            long id = u.owner == ai ? AI_ID : OTHER_ID;
+            if (!f) sb.Append(',');
+            f = false;
+            string prefab = u.name.Replace("(Clone)", "");
+            int carrier = u.trasnporter != null ? order.IndexOf(u.trasnporter) + 1 : 0;
+            sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":{11}}}",
+                u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab, carrier));
         }
         sb.Append("\n]\n}\n");
         Directory.CreateDirectory(Path.GetDirectoryName(path));

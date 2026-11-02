@@ -152,6 +152,10 @@ MonoBehaviour:
   buySupply: 1
   buyUnits: 1
   combatRides: 1
+  assaultRides: 1
+  assaultBoardTurns: 2
+  assaultWaveRatio: 1
+  assaultTransportWeight: 0.5
   idleTransportScreens: 0
   freshUnload: 1
   theaterForecast: 1

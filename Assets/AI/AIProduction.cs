@@ -132,6 +132,24 @@ namespace HexTactica.AI {
                         if (near != null) nearest[kind][task] = near;
                     }
             int freeTrucks = logistics != null ? logistics.freeTrucks : 0;
+            // Riders waiting (assaultRides): our fighting units far from the fight, on foot, less the room in empty troop
+            // transports we have (not trucks: they carry the supply). A transport bought takes its room off.
+            List<Unit> waitingRiders = new List<Unit>();
+            int troopRoom = 0;
+            if (profile.assaultRides && profile.assaultTransportWeight > 0f) {
+                foreach (Unit u in map.ownUnits) {
+                    if (u == null || u.tile == null) continue;
+                    if (Transporting.IsTransport(u) && u.Firepower <= 1 && GameController.UnitName(u) != "Truck") {
+                        bool hub = false; foreach (Unit c in u.transported) if (c != null && c.Hub != null) hub = true;
+                        if (!hub) troopRoom += Mathf.Max(0, u.transportSlots - u.transported.Count);
+                        continue;
+                    }
+                    if (u.trasnporter == null && u.Hub == null && u.Firepower > 0 && u.locomotion == Locomotion.Boots && map.TurnsToContact(u) > profile.assaultBoardTurns) waitingRiders.Add(u);
+                }
+            }
+            int troopPlanned = 0;
+            float riderWorth = 0f; foreach (Unit u in waitingRiders) riderWorth += AIScore.Worth(u);
+            if (waitingRiders.Count > 0) riderWorth /= waitingRiders.Count;
 
             // The slots: every free tile of every building that can build.
             List<Slot> slots = new List<Slot>();
@@ -174,6 +192,20 @@ namespace HexTactica.AI {
             // What a unit would add in this slot, given what is planned so far.
             System.Func<Unit, Slot, KeyValuePair<float, string>> worth = (t, sl) => {
                 int kindOf = Kind(t);
+                // A troop transport (assaultRides): the riders waiting for room, times the share of their way it saves them.
+                if (waitingRiders.Count > 0 && t.cost > 0 && t.CanEnter(sl.tile) && Transporting.IsTransport(t) && t.Firepower <= 1 && GameController.UnitName(t) != "Truck" && fight.Count > 0) {
+                    int short_ = waitingRiders.Count - troopRoom - troopPlanned;
+                    Unit rider = waitingRiders[0];
+                    if (short_ > 0 && Transporting.CanCarry(t, rider)) {
+                        int walk = int.MaxValue, ride = int.MaxValue;
+                        foreach (HexTile x in fight) { walk = Mathf.Min(walk, map.Travel(rider, sl.tile, x)); ride = Mathf.Min(ride, map.Travel(t, sl.tile, x)); }
+                        float walkTurns = walk / (float)Mathf.Max(1, rider.moveRange), rideTurns = ride / (float)Mathf.Max(1, t.moveRange);
+                        float saved = walk < int.MaxValue / 2 ? Mathf.Clamp01((walkTurns - rideTurns) / Mathf.Max(1f, walkTurns)) : 0f;
+                        int carried = Mathf.Min(Mathf.Max(1, t.transportSlots), short_);
+                        float tv = carried * riderWorth * 6f * saved * profile.assaultTransportWeight;
+                        if (tv > 0f) return new KeyValuePair<float, string>(tv, "riders: " + short_ + " far from the fight without room, saves " + (saved * 100f).ToString("0") + "% of their way");
+                    }
+                }
                 if (kindOf < 0 || t.cost <= 0 || !t.CanEnter(sl.tile)) return new KeyValuePair<float, string>(-1f, null);
                 string name = GameController.UnitName(t);
                 int n, m; have.TryGetValue(name, out n); picked.TryGetValue(name, out m);
@@ -220,6 +252,7 @@ namespace HexTactica.AI {
             System.Action<Unit, int> count = (t, d) => {
                 string name = GameController.UnitName(t); int c; picked.TryGetValue(name, out c); picked[name] = c + d;
                 int k = Kind(t); if (k == 1) supplyPlanned += d; else if (k == 2) trucksPlanned += d;
+                if (Transporting.IsTransport(t) && t.Firepower <= 1 && GameController.UnitName(t) != "Truck") troopPlanned += d * Mathf.Max(1, t.transportSlots);
             };
             System.Action<Unit, Slot, int> plan = (t, sl, d) => {
                 count(t, d);
