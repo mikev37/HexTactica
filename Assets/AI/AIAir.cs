@@ -28,11 +28,22 @@ namespace HexTactica.AI {
         /// </summary>
         public static bool MayEndOn(Unit u, HexTile t, AIMap map) {
             if (u != null && u.trasnporter != null) return true;
+            // A transport does not park on a building of ours that builds (keepBuildSlotsClear): it would take the slot
+            // and nothing could be bought there (a supply truck held on the HQ for twenty turns: no unit bought since).
+            if (BlocksBuildSlot(u, t, map)) return false;
             Unit link;
             if (t != null && map.chainTiles.TryGetValue(t, out link) && link != u) return false;
             if (map.landings == null || t == null) return true;
             foreach (Landing l in map.landings.Values) if (l.turn == 1 && l.tile == t && l.unit != u) return false;
             return true;
+        }
+
+        /// <summary>Would <paramref name="u"/>, a transport, ending its turn on <paramref name="t"/> take one of our building slots (keepBuildSlotsClear)? Its own tile counts too: it should leave.</summary>
+        public static bool BlocksBuildSlot(Unit u, HexTile t, AIMap map) {
+            if (u == null || t == null || map == null || map.profile == null || !map.profile.keepBuildSlotsClear) return false;
+            if (!Transporting.IsTransport(u) || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return false;
+            Building b = t.building;
+            return b != null && b.owner == u.owner && b.CanProduce;
         }
 
         /// <summary>Remove the stops another aircraft has reserved for landing this turn (any unit; an aircraft parked there must lift off).</summary>

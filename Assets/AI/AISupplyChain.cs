@@ -117,6 +117,7 @@ namespace HexTactica.AI {
                 nT++;
                 if (x != truck.tile && (!drive.ReachableThisTurn(x) || !AIPath.CanFinishTurnOn(truck, x))) continue;
                 if (taken.Contains(x) || (x != truck.tile && x.occupier != null)) { nOcc++; continue; }
+                if (AIAir.BlocksBuildSlot(truck, x, map)) { nOcc++; continue; }   // a building slot of ours: kept clear
                 int sx = steps(x);
                 if (sx == int.MaxValue || sx > bestSteps || (sx == bestSteps && !CombatMath.Precedes(x, best))) continue;
                 // Supply serves the army: never ahead of it. (Carried out in front where nothing could strike

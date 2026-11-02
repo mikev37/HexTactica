@@ -442,6 +442,8 @@ public static class Scenarios {
                  Put("Tank", a, -4, 1);
                  Put("Grunt", o, 2, 0); },
              "An armed transport with a rider (assaultFireThenUnload, assaultFrontlineOut): a Blue recon carrying a grunt, a Blue tank, a Red grunt standing in the open. On Blue's turn (no coordinated plans: the transport's own choice) the recon stops where it can fire as well as put its rider down, fires on the Red grunt first and lets its rider out after (its rider still has its whole turn). Then: a recon whose assault move was set aside for its ordinary one (a fallback) has its rider get off to decide for itself.");
+        make("ai-capturer-lives", "capturerLives", (a, o) => { Put("Grunt", a, 3, 3); Put("APC", a, 1, 3); Rig.PlaceBuilding("City", a, -6, 4); Put("Grunt", o, 6, -6); },
+             "A capturer that lives to take it (capturerLives, AIAssault.TurnsToTake): a Blue grunt down to strength 2 a tile from Red's HQ, out of supply, an empty APC beside it and Blue's city far behind. Taking the HQ needs 20 points (brought down from 10, then up to 10) at 2 a turn while it starves: it would be gone first. So it is not the HQ's capturer and it does not go and stand on it; it rides to mend. Then a full-strength grunt in the same place: it would take the HQ in time, and the campaign makes it the capturer.");
         make("ai-medevac", "medevac", (a, o) => { Put("Grunt", a, 0, -5); Put("APC", a, -1, -4); Rig.PlaceBuilding("City", a, -6, 4); Put("Grunt", o, 6, -6); },
              "Medevac (assaultRides, assaultMedevacStrength): a Blue grunt down to strength 2, away from Red's HQ (boarding is weighed against its own move: a wounded unit a turn from taking a building would go and take it), an empty APC beside it, Blue's city nine tiles off (three turns' walk and more): within three Blue turns the APC has carried it onto a building that mends it, and once there it does not ride off to the fight while still wounded (strength 3 or less).");
         {
@@ -1738,6 +1740,31 @@ public static class Scenarios {
                 detail = string.Join(" / ", events.ToArray()) + " || the recon fired before its rider got off, the rider off by the end of the turn: " + firstFire
                        + "; fallback: " + (fb.HasValue ? fb.Value.kind + " - " + fb.Value.reason : g.trasnporter == rc ? "nothing" : "(could not put the grunt back aboard)");
                 return firstFire && fellBackOut;
+            }
+            case "capturerLives": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AICampaign.Debug = Console.WriteLine; }
+                Unit hurt = Rig.At(3, 3).occupier; hurt.Strength = 2;
+                Building hq = GameController.HQOf(o);
+                AIPlayer bai = a.GetComponent<AIPlayer>();
+                AIMap m0 = new AIMap(a, bai.Profile);
+                int weak = HexTactica.AI.AIAssault.TurnsToTake(hurt, hq, m0);
+                List<string> r = new List<string> { "strength 2: turns to take the HQ " + weak };
+                bool stoodOnHq = false, mended = false;
+                for (int turn = 0; turn < 8 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    if (hurt.tile == hq.tile) stoodOnHq = true;
+                    if (hurt.tile != null && hurt.trasnporter == null && Building.ServicingUnder(hurt) != null) mended = true;
+                    r.Add("grunt " + (hurt.Strength <= 0 ? "dead" : hurt.trasnporter != null ? "aboard at " + Pos(hurt.tile) : "at " + Pos(hurt.tile)) + " strength " + hurt.Strength);
+                    if (mended) break;
+                }
+                // Full strength, same place: it can take it in time.
+                Unit fresh = Put("Grunt", a, 4, 1);
+                int strong = HexTactica.AI.AIAssault.TurnsToTake(fresh, hq, new AIMap(a, bai.Profile));
+                r.Add("a full-strength grunt at (4,1): turns to take the HQ " + strong);
+                detail = string.Join(" | ", r.ToArray());
+                return weak < 0 && !stoodOnHq && mended && hurt.Strength > 0 && strong >= 0;
             }
             case "medevac": {
                 // Blue: a grunt down to strength 2 at (0,-5), an empty APC at (-1,-4), Blue's city at (-6,4), out of the grunt's
@@ -4216,8 +4243,9 @@ public static class Scenarios {
                 Console.WriteLine("  board after turn " + turn + ": " + string.Join(" | ", b.ToArray()));
             }
             if (gc.activePlayer == l.ai || gc.gameOver)
-                Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6}",
-                    gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other)));
+                Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6} | out of supply (unit-turns so far) Blue {5} Red {6}, lost to attrition Blue {7} Red {8}",
+                    gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other),
+                    l.ai.unitTurnsOutOfSupply, l.other.unitTurnsOutOfSupply, l.ai.unitsLostToAttrition, l.other.unitsLostToAttrition));
         }
         Unit.Ditched -= dh; Unit.RanInto -= rh; Unit.Attacking -= sh;
         if (gc.fogOfWar) Console.WriteLine("fog of war: ran into unseen units Blue " + ranBlue + " Red " + ranRed + "; shots fired unseen Blue " + hiddenShotsBlue + " Red " + hiddenShotsRed);

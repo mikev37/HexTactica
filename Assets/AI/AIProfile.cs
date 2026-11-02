@@ -53,6 +53,10 @@ namespace HexTactica.AI {
         [Tooltip("A task force reduced below this share of the power it was formed with sends the campaign back to planning.")]
         [Range(0f, 1f)]
         public float objectiveReplanLoss = 0.5f;
+        [Tooltip("Campaign: a building's task force has a capturer only in a unit that lives to take it (its way there, starving out of supply, the capture's points, the enemy there). Off: any unit that can capture.")]
+        public bool capturerLives = true;
+        [Tooltip("A ground transport never ends its turn on a building of ours that builds units (it would take the slot, and nothing could be bought there).")]
+        public bool keepBuildSlotsClear = true;
         [Tooltip("The way to an objective: steps of detour worth taking to avoid one tile the enemy can strike next turn (so a middle held in strength is gone round).")]
         public float routeDanger = 3f;
         [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]
