@@ -86,6 +86,13 @@ namespace HexTactica.AI {
             if (p == null || map == null || BuildingController.bc == null) return bought;
             allFoes = Foes(p, map, profile);
             defenceWeightNow = profile.productionDefenceWeight;
+            overkillNow = profile.productionOverkill;
+            lifetimeNow = profile.productionLifetime; lifeMaxNow = Mathf.Max(1f, profile.productionLifeMax); lifeRefNow = profile.productionLifeRef; reachRefNow = profile.productionReachRef;
+            shieldCutNow = Mathf.Clamp01(profile.productionShieldCut); shieldRatioNow = Mathf.Max(0.1f, profile.productionShieldRatio); tierCostsNow = profile.productionTierCosts;
+            tierCount = new int[3];
+            int fightingNow = 0;
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1)) { tierCount[Tier(u)]++; fightingNow++; }
+            if (profile.productionDefenceFade > 0f && !profile.productionLifetime) defenceWeightNow = profile.productionDefenceWeight / (1f + fightingNow / profile.productionDefenceFade);
             presenceNow = Mathf.Max(0f, profile.productionPresence); floorNow = Mathf.Max(0f, profile.productionFloor);
             planned = new List<KeyValuePair<Unit, HexTile>>();
             scarce = Scarcity(allFoes, map, profile);
@@ -216,7 +223,7 @@ namespace HexTactica.AI {
             };
             System.Action<Unit, Slot, int> plan = (t, sl, d) => {
                 count(t, d);
-                if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); }
+                if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); if (tierCount != null) tierCount[Tier(t)] += d; }
             };
 
             // Saving up: a supply unit (or truck) worth more for its cost than anything we can pay for now,
@@ -334,10 +341,22 @@ namespace HexTactica.AI {
                 // Each enemy unit counted as much as our army lacks the means to fight it (Scarcity); on our
                 // own ground (at), not wherever it stands now (one remembered under the fog is not seen there).
                 float need = scarce != null && scarce.ContainsKey(e) ? scarce[e] : 1f;
-                offence += Mathf.Min(e.Strength, Unit.calculateDamage(t, e, at, 0)) * AIScore.Worth(e) * need;
+                offence += Kills(t, e, at) * AIScore.Worth(e) * need;
                 if (e.Firepower > 0) defence += Mathf.Min(6, Unit.calculateDamage(e, t, at, 0)) * worth;
             }
             if (enemies == 0) return worth * 6f;
+            float exposure = 1f - Shield(t);
+            if (lifetimeNow) {
+                // What it does in a shot, times the turns it lives (6 strength over what it takes a turn, behind our screen).
+                float perShot = offence / enemies;
+                float takes = worth > 0f ? defence / enemies / worth * exposure : 0f;
+                float life = Mathf.Clamp(6f / Mathf.Max(0.1f, takes), 1f, lifeMaxNow);
+                float reach = t.AttackRange + (t.moveAndAttack ? t.moveRange : 0);
+                float engaged = reachRefNow > 0f ? Mathf.Clamp01(reach / reachRefNow) : 1f;
+                float lived = perShot * engaged * life / Mathf.Max(0.5f, lifeRefNow) + presenceNow * worth * 6f;
+                return Mathf.Max(floorNow * worth * 6f, lived);
+            }
+            defence *= exposure;
             // A unit on the field is worth something even if it would lose every exchange: the enemy has to
             // spend actions on it and come forward to do so, and it sees and holds ground (presenceNow of its
             // own worth). Never below floorNow of its worth.
@@ -345,6 +364,42 @@ namespace HexTactica.AI {
             return Mathf.Max(floorNow * worth * 6f, raw);
         }
         [System.ThreadStatic] static float presenceNow, floorNow;
+        [System.ThreadStatic] static bool overkillNow, lifetimeNow;
+        [System.ThreadStatic] static float lifeMaxNow, lifeRefNow, reachRefNow;
+        [System.ThreadStatic] static float shieldCutNow, shieldRatioNow;
+        [System.ThreadStatic] static Vector2 tierCostsNow;
+        /// <summary>Our fighting units by tier (Tier), with what is planned this turn.</summary>
+        [System.ThreadStatic] static int[] tierCount;
+
+        /// <summary>
+        /// What <paramref name="t"/> takes from <paramref name="e"/> in a shot, in strength: at full strength, capped at
+        /// a kill; with productionOverkill, the mean over its life (its strength 6 down to 1: damage falls with strength,
+        /// so firepower beyond a kill keeps killing as it is worn down).
+        /// </summary>
+        static float Kills(Unit t, Unit e, HexTile at) {
+            if (!overkillNow) return Mathf.Min(e.Strength, Unit.calculateDamage(t, e, at, 0));
+            int full = Mathf.Max(1, t.Strength);
+            float sum = 0f;
+            for (int s = full; s >= 1; s--) sum += Mathf.Min(e.Strength, Unit.calculateDamage(t, e, at, full - s));
+            return sum / full;
+        }
+
+        /// <summary>0 cheap (infantry, recon), 1 the line (tanks, AA, gunships, artillery), 2 dear (bombers, rockets, missiles, fighters): AIProfile.productionTierCosts.</summary>
+        static int Tier(Unit t) { return t.cost >= tierCostsNow.y && tierCostsNow.y > 0f ? 2 : t.cost >= tierCostsNow.x && tierCostsNow.x > 0f ? 1 : 0; }
+
+        /// <summary>
+        /// How much of what <paramref name="t"/> would take from the enemy our screen keeps off it (AIProfile.productionShieldCut):
+        /// the lower-tier units we have, against productionShieldRatio of them for each of its tier (it included); all of
+        /// the cut for one that fires from range or flies, half for one that must close.
+        /// </summary>
+        static float Shield(Unit t) {
+            if (shieldCutNow <= 0f || tierCount == null) return 0f;
+            int tier = Tier(t);
+            if (tier == 0) return 0f;
+            int lower = 0; for (int i = 0; i < tier; i++) lower += tierCount[i];
+            float covered = Mathf.Clamp01(lower / (shieldRatioNow * (tierCount[tier] + 1)));
+            return shieldCutNow * covered * (t.AttackRange > 1 || LocomotionRules.IsAirborne(t.locomotion) ? 1f : 0.5f);
+        }
         [System.ThreadStatic] static float defenceWeightNow;
         static float defenceWeight { get { return defenceWeightNow > 0f ? defenceWeightNow : 0.5f; } }
 
