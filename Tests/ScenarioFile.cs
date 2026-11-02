@@ -49,7 +49,7 @@ public static class ScenarioFile {
     /// <summary>A terrain asset from Assets/Tiles, read from its YAML.</summary>
     /// <summary>Where the terrain asset called <paramref name="name"/> is: Assets/Tiles or any folder under it (biomes have their own).</summary>
     static string TerrainPath(string name) {
-        string root = Path.Combine(PrefabLoader.AssetsRoot, "Tiles");
+        string root = Path.Combine(PrefabLoader.Root("Tiles"));
         string flat = Path.Combine(root, name + ".asset");
         if (File.Exists(flat) || !Directory.Exists(root)) return flat;
         string[] found = Directory.GetFiles(root, name + ".asset", SearchOption.AllDirectories);
@@ -90,7 +90,7 @@ public static class ScenarioFile {
             td.damageStates = new Sprite[states];
             for (int i = 0; i < states; i++) td.damageStates[i] = new Sprite();
             if (into != null)
-                foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.AssetsRoot, "Tiles"), "*.asset.meta", SearchOption.AllDirectories))
+                foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Tiles")), "*.asset.meta", SearchOption.AllDirectories))
                     if (File.ReadAllText(meta).Contains("guid: " + into)) { td.destroyedInto = Terrain(Path.GetFileName(meta).Replace(".asset.meta", "")); break; }
         } else {
             throw new Exception("No terrain asset " + path);

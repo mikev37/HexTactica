@@ -40,7 +40,7 @@ public class BuildingMenu : MonoBehaviour {
         float y = box.y + 30f;
         foreach (Unit u in list) {
             if (u == null) continue;
-            string label = u.name.Replace("(Clone)", "") + "   " + u.cost;
+            string label = GameController.DisplayName(u, b.owner) + "   " + u.cost;
             GUI.enabled = b.owner.money >= u.cost;
             if (GUI.Button(new Rect(box.x + 10f, y, w - 20f, row - 4f), label)) {
                 if (BuildingController.bc != null && BuildingController.bc.Produce(b, u) != null) open = null;

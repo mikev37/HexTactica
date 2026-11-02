@@ -385,6 +385,8 @@ public static class Scenarios {
              "Transport visuals. Cargo slots: two grunts board an APC (slots 0 and 1); the first gets off and a third boards: it takes the free slot 0, not the second's slot 1. A unit that dies aboard (its transport destroyed) stays the size it rode at (it does not grow back to full size). A unit put down from a transport plane appears dropHeight above its tile and comes down onto it.");
         make("rule-faction-roster", "factionRoster", (a, o) => { Rig.PlaceBuilding("HQ", a, -4, 0); Rig.PlaceBuilding("ArmyBase", a, -2, 2); Put("Grunt", o, 5, 0); },
              "Factions (Faction, Building.Offered): Blue's HQ and Factory keep their base lists. Given a faction that replaces the Grunt with its own version, drops the first other unit the HQ lists, and adds an extra unit made at Factories (the ArmyBase): the HQ offers the version where the Grunt was, not the Grunt or the dropped unit; the ArmyBase offers the version in its Grunt's place and the extra; without the faction, the base lists. The version is bought and placed under its own name, is allowed where the scenario allows the Grunt, and its name and the faction's survive a save (LevelEditor.loadUnit, PlayerData.factionName).");
+        make("rule-faction-load", "factionLoad", (a, o) => { Put("Grunt", o, 5, 0); },
+             "Loading from the Resources folder, with nothing listed on the scene's LevelEditor: the Grunt, a faction's 'Grunt Federation Variant', the City and Grassland are found by name. A scenario's Grunt placed for a Federation side becomes the Federation's version (also when saved as another faction's version); for a side without a faction it stays the Grunt. The build menu calls the version 'Grunt' (and 'Gunship Variant' 'Gunship'). On the AI's thinking thread, after the board is copied, the faction matches its units by name without a call Unity allows only on the main thread.");
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1234,6 +1236,70 @@ public static class Scenarios {
                 detail = string.Join("; ", r.ToArray());
                 return roster && allowed && bought && saved && off;
             }
+            case "factionLoad": {
+                List<string> r = new List<string>();
+                LevelEditor was = LevelEditor.singleton;
+                bool lookups, placed, other, shown, threaded;
+                try {
+                    // Nothing listed on the scene's LevelEditor: everything comes from the Resources folder.
+                    LevelEditor ed = Rig.New<LevelEditor>();
+                    ed.allUnit = new List<Unit>(); ed.allBuilding = new List<Building>(); ed.allTerrain = new List<TerrainData>(); ed.allFaction = new List<Faction>();
+                    LevelEditor.singleton = ed;
+                    Unit gruntR = LevelEditor.loadUnit("Grunt"), variantR = LevelEditor.loadUnit("Grunt Federation Variant(Clone)");
+                    Building cityR = LevelEditor.loadBuilding("City");
+                    TerrainData grassR = LevelEditor.loadTerrain("Grassland");
+                    lookups = gruntR != null && variantR != null && variantR.name == "Grunt Federation Variant" && cityR != null && grassR != null;
+                    r.Add("from Resources with empty lists: Grunt " + (gruntR != null) + ", 'Grunt Federation Variant' " + (variantR != null ? variantR.name : "MISSING") + ", City " + (cityR != null) + ", Grassland " + (grassR != null));
+
+                    // Fresh prefab copies (no name read yet), as a faction asset holds them.
+                    Unit original = PrefabLoader.Load("Grunt"), version = PrefabLoader.Load("Grunt Federation Variant");
+                    Faction fed = ScriptableObject.CreateInstance<Faction>(); fed.name = "Federation";
+                    fed.replacements.Add(new Faction.Replacement { original = original, replacement = version });
+                    Unit otherVersion = PrefabLoader.Load("Grunt"); otherVersion.name = "Grunt Testland Variant";
+                    Faction test = ScriptableObject.CreateInstance<Faction>(); test.name = "Testland";
+                    test.replacements.Add(new Faction.Replacement { original = PrefabLoader.Load("Grunt"), replacement = otherVersion });
+                    ed.allFaction = new List<Faction> { fed, test };
+                    // (As Unity loads an asset: no name read yet. The harness loader names its copies, which reads it.)
+                    System.Reflection.FieldInfo cache = typeof(Unit).GetField("nameCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    cache.SetValue(original, null); cache.SetValue(version, null);
+                    Building hqB = Rig.At(-6, 0).building;
+                    List<Unit> offered = hqB != null && hqB.buildable != null ? new List<Unit>(hqB.buildable) : new List<Unit>();
+                    foreach (Unit ou in offered) if (ou != null) cache.SetValue(ou, null);
+                    List<string> offeredAs = new List<string>();
+                    l.ai.faction = fed;
+
+                    // Thinking on another thread, after the board is copied, the faction matches units by name:
+                    // the names must have been read on the main thread (Unity: "GetName can only be called from the main thread").
+                    int before = UnityEngine.MainThreadOnly.violations;
+                    string threadErr = null; Unit mapped = null, based = null;
+                    BoardView view = BoardView.Snapshot();
+                    System.Threading.Thread th = new System.Threading.Thread(() => {
+                        try { using (view.Enter()) { mapped = fed.Map(original); based = fed.BaseOf(version); foreach (Unit ou in offered) { Unit m = fed.Map(ou); offeredAs.Add(m != null ? m.name : "none"); } } }
+                        catch (Exception e) { threadErr = e.GetBaseException().Message; }
+                    });
+                    th.Start(); th.Join();
+                    threaded = threadErr == null && UnityEngine.MainThreadOnly.violations == before && mapped == version && based == original && offered.Count > 1 && offeredAs.Count == offered.Count;
+                    r.Add("on a thinking thread: the faction maps Grunt to " + (mapped != null ? mapped.name : "nothing") + ", back to " + (based != null ? based.name : "nothing") + ", the HQ's " + offered.Count + " units to " + string.Join("/", offeredAs.ToArray()) + (threadErr != null ? ", FAILED: " + threadErr : ", no main-thread-only call"));
+
+                    foreach (HexTile t in Rig.hg.tiles) if (t.unitPlacement == null) { t.unitPlacement = Rig.New<Transform>(); t.unitPlacement.position = new Vector3(t.x, t.y, 0f); }
+                    // A scenario loading a Grunt for a Federation side places the Federation's version; the build menu calls it Grunt.
+                    Unit ua = LevelEditor.PlaceNewUnit(l.ai, "Grunt", Rig.At(-1, 0));
+                    string an = ua != null ? ua.name.Replace("(Clone)", "").Trim() : "nothing";
+                    placed = an == "Grunt Federation Variant";
+                    Unit ub = LevelEditor.PlaceNewUnit(l.ai, "Grunt Testland Variant(Clone)", Rig.At(-1, 1));
+                    string bn = ub != null ? ub.name.Replace("(Clone)", "").Trim() : "nothing";
+                    other = bn == "Grunt Federation Variant";
+                    Unit uc2 = LevelEditor.PlaceNewUnit(l.other, "Grunt", Rig.At(1, 0));
+                    string cn = uc2 != null ? uc2.name.Replace("(Clone)", "").Trim() : "nothing";
+                    placed &= cn == "Grunt";
+                    r.Add("loaded 'Grunt' for Federation Blue: " + an + "; 'Grunt Testland Variant' for Blue: " + bn + "; 'Grunt' for factionless Red: " + cn);
+                    string d1 = GameController.DisplayName(version, l.ai), d2 = GameController.DisplayName(original, l.ai), d3 = GameController.DisplayName(PrefabLoader.Load("Gunship Variant"), l.other);
+                    shown = d1 == "Grunt" && d2 == "Grunt" && d3 == "Gunship";
+                    r.Add("shown as: '" + d1 + "', '" + d2 + "', 'Gunship Variant' as '" + d3 + "'");
+                } finally { LevelEditor.singleton = was; l.ai.faction = null; }
+                detail = string.Join("; ", r.ToArray());
+                return lookups && threaded && placed && other && shown;
+            }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
                 Func<bool, Unit, int> cover = (on, x) => {
@@ -2004,7 +2070,7 @@ public static class Scenarios {
                     if (!inList) continue;
                     System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(line, "^  - .*guid: ([0-9a-f]+)");
                     if (!g.Success) break;
-                    foreach (string meta in Directory.GetFiles(Path.Combine(root, "Tiles"), "*.asset.meta", SearchOption.AllDirectories))
+                    foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Tiles")), "*.asset.meta", SearchOption.AllDirectories))
                         if (File.ReadAllText(meta).Contains("guid: " + g.Groups[1].Value)) sceneTerrain.Add(Path.GetFileName(meta).Replace(".asset.meta", ""));
                 }
                 LevelEditor was = LevelEditor.singleton;
@@ -2012,7 +2078,7 @@ public static class Scenarios {
                 ed.allTerrain = new List<TerrainData>();
                 foreach (string t in sceneTerrain) ed.allTerrain.Add(ScenarioFile.Terrain(t));
                 ed.allBuilding = new List<Building>();
-                foreach (string f in Directory.GetFiles(Path.Combine(root, "Buildings", "Prefabs"), "*.prefab"))
+                foreach (string f in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Buildings"), "Prefabs"), "*.prefab"))
                     try { ed.allBuilding.Add(PrefabLoader.LoadBuilding(Path.GetFileNameWithoutExtension(f))); } catch (Exception) { }
                 ed.allUnit = new List<Unit>();
                 LevelEditor.singleton = ed;
@@ -4050,7 +4116,7 @@ public static class Scenarios {
         string[] maps = list("MAPS", "ChanceMeeting,BushWar,MountainPass,RiverCrossing,LogisticsZigzag,campaign-rough-legacy-ai-left,campaign-std-legacy-ai-left");
         // A scenario's name is looked for in Assets/Scenarios, then as the harness's own.
         for (int i = 0; i < maps.Length; i++) {
-            string game = Path.Combine(PrefabLoader.AssetsRoot, "Scenarios", maps[i] + ".dat");
+            string game = Path.Combine(PrefabLoader.Root("Scenarios"), maps[i] + ".dat");
             if (!File.Exists(maps[i]) && File.Exists(game)) maps[i] = game;
         }
         string fogSet = Environment.GetEnvironmentVariable("FOGS") ?? "alt";

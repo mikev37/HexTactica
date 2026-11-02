@@ -326,11 +326,13 @@ public class AIPlayer : MonoBehaviour {
         if (t.endTurn) {
             using (NewView().Enter()) {
                 // With the campaign's logistics, supply and transports are bought on the fronts' pressure (AIProduction).
+                long __p = HexTactica.AI.AIPerf.Begin();
                 if (logistics == null) BuySupply();
                 if (Profile.buyUnits && map != null) {
                     List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace, logistics);
                     if (onBuy != null) foreach (Unit u in bought) onBuy(u);
                 }
+                HexTactica.AI.AIPerf.End("production (main thread, end of turn)", __p);
             }
             EndTurn();
             return Outcome.TurnOver;
