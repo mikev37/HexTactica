@@ -884,6 +884,11 @@ public class Unit : MonoBehaviour
         threatValue = valueGain;
     }
 
+    /// <summary>A transport carrying supply units re-solves its side's supply when it finishes acting (its cargo's supply moved with it).</summary>
+    public static bool ResupplyWithCargo = true;
+    /// <summary>Any unit's death re-solves every side's supply (it may have been blocking a corridor), not only a supply unit's its own.</summary>
+    public static bool ResupplyOnAnyDeath = true;
+
     /// <summary>Does <paramref name="u"/> carry a supply unit (aboard it, or aboard what it carries)?</summary>
     static bool CarriesSupply(Unit u) {
         if (u == null || u.transported == null) return false;
@@ -897,7 +902,7 @@ public class Unit : MonoBehaviour
         FogOfWar.Refresh();
         GameController.RecalculateThreat();
         // Its supply moved with it: a supply unit, or a transport carrying one (its cargo rode along).
-        if (Hub || CarriesSupply(this)) {
+        if (Hub || (ResupplyWithCargo && CarriesSupply(this))) {
             owner.Resupply();
         }
         if (Finished != null) Finished(this);
@@ -1128,10 +1133,13 @@ public class Unit : MonoBehaviour
         if (GameController.gc != null) GameController.gc.CheckVictory();
         // Every side's supply: a supply unit lost shrinks its own; any unit lost may open a corridor it was
         // blocking for the other side (an enemy standing in it severs it). Cargo goes down with it first, then this.
-        if (BoardView.current == null && GameController.gc != null && GameController.gc.players != null && (trasnporter == null || Hub != null)) {
+        // (Not in the middle of a side's turn-start upkeep: that feeds every unit from the field solved when it began —
+        // a forward base spending its last point of store still feeds that turn — and re-solves when it is done.)
+        if (ResupplyOnAnyDeath && BoardView.current == null && GameController.gc != null && GameController.gc.players != null && (trasnporter == null || Hub != null) && !Player.InUpkeep) {
             foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
-        } else if (Hub) {
-            owner.Resupply();
+        } else {
+            if (ResupplyOnAnyDeath && Player.InUpkeep) Player.ResupplyAfterUpkeep = true;
+            if (Hub) owner.Resupply();
         }
     }
 
