@@ -459,7 +459,14 @@ namespace HexTactica.AI {
                 return exact.TryGetValue(t, out v) ? v : 0f;
             };
 
-            return AITransportPlanner.Plan(unit, map, profile, valueOf, shortlist, reserved);
+            TransportPlan plan = AITransportPlanner.Plan(unit, map, profile, valueOf, shortlist, reserved);
+            // A ride for a supply unit ends with it still aboard (supplyStaysAboard): the transport parks on the tile
+            // chosen for the supply, if it can stand there, and the supply spreads from it.
+            if (plan != null && plan.usesTransport && plan.transport != null && profile.supplyStaysAboard) {
+                plan.stayAboard = true;
+                if (plan.destination != null && plan.transport.CanEnter(plan.destination)) plan.dropoff = plan.destination;
+            }
+            return plan;
         }
 
         /// <summary>

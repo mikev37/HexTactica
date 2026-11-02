@@ -710,6 +710,9 @@ namespace HexTactica.AI {
         [Tooltip("With value-added pricing, still credit coverage of contested ground and of where units are heading.")]
         public bool hubPricingForward = true;
 
+        [Tooltip("A supply unit aboard a transport stays aboard: aboard, it links as far as its transport can drive and spreads its supply from wherever the transport stands, so it is never put down (a supply unit inside a transport inside another may be, with its own transport). The one exception: its transport would be destroyed where it stops. Off: plans could end in 'carry and drop off'.")]
+        public bool supplyStaysAboard = true;
+
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;
 
