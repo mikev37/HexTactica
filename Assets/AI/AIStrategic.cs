@@ -462,11 +462,16 @@ namespace HexTactica.AI {
             int radius = Mathf.Max(1, f.campaignStagingRadius);
             // Gathered: healthy, on the staging ground (within its radius of the staging tile) or already past it.
             float gathered = 0f, committed = 0f, force = 0f;
+            // Past the staging ground counts only with the body (campaignGatherWithBody): within the radius of the task
+            // force's centre too. (A lone unit up front counted as gathered: two grunts, one at the staging ground and one
+            // far ahead by the target, made the need and the front went in on its first turn.)
+            HexTile body = profile.campaignGatherWithBody ? AICampaign.Centre(f.assigned.FindAll(x => x != null && x.tile != null && x.Firepower > 0 && x.Hub == null && x.Strength >= healthy)) : null;
             foreach (Unit u in f.assigned) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                 float w = AIScore.Worth(u);
                 if (u.Strength >= healthy) force += w * u.Strength;
-                bool there = map.Travel(u, u.tile, staging) <= radius || map.Travel(u, u.tile, objective) < stagingToGo;
+                bool there = map.Travel(u, u.tile, staging) <= radius
+                          || (map.Travel(u, u.tile, objective) < stagingToGo && (body == null || map.Travel(u, u.tile, body) <= radius));
                 if (there && u.Strength >= healthy) gathered += w * u.Strength;
                 if (u.Strength > profile.withdrawStrength) committed += w * u.Strength;
             }

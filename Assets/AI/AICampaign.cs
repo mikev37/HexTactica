@@ -744,9 +744,12 @@ namespace HexTactica.AI {
             int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
             int stagingToGo = map.Travel(null, o.staging, o.target);
             float gathered = 0f;
+            // Past the staging ground counts only with the body (campaignGatherWithBody), as AIStrategic.GatherThenGo.
+            HexTile body = p.campaignGatherWithBody ? Centre(o.units.FindAll(x => x != null && x.tile != null && x.Strength >= healthy)) : null;
             foreach (Unit u in o.units) {
                 if (u == null || u.tile == null || u.Strength < healthy) continue;
-                if (map.Travel(u, u.tile, o.staging) <= radius || map.Travel(u, u.tile, o.target) < stagingToGo) gathered += Power(u);
+                if (map.Travel(u, u.tile, o.staging) <= radius
+                    || (map.Travel(u, u.tile, o.target) < stagingToGo && (body == null || map.Travel(u, u.tile, body) <= radius))) gathered += Power(u);
             }
             return gathered >= Mathf.Max(1f, o.needPower) * Mathf.Clamp01(p.campaignGatherShare);
         }
