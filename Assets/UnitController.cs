@@ -28,4 +28,23 @@ public class UnitController : MonoBehaviour
         }
         else return null;
     }
+
+    /// <summary>
+    /// A new unit already aboard <paramref name="transport"/> (a loaded save or scenario): on no tile of its own, in the
+    /// transport's cargo as if it had boarded (Unit.OnBoarded: its sprites in the transport's next slot).
+    /// </summary>
+    public Unit CreateAboard(Player player, Unit unit, Unit transport)
+    {
+        if (unit == null || transport == null || transport.tile == null) return null;
+        Unit cargo = GameObject.Instantiate(unit.gameObject, transport.transform.position, Quaternion.identity).GetComponent<Unit>();
+        cargo.tile = transport.tile;
+        cargo.owner = player;
+        units.Add(cargo);
+        if (player != null) player.units.Add(cargo);
+        cargo.trasnporter = transport;
+        transport.transported.Add(cargo);
+        cargo.OnBoarded(transport);
+        FogOfWar.Changed();
+        return cargo;
+    }
 }
