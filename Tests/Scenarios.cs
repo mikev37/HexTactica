@@ -389,6 +389,16 @@ public static class Scenarios {
              "Loading from the Resources folder, with nothing listed on the scene's LevelEditor: the Grunt, a faction's 'Grunt Federation Variant', the City and Grassland are found by name. A scenario's Grunt placed for a Federation side becomes the Federation's version (also when saved as another faction's version); for a side without a faction it stays the Grunt. The build menu calls the version 'Grunt' (and 'Gunship Variant' 'Gunship'). On the AI's thinking thread, after the board is copied, the faction matches its units by name without a call Unity allows only on the main thread.");
         make("rule-load-cargo", "loadCargo", (a, o) => { Put("Grunt", o, 5, 0); },
              "Loading a scenario as the game does (ScenarioLoader; the in-game load shares UnitData.LoadAll): Korea, whose trucks are listed after the supplies they carry, on the same tile, with the scene's LevelEditor listing only the older units. Every unit in the file is made (the rocket artillery, missile trucks and trucks from the Resources folder), the supplies are aboard their trucks and not active, every other unit is on its own tile, and nothing is logged as an error.");
+        {
+            Blank(14);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
+            Rig.PlaceBuilding("FOB", ai, 0, 0);
+            Dictionary<string, string> test = Test("rule-supply-fob-refresh", "rules", "Human", 4, "supplyFob", "Supply around a forward base, and the board kept up to date. HQ at -13, FOB at 0 with a store. Nothing linking them: the FOB is cut off and gives from its store (the ground around it is supplied), and supply units standing there, or aboard a truck there, are cut off (a supply unit links only to supply that comes from the HQ). After each kind of move the supply shown on the board is the network as it is: a truck carrying supply units driven by the player (its supply moves with it), a supply unit walking, an enemy blocking a corridor killed; and a supply unit's cut-off flag (the cut-off icon) follows the network, not the start of the turn. Also reports whether an enemy Blue does not see, under fog, cuts Blue's supply.");
+            test["rules"] = "standard";
+            ScenarioFile.Save(Path.Combine(Dir, "rule-supply-fob-refresh.dat"), test, ai, other, ai);
+            n++;
+        }
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1371,6 +1381,79 @@ public static class Scenarios {
                 } finally { LevelEditor.singleton = was; }
                 detail = string.Join("; ", r.ToArray());
                 return ok;
+            }
+            case "supplyFob": {
+                List<string> r = new List<string>();
+                Building fob = Rig.At(0, 0).building;
+                System.Reflection.MethodInfo die = typeof(Unit).GetMethod("DieActual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                // The field the board shows (published) against one worked out afresh (not published).
+                Func<string> stale = () => {
+                    SupplyNetwork.Result fresh = SupplyNetwork.SolveAll(a, new Dictionary<SupplyPoint, HexTile>());
+                    int n = 0; HexTile first = null;
+                    foreach (HexTile t in Rig.hg.tiles) if ((t.supply[a] > 0) != fresh.IsSupplied(t)) { n++; if (first == null) first = t; }
+                    return n == 0 ? "board up to date" : "BOARD STALE on " + n + " tiles (first " + first.x + "," + first.y + ": shows " + (first.supply[a] > 0 ? "supplied" : "unsupplied") + ")";
+                };
+                Func<SupplyNetwork.Result, string> row = res => { string o2 = ""; for (int x = -13; x <= 13; x++) o2 += res.DepthAt(Rig.At(x, 0)) > 0 ? (Rig.At(x, 0).building != null ? "B" : res.DepthAt(Rig.At(x, 0)).ToString("X")) : "."; return o2; };
+                Func<SupplyPoint, SupplyNetwork.Result, string> st = (h, res) => res.connectedHubs.Contains(h) ? "linked" : res.strandedHubs.Contains(h) ? "CUT OFF" : "?";
+                fob.supplies = 6;
+                SupplyNetwork.Result s0 = SupplyNetwork.Solve(a, false);
+                r.Add("1. HQ at -13, FOB at 0 (range " + fob.supplyRange + ", store 6), no supply units. Row y=0 depth: " + row(s0) + "; FOB " + (s0.connectedBuildings.Contains(fob) ? "linked" : s0.strandedBuildings.Contains(fob) ? "cut off, giving from its store" : "?"));
+                // Supply units on foot between them.
+                Unit h1 = Put("Supplies", a, -6, 0);
+                SupplyNetwork.Result s1 = SupplyNetwork.Solve(a, false);
+                r.Add("2. Supplies on foot at -6: " + st(h1.Hub, s1) + "; FOB " + (s1.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s1));
+                Unit h2 = Put("Supplies", a, 3, 0);
+                SupplyNetwork.Result s2 = SupplyNetwork.Solve(a, false);
+                r.Add("3. Supplies on foot at 3 (in the FOB's area): " + st(h2.Hub, s2) + "; row " + row(s2));
+                // A truck carrying supplies, beside the FOB.
+                Unit truck = Put("Truck", a, 2, 3);
+                Unit cargo = Put("Supplies", a, 2, 4);
+                bool boarded = Transporting.Load(truck, cargo);
+                SupplyNetwork.Result s3 = SupplyNetwork.Solve(a, false);
+                bool truckTileSupplied = s3.IsSupplied(truck.tile);
+                r.Add("4. Truck at 2,3 carrying supplies (boarded " + boarded + "): its supplies " + st(cargo.Hub, s3) + ", truck's tile " + (s3.IsSupplied(truck.tile) ? "supplied" : "UNSUPPLIED"));
+                // Moved as the player moves it (HexTile: CompleteMove then FinishActive).
+                SupplyNetwork.Solve(a, false);
+                truck.MoveAlong(new List<HexTile> { Rig.At(2, 3), Rig.At(3, 3), Rig.At(4, 3), Rig.At(5, 3) }, false, false);
+                truck.FinishActive();
+                string st5 = stale(); r.Add("5. Truck driven to 5,3 (as the player moves it): " + st5);
+                SupplyNetwork.Solve(a, false);
+                // The supply unit on foot moves.
+                h2.MoveAlong(new List<HexTile> { Rig.At(3, 0), Rig.At(4, 0), Rig.At(5, 0) }, false, false);
+                h2.FinishActive();
+                string st6a = stale(); r.Add("6. Supplies on foot walked to 5,0: " + st6a);
+                Unit truck2 = Put("Truck", a, -11, 2);
+                Unit cargo2 = Put("Supplies", a, -11, 3);
+                Transporting.Load(truck2, cargo2);
+                SupplyNetwork.Result s6 = SupplyNetwork.Solve(a, false);
+                string before6 = st(cargo2.Hub, s6);
+                List<HexTile> drive = new List<HexTile>(); for (int x = -11; x <= -7; x++) drive.Add(Rig.At(x, 2));
+                truck2.MoveAlong(drive, false, false);
+                truck2.FinishActive();
+                string staleNow = stale();
+                SupplyNetwork.Result s7 = SupplyNetwork.Solve(a, false);
+                r.Add("6b. Truck carrying linked supplies (" + before6 + ") driven -11,2 to -7,2 as the player moves it: " + staleNow + "; afterwards its supplies " + st(cargo2.Hub, s7) + ", hub.connected flag says " + cargo2.Hub.connected);
+                // An enemy unit standing in the corridor, then killed by the player (not a supply unit).
+                Unit blocker = Put("Grunt", o, -3, 0);
+                foreach (int[] w in new[] { new[] { -3, -1 }, new[] { -3, 1 }, new[] { -2, -1 }, new[] { -4, 1 } }) Put("Grunt", o, w[0], w[1]);
+                SupplyNetwork.Result s4 = SupplyNetwork.Solve(a, false);
+                r.Add("7. Red grunts across the corridor at x=-3: FOB " + (s4.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s4));
+                die.Invoke(blocker, null);
+                string st8 = stale(); r.Add("8. The Red grunt at -3,0 killed (not a supply unit): " + st8);
+                SupplyNetwork.Solve(a, false);
+                // Fog: an enemy Blue does not see, blocking.
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Refresh();
+                Unit hidden = Put("Grunt", o, -3, 0);
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                bool seen = FogOfWar.Sees(a, hidden);
+                SupplyNetwork.Result s5 = SupplyNetwork.Solve(a, false);
+                r.Add("9. Fog on, a Red grunt back at -3,0, seen by Blue " + seen + ": FOB " + (s5.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s5));
+                gc.fogOfWar = false; FogOfWar.Reset();
+                detail = string.Join(" | ", r.ToArray());
+                bool fobRules = s0.strandedBuildings.Contains(fob) && s0.IsSupplied(Rig.At(5, 0)) && !s1.connectedHubs.Contains(h1.Hub) && !s2.connectedHubs.Contains(h2.Hub)
+                                && s3.strandedHubs.Contains(cargo.Hub) && truckTileSupplied;
+                bool upToDate = st5 == "board up to date" && st6a == "board up to date" && staleNow == "board up to date" && st8 == "board up to date";
+                return fobRules && upToDate && before6 == "linked" && s7.connectedHubs.Contains(cargo2.Hub) && cargo2.Hub.connected;
             }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
@@ -3502,7 +3585,10 @@ public static class Scenarios {
         }
         Console.WriteLine();
         Console.WriteLine("== Building rules ==");
+        // NAME=<part of a file name>: only the rule checks whose file name contains it.
+        string onlyName = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "rules" ? "rules" : "-")) {
+            if (onlyName != null && !Path.GetFileName(f).Contains(onlyName)) continue;
             ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
             string detail;
             bool ok = RuleCheck(l, out detail);
