@@ -136,15 +136,15 @@ namespace HexTactica.AI {
                     }
             int freeTrucks = logistics != null ? logistics.freeTrucks : 0;
             // Riders waiting (assaultRides): our fighting units far from the fight, on foot, less the room in empty troop
-            // transports we have (not trucks: they carry the supply). A transport bought takes its room off.
+            // transports we have (not those held for supply, AIAssault.SupplyTransports). A transport bought takes its room off.
             List<Unit> waitingRiders = new List<Unit>();
             int troopRoom = 0;
+            HashSet<Unit> forSupply = profile.assaultRides ? AIAssault.SupplyTransports(map.player, map, null) : new HashSet<Unit>();
             if (profile.assaultRides && profile.assaultTransportWeight > 0f) {
                 foreach (Unit u in map.ownUnits) {
                     if (u == null || u.tile == null) continue;
-                    if (Transporting.IsTransport(u) && u.Firepower <= 1 && !AIAssault.IsTruck(u)) {
-                        bool hub = false; foreach (Unit c in u.transported) if (c != null && c.Hub != null) hub = true;
-                        if (!hub) troopRoom += Mathf.Max(0, u.transportSlots - u.transported.Count);
+                    if (Transporting.IsTransport(u) && u.Firepower <= 1) {
+                        if (!forSupply.Contains(u)) troopRoom += Transporting.FreeWeight(u);
                         continue;
                     }
                     if (u.trasnporter == null && u.Hub == null && u.Firepower > 0 && u.locomotion == Locomotion.Boots && map.TurnsToContact(u) > profile.assaultBoardTurns) waitingRiders.Add(u);
@@ -158,7 +158,7 @@ namespace HexTactica.AI {
                 foreach (Building b in sites) {
                     int room = 0;
                     foreach (Unit u in map.ownUnits) {
-                        if (u == null || u.tile == null || !Transporting.IsTransport(u) || u.Firepower > 1 || u.transported.Count > 0 || AIAssault.IsTruck(u)) continue;
+                        if (u == null || u.tile == null || !Transporting.IsTransport(u) || u.Firepower > 1 || u.transported.Count > 0 || forSupply.Contains(u)) continue;
                         bool beside = false; foreach (HexTile f in b.Footprint) if (f.Distance(u.tile) <= 1) beside = true;
                         if (beside) room += Mathf.Max(1, u.transportSlots);
                     }
@@ -211,7 +211,7 @@ namespace HexTactica.AI {
                 // A troop transport (assaultRides): what it adds to the riders waiting for room (the nearest of them, as many as
                 // it carries) — each one's value, times the turns sooner it reaches the fight riding (fetched from where it
                 // stands) than walking, over the turns its value is measured on (productionLifeRef), at most all of it.
-                if (waitingRiders.Count > 0 && t.cost > 0 && t.CanEnter(sl.tile) && Transporting.IsTransport(t) && t.Firepower <= 1 && !AIAssault.IsTruck(t) && fight.Count > 0) {
+                if (waitingRiders.Count > 0 && t.cost > 0 && t.CanEnter(sl.tile) && Transporting.IsTransport(t) && t.Firepower <= 1 && fight.Count > 0) {
                     int short_ = waitingRiders.Count - troopRoom - troopPlanned;
                     if (short_ > 0) {
                         List<Unit> near = new List<Unit>(waitingRiders);
@@ -289,11 +289,11 @@ namespace HexTactica.AI {
             System.Action<Unit, int> count = (t, d) => {
                 string name = GameController.UnitName(t); int c; picked.TryGetValue(name, out c); picked[name] = c + d;
                 int k = Kind(t); if (k == 1) supplyPlanned += d; else if (k == 2) trucksPlanned += d;
-                if (Transporting.IsTransport(t) && t.Firepower <= 1 && !AIAssault.IsTruck(t)) troopPlanned += d * Mathf.Max(1, t.transportSlots);
+                if (Transporting.IsTransport(t) && t.Firepower <= 1) troopPlanned += d * Mathf.Max(1, t.transportSlots);
             };
             System.Action<Unit, Slot, int> plan = (t, sl, d) => {
                 count(t, d);
-                if (Transporting.IsTransport(t) && t.Firepower <= 1 && !AIAssault.IsTruck(t)) { int r0; roomAt.TryGetValue(sl.b, out r0); roomAt[sl.b] = r0 + d * Mathf.Max(1, t.transportSlots); }
+                if (Transporting.IsTransport(t) && t.Firepower <= 1) { int r0; roomAt.TryGetValue(sl.b, out r0); roomAt[sl.b] = r0 + d * Mathf.Max(1, t.transportSlots); }
                 if (t.locomotion == Locomotion.Boots && Kind(t) == 0) { int f0; fillPlanned.TryGetValue(sl.b, out f0); fillPlanned[sl.b] = f0 + d; }
                 if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); if (tierCount != null) tierCount[Tier(t)] += d; }
             };

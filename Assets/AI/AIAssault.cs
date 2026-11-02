@@ -14,6 +14,28 @@ namespace HexTactica.AI {
     public static class AIAssault {
         /// <summary>Set by the AI for the decision at hand: the riders belong to a front (its posture decides the wave; else local numbers).</summary>
         [System.ThreadStatic] public static bool HasFront;
+        /// <summary>The strike each rider was put down for this turn (the transport planned it as the rider's own move): the rider carries it out. Cleared each turn.</summary>
+        public static readonly Dictionary<Unit, Strike> Planned = new Dictionary<Unit, Strike>();
+
+        /// <summary>Is <paramref name="f"/> where another rider put down this turn is to stand?</summary>
+        static bool Claimed(HexTile f, Unit c) {
+            foreach (KeyValuePair<Unit, Strike> kv in Planned) if (kv.Key != c && kv.Value != null && kv.Value.stand == f) return true;
+            return false;
+        }
+
+        /// <summary>The planned strike of <paramref name="c"/>, put down this turn, if it can still be made: hit its target from where it was to stand, or step onto the building. Null: decides as any fresh unit.</summary>
+        public static AIAction? CarryOut(Unit c, AIMap map) {
+            Strike k;
+            if (c == null || c.tile == null || !c.active || !Planned.TryGetValue(c, out k)) return null;
+            Planned.Remove(c);
+            if (k.stand == null || (k.stand.occupier != null && k.stand.occupier != c)) return null;
+            if (k.stand != c.tile) { MoveField w = map.ReachThisTurn(c); bool ok = w.ReachableThisTurn(k.stand); if (!ok) return null; }
+            string why = "assault: put down to " + k.what + ", does it";
+            if (k.take != null) return k.stand == c.tile ? AIAction.Wait(c, why) : AIAction.Move(c, k.stand, 0f, why);
+            if (k.target == null || k.target.Strength <= 0 || k.target.tile == null || k.stand.Distance(k.target.tile) > c.AttackRange) return null;
+            return k.stand == c.tile ? AIAction.Strike(c, k.target, 0f, why) : AIAction.MoveStrike(c, k.stand, k.target, 0f, why);
+        }
+
         /// <summary>Harness tracing.</summary>
         public static System.Action<string> Debug;
 
@@ -54,48 +76,74 @@ namespace HexTactica.AI {
             return r;
         }
 
+        /// <summary>What a rider put down does next: from <see cref="stand"/>, hit <see cref="target"/> (null: take <see cref="take"/> by standing on it).</summary>
+        public class Strike {
+            public HexTile stand; public Unit target; public Building take; public string what; public float score;
+        }
+
         /// <summary>Can <paramref name="c"/>, put down on <paramref name="n"/> with its whole turn ahead, strike this turn: hit an enemy it can hurt, or reach a building to take?</summary>
         public static bool Strikes(Unit c, HexTile n, AIMap map, out string what) {
-            what = null;
+            Strike k = StrikeFrom(c, n, map);
+            what = k != null ? k.what : null;
+            return k != null;
+        }
+
+        /// <summary>
+        /// The best strike for <paramref name="c"/> put down on <paramref name="n"/>, its whole turn ahead: a building to
+        /// take (stand on it), else the hit worth most (what it does to the target, less what it stands to lose where it
+        /// fires from), from a tile where it would not be destroyed tonight. Null: none.
+        /// </summary>
+        public static Strike StrikeFrom(Unit c, HexTile n, AIMap map) {
             // Nothing within its walk and fire, or a building's walk, as the crow flies: no strike (no field to work out).
             int reach = (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange);
             bool near = false;
             foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0 && n.Distance(e.tile) <= reach) { near = true; break; }
             if (!near && Building.CanCapture(c))
-                foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != c.owner && b.Capturable && n.Distance(b.tile) <= c.moveRange) { near = true; break; }
-            if (!near) return false;
-            // Moving and firing in one turn: as far as it can walk from there and fire; otherwise only what it can hit from where it lands.
-            MoveField walk = c.moveAndAttack ? AIPath.ThisTurnFrom(c, n, c.moveRange) : null;
-            foreach (Unit e in map.enemyUnits) {
-                if (e == null || e.tile == null || e.Strength <= 0) continue;
-                if (!c.CanTarget(e) || Unit.calculateDamage(c, e, e.tile, 0) <= 0) continue;
-                bool inRange = false;
-                int d0 = n.Distance(e.tile);
-                if (d0 <= c.AttackRange && d0 > c.MinRange) inRange = true;
-                else if (walk != null)
+                foreach (Building b in Building.all) if (Takeable(b, c) && n.Distance(b.tile) <= c.moveRange) { near = true; break; }
+            if (!near) return null;
+            MoveField walk = AIPath.ThisTurnFrom(c, n, c.moveRange);
+            try {
+                if (Building.CanCapture(c))
+                    foreach (Building b in Building.all) {
+                        if (!Takeable(b, c)) continue;
+                        if (b.tile != n && !walk.ReachableThisTurn(b.tile)) continue;
+                        if (b.tile.occupier != null && b.tile.occupier != c) continue;
+                        if (Claimed(b.tile, c)) continue;
+                        return new Strike { stand = b.tile, take = b, what = "take " + b.name.Replace("(Clone)", "") + " (" + b.tile.x + "," + b.tile.y + ")", score = float.MaxValue };
+                    }
+                Strike best = null;
+                float worth = AIScore.Worth(c);
+                foreach (Unit e in map.enemyUnits) {
+                    if (e == null || e.tile == null || e.Strength <= 0) continue;
+                    if (!c.CanTarget(e)) continue;
+                    float dmg = Unit.calculateDamage(c, e, e.tile, 0);
+                    if (dmg <= 0) continue;
                     foreach (HexTile f in walk.Tiles) {
-                        if (f != n && (!walk.ReachableThisTurn(f) || (f.occupier != null && f.occupier != c))) continue;
+                        if (f != n && (!c.moveAndAttack || !walk.ReachableThisTurn(f) || (f.occupier != null && f.occupier != c))) continue;
+                        if (Claimed(f, c)) continue;   // another rider was put down to fire from there
                         int d = f.Distance(e.tile);
-                        if (d <= c.AttackRange && d > c.MinRange) { inRange = true; break; }
+                        if (d > c.AttackRange || d <= c.MinRange) continue;
+                        float loss = map.ExpectedLoss(c, f);
+                        if (loss >= c.Strength - 0.01f) continue;   // it would be destroyed there tonight
+                        float score = Mathf.Min(dmg, e.Strength) * AIScore.Worth(e) - loss * worth;
+                        if (best == null || score > best.score + 0.01f || (Mathf.Abs(score - best.score) <= 0.01f && CombatMath.Precedes(f, best.stand)))
+                            best = new Strike { stand = f, target = e, score = score, what = "hit " + e.name.Replace("(Clone)", "") + " (" + e.tile.x + "," + e.tile.y + ") from (" + f.x + "," + f.y + ")" };
                     }
-                if (!inRange) continue;
-                what = "hit " + e.name.Replace("(Clone)", "") + " (" + e.tile.x + "," + e.tile.y + ")";
-                if (walk != null) AIPath.Release(walk);
-                return true;
-            }
-            if (Building.CanCapture(c))
-                foreach (Building b in Building.all) {
-                    if (b == null || b.tile == null || b.owner == c.owner || !b.Capturable) continue;
-                    if (n != b.tile && (walk == null ? n.Distance(b.tile) > 0 : !walk.ReachableThisTurn(b.tile))) {
-                        if (walk == null) { MoveField w2 = AIPath.ThisTurnFrom(c, n, c.moveRange); bool ok = w2.ReachableThisTurn(b.tile); AIPath.Release(w2); if (!ok) continue; }
-                        else continue;
-                    }
-                    what = "take " + b.name.Replace("(Clone)", "") + " (" + b.tile.x + "," + b.tile.y + ")";
-                    if (walk != null) AIPath.Release(walk);
-                    return true;
                 }
-            if (walk != null) AIPath.Release(walk);
-            return false;
+                return best != null && best.score > 0f ? best : null;
+            } finally { AIPath.Release(walk); }
+        }
+
+        /// <summary>A building <paramref name="c"/> could go and take: not ours, capturable, and nobody of ours already on it.</summary>
+        static bool Takeable(Building b, Unit c) {
+            return b != null && b.tile != null && b.owner != c.owner && b.Capturable && (b.tile.occupier == null || b.tile.occupier == c || b.tile.occupier.owner != c.owner);
+        }
+
+        /// <summary>Is <paramref name="c"/> taking a building: on one not ours that it can capture?</summary>
+        public static bool Capturing(Unit c) {
+            if (c == null || c.tile == null || c.tile.building == null || !Building.CanCapture(c)) return false;
+            Building b = c.tile.building;
+            return b.owner != c.owner && b.Capturable;
         }
 
         /// <summary>Does the wave go in at <paramref name="at"/>: the front attacking (if they have one), else as many of ours (with <paramref name="landing"/> units landing) as theirs within three tiles?</summary>
@@ -123,7 +171,7 @@ namespace HexTactica.AI {
                     MoveField near = map.ReachThisTurn(t);
                     HexTile via = null; int vd = int.MaxValue;
                     foreach (HexTile x in near.Tiles) {
-                        if ((x != t.tile && (!near.ReachableThisTurn(x) || x.occupier != null)) || !t.CanEnter(x)) continue;
+                        if ((x != t.tile && (!near.ReachableThisTurn(x) || x.occupier != null)) || !t.CanEnter(x) || !AIAir.MayEndOn(t, x, map)) continue;
                         if (!Transporting.UnloadOptions(t, riders[0], x).Contains(h.tile)) continue;
                         int d = map.Travel(t, t.tile, x);
                         if (d < vd) { vd = d; via = x; }
@@ -131,48 +179,49 @@ namespace HexTactica.AI {
                     string why = "medevac: puts " + riders[0].name.Replace("(Clone)", "") + " (strength " + riders[0].Strength + ") down on " + h.name.Replace("(Clone)", "") + " (" + h.tile.x + "," + h.tile.y + ") to mend";
                     if (via != null) return via == t.tile ? AIAction.Disembark(t, riders[0], h.tile, why) : AIAction.MoveAndDisembark(t, via, riders[0], h.tile, why);
                     HexTile step = AITransportPlanner.SafeStepToward(t, h.tile, map.ReachHorizon(t), map, true);
-                    if (step != null && step != t.tile && step != h.tile) return AIAction.Move(t, step, 0f, "medevac: carries " + riders.Count + " wounded toward " + h.name.Replace("(Clone)", "") + " (" + h.tile.x + "," + h.tile.y + ")");
+                    if (step != null && step != t.tile && step != h.tile && AIAir.MayEndOn(t, step, map)) return AIAction.Move(t, step, 0f, "medevac: carries " + riders.Count + " wounded toward " + h.name.Replace("(Clone)", "") + " (" + h.tile.x + "," + h.tile.y + ")");
                 }
             }
             MoveField reach = map.ReachThisTurn(t);
             List<HexTile> stops = new List<HexTile> { t.tile };
-            foreach (HexTile x in reach.Tiles) if (x != t.tile && reach.ReachableThisTurn(x) && x.occupier == null && t.CanEnter(x)) stops.Add(x);
-            HexTile bestVia = null, bestDrop = null; Unit bestRider = null; int bestCount = 0; float bestRisk = float.MaxValue; string bestWhat = null;
+            foreach (HexTile x in reach.Tiles) if (x != t.tile && reach.ReachableThisTurn(x) && x.occupier == null && t.CanEnter(x) && AIAir.MayEndOn(t, x, map)) stops.Add(x);
+            HexTile bestVia = null, bestDrop = null; Unit bestRider = null; int bestCount = 0; float bestRisk = float.MaxValue; Strike bestStrike = null;
             // Riders' longest strike reach from a stop (a tile beside it, then their walk and fire, or a building's walk).
             int strikeReach = 1;
             foreach (Unit c in riders) strikeReach = Mathf.Max(strikeReach, 1 + (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange));
             List<HexTile> targets = new List<HexTile>();
             foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0) targets.Add(e.tile);
-            foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != t.owner && b.Capturable) targets.Add(b.tile);
+            foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != t.owner && b.Capturable && (b.tile.occupier == null || b.tile.occupier.owner != t.owner)) targets.Add(b.tile);
             // (Neighbouring stops share landing tiles: each rider's strike from each tile is worked out once.)
-            Dictionary<long, string> strikeAt = new Dictionary<long, string>();
+            Dictionary<long, Strike> strikeAt = new Dictionary<long, Strike>();
             foreach (HexTile via in stops) {
                 bool inReach = false;
                 foreach (HexTile x in targets) if (via.Distance(x) <= strikeReach) { inReach = true; break; }
                 if (!inReach) continue;
                 float risk = map.ExpectedLoss(t, via);
-                int count = 0; Unit first = null; HexTile firstDrop = null; string firstWhat = null;
+                int count = 0; Unit first = null; HexTile firstDrop = null; Strike firstStrike = null;
                 HashSet<HexTile> taken = new HashSet<HexTile>();
                 foreach (Unit c in riders) {
                     if (!c.active || (profile.assaultMedevacStrength > 0 && c.Strength <= profile.assaultMedevacStrength)) continue;   // the wounded ride on to mend
                     foreach (HexTile n in Transporting.UnloadOptions(t, c, via)) {
                         if (taken.Contains(n)) continue;
-                        string what;
+                        Strike k;
                         long key = ((long)riders.IndexOf(c) << 32) | (uint)(n.viewId >= 0 ? n.viewId : (n.x + 512) * 2048 + (n.y + 512));
-                        if (!strikeAt.TryGetValue(key, out what)) { if (!Strikes(c, n, map, out what)) what = null; strikeAt[key] = what; }
-                        if (what == null) continue;
+                        if (!strikeAt.TryGetValue(key, out k)) { k = StrikeFrom(c, n, map); strikeAt[key] = k; }
+                        if (k == null) continue;
                         taken.Add(n); count++;
-                        if (first == null) { first = c; firstDrop = n; firstWhat = what; }
+                        if (first == null) { first = c; firstDrop = n; firstStrike = k; }
                         break;
                     }
                 }
                 if (count == 0 || !WaveGoesIn(via, count, frontAttacks, map, profile)) continue;
                 if (count > bestCount || (count == bestCount && (risk < bestRisk - 0.01f || (Mathf.Abs(risk - bestRisk) <= 0.01f && CombatMath.Precedes(via, bestVia))))) {
-                    bestCount = count; bestRisk = risk; bestVia = via; bestRider = first; bestDrop = firstDrop; bestWhat = firstWhat;
+                    bestCount = count; bestRisk = risk; bestVia = via; bestRider = first; bestDrop = firstDrop; bestStrike = firstStrike;
                 }
             }
             if (bestVia != null) {
-                string why = "assault: puts " + bestRider.name.Replace("(Clone)", "") + " down to " + bestWhat + " (" + bestCount + " of " + riders.Count + " aboard strike from here)";
+                Planned[bestRider] = bestStrike;
+                string why = "assault: puts " + bestRider.name.Replace("(Clone)", "") + " down to " + bestStrike.what + " (" + bestCount + " of " + riders.Count + " aboard strike from here)";
                 return bestVia == t.tile ? AIAction.Disembark(t, bestRider, bestDrop, why) : AIAction.MoveAndDisembark(t, bestVia, bestRider, bestDrop, why);
             }
             // Their front holds its ground and they are there: out, onto the safest ground beside the transport (aboard,
@@ -189,13 +238,14 @@ namespace HexTactica.AI {
                 if (!horizon.Reachable(goal)) {
                     near = null; int nd = int.MaxValue;
                     foreach (HexTile x in horizon.Tiles) {
-                        if (!horizon.Reachable(x) || (x.occupier != null && x.occupier != t)) continue;
+                        if (!horizon.Reachable(x) || (x.occupier != null && x.occupier != t) || !AIAir.MayEndOn(t, x, map)) continue;
                         int d = x.Distance(goal);
                         if (d < nd || (d == nd && CombatMath.Precedes(x, near))) { nd = d; near = x; }
                     }
                 }
                 HexTile step = near != null && near != t.tile ? AITransportPlanner.SafeStepToward(t, near, horizon, map, true) : null;
                 if (Debug != null) Debug("   assault ride: " + t.name.Replace("(Clone)", "") + " at (" + t.tile.x + "," + t.tile.y + ") goal (" + goal.x + "," + goal.y + ") safe step " + (step != null ? "(" + step.x + "," + step.y + ")" : "none"));
+                if (step != null && !AIAir.MayEndOn(t, step, map)) step = null;   // a tile held for a supply link or a landing
                 if (step != null && step != t.tile) return AIAction.Move(t, step, 0f, "assault ride: moves up with " + riders.Count + " aboard toward (" + goal.x + "," + goal.y + ")");
             }
             // Would be destroyed where it stands, riders and all: put one down where it is safest.
@@ -231,10 +281,11 @@ namespace HexTactica.AI {
             if (t.active) return AIAction.Wait(c, "rides to the assault");   // its transport moves first
             if (profile.assaultMedevacStrength > 0 && c.Strength <= profile.assaultMedevacStrength) return AIAction.Wait(c, "wounded: rides on to mend");
             foreach (HexTile n in Transporting.UnloadOptions(t, c)) {
-                string what;
-                if (!Strikes(c, n, map, out what)) continue;
+                Strike k = StrikeFrom(c, n, map);
+                if (k == null) continue;
                 if (!WaveGoesIn(t.tile, 1, frontAttacks, map, profile)) break;
-                return AIAction.Disembark(t, c, n, "assault: gets off to " + what);
+                Planned[c] = k;
+                return AIAction.Disembark(t, c, n, "assault: gets off to " + k.what);
             }
             // Its front holding its ground, the transport there: out, to hold it.
             if (!frontAttacks && ground != null && t.tile.Distance(ground) <= 2) {
@@ -244,23 +295,95 @@ namespace HexTactica.AI {
             return AIAction.Wait(c, "rides to the assault");
         }
 
+        /// <summary>Does <paramref name="t"/> carry a supply unit?</summary>
+        public static bool CarriesHub(Unit t) {
+            if (t == null || t.transported == null) return false;
+            foreach (Unit x in t.transported) if (x != null && x.Hub != null) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// No building on the map, whoever holds it, makes fighting units (an HQ that only makes supply does not count):
+        /// the army is what the mission gave, and so are the transports, given for the supply.
+        /// </summary>
+        public static bool NoBuildMap() {
+            foreach (Building b in Building.all) {
+                if (b == null || b.buildable == null) continue;
+                foreach (Unit u in b.buildable) if (u != null && u.Firepower > 0) return false;
+            }
+            return true;
+        }
+
+        /// <summary>Could <paramref name="t"/> carry one of its side's supply units (by what it carries, not by its name)?</summary>
+        public static bool SupplyCapable(Unit t) {
+            if (t == null || t.owner == null || !Transporting.IsTransport(t)) return false;
+            foreach (Unit u in t.owner.units) if (u != null && u.Hub != null && !u.Hub.producer && Fits(t, u)) return true;
+            return false;
+        }
+
+        /// <summary>Could <paramref name="t"/> ever carry <paramref name="u"/> (the kind it carries, the room it has when empty)?</summary>
+        static bool Fits(Unit t, Unit u) { return Transporting.CarriesKind(t, u) && Mathf.Max(1, u.weight) <= t.transportSlots; }
+
+        /// <summary>
+        /// The transports earmarked for supply this turn (supply comes first): those carrying a supply unit; those the
+        /// supply logistics has given a duty (<paramref name="duty"/>); one within a move of a supply unit on foot that it
+        /// can carry (the supply unit may want the ride: it decides late in the turn, so it is held for it); and, on a map
+        /// where nothing is built (NoBuildMap), every one that can carry supply. The rest carry troops.
+        /// </summary>
+        public static HashSet<Unit> SupplyTransports(Player p, AIMap map, IEnumerable<Unit> duty) {
+            HashSet<Unit> s = new HashSet<Unit>();
+            if (p == null) return s;
+            if (duty != null) foreach (Unit t in duty) if (t != null) s.Add(t);
+            bool noBuild = NoBuildMap();
+            List<Unit> onFoot = new List<Unit>();
+            foreach (Unit u in p.units) if (u != null && u.tile != null && u.Hub != null && !u.Hub.producer && u.trasnporter == null) onFoot.Add(u);
+            foreach (Unit t in p.units) {
+                if (t == null || t.tile == null || !Transporting.IsTransport(t)) continue;
+                if (CarriesHub(t)) { s.Add(t); continue; }
+                if (t.Firepower > 1) continue;   // an armed one fights (and carries troops)
+                if (noBuild && SupplyCapable(t)) { s.Add(t); continue; }
+                foreach (Unit h in onFoot)
+                    if (Transporting.FreeWeight(t) >= Mathf.Max(1, h.weight) && Fits(t, h) && map.Travel(t, t.tile, h.tile) <= Mathf.Max(1, t.moveRange) + 1) { s.Add(t); break; }
+            }
+            return s;
+        }
+
+        /// <summary>
+        /// An empty transport held for supply with no ride planned: beside the nearest of our supply units on foot it
+        /// could carry (within a move, ready when it wants a ride), it waits; further, it moves toward it. Null: none to
+        /// stay with.
+        /// </summary>
+        public static AIAction? StayWithSupply(Unit t, AIMap map) {
+            if (t == null || t.tile == null || t.owner == null) return null;
+            Unit near = null; int nd = int.MaxValue;
+            foreach (Unit u in t.owner.units) {
+                if (u == null || u.tile == null || u.Hub == null || u.Hub.producer || u.trasnporter != null || !Fits(t, u)) continue;
+                int d = map.Travel(t, t.tile, u.tile);
+                if (d < nd || (d == nd && CombatMath.Precedes(u.tile, near.tile))) { nd = d; near = u; }
+            }
+            if (near == null) return null;
+            string who = near.name.Replace("(Clone)", "") + " (" + near.tile.x + "," + near.tile.y + ")";
+            if (nd <= Mathf.Max(1, t.moveRange)) return AIAction.Wait(t, "held for supply: waits within a move of " + who);
+            HexTile step = AITransportPlanner.SafeStepToward(t, near.tile, map.ReachHorizon(t), map, false);
+            if (step == null || step == t.tile || step == near.tile || !AIAir.MayEndOn(t, step, map)) return AIAction.Wait(t, "held for supply: waits for " + who);
+            return AIAction.Move(t, step, 0f, "held for supply: keeps near " + who);
+        }
+
+        /// <summary>Room aboard <paramref name="t"/> for <paramref name="c"/> and still a supply unit's worth beside it, or a supply unit aboard already: a spare slot.</summary>
+        static bool SpareSlot(Unit t, Unit c) {
+            if (CarriesHub(t)) return true;   // AvailableFor has checked the room for c
+            int supply = 1; foreach (Unit u in t.owner.units) if (u != null && u.Hub != null && !u.Hub.producer && Fits(t, u)) { supply = Mathf.Max(1, u.weight); break; }
+            return Transporting.CarriedWeight(t) + Mathf.Max(1, c.weight) + supply <= t.transportSlots;
+        }
+
         /// <summary>
         /// A fighting unit far from the fight (more than assaultBoardTurns from contact) beside, or a walk from, a transport
-        /// with room that carries no supply unit and is not on supply duty: it gets in (the fullest such transport first).
+        /// with room: one carrying troops (armed or not), or the spare slot of one carrying a supply unit; never a transport
+        /// held for supply (<paramref name="supply"/>, <paramref name="busy"/>) that has none aboard. The fullest first.
         /// </summary>
-        /// <summary>Is <paramref name="t"/> a supply truck (saved scenarios may still call it "Truck Variant")? Trucks carry the supply; assault rides leave them alone.</summary>
-        public static bool IsTruck(Unit t) {
-            string n = GameController.UnitName(t);
-            return n == "Truck" || LevelEditor.RenamedUnit(n) == "Truck";
-        }
-
-        /// <summary>A transport assault rides may use: unarmed, not a supply truck.</summary>
-        public static bool TroopTransport(Unit t) {
-            return t != null && Transporting.IsTransport(t) && t.Firepower <= 1 && !IsTruck(t);
-        }
-
-        public static AIAction? Board(Unit c, AIMap map, AIProfile profile, HashSet<Unit> busy) {
+        public static AIAction? Board(Unit c, AIMap map, AIProfile profile, HashSet<Unit> busy, HashSet<Unit> supply = null, Dictionary<Unit, HexTile> supplyGoing = null, HexTile ground = null) {
             if (c.trasnporter != null || c.tile == null || c.Hub != null || c.Firepower <= 0) return null;
+            if (Capturing(c)) return null;   // taking a building: it stays on it
             bool hurt = Wounded(c, profile);
             if (!hurt) {
                 if (map.TurnsToContact(c) <= profile.assaultBoardTurns) return null;
@@ -270,10 +393,17 @@ namespace HexTactica.AI {
             MoveField now = null;
             Unit best = null; HexTile bestAt = null; int bestLoad = -1;
             foreach (Unit t in Transporting.AvailableFor(c.owner, c)) {
-                if (t == null || t.tile == null || busy.Contains(t) || t.Firepower > 1 || IsTruck(t)) continue;   // a fighting unit that carries one (a recon) fights
+                if (t == null || t.tile == null) continue;
+                // Earmarked for supply: only a spare slot, and only once its supply unit is aboard (it goes where the supply goes).
+                bool forSupply = (supply != null && supply.Contains(t)) || busy.Contains(t) || CarriesHub(t);
+                if (forSupply && (hurt || !CarriesHub(t) || !SpareSlot(t, c))) continue;
+                // ... and only where the supply's ride takes it at least a move nearer its ground.
+                if (forSupply) {
+                    HexTile to;
+                    if (ground == null || supplyGoing == null || !supplyGoing.TryGetValue(t, out to) || to == null) continue;
+                    if (map.Travel(c, to, ground) + Mathf.Max(1, c.moveRange) > map.Travel(c, c.tile, ground)) continue;
+                }
                 if (hurt && (t.transported.Count > 0 || Hospital(c, t, map) == null)) continue;   // the wounded: an empty one, with somewhere to mend
-                bool hub = false; foreach (Unit x in t.transported) if (x != null && x.Hub != null) hub = true;
-                if (hub) continue;
                 HexTile at = null;
                 if (Transporting.CanBoardFrom(t, c)) at = c.tile;
                 else {
@@ -289,6 +419,7 @@ namespace HexTactica.AI {
             }
             if (best == null) return null;
             if (hurt) return AIAction.Board(c, best, bestAt, "wounded (strength " + c.Strength + "): gets in to be carried to mend");
+            if (CarriesHub(best)) return AIAction.Board(c, best, bestAt, "takes the spare slot of a supply transport (" + map.TurnsToContact(c) + " turns from contact on foot)");
             return AIAction.Board(c, best, bestAt, "gets in a transport to ride to the assault (" + map.TurnsToContact(c) + " turns from contact on foot)");
         }
 
@@ -316,7 +447,7 @@ namespace HexTactica.AI {
                 foreach (HexTile n in hurt.tile.neighbors) { if (n == null || n.occupier != null || !horizon.Reachable(n)) continue; int d = map.Travel(t, t.tile, n); if (d < bd2) { bd2 = d; beside = n; } }
                 if (beside != null) {
                     HexTile go = AITransportPlanner.SafeStepToward(t, beside, horizon, map, false);
-                    if (go != null && go != t.tile) return AIAction.Move(t, go, 0f, "medevac: goes for " + hurt.name.Replace("(Clone)", "") + " (strength " + hurt.Strength + ")");
+                    if (go != null && go != t.tile && AIAir.MayEndOn(t, go, map)) return AIAction.Move(t, go, 0f, "medevac: goes for " + hurt.name.Replace("(Clone)", "") + " (strength " + hurt.Strength + ")");
                 }
             }
             Unit pick = null; int pd = int.MaxValue;
@@ -345,7 +476,7 @@ namespace HexTactica.AI {
                 why = "assault ride: back to a base for riders";
             }
             HexTile step = AITransportPlanner.SafeStepToward(t, goal, map.ReachHorizon(t), map, false);
-            if (step == null || step == t.tile || step == goal) return AIAction.Wait(t, why);
+            if (step == null || step == t.tile || step == goal || !AIAir.MayEndOn(t, step, map)) return AIAction.Wait(t, why);
             return AIAction.Move(t, step, 0f, why);
         }
     }
