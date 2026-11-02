@@ -447,6 +447,28 @@ namespace HexTactica.AI {
                 if (cappedOut) anyCapped = true;
                 plan.spare.Add(h);
             }
+            // Spacing (chainLinkSpacing): a link standing within that many tiles of a link already kept (rearmost first) or of
+            // a supply building of ours adds next to no ground the other does not: it is released, spare for other duties.
+            // (Nine of eleven supply units held as links one or two tiles apart left none to send with the task forces, and
+            // every building to take was given up for want of a supply unit.)
+            int spacing = map.profile.chainLinkSpacing;
+            if (spacing > 0 && plan.links.Count > 1) {
+                List<HexTile> kept = new List<HexTile>();
+                foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner == map.player && b.producesSupply && b.Functioning) kept.Add(b.tile);
+                int releasedLinks = 0;
+                foreach (SupplyPoint h in hubs) {
+                    HexTile at;
+                    if (!plan.links.TryGetValue(h, out at) || at == null) continue;
+                    if (fixedHubs != null && fixedHubs.Contains(h.myUnit)) { kept.Add(at); continue; }
+                    bool crowded = false;
+                    foreach (HexTile k in kept) if (k.Distance(at) <= spacing) { crowded = true; break; }
+                    if (!crowded) { kept.Add(at); continue; }
+                    plan.links.Remove(h); plan.leaps.Remove(h); placed.Remove(h); aboard.Remove(h);
+                    plan.spare.Add(h); releasedLinks++;
+                    if (DebugLog != null) DebugLog("   chain: link at (" + at.x + "," + at.y + ") within " + spacing + " of another node: released, spare");
+                }
+                if (releasedLinks > 0) { net = SupplyNetwork.SolvePlanned(map.player, placed); reach = Reach(net, toObj); }
+            }
             plan.reachSteps = reach;
             plan.short_ = hubs.Count == 0 || (plan.spare.Count == 0 && !anyAdvance && !anyCapped && reach > 0);
             return plan;

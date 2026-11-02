@@ -26,6 +26,7 @@ MonoBehaviour:
   unifiedLinkPlacement: 1
   waitTwice: 1
   boardSpentTransports: 1
+  chainLinkSpacing: 2
   routeDanger: 3
   scoutRadius: 3
   scoutAreas: 2
