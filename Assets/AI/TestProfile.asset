@@ -153,6 +153,7 @@ MonoBehaviour:
   buyUnits: 1
   combatRides: 1
   assaultRides: 1
+  assaultArmedRides: 1
   assaultBoardTurns: 2
   assaultWaveRatio: 1
   assaultMedevacStrength: 3
