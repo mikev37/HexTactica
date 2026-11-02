@@ -75,6 +75,21 @@ namespace HexTactica.AI {
         public float assignedPower;
         /// <summary>The task force's power when it was formed (for telling when it has been broken).</summary>
         public float formedPower;
+        /// <summary>The enemy estimate it was formed against (enemyPower then): a rise past campaignSurgeRatio of it stops it (campaignSurgeAbort).</summary>
+        public float formedEnemy;
+        /// <summary>Its units this turn: on the staging ground, on the way, or engaged (within campaignEngagedTurns of an enemy unit: fighting to survive).</summary>
+        public readonly List<Unit> staged = new List<Unit>(), enRoute = new List<Unit>(), engaged = new List<Unit>();
+
+        /// <summary>Sort its units into staged, en route and engaged (see the lists).</summary>
+        public void SortUnits(AIMap map, AIProfile p, int stagingRadius) {
+            staged.Clear(); enRoute.Clear(); engaged.Clear();
+            foreach (Unit u in units) {
+                if (u == null || u.tile == null || u.Strength <= 0) continue;
+                if (map.TurnsToContact(u) <= p.campaignEngagedTurns) engaged.Add(u);
+                else if (staging != null && map.Travel(u, u.tile, staging) <= stagingRadius) staged.Add(u);
+                else enRoute.Add(u);
+            }
+        }
 
         /// <summary>The id of last turn's objective this one continues (an enemy group that has moved), if any.</summary>
         public string inherited;
@@ -111,6 +126,8 @@ namespace HexTactica.AI {
               .Append(hubs.Count).Append('/').Append(needHubs).Append(" supply");
             if (staging != null) sb.Append(" via (").Append(staging.x).Append(',').Append(staging.y).Append(")");
             sb.Append(" turn ").Append(age + 1).Append(went ? " gone in" : "");
+            if (units.Count > 0) sb.Append(" [staged ").Append(staged.Count).Append(", en route ").Append(enRoute.Count).Append(", engaged ").Append(engaged.Count).Append(']');
+            if (formedEnemy > 0f) sb.Append(" formed against ").Append(formedEnemy.ToString("0"));
             if (units.Count > 0) {
                 sb.Append(":");
                 foreach (Unit u in units) if (u != null && u.tile != null) sb.Append(' ').Append(u.name.Replace("(Clone)", "").Replace(" Variant", "")).Append('(').Append(u.tile.x).Append(',').Append(u.tile.y).Append(")s").Append(u.Strength);
@@ -185,6 +202,21 @@ namespace HexTactica.AI {
         public float supplyDemandNeed;
         public string supplyDemandFor;
         public int turn;
+
+        /// <summary>
+        /// A task force stopped by a surge in its enemy estimate (campaignSurgeAbort): its units that were not engaged pull
+        /// back to its staging ground, out of the campaign's planning, until there (at most campaignSurgeWithdrawTurns).
+        /// </summary>
+        public class Withdrawal {
+            public string id;
+            public HexTile staging;
+            public float value;
+            public int turns;
+            public readonly List<Unit> units = new List<Unit>();
+        }
+        public readonly List<Withdrawal> withdrawals = new List<Withdrawal>();
+        /// <summary>This turn's stopped task forces, for the trace.</summary>
+        readonly List<string> stopNotes = new List<string>();
 
         public CampaignObjective ObjectiveOf(Unit u) { CampaignObjective o; return u != null && unitOf.TryGetValue(u, out o) ? o : null; }
         public CampaignObjective ObjectiveOf(SupplyPoint h) { CampaignObjective o; return h != null && hubOf.TryGetValue(h, out o) ? o : null; }
@@ -361,6 +393,7 @@ namespace HexTactica.AI {
                     foreach (Unit u in o.units) if (u != null && u.tile != null && u.Strength > 0) power += Power(u);
                     if (o.fellBack || (o.formedPower > 0f && power < o.formedPower * p.objectiveReplanLoss)) restart.Add(o.Id);
                 }
+            if (last != null && p.campaignSurgeAbort) c.StopOnSurge(last, candidates, map, p, afresh, restart);
             c.Allocate(candidates, map, p, afresh ? null : last, restart);
             return c;
         }
@@ -773,6 +806,44 @@ namespace HexTactica.AI {
 
         // ------------------------------------------------------------------ keeping or replanning
 
+        /// <summary>
+        /// campaignSurgeAbort. A task force whose units are mostly not yet engaged (more than campaignEngagedTurns from
+        /// any enemy unit), and whose enemy estimate has risen to campaignSurgeRatio times what it was formed against,
+        /// stops: it is formed again only if still worth it (<paramref name="restart"/>), and its units on the way pull
+        /// back to its staging ground first (withdrawals), out of the planning. Its engaged units fight on to survive.
+        /// Those already pulling back carry on until on the staging ground, engaged, or campaignSurgeWithdrawTurns.
+        /// (ChanceMeeting: Hold@-6,9 was formed against 3k, kept four units walking in while the estimate there rose
+        /// to 35–48k, and lost them.)
+        /// </summary>
+        void StopOnSurge(AICampaign last, List<CampaignObjective> candidates, AIMap map, AIProfile p, bool afresh, HashSet<string> restart) {
+            int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+            System.Func<Unit, bool> alive = u => u != null && u.tile != null && u.Strength > 0 && map.ownUnits.Contains(u);
+            foreach (Withdrawal w in last.withdrawals) {
+                if (w.turns + 1 >= p.campaignSurgeWithdrawTurns) continue;
+                Withdrawal n = new Withdrawal { id = w.id, staging = w.staging, value = w.value, turns = w.turns + 1 };
+                foreach (Unit u in w.units)
+                    if (alive(u) && map.TurnsToContact(u) > p.campaignEngagedTurns && map.Travel(u, u.tile, w.staging) > radius) n.units.Add(u);
+                if (n.units.Count > 0) withdrawals.Add(n);
+            }
+            if (afresh) return;
+            foreach (CampaignObjective o in last.objectives) {
+                if (o.kind == CampaignKind.DefendHQ || o.kind == CampaignKind.Scout || o.respond || o.formedEnemy <= 0f || restart.Contains(o.Id)) continue;
+                CampaignObjective now = candidates.Find(x => x.Id == o.Id);
+                if (now == null || now.enemyPower < o.formedEnemy * p.campaignSurgeRatio) continue;
+                List<Unit> on = new List<Unit>();
+                foreach (Unit u in o.units) if (alive(u)) on.Add(u);
+                List<Unit> notEngaged = on.FindAll(u => map.TurnsToContact(u) > p.campaignEngagedTurns);
+                if (on.Count == 0 || notEngaged.Count * 2 <= on.Count) continue;
+                restart.Add(o.Id);
+                Withdrawal w = new Withdrawal { id = o.Id, staging = o.staging, value = o.value };
+                if (o.staging != null) foreach (Unit u in notEngaged) if (map.Travel(u, u.tile, o.staging) > radius) w.units.Add(u);
+                if (w.units.Count > 0) withdrawals.Add(w);
+                stopNotes.Add(o.Id + ": enemy estimate " + now.enemyPower.ToString("0") + ", formed against " + o.formedEnemy.ToString("0")
+                              + "; " + notEngaged.Count + " of " + on.Count + " units not engaged, " + w.units.Count + " pull back"
+                              + (o.staging != null ? " to (" + o.staging.x + "," + o.staging.y + ")" : "") + "; planned afresh");
+            }
+        }
+
         /// <summary>Why last turn's plan cannot stand (null: it can).</summary>
         string ReplanReason(List<CampaignObjective> now, AIMap map, AIProfile p) {
             HashSet<string> ids = new HashSet<string>();
@@ -808,6 +879,8 @@ namespace HexTactica.AI {
                 if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;
                 // Fighting close to home (homeFightRadius): the ordinary tactics, not a task force.
                 if (p.homeFightRadius > 0 && HomeFight(u, map, p)) continue;
+                // Pulling back to a stopped task force's staging ground (campaignSurgeAbort): planned again once there.
+                if (withdrawals.Exists(w => w.units.Contains(u))) continue;
                 pool.Add(u);
             }
             List<SupplyPoint> hubPool = new List<SupplyPoint>();
@@ -844,7 +917,7 @@ namespace HexTactica.AI {
                     // task force stood a turn from the HQ for seven turns with nobody to capture it).
                     if (now.kind == CampaignKind.Secure && !now.units.Exists(u => Takes(u, now, map, p))) Fill(now, pool, map, p, 0f);
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
-                    now.formedPower = was.formedPower;
+                    now.formedPower = was.formedPower; now.formedEnemy = was.formedEnemy;
                     now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns; now.lastPace = was.lastPace; now.stalled = was.stalled;
                     now.allIn = was.allIn;
                     objectives.Add(now);
@@ -1070,6 +1143,8 @@ namespace HexTactica.AI {
             }
             foreach (CampaignObjective o in objectives) {
                 if (o.formedPower <= 0f) o.formedPower = o.assignedPower;
+                if (o.formedEnemy <= 0f) o.formedEnemy = o.enemyPower;
+                o.SortUnits(map, p, p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map));
                 foreach (Unit u in o.units) unitOf[u] = o;
                 foreach (SupplyPoint h in o.hubs) hubOf[h] = o;
             }
@@ -1341,6 +1416,16 @@ namespace HexTactica.AI {
             if (p.regroup && p.campaignStrikeFirst) foreach (Front f in fronts) if (f.campaign) f.posture = Posture.Aggressive;
             // All out (AIKnowledge): every front attacks.
             if (map.AllOut) foreach (Front f in fronts) f.posture = Posture.Aggressive;
+            // Stopped task forces (campaignSurgeAbort): their units on the way pull back to the staging ground, defensively.
+            foreach (Withdrawal w in withdrawals) {
+                if (w.staging == null) continue;
+                Front f = new Front { center = w.staging, objectiveTile = w.staging, priority = 0.5f, objectiveValue = w.value * 0.5f };
+                f.campaign = true; f.pullScale = p.campaignPull; f.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                f.assigned.AddRange(w.units);
+                AIStrategic.Finish(new List<Front> { f }, map, p, memory, assaulting);
+                f.posture = Posture.Defensive;
+                fronts.Add(f);
+            }
             // Everything not on a task force: the ordinary fronts (AIStrategic.BuildFronts), which fight
             // and push on as the ordinary AI does. (A single front at home with no objective left them
             // standing there.)
@@ -1509,6 +1594,12 @@ namespace HexTactica.AI {
 
         public IEnumerable<string> Describe() {
             if (replanned != null) yield return "campaign planned afresh: " + replanned;
+            foreach (string s in stopNotes) yield return "campaign stopped: " + s;
+            foreach (Withdrawal w in withdrawals) {
+                StringBuilder sb = new StringBuilder("campaign: pulling back to (" + w.staging.x + "," + w.staging.y + ") from " + w.id + " (turn " + (w.turns + 1) + "):");
+                foreach (Unit u in w.units) if (u != null && u.tile != null) sb.Append(' ').Append(u.name.Replace("(Clone)", "").Replace(" Variant", "")).Append('(').Append(u.tile.x).Append(',').Append(u.tile.y).Append(')');
+                yield return sb.ToString();
+            }
             foreach (CampaignObjective o in objectives) yield return "objective " + o;
         }
     }
