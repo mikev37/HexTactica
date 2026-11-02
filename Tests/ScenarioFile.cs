@@ -305,8 +305,10 @@ public static class ScenarioFile {
         Player active = gc.activePlayer;
         if (active == null || active.eliminated) { gc.EndTurn(); return; }
         AIPlayer full = active.gameObject.GetComponent<AIPlayer>();
+        HexTactica.OldAI.OldAIPlayer old = active.gameObject.GetComponent<HexTactica.OldAI.OldAIPlayer>();
         BaselineAIPlayer baseline = active.gameObject.GetComponent<BaselineAIPlayer>();
-        if (full != null) full.PlayWholeTurn();
+        if (old != null && old.enabled) old.PlayWholeTurn();
+        else if (full != null) full.PlayWholeTurn();
         else if (baseline != null) baseline.PlayWholeTurn();
         else gc.EndTurn();
     }

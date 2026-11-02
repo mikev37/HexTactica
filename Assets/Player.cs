@@ -287,7 +287,7 @@ public struct PlayerData {
         id = t.id;
         displayColor = t.displayColor;
         factionName = t.faction != null ? t.faction.name : "";
-        AI = t.GetComponent<AIPlayer>();
+        AI = AIControl.Of(t) != null;
         money = t.money;
         eliminated = t.eliminated;
     }
@@ -310,7 +310,7 @@ public struct PlayerData {
         if (!string.IsNullOrEmpty(that.factionName)) output.faction = LevelEditor.FindFaction(that.factionName);
         output.money = that.money;
         output.eliminated = that.eliminated;
-        if (AI && output.GetComponent<AIPlayer>() == null) {
+        if (AI && AIControl.Of(output) == null) {
             output.gameObject.AddComponent<AIPlayer>();
         }
         return output;

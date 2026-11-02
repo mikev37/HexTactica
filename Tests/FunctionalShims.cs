@@ -174,7 +174,7 @@ namespace UnityEngine {
         public T GetComponentInChildren<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
-        public T[] GetComponents<T>() where T : class { T c = gameObject.GetComponent<T>(); return c != null ? new T[] { c } : new T[0]; }
+        public T[] GetComponents<T>() where T : class { return gameObject.GetComponents<T>(); }
         public T AddComponent<T>() where T : class, new() { return gameObject.AddComponent<T>(); }
     }
 
@@ -231,6 +231,14 @@ namespace UnityEngine {
                 if (t != null) return t;
             }
             return null;
+        }
+
+        /// <summary>Every component that is a <typeparamref name="T"/>, as Unity gives them (not only the first).</summary>
+        public T[] GetComponents<T>() where T : class {
+            MainThreadOnly.Check("GetComponents");
+            List<T> all = new List<T>();
+            for (int i = 0; i < components.Count; i++) { T t = components[i] as T; if (t != null) all.Add(t); }
+            return all.ToArray();
         }
 
         public T AddComponent<T>() where T : class, new() {

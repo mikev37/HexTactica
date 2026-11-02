@@ -278,8 +278,8 @@ public static class FogOfWar {
         if (p == null) return false;
         BoardView v = BoardView.current;
         if (v != null) return v.knowsAll.Contains(p);   // worked out when the copy was made (Unity is not asked off the main thread)
-        AIPlayer ai = p.GetComponent<AIPlayer>();
-        return ai != null && ai.enabled && !ai.Profile.fogFair;
+        IAIController ai = AIControl.Of(p);
+        return ai != null && !ai.FogFair;
     }
 
     /// <summary>Can units of <paramref name="attacker"/> fire on <paramref name="target"/>: is it seen?</summary>
@@ -568,8 +568,7 @@ public static class FogOfWar {
 
     public static bool IsHuman(Player p) {
         if (p == null) return false;
-        AIPlayer ai = p.GetComponent<AIPlayer>();
-        if (ai != null && ai.enabled) return false;
+        if (AIControl.Of(p) != null) return false;
         foreach (MonoBehaviour m in p.GetComponents<MonoBehaviour>())
             if (m != null && m.enabled && m.GetType().Name == "BaselineAIPlayer") return false;
         return true;

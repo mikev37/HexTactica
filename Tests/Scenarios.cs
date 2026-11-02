@@ -277,6 +277,7 @@ public static class Scenarios {
     /// </summary>
     public static void Logistics(string name, Action<AIProfile> blue, Action<AIProfile> red, string root) {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
+        UseOldAI(l);
         if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
         GameController gc = Rig.gc;
         int rounds = l.meta.GetInt("rounds", 60);
@@ -4215,6 +4216,7 @@ public static class Scenarios {
     /// </summary>
     public static void Duel(string name, int rounds, Action<AIProfile> blue, Action<AIProfile> red, string root) {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
+        UseOldAI(l);
         if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
         GameController gc = Rig.gc;
         Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
@@ -4228,7 +4230,7 @@ public static class Scenarios {
         // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
         Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
         Unit.RanInto += rh; Unit.Attacking += sh;
-        if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
+        if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.OldAI.OldAIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
         double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
         // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.
         int[] supplyDrops = new int[2], boards = new int[2], drops = new int[2], aboardTurns = new int[2], transportsBought = new int[2];
@@ -4396,6 +4398,19 @@ public static class Scenarios {
             }
         }
         Console.WriteLine(string.Format("  A: {0}W {1}L {2}D", w, lo, d));
+    }
+
+    /// <summary>OLD=Blue or OLD=Red: that side is played by the old AI (HexTactica.OldAI, claude/campaign-2) with its own defaults.</summary>
+    static void UseOldAI(ScenarioFile.Loaded l) {
+        string oldSide = Environment.GetEnvironmentVariable("OLD");
+        if (string.IsNullOrEmpty(oldSide)) return;
+        Player op = oldSide == "Blue" ? l.ai : l.other;
+        AIPlayer cur = op.GetComponent<AIPlayer>();
+        if (cur != null) cur.enabled = false;
+        HexTactica.OldAI.OldAIPlayer o = op.gameObject.AddComponent<HexTactica.OldAI.OldAIPlayer>();
+        o.player = op;
+        o.profile = ScriptableObject.CreateInstance<HexTactica.OldAI.AIProfile>();
+        Console.WriteLine("old AI (claude/campaign-2) plays " + oldSide);
     }
 
     /// <summary>

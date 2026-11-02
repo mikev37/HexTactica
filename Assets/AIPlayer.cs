@@ -19,7 +19,7 @@ using HexTactica.AI;
 /// is made by DecideNext(), which is pure with respect to frames and can therefore
 /// be driven flat out by the batch harness.
 /// </summary>
-public class AIPlayer : MonoBehaviour {
+public class AIPlayer : MonoBehaviour, IAIController {
 
     public Player player;
     public AIMissionObjective objective;
@@ -124,6 +124,8 @@ public class AIPlayer : MonoBehaviour {
     bool thinkingPrepares;
 
     /// <summary>Seconds the thought under way has been running, or -1 when none is (the AI is acting, or it is not its turn). For the screen (TurnBanner).</summary>
+    public bool IsPlaying { get { return enabled; } }
+    public bool FogFair { get { return Profile != null && Profile.fogFair; } }
     public float ThinkingFor { get { return thinking != null && !thinking.IsCompleted ? Time.unscaledTime - thinkingSince : -1f; } }
     int thinkingGeneration, generation;
     /// <summary>The last action changed the board: the next thought reads it again first (AIMap.RefreshAfterAction).</summary>
