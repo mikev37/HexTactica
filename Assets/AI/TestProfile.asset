@@ -154,6 +154,7 @@ MonoBehaviour:
   combatRides: 1
   assaultRides: 1
   assaultArmedRides: 0
+  assaultCarryOut: 1
   assaultBoardTurns: 2
   assaultWaveRatio: 1
   assaultMedevacStrength: 3
