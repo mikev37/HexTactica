@@ -1357,7 +1357,7 @@ public class AIPlayer : MonoBehaviour {
                 if (drop != null) return AITransportPlanner.TransportAction(unit, drop, map);
             }
             // An empty troop transport (not a truck: trucks carry the supply) goes back for more riders.
-            if (Profile.assaultRides && unit.transported.Count == 0 && GameController.UnitName(unit) != "Truck" && (logistics == null || !IsLogisticsTruck(unit))) {
+            if (Profile.assaultRides && unit.transported.Count == 0 && !AIAssault.IsTruck(unit) && (logistics == null || !IsLogisticsTruck(unit))) {
                 long __af = AIPerf.Begin();
                 AIAction? fa = AIAssault.Fetch(unit, map, Profile, soughtRiders);
                 AIPerf.End("assault: empty transport fetches", __af);
