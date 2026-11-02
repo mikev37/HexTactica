@@ -155,7 +155,9 @@ MonoBehaviour:
   assaultRides: 1
   assaultBoardTurns: 2
   assaultWaveRatio: 1
-  assaultTransportWeight: 0.5
+  assaultMedevacStrength: 3
+  assaultTransportWeight: 2
+  assaultFillBonus: 0.5
   idleTransportScreens: 0
   freshUnload: 1
   theaterForecast: 1

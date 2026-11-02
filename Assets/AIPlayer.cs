@@ -1053,13 +1053,21 @@ public class AIPlayer : MonoBehaviour {
             if (unit.trasnporter != null && unit.trasnporter.Firepower <= 1) {
                 Front rf = FrontOf(unit);
                 AIAssault.HasFront = rf != null;
-                AIAction? ra = AIAssault.RiderAction(unit, rf != null && rf.posture == Posture.Aggressive, map, Profile);
+                HexTile rground = rf == null ? null : rf.staging && rf.stagingTile != null ? rf.stagingTile : rf.objectiveTile;
+                AIAction? ra = AIAssault.RiderAction(unit, rf != null && rf.posture == Posture.Aggressive && !rf.staging, map, Profile, rf != null && (rf.posture != Posture.Aggressive || rf.staging) ? rground : null);
                 if (ra.HasValue) return ra.Value;
             } else if (unit.Firepower > 0) {
                 HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
                 foreach (Unit t in transportAssignments.Keys) busy.Add(t);
                 if (logistics != null) foreach (Unit t in Transporting.AvailableFor(player, unit)) if (IsLogisticsTruck(t)) busy.Add(t);
-                AIAction? ba = AIAssault.Board(unit, map, Profile, busy);
+                // Into a transport when its front attacks, or when its front's ground is a long walk off.
+                Front bf = FrontOf(unit);
+                HexTile ground = bf == null ? null : bf.staging && bf.stagingTile != null ? bf.stagingTile : bf.objectiveTile;
+                bool goes = bf == null || (bf.posture == Posture.Aggressive && !bf.staging)
+                         || (ground != null && map.Travel(unit, unit.tile, ground) > Profile.assaultBoardTurns * Mathf.Max(1, unit.moveRange));
+                long __ab = AIPerf.Begin();
+                AIAction? ba = goes || AIAssault.Wounded(unit, Profile) ? AIAssault.Board(unit, map, Profile, busy) : null;
+                AIPerf.End("assault: boarding", __ab);
                 if (ba.HasValue) return ba.Value;
             }
         }
@@ -1311,9 +1319,14 @@ public class AIPlayer : MonoBehaviour {
                 Front rf = FrontOf(riders[0]);
                 AIAssault.HasFront = rf != null;
                 if (Trace != null) Trace("   assault ride: " + unit.name.Replace("(Clone)", "") + " with " + riders.Count + " aboard, front " + (rf != null ? rf.posture + " objective " + D(rf.objectiveTile) : "none"));
-                // Toward the fight: the nearest enemy we know of (else the front's objective).
-                HexTile goal = NearestEnemyTile(unit) ?? (rf != null ? rf.objectiveTile : null);
-                AIAction? ra = AIAssault.TransportAction(unit, goal, rf != null && rf.posture == Posture.Aggressive, map, Profile);
+                // Toward the fight when their front attacks (the nearest enemy we know of); a front holding its ground
+                // (or gathering): to its ground (its staging tile, else its objective), not out to the enemy.
+                bool attacking = rf == null || (rf.posture == Posture.Aggressive && !rf.staging);
+                HexTile goal = attacking ? (NearestEnemyTile(unit) ?? (rf != null ? rf.objectiveTile : null))
+                                         : (rf.staging && rf.stagingTile != null ? rf.stagingTile : rf.objectiveTile);
+                long __as = AIPerf.Begin();
+                AIAction? ra = AIAssault.TransportAction(unit, goal, rf != null && rf.posture == Posture.Aggressive, map, Profile, !attacking);
+                AIPerf.End("assault: transport with riders", __as);
                 if (ra.HasValue) return ra.Value;
             }
         }
@@ -1343,7 +1356,9 @@ public class AIPlayer : MonoBehaviour {
             }
             // An empty troop transport (not a truck: trucks carry the supply) goes back for more riders.
             if (Profile.assaultRides && unit.transported.Count == 0 && GameController.UnitName(unit) != "Truck" && (logistics == null || !IsLogisticsTruck(unit))) {
+                long __af = AIPerf.Begin();
                 AIAction? fa = AIAssault.Fetch(unit, map, Profile, soughtRiders);
+                AIPerf.End("assault: empty transport fetches", __af);
                 if (fa.HasValue) return fa.Value;
             }
             return AITactical.DecideIdleTransport(unit, map, Profile);

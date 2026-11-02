@@ -17,6 +17,31 @@ namespace HexTactica.AI {
         /// <summary>Harness tracing.</summary>
         public static System.Action<string> Debug;
 
+        /// <summary>Down to assaultMedevacStrength and not on a building that mends it: a unit to carry to one.</summary>
+        public static bool Wounded(Unit u, AIProfile profile) {
+            if (u == null || profile.assaultMedevacStrength <= 0 || u.Strength > profile.assaultMedevacStrength || u.Hub == null == false || u.tile == null) return false;
+            if (Building.ServicingUnder(u) != null) return false;
+            // Taking a building (standing on one not ours, or beside one it can step onto): that is worth more than mending.
+            if (Building.CanCapture(u)) {
+                Building on = u.tile.building;
+                if (on != null && on.owner != u.owner && on.Capturable) return false;
+                foreach (HexTile n in u.tile.neighbors) if (n != null && n.building != null && n.building.owner != u.owner && n.building.Capturable && n.occupier == null) return false;
+            }
+            return true;
+        }
+
+        /// <summary>The nearest of our buildings that would mend <paramref name="u"/> (services it, heals), as <paramref name="t"/> drives; null if none.</summary>
+        public static Building Hospital(Unit u, Unit t, AIMap map) {
+            Building best = null; int bd = int.MaxValue;
+            foreach (Building b in Building.all) {
+                if (b == null || b.tile == null || b.owner != u.owner || !b.Functioning || !b.Services(u) || b.healPerTurn <= 0) continue;
+                if (b.tile.occupier != null && b.tile.occupier != u) continue;
+                int d = map.Travel(t, t.tile, b.tile);
+                if (d < bd || (d == bd && CombatMath.Precedes(b.tile, best.tile))) { bd = d; best = b; }
+            }
+            return best;
+        }
+
         /// <summary>The fighting units aboard <paramref name="t"/> (none if it carries a supply unit: supply decides for it then).</summary>
         public static List<Unit> Riders(Unit t) {
             List<Unit> r = new List<Unit>();
@@ -32,6 +57,13 @@ namespace HexTactica.AI {
         /// <summary>Can <paramref name="c"/>, put down on <paramref name="n"/> with its whole turn ahead, strike this turn: hit an enemy it can hurt, or reach a building to take?</summary>
         public static bool Strikes(Unit c, HexTile n, AIMap map, out string what) {
             what = null;
+            // Nothing within its walk and fire, or a building's walk, as the crow flies: no strike (no field to work out).
+            int reach = (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange);
+            bool near = false;
+            foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0 && n.Distance(e.tile) <= reach) { near = true; break; }
+            if (!near && Building.CanCapture(c))
+                foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != c.owner && b.Capturable && n.Distance(b.tile) <= c.moveRange) { near = true; break; }
+            if (!near) return false;
             // Moving and firing in one turn: as far as it can walk from there and fire; otherwise only what it can hit from where it lands.
             MoveField walk = c.moveAndAttack ? AIPath.ThisTurnFrom(c, n, c.moveRange) : null;
             foreach (Unit e in map.enemyUnits) {
@@ -81,23 +113,54 @@ namespace HexTactica.AI {
         /// them, then the safest stop) and put the first down; else move up toward <paramref name="goal"/>, as far as is
         /// safe tonight, riders aboard. Null: not for this (no riders).
         /// </summary>
-        public static AIAction? TransportAction(Unit t, HexTile goal, bool frontAttacks, AIMap map, AIProfile profile) {
+        public static AIAction? TransportAction(Unit t, HexTile goal, bool frontAttacks, AIMap map, AIProfile profile, bool holding = false) {
             List<Unit> riders = Riders(t);
             if (riders.Count == 0 || t.tile == null) return null;
+            // Carrying the wounded only: to the nearest building of ours that mends them, and put them down on it.
+            if (riders.TrueForAll(c => c.Strength <= profile.assaultMedevacStrength && profile.assaultMedevacStrength > 0)) {
+                Building h = Hospital(riders[0], t, map);
+                if (h != null) {
+                    MoveField near = map.ReachThisTurn(t);
+                    HexTile via = null; int vd = int.MaxValue;
+                    foreach (HexTile x in near.Tiles) {
+                        if ((x != t.tile && (!near.ReachableThisTurn(x) || x.occupier != null)) || !t.CanEnter(x)) continue;
+                        if (!Transporting.UnloadOptions(t, riders[0], x).Contains(h.tile)) continue;
+                        int d = map.Travel(t, t.tile, x);
+                        if (d < vd) { vd = d; via = x; }
+                    }
+                    string why = "medevac: puts " + riders[0].name.Replace("(Clone)", "") + " (strength " + riders[0].Strength + ") down on " + h.name.Replace("(Clone)", "") + " (" + h.tile.x + "," + h.tile.y + ") to mend";
+                    if (via != null) return via == t.tile ? AIAction.Disembark(t, riders[0], h.tile, why) : AIAction.MoveAndDisembark(t, via, riders[0], h.tile, why);
+                    HexTile step = AITransportPlanner.SafeStepToward(t, h.tile, map.ReachHorizon(t), map, true);
+                    if (step != null && step != t.tile && step != h.tile) return AIAction.Move(t, step, 0f, "medevac: carries " + riders.Count + " wounded toward " + h.name.Replace("(Clone)", "") + " (" + h.tile.x + "," + h.tile.y + ")");
+                }
+            }
             MoveField reach = map.ReachThisTurn(t);
             List<HexTile> stops = new List<HexTile> { t.tile };
             foreach (HexTile x in reach.Tiles) if (x != t.tile && reach.ReachableThisTurn(x) && x.occupier == null && t.CanEnter(x)) stops.Add(x);
             HexTile bestVia = null, bestDrop = null; Unit bestRider = null; int bestCount = 0; float bestRisk = float.MaxValue; string bestWhat = null;
+            // Riders' longest strike reach from a stop (a tile beside it, then their walk and fire, or a building's walk).
+            int strikeReach = 1;
+            foreach (Unit c in riders) strikeReach = Mathf.Max(strikeReach, 1 + (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange));
+            List<HexTile> targets = new List<HexTile>();
+            foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0) targets.Add(e.tile);
+            foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != t.owner && b.Capturable) targets.Add(b.tile);
+            // (Neighbouring stops share landing tiles: each rider's strike from each tile is worked out once.)
+            Dictionary<long, string> strikeAt = new Dictionary<long, string>();
             foreach (HexTile via in stops) {
+                bool inReach = false;
+                foreach (HexTile x in targets) if (via.Distance(x) <= strikeReach) { inReach = true; break; }
+                if (!inReach) continue;
                 float risk = map.ExpectedLoss(t, via);
                 int count = 0; Unit first = null; HexTile firstDrop = null; string firstWhat = null;
                 HashSet<HexTile> taken = new HashSet<HexTile>();
                 foreach (Unit c in riders) {
-                    if (!c.active) continue;
+                    if (!c.active || (profile.assaultMedevacStrength > 0 && c.Strength <= profile.assaultMedevacStrength)) continue;   // the wounded ride on to mend
                     foreach (HexTile n in Transporting.UnloadOptions(t, c, via)) {
                         if (taken.Contains(n)) continue;
                         string what;
-                        if (!Strikes(c, n, map, out what)) continue;
+                        long key = ((long)riders.IndexOf(c) << 32) | (uint)(n.viewId >= 0 ? n.viewId : (n.x + 512) * 2048 + (n.y + 512));
+                        if (!strikeAt.TryGetValue(key, out what)) { if (!Strikes(c, n, map, out what)) what = null; strikeAt[key] = what; }
+                        if (what == null) continue;
                         taken.Add(n); count++;
                         if (first == null) { first = c; firstDrop = n; firstWhat = what; }
                         break;
@@ -111,6 +174,12 @@ namespace HexTactica.AI {
             if (bestVia != null) {
                 string why = "assault: puts " + bestRider.name.Replace("(Clone)", "") + " down to " + bestWhat + " (" + bestCount + " of " + riders.Count + " aboard strike from here)";
                 return bestVia == t.tile ? AIAction.Disembark(t, bestRider, bestDrop, why) : AIAction.MoveAndDisembark(t, bestVia, bestRider, bestDrop, why);
+            }
+            // Their front holds its ground and they are there: out, onto the safest ground beside the transport (aboard,
+            // they neither fight nor hold anything).
+            if (holding && goal != null && t.tile.Distance(goal) <= 2) {
+                AIAction? dig = DigIn(t, riders, map, "holds the line: puts {0} down at ({1},{2})");
+                if (dig.HasValue) return dig;
             }
             // Not yet: up toward the fight, riders aboard, as far as is safe tonight.
             if (goal != null && goal != t.tile) {
@@ -141,19 +210,36 @@ namespace HexTactica.AI {
             return AIAction.Wait(t, "assault ride: holds with " + riders.Count + " aboard");
         }
 
+        /// <summary>The first fresh rider put down on the free tile beside <paramref name="t"/> where it is safest tonight.</summary>
+        static AIAction? DigIn(Unit t, List<Unit> riders, AIMap map, string why) {
+            foreach (Unit c in riders) {
+                if (!c.active) continue;
+                HexTile best = null; float bl = float.MaxValue;
+                foreach (HexTile n in Transporting.UnloadOptions(t, c)) { float l = map.ExpectedLoss(c, n); if (l < bl || (l == bl && CombatMath.Precedes(n, best))) { bl = l; best = n; } }
+                if (best != null) return AIAction.Disembark(t, c, best, string.Format(why, c.name.Replace("(Clone)", ""), best.x, best.y));
+            }
+            return null;
+        }
+
         /// <summary>
         /// A rider whose transport has already moved this turn: put itself down where it can strike, if the wave goes in
         /// there (the transport puts down one; the rest get off themselves, still fresh). Null: stays aboard.
         /// </summary>
-        public static AIAction? RiderAction(Unit c, bool frontAttacks, AIMap map, AIProfile profile) {
+        public static AIAction? RiderAction(Unit c, bool frontAttacks, AIMap map, AIProfile profile, HexTile ground = null) {
             Unit t = c.trasnporter;
             if (t == null || t.tile == null || Riders(t).Count == 0 || !c.active) return null;
             if (t.active) return AIAction.Wait(c, "rides to the assault");   // its transport moves first
+            if (profile.assaultMedevacStrength > 0 && c.Strength <= profile.assaultMedevacStrength) return AIAction.Wait(c, "wounded: rides on to mend");
             foreach (HexTile n in Transporting.UnloadOptions(t, c)) {
                 string what;
                 if (!Strikes(c, n, map, out what)) continue;
                 if (!WaveGoesIn(t.tile, 1, frontAttacks, map, profile)) break;
                 return AIAction.Disembark(t, c, n, "assault: gets off to " + what);
+            }
+            // Its front holding its ground, the transport there: out, to hold it.
+            if (!frontAttacks && ground != null && t.tile.Distance(ground) <= 2) {
+                AIAction? dig = DigIn(t, new List<Unit> { c }, map, "holds the line: gets off at ({1},{2})");
+                if (dig.HasValue) { AIAction a = dig.Value; return a; }
             }
             return AIAction.Wait(c, "rides to the assault");
         }
@@ -164,11 +250,17 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction? Board(Unit c, AIMap map, AIProfile profile, HashSet<Unit> busy) {
             if (c.trasnporter != null || c.tile == null || c.Hub != null || c.Firepower <= 0) return null;
-            if (map.TurnsToContact(c) <= profile.assaultBoardTurns) return null;
+            bool hurt = Wounded(c, profile);
+            if (!hurt) {
+                if (map.TurnsToContact(c) <= profile.assaultBoardTurns) return null;
+                // Mending on a building of ours: it stays until it is healthy.
+                if (c.Strength < 6 && Building.ServicingUnder(c) != null) return null;
+            }
             MoveField now = null;
             Unit best = null; HexTile bestAt = null; int bestLoad = -1;
             foreach (Unit t in Transporting.AvailableFor(c.owner, c)) {
                 if (t == null || t.tile == null || busy.Contains(t) || t.Firepower > 1) continue;   // a fighting unit that carries one (a recon) fights
+                if (hurt && (t.transported.Count > 0 || Hospital(c, t, map) == null)) continue;   // the wounded: an empty one, with somewhere to mend
                 bool hub = false; foreach (Unit x in t.transported) if (x != null && x.Hub != null) hub = true;
                 if (hub) continue;
                 HexTile at = null;
@@ -185,6 +277,7 @@ namespace HexTactica.AI {
                 if (load > bestLoad || (load == bestLoad && CombatMath.Precedes(t.tile, best.tile))) { best = t; bestAt = at; bestLoad = load; }
             }
             if (best == null) return null;
+            if (hurt) return AIAction.Board(c, best, bestAt, "wounded (strength " + c.Strength + "): gets in to be carried to mend");
             return AIAction.Board(c, best, bestAt, "gets in a transport to ride to the assault (" + map.TurnsToContact(c) + " turns from contact on foot)");
         }
 
@@ -195,6 +288,26 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction? Fetch(Unit t, AIMap map, AIProfile profile, HashSet<Unit> sought) {
             if (t.tile == null || t.transported.Count > 0) return null;
+            // The wounded first (medevac): the nearest, within two moves.
+            Unit hurt = null; int hd = int.MaxValue;
+            foreach (Unit u in map.ownUnits) {
+                if (u == null || u.trasnporter != null || sought.Contains(u) || !Wounded(u, profile) || !Transporting.CanCarry(t, u)) continue;
+                int d = map.Travel(t, t.tile, u.tile);
+                if (d > 2 * Mathf.Max(1, t.moveRange)) continue;
+                if (d < hd || (d == hd && CombatMath.Precedes(u.tile, hurt.tile))) { hd = d; hurt = u; }
+            }
+            if (hurt != null && Hospital(hurt, t, map) != null) {
+                sought.Add(hurt);
+                if (t.tile.Distance(hurt.tile) <= 1) return AIAction.Wait(t, "medevac: waits for " + hurt.name.Replace("(Clone)", "") + " (strength " + hurt.Strength + ") to get in");
+                // Beside it: the free tile next to it nearest us.
+                MoveField horizon = map.ReachHorizon(t);
+                HexTile beside = null; int bd2 = int.MaxValue;
+                foreach (HexTile n in hurt.tile.neighbors) { if (n == null || n.occupier != null || !horizon.Reachable(n)) continue; int d = map.Travel(t, t.tile, n); if (d < bd2) { bd2 = d; beside = n; } }
+                if (beside != null) {
+                    HexTile go = AITransportPlanner.SafeStepToward(t, beside, horizon, map, false);
+                    if (go != null && go != t.tile) return AIAction.Move(t, go, 0f, "medevac: goes for " + hurt.name.Replace("(Clone)", "") + " (strength " + hurt.Strength + ")");
+                }
+            }
             Unit pick = null; int pd = int.MaxValue;
             foreach (Unit u in map.ownUnits) {
                 if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || u.Firepower <= 0 || sought.Contains(u)) continue;
