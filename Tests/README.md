@@ -262,6 +262,8 @@ records the same way and checks that the last snapshot reloads to the same board
 
 ---
 
+For the state of the AI work, findings and what is open, see `Tests/HANDOFF.md`.
+
 ## Old AI against new AI: how changes are tested
 
 The AI is judged against a fixed earlier version of itself, not against the same code with a feature's flag off.
