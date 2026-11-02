@@ -123,6 +123,10 @@ namespace HexTactica.AI {
         public float campaignSurgeRatio = 1.5f;
         [Tooltip("Campaign: turns at most that a stopped task force's units pull back to its staging ground before they are planned afresh (campaignSurgeAbort).")]
         public int campaignSurgeWithdrawTurns = 2;
+        [Tooltip("Campaign: a task force whose power has fallen below campaignBreakShortRatio of its need now (the enemy there times objectiveForceRatio) is broken, as one that lost objectiveReplanLoss of its own power is: formed again only if what can join is enough. Not the HQ's defence, enemy on our ground, scouting, or an all-in task force.")]
+        public bool campaignBreakShort = true;
+        [Tooltip("Campaign: the share of its need now below which a task force is broken (campaignBreakShort).")]
+        public float campaignBreakShortRatio = 0.5f;
         [Tooltip("Campaign: units on no task force and not fighting gather as one central reserve behind the main front, in our supply out of the enemy's reach; the rest (campaignActiveReserveShare, and any fighting) stay with the ordinary fronts.")]
         public bool campaignReserve = true;
         [Tooltip("Campaign: the central reserve is mobile — aircraft, combat ships, loaded transports (with what they carry) and fast ground units (campaignReserveMinMove or more); infantry on foot and other slow units stay with the ordinary fronts. Off: every spare fighting unit on the ground, as before.")]

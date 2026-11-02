@@ -133,7 +133,7 @@ Transports: `assaultRides`, `assaultBoardTurns` 2, `assaultTransportWeight` 2, `
 Supply: `supplyStaysAboard`, `unifiedLinkPlacement`, `boardSpentTransports`, `keepBuildSlotsClear` (now mostly
 redundant: unified placement no longer parks supply on the HQ).
 Campaign: `capturerLives`, `campaignGatherWithBody`, `campaignSurgeAbort` (+ `campaignEngagedTurns` 2, `campaignSurgeRatio` 1.5,
-`campaignSurgeWithdrawTurns` 2). Game (not AI): `GameController.fogShownOnScreen` (off: the screen shows everything, sides
+`campaignSurgeWithdrawTurns` 2), `campaignBreakShort` (+ `campaignBreakShortRatio` 0.5). Game (not AI): `GameController.fogShownOnScreen` (off: the screen shows everything, sides
 still play by their fog).
 Turn: `waitTwice`. Production: `productionOverkill`, `productionLifetime` (+ `productionLifeMax` 8, `productionLifeRef`
 3, `productionReachRef` 6), `productionShieldCut` 0.6, `productionShieldRatio` 2, `productionDefenceFade` 20.
@@ -212,6 +212,17 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   then was kept 8 turns at 5–14k v need 33–48k: the broken check compares power with the power it formed with, not
   with its need. Medevac (RiverCrossing): 3 units carried to cities, all at strength 3; each stayed one heal, then left
   at 4–5.
+- **Broken when short of need (`campaignBreakShort`, 2 Nov; mixed):** a kept task force whose power is below 0.5 of its
+  need now is broken like one that lost half its power (formed again only if what can join is enough). Old v new,
+  traced (logs `games/short-*` v `games/surge-*`): RiverCrossing new Blue **248,083 v 23,000** (was 173,750 v
+  168,416; 4 breaks); new Red unchanged (no break). ChanceMeeting new Blue **67,250 v 159,333** (was 41,166 v 201,333;
+  breaks on turn 7 of four one-unit Secures, turn 9 of Secure@0,-10 and Hold@-6,9); new Red **116,833 v 183,916** (was
+  220,166 v 63,666). Biomes new Blue 143,250 v 55,000, 12 buildings (was 62,833, 9); new Red 25,166 v 127,916 (was
+  25,416 v 123,833). New Red on ChanceMeeting, read from the log: breaks on turn 6 (five one-unit city plans, 4x
+  short), 8 and 10 (under half their need); the game diverged on turn 6. Red took the FOB at (0,8) by turn 16, then
+  pushed south (Hold@1,11 and its ordinary fronts); artillery and tanks moved up to (-5,9), (-4,7), (-5,8) and were
+  destroyed on Blue's turns 17–19 (Red 209k → 161k, rounds 8–12). Most of those losses were units on no task force. Not
+  traced to the break itself; looks like the push after a success.
 
 ## 7. Open work, in the order I'd take it
 

@@ -391,7 +391,16 @@ namespace HexTactica.AI {
                 foreach (CampaignObjective o in last.objectives) {
                     float power = 0f;
                     foreach (Unit u in o.units) if (u != null && u.tile != null && u.Strength > 0) power += Power(u);
-                    if (o.fellBack || (o.formedPower > 0f && power < o.formedPower * p.objectiveReplanLoss)) restart.Add(o.Id);
+                    if (o.fellBack || (o.formedPower > 0f && power < o.formedPower * p.objectiveReplanLoss)) { restart.Add(o.Id); continue; }
+                    // Short of its need now (campaignBreakShort): the enemy there grew past what it has. (ChanceMeeting: Hold@-6,9
+                    // was kept eight turns at 5-14k against a need of 33-48k, never below half the power it was formed with.)
+                    if (p.campaignBreakShort && o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout && !o.respond && !o.allIn) {
+                        CampaignObjective now = candidates.Find(x => x.Id == o.Id);
+                        if (now != null && now.needPower > 0f && power < now.needPower * p.campaignBreakShortRatio) {
+                            restart.Add(o.Id);
+                            c.stopNotes.Add(o.Id + ": task force short of its need (" + power.ToString("0") + " of " + now.needPower.ToString("0") + "): broken, planned afresh");
+                        }
+                    }
                 }
             if (last != null && p.campaignSurgeAbort) c.StopOnSurge(last, candidates, map, p, afresh, restart);
             c.Allocate(candidates, map, p, afresh ? null : last, restart);
