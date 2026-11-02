@@ -22,6 +22,9 @@ using UnityEngine;
 /// </summary>
 public static class SupplyNetwork {
 
+    /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
+    public static bool FlagsFollowPublish = true;
+
     /// <summary>Goes up every time a supply field is published onto the board (displays redraw only then).</summary>
     public static int Published;
 
@@ -239,7 +242,16 @@ public static class SupplyNetwork {
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null && !staticOnly && moved == null && !onlyMoved) Publish(player, result);
+        if (excluded == null && !staticOnly && moved == null && !onlyMoved) {
+            Publish(player, result);
+            // The real network on the real board: each supply unit's linked/cut-off flag follows it now, not only at the
+            // start of the turn (the cut-off icon read a flag set then, while the borders showed every move since).
+            // Never from a thought (a board copy: the hub objects are shared) or a "what if it stood there".
+            if (FlagsFollowPublish && BoardView.current == null && movedHub == null) {
+                for (int i = 0; i < result.connectedHubs.Count; i++) result.connectedHubs[i].connected = true;
+                for (int i = 0; i < result.strandedHubs.Count; i++) result.strandedHubs[i].connected = false;
+            }
+        }
 
         if (applyDrain) {
             for (int i = 0; i < result.strandedHubs.Count; i++) result.strandedHubs[i].connected = false;

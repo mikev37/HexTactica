@@ -884,12 +884,20 @@ public class Unit : MonoBehaviour
         threatValue = valueGain;
     }
 
+    /// <summary>Does <paramref name="u"/> carry a supply unit (aboard it, or aboard what it carries)?</summary>
+    static bool CarriesSupply(Unit u) {
+        if (u == null || u.transported == null) return false;
+        foreach (Unit c in u.transported) if (c != null && (c.Hub != null || CarriesSupply(c))) return true;
+        return false;
+    }
+
     internal void FinishActive() {
         GameController.gc.activeUnit = null;
         active = false;
         FogOfWar.Refresh();
         GameController.RecalculateThreat();
-        if (Hub) {
+        // Its supply moved with it: a supply unit, or a transport carrying one (its cargo rode along).
+        if (Hub || CarriesSupply(this)) {
             owner.Resupply();
         }
         if (Finished != null) Finished(this);
@@ -1118,7 +1126,11 @@ public class Unit : MonoBehaviour
         FogOfWar.Changed();
         // Losing an HQ unit ends the game for its owner immediately, not at end of turn.
         if (GameController.gc != null) GameController.gc.CheckVictory();
-        if (Hub) {
+        // Every side's supply: a supply unit lost shrinks its own; any unit lost may open a corridor it was
+        // blocking for the other side (an enemy standing in it severs it). Cargo goes down with it first, then this.
+        if (BoardView.current == null && GameController.gc != null && GameController.gc.players != null && (trasnporter == null || Hub != null)) {
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        } else if (Hub) {
             owner.Resupply();
         }
     }
