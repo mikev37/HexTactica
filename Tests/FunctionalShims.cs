@@ -104,6 +104,7 @@ namespace UnityEngine {
         public static bool operator !=(Color x, Color y) { return !(x == y); }
         public override bool Equals(object o) { return o is Color && (Color)o == this; } public override int GetHashCode() { return 0; }
         public static Color white { get { return new Color(1, 1, 1, 1); } }
+        public static Color Lerp(Color x, Color y, float t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return new Color(x.r + (y.r - x.r) * t, x.g + (y.g - x.g) * t, x.b + (y.b - x.b) * t, x.a + (y.a - x.a) * t); }
         public static Color black { get { return new Color(0, 0, 0, 1); } }
         public static Color gray { get { return new Color(.5f, .5f, .5f, 1); } }
         public static Color red { get { return new Color(1, 0, 0, 1); } }

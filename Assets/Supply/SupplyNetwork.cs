@@ -350,21 +350,19 @@ public static class SupplyNetwork {
     [System.ThreadStatic] public static Unit AssumeLinkedVia;
 
     /// <summary>
-    /// The network as the game plays it on this thread until disposed: none of the AI's what-if rules (PutDownHypothetical,
-    /// AssumeLinked, PlannedAboard, RecordLinked); what they were is put back after. For the player's supply displays,
+    /// The network as the game plays it on this thread until disposed: none of the AI's per-thread what-if settings
+    /// (AssumeLinked, PlannedAboard, RecordLinked); what they were is put back after. (The put-down reading is not one
+    /// of them: it belongs to the AI's board copies, BoardView.putDownHypothetical.) For the player's supply displays,
     /// and around each of the AI's thoughts (which set them for themselves).
     /// </summary>
     public static System.IDisposable AsPlayed() { return new WhatIfOff(); }
     sealed class WhatIfOff : System.IDisposable {
-        readonly bool putDown = PutDownHypothetical, record = RecordLinked;
+        readonly bool record = RecordLinked;
         readonly SupplyPoint assume = AssumeLinked; readonly Unit assumeVia = AssumeLinkedVia;
         readonly Dictionary<SupplyPoint, Unit> aboard = PlannedAboard;
-        public WhatIfOff() { PutDownHypothetical = false; RecordLinked = false; AssumeLinked = null; AssumeLinkedVia = null; PlannedAboard = null; }
-        public void Dispose() { PutDownHypothetical = putDown; RecordLinked = record; AssumeLinked = assume; AssumeLinkedVia = assumeVia; PlannedAboard = aboard; }
+        public WhatIfOff() { RecordLinked = false; AssumeLinked = null; AssumeLinkedVia = null; PlannedAboard = null; }
+        public void Dispose() { RecordLinked = record; AssumeLinked = assume; AssumeLinkedVia = assumeVia; PlannedAboard = aboard; }
     }
-
-    /// <summary>Set (per thread) by an AI that plans this way (AIProfile.hubLinkPenalty): see PutDown.</summary>
-    [System.ThreadStatic] public static bool PutDownHypothetical;
 
     /// <summary>
     /// A supply unit aboard a transport that a hypothetical network puts on a tile other than its
@@ -373,7 +371,8 @@ public static class SupplyNetwork {
     /// within a move of supply — and a truck cut off a whole network putting its root down.)
     /// </summary>
     static bool PutDown(SupplyPoint hub, HexTile at) {
-        if (!PutDownHypothetical) return false;
+        BoardView v = BoardView.current;
+        if (v == null || !v.putDownHypothetical) return false;   // the AI's reading, on its own board copies only
         Unit carrier = hub.myUnit != null ? hub.myUnit.trasnporter : null;
         return carrier != null && at != null && carrier.tile != null && at != carrier.tile;
     }
