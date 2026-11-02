@@ -63,6 +63,8 @@ namespace HexTactica.AI {
         public bool waitTwice = true;
         [Tooltip("A supply unit gets into a transport that has already acted this turn as readily as a fresh one (aboard it is linked as cargo, and rides next turn); a fresh one is still preferred.")]
         public bool boardSpentTransports = true;
+        [Tooltip("Supply chain: a link within this many tiles of another node of ours (a link kept before it, rearmost first, or a supply building) is released as spare, free for other duties. 0: off.")]
+        public int chainLinkSpacing = 2;
         [Tooltip("The way to an objective: steps of detour worth taking to avoid one tile the enemy can strike next turn (so a middle held in strength is gone round).")]
         public float routeDanger = 3f;
         [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]

@@ -178,6 +178,13 @@ place: `SupplyNetwork`'s thread-static `RecordLinked`, `AssumeLinked`, `AssumeLi
 restore them). The old copy reads mission objectives through `OldAI/OldMission.cs` and no longer sets the removed
 `PutDownHypothetical`. The old branch is checked out at `/home/claude/old` (a git worktree; may not survive).
 
+- **Chain spacing (`chainLinkSpacing` 2, added after the above):** a link within 2 tiles of a kept link or a supply
+  building is released as spare. ChanceMeeting, traced: new Red v old Blue now **157,500 v 141,916** (was 97,833 v
+  168,416; no building dropped for want of a supply unit); new Blue v old Red **41,166 v 201,333** (was 90,083 v
+  184,916). Blue's supply is not worse (46 unit-turns out of supply by round 12, was 59); Blue loses more material by
+  round 12 (89k, was 125k). Unverified reading: freed supply units let Blue take on more buildings at once and it
+  spreads thin against a Red that starts beside most of them. Logs: scratchpad `games/cm-rev-sp.log`, `games/cm-fwd-sp.log`.
+
 ## 7. Open work, in the order I'd take it
 
 1. **The ChanceMeeting regression** (new Red v old Blue: `OLD=Blue`, fog on, traced): run with
