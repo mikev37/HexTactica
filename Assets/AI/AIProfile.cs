@@ -57,6 +57,8 @@ namespace HexTactica.AI {
         public bool capturerLives = true;
         [Tooltip("A ground transport never ends its turn on a building of ours that builds units (it would take the slot, and nothing could be bought there).")]
         public bool keepBuildSlotsClear = true;
+        [Tooltip("Supply chain: a supply unit aboard a transport is placed as one on foot is — the tile its transport reaches that brings supplied ground nearest the objective, only if better than holding. Off: the furthest linked tile toward the objective.")]
+        public bool unifiedLinkPlacement = true;
         [Tooltip("The way to an objective: steps of detour worth taking to avoid one tile the enemy can strike next turn (so a middle held in strength is gone round).")]
         public float routeDanger = 3f;
         [Tooltip("Scouting objectives: how much ground one covers (hexes around its centre), and how many at most.")]
