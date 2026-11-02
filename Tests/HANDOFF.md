@@ -184,6 +184,19 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   184,916). Blue's supply is not worse (46 unit-turns out of supply by round 12, was 59); Blue loses more material by
   round 12 (89k, was 125k). Unverified reading: freed supply units let Blue take on more buildings at once and it
   spreads thin against a Red that starts beside most of them. Logs: scratchpad `games/cm-rev-sp.log`, `games/cm-fwd-sp.log`.
+- **Why new Blue got worse with spacing (ChanceMeeting, OLD=Red, fog on; traced + `BOARD=1`, 2 Nov):** the reading
+  above is wrong. Games are identical to round 3; the campaigns split at turn 7, when spacing released 2 links (spare 3
+  v 1). Blue did not pursue more objectives at once (8,5,5,4,4,3 v 7,4,5,3,4,3) nor more buildings (fewer Secures).
+  The spare supply units let it take on Clear@-6,8 and Hold@-7,8 (without spacing: "needs 1 supply unit, 0 free"), and
+  from then its body went south-west (Clear@0,4 n10, Clear@-5,6 n10, Hold@-7,8 n12, Clear@-6,5 n13; Hold@-6,9 kept
+  turns 5–15 at have 5–14k v need 35–48k), while without spacing it took the FOB axis (Secure@0,-10, Secure@0,8,
+  Clear@0,-4, Hold@1,-10). "Not taken on" reasons: supply only bound through turn 7; after that both games give force.
+  Losses: fighting units fall alike to turn 18 (25→15 v 24→15). The gap (rounds 9–14, ~55k) is supply: turns 16–28
+  Blue lost 5 Supplies, 2 trucks, 2 APCs, all chain links holding at (-7,4), (-5,4), (-6,4), (-7,6), (-5,0), (-12,8),
+  (-4,-5), after its south-west task forces broke (Clear@-6,5 lost 4 units on turn 18); without spacing, 1 Supplies.
+  Links were not placed worse (without spacing Blue also had links at (-6,5), (-6,8), (-4,8), which lived while its
+  army held there); they were left holding after the army in front of them was beaten. Logs: scratchpad
+  `games/cm-fwd-cur-b.log`, `games/cm-fwd-sp0-b.log`; tools `camp.py` (campaign per turn), `losses.py` (hits per turn).
 
 ## 7. Open work, in the order I'd take it
 
