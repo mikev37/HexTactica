@@ -42,17 +42,58 @@ namespace HexTactica.AI {
         /// <summary>Harness tracing.</summary>
         public static System.Action<string> Debug;
 
-        /// <summary>Down to assaultMedevacStrength and not on a building that mends it: a unit to carry to one.</summary>
-        public static bool Wounded(Unit u, AIProfile profile) {
+        /// <summary>
+        /// Down to assaultMedevacStrength and not on a building that mends it: a unit to carry to one. Taking a building
+        /// (standing on one not ours, or beside one it can step onto) is worth more than mending — when it lives to take
+        /// it (TurnsToTake, with <paramref name="map"/>; without one, as if it does).
+        /// </summary>
+        public static bool Wounded(Unit u, AIProfile profile, AIMap map = null) {
             if (u == null || profile.assaultMedevacStrength <= 0 || u.Strength > profile.assaultMedevacStrength || u.Hub == null == false || u.tile == null) return false;
             if (Building.ServicingUnder(u) != null) return false;
-            // Taking a building (standing on one not ours, or beside one it can step onto): that is worth more than mending.
             if (Building.CanCapture(u)) {
                 Building on = u.tile.building;
-                if (on != null && on.owner != u.owner && on.Capturable) return false;
-                foreach (HexTile n in u.tile.neighbors) if (n != null && n.building != null && n.building.owner != u.owner && n.building.Capturable && n.occupier == null) return false;
+                if (on != null && on.owner != u.owner && on.Capturable && (map == null || TurnsToTake(u, on, map) >= 0)) return false;
+                foreach (HexTile n in u.tile.neighbors)
+                    if (n != null && n.building != null && n.building.owner != u.owner && n.building.Capturable && n.occupier == null && (map == null || TurnsToTake(u, n.building, map) >= 0)) return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// How many of its turns <paramref name="u"/> needs to take <paramref name="b"/> on its own (getting there
+        /// included), or -1 if it would be gone first. Turn by turn as the rules play it: its walk there; at the start
+        /// of each of its turns out of supply a supply used up, and once they are gone a strength lost (Player.Starve);
+        /// at the end of each turn on the building its strength added to the capture (an enemy's building brought down to
+        /// nothing first, then raised to CaptureThreshold); each night what the enemy can do to it there
+        /// (AIMap.ExpectedLoss). <paramref name="supplied"/>: our supply will be there (null: as it is now).
+        /// </summary>
+        public static int TurnsToTake(Unit u, Building b, AIMap map, bool? supplied = null, int horizon = 10) {
+            if (u == null || b == null || b.tile == null || u.tile == null || !Building.CanCapture(u)) return -1;
+            if (b.owner == u.owner) return 0;
+            int threshold = b.CaptureThreshold;
+            int need;
+            if (b.owner != null) need = Mathf.Max(1, b.capturePoints) + threshold;
+            else if (b.capturingPlayer == null || b.capturingPlayer == u.owner) need = threshold - (b.capturingPlayer == u.owner ? b.capturePoints : 0);
+            else need = b.capturePoints + threshold;
+            bool fed = supplied ?? map.SupplyDepth(b.tile) > 0;
+            int walk = u.tile == b.tile ? 0 : map.Travel(u, u.tile, b.tile);
+            if (walk >= 9999) return -1;
+            int arrive = u.tile == b.tile ? 0 : Mathf.Max(0, Mathf.CeilToInt(walk / (float)Mathf.Max(1, u.moveRange)) - 1);   // turns before the one it gets there
+            float s = u.Strength, nightly = map.ExpectedLoss(u, b.tile);
+            int sup = u.supplies;
+            bool fedOnWay = map.SupplyDepth(u.tile) > 0 && fed;
+            for (int turn = 0; turn <= horizon; turn++) {
+                bool there = turn >= arrive;
+                if (turn > 0 && !(there ? fed : fedOnWay) && u.suppliesMax > 0) { sup = Mathf.Max(0, sup - 1); if (sup <= 0) s -= 1f; }
+                if (s <= 0.01f) return -1;
+                if (there) {
+                    need -= Mathf.FloorToInt(s);
+                    if (need <= 0) return turn;
+                    s -= nightly;
+                    if (s <= 0.01f) return -1;
+                }
+            }
+            return -1;
         }
 
         /// <summary>The nearest of our buildings that would mend <paramref name="u"/> (services it, heals), as <paramref name="t"/> drives; null if none.</summary>
@@ -423,7 +464,7 @@ namespace HexTactica.AI {
         public static AIAction? Board(Unit c, AIMap map, AIProfile profile, HashSet<Unit> busy, HashSet<Unit> supply = null, Dictionary<Unit, HexTile> supplyGoing = null, HexTile ground = null) {
             if (c.trasnporter != null || c.tile == null || c.Hub != null || c.Firepower <= 0) return null;
             if (Capturing(c)) return null;   // taking a building: it stays on it
-            bool hurt = Wounded(c, profile);
+            bool hurt = Wounded(c, profile, map);
             if (!hurt) {
                 if (map.TurnsToContact(c) <= profile.assaultBoardTurns) return null;
                 // Mending on a building of ours: it stays until it is healthy.
@@ -472,7 +513,7 @@ namespace HexTactica.AI {
             // The wounded first (medevac): the nearest, within two moves.
             Unit hurt = null; int hd = int.MaxValue;
             foreach (Unit u in map.ownUnits) {
-                if (u == null || u.trasnporter != null || sought.Contains(u) || !Wounded(u, profile) || !Transporting.CanCarry(t, u)) continue;
+                if (u == null || u.trasnporter != null || sought.Contains(u) || !Wounded(u, profile, map) || !Transporting.CanCarry(t, u)) continue;
                 int d = map.Travel(t, t.tile, u.tile);
                 if (d > 2 * Mathf.Max(1, t.moveRange)) continue;
                 if (d < hd || (d == hd && CombatMath.Precedes(u.tile, hurt.tile))) { hd = d; hurt = u; }

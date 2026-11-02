@@ -838,7 +838,7 @@ public class AIPlayer : MonoBehaviour {
             foreach (Unit u in queue) {
                 if (!Transporting.IsTransport(u)) continue;
                 if (AIAssault.Riders(u).Count > 0) loaded.Add(u);
-                else if (u.transported.Count == 0 && u.Firepower <= 1) empty.Add(u);
+                else if (u.transported.Count == 0 && u.Firepower <= 1 && !supplyTransports.Contains(u)) empty.Add(u);   // (supply's trucks keep the supply's order)
             }
             if (!Profile.assaultOrderWithLine) for (int i = loaded.Count - 1; i >= 0; i--) { queue.Remove(loaded[i]); queue.Insert(0, loaded[i]); }
             foreach (Unit u in empty) { queue.Remove(u); queue.Add(u); }
@@ -971,7 +971,23 @@ public class AIPlayer : MonoBehaviour {
     public AIAction DecideFor(Unit unit) {
         // A transport with a supply unit aboard is that supply unit's (campaignLogistics): the supply logic drives it.
         AIAction carried;
-        if (CarriesSupply(unit, out carried)) return map != null ? AIAir.Guard(unit, carried, map) : carried;
+        if (CarriesSupply(unit, out carried)) {
+            // Ending on a building slot of ours (keepBuildSlotsClear): off it, to the nearest free tile beside it.
+            if (map != null && AIAir.BlocksBuildSlot(unit, AIAir.EndOf(unit, carried), map)) {
+                HexTile off = null; float ol = float.MaxValue;
+                MoveField near = map.ReachThisTurn(unit);
+                foreach (HexTile x in near.Tiles) {
+                    if (x == unit.tile || !near.ReachableThisTurn(x) || x.occupier != null || !unit.CanEnter(x) || !AIAir.MayEndOn(unit, x, map)) continue;
+                    float l = map.ExpectedLoss(unit, x) + 0.01f * unit.tile.Distance(x);
+                    if (l < ol || (Mathf.Abs(l - ol) <= 0.001f && CombatMath.Precedes(x, off))) { ol = l; off = x; }
+                }
+                if (off != null) {
+                    if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": " + carried.reason + " would end on a building slot of ours: moves off to " + D(off));
+                    carried = AIAction.Move(unit, off, 0f, "keeps the building slot clear (" + carried.reason + ")");
+                }
+            }
+            return map != null ? AIAir.Guard(unit, carried, map) : carried;
+        }
         // Put down this turn to strike (assaultRides): it makes the strike its transport planned for it.
         if (Profile.assaultRides && Profile.assaultCarryOut) { AIAction? done = AIAssault.CarryOut(unit, map); if (done.HasValue) return done.Value; }
         AIAction a = DecideForUnit(unit);
@@ -1006,11 +1022,16 @@ public class AIPlayer : MonoBehaviour {
     AIAction BoardOrNot(Unit unit, AIAction onFoot) {
         if (unit == null || unit.tile == null || unit.trasnporter != null || unit.Hub != null || unit.Firepower <= 0) return onFoot;
         if (putDownThisTurn.Contains(unit) || AIAssault.Capturing(unit)) return onFoot;
-        bool hurt = AIAssault.Wounded(unit, Profile);
+        bool hurt = AIAssault.Wounded(unit, Profile, map);
         // Its own move is worth more than any ride: a strike, a capture, a load it already chose.
         if (onFoot.kind == AIActionKind.Attack || onFoot.kind == AIActionKind.MoveAndAttack || onFoot.kind == AIActionKind.Capture || onFoot.kind == AIActionKind.Load || onFoot.kind == AIActionKind.Unload) return onFoot;
         if (!hurt && onFoot.kind != AIActionKind.Move) return onFoot;   // holding where it is (its objective, its line) is its task
-        if (onFoot.kind == AIActionKind.Move && onFoot.destination != null && onFoot.destination.building != null && onFoot.destination.building.owner != player && Building.CanCapture(unit)) return onFoot;   // walking onto a building to take
+        // Walking onto a building to take: its task, if it lives to take it (else a wounded one rides to mend).
+        if (onFoot.kind == AIActionKind.Move && onFoot.destination != null && onFoot.destination.building != null && onFoot.destination.building.owner != player && Building.CanCapture(unit)) {
+            int take = AIAssault.TurnsToTake(unit, onFoot.destination.building, map);
+            if (take >= 0 || !hurt) return onFoot;
+            if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": would go to take " + onFoot.destination.building.name.Replace("(Clone)", "") + D(onFoot.destination) + " but would be gone before it fell: rides to mend instead");
+        }
         Front bf = FrontOf(unit);
         HexTile ground = bf == null ? null : bf.staging && bf.stagingTile != null ? bf.stagingTile : bf.objectiveTile;
         bool goes = bf == null || (bf.posture == Posture.Aggressive && !bf.staging)
@@ -1202,7 +1223,7 @@ public class AIPlayer : MonoBehaviour {
                 bool goes = bf == null || (bf.posture == Posture.Aggressive && !bf.staging)
                          || (ground != null && map.Travel(unit, unit.tile, ground) > Profile.assaultBoardTurns * Mathf.Max(1, unit.moveRange));
                 long __ab = AIPerf.Begin();
-                AIAction? ba = !putDownThisTurn.Contains(unit) && (goes || AIAssault.Wounded(unit, Profile)) ? AIAssault.Board(unit, map, Profile, busy, supplyTransports, SupplyGoing(), ground) : null;
+                AIAction? ba = !putDownThisTurn.Contains(unit) && (goes || AIAssault.Wounded(unit, Profile, map)) ? AIAssault.Board(unit, map, Profile, busy, supplyTransports, SupplyGoing(), ground) : null;
                 AIPerf.End("assault: boarding", __ab);
                 if (ba.HasValue) return ba.Value;
             }

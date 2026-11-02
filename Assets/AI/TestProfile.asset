@@ -21,6 +21,8 @@ MonoBehaviour:
   objectiveForceRatio: 1.1
   objectiveHorizonTurns: 10
   objectiveReplanLoss: 0.5
+  capturerLives: 1
+  keepBuildSlotsClear: 1
   routeDanger: 3
   scoutRadius: 3
   scoutAreas: 2
