@@ -24,8 +24,7 @@ public class BuildingMenu : MonoBehaviour {
     /// <summary>The player whose turn it is plays by hand (no AI playing it).</summary>
     public static bool IsHumanTurn() {
         if (GameController.gc == null || GameController.gc.activePlayer == null) return false;
-        AIPlayer ai = GameController.gc.activePlayer.GetComponent<AIPlayer>();
-        return ai == null || !ai.enabled;
+        return AIControl.Of(GameController.gc.activePlayer) == null;
     }
 
     void OnGUI() {
