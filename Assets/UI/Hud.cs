@@ -165,12 +165,12 @@ public class Hud : MonoBehaviour {
 
     bool storeMade;
 
-    /// <summary>A forward base's store: its turns of supply left of the most it holds (BuildingStorePips shows the same above it).</summary>
+    /// <summary>A forward base's store: its turns of supply left of the most it holds (its SupplyDot pips show the same above it).</summary>
     void ShowStore(Building b) {
         if (store == null && !storeMade) { storeMade = true; store = RowBelow(capture != null ? capture : owner, "Store"); }
         if (store == null) return;
-        if (b == null || !BuildingStorePips.ShownTo(b)) { store.Show(false); return; }
-        store.Set(BuildingStorePips.Filled(b), b.suppliesMax, false, this);
+        if (b == null || !SupplyDot.ShownTo(b)) { store.Show(false); return; }
+        store.Set(SupplyDot.Filled(b), b.suppliesMax, false, this);
     }
 
     /// <summary>A new row just below <paramref name="above"/>, styled like it (for rows an older prefab does not have).</summary>

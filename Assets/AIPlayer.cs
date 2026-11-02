@@ -235,13 +235,9 @@ public class AIPlayer : MonoBehaviour {
     /// one has something to do.
     /// </summary>
     Thought Think(BoardView v, bool prepare, bool refresh) {
-        // The supply solver's what-if rules are the AI's, for this thought only: a thought redone on the main thread
-        // (a failed one, Collect) left them on there, and the player's supply preview then counted a truck's supply
-        // as put down where the truck was going (cut off) rather than carried (linked).
-        using (SupplyNetwork.AsPlayed()) {
-            SupplyNetwork.PutDownHypothetical = Profile.hubLinkPenalty > 0f;
-            return ThinkInner(v, prepare, refresh);
-        }
+        // The supply solver's per-thread what-if settings are this thought's only (put back after: a thought redone on
+        // the main thread must not leave them there).
+        using (SupplyNetwork.AsPlayed()) return ThinkInner(v, prepare, refresh);
     }
 
     Thought ThinkInner(BoardView v, bool prepare, bool refresh) {
@@ -479,6 +475,7 @@ public class AIPlayer : MonoBehaviour {
     BoardView NewView() {
         long __v = AIPerf.Begin();
         BoardView v = FogOfWar.Conceal(player, true, Profile.fogMemoryTurns) ?? BoardView.Snapshot();
+        v.putDownHypothetical = Profile.hubLinkPenalty > 0f;   // the AI's supply what-ifs, on its own copy only
         AIPerf.End("main thread: copy the board", __v);
         return v;
     }
