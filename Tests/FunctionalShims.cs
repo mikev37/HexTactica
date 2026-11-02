@@ -240,11 +240,14 @@ namespace UnityEngine {
             return made;
         }
 
-        public static GameObject Instantiate(GameObject g) { return g; }
-        public static T Instantiate<T>(T o) where T : Object { return o; }
-        public static T Instantiate<T>(T o, Transform p) where T : Object { return o; }
-        public static T Instantiate<T>(T o, Vector3 p, Quaternion q) where T : Object { return o; }
-        public static T Instantiate<T>(T o, Vector3 p, Quaternion q, Transform t) where T : Object { return o; }
+        /// <summary>When set (a check that runs the game's own code that makes units), Instantiate copies through it; null: the object itself.</summary>
+        public static Func<Object, Object> Cloner;
+        static T Copy<T>(T o) where T : Object { if (Cloner == null || o == null) return o; T c = Cloner(o) as T; return c ?? o; }
+        public static GameObject Instantiate(GameObject g) { return Copy(g); }
+        public static T Instantiate<T>(T o) where T : Object { return Copy(o); }
+        public static T Instantiate<T>(T o, Transform p) where T : Object { return Copy(o); }
+        public static T Instantiate<T>(T o, Vector3 p, Quaternion q) where T : Object { return Copy(o); }
+        public static T Instantiate<T>(T o, Vector3 p, Quaternion q, Transform t) where T : Object { return Copy(o); }
         public static void Destroy(Object o) { }
         public static GameObject Find(string n) { return null; }
     }
@@ -339,7 +342,8 @@ namespace UnityEngine {
         public static bool verbose = false;
         public static void Log(object o) { if (verbose) Console.WriteLine("[log] " + o); }
         public static void LogWarning(object o) { Console.WriteLine("[warn] " + o); }
-        public static void LogError(object o) { Console.WriteLine("[error] " + o); }
+        public static int errors;
+        public static void LogError(object o) { System.Threading.Interlocked.Increment(ref errors); Console.WriteLine("[error] " + o); }
     }
     public static class Screen { public static int width { get { return 1920; } } public static int height { get { return 1080; } } }
     public static class GUI {
@@ -400,7 +404,24 @@ namespace UnityEngine {
     }
     public static class JsonUtility {
         public static string ToJson(object o) { return "{}"; }
-        public static T FromJson<T>(string s) { return default(T); }
+        /// <summary>Unity's: the public fields of <typeparamref name="T"/> (numbers, bools, strings, enums) from a JSON object; others left at their defaults.</summary>
+        public static T FromJson<T>(string s) {
+            object o = Activator.CreateInstance(typeof(T));
+            Defective.JSON.JSONObject j = new Defective.JSON.JSONObject(s);
+            foreach (System.Reflection.FieldInfo f in typeof(T).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)) {
+                Defective.JSON.JSONObject v = j.GetField(f.Name);
+                if (v == null) continue;
+                Type t = f.FieldType;
+                if (t == typeof(string)) f.SetValue(o, v.stringValue);
+                else if (t == typeof(int)) f.SetValue(o, (int)v.longValue);
+                else if (t == typeof(long)) f.SetValue(o, v.longValue);
+                else if (t == typeof(float)) f.SetValue(o, v.floatValue);
+                else if (t == typeof(double)) f.SetValue(o, (double)v.floatValue);
+                else if (t == typeof(bool)) f.SetValue(o, v.boolValue);
+                else if (t.IsEnum) f.SetValue(o, Enum.ToObject(t, (int)v.longValue));
+            }
+            return (T)o;
+        }
     }
     public static class Random {
         public static float Range(float a, float b) { return a; }

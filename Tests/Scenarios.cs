@@ -387,6 +387,8 @@ public static class Scenarios {
              "Factions (Faction, Building.Offered): Blue's HQ and Factory keep their base lists. Given a faction that replaces the Grunt with its own version, drops the first other unit the HQ lists, and adds an extra unit made at Factories (the ArmyBase): the HQ offers the version where the Grunt was, not the Grunt or the dropped unit; the ArmyBase offers the version in its Grunt's place and the extra; without the faction, the base lists. The version is bought and placed under its own name, is allowed where the scenario allows the Grunt, and its name and the faction's survive a save (LevelEditor.loadUnit, PlayerData.factionName).");
         make("rule-faction-load", "factionLoad", (a, o) => { Put("Grunt", o, 5, 0); },
              "Loading from the Resources folder, with nothing listed on the scene's LevelEditor: the Grunt, a faction's 'Grunt Federation Variant', the City and Grassland are found by name. A scenario's Grunt placed for a Federation side becomes the Federation's version (also when saved as another faction's version); for a side without a faction it stays the Grunt. The build menu calls the version 'Grunt' (and 'Gunship Variant' 'Gunship'). On the AI's thinking thread, after the board is copied, the faction matches its units by name without a call Unity allows only on the main thread.");
+        make("rule-load-cargo", "loadCargo", (a, o) => { Put("Grunt", o, 5, 0); },
+             "Loading a scenario as the game does (ScenarioLoader; the in-game load shares UnitData.LoadAll): Korea, whose trucks are listed after the supplies they carry, on the same tile, with the scene's LevelEditor listing only the older units. Every unit in the file is made (the rocket artillery, missile trucks and trucks from the Resources folder), the supplies are aboard their trucks and not active, every other unit is on its own tile, and nothing is logged as an error.");
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1299,6 +1301,76 @@ public static class Scenarios {
                 } finally { LevelEditor.singleton = was; l.ai.faction = null; }
                 detail = string.Join("; ", r.ToArray());
                 return lookups && threaded && placed && other && shown;
+            }
+            case "loadCargo": {
+                // The game's own loader (HexTactica > Load Scenario File: ScenarioLoader, which shares UnitData.LoadAll with the
+                // in-game load) on Korea, whose trucks are listed after the supplies aboard them, on the same tile. The scene's
+                // LevelEditor lists the older units only (as the scene does): the rest come from the Resources folder.
+                List<string> r = new List<string>();
+                LevelEditor was = LevelEditor.singleton;
+                int errorsBefore = UnityEngine.Debug.errors;
+                bool ok;
+                try {
+                    LevelEditor ed = Rig.New<LevelEditor>();
+                    ed.allUnit = new List<Unit>();
+                    foreach (string n in new[] { "Grunt", "Conscript", "Marine", "Tank", "APC", "Artillery", "Recon", "Supplies", "Fighter", "Bomber", "Stealth Fighter", "Gunner Anti Air" }) { Unit u = PrefabLoader.Load(n); u.name = n; ed.allUnit.Add(u); }
+                    ed.allFaction = new List<Faction>();
+                    LevelEditor.singleton = ed;
+                    string path = Path.Combine(PrefabLoader.Root("Scenarios"), "Korea.dat");
+                    Dictionary<string, int> want = new Dictionary<string, int>(), carried = new Dictionary<string, int>();
+                    int wantAboard = 0;
+                    foreach (Dictionary<string, string> u in ScenarioFile.Array(File.ReadAllText(path), "units")) {
+                        string n = u["gameobject_name"].Replace("(Clone)", "").Trim();
+                        int k; want.TryGetValue(n, out k); want[n] = k + 1;
+                        if (u.ContainsKey("transporterIndexPlusOne") && u["transporterIndexPlusOne"] != "0") wantAboard++;
+                    }
+                    // (Tiles given what the game's tile prefab has — sprites, road pieces, a placement point — and new
+                    // ones made that way: the board grows to the map's size.)
+                    Action<HexTile> dress = t => {
+                        foreach (System.Reflection.FieldInfo fi in typeof(HexTile).GetFields()) {
+                            if (fi.GetValue(t) != null) continue;
+                            if (fi.FieldType == typeof(SpriteRenderer)) fi.SetValue(t, Rig.New<SpriteRenderer>());
+                            else if (fi.FieldType == typeof(Transform)) fi.SetValue(t, Rig.New<Transform>());
+                            else if (fi.FieldType == typeof(UnityEngine.UI.Text)) fi.SetValue(t, Rig.New<UnityEngine.UI.Text>());
+                        }
+                    };
+                    Rig.hg.makeTile = at => {
+                        HexTile t = Rig.New<HexTile>();
+                        t.neighbors = new List<HexTile>(); t.aiData = new AITileData();
+                        t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>();
+                        t.terrain = ScenarioFile.Terrain("Grassland");
+                        dress(t);
+                        return t;
+                    };
+                    foreach (HexTile t in Rig.hg.tiles) dress(t);
+                    bool loaded;
+                    // (Instantiate copies a unit as Unity does: its own lists, its supply hub.)
+                    UnityEngine.GameObject.Cloner = obj => {
+                        GameObject g = obj as GameObject; Unit src = g != null ? g.GetComponent<Unit>() : null;
+                        if (src == null) return null;
+                        Unit c = Rig.Clone(src);
+                        c.path = new List<HexTile>(); c.transported = new List<Unit>();
+                        PrefabLoader.AttachHubIfAny(src.name.Replace("(Clone)", "").Trim(), c);
+                        return c.gameObject;
+                    };
+                    try { loaded = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); } finally { Rig.hg.makeTile = null; UnityEngine.GameObject.Cloner = null; }
+                    Dictionary<string, int> got = new Dictionary<string, int>();
+                    int aboard = 0, aboardActive = 0, misplaced = 0;
+                    foreach (Unit u in Rig.uc.units) {
+                        if (u == null) continue;
+                        string n = u.name.Replace("(Clone)", "").Trim();
+                        int k; got.TryGetValue(n, out k); got[n] = k + 1;
+                        if (u.trasnporter != null) { aboard++; if (u.active) aboardActive++; if (u.tile != u.trasnporter.tile || u.tile.occupier == u || !u.trasnporter.transported.Contains(u)) misplaced++; }
+                        else if (u.tile == null || u.tile.occupier != u) misplaced++;
+                    }
+                    List<string> counts = new List<string>(); bool all = true;
+                    foreach (KeyValuePair<string, int> kv in want) { int g; got.TryGetValue(kv.Key, out g); if (g != kv.Value) all = false; if (g != kv.Value || kv.Key == "Rocket Artillery" || kv.Key == "Anti Air Missile Truck" || kv.Key == "Truck" || kv.Key == "Supplies") counts.Add(kv.Key + " " + g + "/" + kv.Value); }
+                    int errors = UnityEngine.Debug.errors - errorsBefore;
+                    ok = loaded && all && aboard == wantAboard && aboardActive == 0 && misplaced == 0 && errors == 0;
+                    r.Add("loaded " + loaded + "; " + string.Join(", ", counts.ToArray()) + (all ? " (every unit in the file)" : " (MISSING units)") + "; aboard " + aboard + "/" + wantAboard + ", of them active " + aboardActive + "; misplaced " + misplaced + "; errors logged " + errors);
+                } finally { LevelEditor.singleton = was; }
+                detail = string.Join("; ", r.ToArray());
+                return ok;
             }
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;

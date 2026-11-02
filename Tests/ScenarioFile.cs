@@ -166,7 +166,7 @@ public static class ScenarioFile {
     }
 
     /// <summary>The flat objects inside the array named <paramref name="key"/>.</summary>
-    static List<Dictionary<string, string>> Array(string json, string key) {
+    internal static List<Dictionary<string, string>> Array(string json, string key) {
         List<Dictionary<string, string>> list = new List<Dictionary<string, string>>();
         int i = json.IndexOf("\"" + key + "\"");
         if (i < 0) return list;

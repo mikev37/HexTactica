@@ -155,11 +155,12 @@ public class LevelEditor : MonoBehaviour
         if (obj.GetField("units")) {
             JSONObjectEnumerator numunit =
                 obj.GetField("units").GetEnumerator();
+            List<UnitData> all = new List<UnitData>();
             while (numunit.MoveNext()) {
                 Debug.Log(numunit.Current.Print());
-                UnitData ud = JsonUtility.FromJson<UnitData>(numunit.Current.Print());
-                ud.load();
+                all.Add(JsonUtility.FromJson<UnitData>(numunit.Current.Print()));
             }
+            UnitData.LoadAll(all);
         }
         GameController.BoardLoaded();
         if (HexTactica.Harness.ScenarioLoader.RecordGames && GameController.gc != null && !GameController.gc.headless) {
@@ -257,6 +258,12 @@ public class LevelEditor : MonoBehaviour
     /// named when the faction has no version of it.
     /// </summary>
     internal static Unit PlaceNewUnit(Player p, String unit_name, HexTile t) {
+        Unit unit = UnitFor(p, unit_name);
+        return unit != null ? UnitController.uc.CreateUnit(p, unit, t) : null;
+    }
+
+    /// <summary>The prefab <paramref name="p"/> fields for a unit saved as <paramref name="unit_name"/> (its faction's version of it, see PlaceNewUnit); null if there is none of that name.</summary>
+    internal static Unit UnitFor(Player p, String unit_name) {
         Unit unit = loadUnit(unit_name);
         Faction f = p != null ? p.faction : null;
         if (f != null && unit != null) {
@@ -266,7 +273,7 @@ public class LevelEditor : MonoBehaviour
             Unit own = f.Map(b);
             if (own != null) unit = own;
         }
-        return UnitController.uc.CreateUnit(p, unit, t);
+        return unit;
     }
 
     /// <summary>Every faction known: the scene's list (allFaction), then the Resources folder's.</summary>

@@ -1315,7 +1315,38 @@ public struct UnitData {
         }
     }
 
-    public Unit load() {
+    /// <summary>
+    /// Every unit of a save or scenario, by its place in the file (null: none made — an HQ that became a building, or a
+    /// unit the game cannot find). Units on the board first, then cargo straight into its transport (a file may list
+    /// cargo before its transport, on the same tile: placed first, it would take the transport's tile), cargo of cargo
+    /// after that. Cargo whose transport is missing goes on its tile, if free.
+    /// </summary>
+    public static List<Unit> LoadAll(List<UnitData> all) {
+        Unit[] made = new Unit[all.Count];
+        bool[] done = new bool[all.Count];
+        for (int i = 0; i < all.Count; i++)
+            if (all[i].transporterIndexPlusOne <= 0) { made[i] = all[i].load(); done[i] = true; }
+        for (bool progress = true; progress; ) {
+            progress = false;
+            for (int i = 0; i < all.Count; i++) {
+                if (done[i]) continue;
+                int t = all[i].transporterIndexPlusOne - 1;
+                bool bad = t < 0 || t >= all.Count || t == i;
+                if (!bad && !done[t]) continue;   // its transport is cargo itself, not yet made
+                Unit transport = bad ? null : made[t];
+                if (transport == null) Debug.LogError("Scenario unit '" + all[i].gameobject_name + "' was aboard unit " + t + ", which was not made: put on its tile instead");
+                made[i] = all[i].load(transport);
+                done[i] = true; progress = true;
+            }
+        }
+        for (int i = 0; i < all.Count; i++) if (!done[i]) { Debug.LogError("Scenario unit '" + all[i].gameobject_name + "' is aboard a loop of transports: put on its tile"); made[i] = all[i].load(); }
+        return new List<Unit>(made);
+    }
+
+    public Unit load() { return load(null); }
+
+    /// <summary>This unit, on its tile — or aboard <paramref name="transport"/> when given.</summary>
+    public Unit load(Unit transport) {
         Player player = null;
         UnitData that = this;
         GameController.gc.players.ForEach(pl => { if (pl.id == that.owner_id) player = pl; });
@@ -1326,7 +1357,14 @@ public struct UnitData {
             if (hq != null && BuildingController.bc != null && tile != null && tile.building == null) BuildingController.bc.Place(player, hq, tile);
             return null;
         }
-        Unit ut = LevelEditor.PlaceNewUnit(player, gameobject_name,tile);
+        // A unit the game cannot find, or whose tile is taken, is left out (said so) — not the rest of the board with it.
+        Unit prefab = LevelEditor.UnitFor(player, gameobject_name);
+        if (prefab == null || (transport == null && tile == null)) {
+            Debug.LogError("Scenario unit '" + gameobject_name + "' at " + x + "," + y + "," + z + (prefab == null ? ": no unit prefab of that name in Resources/Units or the LevelEditor's lists" : ": no such tile") + " — left out");
+            return null;
+        }
+        Unit ut = transport != null ? UnitController.uc.CreateAboard(player, prefab, transport) : UnitController.uc.CreateUnit(player, prefab, tile);
+        if (ut == null) { Debug.LogError("Scenario unit '" + gameobject_name + "' at " + x + "," + y + "," + z + ": its tile is taken by " + (tile.occupier != null ? tile.occupier.name : "?") + " — left out"); return null; }
         ut.Strength = Strength;
         ut.Veterancy = Veterancy;
         ut.personal_name = personalName;
