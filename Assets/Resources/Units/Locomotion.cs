@@ -69,6 +69,11 @@ public static class LocomotionRules {
     }
 
     /// <summary>A bridge tile (elevation 0: over water, at road level).</summary>
+    /// <summary>Water: a tile below the bridges (negative elevation).</summary>
+    public static bool IsWater(HexTile t) {
+        return t != null && t.terrain != null && t.terrain.elevation < 0;
+    }
+
     public static bool IsBridge(HexTile t) {
         return t != null && t.terrain != null && t.terrain.elevation == 0;
     }
@@ -80,6 +85,9 @@ public static class LocomotionRules {
     /// </summary>
     public static bool BridgeStep(HexTile from, HexTile to, Locomotion l) {
         if (from == null || to == null || IgnoresTerrain(l)) return true;
+        // Between a bridge and the water under it: always (a boat leaving a yard on a bridge, or coming in to it). Whether
+        // the unit may be on either tile at all is its own reach (Unit.CanEnter): a land unit still cannot step into water.
+        if (IsWater(from) || IsWater(to)) return true;
         if (IsBridge(from) && (to.terrain == null || !to.terrain.road)) return false;
         if (IsBridge(to) && (from.terrain == null || !from.terrain.road)) return false;
         return true;
