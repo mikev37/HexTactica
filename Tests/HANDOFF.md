@@ -132,7 +132,9 @@ Transports: `assaultRides`, `assaultBoardTurns` 2, `assaultTransportWeight` 2, `
 `assaultBoardWeighs`, `assaultOrderWithLine`, `assaultFrontlineOut`, `assaultFireThenUnload`.
 Supply: `supplyStaysAboard`, `unifiedLinkPlacement`, `boardSpentTransports`, `keepBuildSlotsClear` (now mostly
 redundant: unified placement no longer parks supply on the HQ).
-Campaign: `capturerLives`, `campaignGatherWithBody`.
+Campaign: `capturerLives`, `campaignGatherWithBody`, `campaignSurgeAbort` (+ `campaignEngagedTurns` 2, `campaignSurgeRatio` 1.5,
+`campaignSurgeWithdrawTurns` 2), `campaignBreakShort` (+ `campaignBreakShortRatio` 0.5). Game (not AI): `GameController.fogShownOnScreen` (off: the screen shows everything, sides
+still play by their fog).
 Turn: `waitTwice`. Production: `productionOverkill`, `productionLifetime` (+ `productionLifeMax` 8, `productionLifeRef`
 3, `productionReachRef` 6), `productionShieldCut` 0.6, `productionShieldRatio` 2, `productionDefenceFade` 20.
 Speed (meant to give identical decisions, faster): `parallelForecast`, `speculate`, `keepCaches`, `vacatedReach`, ...
@@ -197,6 +199,30 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   Links were not placed worse (without spacing Blue also had links at (-6,5), (-6,8), (-4,8), which lived while its
   army held there); they were left holding after the army in front of them was beaten. Logs: scratchpad
   `games/cm-fwd-cur-b.log`, `games/cm-fwd-sp0-b.log`; tools `camp.py` (campaign per turn), `losses.py` (hits per turn).
+
+- **Plan unit status and the surge stop (`campaignSurgeAbort`, 2 Nov):** each task force sorts its units into staged /
+  en route / engaged (within `campaignEngagedTurns` 2 of an enemy unit), shown in its trace line with the estimate it
+  was formed against. A task force with most units not engaged whose estimate rises to 1.5× that stops; its en-route
+  units pull back to its staging ground (Defensive front, up to 2 turns) and the objective is planned afresh.
+  Old v new, traced, 25 rounds (logs `games/surge-*` v `games/base-*`): identical games on RiverCrossing (both
+  sides), Biomes (both sides) and ChanceMeeting new Blue (it never fired). ChanceMeeting new Red: fired on turn 6
+  (Secure@0,-10, one Grunt, estimate 3,169 → 18,155), re-formed with 4 units that gathered before going in; new Red
+  **220,166 v 63,666** (was 157,500 v 141,916). Why it rarely fires: on ChanceMeeting every plan's units are within 2
+  turns of an enemy from turn 5. New Blue's Hold@-6,9 had all 3 units engaged when its estimate jumped (2.2k → 13k),
+  then was kept 8 turns at 5–14k v need 33–48k: the broken check compares power with the power it formed with, not
+  with its need. Medevac (RiverCrossing): 3 units carried to cities, all at strength 3; each stayed one heal, then left
+  at 4–5.
+- **Broken when short of need (`campaignBreakShort`, 2 Nov; mixed):** a kept task force whose power is below 0.5 of its
+  need now is broken like one that lost half its power (formed again only if what can join is enough). Old v new,
+  traced (logs `games/short-*` v `games/surge-*`): RiverCrossing new Blue **248,083 v 23,000** (was 173,750 v
+  168,416; 4 breaks); new Red unchanged (no break). ChanceMeeting new Blue **67,250 v 159,333** (was 41,166 v 201,333;
+  breaks on turn 7 of four one-unit Secures, turn 9 of Secure@0,-10 and Hold@-6,9); new Red **116,833 v 183,916** (was
+  220,166 v 63,666). Biomes new Blue 143,250 v 55,000, 12 buildings (was 62,833, 9); new Red 25,166 v 127,916 (was
+  25,416 v 123,833). New Red on ChanceMeeting, read from the log: breaks on turn 6 (five one-unit city plans, 4x
+  short), 8 and 10 (under half their need); the game diverged on turn 6. Red took the FOB at (0,8) by turn 16, then
+  pushed south (Hold@1,11 and its ordinary fronts); artillery and tanks moved up to (-5,9), (-4,7), (-5,8) and were
+  destroyed on Blue's turns 17–19 (Red 209k → 161k, rounds 8–12). Most of those losses were units on no task force. Not
+  traced to the break itself; looks like the push after a success.
 
 ## 7. Open work, in the order I'd take it
 
