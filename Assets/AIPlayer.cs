@@ -1050,7 +1050,7 @@ public class AIPlayer : MonoBehaviour {
         // Riding to the assault (assaultRides): aboard, it stays in until it is put down to strike; far from the fight,
         // it gets in a transport.
         if (Profile.assaultRides && unit.Hub == null) {
-            if (unit.trasnporter != null && unit.trasnporter.Firepower <= 1) {
+            if (AIAssault.TroopTransport(unit.trasnporter)) {
                 Front rf = FrontOf(unit);
                 AIAssault.HasFront = rf != null;
                 HexTile rground = rf == null ? null : rf.staging && rf.stagingTile != null ? rf.stagingTile : rf.objectiveTile;
@@ -1076,7 +1076,7 @@ public class AIPlayer : MonoBehaviour {
         // objective if that is quicker than walking.
         // With assaultRides on, the old ride stays for armed transports (a recon taxi) when assaultArmedRides is on.
         if (Profile.combatRides && (!Profile.assaultRides || Profile.assaultArmedRides) && unit.Firepower > 0 && unit.Hub == null
-            && (!Profile.assaultRides || unit.trasnporter == null || unit.trasnporter.Firepower > 1)) {
+            && (!Profile.assaultRides || unit.trasnporter == null || !AIAssault.TroopTransport(unit.trasnporter))) {
             AIAction ride;
             if (TryRide(unit, front, out ride)) return ride;
         }
@@ -1315,7 +1315,7 @@ public class AIPlayer : MonoBehaviour {
         // An armed transport (a recon carrying a marine) whose rider asked to be put down here: it lets it off
         // first, then fights as it will. (A marine rode beside the enemy HQ for four turns, never let off.)
         // Riding to the assault (assaultRides): a transport with fighting units aboard and no supply duty.
-        if (Profile.assaultRides && Transporting.IsTransport(unit) && unit.Firepower <= 1 && !transportAssignments.ContainsKey(unit)) {
+        if (Profile.assaultRides && AIAssault.TroopTransport(unit) && !transportAssignments.ContainsKey(unit)) {
             List<Unit> riders = AIAssault.Riders(unit);
             if (riders.Count > 0) {
                 Front rf = FrontOf(riders[0]);
@@ -1631,11 +1631,11 @@ public class AIPlayer : MonoBehaviour {
         List<HexTile> candidates = new List<HexTile>();
         foreach (HexTile t in HexGenerator.hg.tiles) if (t != null && (map.SupplyDepth(t) > 0 || t == unit.tile) && unit.CanEnter(t)) candidates.Add(t);
         System.Func<HexTile, float> valueOf = t => per * (from - map.Travel(unit, t, objectiveTile)) - AIScore.Risk(unit, t, map, Profile);
-        // Assault rides own the unarmed transports: this ride uses only armed ones.
+        // Assault rides own the troop transports (unarmed, not trucks): this ride uses armed ones and free trucks (a short hop).
         HashSet<Unit> barred = reservedTransports;
         if (Profile.assaultRides) {
             barred = new HashSet<Unit>(reservedTransports);
-            foreach (Unit t in player.units) if (t != null && Transporting.IsTransport(t) && t.Firepower <= 1) barred.Add(t);
+            foreach (Unit t in player.units) if (AIAssault.TroopTransport(t)) barred.Add(t);
         }
         TransportPlan plan = AITransportPlanner.Plan(unit, map, Profile, valueOf, candidates, barred);
         if (plan == null) { if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + " ride: no plan (" + candidates.Count + " supplied tiles)"); return false; }
