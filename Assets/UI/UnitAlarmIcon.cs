@@ -61,7 +61,7 @@ public class UnitAlarmIcon : MonoBehaviour {
     }
 
     static bool UnfedAt(Unit x) {
-        bool supplied = x.tile.isSupplied(x.owner);
+        bool supplied = x.tile.isSuppliedShown(x.owner);
         Building service = Building.ServicingUnder(x);
         if (service != null) {
             bool network = (LocomotionRules.ResuppliedInSupply(x.locomotion) || !LocomotionRules.NeedsBase(x.locomotion)) && supplied;

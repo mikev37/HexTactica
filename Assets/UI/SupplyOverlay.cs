@@ -44,6 +44,11 @@ public class SupplyOverlay : MonoBehaviour {
     }
 
     void Update() {
+        // The supply the player sees: the game's rules only, never the AI's what-ifs (see SupplyNetwork.AsPlayed).
+        using (SupplyNetwork.AsPlayed()) UpdateShown();
+    }
+
+    void UpdateShown() {
         GameController gc = GameController.gc;
         Unit u = gc != null ? gc.activeUnit : null;
         // Only for a human's unit: an AI's (it selects each unit as it acts) is not the player's
@@ -70,7 +75,8 @@ public class SupplyOverlay : MonoBehaviour {
 
         HexTile from = dest ?? u.tile;
         // Leaving supply: supplied where it stands, not where it is going.
-        if (dest != null && field.DepthAt(u.tile) > 0 && field.DepthAt(dest) <= 0 && !movingHub) {
+        // (As the screen's player knows the board: under fog an enemy it does not see does not cut supply here.)
+        if (dest != null && u.tile.isSuppliedShown(p) && !dest.isSuppliedShown(p) && !movingHub) {
             if (dest.overlay != null) { warnedTile = dest; warnedColour = dest.overlay.color; dest.overlay.color = new Color(1f, 0.55f, 0.1f, 1f); }
             if (u.textArea != null) { u.textArea.text = "Leaves supply"; warnedText = true; }
         }

@@ -315,7 +315,7 @@ namespace HexTactica.AI {
                 if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1) && !HomeFight(u, map, p)) forces.Add(u);
             foreach (CampaignObjective o in candidates) {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
-                o.turnsAway = TurnsAway(o, forces, map);
+                o.turnsAway = TurnsAway(o, forces, map, p);
                 o.priority = o.priority / Mathf.Max(1f, o.turnsAway + 1f);   // +1: taking it
                 // All out (AIKnowledge): the enemy HQ first.
                 if (map.AllOut && o.kind == CampaignKind.Secure && o.building != null && o.building.IsHQ) o.priority *= 10f;
@@ -744,9 +744,12 @@ namespace HexTactica.AI {
             int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
             int stagingToGo = map.Travel(null, o.staging, o.target);
             float gathered = 0f;
+            // Past the staging ground counts only with the body (campaignGatherWithBody), as AIStrategic.GatherThenGo.
+            HexTile body = p.campaignGatherWithBody ? Centre(o.units.FindAll(x => x != null && x.tile != null && x.Strength >= healthy)) : null;
             foreach (Unit u in o.units) {
                 if (u == null || u.tile == null || u.Strength < healthy) continue;
-                if (map.Travel(u, u.tile, o.staging) <= radius || map.Travel(u, u.tile, o.target) < stagingToGo) gathered += Power(u);
+                if (map.Travel(u, u.tile, o.staging) <= radius
+                    || (map.Travel(u, u.tile, o.target) < stagingToGo && (body == null || map.Travel(u, u.tile, body) <= radius))) gathered += Power(u);
             }
             return gathered >= Mathf.Max(1f, o.needPower) * Mathf.Clamp01(p.campaignGatherShare);
         }
@@ -839,7 +842,7 @@ namespace HexTactica.AI {
                     }
                     // A building's task force that has lost its one who could take it gets another (the HQ's
                     // task force stood a turn from the HQ for seven turns with nobody to capture it).
-                    if (now.kind == CampaignKind.Secure && !now.units.Exists(Building.CanCapture)) Fill(now, pool, map, p, 0f);
+                    if (now.kind == CampaignKind.Secure && !now.units.Exists(u => Takes(u, now, map, p))) Fill(now, pool, map, p, 0f);
                     foreach (SupplyPoint h in was.hubs) if (hubPool.Contains(h)) { now.hubs.Add(h); hubPool.Remove(h); }
                     now.formedPower = was.formedPower;
                     now.age = was.age + 1; now.went = was.went; now.routeTurns = was.routeTurns; now.lastPace = was.lastPace; now.stalled = was.stalled;
@@ -916,6 +919,13 @@ namespace HexTactica.AI {
                     }
                     continue;
                 }
+                // A building nobody free could live to take (capturerLives): not taken on (its units would wait on a capture
+                // that never comes, or walk onto it to die).
+                if (p.capturerLives && o.kind == CampaignKind.Secure && o.building != null && !kept
+                    && !o.units.Exists(u => Takes(u, o, map, p)) && !pool.Exists(u => Takes(u, o, map, p) && CanJoin(u, o, map, p))) {
+                    if (Debug != null) Debug("not taken on: " + o.Id + ": none free would live to take it");
+                    continue;
+                }
                 Fill(o, pool, map, p, o.needPower);
                 if (!objectives.Contains(o)) { objectives.Add(o); if (o.lasting) hubsLeft -= o.needHubs; }
                 pursued++;
@@ -944,7 +954,7 @@ namespace HexTactica.AI {
                         float others = 0f; foreach (CampaignObjective x in objectives) if (x.BaseId == first.BaseId) others += x.assignedPower;
                         float least = 0f; foreach (Unit u in group) if (first.kind != CampaignKind.Secure || Building.CanCapture(u)) least = least <= 0f ? Power(u) : Mathf.Min(least, Power(u));
                         wing.needPower = Mathf.Max(least, wing.needPower - others);
-                        wing.turnsAway = TurnsAway(wing, group, map);
+                        wing.turnsAway = TurnsAway(wing, group, map, p);
                         if (wing.turnsAway > band) continue;
                         if (wing.lasting && wing.needHubs > 0 && wing.needHubs > hubsLeft) continue;
                         float near = 0f; foreach (Unit u in group) if (CanJoin(u, wing, map, p)) near += Power(u);
@@ -972,6 +982,7 @@ namespace HexTactica.AI {
                 CampaignObjective top = null; int topShort = int.MaxValue;
                 foreach (CampaignObjective o in candidates) {
                     if (o.kind == CampaignKind.DefendHQ || o.respond || o.kind == CampaignKind.Scout) continue;
+                    if (p.capturerLives && o.kind == CampaignKind.Secure && o.building != null && !pool.Exists(u => Takes(u, o, map, p))) continue;   // nobody would live to take it
                     int shortBy = o.lasting ? Mathf.Max(0, o.needHubs - Mathf.Max(0, hubsLeft)) : 0;
                     if (shortBy < topShort) { topShort = shortBy; top = o; }
                 }
@@ -1094,13 +1105,34 @@ namespace HexTactica.AI {
             if (ride != null && seats != null && seats.ContainsKey(ride)) seats[ride]--;
         }
 
+        /// <summary>
+        /// Can <paramref name="u"/> take <paramref name="o"/>'s building (capturerLives): it can capture, and it lives to
+        /// see the building fall — getting there, starving out of supply, the capture's points, the enemy there
+        /// (AIAssault.TurnsToTake), with supply there if the task force brings its own. Off: any that can capture.
+        /// </summary>
+        static bool Takes(Unit u, CampaignObjective o, AIMap map, AIProfile p) {
+            if (!Building.CanCapture(u)) return false;
+            if (!p.capturerLives || o.building == null) return true;
+            return TakeTurns(u, o, map) >= 0;
+        }
+
+        /// <summary>Turns for <paramref name="u"/> to take <paramref name="o"/>'s building (getting there and the capture), with supply there if the task force has supply units of its own; -1: it would be gone first, or not within objectiveHorizonTurns.</summary>
+        static int TakeTurns(Unit u, CampaignObjective o, AIMap map) {
+            if (o.building == null) return 0;
+            bool fed = map.SupplyDepth(o.building.tile) > 0 || o.hubs.Count > 0;
+            return AIAssault.TurnsToTake(u, o.building, map, fed);
+        }
+
         /// <summary>Give <paramref name="o"/> the units that fit it best until it has <paramref name="upTo"/> combat power (someone to capture, or to scout, first).</summary>
         static void Fill(CampaignObjective o, List<Unit> pool, AIMap map, AIProfile p, float upTo) {
             // A building needs someone who can take it.
-            if (o.kind == CampaignKind.Secure && !o.units.Exists(Building.CanCapture)) {
+            if (o.kind == CampaignKind.Secure && !o.units.Exists(u => Takes(u, o, map, p))) {
                 Unit c = null; int ct = int.MaxValue;
                 foreach (Unit u in pool) {
-                    if (!Building.CanCapture(u) || !CanJoin(u, o, map, p)) continue;
+                    if (!Takes(u, o, map, p) || !CanJoin(u, o, map, p)) continue;
+                    // The nearest of those that would live to take it (ranked by its way to the staging ground, as before:
+                    // ranked by its way to the building itself, the one already up front was picked, and the task force
+                    // counted as gathered and went in piecemeal).
                     int t = Turns(u, o, map);
                     if (t < ct || (t == ct && c != null && AIMap.CompareUnits(u, c) < 0)) { ct = t; c = u; }
                 }
@@ -1206,7 +1238,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>The front's distance: of the free units nearest it (by their turns to it) enough for its need, the turns of the slowest.</summary>
-        static int TurnsAway(CampaignObjective o, List<Unit> free, AIMap map) {
+        static int TurnsAway(CampaignObjective o, List<Unit> free, AIMap map, AIProfile p) {
             if (o.target == null) return 99;
             Dictionary<Unit, int> was = seats;
             seats = was != null ? new Dictionary<Unit, int>(was) : null;
@@ -1220,7 +1252,7 @@ namespace HexTactica.AI {
                     Unit r; int turns = TurnsTo(kv.Value, o.target, map, out r);
                     if (r != null) seats[r]--;
                     got += Power(kv.Value); slowest = turns;
-                    if (Building.CanCapture(kv.Value)) capturer = true;
+                    if (Takes(kv.Value, o, map, p)) capturer = true;
                     if (got >= o.needPower && capturer) break;
                 }
                 return slowest;

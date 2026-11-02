@@ -58,7 +58,7 @@ public class TransportPanel : MonoBehaviour {
 
     void Fill(Unit transport, Unit picked) {
         gameObject.SetActive(true);
-        string name = transport.name.Replace("(Clone)", "").Trim();
+        string name = GameController.DisplayName(transport, transport.owner);
         if (title != null) title.text = name;
         if (titleText != null) titleText.text = name;
         foreach (Button b in slots) if (b != null) Destroy(b.gameObject);

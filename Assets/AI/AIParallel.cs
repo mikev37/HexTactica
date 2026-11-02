@@ -27,7 +27,7 @@ namespace HexTactica.AI {
             public HashSet<SupplyPoint> chainLinks, protect, protectOnly;
             public HashSet<Unit> protectUnitsNow, protectUnits, strategicExclude, objectivesExclude;
             public Dictionary<SupplyPoint, Unit> previousChainTrucks, plannedAboard;
-            public bool frontLine, recordLinked, putDownHypothetical;
+            public bool frontLine, recordLinked;
             public SupplyPoint assumeLinked; public Unit assumeLinkedVia;
 
             public static Context Capture() {
@@ -35,7 +35,7 @@ namespace HexTactica.AI {
                     roles = AIWorld.Roles, chainLinks = AITransportPlanner.ChainLinks, protect = AILogistics.Protect, protectOnly = AISupplyChain.ProtectOnly,
                     protectUnitsNow = AILogistics.ProtectUnitsNow, protectUnits = AISupplyChain.ProtectUnits, strategicExclude = AIStrategic.Exclude, objectivesExclude = AIObjectives.Exclude,
                     previousChainTrucks = AILogistics.PreviousChainTrucks, plannedAboard = SupplyNetwork.PlannedAboard,
-                    frontLine = AISupplyPlanner.FrontLine, recordLinked = SupplyNetwork.RecordLinked, putDownHypothetical = SupplyNetwork.PutDownHypothetical,
+                    frontLine = AISupplyPlanner.FrontLine, recordLinked = SupplyNetwork.RecordLinked,
                     assumeLinked = SupplyNetwork.AssumeLinked, assumeLinkedVia = SupplyNetwork.AssumeLinkedVia,
                 };
             }
@@ -43,7 +43,7 @@ namespace HexTactica.AI {
                 AIWorld.Roles = roles; AITransportPlanner.ChainLinks = chainLinks; AILogistics.Protect = protect; AISupplyChain.ProtectOnly = protectOnly;
                 AILogistics.ProtectUnitsNow = protectUnitsNow; AISupplyChain.ProtectUnits = protectUnits; AIStrategic.Exclude = strategicExclude; AIObjectives.Exclude = objectivesExclude;
                 AILogistics.PreviousChainTrucks = previousChainTrucks; SupplyNetwork.PlannedAboard = plannedAboard;
-                AISupplyPlanner.FrontLine = frontLine; SupplyNetwork.RecordLinked = recordLinked; SupplyNetwork.PutDownHypothetical = putDownHypothetical;
+                AISupplyPlanner.FrontLine = frontLine; SupplyNetwork.RecordLinked = recordLinked;
                 SupplyNetwork.AssumeLinked = assumeLinked; SupplyNetwork.AssumeLinkedVia = assumeLinkedVia;
             }
         }

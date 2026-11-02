@@ -22,6 +22,19 @@ using UnityEngine;
 /// </summary>
 public static class SupplyNetwork {
 
+    /// <summary>
+    /// The HQ first: a cut-off supply building (a FOB) spends a point of its store only on a turn it feeds a unit that
+    /// the HQ's network (or a building before it) does not supply; otherwise it keeps its store (its area is still
+    /// shown supplied). Off: every cut-off building with store spends a point a turn.
+    /// </summary>
+    public static bool StoreOnlyWhenNeeded = true;
+
+    /// <summary>Under fog, the supply the screen shows (borders, out-of-supply icons) is worked out on the board as the screen's player knows it (HexTile.supplyShown): enemy units it does not see do not cut it. Off: the true network is shown.</summary>
+    public static bool ShownAsKnown = true;
+
+    /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
+    public static bool FlagsFollowPublish = true;
+
     /// <summary>Goes up every time a supply field is published onto the board (displays redraw only then).</summary>
     public static int Published;
 
@@ -38,6 +51,8 @@ public static class SupplyNetwork {
         /// <summary>Supply buildings relaying the network, and cut-off ones living off their store.</summary>
         public readonly List<Building> connectedBuildings = new List<Building>();
         public readonly List<Building> strandedBuildings = new List<Building>();
+        /// <summary>The cut-off supply buildings that spend a point of store this turn (all of them, unless StoreOnlyWhenNeeded: those feeding a unit nothing else supplies).</summary>
+        public List<Building> spendingBuildings = new List<Building>();
         public int mobileHubs;
         /// <summary>
         /// With RecordLinked set when it was solved: the field before cut-off supply buildings gave
@@ -194,7 +209,7 @@ public static class SupplyNetwork {
                 } else if (PlannedAboard != null && PlannedAboard.ContainsKey(hub) && moved != null && moved.ContainsKey(hub)) {
                     // Planned aboard a transport at that tile (a supply leap).
                     if (!WithinMoveOfSupply(PlannedAboard[hub], at, result)) continue;
-                } else if (hub.myUnit != null && hub.myUnit.trasnporter != null && !PutDown(hub, at)) {
+                } else if (hub.myUnit != null && hub.myUnit.trasnporter != null) {
                     // Aboard: linked if the transport could carry it onto supplied ground in one move.
                     if (!WithinMoveOfSupply(hub.myUnit.trasnporter, at, result)) continue;
                 } else if (!result.IsSupplied(at)) continue;
@@ -218,6 +233,8 @@ public static class SupplyNetwork {
         }
 
         if (RecordLinked) result.linked = new Dictionary<HexTile, int>(result.depth);
+        // Supply from the HQ's network, before any store is drawn on (for StoreOnlyWhenNeeded).
+        Dictionary<HexTile, int> fromNetwork = applyDrain && StoreOnlyWhenNeeded ? new Dictionary<HexTile, int>(result.depth) : null;
         // Cut-off supply buildings give out of their store while it lasts.
         if (!staticOnly) {
             for (int i = 0; i < relayBuildings.Count; i++) {
@@ -227,6 +244,24 @@ public static class SupplyNetwork {
                 FloodFromBuilding(b, result);
             }
         }
+        // Which cut-off buildings actually feed someone this turn: only those spend (the HQ's network first, then
+        // the buildings in order, each for the units nothing before it supplies).
+        List<Building> spending = result.strandedBuildings;
+        if (fromNetwork != null) {
+            spending = new List<Building>();
+            HashSet<HexTile> fed = new HashSet<HexTile>();
+            List<HexTile> standing = new List<HexTile>();
+            foreach (Unit u in player.units) if (u != null && u.tile != null && u.Strength > 0 && u.trasnporter == null) standing.Add(u.tile);
+            foreach (HexTile t in standing) { int d; if (fromNetwork.TryGetValue(t, out d) && d > 0) fed.Add(t); }
+            foreach (Building b in result.strandedBuildings) {
+                Result own = new Result();
+                FloodFromBuilding(b, own);
+                bool needed = false;
+                foreach (HexTile t in standing) if (!fed.Contains(t) && own.IsSupplied(t)) { needed = true; fed.Add(t); }
+                if (needed) spending.Add(b);
+            }
+        }
+        result.spendingBuildings = spending;
 
         // Hubs that never connected are cut off: a supply unit relays supply, it does not make it,
         // so a cut-off one supplies nothing (not even itself; it lives on what it carries, like any
@@ -239,7 +274,16 @@ public static class SupplyNetwork {
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null && !staticOnly && moved == null && !onlyMoved) Publish(player, result);
+        if (excluded == null && !staticOnly && moved == null && !onlyMoved) {
+            Publish(player, result, () => Solve(player, false, movedHub, hypotheticalTile, excluded, staticOnly, moved, onlyMoved));
+            // The real network on the real board: each supply unit's linked/cut-off flag follows it now, not only at the
+            // start of the turn (the cut-off icon read a flag set then, while the borders showed every move since).
+            // Never from a thought (a board copy: the hub objects are shared) or a "what if it stood there".
+            if (FlagsFollowPublish && BoardView.current == null && movedHub == null) {
+                for (int i = 0; i < result.connectedHubs.Count; i++) result.connectedHubs[i].connected = true;
+                for (int i = 0; i < result.strandedHubs.Count; i++) result.strandedHubs[i].connected = false;
+            }
+        }
 
         if (applyDrain) {
             for (int i = 0; i < result.strandedHubs.Count; i++) result.strandedHubs[i].connected = false;
@@ -248,18 +292,30 @@ public static class SupplyNetwork {
             }
             // A connected supply building charges its store; a cut-off one spends a turn of it.
             for (int i = 0; i < result.connectedBuildings.Count; i++) result.connectedBuildings[i].Replenish(result.connectedBuildings[i].chargePerTurn);
-            for (int i = 0; i < result.strandedBuildings.Count; i++) result.strandedBuildings[i].SpendSupply(1);
+            for (int i = 0; i < spending.Count; i++) spending[i].SpendSupply(1);
         }
 
         return result;
     }
 
     /// <summary>Put <paramref name="result"/> on the board as <paramref name="player"/>'s supply (the tiles' fields and their borders).</summary>
-    static void Publish(Player player, Result result) {
+    static void Publish(Player player, Result result, System.Func<Result> again) {
         HexGenerator.forAllTiles(t => {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });
+        // What the screen shows (real board only): the same network worked out on the board as the screen's player
+        // knows it, under fog — an enemy it does not see neither cuts supply nor gives it (it would give it away).
+        if (BoardView.current == null) {
+            Result shown = result;
+            Player viewer = ShownAsKnown && FogOfWar.On ? FogOfWar.Viewer : null;
+            if (viewer != null && again != null) using (FogOfWar.Concealing(viewer)) shown = again();
+            HexGenerator.forAllTiles(t => {
+                if (t.supplyShown == null) t.supplyShown = new Dictionary<Player, int>();
+                t.supplyShown[player] = shown.DepthAt(t);
+                return 0;
+            });
+        }
         // (Into a board copy, if one is entered: only it changes. The displays are woken for the real board only.)
         if (BoardView.current == null) {
             Published++;
@@ -273,7 +329,7 @@ public static class SupplyNetwork {
     /// </summary>
     public static Result SolvePreview(Player player, Dictionary<SupplyPoint, HexTile> moved) {
         Result r = Solve(player, false, null, null, null, false, moved);
-        Publish(player, r);
+        Publish(player, r, () => Solve(player, false, null, null, null, false, moved));
         return r;
     }
 
@@ -293,20 +349,21 @@ public static class SupplyNetwork {
     /// <summary>With <see cref="AssumeLinked"/>: it counts as aboard this transport — linked only where the transport could reach supplied ground in one move.</summary>
     [System.ThreadStatic] public static Unit AssumeLinkedVia;
 
-    /// <summary>Set (per thread) by an AI that plans this way (AIProfile.hubLinkPenalty): see PutDown.</summary>
-    [System.ThreadStatic] public static bool PutDownHypothetical;
-
     /// <summary>
-    /// A supply unit aboard a transport that a hypothetical network puts on a tile other than its
-    /// transport's: it is put down there, so it links as one on the ground does. (The planner asking
-    /// "what if it were dropped there" was told it would still be linked as cargo — the transport
-    /// within a move of supply — and a truck cut off a whole network putting its root down.)
+    /// The network as the game plays it on this thread until disposed: none of the AI's per-thread what-if settings
+    /// (AssumeLinked, PlannedAboard, RecordLinked); what they were is put back after. (The put-down reading is not one
+    /// of them any more: a supply unit aboard is always read as carried.) For the player's supply displays,
+    /// and around each of the AI's thoughts (which set them for themselves).
     /// </summary>
-    static bool PutDown(SupplyPoint hub, HexTile at) {
-        if (!PutDownHypothetical) return false;
-        Unit carrier = hub.myUnit != null ? hub.myUnit.trasnporter : null;
-        return carrier != null && at != null && carrier.tile != null && at != carrier.tile;
+    public static System.IDisposable AsPlayed() { return new WhatIfOff(); }
+    sealed class WhatIfOff : System.IDisposable {
+        readonly bool record = RecordLinked;
+        readonly SupplyPoint assume = AssumeLinked; readonly Unit assumeVia = AssumeLinkedVia;
+        readonly Dictionary<SupplyPoint, Unit> aboard = PlannedAboard;
+        public WhatIfOff() { RecordLinked = false; AssumeLinked = null; AssumeLinkedVia = null; PlannedAboard = null; }
+        public void Dispose() { RecordLinked = record; AssumeLinked = assume; AssumeLinkedVia = assumeVia; PlannedAboard = aboard; }
     }
+
 
     static HexTile TileOf(SupplyPoint hub, SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
         if (hub == movedHub && hypotheticalTile != null) return hypotheticalTile;
