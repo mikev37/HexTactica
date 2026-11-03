@@ -278,6 +278,40 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   its task force's supply unit rode to (-11,-2), the far side: a logistics routing bug); 9 supply units bought, all for
   "its supply is short" (a production rule this change doesn't reach); the reserve held 0–3 units because only mobile
   units join it: the third held back goes to the ordinary fronts (12 units at home on turn 9).
+- **Corrections (2 Nov, not yet judged against the old AI):** supply need is now none within one transport move of
+  supplied ground and one per transport move beyond (`campaignHubNeedSimple`; gap = land movement steps to the nearest
+  supplied tile, over the median move of our ground transports); the spread step that handed spare supply units to
+  task forces by distance-to-supply, ignoring where the supply units were, is off with it (it sent the supply unit
+  for the (13,-13) ArmyBase task force from (-11,-2)); Holds contested within `fogStaleRadius`; staging on our supply
+  unit on supplied ground nearest the target; `campaignMinTaskForce` 0 (off). `cutOffSeeksSupply` steps aside when a
+  transport that could carry the supply unit is within a move (on ChanceMeeting it walked every supply unit back
+  toward the HQ, and none boarded the waiting trucks; now 6 boardings in 4 rounds). The chokepoint check runs with
+  `campaignHoldContested` off (it checks detection; its enemy is 6 tiles off). Open: "its supply is short" buys one
+  supply unit a turn while any front unit is out of supply, not counting supply already riding there, with no cap.
+- **Reserve drafting / reserve demand / spare-seat guard (2 Nov, NOT working yet, flags on):** `reserveDraftsRiders`
+  (an idle transport not held for supply plus idle infantry to fill it join the reserve), `reserveDemand` (when no task
+  force has engaged units and no front is short of supply, production values reserve-capable kinds at the producer
+  nearest the rally as a front short by the reserve's shortfall of `campaignReserveShare`). ForestClearing new Blue, 10
+  rounds: no drafts (every transport was held for supply), nothing bought for the reserve (demand applied on only 3 of 9
+  turns and a reserve-capable unit never won), reserve 0–2 units. Spare-seat guard (a transport a rider boarded this
+  turn is not used to hold a link) is in the chain's leap path only; the case seen boards through "chain link boards its
+  truck" (claims), so riders let out having gone nowhere did not fall (3 → 4 in 3 rounds of ChanceMeeting).
+  `reserveTakesSpare` and `productionAbsolute` are off by default.
+- **Follow-up (3 Nov):** reserve demand now goes to the nearest producer that can build a reserve-capable kind (the HQ,
+  nearest on ForestClearing, builds only infantry and supply); the trace prints a "reserve demand" line with each such
+  kind's worth there. ForestClearing: Airport, Gunship worth 7,215 (802 per 1000 gold), but 500 gold left: the other
+  slots spend the gold first (the first pass takes the best value per gold across all slots). The reserve needs to save
+  up. Drafting: ForestClearing Blue had 4 supply units and one unarmed transport (its 2 Recons carry one rider and scout),
+  so nothing idle to draft. Spare seat: a rider in a supply transport now keeps the ride planned at the start of the turn
+  ("rides its truck ... as planned"; 2 in 3 rounds of ChanceMeeting), and the chain-link boarding path no longer holds a
+  transport a rider just boarded; riders still let out having gone nowhere: 4 in 3 rounds (another path, not found yet).
+- **Holds achieved by vision (3 Nov):** `campaignHoldContested` now treats a junction in our vision (the whole board with fog
+  off) as held, like a building taken: its task force is released ("achieved or gone") and it is not a Hold again until
+  it has gone dark for `fogUnknownTurns` (6) or an enemy we see or remember comes within `fogStaleRadius` (5) of it while
+  out of our sight. Not yet judged against the old AI. Last full comparison (57cad55, ForestClearing only finished): new
+  Blue 149,750 v 34,500, new Red 129,000 v 119,083. Open: idle task forces next to a front under attack should join it
+  (ChanceMeeting turn 34, Hold(5,5)); a task force holding more supply units than it needs should release them to
+  fronts out of supply (Hold(5,5) held 4, need 0, while Clear@-4,-5 was short); rerun the eight games.
 - **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;

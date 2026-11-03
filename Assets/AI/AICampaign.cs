@@ -223,6 +223,7 @@ namespace HexTactica.AI {
 
         /// <summary>Plan this turn's campaign on <paramref name="map"/>, keeping what <paramref name="last"/> (last turn's) still holds.</summary>
         public static AICampaign Plan(AIMap map, AIProfile p, AICampaign last) {
+            ReserveHeld.RemoveWhere(u => u == null || u.Strength <= 0 || u.tile == null && u.trasnporter == null);
             AICampaign c = new AICampaign();
             c.turn = last != null ? last.turn + 1 : 0;
             // Seats on our free ground transports, for the travel times below (Turns).
@@ -451,7 +452,7 @@ namespace HexTactica.AI {
                 foreach (KeyValuePair<HexTile, string> kv in Places(map)) {
                     if (map.SupplyDepth(kv.Key) > 0) continue;   // ours already
                     // Held already (campaignHoldContested): seen lately, with no enemy unit we see or remember within two moves of it.
-                    if (p.campaignHoldContested && !Contested(kv.Key, map)) continue;
+                    if (p.campaignHoldContested && !Contested(kv.Key, map, p)) continue;
                     places.Add(new CampaignObjective { kind = CampaignKind.Hold, target = kv.Key, lasting = true, placeKind = kv.Value });
                 }
                 // The nearest to our units only (each costs a route to plan).
@@ -555,9 +556,13 @@ namespace HexTactica.AI {
 
         /// <summary>The way there, and the enemy units that could fight there (each with its power).</summary>
         /// <summary>campaignHoldContested: ground we cannot vouch for (unknown under the fog), or with an enemy unit seen or remembered within two moves.</summary>
-        static bool Contested(HexTile t, AIMap map) {
+        static bool Contested(HexTile t, AIMap map, AIProfile p) {
+            // In our vision (all of the board with fog off): held, achieved like a building taken, and not tasked again
+            // until it has gone dark for fogUnknownTurns or an enemy comes within fogStaleRadius of it out of our sight.
+            FogOfWar.Knowledge vis = FogOfWar.current;
+            if (vis == null || vis.player != map.player || vis.visibleTiles.Contains(t)) return false;
             if (map.sigint != null && map.sigint.Unknown(t)) return true;
-            int r = 2 * TypicalMove(map);
+            int r = p.fogStaleRadius > 0 ? p.fogStaleRadius : 2 * TypicalMove(map);
             foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.tile.Distance(t) <= r) return true;
             FogOfWar.Knowledge k = FogOfWar.current;
             if (k != null) foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null && ph.last.Distance(t) <= r) return true;
@@ -582,7 +587,18 @@ namespace HexTactica.AI {
                 }
             }
             o.routeLength = from != null ? best : 99;
-            o.staging = keepStaging ?? (from != null ? (p.campaignStageOnSupply ? from : Staging(route, map, o.target, p, free)) : null);
+            HexTile node = null;
+            if (p.campaignStageOnSupply) {
+                // The supply unit of ours on supplied ground nearest the target along the way: task forces near each other gather on the same node.
+                int nd = int.MaxValue;
+                foreach (SupplyPoint h in map.ownHubs) {
+                    if (h == null || h.producer || h.myUnit == null || h.myUnit.tile == null || map.SupplyDepth(h.myUnit.tile) <= 0) continue;
+                    int d; if (!route.TryGetValue(h.myUnit.tile, out d)) continue;
+                    if (d < nd || (d == nd && CombatMath.Precedes(h.myUnit.tile, node))) { nd = d; node = h.myUnit.tile; }
+                }
+                if (node == null) node = from;
+            }
+            o.staging = keepStaging ?? (from != null ? (p.campaignStageOnSupply ? node : Staging(route, map, o.target, p, free)) : null);
             o.routeTurns = o.staging != null ? Mathf.CeilToInt(map.Travel(null, o.staging, o.target) / (float)Mathf.Max(1, TypicalMove(map))) : 0;
             // The enemy that matters is what can be there soon after we are (frontReachTurns and one
             // more), not the whole army that could converge in the turns it takes us to get there: that
@@ -721,7 +737,8 @@ namespace HexTactica.AI {
                 int gap = 99;
                 if (plain != null) foreach (KeyValuePair<HexTile, int> kv in plain) if (map.SupplyDepth(kv.Key) > 0 && kv.Value < gap) gap = kv.Value;
                 if (gap >= 99) gap = o.routeLength;
-                if (p.campaignHubNeedSimple) o.needHubs = gap > 2 * TypicalMove(map) ? 1 : 0;
+                // One supply unit per transport move beyond the first from our supplied ground to it (campaignHubNeedSimple).
+                if (p.campaignHubNeedSimple) o.needHubs = Mathf.Max(0, Mathf.CeilToInt(gap / (float)Mathf.Max(1, TransportMove(map))) - 1);
                 else if (gap > 0) {
                     float avgWorth = average > 0f ? average : 1f;
                     float forceUnits = o.needPower / Mathf.Max(1f, avgWorth);
@@ -826,6 +843,15 @@ namespace HexTactica.AI {
             return m[m.Count / 2];
         }
 
+        /// <summary>The move of our ground transports (the median), else a typical unit's: how far a move takes a task force riding.</summary>
+        static int TransportMove(AIMap map) {
+            List<int> m = new List<int>();
+            foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && Transporting.IsTransport(u) && !LocomotionRules.IsAirborne(u.locomotion) && !LocomotionRules.IsNaval(u.locomotion)) m.Add(u.moveRange);
+            if (m.Count == 0) return TypicalMove(map);
+            m.Sort();
+            return Mathf.Max(1, m[m.Count / 2]);
+        }
+
         static int HubRange(AIMap map) {
             List<int> r = new List<int>();
             foreach (SupplyPoint h in map.ownHubs) if (h != null && !h.producer) r.Add(h.range);
@@ -904,6 +930,7 @@ namespace HexTactica.AI {
 
         void Allocate(List<CampaignObjective> candidates, AIMap map, AIProfile p, AICampaign keep, HashSet<string> restart = null) {
             List<Unit> pool = new List<Unit>();
+            List<Unit> heldBack = new List<Unit>();
             foreach (Unit u in map.ownUnits) {
                 if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
                 if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;
@@ -911,9 +938,13 @@ namespace HexTactica.AI {
                 if (p.homeFightRadius > 0 && HomeFight(u, map, p)) continue;
                 // Pulling back to a stopped task force's staging ground (campaignSurgeAbort): planned again once there.
                 if (withdrawals.Exists(w => w.units.Contains(u))) continue;
+                // Bought for the reserve: not for task forces, unless a front is under attack (taken from heldBack below).
+                if (p.reserveDemand && ReserveHeld.Contains(u)) { heldBack.Add(u); continue; }
                 pool.Add(u);
             }
             List<SupplyPoint> hubPool = new List<SupplyPoint>();
+            // Under attack (the enemy on our ground, our HQ threatened): the reserve's units may go.
+            if (candidates.Exists(o => o.kind == CampaignKind.DefendHQ || o.respond)) { pool.AddRange(heldBack); heldBack.Clear(); }
             foreach (SupplyPoint h in map.ownHubs)
                 if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion)) hubPool.Add(h);
             float spread = Mathf.Clamp01(p.objectiveSpread);
@@ -1161,7 +1192,13 @@ namespace HexTactica.AI {
                 int extra = Mathf.RoundToInt(hubPool.Count * spread);
                 for (int i = 0; i < extra && hubPool.Count > 0; i++) {
                     CampaignObjective o = null; float most = -1f;
-                    foreach (CampaignObjective x in far) { float want = x.routeLength / (float)(1 + x.hubs.Count); if (want > most) { most = want; o = x; } }
+                    foreach (CampaignObjective x in far) {
+                        // In transport moves beyond the first (campaignHubNeedSimple): a target one truck move from supplied ground wants none.
+                        float beyond = p.campaignHubNeedSimple ? Mathf.Max(0, Mathf.CeilToInt(x.routeLength / (float)Mathf.Max(1, TransportMove(map))) - 1) : x.routeLength;
+                        if (beyond <= 0f) continue;
+                        float want = beyond / (1 + x.hubs.Count);
+                        if (want > most) { most = want; o = x; }
+                    }
                     if (o == null) break;
                     HexTile to = o.staging ?? o.target;
                     SupplyPoint best = null; int bd = int.MaxValue;
@@ -1485,12 +1522,32 @@ namespace HexTactica.AI {
                 Dictionary<Unit, List<Unit>> aboard = new Dictionary<Unit, List<Unit>>();
                 foreach (Unit u in map.ownUnits) {
                     if (u == null || u.tile == null || taken.Contains(u) || u.Hub != null || u.trasnporter != null) continue;
-                    if (!ReserveMember(u, p)) continue;
+                    if (!ReserveMember(u, p) && !(p.reserveDemand && ReserveHeld.Contains(u))) continue;
                     List<Unit> riders = p.campaignMobileReserve && Transporting.IsTransport(u) ? u.transported.FindAll(c => c != null && c.Firepower > 0 && c.Hub == null) : null;
                     if (riders != null && riders.Count > 0) aboard[u] = riders;
                     spare.Add(u);
                 }
                 int release = Mathf.Max(1, p.campaignReleaseTurns);
+                // Drafted (reserveDraftsRiders): an idle transport on no task force, not held for supply, and enough infantry on no task
+                // force near it to fill it join the reserve together; they board once drafted.
+                if (p.reserveDraftsRiders) {
+                    HashSet<Unit> held = AIAssault.SupplyTransports(map.player, map, null);
+                    List<Unit> foot = new List<Unit>();
+                    foreach (Unit u in map.ownUnits)
+                        if (u != null && u.tile != null && !taken.Contains(u) && !spare.Contains(u) && u.Hub == null && u.trasnporter == null && u.Firepower > 0
+                            && u.locomotion == Locomotion.Boots && !Transporting.IsTransport(u) && map.TurnsToContact(u) > release) foot.Add(u);
+                    foreach (Unit t in map.ownUnits) {
+                        if (t == null || t.tile == null || taken.Contains(t) || spare.Contains(t) || held.Contains(t) || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
+                        int room = Transporting.FreeWeight(t);
+                        List<Unit> near = foot.FindAll(u => Transporting.CarriesKind(t, u) && t.tile.Distance(u.tile) <= Mathf.Max(1, u.moveRange) * 2);
+                        near.Sort((a, b) => { int c = a.tile.Distance(t.tile).CompareTo(b.tile.Distance(t.tile)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+                        List<Unit> crew = new List<Unit>(); int w = 0;
+                        foreach (Unit u in near) { if (w + Mathf.Max(1, u.weight) > room) continue; crew.Add(u); w += Mathf.Max(1, u.weight); }
+                        if (crew.Count == 0 || w < room) continue;   // enough to fill it
+                        spare.Add(t); foreach (Unit u in crew) { spare.Add(u); foot.Remove(u); }
+                        if (Debug != null) Debug("reserve drafts " + t.name.Replace("(Clone)", "") + " (" + t.tile.x + "," + t.tile.y + ") with " + crew.Count + " riders");
+                    }
+                }
                 List<Unit> calm = spare.FindAll(u => map.TurnsToContact(u) > release);
                 int active = spare.Count - calm.Count;
                 int wantActive = Mathf.CeilToInt(spare.Count * Mathf.Clamp01(p.campaignActiveReserveShare));
@@ -1585,6 +1642,8 @@ namespace HexTactica.AI {
             bool air = LocomotionRules.IsAirborne(u.locomotion), sea = LocomotionRules.IsNaval(u.locomotion);
             bool unarmedTransport = Transporting.IsTransport(u) && u.Firepower <= 1;
             if (!p.campaignMobileReserve) return u.Firepower > 0 && !unarmedTransport && !air && !sea;
+            // Every spare fighting unit (reserveTakesSpare): the reserve is a share of the army, not of its fast units.
+            if (p.reserveTakesSpare) return (u.Firepower > 0 && !unarmedTransport) || (Transporting.IsTransport(u) && u.transported.Exists(c => c != null && c.Firepower > 0 && c.Hub == null));
             if ((air || sea) && u.Firepower > 0) return true;
             if (Transporting.IsTransport(u) && u.transported.Exists(c => c != null && c.Firepower > 0 && c.Hub == null)) return true;
             return !air && !sea && !unarmedTransport && u.Firepower > 0 && u.moveRange >= p.campaignReserveMinMove;
@@ -1592,6 +1651,8 @@ namespace HexTactica.AI {
 
         /// <summary>The central reserve this turn (AIProfile.campaignReserve), and a line for the trace.</summary>
         public Front reserveFront;
+        /// <summary>Units bought for the reserve (reserveDemand): kept out of task forces unless the enemy is on our ground or at our HQ.</summary>
+        public static readonly HashSet<Unit> ReserveHeld = new HashSet<Unit>();
         public string reserveNote;
 
         /// <summary>

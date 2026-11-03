@@ -127,15 +127,15 @@ namespace HexTactica.AI {
         public int campaignSurgeWithdrawTurns = 2;
         [Tooltip("Campaign: a building that makes units is worth its own income plus our income divided by the production buildings we have, over objectiveHorizonTurns (instead of weighting by building tier).")]
         public bool productionValueByIncome = true;
-        [Tooltip("Campaign: a task force needs one supply unit only if its target is more than two moves from our supplied ground, else none (instead of relays plus spread).")]
+        [Tooltip("Campaign: a task force needs no supply unit within one transport move of our supplied ground, and one per transport move beyond that (instead of relays plus spread); spare supply units are no longer spread over task forces.")]
         public bool campaignHubNeedSimple = true;
-        [Tooltip("Campaign: a chokepoint or junction is a Hold objective only if contested: unknown under the fog, or an enemy unit seen or remembered within two moves.")]
+        [Tooltip("Campaign: a chokepoint or junction in our vision is held (achieved, released, like a building taken); out of sight it is a Hold objective again only once it has gone dark for fogUnknownTurns, or an enemy unit seen or remembered comes within fogStaleRadius of it.")]
         public bool campaignHoldContested = true;
         [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
         public float campaignReserveShare = 0.33f;
         [Tooltip("Campaign: at most one task force per this many fighting units (after the reserve share), scouting not counted (0: off).")]
-        public int campaignMinTaskForce = 4;
-        [Tooltip("Campaign: a task force gathers on the supplied tile nearest its target (supplied ground ends at the chain's nodes, so nearby task forces share it), not near where its units are.")]
+        public int campaignMinTaskForce = 0;
+        [Tooltip("Campaign: a task force gathers on our supply unit (a chain node) on supplied ground nearest its target along the way, so nearby task forces share it; the supplied tile nearest the target if there is none.")]
         public bool campaignStageOnSupply = true;
         [Tooltip("Campaign: a task force whose power has fallen below campaignBreakShortRatio of its need now (the enemy there times objectiveForceRatio) is broken, as one that lost objectiveReplanLoss of its own power is: formed again only if what can join is enough. Not the HQ's defence, enemy on our ground, scouting, or an all-in task force.")]
         public bool campaignBreakShort = true;
@@ -803,6 +803,18 @@ namespace HexTactica.AI {
         public bool noHopOff = true;
         [Tooltip("A supply unit on foot cut off from the network first boards an empty transport beside it, else walks to the tile nearest supplied ground it can reach, before anything else.")]
         public bool cutOffSeeksSupply = true;
+        [Tooltip("A supply unit takes a ride whenever it arrives no later than walking (aboard, it is linked from a move away: two to four times its reach), not only when the ride saves transportWorthwhileSaving turns.")]
+        public bool supplyPrefersRide = true;
+        [Tooltip("An empty transport held for a supply unit within a move drives up beside it, so next turn it steps aboard and still rides a full move (instead of waiting a move away).")]
+        public bool supplyRideBeside = true;
+        [Tooltip("The central reserve takes every spare fighting unit not in contact, not only fast ones (campaignMobileReserve): the reserve is a share of the army.")]
+        public bool reserveTakesSpare = false;
+        [Tooltip("Production picks the most valuable unit outright while every other empty slot can still be filled with its cheapest; value for its cost only when gold is short.")]
+        public bool productionAbsolute = false;
+        [Tooltip("The central reserve drafts an idle transport (on no task force, not held for supply) with enough idle infantry near it to fill it; they board once drafted.")]
+        public bool reserveDraftsRiders = true;
+        [Tooltip("When no task force faces active opposition, production buys for the central reserve as for a front short by its shortfall of campaignReserveShare, at the producer nearest where it gathers.")]
+        public bool reserveDemand = true;
 
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;
@@ -810,7 +822,7 @@ namespace HexTactica.AI {
         [Header("Transport")]
         [Tooltip("Turns saved that justify the two-turn overhead of loading and unloading.")]
         [Range(0, 6)]
-        public int transportWorthwhileSaving = 2;
+        public int transportWorthwhileSaving = 0;
 
         [Tooltip("How much more cautious a transport is while carrying cargo. Losing a transport loses its cargo too.")]
         public float loadedTransportRisk = 2.5f;

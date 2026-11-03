@@ -364,7 +364,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 long __p = HexTactica.AI.AIPerf.Begin();
                 if (logistics == null) BuySupply();
                 if (Profile.buyUnits && map != null) {
+                    SetReserveDemand();
                     List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace, logistics);
+                    AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f;
+                    if (AIProduction.ReserveBought != null) { foreach (Unit u in AIProduction.ReserveBought) if (u != null) HexTactica.AI.AICampaign.ReserveHeld.Add(u); AIProduction.ReserveBought.Clear(); }
                     if (onBuy != null) foreach (Unit u in bought) onBuy(u);
                 }
                 HexTactica.AI.AIPerf.End("production (main thread, end of turn)", __p);
@@ -412,7 +415,16 @@ public class AIPlayer : MonoBehaviour, IAIController {
             // (getting off costs nothing: it moves, attacks or captures as any fresh unit would).
             // Put down this turn: it does not get back in this turn (it was put down to strike).
             if (did && action.kind == AIActionKind.Unload && action.target != null) putDownThisTurn.Add(action.target);
-            if (did && action.kind == AIActionKind.Load && action.unit != null) boardedThisTurn.Add(action.unit);
+            if (did && action.kind == AIActionKind.Load && action.unit != null) {
+                boardedThisTurn.Add(action.unit);
+                // Into a supply transport's spare seat: the ride it got in for, as planned now (kept for its supply unit later).
+                Unit into = action.transport;
+                if (into != null && action.unit.Hub == null && into.transported.Exists(c => c != null && c.Hub != null)) {
+                    HexTile to; bool has = SupplyGoing().TryGetValue(into, out to) && to != null;
+                    if (has) riderRide[into] = to;
+                    if (Trace != null) Trace("   rider into supply transport at (" + into.tile.x + "," + into.tile.y + "): planned ride " + (has ? "(" + to.x + "," + to.y + ")" : "none"));
+                }
+            }
             if (did && (action.kind == AIActionKind.Move || action.kind == AIActionKind.MoveAndAttack || action.kind == AIActionKind.Unload) && action.unit != null && Transporting.IsTransport(action.unit) && action.unit.tile != null && turnStart.ContainsKey(action.unit) && turnStart[action.unit] != action.unit.tile) transportMoved.Add(action.unit);
             // A transport with riders has acted: its riders decide next (they get off to strike, at the front line, or ride on).
             if (Profile.assaultRides && did && action.unit != null && Transporting.IsTransport(action.unit) && action.unit.tile != null) {
@@ -536,6 +548,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
     readonly HashSet<Unit> putDownThisTurn = new HashSet<Unit>();
     /// <summary>noHopOff: riders that got in this turn, transports that have moved this turn, and where each unit began it.</summary>
     readonly HashSet<Unit> boardedThisTurn = new HashSet<Unit>(), transportMoved = new HashSet<Unit>();
+    /// <summary>supplySpareSeat: where each supply transport was to go when a rider got into its spare seat this turn.</summary>
+    readonly Dictionary<Unit, HexTile> riderRide = new Dictionary<Unit, HexTile>();
+    /// <summary>The goal each rider got in for this turn (AIAssault.Board's ground): judged against it when let out.</summary>
+    readonly Dictionary<Unit, HexTile> riderGoal = new Dictionary<Unit, HexTile>();
     readonly Dictionary<Unit, HexTile> turnStart = new Dictionary<Unit, HexTile>();
 
     /// <summary>Is <paramref name="t"/> one of the campaign's supply trucks this turn (a chain truck, or a ride)?</summary>
@@ -793,7 +809,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         reservedTransports.Clear();
         soughtRiders.Clear();
         putDownThisTurn.Clear();
-        boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear();
+        boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear(); riderRide.Clear(); riderGoal.Clear();
         foreach (Unit u in player.units) if (u != null && u.tile != null) turnStart[u] = u.tile;
         waitedOnce.Clear(); waitLater.Clear();
         AIAssault.Planned.Clear();
@@ -1093,6 +1109,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (logistics != null) foreach (Unit t in Transporting.AvailableFor(player, unit)) if (IsLogisticsTruck(t)) busy.Add(t);
         long __ab = AIPerf.Begin();
         AIAction? ba = AIAssault.Board(unit, map, Profile, busy, supplyTransports, SupplyGoing(), ground);
+        if (ba.HasValue && ground != null) riderGoal[unit] = ground;
         AIPerf.End("assault: boarding", __ab);
         if (!ba.HasValue) return onFoot;
         // A ride for the fight: only if the walk does not already get it there (its ground, else the nearest enemy).
@@ -1179,8 +1196,13 @@ public class AIPlayer : MonoBehaviour, IAIController {
         HexTile end = plan.dropoff ?? truck.tile;
         foreach (Unit r in truck.transported) {
             if (r == null || r == cargo || r.Hub != null) continue;
+            // It got in this turn for this ride (judged then, from where it stood): not judged again from the truck's tile.
+            if (boardedThisTurn.Contains(r) && riderGoal.ContainsKey(r)) continue;
             Front f = FrontOf(r);
-            HexTile goal = f != null && f.objectiveTile != null ? f.objectiveTile : AISupplyChain.Objective(map);
+            // The same goal it got in for (AIAssault.Board's ground): its staging tile while its front gathers, else the objective.
+            HexTile goal;
+            if (!riderGoal.TryGetValue(r, out goal) || goal == null)
+                goal = f != null && f.staging && f.stagingTile != null ? f.stagingTile : f != null && f.objectiveTile != null ? f.objectiveTile : AISupplyChain.Objective(map);
             if (goal == null) continue;
             Dictionary<HexTile, int> steps = map.LandSteps(goal);
             int now, then;
@@ -1275,6 +1297,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                          || (ground != null && map.Travel(unit, unit.tile, ground) > Profile.assaultBoardTurns * Mathf.Max(1, unit.moveRange));
                 long __ab = AIPerf.Begin();
                 AIAction? ba = !putDownThisTurn.Contains(unit) && (goes || AIAssault.Wounded(unit, Profile, map)) ? AIAssault.Board(unit, map, Profile, busy, supplyTransports, SupplyGoing(), ground) : null;
+                if (ba.HasValue && ground != null) riderGoal[unit] = ground;
                 AIPerf.End("assault: boarding", __ab);
                 if (ba.HasValue) return ba.Value;
             }
@@ -1944,17 +1967,31 @@ public class AIPlayer : MonoBehaviour, IAIController {
     AIAction? SeekSupply(Unit unit) {
         SupplyNetwork.Result r = SupplyNetwork.SolveAll(player, new Dictionary<SupplyPoint, HexTile>());
         if (r.connectedHubs.Contains(unit.Hub)) return null;
+        // Into any transport with room it can reach this turn: aboard, a supply unit counts as linked within a move of
+        // supplied ground, two to four times its reach on foot. (ChanceMeeting: every supply unit starts cut off; walked
+        // back toward the HQ, none got into the trucks waiting a move away.)
+        MoveField reach = map.ReachThisTurn(unit);
+        Unit ride = null; HexTile from = null; int rideD = int.MaxValue;
         foreach (Unit t in player.units) {
-            if (t == null || t.tile == null || t == unit || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
-            if (!Transporting.CarriesKind(t, unit) || Transporting.FreeWeight(t) < Mathf.Max(1, unit.weight) || !Transporting.CanBoardFrom(t, unit)) continue;
-            return AIAction.Board(unit, t, unit.tile, "cut off: boards " + t.name.Replace("(Clone)", "") + " to get back to supply");
+            if (t == null || t.tile == null || t == unit || !Transporting.IsTransport(t)) continue;
+            if (!Transporting.CarriesKind(t, unit) || Transporting.FreeWeight(t) < Mathf.Max(1, unit.weight)) continue;
+            HexTile at = null;
+            if (Transporting.CanBoardFrom(t, unit)) at = unit.tile;
+            else foreach (HexTile n in t.tile.neighbors) {
+                if (n == null || (n != unit.tile && n.occupier != null) || !reach.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                if (at == null || CombatMath.Precedes(n, at)) at = n;
+            }
+            if (at == null) continue;
+            int d = unit.tile.Distance(t.tile);
+            if (d < rideD || (d == rideD && ride != null && AIMap.CompareUnits(t, ride) < 0)) { rideD = d; ride = t; from = at; }
         }
+        if (ride != null) return AIAction.Board(unit, ride, from, "cut off: boards " + ride.name.Replace("(Clone)", "") + " (" + ride.tile.x + "," + ride.tile.y + ") to get back to supply");
         List<HexTile> supplied = new List<HexTile>();
         foreach (HexTile x in HexGenerator.hg.tiles) if (x != null && map.SupplyDepth(x) > 0) supplied.Add(x);
         if (supplied.Count == 0) return null;
         System.Func<HexTile, int> gap = x => { if (map.SupplyDepth(x) > 0) return 0; int m = int.MaxValue; foreach (HexTile y in supplied) m = Mathf.Min(m, x.Distance(y)); return m; };
         int now = gap(unit.tile);
-        MoveField field = map.ReachThisTurn(unit);
+        MoveField field = reach;
         HexTile best = null; int bg = now;
         foreach (HexTile x in field.Tiles) {
             if (x == unit.tile || !field.ReachableThisTurn(x) || (x.occupier != null && x.occupier != unit) || !unit.CanEnter(x) || !AIAir.MayEndOn(unit, x, map)) continue;
@@ -2038,9 +2075,39 @@ public class AIPlayer : MonoBehaviour, IAIController {
         return a.destination != null && a.destination != x.myUnit.tile ? a.destination : null;
     }
 
+    /// <summary>reserveDemand: how short the central reserve is of campaignReserveShare of the army, when no task force has engaged units.</summary>
+    void SetReserveDemand() {
+        AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f;
+        if (!Profile.reserveDemand || campaign == null) return;
+        foreach (HexTactica.AI.CampaignObjective o in campaign.objectives)
+            if (o.kind != HexTactica.AI.CampaignKind.Scout && o.kind != HexTactica.AI.CampaignKind.DefendHQ && o.engaged.Count > 0) return;   // active opposition: the fronts come first
+        if (logistics != null && logistics.tasks.Exists(x => x.short_)) return;   // a front short of supply comes first
+        float army = 0f, reserve = 0f;
+        foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0) army += HexTactica.AI.AIScore.Worth(u) * u.Strength;
+        Front r = campaign.reserveFront;
+        if (r != null) foreach (Unit u in r.assigned) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0) reserve += HexTactica.AI.AIScore.Worth(u) * u.Strength;
+        float want = army * Mathf.Clamp01(Profile.campaignReserveShare);
+        if (want <= 0f || reserve >= want) return;
+        Building hq = GameController.HQOf(player);
+        AIProduction.ReserveRally = r != null && r.objectiveTile != null ? r.objectiveTile : hq != null ? hq.tile : null;
+        AIProduction.ReserveShort = (want - reserve) / want;
+    }
+
     bool LogisticsAction(SupplyPoint hub, out AIAction action) {
         action = default(AIAction);
         Unit unit = hub.myUnit;
+        // A rider got in this turn for the ride planned when the turn began (supplySpareSeat): that ride is kept, not re-planned
+        // into a hold (the rider was let out again having gone nowhere).
+        if (Profile.supplySpareSeat && unit.trasnporter != null && unit.trasnporter.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) {
+            HexTile to;
+            Unit truck = unit.trasnporter;
+            if ((riderRide.TryGetValue(truck, out to) || SupplyGoing().TryGetValue(truck, out to)) && to != null && to != truck.tile) {
+                transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = to, destination = to, stayAboard = true };
+                reservedTransports.Add(truck);
+                action = AIAction.Wait(unit, "logistics: rides its truck to (" + to.x + "," + to.y + ") as planned, with the rider that got in for it");
+                return true;
+            }
+        }
         // Relieved by an idle one that took over its job: it moves up toward its front.
         HexTile upTo;
         if (unit.trasnporter == null && relieved.TryGetValue(hub, out upTo) && upTo.occupier == null && !CutsOff(hub, upTo)) {
@@ -2055,7 +2122,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
             foreach (Unit tr in transportAssignments.Keys) busy.Add(tr);
             AISupplyChain.Plan now = HexTactica.AI.AILogistics.Chain(map, t, t.chain, moved, busy, new HashSet<SupplyPoint>(t.chain));
             AISupplyChain.Leap ride;
-            if (now.leaps.TryGetValue(hub, out ride)) {
+            // A rider took this transport's spare seat this turn (supplySpareSeat): it is not used to hold where it stands
+            // (the rider was let out again having gone nowhere).
+            if (now.leaps.TryGetValue(hub, out ride) && ride.truck != null && ride.tile == ride.truck.tile
+                && ride.truck.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) ride = null;
+            if (ride != null) {
                 transportAssignments[ride.truck] = new TransportPlan { cargo = unit, transport = ride.truck, rendezvous = ride.truck.tile, dropoff = ride.tile, destination = ride.tile, stayAboard = true };
                 reservedTransports.Add(ride.truck);
                 if (unit.trasnporter == ride.truck) { action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": rides its truck to (" + ride.tile.x + "," + ride.tile.y + ")"); return true; }
@@ -2076,8 +2147,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, mine.tile, mine)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
+                HexTile drop0 = isLink && link != unit.tile && mine.CanEnter(link) && link.occupier == null ? link : mine.tile;
+                // A rider took its spare seat this turn: not boarded to hold where it stands (the rider would be let out again).
+                if (beside != null && drop0 == mine.tile && mine.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) beside = null;
                 if (beside != null) {
-                    HexTile drop = isLink && link != unit.tile && mine.CanEnter(link) && link.occupier == null ? link : mine.tile;
+                    HexTile drop = drop0;
                     transportAssignments[mine] = new TransportPlan { cargo = unit, transport = mine, rendezvous = mine.tile, dropoff = drop, destination = drop, stayAboard = true };
                     action = AIAction.Board(unit, mine, beside, "logistics for " + t.front.Id + ": chain link boards its truck (to (" + drop.x + "," + drop.y + "))");
                     return true;
