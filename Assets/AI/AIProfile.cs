@@ -808,9 +808,9 @@ namespace HexTactica.AI {
         [Tooltip("An empty transport held for a supply unit within a move drives up beside it, so next turn it steps aboard and still rides a full move (instead of waiting a move away).")]
         public bool supplyRideBeside = true;
         [Tooltip("The central reserve takes every spare fighting unit not in contact, not only fast ones (campaignMobileReserve): the reserve is a share of the army.")]
-        public bool reserveTakesSpare = true;
+        public bool reserveTakesSpare = false;
         [Tooltip("Production picks the most valuable unit outright while every other empty slot can still be filled with its cheapest; value for its cost only when gold is short.")]
-        public bool productionAbsolute = true;
+        public bool productionAbsolute = false;
 
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;
