@@ -1182,7 +1182,13 @@ namespace HexTactica.AI {
                 int extra = Mathf.RoundToInt(hubPool.Count * spread);
                 for (int i = 0; i < extra && hubPool.Count > 0; i++) {
                     CampaignObjective o = null; float most = -1f;
-                    foreach (CampaignObjective x in far) { float want = x.routeLength / (float)(1 + x.hubs.Count); if (want > most) { most = want; o = x; } }
+                    foreach (CampaignObjective x in far) {
+                        // In transport moves beyond the first (campaignHubNeedSimple): a target one truck move from supplied ground wants none.
+                        float beyond = p.campaignHubNeedSimple ? Mathf.Max(0, Mathf.CeilToInt(x.routeLength / (float)Mathf.Max(1, TransportMove(map))) - 1) : x.routeLength;
+                        if (beyond <= 0f) continue;
+                        float want = beyond / (1 + x.hubs.Count);
+                        if (want > most) { most = want; o = x; }
+                    }
                     if (o == null) break;
                     HexTile to = o.staging ?? o.target;
                     SupplyPoint best = null; int bd = int.MaxValue;
