@@ -316,6 +316,8 @@ namespace HexTactica.AI {
         public AIKnowledge knowledge;
         /// <summary>fogUncertainty: the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge); -1 unset.</summary>
         public float fogUncertainty = -1f;
+        /// <summary>fogConcentrate: the enemy's power we cannot place this turn (estimate - known, AIKnowledge); -1 unset.</summary>
+        public float fogUnplacedPower = -1f;
         /// <summary>All out (AIKnowledge): enemy known and much weaker.</summary>
         public bool AllOut { get { return knowledge != null && knowledge.allOut; } }
 
