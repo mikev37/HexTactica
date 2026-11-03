@@ -1178,7 +1178,7 @@ namespace HexTactica.AI {
             // Spread: the rest of the supply units out with the task forces too, in proportion to how far
             // each is from supplied ground — supply that covers ground rather than sitting at home.
             List<CampaignObjective> far = objectives.FindAll(x => x.lasting && x.units.Count > 0 && x.routeLength > 0);
-            if (spread > 0f && far.Count > 0 && !p.campaignHubNeedSimple) {
+            if (spread > 0f && far.Count > 0) {
                 int extra = Mathf.RoundToInt(hubPool.Count * spread);
                 for (int i = 0; i < extra && hubPool.Count > 0; i++) {
                     CampaignObjective o = null; float most = -1f;
