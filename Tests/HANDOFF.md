@@ -297,6 +297,14 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   turn is not used to hold a link) is in the chain's leap path only; the case seen boards through "chain link boards its
   truck" (claims), so riders let out having gone nowhere did not fall (3 → 4 in 3 rounds of ChanceMeeting).
   `reserveTakesSpare` and `productionAbsolute` are off by default.
+- **Follow-up (3 Nov):** reserve demand now goes to the nearest producer that can build a reserve-capable kind (the HQ,
+  nearest on ForestClearing, builds only infantry and supply); the trace prints a "reserve demand" line with each such
+  kind's worth there. ForestClearing: Airport, Gunship worth 7,215 (802 per 1000 gold), but 500 gold left: the other
+  slots spend the gold first (the first pass takes the best value per gold across all slots). The reserve needs to save
+  up. Drafting: ForestClearing Blue had 4 supply units and one unarmed transport (its 2 Recons carry one rider and scout),
+  so nothing idle to draft. Spare seat: a rider in a supply transport now keeps the ride planned at the start of the turn
+  ("rides its truck ... as planned"; 2 in 3 rounds of ChanceMeeting), and the chain-link boarding path no longer holds a
+  transport a rider just boarded; riders still let out having gone nowhere: 4 in 3 rounds (another path, not found yet).
 - **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
