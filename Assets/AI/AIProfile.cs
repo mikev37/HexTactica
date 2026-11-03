@@ -61,6 +61,8 @@ namespace HexTactica.AI {
         public bool unifiedLinkPlacement = true;
         [Tooltip("A unit that would wait is first set aside and decides again after every other unit has moved; only if it would wait again does it skip its turn.")]
         public bool waitTwice = true;
+        [Tooltip("Turn order: artillery with a target in range acts first to fire; one that decides to do anything but fire there is set aside and decides again after the rest of the line has moved.")]
+        public bool artilleryFireOrDefer = true;
         [Tooltip("A supply unit gets into a transport that has already acted this turn as readily as a fresh one (aboard it is linked as cargo, and rides next turn); a fresh one is still preferred.")]
         public bool boardSpentTransports = true;
         [Tooltip("Supply chain: a link within this many tiles of another node of ours (a link kept before it, rearmost first, or a supply building) is released as spare, free for other duties. 0: off.")]
@@ -821,6 +823,15 @@ namespace HexTactica.AI {
         [Tooltip("Turns a tile has to go unseen to count as unknown again (fogAggression). Tiles never seen always do.")]
         [Range(1, 20)]
         public int fogUnknownTurns = 6;
+        [Tooltip("Fog: ground not seen this turn within this many tiles of an enemy unit we see or remember counts as unknown however lately it was seen (0: off).")]
+        public int fogStaleRadius = 5;
+        [Tooltip("Fog: the enemy we cannot place is spread over unknown ground near where the enemy is known to be (its units seen or remembered, its HQ, its production sites), falling off with distance (fogAnchorFalloff); a stop fears the expected number of those units within their reach of it. Off: evenly over unknown ground, by the share we cannot place.")]
+        public bool fogConcentrate = true;
+        [Tooltip("Fog (fogConcentrate): tiles over which an anchor's share of the unplaced enemy falls off by a factor e.")]
+        public float fogAnchorFalloff = 2f;
+        [Tooltip("Fog (fogConcentrate): an anchor's weight in sharing out the unplaced enemy: each enemy unit seen or remembered 1, the enemy HQ this, its production sites fogProductionWeight (purchases on).")]
+        public float fogHQWeight = 4f;
+        public float fogProductionWeight = 2f;
         [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]
         [Range(0, 4)]
         public int scoutUnits = 0;

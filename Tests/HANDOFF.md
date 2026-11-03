@@ -133,7 +133,8 @@ Transports: `assaultRides`, `assaultBoardTurns` 2, `assaultTransportWeight` 2, `
 Supply: `supplyStaysAboard`, `unifiedLinkPlacement`, `boardSpentTransports`, `keepBuildSlotsClear` (now mostly
 redundant: unified placement no longer parks supply on the HQ).
 Campaign: `capturerLives`, `campaignGatherWithBody`, `campaignSurgeAbort` (+ `campaignEngagedTurns` 2, `campaignSurgeRatio` 1.5,
-`campaignSurgeWithdrawTurns` 2), `campaignBreakShort` (+ `campaignBreakShortRatio` 0.5). Game (not AI): `GameController.fogShownOnScreen` (off: the screen shows everything, sides
+`campaignSurgeWithdrawTurns` 2), `campaignBreakShort` (+ `campaignBreakShortRatio` 0.5).
+Turn: `artilleryFireOrDefer`. Fog: `fogStaleRadius` 5, `fogConcentrate` (+ `fogAnchorFalloff` 2, `fogHQWeight` 4, `fogProductionWeight` 2). Game (not AI): `GameController.fogShownOnScreen` (off: the screen shows everything, sides
 still play by their fog).
 Turn: `waitTwice`. Production: `productionOverkill`, `productionLifetime` (+ `productionLifeMax` 8, `productionLifeRef`
 3, `productionReachRef` 6), `productionShieldCut` 0.6, `productionShieldRatio` 2, `productionDefenceFade` 20.
@@ -223,6 +224,19 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   pushed south (Hold@1,11 and its ordinary fronts); artillery and tanks moved up to (-5,9), (-4,7), (-5,8) and were
   destroyed on Blue's turns 17–19 (Red 209k → 161k, rounds 8–12). Most of those losses were units on no task force. Not
   traced to the break itself; looks like the push after a success.
+- **Fog fear concentrated, and artillery that won't fire goes last (2 Nov):** (1) `fogConcentrate`: the enemy we cannot
+  place (AIKnowledge: estimate − known, in units of an average enemy unit) is shared among anchors — each enemy unit
+  seen or remembered 1, the enemy HQ 4, its production sites 2 (purchases on) — and spread over unknown ground,
+  falling off by e every 2 tiles; a stop fears the expected unplaced units within their reach times their average
+  damage. Turn 0: all of it at the HQ. (2) `fogStaleRadius` 5: ground out of sight within 5 of a known enemy unit counts
+  as unknown however lately seen. (Probe, ChanceMeeting turn 16: Blue's unseen gun stood on (-7,7), seen 4 turns before
+  and so counted empty with `fogUnknownTurns` 6; Red's artillery stops had 7% dark ground in reach, expected loss
+  0.5 strength.) (3) `artilleryFireOrDefer`: artillery placed first to fire that would do anything else decides again
+  after the rest. Old v new, traced (logs `games/fog-*` v `games/short-*`): ChanceMeeting new Blue **176,416 v
+  145,666** (was 67,250 v 159,333), new Red **174,749 v 153,916** (was 116,833 v 183,916). Fog off (only the artillery
+  rule applies): RiverCrossing new Blue 169,750 v 126,666 (was 248,083 v 23,000; 7 deferrals, game diverges at the
+  first on turn 6, no mistake found in the deferred move), new Red 263,583 v 0 (was 280,333 v 0); Biomes new Blue
+  146,500 v 68,250, 8 buildings (was 143,250 v 55,000, 12), new Red identical. Think time unchanged.
 
 ## 7. Open work, in the order I'd take it
 

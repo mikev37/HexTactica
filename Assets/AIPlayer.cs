@@ -278,6 +278,14 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": would wait (" + action.reason + "): decides again after the rest");
                     continue;
                 }
+                // Artillery placed first to fire (artilleryFireOrDefer) that would do anything else: set aside, it decides
+                // again after the line has moved (it moved ahead of the line, onto ground the line had not yet taken).
+                if (Profile.artilleryFireOrDefer && firesFirst.Contains(unit) && action.kind != AIActionKind.Attack && action.kind != AIActionKind.MoveAndAttack
+                    && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
+                    waitedOnce.Add(unit); waitLater.Add(unit);
+                    if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": artillery first to fire would " + action.kind + " (" + action.reason + "): decides again after the rest");
+                    continue;
+                }
                 return new Thought { unit = unit, action = action };
             }
             // Everything else has moved: those that would have waited decide again.
@@ -514,6 +522,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// <summary>Units that would have waited this turn, and those set aside to decide again after the rest (waitTwice).</summary>
     readonly HashSet<Unit> waitedOnce = new HashSet<Unit>();
     readonly List<Unit> waitLater = new List<Unit>();
+    /// <summary>Artillery with a target in range when the turn's order was made (artilleryFireOrDefer).</summary>
+    readonly HashSet<Unit> firesFirst = new HashSet<Unit>();
     /// <summary>Units put down from a transport this turn: they do not get back in until next turn.</summary>
     readonly HashSet<Unit> putDownThisTurn = new HashSet<Unit>();
 
@@ -683,6 +693,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
             if (knows) map.knowledge = knowledge;
             // How much of the enemy we cannot place: the fog's unknown ground is feared by that share (AISigint).
             if (Profile.fogUncertainty) map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
+            map.fogUnplacedPower = Mathf.Max(0f, knowledge.estimate - knowledge.known);
+            if (map.sigint != null) { string note = map.sigint.Prime(); if (Trace != null && note != null) Trace("   fog: " + note); }
             if (Trace != null) Trace("   " + knowledge + (Profile.fogUncertainty ? "; unknown ground feared at " + map.fogUncertainty.ToString("0.00") : ""));
         }
         // What each unit does for its side (forecastRoleWorth), for this turn's forecasts.
@@ -797,6 +809,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
 
         { long __p = AIPerf.Begin();
         queue = AIRoles.Order(actionable, map, Profile);
+        firesFirst.Clear();
+        foreach (Unit u in queue) if (AIRoles.Classify(u, Profile) == AIRole.Artillery && AIRoles.HasTargetInRange(u)) firesFirst.Add(u);
         AIPerf.End("prepare: roles", __p); }
         // Supply under the logistics moves tails first: those no other supply unit hangs on before those
         // others hang on, so a chain whose front has gone draws in from its far end without cutting itself.
