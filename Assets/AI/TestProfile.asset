@@ -228,8 +228,11 @@ MonoBehaviour:
   noHopOff: 1
   cutOffSeeksSupply: 1
   supplyPrefersRide: 1
+  supplyRideBeside: 1
+  reserveTakesSpare: 1
+  productionAbsolute: 1
   ghostSupply: 1
-  transportWorthwhileSaving: 2
+  transportWorthwhileSaving: 0
   loadedTransportRisk: 2.5
   fogFair: 1
   fogMemoryTurns: 2
