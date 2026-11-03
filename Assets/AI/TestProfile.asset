@@ -261,6 +261,12 @@ MonoBehaviour:
   campaignSurgeAbort: 1
   campaignSurgeRatio: 1.5
   campaignSurgeWithdrawTurns: 2
+  productionValueByIncome: 1
+  campaignHubNeedSimple: 1
+  campaignHoldContested: 1
+  campaignReserveShare: 0.33
+  campaignMinTaskForce: 4
+  campaignStageOnSupply: 1
   campaignBreakShort: 1
   campaignBreakShortRatio: 0.5
   campaignReserve: 1
