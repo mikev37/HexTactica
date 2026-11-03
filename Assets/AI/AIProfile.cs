@@ -803,6 +803,8 @@ namespace HexTactica.AI {
         public bool noHopOff = true;
         [Tooltip("A supply unit on foot cut off from the network first boards an empty transport beside it, else walks to the tile nearest supplied ground it can reach, before anything else.")]
         public bool cutOffSeeksSupply = true;
+        [Tooltip("A supply unit takes a ride whenever it arrives no later than walking (aboard, it is linked from a move away: two to four times its reach), not only when the ride saves transportWorthwhileSaving turns.")]
+        public bool supplyPrefersRide = true;
 
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;

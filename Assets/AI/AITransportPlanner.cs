@@ -164,7 +164,7 @@ namespace HexTactica.AI {
 
                 bool ride = rideEta < int.MaxValue
                          && (walkEta == int.MaxValue
-                             || rideEta + profile.transportWorthwhileSaving <= walkEta);
+                             || rideEta + (cargo.Hub != null && profile.supplyPrefersRide ? 0 : profile.transportWorthwhileSaving) <= walkEta);
 
                 int eta = ride ? rideEta : walkEta;
                 if (eta == int.MaxValue) continue;
