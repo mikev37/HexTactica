@@ -238,6 +238,24 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   first on turn 6, no mistake found in the deferred move), new Red 263,583 v 0 (was 280,333 v 0); Biomes new Blue
   146,500 v 68,250, 8 buildings (was 143,250 v 55,000, 12), new Red identical. Think time unchanged.
 
+- **Transports: one per supply unit, spare seat early, no hop off (2 Nov; mixed):** `supplyTransportCap` (held for supply:
+  carrying one, on a duty, or the nearest empty one for each supply unit on foot, no more; was every capable one on a
+  no-build map: RiverCrossing held 12 for 10 supply units, 7 idle all turn while infantry walked), `supplySpareSeat` (a
+  rider takes a supply transport's spare seat before its supply unit is aboard, if the supply unit still fits: supply
+  units move last, so riders never got the seat), `noHopOff` (a transport that has not moved does not put down a rider
+  that got in this turn: a Grunt walked into a Recon and was put down beside it, a tile more than it could walk).
+  RiverCrossing turn 0 under fog: 15 of 16 infantry board (was 4). Old v new, traced, 25 rounds (logs `games/seat-*`
+  v `games/fog-*`): ChanceMeeting new Blue 173,500 v 186,833 (was 176,416 v 145,666), new Red 181,166 v 142,416 (was
+  174,749 v 153,916); RiverCrossing new Blue 168,250 v 125,583 (same), new Red **143,750 v 162,833** (was 263,583 v 0:
+  before, Red's infantry walked as a mass and broke Blue in rounds 4–8; now 17 rode instead of 7 and the attack never
+  landed; not traced further); Biomes new Blue 150,416 v 43,333, 11 buildings (was 146,500 v 68,250, 8), new Red
+  26,500 v 110,166 (was 25,166 v 127,916); ForestClearing (fog on, builds) new Blue 158,583 v 86,083, 15 buildings,
+  new Red 46,833 v 160,833 (loses). Think time down (RiverCrossing new Blue 157 s, was 264 s).
+- **Not done yet:** item 2 (cut-off supply units walk to supply first), item 4's reserve and scouting parts, item 5
+  (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
+  apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
+  reserve not committed); RiverCrossing new Red regression above; new Red loses ForestClearing.
+
 ## 7. Open work, in the order I'd take it
 
 1. **The ChanceMeeting regression** (new Red v old Blue: `OLD=Blue`, fog on, traced): run with

@@ -783,6 +783,12 @@ namespace HexTactica.AI {
 
         [Tooltip("A supply unit aboard a transport stays aboard: aboard, it links as far as its transport can drive and spreads its supply from wherever the transport stands, so it is never put down (a supply unit inside a transport inside another may be, with its own transport). The one exception: its transport would be destroyed where it stops. Off: plans could end in 'carry and drop off'.")]
         public bool supplyStaysAboard = true;
+        [Tooltip("Transports held for supply: those carrying a supply unit or on a supply duty, and for each supply unit on foot only the nearest one that could carry it; the rest carry troops. Off: every one that can carry supply on a no-build map.")]
+        public bool supplyTransportCap = true;
+        [Tooltip("A rider may take a supply transport's spare seat before its supply unit is aboard, as long as the supply unit still fits beside it.")]
+        public bool supplySpareSeat = true;
+        [Tooltip("A transport that has not moved this turn does not put down a rider that got in this turn (no extra tile from hopping on and off).")]
+        public bool noHopOff = true;
 
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;

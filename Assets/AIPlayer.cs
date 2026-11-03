@@ -264,6 +264,12 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     : unit.locomotion == Locomotion.Jet ? "jet" : unit.locomotion == Locomotion.Rotor ? "helicopter" : "fighting unit"), __d);
                 action = KeepLinks(action);
                 action = SupplyStaysAboard(unit, action);
+                // No hopping on and off (noHopOff): a transport that has not moved this turn does not put down a rider that got
+                // in this turn (a Grunt walked into a Recon and was put down beside it: a tile more than it could walk).
+                if (Profile.noHopOff && action.kind == AIActionKind.Unload && action.unit != null && action.unit != action.target && action.target != null
+                    && boardedThisTurn.Contains(action.target) && !transportMoved.Contains(action.unit) && turnStart.ContainsKey(action.unit) && turnStart[action.unit] == action.unit.tile
+                    && (action.destination == null || action.destination == action.unit.tile))
+                    action = AIAction.Wait(action.unit, "no hop off: " + action.target.name.Replace("(Clone)", "") + " got in this turn and the transport has not moved");
                 // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
                 // still fresh, and decides again if its transport puts it down this turn (Run).
                 if (Profile.freshUnload && unit.trasnporter != null && action.kind == AIActionKind.Wait) {
@@ -406,6 +412,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
             // (getting off costs nothing: it moves, attacks or captures as any fresh unit would).
             // Put down this turn: it does not get back in this turn (it was put down to strike).
             if (did && action.kind == AIActionKind.Unload && action.target != null) putDownThisTurn.Add(action.target);
+            if (did && action.kind == AIActionKind.Load && action.unit != null) boardedThisTurn.Add(action.unit);
+            if (did && (action.kind == AIActionKind.Move || action.kind == AIActionKind.MoveAndAttack || action.kind == AIActionKind.Unload) && action.unit != null && Transporting.IsTransport(action.unit) && action.unit.tile != null && turnStart.ContainsKey(action.unit) && turnStart[action.unit] != action.unit.tile) transportMoved.Add(action.unit);
             // A transport with riders has acted: its riders decide next (they get off to strike, at the front line, or ride on).
             if (Profile.assaultRides && did && action.unit != null && Transporting.IsTransport(action.unit) && action.unit.tile != null) {
                 List<Unit> still = AIAssault.Riders(action.unit);
@@ -526,6 +534,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
     readonly HashSet<Unit> firesFirst = new HashSet<Unit>();
     /// <summary>Units put down from a transport this turn: they do not get back in until next turn.</summary>
     readonly HashSet<Unit> putDownThisTurn = new HashSet<Unit>();
+    /// <summary>noHopOff: riders that got in this turn, transports that have moved this turn, and where each unit began it.</summary>
+    readonly HashSet<Unit> boardedThisTurn = new HashSet<Unit>(), transportMoved = new HashSet<Unit>();
+    readonly Dictionary<Unit, HexTile> turnStart = new Dictionary<Unit, HexTile>();
 
     /// <summary>Is <paramref name="t"/> one of the campaign's supply trucks this turn (a chain truck, or a ride)?</summary>
     /// <summary>
@@ -782,6 +793,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         reservedTransports.Clear();
         soughtRiders.Clear();
         putDownThisTurn.Clear();
+        boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear();
+        foreach (Unit u in player.units) if (u != null && u.tile != null) turnStart[u] = u.tile;
         waitedOnce.Clear(); waitLater.Clear();
         AIAssault.Planned.Clear();
         AIAssault.FellBack.Clear();
