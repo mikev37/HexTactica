@@ -367,6 +367,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     SetReserveDemand();
                     List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace, logistics);
                     AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f;
+                    if (AIProduction.ReserveBought != null) { foreach (Unit u in AIProduction.ReserveBought) if (u != null) HexTactica.AI.AICampaign.ReserveHeld.Add(u); AIProduction.ReserveBought.Clear(); }
                     if (onBuy != null) foreach (Unit u in bought) onBuy(u);
                 }
                 HexTactica.AI.AIPerf.End("production (main thread, end of turn)", __p);

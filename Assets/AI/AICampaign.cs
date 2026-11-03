@@ -223,6 +223,7 @@ namespace HexTactica.AI {
 
         /// <summary>Plan this turn's campaign on <paramref name="map"/>, keeping what <paramref name="last"/> (last turn's) still holds.</summary>
         public static AICampaign Plan(AIMap map, AIProfile p, AICampaign last) {
+            ReserveHeld.RemoveWhere(u => u == null || u.Strength <= 0 || u.tile == null && u.trasnporter == null);
             AICampaign c = new AICampaign();
             c.turn = last != null ? last.turn + 1 : 0;
             // Seats on our free ground transports, for the travel times below (Turns).
@@ -925,6 +926,7 @@ namespace HexTactica.AI {
 
         void Allocate(List<CampaignObjective> candidates, AIMap map, AIProfile p, AICampaign keep, HashSet<string> restart = null) {
             List<Unit> pool = new List<Unit>();
+            List<Unit> heldBack = new List<Unit>();
             foreach (Unit u in map.ownUnits) {
                 if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
                 if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;
@@ -932,9 +934,13 @@ namespace HexTactica.AI {
                 if (p.homeFightRadius > 0 && HomeFight(u, map, p)) continue;
                 // Pulling back to a stopped task force's staging ground (campaignSurgeAbort): planned again once there.
                 if (withdrawals.Exists(w => w.units.Contains(u))) continue;
+                // Bought for the reserve: not for task forces, unless a front is under attack (taken from heldBack below).
+                if (p.reserveDemand && ReserveHeld.Contains(u)) { heldBack.Add(u); continue; }
                 pool.Add(u);
             }
             List<SupplyPoint> hubPool = new List<SupplyPoint>();
+            // Under attack (the enemy on our ground, our HQ threatened): the reserve's units may go.
+            if (candidates.Exists(o => o.kind == CampaignKind.DefendHQ || o.respond)) { pool.AddRange(heldBack); heldBack.Clear(); }
             foreach (SupplyPoint h in map.ownHubs)
                 if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion)) hubPool.Add(h);
             float spread = Mathf.Clamp01(p.objectiveSpread);
@@ -1512,7 +1518,7 @@ namespace HexTactica.AI {
                 Dictionary<Unit, List<Unit>> aboard = new Dictionary<Unit, List<Unit>>();
                 foreach (Unit u in map.ownUnits) {
                     if (u == null || u.tile == null || taken.Contains(u) || u.Hub != null || u.trasnporter != null) continue;
-                    if (!ReserveMember(u, p)) continue;
+                    if (!ReserveMember(u, p) && !(p.reserveDemand && ReserveHeld.Contains(u))) continue;
                     List<Unit> riders = p.campaignMobileReserve && Transporting.IsTransport(u) ? u.transported.FindAll(c => c != null && c.Firepower > 0 && c.Hub == null) : null;
                     if (riders != null && riders.Count > 0) aboard[u] = riders;
                     spare.Add(u);
@@ -1641,6 +1647,8 @@ namespace HexTactica.AI {
 
         /// <summary>The central reserve this turn (AIProfile.campaignReserve), and a line for the trace.</summary>
         public Front reserveFront;
+        /// <summary>Units bought for the reserve (reserveDemand): kept out of task forces unless the enemy is on our ground or at our HQ.</summary>
+        public static readonly HashSet<Unit> ReserveHeld = new HashSet<Unit>();
         public string reserveNote;
 
         /// <summary>

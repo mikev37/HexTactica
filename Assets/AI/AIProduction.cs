@@ -91,6 +91,10 @@ namespace HexTactica.AI {
         /// </summary>
         [System.ThreadStatic] public static HexTile ReserveRally;
         [System.ThreadStatic] public static float ReserveShort;
+        /// <summary>Units bought this turn for the reserve (reserveDemand): the AI keeps them out of task forces.</summary>
+        [System.ThreadStatic] public static List<Unit> ReserveBought;
+        /// <summary>What each side is saving for the reserve, by unit name: bought as soon as it can be paid for (not traded up).</summary>
+        static readonly Dictionary<Player, string> reserveSaving = new Dictionary<Player, string>();
 
         /// <summary>reserveDemand: a kind that can be in the central reserve — armed aircraft or ships, a fast fighting unit (campaignReserveMinMove), or a troop transport (the reserve drafts infantry into it).</summary>
         static bool CanJoinReserve(Unit t, AIProfile profile) {
@@ -330,9 +334,28 @@ namespace HexTactica.AI {
                 if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); if (tierCount != null) tierCount[Tier(t)] += d; }
             };
 
+            // Saving for the reserve (reserveDemand): what was saved for, bought as soon as it can be paid for.
+            string savingFor; lock (reserveSaving) reserveSaving.TryGetValue(p, out savingFor);
+            bool boughtSaved = false;
+            if (savingFor != null) {
+                foreach (Slot sl in slots) {
+                    if (sl.pick != null) continue;
+                    bool offers = false; foreach (Unit t in sl.b.Purchasable()) if (GameController.UnitName(t) == savingFor && t.CanEnter(sl.tile)) offers = true;
+                    if (!offers) continue;
+                    foreach (Unit t in sl.b.Purchasable())
+                        if (GameController.UnitName(t) == savingFor && t.cost <= money && t.CanEnter(sl.tile)) {
+                            KeyValuePair<float, string> w = worth(t, sl);
+                            sl.pick = t; sl.value = w.Key; sl.why = "the reserve (saved for)"; money -= t.cost; plan(t, sl, 1); boughtSaved = true;
+                            lock (reserveSaving) reserveSaving.Remove(p);
+                            break;
+                        }
+                    break;
+                }
+            }
             // Saving up: a supply unit (or truck) worth more for its cost than anything we can pay for now,
-            // but dearer than the gold we have: nothing bought this turn, the gold kept for it.
-            {
+            // but dearer than the gold we have: nothing bought this turn, the gold kept for it. (Not the turn the reserve's
+            // saved-for unit is bought: the saving rule returned before buying it.)
+            if (!boughtSaved) {
                 float bestAfford = 0f, bestSupply = 0f; Unit supplyPick = null; Building supplyAt = null;
                 foreach (Slot sl in slots)
                     foreach (Unit t in sl.b.Purchasable()) {
@@ -341,9 +364,14 @@ namespace HexTactica.AI {
                         float r = w.Key / t.cost;
                         if (t.cost <= money) bestAfford = Mathf.Max(bestAfford, r);
                         else if (Kind(t) != 0 && r > bestSupply) { bestSupply = r; supplyPick = t; supplyAt = sl.b; }
+                        // The reserve's unit at its producer (reserveDemand): saved for the same way.
+                        else if (profile.reserveDemand && sl.b == reserveProducer && Kind(t) == 0 && CanJoinReserve(t, profile) && w.Value != null && w.Value.StartsWith("the reserve") && r > bestSupply) { bestSupply = r; supplyPick = t; supplyAt = sl.b; }
                     }
-                if (supplyPick != null && bestSupply > bestAfford) {
-                    if (trace != null) trace("   " + p.personal_name + " saves for " + GameController.UnitName(supplyPick) + " at " + supplyAt.name.Replace("(Clone)", "") + " (" + (bestSupply * 1000f).ToString("0.0") + " a 1000 gold, against " + (bestAfford * 1000f).ToString("0.0") + "): " + money + " of " + supplyPick.cost);
+                bool forReserve = supplyPick != null && Kind(supplyPick) == 0;
+                if (forReserve) { string was; lock (reserveSaving) reserveSaving.TryGetValue(p, out was); if (was != null && was != GameController.UnitName(supplyPick)) forReserve = false; }
+                if (supplyPick != null && bestSupply > bestAfford && (Kind(supplyPick) != 0 || forReserve || !reserveSaving.ContainsKey(p))) {
+                    if (Kind(supplyPick) == 0) lock (reserveSaving) reserveSaving[p] = GameController.UnitName(supplyPick);
+                    if (trace != null) trace("   " + p.personal_name + " saves for " + GameController.UnitName(supplyPick) + (Kind(supplyPick) == 0 ? " (the reserve)" : "") + " at " + supplyAt.name.Replace("(Clone)", "") + " (" + (bestSupply * 1000f).ToString("0.0") + " a 1000 gold, against " + (bestAfford * 1000f).ToString("0.0") + "): " + money + " of " + supplyPick.cost);
                     planned = null;
                     return bought;
                 }
@@ -429,6 +457,7 @@ namespace HexTactica.AI {
                 if (made == null) continue;
                 bought.Add(made);
                 if (trace != null) trace("   " + p.personal_name + " buys " + GameController.UnitName(sl.pick) + " at " + sl.b.name.Replace("(Clone)", "") + " (" + made.tile.x + "," + made.tile.y + ")" + (sl.why != null ? " for " + sl.why : "") + " (worth " + sl.value.ToString("0") + ", " + (sl.value / sl.pick.cost * 1000f).ToString("0.0") + " a 1000 gold), money left " + p.money);
+                if (made != null && sl.why != null && sl.why.StartsWith("the reserve")) { if (ReserveBought == null) ReserveBought = new List<Unit>(); ReserveBought.Add(made); }
             }
             planned = null;
             return bought;
