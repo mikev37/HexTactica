@@ -1261,7 +1261,7 @@ public static class Scenarios {
                 Unit apc = Rig.At(-4, 2).occupier, rider = Rig.At(-6, 2).occupier, tank = Rig.At(-5, -1).occupier, recon = Rig.At(-5, 2).occupier, gun = Rig.At(-6, 1).occupier, foot = Rig.At(-4, -2).occupier;
                 rider.TeleportTo(Rig.At(-4, 1), 0);
                 Transporting.Load(apc, rider);
-                Func<bool, Unit, bool> member = (mobile, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.campaignMobileReserve = mobile; return AICampaign.ReserveMember(u, prof); };
+                Func<bool, Unit, bool> member = (mobile, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.campaignMobileReserve = mobile; prof.reserveTakesSpare = false; return AICampaign.ReserveMember(u, prof); };
                 Func<bool, string> list = mobile => string.Join(", ", new[] { tank, recon, gun, apc, foot }.Where(u => member(mobile, u)).Select(u => GameController.UnitName(u)).ToArray());
                 string on = list(true), off = list(false);
                 detail = "rider aboard the APC " + (rider.trasnporter == apc) + "; mobile reserve may hold: " + on + " || off: " + off;

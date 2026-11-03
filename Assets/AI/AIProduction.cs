@@ -319,16 +319,28 @@ namespace HexTactica.AI {
             // First: each slot, in turn, the best value for its cost that can be paid for now.
             for (int pass = 0; pass < slots.Count; pass++) {
                 Slot best = null; Unit bu = null; float br = 0f, bv = 0f; string bw = null;
+                // productionAbsolute: the most value outright, as long as every other empty slot can still buy its cheapest; only
+                // when gold is short does value for its cost decide. (Value per gold bought infantry turn after turn.)
+                int keep = 0;
+                if (profile.productionAbsolute) {
+                    int empty = 0, cheapest = int.MaxValue;
+                    foreach (Slot sl in slots) if (sl.pick == null) { empty++; foreach (Unit t in sl.b.Purchasable()) if (t.cost > 0 && t.CanEnter(sl.tile)) cheapest = Mathf.Min(cheapest, t.cost); }
+                    if (cheapest < int.MaxValue) keep = Mathf.Max(0, empty - 1) * cheapest;
+                }
+                bool outright = profile.productionAbsolute && money - keep > 0;
+                for (int tryOutright = outright ? 0 : 1; tryOutright < 2 && best == null; tryOutright++) {
+                outright = tryOutright == 0;
                 foreach (Slot sl in slots) {
                     if (sl.pick != null) continue;
                     foreach (Unit t in sl.b.Purchasable()) {
-                        if (t.cost > money) continue;
+                        if (t.cost > money || (outright && t.cost > money - keep)) continue;
                         KeyValuePair<float, string> w = worth(t, sl);
                         if (w.Key <= 0f) continue;
-                        float r = w.Key / t.cost;
+                        float r = outright ? w.Key : w.Key / t.cost;
                         if (r > br || (r == br && bu != null && string.CompareOrdinal(t.name, bu.name) < 0)) { br = r; best = sl; bu = t; bv = w.Key; bw = w.Value; }
                     }
                 }
+                }   // nothing worth it outright within the gold kept for the other slots: value for its cost, as before
                 if (best == null) break;
                 best.pick = bu; best.value = bv; best.why = bw; money -= bu.cost; plan(bu, best, 1);
             }

@@ -1612,6 +1612,8 @@ namespace HexTactica.AI {
             bool air = LocomotionRules.IsAirborne(u.locomotion), sea = LocomotionRules.IsNaval(u.locomotion);
             bool unarmedTransport = Transporting.IsTransport(u) && u.Firepower <= 1;
             if (!p.campaignMobileReserve) return u.Firepower > 0 && !unarmedTransport && !air && !sea;
+            // Every spare fighting unit (reserveTakesSpare): the reserve is a share of the army, not of its fast units.
+            if (p.reserveTakesSpare) return (u.Firepower > 0 && !unarmedTransport) || (Transporting.IsTransport(u) && u.transported.Exists(c => c != null && c.Firepower > 0 && c.Hub == null));
             if ((air || sea) && u.Firepower > 0) return true;
             if (Transporting.IsTransport(u) && u.transported.Exists(c => c != null && c.Firepower > 0 && c.Hub == null)) return true;
             return !air && !sea && !unarmedTransport && u.Firepower > 0 && u.moveRange >= p.campaignReserveMinMove;

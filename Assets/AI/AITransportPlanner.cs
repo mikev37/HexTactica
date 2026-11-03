@@ -164,7 +164,9 @@ namespace HexTactica.AI {
 
                 bool ride = rideEta < int.MaxValue
                          && (walkEta == int.MaxValue
-                             || rideEta + (cargo.Hub != null && profile.supplyPrefersRide ? 0 : profile.transportWorthwhileSaving) <= walkEta);
+                             || rideEta + (cargo.Hub != null && profile.supplyPrefersRide ? 0 : profile.transportWorthwhileSaving) <= walkEta)
+                         // In combat (a fighting unit within a turn of the enemy) it fights on foot.
+                         && !(cargo.trasnporter == null && cargo.Hub == null && cargo.Firepower > 0 && map.TurnsToContact(cargo) <= 1);
 
                 int eta = ride ? rideEta : walkEta;
                 if (eta == int.MaxValue) continue;
