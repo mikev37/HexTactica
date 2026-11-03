@@ -84,6 +84,23 @@ namespace HexTactica.AI {
         /// front wants against the enemy it faces (at the front's nearest producer); a supply unit is worth
         /// the fighting units it would supply, up to the supply cap; a truck half that, when none is free.
         /// </summary>
+        /// <summary>
+        /// reserveDemand, set by the AI before buying: where the central reserve gathers and how short it is of its share of
+        /// the army (0..1), when no task force faces active opposition (otherwise null). Bought as a front's needs are: at the
+        /// producer nearest it, a unit's value raised by the shortfall.
+        /// </summary>
+        [System.ThreadStatic] public static HexTile ReserveRally;
+        [System.ThreadStatic] public static float ReserveShort;
+
+        /// <summary>reserveDemand: a kind that can be in the central reserve — armed aircraft or ships, a fast fighting unit (campaignReserveMinMove), or a troop transport (the reserve drafts infantry into it).</summary>
+        static bool CanJoinReserve(Unit t, AIProfile profile) {
+            if (t == null || t.Hub != null) return false;
+            bool air = LocomotionRules.IsAirborne(t.locomotion), sea = LocomotionRules.IsNaval(t.locomotion);
+            if (Transporting.IsTransport(t) && !air && !sea) return true;
+            if (t.Firepower <= 0) return false;
+            return air || sea || t.moveRange >= profile.campaignReserveMinMove;
+        }
+
         public static List<Unit> Buy(Player p, AIMap map, AIProfile profile, System.Action<string> trace, AILogistics logistics) {
             List<Unit> bought = new List<Unit>();
             if (p == null || map == null || BuildingController.bc == null) return bought;
@@ -199,6 +216,11 @@ namespace HexTactica.AI {
             // toward what gets there, but fighting units as a whole lose nothing against supply units and trucks.
             // (Scaled absolutely, every fighting unit lost half its worth on a big map and the gold went to saving
             // for supply units: an army of twelve stood still for twenty turns.)
+            Building reserveProducer = null;
+            if (profile.reserveDemand && ReserveRally != null && ReserveShort > 0f) {
+                int rd = int.MaxValue;
+                foreach (Slot sl in slots) { int d = sl.b.tile != null ? sl.b.tile.Distance(ReserveRally) : int.MaxValue; if (d < rd) { rd = d; reserveProducer = sl.b; } }
+            }
             float quickest = 0f;
             if (profile.productionTimeToFront && fight.Count > 0)
                 foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) if (Kind(t) == 0 && t.cost > 0 && t.CanEnter(sl.tile)) quickest = Mathf.Max(quickest, toFight(t, sl.tile));
@@ -249,6 +271,11 @@ namespace HexTactica.AI {
                     if (profile.assaultRides && profile.assaultFillBonus > 0f && t.locomotion == Locomotion.Boots) {
                         int room, filled; roomAt.TryGetValue(sl.b, out room); fillPlanned.TryGetValue(sl.b, out filled);
                         if (room > filled) { v *= 1f + profile.assaultFillBonus; tag = "fills the transport beside it"; }
+                    }
+                    // The reserve (reserveDemand): at the producer nearest where it gathers, as a front short by ReserveShort.
+                    if (profile.reserveDemand && ReserveRally != null && ReserveShort > 0f && sl.b == reserveProducer && CanJoinReserve(t, profile)) {
+                        float fv = Value(t, sl.tile, map) * mix * (1f + ReserveShort) * profile.productionFrontWeight;
+                        if (fv > v) { v = fv; tag = "the reserve (short " + (ReserveShort * 100f).ToString("0") + "%)"; }
                     }
                     foreach (KeyValuePair<AILogistics.Task, Building> kv in nearest[0]) {
                         if (kv.Value != sl.b) continue;

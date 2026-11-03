@@ -231,6 +231,8 @@ MonoBehaviour:
   supplyRideBeside: 1
   reserveTakesSpare: 0
   productionAbsolute: 0
+  reserveDraftsRiders: 1
+  reserveDemand: 1
   ghostSupply: 1
   transportWorthwhileSaving: 0
   loadedTransportRisk: 2.5

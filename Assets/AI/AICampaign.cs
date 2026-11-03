@@ -1518,6 +1518,26 @@ namespace HexTactica.AI {
                     spare.Add(u);
                 }
                 int release = Mathf.Max(1, p.campaignReleaseTurns);
+                // Drafted (reserveDraftsRiders): an idle transport on no task force, not held for supply, and enough infantry on no task
+                // force near it to fill it join the reserve together; they board once drafted.
+                if (p.reserveDraftsRiders) {
+                    HashSet<Unit> held = AIAssault.SupplyTransports(map.player, map, null);
+                    List<Unit> foot = new List<Unit>();
+                    foreach (Unit u in map.ownUnits)
+                        if (u != null && u.tile != null && !taken.Contains(u) && !spare.Contains(u) && u.Hub == null && u.trasnporter == null && u.Firepower > 0
+                            && u.locomotion == Locomotion.Boots && !Transporting.IsTransport(u) && map.TurnsToContact(u) > release) foot.Add(u);
+                    foreach (Unit t in map.ownUnits) {
+                        if (t == null || t.tile == null || taken.Contains(t) || spare.Contains(t) || held.Contains(t) || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
+                        int room = Transporting.FreeWeight(t);
+                        List<Unit> near = foot.FindAll(u => Transporting.CarriesKind(t, u) && t.tile.Distance(u.tile) <= Mathf.Max(1, u.moveRange) * 2);
+                        near.Sort((a, b) => { int c = a.tile.Distance(t.tile).CompareTo(b.tile.Distance(t.tile)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+                        List<Unit> crew = new List<Unit>(); int w = 0;
+                        foreach (Unit u in near) { if (w + Mathf.Max(1, u.weight) > room) continue; crew.Add(u); w += Mathf.Max(1, u.weight); }
+                        if (crew.Count == 0 || w < room) continue;   // enough to fill it
+                        spare.Add(t); foreach (Unit u in crew) { spare.Add(u); foot.Remove(u); }
+                        if (Debug != null) Debug("reserve drafts " + t.name.Replace("(Clone)", "") + " (" + t.tile.x + "," + t.tile.y + ") with " + crew.Count + " riders");
+                    }
+                }
                 List<Unit> calm = spare.FindAll(u => map.TurnsToContact(u) > release);
                 int active = spare.Count - calm.Count;
                 int wantActive = Mathf.CeilToInt(spare.Count * Mathf.Clamp01(p.campaignActiveReserveShare));

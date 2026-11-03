@@ -364,7 +364,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 long __p = HexTactica.AI.AIPerf.Begin();
                 if (logistics == null) BuySupply();
                 if (Profile.buyUnits && map != null) {
+                    SetReserveDemand();
                     List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace, logistics);
+                    AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f;
                     if (onBuy != null) foreach (Unit u in bought) onBuy(u);
                 }
                 HexTactica.AI.AIPerf.End("production (main thread, end of turn)", __p);
@@ -2052,6 +2054,24 @@ public class AIPlayer : MonoBehaviour, IAIController {
         return a.destination != null && a.destination != x.myUnit.tile ? a.destination : null;
     }
 
+    /// <summary>reserveDemand: how short the central reserve is of campaignReserveShare of the army, when no task force has engaged units.</summary>
+    void SetReserveDemand() {
+        AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f;
+        if (!Profile.reserveDemand || campaign == null) return;
+        foreach (HexTactica.AI.CampaignObjective o in campaign.objectives)
+            if (o.kind != HexTactica.AI.CampaignKind.Scout && o.kind != HexTactica.AI.CampaignKind.DefendHQ && o.engaged.Count > 0) return;   // active opposition: the fronts come first
+        if (logistics != null && logistics.tasks.Exists(x => x.short_)) return;   // a front short of supply comes first
+        float army = 0f, reserve = 0f;
+        foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0) army += HexTactica.AI.AIScore.Worth(u) * u.Strength;
+        Front r = campaign.reserveFront;
+        if (r != null) foreach (Unit u in r.assigned) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0) reserve += HexTactica.AI.AIScore.Worth(u) * u.Strength;
+        float want = army * Mathf.Clamp01(Profile.campaignReserveShare);
+        if (want <= 0f || reserve >= want) return;
+        Building hq = GameController.HQOf(player);
+        AIProduction.ReserveRally = r != null && r.objectiveTile != null ? r.objectiveTile : hq != null ? hq.tile : null;
+        AIProduction.ReserveShort = (want - reserve) / want;
+    }
+
     bool LogisticsAction(SupplyPoint hub, out AIAction action) {
         action = default(AIAction);
         Unit unit = hub.myUnit;
@@ -2069,7 +2089,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
             foreach (Unit tr in transportAssignments.Keys) busy.Add(tr);
             AISupplyChain.Plan now = HexTactica.AI.AILogistics.Chain(map, t, t.chain, moved, busy, new HashSet<SupplyPoint>(t.chain));
             AISupplyChain.Leap ride;
-            if (now.leaps.TryGetValue(hub, out ride)) {
+            // A rider took this transport's spare seat this turn (supplySpareSeat): it is not used to hold where it stands
+            // (the rider was let out again having gone nowhere).
+            if (now.leaps.TryGetValue(hub, out ride) && ride.truck != null && ride.tile == ride.truck.tile
+                && ride.truck.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) ride = null;
+            if (ride != null) {
                 transportAssignments[ride.truck] = new TransportPlan { cargo = unit, transport = ride.truck, rendezvous = ride.truck.tile, dropoff = ride.tile, destination = ride.tile, stayAboard = true };
                 reservedTransports.Add(ride.truck);
                 if (unit.trasnporter == ride.truck) { action = AIAction.Wait(unit, "logistics for " + t.front.Id + ": rides its truck to (" + ride.tile.x + "," + ride.tile.y + ")"); return true; }

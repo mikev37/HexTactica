@@ -811,6 +811,10 @@ namespace HexTactica.AI {
         public bool reserveTakesSpare = false;
         [Tooltip("Production picks the most valuable unit outright while every other empty slot can still be filled with its cheapest; value for its cost only when gold is short.")]
         public bool productionAbsolute = false;
+        [Tooltip("The central reserve drafts an idle transport (on no task force, not held for supply) with enough idle infantry near it to fill it; they board once drafted.")]
+        public bool reserveDraftsRiders = true;
+        [Tooltip("When no task force faces active opposition, production buys for the central reserve as for a front short by its shortfall of campaignReserveShare, at the producer nearest where it gathers.")]
+        public bool reserveDemand = true;
 
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;
