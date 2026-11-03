@@ -227,8 +227,14 @@ MonoBehaviour:
   supplySpareSeat: 1
   noHopOff: 1
   cutOffSeeksSupply: 1
+  supplyPrefersRide: 1
+  supplyRideBeside: 1
+  reserveTakesSpare: 0
+  productionAbsolute: 0
+  reserveDraftsRiders: 1
+  reserveDemand: 1
   ghostSupply: 1
-  transportWorthwhileSaving: 2
+  transportWorthwhileSaving: 0
   loadedTransportRisk: 2.5
   fogFair: 1
   fogMemoryTurns: 2
@@ -265,7 +271,7 @@ MonoBehaviour:
   campaignHubNeedSimple: 1
   campaignHoldContested: 1
   campaignReserveShare: 0.33
-  campaignMinTaskForce: 4
+  campaignMinTaskForce: 0
   campaignStageOnSupply: 1
   campaignBreakShort: 1
   campaignBreakShortRatio: 0.5

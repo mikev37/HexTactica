@@ -478,7 +478,17 @@ namespace HexTactica.AI {
             }
             if (near == null) return null;
             string who = near.name.Replace("(Clone)", "") + " (" + near.tile.x + "," + near.tile.y + ")";
-            if (nd <= Mathf.Max(1, t.moveRange)) return AIAction.Wait(t, "held for supply: waits within a move of " + who);
+            if (nd <= Mathf.Max(1, t.moveRange)) {
+                // Beside it (supplyRideBeside): next turn the supply unit steps aboard without walking and still rides a full move.
+                if (map.profile.supplyRideBeside && t.tile.Distance(near.tile) > 1) {
+                    MoveField f = map.ReachThisTurn(t);
+                    HexTile at = null;
+                    foreach (HexTile n in near.tile.neighbors)
+                        if (n != null && n.occupier == null && f.ReachableThisTurn(n) && AIAir.MayEndOn(t, n, map) && Transporting.CanBoardOnto(near, near.tile, n, t) && (at == null || CombatMath.Precedes(n, at))) at = n;
+                    if (at != null) return AIAction.Move(t, at, 0f, "held for supply: drives up beside " + who);
+                }
+                return AIAction.Wait(t, "held for supply: waits within a move of " + who);
+            }
             HexTile step = AITransportPlanner.SafeStepToward(t, near.tile, map.ReachHorizon(t), map, false);
             if (step == null || step == t.tile || step == near.tile || !AIAir.MayEndOn(t, step, map)) return AIAction.Wait(t, "held for supply: waits for " + who);
             return AIAction.Move(t, step, 0f, "held for supply: keeps near " + who);
@@ -520,6 +530,7 @@ namespace HexTactica.AI {
                 if (forSupply) {
                     HexTile to;
                     if (ground == null || supplyGoing == null || !supplyGoing.TryGetValue(t, out to) || to == null) continue;
+                    if (to == t.tile) continue;   // it holds where it stands: no ride (the rider was let out again having gone nowhere)
                     if (map.Travel(c, to, ground) + Mathf.Max(1, c.moveRange) > map.Travel(c, c.tile, ground)) continue;
                 }
                 if (hurt && (t.transported.Count > 0 || Hospital(c, t, map) == null)) continue;   // the wounded: an empty one, with somewhere to mend
