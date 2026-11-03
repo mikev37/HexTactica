@@ -450,6 +450,8 @@ namespace HexTactica.AI {
                 List<CampaignObjective> places = new List<CampaignObjective>();
                 foreach (KeyValuePair<HexTile, string> kv in Places(map)) {
                     if (map.SupplyDepth(kv.Key) > 0) continue;   // ours already
+                    // Held already (campaignHoldContested): seen lately, with no enemy unit we see or remember within two moves of it.
+                    if (p.campaignHoldContested && !Contested(kv.Key, map)) continue;
                     places.Add(new CampaignObjective { kind = CampaignKind.Hold, target = kv.Key, lasting = true, placeKind = kv.Value });
                 }
                 // The nearest to our units only (each costs a route to plan).
@@ -552,6 +554,16 @@ namespace HexTactica.AI {
         static void Appraise(CampaignObjective o, AIMap map, AIProfile p) { Reach(o, map, p, null, null); Price(o, map, p, null); }
 
         /// <summary>The way there, and the enemy units that could fight there (each with its power).</summary>
+        /// <summary>campaignHoldContested: ground we cannot vouch for (unknown under the fog), or with an enemy unit seen or remembered within two moves.</summary>
+        static bool Contested(HexTile t, AIMap map) {
+            if (map.sigint != null && map.sigint.Unknown(t)) return true;
+            int r = 2 * TypicalMove(map);
+            foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.tile.Distance(t) <= r) return true;
+            FogOfWar.Knowledge k = FogOfWar.current;
+            if (k != null) foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null && ph.last.Distance(t) <= r) return true;
+            return false;
+        }
+
         static void Reach(CampaignObjective o, AIMap map, AIProfile p, HexTile keepStaging, List<Unit> free) {
             int turns = Mathf.Max(1, p.frontReachTurns);
             float board = map.BoardStake;
@@ -570,7 +582,7 @@ namespace HexTactica.AI {
                 }
             }
             o.routeLength = from != null ? best : 99;
-            o.staging = keepStaging ?? (from != null ? Staging(route, map, o.target, p, free) : null);
+            o.staging = keepStaging ?? (from != null ? (p.campaignStageOnSupply ? from : Staging(route, map, o.target, p, free)) : null);
             o.routeTurns = o.staging != null ? Mathf.CeilToInt(map.Travel(null, o.staging, o.target) / (float)Mathf.Max(1, TypicalMove(map))) : 0;
             // The enemy that matters is what can be there soon after we are (frontReachTurns and one
             // more), not the whole army that could converge in the turns it takes us to get there: that
@@ -650,6 +662,14 @@ namespace HexTactica.AI {
                 case CampaignKind.Secure: {
                     Building b = o.building;
                     if (b.IsHQ) o.value = board;
+                    else if (p.productionValueByIncome && b.buildable != null && b.buildable.Count > 0) {
+                        // A building that makes units (productionValueByIncome): its own income, plus our income per production
+                        // building we already have, over objectiveHorizonTurns — what one more place to spend it is worth.
+                        float ours = 0f; int makers = 0;
+                        foreach (Building x in Building.all) if (x != null && x.owner == map.player && x.Functioning) { ours += x.income; if (x.CanProduce) makers++; }
+                        o.value = (b.income + ours / Mathf.Max(1, makers)) * p.objectiveHorizonTurns;
+                        if (b.producesSupply) o.value += average * 2f;
+                    }
                     else {
                         o.value = Mathf.Max(b.income * p.objectiveHorizonTurns, average * 2f);
                         if (b.producesSupply) o.value += average * 2f;
@@ -701,7 +721,8 @@ namespace HexTactica.AI {
                 int gap = 99;
                 if (plain != null) foreach (KeyValuePair<HexTile, int> kv in plain) if (map.SupplyDepth(kv.Key) > 0 && kv.Value < gap) gap = kv.Value;
                 if (gap >= 99) gap = o.routeLength;
-                if (gap > 0) {
+                if (p.campaignHubNeedSimple) o.needHubs = gap > 2 * TypicalMove(map) ? 1 : 0;
+                else if (gap > 0) {
                     float avgWorth = average > 0f ? average : 1f;
                     float forceUnits = o.needPower / Mathf.Max(1f, avgWorth);
                     int relay = Mathf.CeilToInt(Mathf.Max(0, gap - range) / (float)Mathf.Max(1, range));
@@ -948,7 +969,13 @@ namespace HexTactica.AI {
             // fits when spread). Each gets its need, nearest and best-fitting units first.
             int candidatesLeft = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ).Count;
             int maxPursued = 1 + Mathf.RoundToInt(spread * Mathf.Max(0, candidatesLeft - 1));
+            // As many task forces as the army can field at campaignMinTaskForce units each, after the reserve (campaignReserveShare).
+            float armyPower = 0f; int armyUnits = 0;
+            foreach (Unit u in map.ownUnits) { float w = Power(u); if (w > 0f && !(Transporting.IsTransport(u) && u.Firepower <= 1)) { armyPower += w; armyUnits++; } }
+            float budget = armyPower * (1f - Mathf.Clamp01(p.campaignReserveShare));
+            if (p.campaignMinTaskForce > 0) maxPursued = Mathf.Min(maxPursued, Mathf.Max(1, Mathf.FloorToInt(armyUnits * (1f - Mathf.Clamp01(p.campaignReserveShare)) / p.campaignMinTaskForce)));
             int pursued = 0;
+            foreach (CampaignObjective o in objectives) if (o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout && !o.respond && o.units.Count > 0) pursued++;
             // Supply decides how far the army can spread: an objective beyond our supply is taken on
             // only if the supply units it needs are left after those before it. (Seven task forces at
             // once on BigMapLakes, most with no supply at all, starved one after another.)
@@ -1003,14 +1030,21 @@ namespace HexTactica.AI {
                 }
                 // A building nobody free could live to take (capturerLives): not taken on (its units would wait on a capture
                 // that never comes, or walk onto it to die).
+                // The reserve (campaignReserveShare): a new task force only while what is committed stays within the budget.
+                if (!kept && p.campaignReserveShare > 0f && o.kind != CampaignKind.Scout) {
+                    float committed = 0f; foreach (CampaignObjective x in objectives) if (x.kind != CampaignKind.DefendHQ && !x.respond) committed += x.assignedPower;
+                    if (committed + o.needPower > budget) {
+                        if (Debug != null) Debug("not taken on: " + o.Id + " needs " + o.needPower.ToString("0") + ": the reserve keeps " + (p.campaignReserveShare * 100f).ToString("0") + "% (committed " + committed.ToString("0") + " of " + budget.ToString("0") + ")");
+                        continue;
+                    }
+                }
                 if (p.capturerLives && o.kind == CampaignKind.Secure && o.building != null && !kept
                     && !o.units.Exists(u => Takes(u, o, map, p)) && !pool.Exists(u => Takes(u, o, map, p) && CanJoin(u, o, map, p))) {
                     if (Debug != null) Debug("not taken on: " + o.Id + ": none free would live to take it");
                     continue;
                 }
                 Fill(o, pool, map, p, o.needPower);
-                if (!objectives.Contains(o)) { objectives.Add(o); if (o.lasting) hubsLeft -= o.needHubs; }
-                pursued++;
+                if (!objectives.Contains(o)) { objectives.Add(o); if (o.lasting) hubsLeft -= o.needHubs; if (o.kind != CampaignKind.Scout) pursued++; }
                 poolPower = 0f; foreach (Unit u in pool) poolPower += Power(u);
             }
             // Separate groups of what is left (AIProfile.campaignWings): a group too far from every task
