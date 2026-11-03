@@ -2075,6 +2075,18 @@ public class AIPlayer : MonoBehaviour, IAIController {
     bool LogisticsAction(SupplyPoint hub, out AIAction action) {
         action = default(AIAction);
         Unit unit = hub.myUnit;
+        // A rider got in this turn for the ride planned when the turn began (supplySpareSeat): that ride is kept, not re-planned
+        // into a hold (the rider was let out again having gone nowhere).
+        if (Profile.supplySpareSeat && unit.trasnporter != null && unit.trasnporter.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) {
+            HexTile to;
+            Unit truck = unit.trasnporter;
+            if (SupplyGoing().TryGetValue(truck, out to) && to != null && to != truck.tile && truck.CanEnter(to) && to.occupier == null) {
+                transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = to, destination = to, stayAboard = true };
+                reservedTransports.Add(truck);
+                action = AIAction.Wait(unit, "logistics: rides its truck to (" + to.x + "," + to.y + ") as planned, with the rider that got in for it");
+                return true;
+            }
+        }
         // Relieved by an idle one that took over its job: it moves up toward its front.
         HexTile upTo;
         if (unit.trasnporter == null && relieved.TryGetValue(hub, out upTo) && upTo.occupier == null && !CutsOff(hub, upTo)) {
@@ -2114,8 +2126,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, mine.tile, mine)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
+                HexTile drop0 = isLink && link != unit.tile && mine.CanEnter(link) && link.occupier == null ? link : mine.tile;
+                // A rider took its spare seat this turn: not boarded to hold where it stands (the rider would be let out again).
+                if (beside != null && drop0 == mine.tile && mine.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) beside = null;
                 if (beside != null) {
-                    HexTile drop = isLink && link != unit.tile && mine.CanEnter(link) && link.occupier == null ? link : mine.tile;
+                    HexTile drop = drop0;
                     transportAssignments[mine] = new TransportPlan { cargo = unit, transport = mine, rendezvous = mine.tile, dropoff = drop, destination = drop, stayAboard = true };
                     action = AIAction.Board(unit, mine, beside, "logistics for " + t.front.Id + ": chain link boards its truck (to (" + drop.x + "," + drop.y + "))");
                     return true;

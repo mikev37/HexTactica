@@ -219,7 +219,12 @@ namespace HexTactica.AI {
             Building reserveProducer = null;
             if (profile.reserveDemand && ReserveRally != null && ReserveShort > 0f) {
                 int rd = int.MaxValue;
-                foreach (Slot sl in slots) { int d = sl.b.tile != null ? sl.b.tile.Distance(ReserveRally) : int.MaxValue; if (d < rd) { rd = d; reserveProducer = sl.b; } }
+                // The nearest that can build something for the reserve (the HQ, nearest on ForestClearing, builds only infantry and supply).
+                foreach (Slot sl in slots) {
+                    bool can = false; foreach (Unit t in sl.b.Purchasable()) if (t.cost > 0 && t.CanEnter(sl.tile) && CanJoinReserve(t, profile)) { can = true; break; }
+                    if (!can) continue;
+                    int d = sl.b.tile != null ? sl.b.tile.Distance(ReserveRally) : int.MaxValue; if (d < rd) { rd = d; reserveProducer = sl.b; }
+                }
             }
             float quickest = 0f;
             if (profile.productionTimeToFront && fight.Count > 0)
@@ -370,6 +375,21 @@ namespace HexTactica.AI {
                 }   // nothing worth it outright within the gold kept for the other slots: value for its cost, as before
                 if (best == null) break;
                 best.pick = bu; best.value = bv; best.why = bw; money -= bu.cost; plan(bu, best, 1);
+            }
+            // The reserve's demand in the trace: what the reserve-capable kinds were worth at its producer, against what was picked.
+            if (trace != null && reserveProducer != null) {
+                foreach (Slot sl in slots) {
+                    if (sl.b != reserveProducer) continue;
+                    List<string> opts = new List<string>();
+                    foreach (Unit t in sl.b.Purchasable()) {
+                        if (!CanJoinReserve(t, profile) || t.cost <= 0 || !t.CanEnter(sl.tile)) continue;
+                        KeyValuePair<float, string> w = worth(t, sl);
+                        opts.Add(GameController.UnitName(t) + " " + w.Key.ToString("0") + " (" + (w.Key / t.cost * 1000f).ToString("0") + "/1000g" + (t.cost > money + (sl.pick != null ? sl.pick.cost : 0) ? ", cannot afford" : "") + ")");
+                    }
+                    trace("   " + p.personal_name + " reserve demand (short " + (ReserveShort * 100f).ToString("0") + "%) at " + sl.b.name.Replace("(Clone)", "") + ": " + string.Join(", ", opts.ToArray())
+                          + "; picked " + (sl.pick != null ? GameController.UnitName(sl.pick) + " " + sl.value.ToString("0") + " (" + (sl.value / sl.pick.cost * 1000f).ToString("0") + "/1000g)" : "nothing") + ", gold " + money);
+                    break;
+                }
             }
             // Then: gold left over goes to upgrades, the most value per extra gold first (AIProfile.productionSpendAll).
             for (int guard = 0; profile.productionSpendAll && money > 0 && guard < 64; guard++) {
