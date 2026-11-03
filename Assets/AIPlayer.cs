@@ -1944,20 +1944,31 @@ public class AIPlayer : MonoBehaviour, IAIController {
     AIAction? SeekSupply(Unit unit) {
         SupplyNetwork.Result r = SupplyNetwork.SolveAll(player, new Dictionary<SupplyPoint, HexTile>());
         if (r.connectedHubs.Contains(unit.Hub)) return null;
+        // Into any transport with room it can reach this turn: aboard, a supply unit counts as linked within a move of
+        // supplied ground, two to four times its reach on foot. (ChanceMeeting: every supply unit starts cut off; walked
+        // back toward the HQ, none got into the trucks waiting a move away.)
+        MoveField reach = map.ReachThisTurn(unit);
+        Unit ride = null; HexTile from = null; int rideD = int.MaxValue;
         foreach (Unit t in player.units) {
-            if (t == null || t.tile == null || t == unit || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
+            if (t == null || t.tile == null || t == unit || !Transporting.IsTransport(t)) continue;
             if (!Transporting.CarriesKind(t, unit) || Transporting.FreeWeight(t) < Mathf.Max(1, unit.weight)) continue;
-            if (Transporting.CanBoardFrom(t, unit)) return AIAction.Board(unit, t, unit.tile, "cut off: boards " + t.name.Replace("(Clone)", "") + " to get back to supply");
-            // A transport that could carry it within a move: the supply logic boards it (a supply leap, a ride), not walking back.
-            // (ChanceMeeting: every supply unit starts cut off; walked back toward the HQ, none got into the trucks waiting for them.)
-            if (map.Travel(t, t.tile, unit.tile) <= Mathf.Max(1, t.moveRange) + 1) return null;
+            HexTile at = null;
+            if (Transporting.CanBoardFrom(t, unit)) at = unit.tile;
+            else foreach (HexTile n in t.tile.neighbors) {
+                if (n == null || (n != unit.tile && n.occupier != null) || !reach.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                if (at == null || CombatMath.Precedes(n, at)) at = n;
+            }
+            if (at == null) continue;
+            int d = unit.tile.Distance(t.tile);
+            if (d < rideD || (d == rideD && ride != null && AIMap.CompareUnits(t, ride) < 0)) { rideD = d; ride = t; from = at; }
         }
+        if (ride != null) return AIAction.Board(unit, ride, from, "cut off: boards " + ride.name.Replace("(Clone)", "") + " (" + ride.tile.x + "," + ride.tile.y + ") to get back to supply");
         List<HexTile> supplied = new List<HexTile>();
         foreach (HexTile x in HexGenerator.hg.tiles) if (x != null && map.SupplyDepth(x) > 0) supplied.Add(x);
         if (supplied.Count == 0) return null;
         System.Func<HexTile, int> gap = x => { if (map.SupplyDepth(x) > 0) return 0; int m = int.MaxValue; foreach (HexTile y in supplied) m = Mathf.Min(m, x.Distance(y)); return m; };
         int now = gap(unit.tile);
-        MoveField field = map.ReachThisTurn(unit);
+        MoveField field = reach;
         HexTile best = null; int bg = now;
         foreach (HexTile x in field.Tiles) {
             if (x == unit.tile || !field.ReachableThisTurn(x) || (x.occupier != null && x.occupier != unit) || !unit.CanEnter(x) || !AIAir.MayEndOn(unit, x, map)) continue;
