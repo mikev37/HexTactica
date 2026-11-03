@@ -1015,6 +1015,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// everything else goes to its role-specific tactical decider.
     /// </summary>
     public AIAction DecideFor(Unit unit) {
+        // A supply unit cut off from the network (cutOffSeeksSupply) first heads back toward supplied ground or a transport.
+        if (Profile.cutOffSeeksSupply && map != null && unit.Hub != null && !unit.Hub.producer && unit.trasnporter == null && unit.tile != null) {
+            AIAction? back = SeekSupply(unit);
+            if (back.HasValue) return back.Value;
+        }
         // A transport with a supply unit aboard is that supply unit's (campaignLogistics): the supply logic drives it.
         AIAction carried;
         if (CarriesSupply(unit, out carried)) {
@@ -1930,6 +1935,37 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// its moves of the front's units is placed as any supply unit is, to serve the units around it.
     /// False: not one of the logistics' (spare, or no fronts).
     /// </summary>
+    /// <summary>
+    /// cutOffSeeksSupply. A supply unit on foot not joined to the network: into an empty transport beside it that can carry it,
+    /// else to the tile it can reach this turn nearest supplied ground (on it, if one is in reach), avoiding known fire. Null:
+    /// joined, or no tile gets it nearer. (Cut-off supply units were marked spare and sent toward their front; nothing walked
+    /// them back first, and they stayed cut off.)
+    /// </summary>
+    AIAction? SeekSupply(Unit unit) {
+        SupplyNetwork.Result r = SupplyNetwork.SolveAll(player, new Dictionary<SupplyPoint, HexTile>());
+        if (r.connectedHubs.Contains(unit.Hub)) return null;
+        foreach (Unit t in player.units) {
+            if (t == null || t.tile == null || t == unit || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
+            if (!Transporting.CarriesKind(t, unit) || Transporting.FreeWeight(t) < Mathf.Max(1, unit.weight) || !Transporting.CanBoardFrom(t, unit)) continue;
+            return AIAction.Board(unit, t, unit.tile, "cut off: boards " + t.name.Replace("(Clone)", "") + " to get back to supply");
+        }
+        List<HexTile> supplied = new List<HexTile>();
+        foreach (HexTile x in HexGenerator.hg.tiles) if (x != null && map.SupplyDepth(x) > 0) supplied.Add(x);
+        if (supplied.Count == 0) return null;
+        System.Func<HexTile, int> gap = x => { if (map.SupplyDepth(x) > 0) return 0; int m = int.MaxValue; foreach (HexTile y in supplied) m = Mathf.Min(m, x.Distance(y)); return m; };
+        int now = gap(unit.tile);
+        MoveField field = map.ReachThisTurn(unit);
+        HexTile best = null; int bg = now;
+        foreach (HexTile x in field.Tiles) {
+            if (x == unit.tile || !field.ReachableThisTurn(x) || (x.occupier != null && x.occupier != unit) || !unit.CanEnter(x) || !AIAir.MayEndOn(unit, x, map)) continue;
+            if (map.KnownLoss(unit, x) > Mathf.Max(0f, Profile.chainRiskTolerance)) continue;
+            int g = gap(x);
+            if (g < bg || (g == bg && best != null && CombatMath.Precedes(x, best))) { bg = g; best = x; }
+        }
+        if (best == null) return null;
+        return AIAction.Move(unit, best, 0f, "cut off: back toward supplied ground (" + now + " tiles away, now " + bg + ")");
+    }
+
     /// <summary>Would <paramref name="hub"/> moving to <paramref name="to"/> cut off another supply unit joined to the network now?</summary>
     bool CutsOff(SupplyPoint hub, HexTile to) {
         if (to == null || to == hub.myUnit.tile) return false;

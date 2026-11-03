@@ -226,6 +226,7 @@ MonoBehaviour:
   supplyTransportCap: 1
   supplySpareSeat: 1
   noHopOff: 1
+  cutOffSeeksSupply: 1
   ghostSupply: 1
   transportWorthwhileSaving: 2
   loadedTransportRisk: 2.5

@@ -251,7 +251,18 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   landed; not traced further); Biomes new Blue 150,416 v 43,333, 11 buildings (was 146,500 v 68,250, 8), new Red
   26,500 v 110,166 (was 25,166 v 127,916); ForestClearing (fog on, builds) new Blue 158,583 v 86,083, 15 buildings,
   new Red 46,833 v 160,833 (loses). Think time down (RiverCrossing new Blue 157 s, was 264 s).
-- **Not done yet:** item 2 (cut-off supply units walk to supply first), item 4's reserve and scouting parts, item 5
+- **Item 2 done, transport cap tightened, early seat needs a forward ride (2 Nov; mixed):** `cutOffSeeksSupply`: a cut-off
+  supply unit on foot first boards an empty transport beside it, else walks to the reachable tile nearest supplied
+  ground (moves seen: ChanceMeeting 5 and 2, none elsewhere). `supplyTransportCap` now never holds more transports than we
+  have supply units (carrying first, then duties, then nearest). `supplySpareSeat` now takes an early seat only where the
+  supply ride planned this turn takes the rider a move nearer: RiverCrossing new Red had 6 riders on turn 1 board supply
+  trucks that held their links and let them out again, a turn lost. Old v new, traced (logs `games/item2-*` v
+  `games/seat-*`): RiverCrossing new Red **210,666 v 94,166** (was 143,750 v 162,833), new Blue 169,666 v 112,250 (was
+  168,250 v 125,583); ChanceMeeting new Blue 155,000 v 184,000 (was 173,500 v 186,833), new Red 159,833 v 147,666 (was
+  181,166 v 142,416); Biomes new Blue 153,250 v 62,583 (was 150,416 v 43,333), new Red 25,166 v 127,916 (was 26,500 v
+  110,166); ForestClearing new Blue 144,166 v 114,416 (was 158,583 v 86,083), new Red **101,083 v 125,083** (was 46,833 v
+  160,833). Riders still let out having gone no nearer: up to 10 a game (ChanceMeeting new Red).
+- **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
   reserve not committed); RiverCrossing new Red regression above; new Red loses ForestClearing.
