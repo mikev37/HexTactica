@@ -127,15 +127,15 @@ namespace HexTactica.AI {
         public int campaignSurgeWithdrawTurns = 2;
         [Tooltip("Campaign: a building that makes units is worth its own income plus our income divided by the production buildings we have, over objectiveHorizonTurns (instead of weighting by building tier).")]
         public bool productionValueByIncome = true;
-        [Tooltip("Campaign: a task force needs one supply unit only if its target is more than two moves from our supplied ground, else none (instead of relays plus spread).")]
+        [Tooltip("Campaign: a task force needs no supply unit within one transport move of our supplied ground, and one per transport move beyond that (instead of relays plus spread); spare supply units are no longer spread over task forces.")]
         public bool campaignHubNeedSimple = true;
-        [Tooltip("Campaign: a chokepoint or junction is a Hold objective only if contested: unknown under the fog, or an enemy unit seen or remembered within two moves.")]
+        [Tooltip("Campaign: a chokepoint or junction is a Hold objective only if contested: unknown under the fog, or an enemy unit seen or remembered within fogStaleRadius.")]
         public bool campaignHoldContested = true;
         [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
         public float campaignReserveShare = 0.33f;
         [Tooltip("Campaign: at most one task force per this many fighting units (after the reserve share), scouting not counted (0: off).")]
-        public int campaignMinTaskForce = 4;
-        [Tooltip("Campaign: a task force gathers on the supplied tile nearest its target (supplied ground ends at the chain's nodes, so nearby task forces share it), not near where its units are.")]
+        public int campaignMinTaskForce = 0;
+        [Tooltip("Campaign: a task force gathers on our supply unit (a chain node) on supplied ground nearest its target along the way, so nearby task forces share it; the supplied tile nearest the target if there is none.")]
         public bool campaignStageOnSupply = true;
         [Tooltip("Campaign: a task force whose power has fallen below campaignBreakShortRatio of its need now (the enemy there times objectiveForceRatio) is broken, as one that lost objectiveReplanLoss of its own power is: formed again only if what can join is enough. Not the HQ's defence, enemy on our ground, scouting, or an all-in task force.")]
         public bool campaignBreakShort = true;

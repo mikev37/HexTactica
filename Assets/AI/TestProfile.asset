@@ -265,7 +265,7 @@ MonoBehaviour:
   campaignHubNeedSimple: 1
   campaignHoldContested: 1
   campaignReserveShare: 0.33
-  campaignMinTaskForce: 4
+  campaignMinTaskForce: 0
   campaignStageOnSupply: 1
   campaignBreakShort: 1
   campaignBreakShortRatio: 0.5

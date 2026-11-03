@@ -1946,6 +1946,7 @@ public static class Scenarios {
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
                 prof.campaign = true;
+                prof.campaignHoldContested = false;   // the detection is what is checked: the enemy here is 6 tiles off, so with it on the crossing counts as held
                 AIMap m = new AIMap(l.ai, prof);
                 List<KeyValuePair<HexTile, string>> places = AICampaign.Places(m);
                 List<string> ends = new List<string>(); bool west = false, east = false;
