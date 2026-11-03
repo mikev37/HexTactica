@@ -2874,7 +2874,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   td: {fileID: 11400000, guid: 8e0ebeec86b53fc45b2f0dec7dff2849, type: 2}
   mouseDown: 0
-  editing: 0
+  editing: 1
   unit_placement: 0
   building_placement: 0
   ut: {fileID: 8713449147333190291, guid: 7d8aaf42f45df494cad4b9ceb2a0049c, type: 3}
@@ -3024,6 +3024,7 @@ MonoBehaviour:
   roundLimit: 30
   fogOfWar: 1
   fogViewer: -1
+  fogShownOnScreen: 1
   purchasesAllowed: 1
   allowedUnits: []
   players:
@@ -7489,7 +7490,7 @@ MonoBehaviour:
   personal_name: Red
   id: 0
   displayColor: {r: 1, g: 0, b: 0, a: 0}
-  faction: {fileID: 11400000, guid: 3ed06345dfd9e16418eca0a09d0a601c, type: 2}
+  faction: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
   mainPlayer: 1
   units: []
   money: 0
