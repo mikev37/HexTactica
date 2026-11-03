@@ -129,7 +129,7 @@ namespace HexTactica.AI {
         public bool productionValueByIncome = true;
         [Tooltip("Campaign: a task force needs no supply unit within one transport move of our supplied ground, and one per transport move beyond that (instead of relays plus spread); spare supply units are no longer spread over task forces.")]
         public bool campaignHubNeedSimple = true;
-        [Tooltip("Campaign: a chokepoint or junction is a Hold objective only if contested: unknown under the fog, or an enemy unit seen or remembered within fogStaleRadius.")]
+        [Tooltip("Campaign: a chokepoint or junction in our vision is held (achieved, released, like a building taken); out of sight it is a Hold objective again only once it has gone dark for fogUnknownTurns, or an enemy unit seen or remembered comes within fogStaleRadius of it.")]
         public bool campaignHoldContested = true;
         [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
         public float campaignReserveShare = 0.33f;

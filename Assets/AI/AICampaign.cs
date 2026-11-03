@@ -557,6 +557,10 @@ namespace HexTactica.AI {
         /// <summary>The way there, and the enemy units that could fight there (each with its power).</summary>
         /// <summary>campaignHoldContested: ground we cannot vouch for (unknown under the fog), or with an enemy unit seen or remembered within two moves.</summary>
         static bool Contested(HexTile t, AIMap map, AIProfile p) {
+            // In our vision (all of the board with fog off): held, achieved like a building taken, and not tasked again
+            // until it has gone dark for fogUnknownTurns or an enemy comes within fogStaleRadius of it out of our sight.
+            FogOfWar.Knowledge vis = FogOfWar.current;
+            if (vis == null || vis.player != map.player || vis.visibleTiles.Contains(t)) return false;
             if (map.sigint != null && map.sigint.Unknown(t)) return true;
             int r = p.fogStaleRadius > 0 ? p.fogStaleRadius : 2 * TypicalMove(map);
             foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.tile.Distance(t) <= r) return true;

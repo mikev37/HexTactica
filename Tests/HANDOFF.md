@@ -305,6 +305,13 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   so nothing idle to draft. Spare seat: a rider in a supply transport now keeps the ride planned at the start of the turn
   ("rides its truck ... as planned"; 2 in 3 rounds of ChanceMeeting), and the chain-link boarding path no longer holds a
   transport a rider just boarded; riders still let out having gone nowhere: 4 in 3 rounds (another path, not found yet).
+- **Holds achieved by vision (3 Nov):** `campaignHoldContested` now treats a junction in our vision (the whole board with fog
+  off) as held, like a building taken: its task force is released ("achieved or gone") and it is not a Hold again until
+  it has gone dark for `fogUnknownTurns` (6) or an enemy we see or remember comes within `fogStaleRadius` (5) of it while
+  out of our sight. Not yet judged against the old AI. Last full comparison (57cad55, ForestClearing only finished): new
+  Blue 149,750 v 34,500, new Red 129,000 v 119,083. Open: idle task forces next to a front under attack should join it
+  (ChanceMeeting turn 34, Hold(5,5)); a task force holding more supply units than it needs should release them to
+  fronts out of supply (Hold(5,5) held 4, need 0, while Clear@-4,-5 was short); rerun the eight games.
 - **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
