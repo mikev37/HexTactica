@@ -25,6 +25,7 @@ MonoBehaviour:
   keepBuildSlotsClear: 1
   unifiedLinkPlacement: 1
   waitTwice: 1
+  artilleryFireOrDefer: 1
   boardSpentTransports: 1
   chainLinkSpacing: 2
   routeDanger: 3
@@ -236,6 +237,11 @@ MonoBehaviour:
   fogAggression: 1
   fogUncertainty: 1
   fogUnknownTurns: 6
+  fogStaleRadius: 5
+  fogConcentrate: 1
+  fogAnchorFalloff: 2
+  fogHQWeight: 4
+  fogProductionWeight: 2
   scoutUnits: 0
   scoutPull: 0.3
   scoutThreatBonus: 1
