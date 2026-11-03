@@ -278,6 +278,16 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   its task force's supply unit rode to (-11,-2), the far side: a logistics routing bug); 9 supply units bought, all for
   "its supply is short" (a production rule this change doesn't reach); the reserve held 0–3 units because only mobile
   units join it: the third held back goes to the ordinary fronts (12 units at home on turn 9).
+- **Corrections (2 Nov, not yet judged against the old AI):** supply need is now none within one transport move of
+  supplied ground and one per transport move beyond (`campaignHubNeedSimple`; gap = land movement steps to the nearest
+  supplied tile, over the median move of our ground transports); the spread step that handed spare supply units to
+  task forces by distance-to-supply, ignoring where the supply units were, is off with it (it sent the supply unit
+  for the (13,-13) ArmyBase task force from (-11,-2)); Holds contested within `fogStaleRadius`; staging on our supply
+  unit on supplied ground nearest the target; `campaignMinTaskForce` 0 (off). `cutOffSeeksSupply` steps aside when a
+  transport that could carry the supply unit is within a move (on ChanceMeeting it walked every supply unit back
+  toward the HQ, and none boarded the waiting trucks; now 6 boardings in 4 rounds). The chokepoint check runs with
+  `campaignHoldContested` off (it checks detection; its enemy is 6 tiles off). Open: "its supply is short" buys one
+  supply unit a turn while any front unit is out of supply, not counting supply already riding there, with no cap.
 - **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;

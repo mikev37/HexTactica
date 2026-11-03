@@ -1946,8 +1946,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (r.connectedHubs.Contains(unit.Hub)) return null;
         foreach (Unit t in player.units) {
             if (t == null || t.tile == null || t == unit || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
-            if (!Transporting.CarriesKind(t, unit) || Transporting.FreeWeight(t) < Mathf.Max(1, unit.weight) || !Transporting.CanBoardFrom(t, unit)) continue;
-            return AIAction.Board(unit, t, unit.tile, "cut off: boards " + t.name.Replace("(Clone)", "") + " to get back to supply");
+            if (!Transporting.CarriesKind(t, unit) || Transporting.FreeWeight(t) < Mathf.Max(1, unit.weight)) continue;
+            if (Transporting.CanBoardFrom(t, unit)) return AIAction.Board(unit, t, unit.tile, "cut off: boards " + t.name.Replace("(Clone)", "") + " to get back to supply");
+            // A transport that could carry it within a move: the supply logic boards it (a supply leap, a ride), not walking back.
+            // (ChanceMeeting: every supply unit starts cut off; walked back toward the HQ, none got into the trucks waiting for them.)
+            if (map.Travel(t, t.tile, unit.tile) <= Mathf.Max(1, t.moveRange) + 1) return null;
         }
         List<HexTile> supplied = new List<HexTile>();
         foreach (HexTile x in HexGenerator.hg.tiles) if (x != null && map.SupplyDepth(x) > 0) supplied.Add(x);
