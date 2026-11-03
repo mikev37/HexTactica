@@ -288,6 +288,15 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   toward the HQ, and none boarded the waiting trucks; now 6 boardings in 4 rounds). The chokepoint check runs with
   `campaignHoldContested` off (it checks detection; its enemy is 6 tiles off). Open: "its supply is short" buys one
   supply unit a turn while any front unit is out of supply, not counting supply already riding there, with no cap.
+- **Reserve drafting / reserve demand / spare-seat guard (2 Nov, NOT working yet, flags on):** `reserveDraftsRiders`
+  (an idle transport not held for supply plus idle infantry to fill it join the reserve), `reserveDemand` (when no task
+  force has engaged units and no front is short of supply, production values reserve-capable kinds at the producer
+  nearest the rally as a front short by the reserve's shortfall of `campaignReserveShare`). ForestClearing new Blue, 10
+  rounds: no drafts (every transport was held for supply), nothing bought for the reserve (demand applied on only 3 of 9
+  turns and a reserve-capable unit never won), reserve 0–2 units. Spare-seat guard (a transport a rider boarded this
+  turn is not used to hold a link) is in the chain's leap path only; the case seen boards through "chain link boards its
+  truck" (claims), so riders let out having gone nowhere did not fall (3 → 4 in 3 rounds of ChanceMeeting).
+  `reserveTakesSpare` and `productionAbsolute` are off by default.
 - **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
