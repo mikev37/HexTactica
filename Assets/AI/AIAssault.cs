@@ -530,6 +530,7 @@ namespace HexTactica.AI {
                 if (forSupply) {
                     HexTile to;
                     if (ground == null || supplyGoing == null || !supplyGoing.TryGetValue(t, out to) || to == null) continue;
+                    if (to == t.tile) continue;   // it holds where it stands: no ride (the rider was let out again having gone nowhere)
                     if (map.Travel(c, to, ground) + Mathf.Max(1, c.moveRange) > map.Travel(c, c.tile, ground)) continue;
                 }
                 if (hurt && (t.transported.Count > 0 || Hospital(c, t, map) == null)) continue;   // the wounded: an empty one, with somewhere to mend
