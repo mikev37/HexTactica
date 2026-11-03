@@ -238,6 +238,51 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   first on turn 6, no mistake found in the deferred move), new Red 263,583 v 0 (was 280,333 v 0); Biomes new Blue
   146,500 v 68,250, 8 buildings (was 143,250 v 55,000, 12), new Red identical. Think time unchanged.
 
+- **Transports: one per supply unit, spare seat early, no hop off (2 Nov; mixed):** `supplyTransportCap` (held for supply:
+  carrying one, on a duty, or the nearest empty one for each supply unit on foot, no more; was every capable one on a
+  no-build map: RiverCrossing held 12 for 10 supply units, 7 idle all turn while infantry walked), `supplySpareSeat` (a
+  rider takes a supply transport's spare seat before its supply unit is aboard, if the supply unit still fits: supply
+  units move last, so riders never got the seat), `noHopOff` (a transport that has not moved does not put down a rider
+  that got in this turn: a Grunt walked into a Recon and was put down beside it, a tile more than it could walk).
+  RiverCrossing turn 0 under fog: 15 of 16 infantry board (was 4). Old v new, traced, 25 rounds (logs `games/seat-*`
+  v `games/fog-*`): ChanceMeeting new Blue 173,500 v 186,833 (was 176,416 v 145,666), new Red 181,166 v 142,416 (was
+  174,749 v 153,916); RiverCrossing new Blue 168,250 v 125,583 (same), new Red **143,750 v 162,833** (was 263,583 v 0:
+  before, Red's infantry walked as a mass and broke Blue in rounds 4–8; now 17 rode instead of 7 and the attack never
+  landed; not traced further); Biomes new Blue 150,416 v 43,333, 11 buildings (was 146,500 v 68,250, 8), new Red
+  26,500 v 110,166 (was 25,166 v 127,916); ForestClearing (fog on, builds) new Blue 158,583 v 86,083, 15 buildings,
+  new Red 46,833 v 160,833 (loses). Think time down (RiverCrossing new Blue 157 s, was 264 s).
+- **Item 2 done, transport cap tightened, early seat needs a forward ride (2 Nov; mixed):** `cutOffSeeksSupply`: a cut-off
+  supply unit on foot first boards an empty transport beside it, else walks to the reachable tile nearest supplied
+  ground (moves seen: ChanceMeeting 5 and 2, none elsewhere). `supplyTransportCap` now never holds more transports than we
+  have supply units (carrying first, then duties, then nearest). `supplySpareSeat` now takes an early seat only where the
+  supply ride planned this turn takes the rider a move nearer: RiverCrossing new Red had 6 riders on turn 1 board supply
+  trucks that held their links and let them out again, a turn lost. Old v new, traced (logs `games/item2-*` v
+  `games/seat-*`): RiverCrossing new Red **210,666 v 94,166** (was 143,750 v 162,833), new Blue 169,666 v 112,250 (was
+  168,250 v 125,583); ChanceMeeting new Blue 155,000 v 184,000 (was 173,500 v 186,833), new Red 159,833 v 147,666 (was
+  181,166 v 142,416); Biomes new Blue 153,250 v 62,583 (was 150,416 v 43,333), new Red 25,166 v 127,916 (was 26,500 v
+  110,166); ForestClearing new Blue 144,166 v 114,416 (was 158,583 v 86,083), new Red **101,083 v 125,083** (was 46,833 v
+  160,833). Riders still let out having gone no nearer: up to 10 a game (ChanceMeeting new Red).
+- **Campaign per the owner's rules (2 Nov; mostly better, two regressions):** `productionValueByIncome` (a building that
+  makes units is worth its income plus our income per production building we have, ×10), `campaignHubNeedSimple` (one
+  supply unit only if the target is more than two moves beyond supplied ground; was relays + spread: 3 for the ArmyBase
+  at (13,-13)), `campaignHoldContested` (a junction is a Hold only if unknown or an enemy is within two moves),
+  `campaignReserveShare` 0.33 (new task forces only while committed power stays within the other two thirds),
+  `campaignMinTaskForce` 4 (at most one task force per 4 fighting units after the reserve; scouts not counted),
+  `campaignStageOnSupply` (gather on the supplied tile nearest the target). Old v new, traced (logs `games/camp-*` v
+  `games/item2-*`): ForestClearing new Blue **167,166 v 38,500** (was 144,166 v 114,416; ArmyBase (-13,0) producing from
+  turn 7, was 13; 1–2 task forces, was 5–8), new Red 65,333 v 145,583 (was 101,083 v 125,083); ChanceMeeting new Blue
+  **170,916 v 110,500** (was 155,000 v 184,000), new Red **225,166 v 65,750** (was 159,833 v 147,666); RiverCrossing new
+  Blue **122,500 v 209,333** (was 169,666 v 112,250: now loses), new Red 227,250 v 147,166 (was 210,666 v 94,166);
+  Biomes new Blue 162,750 v 62,500 (was 153,250 v 62,583), new Red 44,833 v 137,000 (was 25,166 v 127,916). Think time
+  down. Found in ForestClearing new Blue, not yet fixed: ArmyBase (13,-13) never produced (one Grunt sent on turn 9;
+  its task force's supply unit rode to (-11,-2), the far side: a logistics routing bug); 9 supply units bought, all for
+  "its supply is short" (a production rule this change doesn't reach); the reserve held 0–3 units because only mobile
+  units join it: the third held back goes to the ordinary fronts (12 units at home on turn 9).
+- **Not done yet:** item 4's reserve and scouting parts, item 5
+  (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
+  apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
+  reserve not committed); RiverCrossing new Red regression above; new Red loses ForestClearing.
+
 ## 7. Open work, in the order I'd take it
 
 1. **The ChanceMeeting regression** (new Red v old Blue: `OLD=Blue`, fog on, traced): run with

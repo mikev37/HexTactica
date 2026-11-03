@@ -125,6 +125,18 @@ namespace HexTactica.AI {
         public float campaignSurgeRatio = 1.5f;
         [Tooltip("Campaign: turns at most that a stopped task force's units pull back to its staging ground before they are planned afresh (campaignSurgeAbort).")]
         public int campaignSurgeWithdrawTurns = 2;
+        [Tooltip("Campaign: a building that makes units is worth its own income plus our income divided by the production buildings we have, over objectiveHorizonTurns (instead of weighting by building tier).")]
+        public bool productionValueByIncome = true;
+        [Tooltip("Campaign: a task force needs one supply unit only if its target is more than two moves from our supplied ground, else none (instead of relays plus spread).")]
+        public bool campaignHubNeedSimple = true;
+        [Tooltip("Campaign: a chokepoint or junction is a Hold objective only if contested: unknown under the fog, or an enemy unit seen or remembered within two moves.")]
+        public bool campaignHoldContested = true;
+        [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
+        public float campaignReserveShare = 0.33f;
+        [Tooltip("Campaign: at most one task force per this many fighting units (after the reserve share), scouting not counted (0: off).")]
+        public int campaignMinTaskForce = 4;
+        [Tooltip("Campaign: a task force gathers on the supplied tile nearest its target (supplied ground ends at the chain's nodes, so nearby task forces share it), not near where its units are.")]
+        public bool campaignStageOnSupply = true;
         [Tooltip("Campaign: a task force whose power has fallen below campaignBreakShortRatio of its need now (the enemy there times objectiveForceRatio) is broken, as one that lost objectiveReplanLoss of its own power is: formed again only if what can join is enough. Not the HQ's defence, enemy on our ground, scouting, or an all-in task force.")]
         public bool campaignBreakShort = true;
         [Tooltip("Campaign: the share of its need now below which a task force is broken (campaignBreakShort).")]
@@ -783,6 +795,14 @@ namespace HexTactica.AI {
 
         [Tooltip("A supply unit aboard a transport stays aboard: aboard, it links as far as its transport can drive and spreads its supply from wherever the transport stands, so it is never put down (a supply unit inside a transport inside another may be, with its own transport). The one exception: its transport would be destroyed where it stops. Off: plans could end in 'carry and drop off'.")]
         public bool supplyStaysAboard = true;
+        [Tooltip("Transports held for supply: those carrying a supply unit or on a supply duty, and for each supply unit on foot only the nearest one that could carry it; the rest carry troops. Off: every one that can carry supply on a no-build map.")]
+        public bool supplyTransportCap = true;
+        [Tooltip("A rider may take a supply transport's spare seat before its supply unit is aboard, as long as the supply unit still fits beside it.")]
+        public bool supplySpareSeat = true;
+        [Tooltip("A transport that has not moved this turn does not put down a rider that got in this turn (no extra tile from hopping on and off).")]
+        public bool noHopOff = true;
+        [Tooltip("A supply unit on foot cut off from the network first boards an empty transport beside it, else walks to the tile nearest supplied ground it can reach, before anything else.")]
+        public bool cutOffSeeksSupply = true;
 
         [Tooltip("Plan each supply unit's move before the line moves and let the line use that supply (a ghost); the supply unit still moves last.")]
         public bool ghostSupply = true;
