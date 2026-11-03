@@ -262,6 +262,22 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   181,166 v 142,416); Biomes new Blue 153,250 v 62,583 (was 150,416 v 43,333), new Red 25,166 v 127,916 (was 26,500 v
   110,166); ForestClearing new Blue 144,166 v 114,416 (was 158,583 v 86,083), new Red **101,083 v 125,083** (was 46,833 v
   160,833). Riders still let out having gone no nearer: up to 10 a game (ChanceMeeting new Red).
+- **Campaign per the owner's rules (2 Nov; mostly better, two regressions):** `productionValueByIncome` (a building that
+  makes units is worth its income plus our income per production building we have, ×10), `campaignHubNeedSimple` (one
+  supply unit only if the target is more than two moves beyond supplied ground; was relays + spread: 3 for the ArmyBase
+  at (13,-13)), `campaignHoldContested` (a junction is a Hold only if unknown or an enemy is within two moves),
+  `campaignReserveShare` 0.33 (new task forces only while committed power stays within the other two thirds),
+  `campaignMinTaskForce` 4 (at most one task force per 4 fighting units after the reserve; scouts not counted),
+  `campaignStageOnSupply` (gather on the supplied tile nearest the target). Old v new, traced (logs `games/camp-*` v
+  `games/item2-*`): ForestClearing new Blue **167,166 v 38,500** (was 144,166 v 114,416; ArmyBase (-13,0) producing from
+  turn 7, was 13; 1–2 task forces, was 5–8), new Red 65,333 v 145,583 (was 101,083 v 125,083); ChanceMeeting new Blue
+  **170,916 v 110,500** (was 155,000 v 184,000), new Red **225,166 v 65,750** (was 159,833 v 147,666); RiverCrossing new
+  Blue **122,500 v 209,333** (was 169,666 v 112,250: now loses), new Red 227,250 v 147,166 (was 210,666 v 94,166);
+  Biomes new Blue 162,750 v 62,500 (was 153,250 v 62,583), new Red 44,833 v 137,000 (was 25,166 v 127,916). Think time
+  down. Found in ForestClearing new Blue, not yet fixed: ArmyBase (13,-13) never produced (one Grunt sent on turn 9;
+  its task force's supply unit rode to (-11,-2), the far side: a logistics routing bug); 9 supply units bought, all for
+  "its supply is short" (a production rule this change doesn't reach); the reserve held 0–3 units because only mobile
+  units join it: the third held back goes to the ordinary fronts (12 units at home on turn 9).
 - **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
