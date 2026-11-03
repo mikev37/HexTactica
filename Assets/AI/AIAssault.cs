@@ -440,6 +440,16 @@ namespace HexTactica.AI {
                     }
                     if (best != null) s.Add(best);
                 }
+                // Never more held than we have supply units: those carrying one first, then duties, then the nearest ones above.
+                int units = 0; foreach (Unit u in p.units) if (u != null && u.tile != null && u.Hub != null && !u.Hub.producer) units++;
+                if (s.Count > units) {
+                    List<Unit> order = new List<Unit>();
+                    foreach (Unit t in p.units) if (t != null && s.Contains(t) && CarriesHub(t)) order.Add(t);
+                    if (duty != null) foreach (Unit t in duty) if (t != null && s.Contains(t) && !order.Contains(t)) order.Add(t);
+                    foreach (Unit h in onFoot) foreach (Unit t in free) if (s.Contains(t) && !order.Contains(t)) { order.Add(t); break; }
+                    foreach (Unit t in p.units) if (t != null && s.Contains(t) && !order.Contains(t)) order.Add(t);
+                    s = new HashSet<Unit>(order.GetRange(0, units));
+                }
                 return s;
             }
             foreach (Unit t in p.units) {
@@ -505,8 +515,9 @@ namespace HexTactica.AI {
                 // the supply unit still fits beside it (supply units move last: waiting for them, no infantry ever got the seat).
                 bool early = profile.supplySpareSeat && forSupply && !CarriesHub(t);
                 if (forSupply && (hurt || (!CarriesHub(t) && !early) || !SpareSlot(t, c))) continue;
-                // ... and only where the supply's ride takes it at least a move nearer its ground.
-                if (forSupply && !early) {
+                // ... and only where the supply's ride takes it at least a move nearer its ground (an early seat too: six riders on
+                // RiverCrossing got into supply trucks that held their links, and were let out again having gone nowhere).
+                if (forSupply) {
                     HexTile to;
                     if (ground == null || supplyGoing == null || !supplyGoing.TryGetValue(t, out to) || to == null) continue;
                     if (map.Travel(c, to, ground) + Mathf.Max(1, c.moveRange) > map.Travel(c, c.tile, ground)) continue;
