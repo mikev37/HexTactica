@@ -2877,7 +2877,7 @@ MonoBehaviour:
   editing: 1
   unit_placement: 0
   building_placement: 0
-  ut: {fileID: 8713449147333190291, guid: 7d8aaf42f45df494cad4b9ceb2a0049c, type: 3}
+  ut: {fileID: 8085186366712096832, guid: e64ec868af563ba4581b20879bae4948, type: 3}
   bt: {fileID: 1140000000000000001, guid: b49024d89d75c4b4e91f445309f4029d, type: 3}
   placeNeutral: 0
   allTerrain:
@@ -2958,6 +2958,7 @@ MonoBehaviour:
   - {fileID: 3634357295778982724, guid: 5cde8ceea8cb3814bbda6133cfaaa5c3, type: 3}
   - {fileID: 407591728977320456, guid: afad3cc80015e814b8002da8d607e56a, type: 3}
   - {fileID: 4038073078613038217, guid: 706079722219b28409ac8d11b63a7544, type: 3}
+  - {fileID: 8085186366712096832, guid: e64ec868af563ba4581b20879bae4948, type: 3}
   allBuilding:
   - {fileID: 1140000000000000001, guid: 901659d8425717b3a161e4752bed223a, type: 3}
   - {fileID: 1140000000000000001, guid: 28523e9c480d3c1037491724c322f9d2, type: 3}
@@ -7308,7 +7309,7 @@ MonoBehaviour:
   personal_name: Blue
   id: 112
   displayColor: {r: 0, g: 0.5294118, b: 1, a: 0}
-  faction: {fileID: 11400000, guid: 7f56993e7eb040b4cb1cf81d918dceee, type: 2}
+  faction: {fileID: 11400000, guid: a2b8049f249d02d41ac3403e90abea9a, type: 2}
   mainPlayer: 0
   units: []
   money: 0

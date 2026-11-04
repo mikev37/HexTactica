@@ -64,7 +64,7 @@ public static class HarnessMenu {
             UnityEngine.Debug.LogError("Enter play mode first: scenarios load onto the running board.");
             return;
         }
-        string start = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Tests", "Scenarios");
+        string start = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Assets","Resources", "Scenarios");
         string path = EditorUtility.OpenFilePanel("Load scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
         if (string.IsNullOrEmpty(path)) return;
         ScenarioLoader.RedOverride = RedChoice();
