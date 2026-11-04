@@ -735,6 +735,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3415599454814398896}
   - component: {fileID: 7660869373293408039}
+  - component: {fileID: 1077146359227921551}
   m_Layer: 0
   m_Name: missileboxBot color_1
   m_TagString: Untagged
@@ -817,6 +818,19 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &1077146359227921551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4716832669069112173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ColorObjectUnit
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &4770210938131298077
 GameObject:
   m_ObjectHideFlags: 0
@@ -842,7 +856,7 @@ Transform:
   m_GameObject: {fileID: 4770210938131298077}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.24, y: -0.19, z: 3.8188934}
+  m_LocalPosition: {x: -0.24, y: -0.19, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1183,6 +1197,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1245666851755237128}
   - component: {fileID: 1181096376979537099}
+  - component: {fileID: 1945307840831587888}
   m_Layer: 0
   m_Name: missileboxBot color
   m_TagString: Untagged
@@ -1265,6 +1280,19 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &1945307840831587888
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7063243902243177622}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ColorObjectUnit
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &7555285878654070441
 GameObject:
   m_ObjectHideFlags: 0
@@ -1381,6 +1409,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2410438569826405667}
   - component: {fileID: 1211400785886758399}
+  - component: {fileID: 6725545913701511190}
   m_Layer: 0
   m_Name: missileboxfront copy
   m_TagString: Untagged
@@ -1463,6 +1492,19 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &6725545913701511190
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7987620223338412415}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ColorObjectUnit
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &8825010249991644736
 GameObject:
   m_ObjectHideFlags: 0
@@ -1473,6 +1515,7 @@ GameObject:
   m_Component:
   - component: {fileID: 294933035509004358}
   - component: {fileID: 4732460412753617208}
+  - component: {fileID: 1395485835466566479}
   m_Layer: 0
   m_Name: missileboxfront copy_1
   m_TagString: Untagged
@@ -1555,6 +1598,19 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &1395485835466566479
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8825010249991644736}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ColorObjectUnit
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &9180230262891977789
 GameObject:
   m_ObjectHideFlags: 0
@@ -1838,6 +1894,14 @@ PrefabInstance:
     - target: {fileID: 3920588339119670945, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3980075548320932344, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -4.22
+      objectReference: {fileID: 0}
+    - target: {fileID: 3980075548320932344, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -1.57
       objectReference: {fileID: 0}
     - target: {fileID: 5645088971257779036, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: m_LocalPosition.x

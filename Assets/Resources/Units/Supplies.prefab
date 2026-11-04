@@ -68,8 +68,6 @@ MonoBehaviour:
   _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
-  refuelStock: 0
-  refuelStockMax: 0
   Firepower: 0
   Evasion: 0
   Targeting: 0
@@ -100,6 +98,7 @@ MonoBehaviour:
   suppliesMax: 3
   fuel: 30
   fuelMax: 30
+  attacksLocomotion: 
   ammo: 6
   ammoMax: 6
   transportSlots: 0
@@ -110,6 +109,9 @@ MonoBehaviour:
   trasnporter: {fileID: 0}
   cargoSlots: []
   cargoScale: 0.45
+  parachutePrefab: {fileID: 0}
+  dropHeight: 0.6
+  dropSpeed: 0.6
   threatValue: 0
   attacking: 0
   target: {fileID: 0}
