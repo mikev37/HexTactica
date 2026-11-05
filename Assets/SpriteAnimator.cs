@@ -34,5 +34,9 @@ namespace OrbitalCombat{
 				display.sprite = frames [frame];
 			}
 	    }
+
+		void OnEnable() {
+			frame = 0;
+		}
 	}
 }
