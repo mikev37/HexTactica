@@ -244,11 +244,13 @@ MonoBehaviour:
   - {fileID: 21300000, guid: ca9b4b1305c5b30438d894cf856b89e7, type: 3}
   destroyedSprite: {fileID: 21300000, guid: a05f38d1c98eb8e4f98f763babe75dfe, type: 3}
   buildable:
+  - {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
   - {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
   - {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
   - {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
   - {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
   - {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
+  - {fileID: 970299335936698322, guid: 4a73ea100d2e8544abdb09b3e4f03d87, type: 3}
   - {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
   - {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
   - {fileID: 5786757235081426029, guid: ec4cacc99bc3af24c8e309edd7a8398f, type: 3}

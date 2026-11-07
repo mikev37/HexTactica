@@ -24,6 +24,14 @@ MonoBehaviour:
     replacement: {fileID: 329171176137480340, guid: 48b769fcb29b16e48a9cf121b76336f7, type: 3}
   - original: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
     replacement: {fileID: 4038073078613038217, guid: 706079722219b28409ac8d11b63a7544, type: 3}
+  - original: {fileID: 8332758219216537460, guid: 2c783bd31ab76594580704c8a784d545, type: 3}
+    replacement: {fileID: 3714809382154615324, guid: 45f7063f9ca954a43bbef07b9f4ca6fd, type: 3}
+  - original: {fileID: 6711033188123618812, guid: 0ce975b05de89eb41b42a36469e4dd0c, type: 3}
+    replacement: {fileID: 5804396588781785836, guid: fa4643f9ab7a39d498cb8b3c4332a528, type: 3}
+  - original: {fileID: 970299335936698322, guid: 4a73ea100d2e8544abdb09b3e4f03d87, type: 3}
+    replacement: {fileID: 3063376280685027530, guid: 6826372384fac40478bb212bb1a004a9, type: 3}
+  - original: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+    replacement: {fileID: 830376307892412820, guid: b764f657da89ed54cb89b09f56ca99a2, type: 3}
   removed:
   - {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
   extras: []

@@ -2960,6 +2960,7 @@ MonoBehaviour:
   - {fileID: 4038073078613038217, guid: 706079722219b28409ac8d11b63a7544, type: 3}
   - {fileID: 8085186366712096832, guid: e64ec868af563ba4581b20879bae4948, type: 3}
   - {fileID: 6954747205806243546, guid: 3ecc13ed38aef364388c92cb7ece16b3, type: 3}
+  - {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
   allBuilding:
   - {fileID: 1140000000000000001, guid: 901659d8425717b3a161e4752bed223a, type: 3}
   - {fileID: 1140000000000000001, guid: 28523e9c480d3c1037491724c322f9d2, type: 3}
@@ -3069,7 +3070,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hextile: {fileID: 1846999963862011126, guid: 2c71dd49a7631da40909807c380fc021, type: 3}
   off: 0
-  width: 35
+  width: 21
   tiles: []
 --- !u!4 &601518213
 Transform:
