@@ -2872,12 +2872,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1f297b87684c8d4daab7d06ad541fb3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  td: {fileID: 11400000, guid: 8e0ebeec86b53fc45b2f0dec7dff2849, type: 2}
+  td: {fileID: 11400000, guid: f2b4e2292174082468b25faa2d77b347, type: 2}
   mouseDown: 0
   editing: 1
   unit_placement: 0
   building_placement: 0
-  ut: {fileID: 8713449147333190291, guid: 7d8aaf42f45df494cad4b9ceb2a0049c, type: 3}
+  ut: {fileID: 6954747205806243546, guid: 3ecc13ed38aef364388c92cb7ece16b3, type: 3}
   bt: {fileID: 1140000000000000001, guid: b49024d89d75c4b4e91f445309f4029d, type: 3}
   placeNeutral: 0
   allTerrain:
@@ -2958,6 +2958,9 @@ MonoBehaviour:
   - {fileID: 3634357295778982724, guid: 5cde8ceea8cb3814bbda6133cfaaa5c3, type: 3}
   - {fileID: 407591728977320456, guid: afad3cc80015e814b8002da8d607e56a, type: 3}
   - {fileID: 4038073078613038217, guid: 706079722219b28409ac8d11b63a7544, type: 3}
+  - {fileID: 8085186366712096832, guid: e64ec868af563ba4581b20879bae4948, type: 3}
+  - {fileID: 6954747205806243546, guid: 3ecc13ed38aef364388c92cb7ece16b3, type: 3}
+  - {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
   allBuilding:
   - {fileID: 1140000000000000001, guid: 901659d8425717b3a161e4752bed223a, type: 3}
   - {fileID: 1140000000000000001, guid: 28523e9c480d3c1037491724c322f9d2, type: 3}
@@ -3067,7 +3070,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   hextile: {fileID: 1846999963862011126, guid: 2c71dd49a7631da40909807c380fc021, type: 3}
   off: 0
-  width: 27
+  width: 21
   tiles: []
 --- !u!4 &601518213
 Transform:
@@ -7308,7 +7311,7 @@ MonoBehaviour:
   personal_name: Blue
   id: 112
   displayColor: {r: 0, g: 0.5294118, b: 1, a: 0}
-  faction: {fileID: 11400000, guid: 7f56993e7eb040b4cb1cf81d918dceee, type: 2}
+  faction: {fileID: 11400000, guid: a2b8049f249d02d41ac3403e90abea9a, type: 2}
   mainPlayer: 0
   units: []
   money: 0
@@ -7339,7 +7342,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1811020725}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a01ccbc100d83bd4084c2a803c92602b, type: 3}
   m_Name: 
@@ -7468,6 +7471,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1909610620}
   - component: {fileID: 1909610619}
+  - component: {fileID: 1909610621}
   m_Layer: 0
   m_Name: Redplayer
   m_TagString: Untagged
@@ -7514,6 +7518,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1909610621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1909610618}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93e99b5402014be5b4d38f1deaf9a4e6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexTactica.OldAI.OldAIPlayer
+  player: {fileID: 0}
+  objective: {fileID: 0}
+  profile: {fileID: 0}
+  actionInterval: 0.5
+  maxAnimationWait: 3
+  holdForRetreats: 0
+  objectivePulls: 0
+  turnsPlayed: 0
 --- !u!1 &1968988495
 GameObject:
   m_ObjectHideFlags: 0

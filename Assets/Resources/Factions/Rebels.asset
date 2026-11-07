@@ -24,6 +24,12 @@ MonoBehaviour:
     replacement: {fileID: 1176828579860061444, guid: 3ae4c30f8c245c742b722f658f08299c, type: 3}
   - original: {fileID: 9081080694409079478, guid: bef79f3571dc6a548ad283decf31b0d7, type: 3}
     replacement: {fileID: 2273720086581548995, guid: 33f255ce931aa2b45a65cb0458762fd2, type: 3}
+  - original: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+    replacement: {fileID: 6434052553394529519, guid: dc9228997e94377448a7ff274b644ad9, type: 3}
+  - original: {fileID: 970299335936698322, guid: 4a73ea100d2e8544abdb09b3e4f03d87, type: 3}
+    replacement: {fileID: 3922898805479089319, guid: 6e330b5ed1ade9146a2f7fec62910b4b, type: 3}
+  - original: {fileID: 5786757235081426029, guid: ec4cacc99bc3af24c8e309edd7a8398f, type: 3}
+    replacement: {fileID: 4208046909270650247, guid: 287299a3eca21a645ab92ebe9b9171d1, type: 3}
   removed:
   - {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
   - {fileID: 9081080694409079478, guid: 23e1a5730bfd3039f29b7eb74e603542, type: 3}

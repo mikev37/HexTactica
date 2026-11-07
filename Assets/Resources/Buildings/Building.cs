@@ -181,6 +181,7 @@ public class Building : MonoBehaviour {
         damage = Mathf.Min(health, damage + amount);
         RefreshCondition();
         if (Destroyed && !was) {
+            owner = null;
             Changed();
             if (BuildingDestroyed != null) BuildingDestroyed(this);
         }

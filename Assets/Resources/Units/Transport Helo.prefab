@@ -1132,6 +1132,10 @@ PrefabInstance:
       propertyPath: 'cargoSlots.Array.data[0]'
       value: 
       objectReference: {fileID: 6769290761442505894}
+    - target: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
+      propertyPath: attacksLocomotion.Array.size
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 1322327045425269708, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}

@@ -1257,8 +1257,6 @@ public class Unit : MonoBehaviour
         if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion))
             cover = Math.Min(defender.Concealment, tile.EffectiveCover);
         int minDamage = 1;
-		if (LocomotionRules.IsAirborne(defender.locomotion))
-            minDamage = 0;
         return (int) Mathf.Max(minDamage, Mathf.Floor(
             (destruction / penetration / aquire - cover)
             * (attacker.Strength - firstStrike) / toughness));
