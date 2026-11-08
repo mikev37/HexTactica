@@ -1356,7 +1356,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     HexTile beside = null;
                     if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
                     else foreach (HexTile n in truck.tile.neighbors) {
-                        if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, truck.tile, truck)) continue;
+                        if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(truck, unit, n)) continue;
                         if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                     }
                     if (beside != null) {
@@ -1723,7 +1723,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile b = null;
                 if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
                 else foreach (HexTile n in t.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
                     if (b == null || CombatMath.Precedes(n, b)) b = n;
                 }
                 if (b == null) continue;
@@ -1791,7 +1791,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile b = null;
                 if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
                 else foreach (HexTile n in t.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
                     if (b == null || CombatMath.Precedes(n, b)) b = n;
                 }
                 if (b == null) continue;
@@ -1982,7 +1982,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             HexTile at = null;
             if (Transporting.CanBoardFrom(t, unit)) at = unit.tile;
             else foreach (HexTile n in t.tile.neighbors) {
-                if (n == null || (n != unit.tile && n.occupier != null) || !reach.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                if (n == null || !reach.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
                 if (at == null || CombatMath.Precedes(n, at)) at = n;
             }
             if (at == null) continue;
@@ -2148,7 +2148,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile beside = null;
                 if (Transporting.CanBoardFrom(mine, unit)) beside = unit.tile;
                 else foreach (HexTile n in mine.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, mine.tile, mine)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(mine, unit, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 HexTile drop0 = isLink && link != unit.tile && mine.CanEnter(link) && link.occupier == null ? link : mine.tile;
@@ -2200,7 +2200,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile beside = null;
                 if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
                 else foreach (HexTile n in truck.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, truck.tile, truck)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(truck, unit, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) { transportAssignments[truck] = go; action = AIAction.Board(unit, truck, beside, "logistics for " + t.front.Id + ": boards a truck to (" + claim.to.x + "," + claim.to.y + ")"); return true; }

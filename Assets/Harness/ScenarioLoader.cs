@@ -34,8 +34,7 @@ namespace HexTactica.Harness {
         }
 
         /// <summary>
-        /// Restore the board to a saved state. Mirrors LevelEditor.Load, but without
-        /// depending on keyboard input, and clears buildings as well as units.
+        /// Restore the board to a saved state (the one loader: the L key, the HexTactica menu and the harness all use it).
         /// </summary>
         public static bool LoadBoard(string fileName) {
             return LoadBoardFromPath(PathFor(fileName));
@@ -106,13 +105,7 @@ namespace HexTactica.Harness {
                     // side's turns were then skipped for the rest of the game).
                     if (loaded != null) loaded.eliminated = false;
                 }
-                JSONObject active = obj.GetField("active");
-                if (active != null && GameController.gc != null) {
-                    long activeId = active.longValue;
-                    GameController.gc.players.ForEach(pl => {
-                        if (pl.id == activeId) GameController.gc.activePlayer = pl;
-                    });
-                }
+                // (Who moves first: ApplyTestBlock, below.)
             }
 
             if (obj.GetField("buildings")) {

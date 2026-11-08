@@ -15,9 +15,8 @@ public static class BuildingMenu {
 
     public static bool Covers(UnityEngine.Vector3 mouse) { return open != null && CoversPoint != null && CoversPoint(mouse); }
 
-    /// <summary>The player whose turn it is plays by hand (no AI playing it).</summary>
+    /// <summary>The player whose turn it is plays by hand (no AI playing it, the baseline AIs included: FogOfWar.IsHuman).</summary>
     public static bool IsHumanTurn() {
-        if (GameController.gc == null || GameController.gc.activePlayer == null) return false;
-        return AIControl.Of(GameController.gc.activePlayer) == null;
+        return GameController.gc != null && FogOfWar.IsHuman(GameController.gc.activePlayer);
     }
 }

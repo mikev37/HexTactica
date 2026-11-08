@@ -89,8 +89,7 @@ public static class HarnessMenu {
         string start = Path.Combine(Application.dataPath, "Scenarios");
         string path = EditorUtility.SaveFilePanel("Save scenario", Directory.Exists(start) ? start : Application.dataPath, "NewScenario", "dat");
         if (string.IsNullOrEmpty(path)) return;
-        File.WriteAllText(path, LevelEditor.BoardJson());
-        UnityEngine.Debug.Log("Saved scenario " + path);
+        LevelEditor.SaveBoard(path);
         if (path.Replace('\\', '/').StartsWith(Application.dataPath)) AssetDatabase.Refresh();
     }
 
