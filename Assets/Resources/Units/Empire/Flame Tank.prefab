@@ -416,6 +416,10 @@ PrefabInstance:
       propertyPath: Firepower
       value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: ignoresCover
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 3742740318116201936, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}

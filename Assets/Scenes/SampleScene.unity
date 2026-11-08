@@ -3039,6 +3039,7 @@ MonoBehaviour:
   gameOver: 1
   winner: {fileID: 0}
   headless: 0
+  maxEndTurnWait: 10
 --- !u!1 &601518211
 GameObject:
   m_ObjectHideFlags: 0
