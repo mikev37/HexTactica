@@ -27,7 +27,7 @@ namespace HexTactica.Harness {
             };
             // Owners and capture progress of units and buildings, and who moves first. The player
             // list itself ("id") is left alone.
-            json = Regex.Replace(json, "(\"(?:owner_id|capturingPlayerId)\"\\s*:\\s*)(-?\\d+)", Swap);
+            json = Regex.Replace(json, "(\"(?:owner_id|capturingPlayerId|home_id)\"\\s*:\\s*)(-?\\d+)", Swap);
             json = Regex.Replace(json, "(\"active\"\\s*:\\s*)(-?\\d+)", Swap);   // units' "active" is true/false, never a number
             return json;
         }

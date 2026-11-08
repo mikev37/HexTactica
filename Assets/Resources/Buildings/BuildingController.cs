@@ -44,6 +44,7 @@ public class BuildingController : MonoBehaviour {
     public Building Adopt(Building made, Player player, HexTile tile) {
         if (made == null) return null;
         made.owner = player;
+        made.Home = player;
         made.Occupy(tile);
         if (!buildings.Contains(made)) buildings.Add(made);
         if (!Building.all.Contains(made)) Building.all.Add(made);
@@ -98,6 +99,9 @@ public struct BuildingData {
     public int damageLevel;
     public int capturePoints;
     public long capturingPlayerId;
+    /// <summary>Whose it was when the game began (Building.Home); older saves have none: the owner.</summary>
+    public bool hasHome;
+    public long home_id;
 
     public BuildingData(Building b) {
         x = b.tile != null ? b.tile.x : 0;
@@ -115,6 +119,8 @@ public struct BuildingData {
         damageLevel = b.damage;
         capturePoints = b.capturePoints;
         capturingPlayerId = b.capturingPlayer != null ? b.capturingPlayer.id : -1;
+        hasHome = true;
+        home_id = b.Home != null ? b.Home.id : -1;
     }
 
     public Building load() {
@@ -122,9 +128,11 @@ public struct BuildingData {
 
         Player owner = null;
         Player capturing = null;
+        Player home = null;
         GameController.gc.players.ForEach(pl => {
             if (pl.id == that.owner_id) owner = pl;
             if (pl.id == that.capturingPlayerId) capturing = pl;
+            if (that.hasHome && pl.id == that.home_id) home = pl;
         });
 
         HexTile tile = HexGenerator.hg.get(x, y, z);
@@ -135,6 +143,7 @@ public struct BuildingData {
         if (b == null) return null;
 
         if (!string.IsNullOrEmpty(personal_name)) b.personal_name = personal_name;
+        b.Home = hasHome ? home : owner;
         b.supplies = supplies;
         b.damage = Mathf.Max(0, damageLevel);
         b.RefreshCondition();

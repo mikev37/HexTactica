@@ -59,6 +59,10 @@ public class Building : MonoBehaviour {
         get { BoardView v = BoardView.current; return v != null && v.Has(this) ? v.OwnerOf(this) : _owner; }
         set { BoardView v = BoardView.current; if (v != null && v.Has(this)) v.SetOwner(this, value); else _owner = value; }
     }
+    [Tooltip("Whose it was when the game began (set on placement: the owner then). An HQ supplies only this side: one captured supplies nobody until it is retaken.")]
+    [SerializeField] Player home;
+    /// <summary>Whose it was when the game began (an HQ supplies only them).</summary>
+    public Player Home { get { return home; } set { home = value; } }
     internal Player RealOwner { get { return _owner; } }
     internal Player RealCapturingPlayer { get { return _capturingPlayer; } }
     internal int RealCapturePoints { get { return _capturePoints; } }
@@ -221,6 +225,7 @@ public class Building : MonoBehaviour {
     }
 
     void Start() {
+        if (home == null) home = _owner;   // placed in the scene: whose it is as the game starts
         if (sprite != null && intactSprite == null) intactSprite = sprite.sprite;
         RefreshCondition();
     }
@@ -469,7 +474,7 @@ public class Building : MonoBehaviour {
 
     /// <summary>HQs never run dry; any other supply building gives while its store lasts (or while connected).</summary>
     public bool HasSupplyToGive {
-        get { return producesSupply && Functioning && (IsHQ || supplies > 0); }
+        get { return producesSupply && Functioning && (IsHQ ? owner == Home : supplies > 0); }
     }
 
     public void SpendSupply(int amount) {

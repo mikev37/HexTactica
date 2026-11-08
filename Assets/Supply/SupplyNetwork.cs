@@ -162,7 +162,7 @@ public static class SupplyNetwork {
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];
             if (b == null || b.owner != player || !b.producesSupply || b.tile == null || !b.Functioning) continue;   // a destroyed building supplies nothing
-            if (b.IsHQ) FloodFromBuilding(b, result);
+            if (b.IsHQ) { if (b.Home == player) FloodFromBuilding(b, result); }   // a captured HQ supplies nobody (only its own side, once retaken)
             else relayBuildings.Add(b);
         }
         relayBuildings.Sort((a, b) => CompareBuildings(a, b));
@@ -502,9 +502,11 @@ public static class SupplyNetwork {
                               SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
         if (transport == null || at == null) return false;
         bool ship = LocomotionRules.IsNaval(transport.locomotion), air = LocomotionRules.IsAirborne(transport.locomotion);
-        if (WithinMoveOfSupply(transport, at, result)) return true;
+        // A ship tries its convoy first: the shore another ship supplies is ground it could reach, but the link (and
+        // the line drawn for it) is that ship, along the water — not across the land beside them both.
+        if (!ship && WithinMoveOfSupply(transport, at, result)) return true;
         if (!ship && !air) return false;
-        Result reach = null;
+        HashSet<HexTile> reach = null;
         SupplyPoint best = null; HexTile bestTile = null;
         foreach (SupplyPoint other in hubs) {
             if (other == null || other == hub || other.producer || !activated.Contains(other) || other.myUnit == null) continue;
@@ -515,24 +517,25 @@ public static class SupplyNetwork {
             if (ct == null) continue;
             if (ship ? !(cShip || cAir) : !(cShip && Unit.BordersLand(ct))) continue;
             if (reach == null) reach = MoveReach(transport, at);
-            bool near = reach.depth.ContainsKey(ct);
-            if (!near) foreach (HexTile n in ct.neighbors) if (n != null && reach.depth.ContainsKey(n)) { near = true; break; }
+            bool near = reach.Contains(ct);
+            if (!near) foreach (HexTile n in ct.neighbors) if (n != null && reach.Contains(n)) { near = true; break; }
             if (near && (best == null || CombatMath.Precedes(ct, bestTile))) { best = other; bestTile = ct; }
         }
-        if (best == null) return false;
+        if (best == null) return ship && WithinMoveOfSupply(transport, at, result);
         result.linkedThrough[hub] = best;
         return true;
     }
 
     /// <summary>
-    /// The tiles <paramref name="mover"/> on <paramref name="at"/> can reach in one move, its own tile included, moving as
-    /// it moves. (Flooded with one point more than its move: the flood keeps a tile only while points are left over, so a
-    /// tile reached with its last point was dropped — "within one move" fell a tile short for every transport.)
+    /// The tiles <paramref name="mover"/> on <paramref name="at"/> can reach in one move, its own tile included: the
+    /// player's own move field (AIPath.ThisTurnFrom, as HexTile shows moves), so supply reach is exactly movement.
     /// </summary>
-    static Result MoveReach(Unit mover, HexTile at) {
-        Result reach = new Result();
-        Flood(at, mover.moveRange + 1, mover.terrainScramble, mover.owner, mover.locomotion, reach, true);
-        reach.depth[at] = mover.moveRange + 1;
+    static HashSet<HexTile> MoveReach(Unit mover, HexTile at) {
+        HashSet<HexTile> reach = new HashSet<HexTile>();
+        reach.Add(at);
+        HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurnFrom(mover, at, HexTactica.AI.AIPath.RangeThisTurn(mover));
+        foreach (HexTile t in f.Tiles) if (f.ReachableThisTurn(t)) reach.Add(t);
+        HexTactica.AI.AIPath.Release(f);
         return reach;
     }
 
@@ -541,18 +544,19 @@ public static class SupplyNetwork {
     }
 
     /// <summary>
-    /// Is there supplied ground within one move of <paramref name="transport"/> standing on
-    /// <paramref name="at"/>, moving as it moves (its range, terrain and locomotion; enemies block)?
+    /// Can <paramref name="transport"/> standing on <paramref name="at"/> get its cargo to supplied ground in one move,
+    /// moving as it moves (its range, terrain, fuel and locomotion; enemies block)? A land transport or an aircraft must
+    /// reach a supplied ground tile itself; a ship, which cannot go ashore, one beside the water it reaches (or a
+    /// supplied harbor it can enter). Water is never supplied ground (a ship's supply covers the water it floats on,
+    /// but nothing links to that).
     /// </summary>
     public static bool WithinMoveOfSupply(Unit transport, HexTile at, Result result) {
         if (transport == null || at == null) return false;
         if (SuppliedGround(at, result)) return true;
-        Result reach = MoveReach(transport, at);
-        // Onto supplied ground, or beside it (the cargo can step off there). Ground only: water is never supplied
-        // ground (a ship's supply covers the water it floats on, but nothing links to that).
-        foreach (HexTile t in reach.depth.Keys) {
+        bool ship = LocomotionRules.IsNaval(transport.locomotion);
+        foreach (HexTile t in MoveReach(transport, at)) {
             if (SuppliedGround(t, result)) return true;
-            foreach (HexTile n in t.neighbors) if (SuppliedGround(n, result)) return true;
+            if (ship) foreach (HexTile n in t.neighbors) if (SuppliedGround(n, result)) return true;
         }
         return false;
     }
