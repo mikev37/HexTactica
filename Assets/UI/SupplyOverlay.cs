@@ -12,7 +12,7 @@ using UnityEngine;
 ///     from there is shown on the board in place of the real supply, until the move is made or
 ///     another tile is picked.
 /// With any of your units selected, a picked tile that would take it out of supply says so on the
-/// unit ("Leaves supply") and is tinted.
+/// unit ("Leaves supply"). (The tile itself is not tinted: the board's supply borders already show it.)
 /// Everything follows the picked tile, not the pointer, so it works the same with a finger.
 /// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there.
 /// </summary>
@@ -27,8 +27,6 @@ public class SupplyOverlay : MonoBehaviour {
     Unit shownUnit;
     HexTile shownTile;
     Player previewPlayer;
-    HexTile warnedTile;
-    Color warnedColour;
     bool warnedText;
     int shownFrameCheck;
 
@@ -77,7 +75,6 @@ public class SupplyOverlay : MonoBehaviour {
         // Leaving supply: supplied where it stands, not where it is going.
         // (As the screen's player knows the board: under fog an enemy it does not see does not cut supply here.)
         if (dest != null && u.tile.isSuppliedShown(p) && !dest.isSuppliedShown(p) && !movingHub) {
-            if (dest.overlay != null) { warnedTile = dest; warnedColour = dest.overlay.color; dest.overlay.color = new Color(1f, 0.55f, 0.1f, 1f); }
             if (u.textArea != null) { u.textArea.text = "Leaves supply"; warnedText = true; }
         }
         // The line is for supply units (and what carries them): where their supply comes from.
@@ -100,8 +97,6 @@ public class SupplyOverlay : MonoBehaviour {
         foreach (LineRenderer l in lines) if (l != null) l.gameObject.SetActive(false);
         if (previewPlayer != null) SupplyNetwork.Solve(previewPlayer, false);   // the real field back
         previewPlayer = null;
-        if (warnedTile != null && warnedTile.overlay != null) warnedTile.overlay.color = warnedColour;
-        warnedTile = null;
         if (warnedText && shownUnit != null && shownUnit.textArea != null) shownUnit.textArea.text = "";
         warnedText = false;
     }
