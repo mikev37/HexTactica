@@ -677,7 +677,7 @@ public static class Scenarios {
                  Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0);
                  Rig.At(3, -2).terrain = T("Bridge"); Rig.At(3, -2).road = true; Put("Grunt", a, 3, -2);
                  Rig.PlaceBuilding("City", a, -3, 2); Put("Grunt", a, -3, 2); Put("Supplies", a, -4, 3); },
-             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit until it falls into what its data says (TerrainData.destroyedInto, down to a water terrain that takes no damage), leaves no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it earns, supplies and builds nothing until repaired. Water takes no damage.");
+             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit until it falls into what its data says (TerrainData.destroyedInto, down to a water terrain that takes no damage), leaves no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it becomes neutral and earns, supplies and builds nothing; a ruin cannot be captured, so the grunt on it takes it back only once it is repaired (from 0: two turns), and it earns again. Water takes no damage.");
         make("rule-line-of-fire", "lineOfFire", (a, o) => { Rig.At(0, 0).terrain = T("Hills"); Put("Tank", a, -1, 0); Put("Artillery", a, -1, 2); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
              "Direct fire does not go through higher ground (CombatMath.LineOfFire): a tank given range 2 cannot fire at a grunt two tiles off across a hill — not the player's target list, not the AI's appraisal, not its executor — but can over grassland, or from a hill of its own height. Artillery (fires without moving) lobs over the hill.");
         make("rule-board-through-friend", "boardThroughFriend", (a, o) => {
@@ -3087,10 +3087,17 @@ public static class Scenarios {
                 a.Resupply();
                 int hqIncome = GameController.HQOf(a) != null ? GameController.HQOf(a).income : 0;
                 bool stopped = destroyed && earned == hqIncome && !city.HasSupplyToGive && !city.CanProduce;
+                // Destroyed it went neutral, and a ruin cannot be captured: the Blue grunt on it took nothing back.
+                bool ruinNeutral = city.owner == null && city.capturingPlayer == null && city.capturePoints == 0;
                 city.Repair(1);
+                // Repaired, it is taken again from 0 by the grunt standing on it (6, then 12: Blue's), and earns again.
+                int turns = 0;
+                while (city.owner != a && turns < 4) { gc.EndTurn(); gc.EndTurn(); turns++; }
                 int m1 = a.money; gc.EndTurn(); gc.EndTurn(); int earnedAgain = a.money - m1;
-                bool back = !city.Destroyed && earnedAgain == hqIncome + city.income;
-                r.Add("city: ground untouched, destroyed " + destroyed + ", turn's income " + earned + " (the HQ's " + hqIncome + "), no supply or production " + stopped + "; repaired by 1: income " + earnedAgain + " " + back);
+                bool back = !city.Destroyed && city.owner == a && turns == 2 && earnedAgain == hqIncome + city.income;
+                r.Add("city: ground untouched, destroyed " + destroyed + ", turn's income " + earned + " (the HQ's " + hqIncome + "), no supply or production " + stopped
+                      + "; as a ruin neutral and not taken back " + ruinNeutral + "; repaired by 1, retaken in " + turns + " turns: income " + earnedAgain + " " + back);
+                back = back && ruinNeutral;
                 // Water takes nothing.
                 HexTile w = bridge;
                 TerrainData wasWater = w.terrain;
