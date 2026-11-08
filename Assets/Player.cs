@@ -42,9 +42,9 @@ public class Player : MonoBehaviour
 
         // Snapshot the list: attrition can remove units mid-iteration.
         List<Unit> roster = new List<Unit>(units);
-        // Air tankers resupply this turn if they started it with supplies (whatever order the roster runs in).
+        // Air tankers and supply ships resupply this turn if they started it with supplies (whatever order the roster runs in).
         tankersStocked.Clear();
-        foreach (Unit t in roster) if (t != null && t.airTanker && t.supplies > 0) tankersStocked.Add(t);
+        foreach (Unit t in roster) if (t != null && (t.airTanker || IsSupplyShip(t)) && t.supplies > 0) tankersStocked.Add(t);
         InUpkeep = true;
         try {
             for (int i = 0; i < roster.Count; i++) {
@@ -159,11 +159,19 @@ public class Player : MonoBehaviour
         // them, it weakens a strength a turn, like any unit out of supply. An air tanker too: while it has
         // supplies it also resupplies the aircraft beside it, at no further cost.
         if (u.suppliesMax > 0) {
-            if (u.supplies > 0) u.supplies--;
-            else {
+            if (u.supplies > 0) {
+                u.supplies--;
+                // A ship mends itself at sea while it has supplies (its crew's repairs): a strength a turn, until sunk.
+                if (LocomotionRules.IsNaval(u.locomotion)) u.Strength = Mathf.Min(6, u.Strength + 1);
+            } else {
                 u.Strength = Mathf.Max(0, u.Strength - 1);
                 if (u.Strength <= 0) { unitsLostToAttrition++; u.Perish(); return; }
             }
+        }
+        // A supply ship beside it at the start of the turn refuels and restocks a ship, as an air tanker does an aircraft.
+        if (LocomotionRules.IsNaval(u.locomotion) && (u.fuelMax > 0 || u.suppliesMax > 0)) {
+            Unit tender = TankerBeside(u, roster);
+            if (tender != null) { u.fuel = u.fuelMax; u.supplies = u.suppliesMax; }
         }
         if (LocomotionRules.IsAirborne(u.locomotion) && u.fuelMax > 0) {
             Unit tanker = TankerBeside(u, roster);
@@ -181,12 +189,25 @@ public class Player : MonoBehaviour
         }
     }
 
-    /// <summary>A friendly air tanker beside <paramref name="u"/> that started the turn with supplies. A tanker is never resupplied by another.</summary>
+    /// <summary>
+    /// A supply ship: a ship carrying a supply point of its own (a supply boat). It tends the ships beside it as an air
+    /// tanker does the aircraft beside it (Aloft).
+    /// </summary>
+    public static bool IsSupplyShip(Unit u) {
+        return u != null && LocomotionRules.IsNaval(u.locomotion) && u.Hub != null && !u.Hub.producer;
+    }
+
+    /// <summary>
+    /// The tender beside <paramref name="u"/> that started the turn with supplies: for an aircraft an air tanker, for a
+    /// ship a supply ship. A tanker (or supply ship) is never resupplied by another.
+    /// </summary>
     Unit TankerBeside(Unit u, List<Unit> roster) {
-        if (u.airTanker) return null;
+        bool ship = LocomotionRules.IsNaval(u.locomotion);
+        if (u.airTanker || (ship && IsSupplyShip(u))) return null;
         for (int i = 0; i < roster.Count; i++) {
             Unit t = roster[i];
-            if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || !tankersStocked.Contains(t)) continue;
+            if (t == null || t == u || t.tile == null || t.Strength <= 0 || !tankersStocked.Contains(t)) continue;
+            if (ship ? !IsSupplyShip(t) : !t.airTanker) continue;
             if (u.tile.neighbors.Contains(t.tile)) return t;
         }
         return null;

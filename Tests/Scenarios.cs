@@ -692,6 +692,17 @@ public static class Scenarios {
                  Rig.PlaceBuilding("NavalYard", a, -3, 0);
                  Put("SupplyBoat", a, -1, 0); Put("SupplyBoat", a, 1, 0); Put("Grunt", a, 3, 0); Put("Grunt", o, 4, 3); },
              "A strait four tiles wide: the HQ's supply stops at the water. Two supply boats link from beside the naval yard (in supply) to each other, and the far one supplies the island it borders. With the far boat moved out to sea, the island grunt is not supplied.");
+        make("attrition-rule-ship-mends", "shipMends", (a, o) => { water(-2, 2, -7, 7); Unit g = Put("Gunboat", a, 0, 0); g.Strength = 3; g.supplies = 5; Unit dry = Put("Gunboat", a, 0, 4); dry.Strength = 3; dry.supplies = 0; Put("Grunt", o, 5, 0); },
+             "Ships mend themselves at sea while they have supplies: a Gunboat at strength 3 with 5 supplies is at 4 (4 supplies) after a turn, 5 after two; one with no supplies left loses a strength instead.");
+        make("attrition-rule-supply-ship-tends", "shipTender", (a, o) => { water(-2, 2, -7, 7); Unit sb = Put("SupplyBoat", a, 0, 0); sb.supplies = 5; Unit g = Put("Gunboat", a, 1, 0); g.fuel = 10; g.supplies = 1; Unit far = Put("Gunboat", a, 0, 5); far.fuel = 10; Unit sb2 = Put("SupplyBoat", a, -1, 0); sb2.fuel = 10; Put("Grunt", o, 5, 0); },
+             "A supply ship refuels and restocks the ships beside it at the start of the turn, as an air tanker does aircraft: the Gunboat beside it (fuel 10, 1 supply) is full after a turn; one away from it is not; a supply ship beside it is not tended by it (a tender is never tended by another).");
+        make("attrition-rule-ship-carried-supply", "shipCarriedSupply", (a, o) => {
+                 water(-4, 5, -7, 7);
+                 Put("TransportShip", a, 5, 0); Put("TransportShip", a, 0, 0); Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
+                 Put("Grunt", a, 6, -1); Put("Grunt", o, 7, -2); },
+             "A supply unit aboard a ship spreads supply to the shore only when the ship is beside the shore and either (B) within its move of a tile beside supplied ground, or (C) within its move of another supply-carrying ship that is in condition B. Ten tiles of sea between Blue's shore and an island: a ship by the island with supplies aboard, 9 tiles out, is not linked on its own; with a second ship carrying supplies 4 tiles off Blue's shore (B, but out at sea: not itself beside a shore, so it spreads nothing) within its move, it is, and the Blue grunt on the island is supplied. Brought beside the island near Blue's own shore it is linked by B.");
+        make("rule-harbor-open", "harborOpen", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Rig.At(-3, 4).terrain = T("Bridge"); Put("Grunt", a, -3, 1); Put("Grunt", a, -4, 4); Put("Gunboat", a, 0, 0); Put("Grunt", o, 5, 0); },
+             "A harbor (a naval yard's tile, on bridge ground) is open from every side: a grunt steps onto it from grassland with no road, a ship from the water, and supply reaches it from the land around it. A plain bridge keeps the road rule: the same grunt step onto one is refused.");
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board and unparented. Getting off costs nothing: having boarded this turn it is still spent; aboard at the start of a turn, it is still free to act once unloaded.");
         make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
@@ -3230,6 +3241,49 @@ public static class Scenarios {
                 detail = "naval yard in supply " + yardSupplied + "; island grunt supplied with both boats " + withBoats + ", without the far one " + withoutFar
                          + "; boats linked " + with.connectedHubs.Count;
                 return yardSupplied && withBoats && !withoutFar && linked == 2;
+            }
+            case "shipMends": {
+                Unit g = Rig.At(0, 0).occupier, dry = Rig.At(0, 4).occupier;
+                endTurn(); endTurn(); string one = g.Strength + " (" + g.supplies + " supplies)";
+                bool ok1 = g.Strength == 4 && g.supplies == 4 && dry.Strength == 2;
+                endTurn(); endTurn();
+                detail = "with supplies: 3 -> " + one + " -> " + g.Strength + "; without: 3 -> " + dry.Strength + " after two turns";
+                return ok1 && g.Strength == 5 && dry.Strength == 1;
+            }
+            case "shipTender": {
+                Unit g = Rig.At(1, 0).occupier, far = Rig.At(0, 5).occupier, sb2 = Rig.At(-1, 0).occupier;
+                endTurn(); endTurn();
+                detail = "beside it: fuel " + g.fuel + "/" + g.fuelMax + ", supplies " + g.supplies + "/" + g.suppliesMax + "; away: fuel " + far.fuel + "; the supply ship beside it: fuel " + sb2.fuel;
+                return g.fuel == g.fuelMax && g.supplies == g.suppliesMax && far.fuel == 10 && sb2.fuel == 10;
+            }
+            case "shipCarriedSupply": {
+                Unit far = Rig.At(5, 0).occupier, near = Rig.At(0, 0).occupier;
+                Unit s1 = Rig.At(-6, 2).occupier, s2 = Rig.At(-6, 3).occupier, g = Rig.At(6, -1).occupier;
+                Action<Unit, Unit> aboard = (ship, sup) => { sup.tile.occupier = null; sup.tile = ship.tile; sup.trasnporter = ship; ship.transported.Add(sup); };
+                aboard(far, s1);
+                SupplyNetwork.Result alone = SupplyNetwork.Solve(a, false);
+                bool aloneOut = !alone.connectedHubs.Contains(s1.Hub) && !alone.IsSupplied(g.tile);
+                aboard(near, s2);
+                SupplyNetwork.Result relay = SupplyNetwork.Solve(a, false);
+                bool viaC = relay.connectedHubs.Contains(s1.Hub) && relay.IsSupplied(g.tile);
+                bool nearSpreadsNot = !relay.connectedHubs.Contains(s2.Hub);   // out at sea, beside no shore
+                // The far ship brought in beside Blue's own shore: B on its own.
+                near.TeleportTo(Rig.At(0, 6), 0); s2.tile = near.tile;
+                far.TeleportTo(Rig.At(-4, 1), 0); s1.tile = far.tile;
+                SupplyNetwork.Result home = SupplyNetwork.Solve(a, false);
+                bool viaB = home.connectedHubs.Contains(s1.Hub);
+                detail = "island ship alone: linked " + !aloneOut + "; with a B ship within its move: linked and island grunt supplied " + viaC + " (the B ship at sea spreads nothing " + nearSpreadsNot + "); beside Blue's shore: linked " + viaB;
+                return aloneOut && viaC && nearSpreadsNot && viaB;
+            }
+            case "harborOpen": {
+                HexTile yard = Rig.At(-2, 0), bridge = Rig.At(-3, 4);
+                Unit g = Rig.At(-3, 1).occupier, g2 = Rig.At(-4, 4).occupier, boat = Rig.At(0, 0).occupier;
+                bool landStep = LocomotionRules.BridgeStep(g.tile, yard, g.locomotion) && AIPath.ThisTurn(g).ReachableThisTurn(yard);
+                bool shipStep = AIPath.ThisTurn(boat).ReachableThisTurn(yard);
+                bool supplied = SupplyNetwork.Solve(a, false).IsSupplied(yard);
+                bool bridgeHeld = !LocomotionRules.BridgeStep(g2.tile, bridge, g2.locomotion);
+                detail = "grunt onto the harbor from grassland " + landStep + "; ship onto it from the water " + shipStep + "; harbor in supply " + supplied + "; plain bridge still road-only " + bridgeHeld;
+                return landStep && shipStep && supplied && bridgeHeld;
             }
             case "attritionTransport": {
                 Unit apc = Rig.At(-3, 0).occupier, g = Rig.At(-2, 0).occupier;

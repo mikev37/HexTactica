@@ -18,7 +18,8 @@ using UnityEngine;
 /// matter and lets enemy units physically sever a corridor. A hub riding a transport
 /// spreads supply only as far as it would on foot, from where the transport stands, but links
 /// to the network as far as the transport could carry it: it is connected if supplied ground
-/// lies within one move of the transport.
+/// lies within one move of the transport. Carried by a ship, it must also be beside the shore,
+/// and may link through another supply-carrying ship instead (ShipLinked).
 /// </summary>
 public static class SupplyNetwork {
 
@@ -201,17 +202,17 @@ public static class SupplyNetwork {
                 if (at == null) continue;
                 if (hub == AssumeLinked) {
                     // A front-line supply unit (see AssumeLinked): aboard its transport, linked as cargo is.
-                    if (AssumeLinkedVia != null && !WithinMoveOfSupply(AssumeLinkedVia, at, result)) continue;
+                    if (AssumeLinkedVia != null && !CarriedLinked(AssumeLinkedVia, at, hub, hubs, result, movedHub, hypotheticalTile, moved)) continue;
                 } else if (IsNavalHub(hub)) {
                     // A supply boat links to a friendly dock in supply, or to a linked supply boat,
                     // over water within its range; it supplies only the land it borders.
                     if (!NavalLinked(hub, at, player, result, activated, movedHub, hypotheticalTile, moved)) continue;
                 } else if (PlannedAboard != null && PlannedAboard.ContainsKey(hub) && moved != null && moved.ContainsKey(hub)) {
                     // Planned aboard a transport at that tile (a supply leap).
-                    if (!WithinMoveOfSupply(PlannedAboard[hub], at, result)) continue;
+                    if (!CarriedLinked(PlannedAboard[hub], at, hub, hubs, result, movedHub, hypotheticalTile, moved)) continue;
                 } else if (hub.myUnit != null && hub.myUnit.trasnporter != null) {
-                    // Aboard: linked if the transport could carry it onto supplied ground in one move.
-                    if (!WithinMoveOfSupply(hub.myUnit.trasnporter, at, result)) continue;
+                    // Aboard: linked if the transport could carry it onto supplied ground in one move (a ship: ShipLinked).
+                    if (!CarriedLinked(hub.myUnit.trasnporter, at, hub, hubs, result, movedHub, hypotheticalTile, moved)) continue;
                 } else if (!result.IsSupplied(at)) continue;
 
                 activated.Add(hub);
@@ -395,12 +396,6 @@ public static class SupplyNetwork {
         return b != null && b.owner == owner && b.tile == t && b.services != null && b.services.Contains(Locomotion.Ship);
     }
 
-    /// <summary>A step supply takes onto or off a building's tile on bridge ground, from or to land (not water).</summary>
-    static bool SupplyOnto(HexTile from, HexTile to) {
-        if (from.terrain == null || to.terrain == null || from.terrain.elevation < 0 || to.terrain.elevation < 0) return false;
-        return (to.building != null && to.building.tile == to) || (from.building != null && from.building.tile == from);
-    }
-
     static bool IsNavalHub(SupplyPoint hub) {
         return hub != null && hub.myUnit != null && !hub.producer && hub.myUnit.trasnporter == null && LocomotionRules.IsNaval(hub.myUnit.locomotion);
     }
@@ -461,6 +456,66 @@ public static class SupplyNetwork {
         // Aboard a transport or not, it spreads supply by its own range and rules from where it is
         // (the transport carries it; it does not reach further for riding).
         Flood(origin, hub.range, u.terrainScramble, u.owner, u.locomotion, result);
+    }
+
+    /// <summary>
+    /// Is a supply unit carried by <paramref name="transport"/> standing on <paramref name="at"/> linked? A land transport
+    /// (or aircraft): supplied ground within one move of it (WithinMoveOfSupply). A ship: ShipLinked.
+    /// </summary>
+    static bool CarriedLinked(Unit transport, HexTile at, SupplyPoint hub, List<SupplyPoint> hubs, Result result,
+                              SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
+        if (transport != null && LocomotionRules.IsNaval(transport.locomotion))
+            return ShipLinked(transport, at, hub, hubs, result, movedHub, hypotheticalTile, moved);
+        return WithinMoveOfSupply(transport, at, result);
+    }
+
+    /// <summary>
+    /// A supply unit carried by a ship on <paramref name="at"/> spreads supply to the shore when the ship is beside the
+    /// shore (land: elevation 0 or more) and either
+    ///   - (B) within its move of a tile beside supplied ground (ShipNearSuppliedGround), as a land transport is linked
+    ///     within a move of supplied ground; or
+    ///   - (C) within its move of another of our supply-carrying ships — one with a supply unit aboard, or a supply
+    ///     boat — that is itself in condition B (wherever that one is: it need not be at the shore).
+    /// </summary>
+    static bool ShipLinked(Unit ship, HexTile at, SupplyPoint hub, List<SupplyPoint> hubs, Result result,
+                           SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
+        if (ship == null || at == null || !Unit.BordersLand(at)) return false;
+        if (ShipNearSuppliedGround(ship, at, result)) return true;
+        Result reach = null;
+        foreach (SupplyPoint other in hubs) {
+            if (other == null || other == hub || other.producer || other.myUnit == null) continue;
+            Unit carrier = other.myUnit.trasnporter != null ? other.myUnit.trasnporter : other.myUnit;
+            if (carrier == ship || carrier.owner != ship.owner || !LocomotionRules.IsNaval(carrier.locomotion)) continue;
+            HexTile st = TileOf(other, movedHub, hypotheticalTile, moved);
+            if (st == null) continue;
+            if (reach == null) {
+                reach = new Result();
+                Flood(at, ship.moveRange, ship.terrainScramble, ship.owner, ship.locomotion, reach, true);
+            }
+            bool near = reach.depth.ContainsKey(st);
+            if (!near) foreach (HexTile n in st.neighbors) if (n != null && reach.depth.ContainsKey(n)) { near = true; break; }
+            if (near && ShipNearSuppliedGround(carrier, st, result)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Condition B: could <paramref name="ship"/> on <paramref name="at"/> get, within one move, onto or beside supplied
+    /// ground — land in supply (a harbor counts), not water another ship's supply covers?
+    /// </summary>
+    static bool ShipNearSuppliedGround(Unit ship, HexTile at, Result result) {
+        Result reach = new Result();
+        Flood(at, ship.moveRange, ship.terrainScramble, ship.owner, ship.locomotion, reach, true);
+        reach.depth[at] = ship.moveRange;
+        foreach (HexTile t in reach.depth.Keys) {
+            if (SuppliedGround(t, result)) return true;
+            foreach (HexTile n in t.neighbors) if (SuppliedGround(n, result)) return true;
+        }
+        return false;
+    }
+
+    static bool SuppliedGround(HexTile t, Result result) {
+        return t != null && t.terrain != null && t.terrain.elevation >= 0 && result.IsSupplied(t);
     }
 
     /// <summary>
@@ -537,9 +592,8 @@ public static class SupplyNetwork {
 
                 // An enemy unit standing in the corridor severs it.
                 if (n.occupier != null && n.occupier.owner != owner) continue;
-                // On and off a bridge only by road, as units move. (Supply reaches a building on bridge ground — a naval
-                // yard on the shore — from the land around it as any building: it is a depot, not a crossing.)
-                if (!LocomotionRules.BridgeStep(current, n, loco) && (asMover || !SupplyOnto(current, n))) continue;
+                // On and off a bridge only by road, as units move (a harbor is open from every side: LocomotionRules.IsHarbor).
+                if (!LocomotionRules.BridgeStep(current, n, loco)) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).
                 if (n.terrain.elevation < 0 && !LocomotionRules.IgnoresTerrain(loco) && !LocomotionRules.IsNaval(loco)) continue;
                 // A boat's move: water only (and its own naval yards).
