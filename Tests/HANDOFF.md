@@ -17,7 +17,11 @@ my understanding rather than something I verified, it says so.
 - New behaviour goes behind an on/off flag in `AIProfile`; keep `Assets/AI/TestProfile.asset` in sync with code defaults.
 - Every test is a Unity-loadable scenario file (`Tests/Scenarios/*.dat`, written by `PROBE=export`).
 - AI thinking time matters more than strength. HQ is intentionally worse than an FOB. Fog supply display must not
-  reveal enemy positions. Never make visuals in code. Don't touch the prefabs. Legacy AI is not used. No noise.
+  reveal enemy positions. Never make visuals in code. Legacy AI is not used. No noise.
+- **Nothing about UI, unit or level design is written in code, and code is never used for configuration.** UI is
+  prefabs (and scenes) edited in Unity — no widgets built, laid out, styled or "repaired" at run time, no fallbacks
+  for an older prefab; units are their prefabs and levels are scenario files; tunable values live in assets or
+  serialized fields, never as constants in code. If a prefab lacks something the code needs, change the prefab.
 - Game rules take precedence over the AI: the AI must not change how the rules work (no AI "what-if" switches in
   game code); AI-only helpers live in AI code.
 - No hard-coded behaviour by unit **name**: decide by capability (what a unit carries, its locomotion, its slots).

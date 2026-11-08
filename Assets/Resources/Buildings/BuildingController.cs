@@ -23,7 +23,6 @@ public class BuildingController : MonoBehaviour {
         if (bc != null) return;
         GameObject go = new GameObject("BuildingController");
         bc = go.AddComponent<BuildingController>();
-        go.AddComponent<BuildingMenu>();
         go.AddComponent<TransportMenu>();
         go.AddComponent<SupplyOverlay>();
     }
@@ -65,23 +64,21 @@ public class BuildingController : MonoBehaviour {
 
     /// <summary>
     /// Build <paramref name="unit"/> at <paramref name="b"/>: paid from the owner's money, placed on
-    /// the first free tile of the building it can stand on. It has used its turn. Null if the
+    /// the building's tile, if it is free and the unit can stand on it. It has used its turn. Null if the
     /// owner cannot afford it or there is no room. <paramref name="allowed"/>, if given, says which
     /// tiles may be built on (the AI passes AIAir.MayBuildOn: never a tile reserved for a landing).
     /// </summary>
     public Unit Produce(Building b, Unit unit, System.Func<HexTile, bool> allowed = null) {
         if (b == null || unit == null || b.owner == null || !b.CanBuild(unit)) return null;
         if (b.owner.money < unit.cost) return null;
-        foreach (HexTile t in b.Footprint) {
-            if (t.occupier != null || !unit.CanEnter(t)) continue;
-            if (allowed != null && !allowed(t)) continue;
-            Unit made = Spawner != null ? Spawner(b.owner, unit, t) : UnitController.uc.CreateUnit(b.owner, unit, t);
-            if (made == null) continue;
-            b.owner.money -= unit.cost;
-            made.active = false;
-            return made;
-        }
-        return null;
+        HexTile t = b.tile;
+        if (t == null || t.occupier != null || !unit.CanEnter(t)) return null;
+        if (allowed != null && !allowed(t)) return null;
+        Unit made = Spawner != null ? Spawner(b.owner, unit, t) : UnitController.uc.CreateUnit(b.owner, unit, t);
+        if (made == null) return null;
+        b.owner.money -= unit.cost;
+        made.active = false;
+        return made;
     }
 }
 
@@ -141,9 +138,9 @@ public struct BuildingData {
         b.supplies = supplies;
         b.damage = Mathf.Max(0, damageLevel);
         b.RefreshCondition();
-        // An owned building saved with no points (an older save) is fully held.
-        b.capturePoints = owner != null && capturePoints <= 0 ? b.CaptureThreshold : capturePoints;
-        b.capturingPlayer = capturing;
+        // A capturer's progress (an older save also kept an owner's points here, with nobody capturing: none now).
+        b.capturingPlayer = capturing != null && capturing != owner ? capturing : null;
+        b.capturePoints = b.capturingPlayer != null ? Mathf.Max(0, capturePoints) : 0;
         return b;
     }
 }

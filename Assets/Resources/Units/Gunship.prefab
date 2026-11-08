@@ -1321,11 +1321,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: Evasion
-      value: 4
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: Piercing
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: Firepower
-      value: 5
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: Targeting
@@ -1370,6 +1374,18 @@ PrefabInstance:
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: terrainScramble
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: attacksLocomotion.Array.size
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: 'attacksLocomotion.Array.data[6]'
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: 'attacksLocomotion.Array.data[7]'
+      value: 4
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:

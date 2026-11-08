@@ -66,11 +66,11 @@ PrefabInstance:
       objectReference: {fileID: -8556480759933909709, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
     - target: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
       propertyPath: supplies
-      value: 4
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
       propertyPath: suppliesMax
-      value: 4
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
       propertyPath: visionRange

@@ -116,12 +116,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: dropSpeed
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: maxWeight
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: moveRange
       value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: dropHeight
+      value: 1.6
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: visionRange
@@ -136,6 +144,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: carries.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: cargoSlots.Array.size
       value: 1
       objectReference: {fileID: 0}
@@ -143,6 +155,10 @@ PrefabInstance:
       propertyPath: 'cargoSlots.Array.data[0]'
       value: 
       objectReference: {fileID: 1834248139515401371}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: attacksLocomotion.Array.size
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 5100153197684124942, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}

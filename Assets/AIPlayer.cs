@@ -137,6 +137,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (LevelEditor.singleton != null &&
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
         if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; Abandon(); MaybeSpeculate(); return; }
+        // Our turn is over and waits for what is still playing on screen (GameController.EndTurnWhenStill).
+        if (GameController.gc.EndTurnPending) return;
 
         // A thought under way: act on it once it is ready (the frame is free meanwhile).
         if (thinking != null) {
@@ -461,7 +463,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 refreshPending = true;
                 // The game's supply borders and alarms read the published supply: the AI's thoughts
                 // publish only into their copies, so publish the real fields after its action.
-                if (!headless && GameController.gc != null) foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+                // (FinishActive already does so in play; a rider that got off by itself did not go through it.)
+                if (!headless && selfDrop && GameController.gc != null) foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
             }
 
             Annotate(unit, action);
@@ -1360,7 +1363,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     HexTile beside = null;
                     if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
                     else foreach (HexTile n in truck.tile.neighbors) {
-                        if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, truck.tile, truck)) continue;
+                        if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(truck, unit, n)) continue;
                         if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                     }
                     if (beside != null) {
@@ -1727,7 +1730,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile b = null;
                 if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
                 else foreach (HexTile n in t.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
                     if (b == null || CombatMath.Precedes(n, b)) b = n;
                 }
                 if (b == null) continue;
@@ -1795,7 +1798,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile b = null;
                 if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
                 else foreach (HexTile n in t.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
                     if (b == null || CombatMath.Precedes(n, b)) b = n;
                 }
                 if (b == null) continue;
@@ -1948,7 +1951,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (objective != null && objective.MissionFinished()) {
             UnityEngine.Debug.Log("AIPlayer: objective complete for " + player.personal_name);
         }
-        GameController.gc.EndTurn();
+        // In play, the next side starts once our last moves and shots have played (headless: at once).
+        GameController.gc.EndTurnWhenStill();
     }
 
     /// <summary>Exposed for tests and the harness: the AI's current read of the board.</summary>
@@ -1985,7 +1989,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             HexTile at = null;
             if (Transporting.CanBoardFrom(t, unit)) at = unit.tile;
             else foreach (HexTile n in t.tile.neighbors) {
-                if (n == null || (n != unit.tile && n.occupier != null) || !reach.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, t.tile, t)) continue;
+                if (n == null || !reach.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
                 if (at == null || CombatMath.Precedes(n, at)) at = n;
             }
             if (at == null) continue;
@@ -2151,7 +2155,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile beside = null;
                 if (Transporting.CanBoardFrom(mine, unit)) beside = unit.tile;
                 else foreach (HexTile n in mine.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, mine.tile, mine)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(mine, unit, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 HexTile drop0 = isLink && link != unit.tile && mine.CanEnter(link) && link.occupier == null ? link : mine.tile;
@@ -2203,7 +2207,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile beside = null;
                 if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
                 else foreach (HexTile n in truck.tile.neighbors) {
-                    if (n == null || n.occupier != null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardOnto(unit, n, truck.tile, truck)) continue;
+                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(truck, unit, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) { transportAssignments[truck] = go; action = AIAction.Board(unit, truck, beside, "logistics for " + t.front.Id + ": boards a truck to (" + claim.to.x + "," + claim.to.y + ")"); return true; }

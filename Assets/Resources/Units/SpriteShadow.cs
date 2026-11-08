@@ -17,7 +17,6 @@ public class SpriteShadow : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-   
         if (!sprite)
             sprite = GetComponent<SpriteRenderer>().sprite;
         shadowGo = new GameObject("Shadow");

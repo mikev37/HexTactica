@@ -87,7 +87,7 @@ namespace HexTactica.AI {
                 if (e == null || e.tile == null || e.Strength <= 0) continue;
                 b.enemies.Add(e);
                 if (!e.CanAttack(e.tile) || e.Firepower <= 0) continue;
-                b.basePositions[e] = Positions(e);
+                b.basePositions[e] = AIPath.FiringPositions(e);
                 b.attackers.Add(e);
             }
             if (b.attackers.Count == 0) return b;
@@ -251,7 +251,7 @@ namespace HexTactica.AI {
                             if (e.tile.Distance(m.Value) <= e.moveRange + 1 || e.tile.Distance(m.Key.tile) <= e.moveRange + 1) { affected = true; break; }
                         }
                     }
-                    world[e] = affected ? Positions(e) : kv.Value;
+                    world[e] = affected ? AIPath.FiringPositions(e) : kv.Value;
                 }
             } finally {
                 for (int i = restore.Count - 1; i >= 0; i--) restore[i].Key.occupier = restore[i].Value;
@@ -277,19 +277,6 @@ namespace HexTactica.AI {
                 total += best;
             }
             return total;
-        }
-
-        /// <summary>Every tile this enemy could stand on to fire tonight, given current occupancy.</summary>
-        static HashSet<HexTile> Positions(Unit e) {
-            HashSet<HexTile> positions = new HashSet<HexTile>();
-            positions.Add(e.tile);
-            if (e.moveAndAttack) {
-                MoveField f = AIPath.ThisTurn(e);
-                foreach (HexTile p in f.Tiles) {
-                    if (p != e.tile && f.ReachableThisTurn(p) && AIPath.CanFinishTurnOn(e, p)) positions.Add(p);
-                }
-            }
-            return positions;
         }
 
         /// <summary>

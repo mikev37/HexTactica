@@ -63,12 +63,12 @@ namespace HexTactica.OldAI {
         /// <summary>How far ahead (turns) aircraft reserve their landings.</summary>
         public const int LandingHorizon = 3;
 
-        /// <summary>Tiles of our buildings that service <paramref name="u"/>, whatever is on them.</summary>
+        /// <summary>The tiles of our buildings that service <paramref name="u"/>, whatever is on them.</summary>
         static List<HexTile> AllBases(Unit u) {
             List<HexTile> list = new List<HexTile>();
             foreach (Building b in Building.all) {
                 if (b == null || b.owner != u.owner || !b.Services(u)) continue;
-                foreach (HexTile t in b.ServiceTiles()) if (t != null && u.CanEnter(t)) list.Add(t);
+                if (b.tile != null && u.CanEnter(b.tile)) list.Add(b.tile);
             }
             return list;
         }
@@ -179,7 +179,7 @@ namespace HexTactica.OldAI {
             if (b == null) return false;
             HashSet<HexTile> reserved = new HashSet<HexTile>();
             if (map.landings != null) foreach (Landing l in map.landings.Values) if (l.turn <= turns) reserved.Add(l.tile);
-            foreach (HexTile t in b.ServiceTiles()) if (t.occupier == null && !reserved.Contains(t)) return true;
+            if (b.tile != null && b.tile.occupier == null && !reserved.Contains(b.tile)) return true;
             return false;
         }
 

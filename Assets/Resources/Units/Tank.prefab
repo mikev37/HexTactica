@@ -105,6 +105,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &3547141541890433994
 GameObject:
   m_ObjectHideFlags: 0
@@ -167,19 +168,18 @@ MonoBehaviour:
   personal_name: 
   active: 1
   owner: {fileID: 0}
-  Strength: 6
+  _strength: 6
   Veterancy: 0
-  tile: {fileID: 0}
+  _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
-  refuelStock: 0
-  refuelStockMax: 0
   Firepower: 4
   Evasion: 0
   Targeting: 0
   Armor: 4
   Piercing: 3
   Concealment: 1
+  Vulnerability: 0
   ammoPerShot: 1
   moveAndAttack: 1
   AttackRange: 1
@@ -197,24 +197,31 @@ MonoBehaviour:
   elevationMax: 2
   moveSpeed: 10
   StrengthDisplay: 0
+  suppressed: 0
   path: []
   supplies: 3
   suppliesMax: 3
   fuel: 30
   fuelMax: 30
+  attacksLocomotion: 000000000100000002000000030000000600000007000000i
   ammo: 6
   ammoMax: 6
   transportSlots: 0
   maxWeight: 0
   weight: 2
+  carries: 
   transported: []
   trasnporter: {fileID: 0}
   cargoSlots: []
   cargoScale: 0.45
+  parachutePrefab: {fileID: 0}
+  dropHeight: 0.6
+  dropSpeed: 0.6
   threatValue: 0
   attacking: 0
   target: {fileID: 0}
   pendingRetreat: {fileID: 0}
+  retreatPause: 0.1
   shooter: 0
   answeredBy: {fileID: 0}
 --- !u!95 &1922176808774982529
@@ -3781,6 +3788,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &5905412590451194266
 GameObject:
   m_ObjectHideFlags: 0
@@ -3886,6 +3894,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &7673112601355140884
 GameObject:
   m_ObjectHideFlags: 0
@@ -3991,6 +4000,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca80b4e4e30371e488977e5fd2549b89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  neutral: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1001 &655222793576013340
 PrefabInstance:
   m_ObjectHideFlags: 0

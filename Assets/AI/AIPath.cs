@@ -147,6 +147,22 @@ namespace HexTactica.AI {
             return 1 + Mathf.Max(0, to.EffectiveMoveability - mover.terrainScramble);
         }
 
+        /// <summary>
+        /// Every tile <paramref name="e"/> could stand on to fire this coming turn, given current occupancy: where it is,
+        /// and for a unit that moves and fires, every tile it can reach and finish on. (AIDenial and AISpace both use it.)
+        /// </summary>
+        public static HashSet<HexTile> FiringPositions(Unit e) {
+            HashSet<HexTile> positions = new HashSet<HexTile>();
+            positions.Add(e.tile);
+            if (e.moveAndAttack) {
+                MoveField f = ThisTurn(e);
+                foreach (HexTile p in f.Tiles) {
+                    if (p != e.tile && f.ReachableThisTurn(p) && CanFinishTurnOn(e, p)) positions.Add(p);
+                }
+            }
+            return positions;
+        }
+
         /// <summary>Can this unit legally end its turn on this tile (ignoring who is standing there right now)?</summary>
         public static bool CanFinishTurnOn(Unit mover, HexTile t) {
             if (t == null) return false;

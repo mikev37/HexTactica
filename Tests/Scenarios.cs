@@ -469,17 +469,17 @@ public static class Scenarios {
         make("ai-self-preservation-scope", "selfPreservationScope", (a, o) => { Put("Grunt", a, -4, 0); Put("Tank", a, -4, 2); Put("Artillery", a, -5, 2); Put("Anti Air Missile Truck", a, -5, 1); Put("Supplies", a, -6, 1); Put("Tank", o, 0, 0); Put("Tank", o, 0, 2); },
              "Which units shield anything by standing in reach (AIWorld.Shields, selfPreservationShieldless): those that fire back at ground attackers beside them (the grunt, the tank); not the artillery, the anti-air truck or the supply unit. With self-preservation on, the truck standing where both Red tanks could reach pays for it; priced as the reply prices blows (selfPreservationDiscount) it pays no more than undiscounted.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
-             "A Blue grunt (6) on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two.");
-        make("rule-capture-overflow", "captureOverflow", (a, o) => { Building c = Rig.PlaceBuilding("City", a, 0, 0); c.capturePoints = 3; Put("Grunt", o, 0, 0); },
-             "A Blue City at 3 points, a Red grunt (6) on it: after Red's turn it is neutral with 3 Red.");
+             "A Blue grunt (6) standing on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two (progress cleared).");
+        make("rule-capture-from-zero", "captureFromZero", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); },
+             "A Blue City, a Red grunt (6) on it: it is not brought down to neutral first — after Red's turn it is still Blue's with Red 6/10, after Red's second turn Red's.");
         make("rule-attack-no-capture", "attackNoCapture", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 1, 0); },
              "A Red grunt on a Blue City that attacks during its turn does not capture.");
-        make("rule-contested-airport", "contested", (a, o) => { Building ap = Rig.PlaceBuilding("Airport", a, 0, 0); Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0); },
-             "An Airport made two tiles for the test (threshold 15) at 3 Blue, a Blue grunt and a Red grunt on it: Blue cannot raise it; Red brings it to 0 (neutral), not past.");
+        make("rule-capture-on-action", "captureOnAction", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 2, 0); },
+             "A Blue grunt (6) that ends its move on a neutral City captures there and then (6 Blue before the turn ends), and not again as the turn ends; standing there through its next turn it takes it.");
         make("rule-neutral-decay", "decay", (a, o) => { Building c = Rig.PlaceBuilding("City", null, 0, 0); c.capturingPlayer = o; c.capturePoints = 4; Put("Grunt", o, 3, 0); },
-             "A neutral City with 4 Red progress and no Red infantry on it: 2 after Red's turn. An owned building does not decay.");
+             "A neutral City with 4 Red progress and no Red infantry on it: 2 after Red's turn. An owned building nobody is taking has nothing to decay.");
         make("rule-hq-standard", "hqStandard", (a, o) => { Put("Grunt", o, -6, 0); },
-             "Standard rules: a Red grunt on Blue's HQ (10). Two Red turns bring it to 0: Blue has lost.");
+             "Standard rules: a Red grunt (6) on Blue's HQ (10). Two Red turns take it (6, then 12): Blue has lost.");
         make("attrition-rule-hq", "attritionHQ", (a, o) => { Put("Grunt", o, -6, 0); Put("Grunt", a, -3, 2); },
              "Attrition rules: the HQ cannot be captured, a Red grunt standing on it changes nothing.");
         make("rule-fob-battery", "battery", (a, o) => { Building f = Rig.PlaceBuilding("FOB", a, -4, 0); f.supplies = 0; Put("Grunt", a, -3, 1); },
@@ -494,8 +494,8 @@ public static class Scenarios {
              "A Fighter on its own airport's runway (fuel 2, strength 4) is refuelled to 14 and healed to 5.");
         make("attrition-rule-air-tanker", "attritionTanker", (a, o) => { Unit f = Put("Fighter", a, 0, 0); f.fuel = 6; Unit g = Put("Fighter", a, 2, 0); g.fuel = 6; Put("AirTanker", a, 1, 0); Put("AirTanker", a, -2, 4); Put("AirTanker", a, -3, 4); Put("Grunt", o, 5, 0); },
              "Two Fighters beside an air tanker with 2 supplies. The tanker's supplies run down a turn at a time like any aircraft's, and while it started the turn with some it refuels and resupplies the aircraft beside it at no further cost: turn 1 both fighters are filled (tanker 1 left), turn 2 again (0 left); turn 3 it has none, the fighters burn 3, and the tanker loses a strength as any aircraft out of supplies. Two tankers side by side do not feed each other: both run down.");
-        make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -1, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
-             "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard's dock is healed and refuelled.");
+        make("attrition-rule-ship-fuel", "attritionShip", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Put("Gunboat", a, 1, 2); Unit d = Put("Gunboat", a, -2, 0); d.Strength = 3; d.fuel = 10; Put("Grunt", o, 5, 0); },
+             "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard is healed and refuelled.");
         make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
              "A Fighter with 3 fuel flies 3 tiles onto its airport's runway (a plain move): refuelled and re-armed as it lands (fuel 14, ammo 6). Another lands there as a move and attack: nothing until its next turn (fuel 5 - 3 = 2, ammo 1). The airport is then lost before their next turn: the first burns a turn's fuel (11) and is not ditched.");
         make("attrition-rule-supply-aboard", "attritionSupplyAboard", (a, o) => { Put("APC", a, 1, 0); Put("Supplies", a, 2, 0); Put("Grunt", o, 6, -3); },
@@ -660,7 +660,7 @@ public static class Scenarios {
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
                  Put("APC", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", a, -5, 1); Put("Supplies", a, -5, 0); Put("Tank", a, -3, -1); Put("Fighter", a, -6, 0);
                  Put("TransportShip", a, 3, 0); Put("Grunt", o, 6, -3); },
-             "What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1) or one supply unit (weight 2), never a tank (Treads) or a fighter. A grunt cannot board a transport ship on open water beside the shore, but can at the naval yard's dock. A loaded APC can itself board the ship at the dock (it takes its own weight, 3 of the ship's 4), and everything aboard goes where the ship goes.");
+             "What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1) or one supply unit (weight 2), never a tank (Treads) or a fighter. A grunt cannot board a transport ship on open water beside the shore, but can at the naval yard (the ship on the yard's tile). A loaded APC can itself board the ship there (it takes its own weight, 3 of the ship's 4), and everything aboard goes where the ship goes.");
         make("attrition-rule-suppression", "suppression", (a, o) => {
                  Put("Artillery", a, -4, 0); Put("Artillery", a, -4, 2); Put("Grunt", a, -1, 1); Put("Tank", a, -3, -2);
                  Put("Tank", o, 0, 0); Put("Tank", o, 0, 3); Put("Tank", o, -1, -2); Put("Grunt", o, 2, -2); },
@@ -677,14 +677,38 @@ public static class Scenarios {
                  Put("Grunt", a, 0, 0); Put("Grunt", o, 1, 0);
                  Rig.At(3, -2).terrain = T("Bridge"); Rig.At(3, -2).road = true; Put("Grunt", a, 3, -2);
                  Rig.PlaceBuilding("City", a, -3, 2); Put("Grunt", a, -3, 2); Put("Supplies", a, -4, 3); },
-             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit until it falls into what its data says (TerrainData.destroyedInto, down to a water terrain that takes no damage), leaves no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it earns, supplies and builds nothing until repaired. Water takes no damage.");
+             "Destructible terrain: health split into (damage pictures + 1) equal parts (10 health, one picture: 10-6 normal, 5-1 damaged; two: 10-7, 6-4, 3-1). Each attack on a unit damages its tile by 1. A Grassland tile (health 10) hit ten times becomes Badlands, with what it was remembered; UndoDestruction puts the grass back one short of destroyed and Repair heals it. A bridge with a grunt on it, hit until it falls into what its data says (TerrainData.destroyedInto, down to a water terrain that takes no damage), leaves no road, and the grunt is lost. A City (health 10) with a grunt on it takes the hits instead of its ground; destroyed, it becomes neutral and earns, supplies and builds nothing; a ruin cannot be captured, so the grunt on it takes it back only once it is repaired (from 0: two turns), and it earns again. Water takes no damage.");
+        make("rule-line-of-fire", "lineOfFire", (a, o) => { Rig.At(0, 0).terrain = T("Hills"); Put("Tank", a, -1, 0); Put("Artillery", a, -1, 2); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
+             "Direct fire does not go through higher ground (CombatMath.LineOfFire): a tank given range 2 cannot fire at a grunt two tiles off across a hill — not the player's target list, not the AI's appraisal, not its executor — but can over grassland, or from a hill of its own height. Artillery (fires without moving) lobs over the hill.");
+        make("rule-board-through-friend", "boardThroughFriend", (a, o) => {
+                 Put("APC", a, 0, 0);
+                 foreach (int[] nb in new[] { new[] { 1, 0 }, new[] { -1, 0 }, new[] { 0, 1 }, new[] { 0, -1 }, new[] { 1, -1 }, new[] { -1, 1 } }) Put("Tank", a, nb[0], nb[1]);
+                 Put("Grunt", a, -2, 1); Put("Grunt", o, 6, -3); },
+             "An APC with our tanks on every tile around it, and a grunt two tiles off: it walks through a tank's tile and boards from there (the tile a friend holds is passed through, not stopped on); the tank stays where it is. The AI sees the same: boarding from a friend's tile is open to it (Transporting.CanBoardFromTile).");
         make("rule-runway-no-capture", "runwayNoCapture", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Put("Grunt", o, -3, 3); },
              "A Red grunt on a runway beside a Blue airport does not capture the airport: the runway is a building of its own.");
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
                  water(-2, 1, -7, 7);
                  Rig.PlaceBuilding("NavalYard", a, -3, 0);
                  Put("SupplyBoat", a, -1, 0); Put("SupplyBoat", a, 1, 0); Put("Grunt", a, 3, 0); Put("Grunt", o, 4, 3); },
-             "A strait four tiles wide: the HQ's supply stops at the water. Two supply boats link from the naval yard's dock (in supply) to each other, and the far one supplies the island it borders. With the far boat moved out to sea, the island grunt is not supplied.");
+             "A strait four tiles wide: the HQ's supply stops at the water. Two supply boats link from beside the naval yard (in supply) to each other, and the far one supplies the island it borders. With the far boat moved out to sea, the island grunt is not supplied.");
+        make("attrition-rule-ship-mends", "shipMends", (a, o) => { water(-2, 2, -7, 7); Unit g = Put("Gunboat", a, 0, 0); g.Strength = 3; g.supplies = 5; Unit dry = Put("Gunboat", a, 0, 4); dry.Strength = 3; dry.supplies = 0; Put("Grunt", o, 5, 0); },
+             "Ships mend themselves at sea while they have supplies: a Gunboat at strength 3 with 5 supplies is at 4 (4 supplies) after a turn, 5 after two; one with no supplies left loses a strength instead.");
+        make("attrition-rule-supply-ship-tends", "shipTender", (a, o) => { water(-2, 2, -7, 7); Unit sb = Put("SupplyBoat", a, 0, 0); sb.supplies = 5; Unit g = Put("Gunboat", a, 1, 0); g.fuel = 10; g.supplies = 1; Unit far = Put("Gunboat", a, 0, 5); far.fuel = 10; Unit sb2 = Put("SupplyBoat", a, -1, 0); sb2.fuel = 10; Put("Grunt", o, 5, 0); },
+             "A supply ship refuels and restocks the ships beside it at the start of the turn, as an air tanker does aircraft: the Gunboat beside it (fuel 10, 1 supply) is full after a turn; one away from it is not; a supply ship beside it is not tended by it (a tender is never tended by another).");
+        make("attrition-rule-ship-carried-supply", "shipCarriedSupply", (a, o) => {
+                 water(-4, 5, -7, 7);
+                 Put("TransportShip", a, -1, 0); Put("TransportShip", a, 3, 0); Put("TransportShip", a, 5, 0);
+                 Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3); Put("Supplies", a, -6, 4); Put("Supplies", a, -5, 4);
+                 Put("Transport Helo", a, -5, 3);
+                 Put("Grunt", a, 6, -1); Put("Grunt", o, 7, -2); },
+             "Convoys: a ship with a supply unit aboard is a link if within one move (its own path) of supplied ground or of another linked carrier, to any length, and gives supply to land only beside it. Ten tiles of sea between Blue's shore and an island, ships moving 3: TS A within a move of Blue's shore, TS B within a move of A only, TS C within a move of B only and beside the island. C is linked through B through A, the Blue grunt on the island is supplied, A and B out at sea give nothing, and the supply line runs from the grunt through C, B and A to the HQ. Without A, B and C are cut off. A helicopter with supplies aboard in A's place over the water (linked by Blue's shore, giving nothing over water) links B in turn: a ship links through an aircraft.");
+        make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
+             "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
+        make("ui-next-unit", "nextUnit", (a, o) => { Put("Grunt", a, 0, 0); Put("Grunt", a, 2, 0); Put("Tank", a, 0, 2); Put("Grunt", o, 5, -2); },
+             "The HUD's Next unit (GameController.SelectNextIdle): selects Blue's idle units in turn, as a click on the unit's tile does (its tile SELECTED, its moves shown), wrapping round; a unit that has acted is skipped; nothing on an AI's turn.");
+        make("rule-harbor-open", "harborOpen", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Rig.At(-3, 4).terrain = T("Bridge"); Put("Grunt", a, -3, 1); Put("Grunt", a, -4, 4); Put("Gunboat", a, 0, 0); Put("Grunt", o, 5, 0); },
+             "A harbor (a naval yard's tile, on bridge ground) is open from every side: a grunt steps onto it from grassland with no road, a ship from the water, and supply reaches it from the land around it. A plain bridge keeps the road rule: the same grunt step onto one is refused.");
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board and unparented. Getting off costs nothing: having boarded this turn it is still spent; aboard at the start of a turn, it is still free to act once unloaded.");
         make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
@@ -706,14 +730,16 @@ public static class Scenarios {
                 endTurn(); string first = show(at00);
                 bool ok1 = at00.owner == null && at00.capturingPlayer == a && at00.capturePoints == 6;
                 endTurn(); endTurn();
-                bool ok2 = at00.owner == a && at00.capturePoints == 10;
+                bool ok2 = at00.owner == a && at00.capturePoints == 0 && at00.capturingPlayer == null;
                 detail = "after one Blue turn " + first + ", after two " + show(at00);
                 return ok1 && ok2;
             }
-            case "captureOverflow": {
+            case "captureFromZero": {
+                endTurn(); endTurn(); string first = show(at00);
+                bool ok1 = at00.owner == a && at00.capturingPlayer == o && at00.capturePoints == 6;
                 endTurn(); endTurn();
-                detail = show(at00);
-                return at00.owner == null && at00.capturingPlayer == o && at00.capturePoints == 3;
+                detail = "after one Red turn " + first + ", after two " + show(at00);
+                return ok1 && at00.owner == o && at00.capturingPlayer == null && at00.capturePoints == 0;
             }
             case "attackNoCapture": {
                 endTurn();
@@ -721,16 +747,20 @@ public static class Scenarios {
                 red.OrderAttack(Rig.At(1, 0).occupier);
                 endTurn();
                 detail = show(at00) + " after the Red grunt attacked from it";
-                return at00.owner == a && at00.capturePoints == 10;
+                return at00.owner == a && at00.capturePoints == 0 && at00.capturingPlayer == null;
             }
-            case "contested": {
-                // Buildings are one tile now: give this one a second, so two sides can stand on it.
-                at00.footprint = new List<TileOffset> { new TileOffset(1, 0) }; at00.Occupy(at00.tile); at00.capturePoints = 3;
-                endTurn(); string afterBlue = show(at00);
-                bool ok1 = at00.owner == a && at00.capturePoints == 3;
-                endTurn();
-                detail = "after Blue " + afterBlue + ", after Red " + show(at00);
-                return ok1 && at00.owner == null && at00.capturePoints == 0 && at00.capturingPlayer == null;
+            case "captureOnAction": {
+                Unit g = Rig.At(2, 0).occupier;
+                gc.activeUnit = g;
+                g.TeleportTo(at00.tile, 2);
+                g.FinishActive();
+                string moved = show(at00);
+                bool ok1 = at00.owner == null && at00.capturingPlayer == a && at00.capturePoints == 6;
+                endTurn(); string ended = show(at00);
+                bool ok2 = at00.owner == null && at00.capturingPlayer == a && at00.capturePoints == 6;
+                endTurn(); endTurn();
+                detail = "after its move " + moved + ", after Blue's turn " + ended + ", after its next turn " + show(at00);
+                return ok1 && ok2 && at00.owner == a;
             }
             case "decay": {
                 endTurn(); endTurn();
@@ -752,7 +782,7 @@ public static class Scenarios {
                 Building hq = GameController.HQOf(a);
                 for (int i = 0; i < 4; i++) endTurn();
                 detail = show(hq) + ", game over " + gc.gameOver;
-                return hq.owner == a && hq.capturePoints == 10 && !gc.gameOver;
+                return hq.owner == a && hq.capturePoints == 0 && hq.capturingPlayer == null && !gc.gameOver;
             }
             case "battery": {
                 Building fob = Rig.At(-4, 0).building;
@@ -803,7 +833,7 @@ public static class Scenarios {
             case "attritionAirBase": {
                 Unit f = Rig.At(-3, 3).occupier;
                 endTurn(); endTurn();
-                detail = "on the runway (" + (Rig.At(-3, 3).building != null && Rig.At(-3, 3).building.IsServiceTile(Rig.At(-3, 3)) ? "runway tile" : "not a runway") + "): fuel " + f.fuel + ", strength " + f.Strength;
+                detail = "on the runway (" + (Rig.At(-3, 3).building != null && Rig.At(-3, 3).building.name.StartsWith("Runway") ? "runway tile" : "not a runway") + "): fuel " + f.fuel + ", strength " + f.Strength;
                 return f.fuel == f.fuelMax && f.Strength == 5;
             }
             case "attritionSupplyAboard": {
@@ -2382,21 +2412,24 @@ public static class Scenarios {
                 r.Add("artillery selected: " + marked + " tiles marked, " + wrong + " not an enemy; the enemy grunt " + enemy.tile.state + ", the Blue grunt in range " + friend.tile.state);
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
                 gc.activeUnit = null;
-                o.displayColor = new Color(0.9f, 0.2f, 0.25f, 1f);
                 SupplyOverlay.ShowEnemy(tank);
-                Color red = o.displayColor;
-                float sat = Math.Max(red.r, Math.Max(red.g, red.b)) <= 0f ? 0f : (Math.Max(red.r, Math.Max(red.g, red.b)) - Math.Min(red.r, Math.Min(red.g, red.b))) / Math.Max(red.r, Math.Max(red.g, red.b));
+                Func<Color, Color, bool> same = (x, y) => Math.Abs(x.r - y.r) + Math.Abs(x.g - y.g) + Math.Abs(x.b - y.b) + Math.Abs(x.a - y.a) < 1e-4;
                 int moveTiles = 0, reachTiles = 0, badMove = 0, badReach = 0;
                 foreach (HexTile t in Rig.hg.tiles) {
-                    Color c = t.overlay.color;
-                    float mx = Math.Max(c.r, Math.Max(c.g, c.b)), mn = Math.Min(c.r, Math.Min(c.g, c.b));
-                    float s2 = mx <= 0f ? 0f : (mx - mn) / mx;
-                    if (t.state == UIState.ENEMY_MOVE) { moveTiles++; if (Math.Abs(c.a - 0.5f) > 1e-4 || Math.Abs(s2 - sat * 0.5f) > 1e-3) badMove++; }
-                    if (t.state == UIState.ENEMY_THREAT) { reachTiles++; if (Math.Abs(c.a - 0.5f) > 1e-4 || Math.Abs(s2 - sat) > 1e-3) badReach++; }
+                    if (t.state == UIState.ENEMY_MOVE) { moveTiles++; if (!same(t.overlay.color, ui.enemyMove)) badMove++; }
+                    if (t.state == UIState.ENEMY_THREAT) { reachTiles++; if (!same(t.overlay.color, ui.enemyShoot)) badReach++; }
                 }
-                bool overlays = moveTiles > 0 && reachTiles > 0 && badMove == 0 && badReach == 0 && sat > 0f;
-                r.Add("enemy tank shown: " + moveTiles + " move tiles (" + badMove + " not at half opacity and half saturation), " + reachTiles + " reach tiles (" + badReach + " not at half opacity, full colour)");
                 SupplyOverlay.HideEnemy();
+                // Artillery (cannot move and fire): its whole range from where it stands shows as fire, over its moves.
+                SupplyOverlay.ShowEnemy(art);
+                int artRange = 0, artMissing = 0, artFireOverMove = 0;
+                foreach (HexTile t in Rig.hg.tiles) {
+                    int d = art.tile.Distance(t);
+                    if (d > art.MinRange && d <= art.AttackRange && t != art.tile) { artRange++; if (t.state != UIState.ENEMY_THREAT) artMissing++; else if (t.occupier == null && art.tile.Distance(t) <= art.moveRange) artFireOverMove++; }
+                }
+                SupplyOverlay.HideEnemy();
+                bool overlays = moveTiles > 0 && reachTiles > 0 && badMove == 0 && badReach == 0 && artRange > 0 && artMissing == 0 && artFireOverMove > 0;
+                r.Add("enemy tank shown: " + moveTiles + " move tiles (" + badMove + " not grey), " + reachTiles + " fire tiles (" + badReach + " not orange); artillery: " + artRange + " tiles in range, " + artMissing + " not shown as fire, " + artFireOverMove + " of its moves shown as fire");
                 // Capture: one Blue turn on each city.
                 Building neutral = Rig.At(-2, 3).building, theirs = Rig.At(3, 3).building;
                 string w0, v0; Player p0;
@@ -2404,8 +2437,8 @@ public static class Scenarios {
                 endTurn();
                 string w1, v1, w2, v2; Player p1, p2;
                 bool n1 = neutral.ShownCaptureProgress(out w1, out v1, out p1), n2 = theirs.ShownCaptureProgress(out w2, out v2, out p2);
-                bool capture = fullNone && n1 && w1 == "Capturing" && v1 == "Blue 6/10" && p1 == a && n2 && w2 == "Held" && v2 == "4/10" && p2 == o;
-                r.Add("capture line: Red city at full points shows none " + fullNone + "; neutral city " + w1 + ": " + v1 + "; Red city " + w2 + ": " + v2);
+                bool capture = fullNone && n1 && w1 == "Capturing" && v1 == "Blue 6/10" && p1 == a && n2 && w2 == "Capturing" && v2 == "Blue 6/10" && p2 == a;
+                r.Add("capture line: Red city nobody is taking shows none " + fullNone + "; neutral city " + w1 + ": " + v1 + "; Red city " + w2 + ": " + v2);
                 string top = TurnBanner.Line(o, 2, true) + " | " + TurnBanner.Line(a, 2, false) + " | " + TurnBanner.Line(a, 2, false, true);
                 bool line = top == "Red \u2014 your turn, day 3 | Blue is moving | Blue is thinking";
                 r.Add("top line: " + top);
@@ -3064,10 +3097,17 @@ public static class Scenarios {
                 a.Resupply();
                 int hqIncome = GameController.HQOf(a) != null ? GameController.HQOf(a).income : 0;
                 bool stopped = destroyed && earned == hqIncome && !city.HasSupplyToGive && !city.CanProduce;
+                // Destroyed it went neutral, and a ruin cannot be captured: the Blue grunt on it took nothing back.
+                bool ruinNeutral = city.owner == null && city.capturingPlayer == null && city.capturePoints == 0;
                 city.Repair(1);
+                // Repaired, it is taken again from 0 by the grunt standing on it (6, then 12: Blue's), and earns again.
+                int turns = 0;
+                while (city.owner != a && turns < 4) { gc.EndTurn(); gc.EndTurn(); turns++; }
                 int m1 = a.money; gc.EndTurn(); gc.EndTurn(); int earnedAgain = a.money - m1;
-                bool back = !city.Destroyed && earnedAgain == hqIncome + city.income;
-                r.Add("city: ground untouched, destroyed " + destroyed + ", turn's income " + earned + " (the HQ's " + hqIncome + "), no supply or production " + stopped + "; repaired by 1: income " + earnedAgain + " " + back);
+                bool back = !city.Destroyed && city.owner == a && turns == 2 && earnedAgain == hqIncome + city.income;
+                r.Add("city: ground untouched, destroyed " + destroyed + ", turn's income " + earned + " (the HQ's " + hqIncome + "), no supply or production " + stopped
+                      + "; as a ruin neutral and not taken back " + ruinNeutral + "; repaired by 1, retaken in " + turns + " turns: income " + earnedAgain + " " + back);
+                back = back && ruinNeutral;
                 // Water takes nothing.
                 HexTile w = bridge;
                 TerrainData wasWater = w.terrain;
@@ -3100,7 +3140,7 @@ public static class Scenarios {
                 r.Add("tank and fighter refused " + c1);
                 // The ship beside the shore on open water: a grunt cannot board; at the dock it can.
                 Building yard = Rig.At(-2, 0).building;
-                HexTile dock = yard.runway.Count > 0 ? yard.runway[0] : null;
+                HexTile dock = yard.tile;   // ships come in to the yard itself (no dock tiles)
                 HexTile beach = null, shore = null;
                 foreach (HexTile t in HexGenerator.hg.tiles) {
                     if (t.terrain.elevation >= 0 || t.building != null || t.occupier != null) continue;
@@ -3164,7 +3204,7 @@ public static class Scenarios {
                 return ok1 && ok2 && ok3 && pairDrain && besideIdle;
             }
             case "attritionShip": {
-                Unit away = Rig.At(1, 2).occupier, dock = Rig.At(-1, 0).occupier;
+                Unit away = Rig.At(1, 2).occupier, dock = Rig.At(-2, 0).occupier;
                 int before = away.fuel;
                 endTurn(); endTurn();
                 int idle = away.fuel;
@@ -3173,11 +3213,38 @@ public static class Scenarios {
                 detail = "away from port: fuel " + before + " -> " + idle + " idle, " + away.fuel + " after 3 tiles, strength " + away.Strength + "; on the dock: strength " + dock.Strength + ", fuel " + dock.fuel;
                 return idle == before && away.fuel == before - 3 && away.Strength == 6 && dock.Strength == 5 && dock.fuel == dock.fuelMax;
             }
+            case "lineOfFire": {
+                Unit tank = Rig.At(-1, 0).occupier, art = Rig.At(-1, 2).occupier, g = Rig.At(1, 0).occupier;
+                tank.AttackRange = 2;
+                AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
+                bool hillBlocks = !tank.CanAttackFrom(tank.tile, g) && !tank.tile.CheckAttackRange(tank).Contains(g.tile)
+                    && !AITargeting.Appraise(tank, g, tank.tile, map, map.profile, Posture.Aggressive, false).valid;
+                bool artOver = CombatMath.InFireRange(art, art.tile, g.tile, g);
+                Rig.At(-1, 0).terrain = T("Hills");
+                bool fromHill = tank.CanAttackFrom(tank.tile, g);
+                Rig.At(-1, 0).terrain = T("Grassland"); Rig.At(0, 0).terrain = T("Grassland");
+                bool open = tank.CanAttackFrom(tank.tile, g) && tank.tile.CheckAttackRange(tank).Contains(g.tile);
+                detail = "across a hill: blocked " + hillBlocks + "; from a hill of its own: fires " + fromHill + "; over grassland: fires " + open + "; artillery over the hill: fires " + artOver;
+                return hillBlocks && fromHill && open && artOver;
+            }
+            case "boardThroughFriend": {
+                Unit apc = Rig.At(0, 0).occupier, g = Rig.At(-2, 1).occupier;
+                bool before = !Transporting.CanBoardFrom(apc, g);
+                List<HexTile> steps = HexTile.BoardingPath(g, apc);
+                HexTile via = steps != null ? steps[steps.Count - 1] : null;
+                Unit friend = via != null ? via.occupier : null;
+                bool aiSees = via != null && Transporting.CanBoardFromTile(apc, g, via);
+                bool boarded = steps != null && g.WalkAndBoard(steps, apc, false);
+                bool kept = friend != null && friend.tile == via && via.occupier == friend && friend.owner == a;
+                detail = "not beside it: plain boarding refused " + before + "; path " + (steps != null ? steps.Count + " tiles, via " + Pos(via) + " (" + (friend != null ? friend.name : "nobody") + ")" : "none")
+                       + "; AI may board from there " + aiSees + "; boarded " + boarded + " (aboard " + (g.trasnporter == apc) + "); the tank kept its tile " + kept + "; the grunt's old tile free " + (Rig.At(-2, 1).occupier == null);
+                return before && aiSees && boarded && g.trasnporter == apc && kept && Rig.At(-2, 1).occupier == null;
+            }
             case "runwayNoCapture": {
                 Building ap = Rig.At(-3, 2).building;
                 endTurn(); endTurn();
                 detail = "Red grunt on a runway tile: " + show(ap);
-                return ap.owner == a && ap.capturePoints == ap.CaptureThreshold;
+                return ap.owner == a && ap.capturePoints == 0 && ap.capturingPlayer == null;
             }
             case "attritionBoats": {
                 Unit g = Rig.At(3, 0).occupier, far = Rig.At(1, 0).occupier;
@@ -3191,6 +3258,100 @@ public static class Scenarios {
                 detail = "naval yard in supply " + yardSupplied + "; island grunt supplied with both boats " + withBoats + ", without the far one " + withoutFar
                          + "; boats linked " + with.connectedHubs.Count;
                 return yardSupplied && withBoats && !withoutFar && linked == 2;
+            }
+            case "shipMends": {
+                Unit g = Rig.At(0, 0).occupier, dry = Rig.At(0, 4).occupier;
+                endTurn(); endTurn(); string one = g.Strength + " (" + g.supplies + " supplies)";
+                bool ok1 = g.Strength == 4 && g.supplies == 4 && dry.Strength == 2;
+                endTurn(); endTurn();
+                detail = "with supplies: 3 -> " + one + " -> " + g.Strength + "; without: 3 -> " + dry.Strength + " after two turns";
+                return ok1 && g.Strength == 5 && dry.Strength == 1;
+            }
+            case "shipTender": {
+                Unit g = Rig.At(1, 0).occupier, far = Rig.At(0, 5).occupier, sb2 = Rig.At(-1, 0).occupier;
+                endTurn(); endTurn();
+                detail = "beside it: fuel " + g.fuel + "/" + g.fuelMax + ", supplies " + g.supplies + "/" + g.suppliesMax + "; away: fuel " + far.fuel + "; the supply ship beside it: fuel " + sb2.fuel;
+                return g.fuel == g.fuelMax && g.supplies == g.suppliesMax && far.fuel == 10 && sb2.fuel == 10;
+            }
+            case "shipCarriedSupply": {
+                Unit ta = Rig.At(-1, 0).occupier, tb = Rig.At(3, 0).occupier, tc = Rig.At(5, 0).occupier, helo = Rig.At(-5, 3).occupier;
+                Unit sa = Rig.At(-6, 2).occupier, sb = Rig.At(-6, 3).occupier, sc = Rig.At(-6, 4).occupier, sh = Rig.At(-5, 4).occupier;
+                Unit g = Rig.At(6, -1).occupier;
+                foreach (Unit t in new[] { ta, tb, tc }) t.moveRange = 3;
+                Action<Unit, Unit> aboard = (ship, sup) => { sup.tile.occupier = null; sup.tile = ship.tile; sup.trasnporter = ship; ship.transported.Add(sup); };
+                aboard(ta, sa); aboard(tb, sb); aboard(tc, sc);
+                SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                bool chain = r.connectedHubs.Contains(sa.Hub) && r.connectedHubs.Contains(sb.Hub) && r.connectedHubs.Contains(sc.Hub) && r.IsSupplied(g.tile);
+                SupplyPoint viaC, viaB;
+                bool through = r.linkedThrough.TryGetValue(sc.Hub, out viaC) && viaC == sb.Hub && r.linkedThrough.TryGetValue(sb.Hub, out viaB) && viaB == sa.Hub && !r.linkedThrough.ContainsKey(sa.Hub);
+                bool atSeaNothing = r.DepthAt(ta.tile) == 0 && r.DepthAt(tb.tile) == 0;
+                List<HexTile> line = SupplyOverlay.SourcePath(a, g.tile, r, null);
+                Building hq = GameController.HQOf(a);
+                bool drawn = line.Contains(tc.tile) && line.Contains(tb.tile) && line.Contains(ta.tile) && hq != null && line.Contains(hq.tile)
+                             && line.IndexOf(tc.tile) < line.IndexOf(tb.tile) && line.IndexOf(tb.tile) < line.IndexOf(ta.tile);
+                // Without A: nothing for B or C to reach.
+                HexTile aAt = ta.tile;
+                ta.TeleportTo(Rig.At(-3, -3), 0); sa.tile = ta.tile;
+                SupplyNetwork.Result cut = SupplyNetwork.Solve(a, false);
+                bool cutOff = !cut.connectedHubs.Contains(sb.Hub) && !cut.connectedHubs.Contains(sc.Hub) && !cut.IsSupplied(g.tile);
+                // A helicopter with supplies in A's place over the water: B and C link through it.
+                ta.TeleportTo(Rig.At(-4, -3), 0); sa.tile = ta.tile;
+                helo.TeleportTo(aAt, 0); aboard(helo, sh);
+                SupplyNetwork.Result viaAir = SupplyNetwork.Solve(a, false);
+                SupplyPoint viaH;
+                bool air = viaAir.connectedHubs.Contains(sh.Hub) && viaAir.DepthAt(helo.tile) == 0 && viaAir.linkedThrough.TryGetValue(sb.Hub, out viaH) && viaH == sh.Hub
+                           && viaAir.connectedHubs.Contains(sc.Hub) && viaAir.IsSupplied(g.tile);
+                detail = "A, B, C linked and the island supplied " + chain + "; C through B through A " + through + "; A and B at sea give nothing " + atSeaNothing
+                       + "; line through C, B, A to the HQ " + drawn + " (" + line.Count + " tiles); without A cut off " + cutOff + "; through a helicopter over the water " + air;
+                return chain && through && atSeaNothing && drawn && cutOff && air;
+            }
+            case "ignoresCover": {
+                Unit tank = Rig.At(0, 0).occupier, g = Rig.At(1, 0).occupier;
+                CombatOutcome before = CombatMath.Resolve(tank, g, tank.tile);
+                int coverDmg = Unit.calculateDamage(tank, g, g.tile, 0), openDmg = Unit.calculateDamage(tank, g, null, 0);
+                tank.ignoresCover = true;
+                CombatOutcome after = CombatMath.Resolve(tank, g, tank.tile);
+                int ignoringDmg = Unit.calculateDamage(tank, g, g.tile, 0);
+                detail = "forest grunt fires first: normally " + before.defenderFiresFirst + ", against cover-ignoring " + after.defenderFiresFirst
+                       + "; damage in the forest " + coverDmg + " (open ground " + openDmg + "), ignoring cover " + ignoringDmg + "; forecast to the grunt " + before.damageToDefender + " -> " + after.damageToDefender;
+                return before.defenderFiresFirst && !after.defenderFiresFirst && coverDmg < openDmg && ignoringDmg == openDmg && after.damageToDefender >= before.damageToDefender;
+            }
+            case "nextUnit": {
+                HexTileUIData ui = HexTileUIData.instance;
+                foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
+                foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
+                Unit g1 = Rig.At(0, 0).occupier, g2 = Rig.At(2, 0).occupier, tk = Rig.At(0, 2).occupier;
+                // Blue played by hand: its AI off (the harness gives every side one).
+                foreach (MonoBehaviour m in a.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = false;
+                List<Unit> order = new List<Unit>();
+                bool selectedLikeClick = true;
+                for (int i = 0; i < 4; i++) {
+                    Unit u = gc.SelectNextIdle();
+                    order.Add(u);
+                    int moves = 0; foreach (HexTile t in Rig.hg.tiles) if (t.state == UIState.MOVE) moves++;
+                    if (u == null || gc.activeUnit != u || u.tile.state != UIState.SELECTED || moves == 0) selectedLikeClick = false;
+                }
+                bool cycles = order[0] != null && order[0] != order[1] && order[1] != order[2] && order[3] == order[0];
+                g2.active = false;
+                Unit after = null; bool skipped = true;
+                for (int i = 0; i < 3; i++) { after = gc.SelectNextIdle(); if (after == g2) skipped = false; }
+                gc.activeUnit = null; HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+                // An AI's turn (Blue handed back to its AI): nothing.
+                foreach (MonoBehaviour m in a.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
+                bool redNone = gc.SelectNextIdle() == null && gc.activeUnit == null;
+                detail = "order " + string.Join(", ", order.ConvertAll(u => u != null ? u.name + Pos(u.tile) : "none")) + "; each selected as a click does " + selectedLikeClick
+                       + "; wraps round " + cycles + "; one that acted skipped " + skipped + "; on an AI's turn nothing " + redNone;
+                return selectedLikeClick && cycles && skipped && redNone;
+            }
+            case "harborOpen": {
+                HexTile yard = Rig.At(-2, 0), bridge = Rig.At(-3, 4);
+                Unit g = Rig.At(-3, 1).occupier, g2 = Rig.At(-4, 4).occupier, boat = Rig.At(0, 0).occupier;
+                bool landStep = LocomotionRules.BridgeStep(g.tile, yard, g.locomotion) && AIPath.ThisTurn(g).ReachableThisTurn(yard);
+                bool shipStep = AIPath.ThisTurn(boat).ReachableThisTurn(yard);
+                bool supplied = SupplyNetwork.Solve(a, false).IsSupplied(yard);
+                bool bridgeHeld = !LocomotionRules.BridgeStep(g2.tile, bridge, g2.locomotion);
+                detail = "grunt onto the harbor from grassland " + landStep + "; ship onto it from the water " + shipStep + "; harbor in supply " + supplied + "; plain bridge still road-only " + bridgeHeld;
+                return landStep && shipStep && supplied && bridgeHeld;
             }
             case "attritionTransport": {
                 Unit apc = Rig.At(-3, 0).occupier, g = Rig.At(-2, 0).occupier;
@@ -3864,8 +4025,6 @@ public static class Scenarios {
             case "noBuildReserved": {
                 Building ap = Rig.At(-4, 2).building;
                 foreach (Building rw in Runways(ap)) RemoveBuilding(rw);
-                // Leave only the anchor as a footprint tile too, so the reserved tile is the only place to build.
-                foreach (HexTile t in new List<HexTile>(ap.tiles)) if (t != ap.tile) { t.building = null; ap.tiles.Remove(t); }
                 Unit inbound = Rig.At(-1, 2).occupier;
                 AIMap map = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile);
                 map.landings = AIAir.PlanLandings(map);
@@ -4121,7 +4280,7 @@ public static class Scenarios {
         if (!string.IsNullOrEmpty(add))
             foreach (Player side in new[] { l.ai, l.other }) {
                 List<HexTile> spots = new List<HexTile>();
-                foreach (Building b in Building.all) if (b != null && b.owner == side && b.tile != null && b.name.StartsWith("Airport")) { foreach (HexTile t in b.Footprint) spots.Add(t); foreach (HexTile t in b.tile.neighbors) if (t != null) spots.Add(t); }
+                foreach (Building b in Building.all) if (b != null && b.owner == side && b.tile != null && b.name.StartsWith("Airport")) { spots.Add(b.tile); foreach (HexTile t in b.tile.neighbors) if (t != null) spots.Add(t); }
                 // No airport of its own: around its HQ.
                 Building hq = GameController.HQOf(side);
                 if (spots.Count == 0 && hq != null) foreach (HexTile t in AIPath.TilesInRangeShared(hq.tile, 1, 3)) if (t != null) spots.Add(t);

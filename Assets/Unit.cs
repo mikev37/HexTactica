@@ -114,6 +114,8 @@ public class Unit : MonoBehaviour
     public int AttackRange;
     public int MinRange;
     public bool retaliates = true;
+    [Tooltip("Its attacks ignore the defender's cover (napalm, flamethrowers): no cover off its damage, and a defender cannot use the ground to fire first on it (an ambush by veterancy alone still can).")]
+    public bool ignoresCover;
 
     [Header("Vision (fog of war)")]
     [Range(0, 10)]
@@ -698,8 +700,7 @@ public class Unit : MonoBehaviour
         if (ambusher != null) {
             ambushedBy = ambusher;
             FogOfWar.Reveal(ambusher, owner);
-            int d = ambusher.tile != null ? ambusher.tile.Distance(dest) : int.MaxValue;
-            if (ambusher.Strength > 0 && d <= ambusher.AttackRange && d > ambusher.MinRange
+            if (ambusher.Strength > 0 && ambusher.tile != null && CombatMath.InFireRange(ambusher, ambusher.tile, dest, this)
                 && ambusher.CanAttack(this) && GameController.Targetable(this))
                 ambusher.OrderAttack(this, true);
             if (RanInto != null) RanInto(this, ambusher, dest);
@@ -772,7 +773,7 @@ public class Unit : MonoBehaviour
         int nearest = int.MaxValue;
         foreach (Building b in Building.all) {
             if (b == null || b.owner != owner || !b.Services(this)) continue;
-            foreach (HexTile t in b.Footprint) if (t != null) nearest = Mathf.Min(nearest, t.Distance(end));
+            if (b.tile != null) nearest = Mathf.Min(nearest, b.tile.Distance(end));
         }
         return nearest > reach;
     }
@@ -784,6 +785,55 @@ public class Unit : MonoBehaviour
             transported[i].tile = t;
             transported[i].SetCargoTile(t);
         }
+    }
+
+    /// <summary>
+    /// The steps from this unit's tile to <paramref name="dest"/> along <paramref name="field"/>'s paths (its own
+    /// tile first), or null when the field does not reach it.
+    /// </summary>
+    internal List<HexTile> PathIn(HexTactica.AI.MoveField field, HexTile dest) {
+        if (field == null || dest == null || tile == null || !field.Reachable(dest)) return null;
+        List<HexTile> steps = new List<HexTile>();
+        for (HexTile t = dest; t != null && steps.Count < 256; t = t == tile ? null : field.ParentOf(t)) steps.Insert(0, t);
+        return steps.Count > 0 && steps[0] == tile ? steps : null;
+    }
+
+    /// <summary>
+    /// Go to <paramref name="dest"/>, <paramref name="tilesEntered"/> tiles away along <paramref name="field"/>: in
+    /// play, walked along the field's path, tile by tile, as a player's move is (a sprite sent straight there by
+    /// TeleportTo slid across whatever stood in between, enemy units included); headless, TeleportTo.
+    /// </summary>
+    internal void TravelTo(HexTile dest, HexTactica.AI.MoveField field, int tilesEntered, bool thenAttacks = false) {
+        List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathIn(field, dest) : null;
+        if (steps != null && steps.Count > 1) MoveAlong(steps, thenAttacks, true);
+        else TeleportTo(dest, tilesEntered, thenAttacks);
+    }
+
+    /// <summary>
+    /// Walk <paramref name="steps"/> (its own tile first) to a tile beside <paramref name="transport"/> and board it
+    /// from there — the player's "get in" and the AI's alike. The last step may hold a friendly unit: it is only passed
+    /// through on the way in (Transporting.CanBoardFromTile). Fuel is burnt per tile entered, as a move. Fog of war:
+    /// an enemy on the way that its side did not see stops it as a move does (MoveAlong) and it does not board.
+    /// Returns true if it boarded.
+    /// </summary>
+    internal bool WalkAndBoard(List<HexTile> steps, Unit transport, bool animate) {
+        if (steps == null || steps.Count == 0 || tile == null || steps[0] != tile || transport == null) return false;
+        HexTile from = steps[steps.Count - 1];
+        if (!Transporting.CanBoardFromTile(transport, this, from)) return false;
+        if (FogOfWar.On) {
+            for (int i = 1; i < steps.Count; i++) {
+                Unit o = steps[i] != null ? steps[i].occupier : null;
+                if (o != null && o != this && o.owner != owner) { MoveAlong(steps, false, animate); return false; }
+            }
+        }
+        int entered = steps.Count - 1;
+        if (fuelMax > 0) fuel = Mathf.Max(0, fuel - entered * minFuelPerTile);
+        if (animate && entered > 0) {
+            if (spriteTile == null) spriteTile = tile;
+            path = new List<HexTile>(steps);   // OnBoarded plays it out before stepping in
+            if (animator != null) animator.SetBool("Moving", true);
+        }
+        return Transporting.BoardFrom(transport, this, from);
     }
 
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
@@ -821,6 +871,8 @@ public class Unit : MonoBehaviour
     /// </summary>
     public bool CanAttack(Unit opposition) {
         if (opposition == null || opposition.tile == null) return false;
+        // Aboard a transport: out of reach (the transport is what stands on the tile).
+        if (opposition.trasnporter != null && opposition.trasnporter != opposition) return false;
         if (!CanAttack(opposition.tile)) return false;
         if (!CanTarget(opposition)) return false;
         return calculateDamage(this, opposition, opposition.tile, 0) > 0;
@@ -829,8 +881,7 @@ public class Unit : MonoBehaviour
     /// <summary>Can this unit attack <paramref name="opposition"/> from <paramref name="from"/>: CanAttack, and in range from there.</summary>
     public bool CanAttackFrom(HexTile from, Unit opposition) {
         if (from == null || !CanAttack(opposition)) return false;
-        int d = from.Distance(opposition.tile);
-        return d <= AttackRange && d > MinRange;
+        return CombatMath.InFireRange(this, from, opposition.tile, opposition);
     }
 
     /// <summary>Is <paramref name="target"/>'s locomotion one this unit can attack (attacksLocomotion)?</summary>
@@ -899,10 +950,19 @@ public class Unit : MonoBehaviour
     internal void FinishActive() {
         GameController.gc.activeUnit = null;
         active = false;
+        // Infantry that ended its action on a building without having attacked captures it now (not as the turn ends).
+        Building.CaptureBy(this);
         FogOfWar.Refresh();
         GameController.RecalculateThreat();
+        // In play, every side's supply: any unit that moved may now stand in (or have left) a corridor of the
+        // other side's network — an enemy standing in it severs it — and the borders on screen must show that now,
+        // not at the next supply unit's move. (The headless harness keeps to what the rules need below; the AI
+        // solves supply on its own copies of the board.)
+        if (GameController.gc != null && !GameController.gc.headless && GameController.gc.players != null && BoardView.current == null && !Player.InUpkeep) {
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        }
         // Its supply moved with it: a supply unit, or a transport carrying one (its cargo rode along).
-        if (Hub || (ResupplyWithCargo && CarriesSupply(this))) {
+        else if (Hub || (ResupplyWithCargo && CarriesSupply(this))) {
             owner.Resupply();
         }
         if (Finished != null) Finished(this);
@@ -1254,11 +1314,9 @@ public class Unit : MonoBehaviour
         float penetration = Mathf.Max(1, defender.Armor - attacker.Piercing);
         float aquire = Mathf.Max(1, defender.Evasion - attacker.Targeting);
         float toughness = 6;
-        if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion))
+        if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion) && !attacker.ignoresCover)
             cover = Math.Min(defender.Concealment, tile.EffectiveCover);
         int minDamage = 1;
-		if (LocomotionRules.IsAirborne(defender.locomotion))
-            minDamage = 0;
         return (int) Mathf.Max(minDamage, Mathf.Floor(
             (destruction / penetration / aquire - cover)
             * (attacker.Strength - firstStrike) / toughness));

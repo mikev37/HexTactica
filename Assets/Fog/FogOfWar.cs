@@ -211,7 +211,7 @@ public static class FogOfWar {
             if (b == null || b.tile == null || !b.Functioning) continue;   // a destroyed building sees nothing
             Player owner = buildingOwner != null ? buildingOwner(b) : b.owner;
             if (owner != p) continue;
-            foreach (HexTile t in b.Footprint) Cover(s, t, Mathf.Max(0, b.visionRange), Domain.Land);
+            Cover(s, b.tile, Mathf.Max(0, b.visionRange), Domain.Land);
         }
         return s;
     }
@@ -467,7 +467,7 @@ public static class FogOfWar {
             BuildingSighting g;
             bool known = bm.TryGetValue(b, out g);
             bool look = !known || b.owner == p || g.owner == p;
-            if (!look) foreach (HexTile t in b.ServiceTiles()) if (s.cover.ContainsKey(t)) { look = true; break; }
+            if (!look && b.tile != null && s.cover.ContainsKey(b.tile)) look = true;
             if (!look) continue;
             if (!known) { g = new BuildingSighting(); bm[b] = g; }
             g.owner = b.owner; g.capturing = b.capturingPlayer; g.points = b.capturePoints;
@@ -562,7 +562,8 @@ public static class FogOfWar {
             if (!gc.fogShownOnScreen) return null;
             if (gc.fogViewer >= 0 && gc.fogViewer < gc.players.Count) return gc.players[gc.fogViewer];
             if (gc.activePlayer != null && IsHuman(gc.activePlayer)) lastHuman = gc.activePlayer;
-            if (lastHuman != null && gc.players.Contains(lastHuman)) return lastHuman;
+            // (Still human: a loaded scenario may have handed the last human's side to an AI.)
+            if (lastHuman != null && gc.players.Contains(lastHuman) && IsHuman(lastHuman)) return lastHuman;
             foreach (Player p in gc.players) if (p != null && IsHuman(p)) { lastHuman = p; return p; }
             return null;
         }

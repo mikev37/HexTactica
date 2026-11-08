@@ -193,8 +193,36 @@ public class GameController : MonoBehaviour
         Debug.Log("Recording this game to " + HexTactica.Harness.GameLog.Folder);
     }
 
+    [Tooltip("Longest a turn's end waits for the moves and shots still playing on screen, in seconds (then it ends anyway).")]
+    public float maxEndTurnWait = 10f;
+    bool endTurnPending;
+    float endTurnAskedAt;
+
+    /// <summary>A turn's end has been asked for and waits for the animations still playing (EndTurnWhenStill).</summary>
+    public bool EndTurnPending { get { return endTurnPending; } }
+
+    /// <summary>
+    /// End the turn once nothing is moving on screen: every walk, retreat, boarding and shot already
+    /// decided has played (Unit.AnyAnimating), so the next side does not start while the last one's
+    /// units are still on their way (at most maxEndTurnWait). The rules are not held up: the board is
+    /// already as it will be. Headless: at once.
+    /// </summary>
+    public void EndTurnWhenStill() {
+        if (headless || gameOver) { EndTurn(); return; }
+        if (endTurnPending) return;
+        endTurnPending = true;
+        endTurnAskedAt = Time.unscaledTime;
+    }
+
+    /// <summary>Drop a turn's end still waiting (a board was loaded).</summary>
+    public void CancelPendingEndTurn() { endTurnPending = false; }
+
     public void Update() {
         if (headless) return;
+        if (endTurnPending && (!Unit.AnyAnimating() || Time.unscaledTime - endTurnAskedAt > maxEndTurnWait)) {
+            endTurnPending = false;
+            EndTurn();
+        }
         if (HexTactica.Harness.Replay.Active) return;   // a replay: nobody plays
         if (Input.GetKeyDown("t") && !fogOfWar) {   // a debug read-out of every unit's reach: not under fog
             RecalculateThreat();
@@ -204,9 +232,40 @@ public class GameController : MonoBehaviour
             });
         }
         // Space ends the turn of a human player only: an AI ends its own (and may be thinking on another thread).
-        if (Input.GetKeyDown(KeyCode.Space) && FogOfWar.IsHuman(activePlayer)) {
-            EndTurn();
-        }
+        if (Input.GetKeyDown(KeyCode.Space)) HumanEndTurn();
+    }
+
+    /// <summary>
+    /// The player at the screen ends their turn: the Space key and the HUD's End turn button (TurnControls) both come
+    /// here. Only a human player's turn, not while one is already ending, not in a replay.
+    /// </summary>
+    public void HumanEndTurn() {
+        if (headless || gameOver || endTurnPending || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return;
+        EndTurnWhenStill();
+    }
+
+    Unit lastIdle;
+
+    /// <summary>
+    /// The HUD's Next unit button (TurnControls): the human player's next unit that has not acted this turn, after the
+    /// one selected (or the last one picked this way), in roster order; selected by a click on its tile
+    /// (HexTile.ClickBoard), as the player would. Null if none is left, or it is not a human player's turn.
+    /// </summary>
+    public Unit SelectNextIdle() {
+        if (gameOver || endTurnPending || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return null;
+        List<Unit> idle = new List<Unit>();
+        foreach (Unit u in activePlayer.units)
+            if (u != null && u.active && u.tile != null && u.Strength > 0 && (u.trasnporter == null || u.trasnporter == u)) idle.Add(u);
+        if (idle.Count == 0) return null;
+        Unit from = activeUnit != null ? activeUnit : lastIdle;
+        int i = from != null ? idle.IndexOf(from) : -1;
+        Unit next = idle[(i + 1) % idle.Count];
+        // Whatever was selected is dropped first, so the click on the next one's tile selects it.
+        activeUnit = null;
+        HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+        next.tile.ClickBoard();
+        lastIdle = next;
+        return next;
     }
 
     public static void ResetTileData() {
@@ -229,6 +288,7 @@ public class GameController : MonoBehaviour
     /// </summary>
     public static void BoardLoaded() {
         if (gc == null) return;
+        gc.CancelPendingEndTurn();
         if (gc.players != null)
             foreach (Player p in gc.players) {
                 if (p == null) continue;

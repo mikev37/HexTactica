@@ -165,7 +165,7 @@ namespace HexTactica.OldAI {
                 Building best = null; int bestGap = int.MaxValue;
                 foreach (Building b in Building.all) {
                     if (b == null || b.owner != map.player || !b.producesSupply || b.IsHQ || b.tile == null || !b.Functioning) continue;
-                    bool joined = false; foreach (HexTile x in b.Footprint) if (map.SupplyDepth(x) > 0) { joined = true; break; }
+                    bool joined = b.tile != null && map.SupplyDepth(b.tile) > 0;
                     if (joined) continue;
                     int there; if (!toGoal.TryGetValue(b.tile, out there) || there >= reachNow - 2) continue;   // not nearer the front by much
                     // The one nearest our supply now: the least chain to join it.

@@ -1,0 +1,691 @@
+fileFormatVersion: 2
+guid: 7d5711d21f4a4b840aa5bb3df79c1a12
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2648851025823137472
+    second: HarborDestroyed_0
+  - first:
+      213: -2741388335418968654
+    second: HarborDestroyed_1
+  - first:
+      213: -8280486129128039406
+    second: HarborDestroyed_2
+  - first:
+      213: 6952539303033121154
+    second: HarborDestroyed_3
+  - first:
+      213: -1376346256279195320
+    second: HarborDestroyed_4
+  - first:
+      213: 1611640427897180374
+    second: HarborDestroyed_5
+  - first:
+      213: 1183754526053643690
+    second: HarborDestroyed_6
+  - first:
+      213: 2407694958681052926
+    second: HarborDestroyed_7
+  - first:
+      213: 8822928018995163887
+    second: HarborDestroyed_8
+  - first:
+      213: 9135600474339201459
+    second: HarborDestroyed_9
+  - first:
+      213: -9158866804400514301
+    second: HarborDestroyed_10
+  - first:
+      213: -6685241469706089803
+    second: HarborDestroyed_11
+  - first:
+      213: 2806593937699181228
+    second: HarborDestroyed_12
+  - first:
+      213: 3123204801598344970
+    second: HarborDestroyed_13
+  - first:
+      213: -7754979580430445058
+    second: HarborDestroyed_14
+  - first:
+      213: 1846513886643598704
+    second: HarborDestroyed_15
+  - first:
+      213: -2816769492267907835
+    second: HarborDestroyed_16
+  - first:
+      213: -7344332299262615418
+    second: HarborDestroyed_17
+  - first:
+      213: 4031888814372698237
+    second: HarborDestroyed_18
+  - first:
+      213: 5890174788600629776
+    second: HarborDestroyed_19
+  - first:
+      213: -9184991496573671029
+    second: HarborDestroyed_20
+  - first:
+      213: -6367706044043767246
+    second: HarborDestroyed_21
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: HarborDestroyed_0
+      rect:
+        serializedVersion: 2
+        x: 520
+        y: 1176
+        width: 14
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0cefd1949fb92c420800000000000000
+      internalID: 2648851025823137472
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_1
+      rect:
+        serializedVersion: 2
+        x: 533
+        y: 1166
+        width: 17
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b5f3fb55d1a4f9d0800000000000000
+      internalID: -2741388335418968654
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_2
+      rect:
+        serializedVersion: 2
+        x: 559
+        y: 1175
+        width: 13
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21c16c9ccbdc51d80800000000000000
+      internalID: -8280486129128039406
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_3
+      rect:
+        serializedVersion: 2
+        x: 571
+        y: 1148
+        width: 31
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2892b34f8a16c7060800000000000000
+      internalID: 6952539303033121154
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_4
+      rect:
+        serializedVersion: 2
+        x: 589
+        y: 1181
+        width: 155
+        height: 84
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8413a824f5c36ece0800000000000000
+      internalID: -1376346256279195320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_5
+      rect:
+        serializedVersion: 2
+        x: 530
+        y: 1172
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d0587a2e62bd5610800000000000000
+      internalID: 1611640427897180374
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_6
+      rect:
+        serializedVersion: 2
+        x: 552
+        y: 1169
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa530ba387a8d6010800000000000000
+      internalID: 1183754526053643690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_7
+      rect:
+        serializedVersion: 2
+        x: 560
+        y: 1155
+        width: 12
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef6dea3fec9d96120800000000000000
+      internalID: 2407694958681052926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_8
+      rect:
+        serializedVersion: 2
+        x: 562
+        y: 1133
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe23c039946517a70800000000000000
+      internalID: 8822928018995163887
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_9
+      rect:
+        serializedVersion: 2
+        x: 563
+        y: 1146
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b1d0ea9a3c28ce70800000000000000
+      internalID: 9135600474339201459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_10
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 1062
+        width: 42
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30b179aca2b25e080800000000000000
+      internalID: -9158866804400514301
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_11
+      rect:
+        serializedVersion: 2
+        x: 556
+        y: 1103
+        width: 13
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ba4570ad404933a0800000000000000
+      internalID: -6685241469706089803
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_12
+      rect:
+        serializedVersion: 2
+        x: 565
+        y: 1107
+        width: 41
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca2135df05603f620800000000000000
+      internalID: 2806593937699181228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_13
+      rect:
+        serializedVersion: 2
+        x: 567
+        y: 1119
+        width: 8
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0f4018383ad75b20800000000000000
+      internalID: 3123204801598344970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_14
+      rect:
+        serializedVersion: 2
+        x: 555
+        y: 1095
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef51904c827c06490800000000000000
+      internalID: -7754979580430445058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_15
+      rect:
+        serializedVersion: 2
+        x: 560
+        y: 1101
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 075b73eb89220a910800000000000000
+      internalID: 1846513886643598704
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_16
+      rect:
+        serializedVersion: 2
+        x: 358
+        y: 1067
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 505c6371213d8e8d0800000000000000
+      internalID: -2816769492267907835
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_17
+      rect:
+        serializedVersion: 2
+        x: 391
+        y: 1070
+        width: 62
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 680260e8fa0b31a90800000000000000
+      internalID: -7344332299262615418
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_18
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 585
+        width: 535
+        height: 462
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d783e8ac38524f730800000000000000
+      internalID: 4031888814372698237
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_19
+      rect:
+        serializedVersion: 2
+        x: 787
+        y: 968
+        width: 78
+        height: 79
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01a808343ca1eb150800000000000000
+      internalID: 5890174788600629776
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_20
+      rect:
+        serializedVersion: 2
+        x: 153
+        y: 761
+        width: 76
+        height: 201
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b892eb5e5ea588080800000000000000
+      internalID: -9184991496573671029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HarborDestroyed_21
+      rect:
+        serializedVersion: 2
+        x: 771
+        y: 887
+        width: 43
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 232d9aa271d51a7a0800000000000000
+      internalID: -6367706044043767246
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      HarborDestroyed_0: 2648851025823137472
+      HarborDestroyed_1: -2741388335418968654
+      HarborDestroyed_10: -9158866804400514301
+      HarborDestroyed_11: -6685241469706089803
+      HarborDestroyed_12: 2806593937699181228
+      HarborDestroyed_13: 3123204801598344970
+      HarborDestroyed_14: -7754979580430445058
+      HarborDestroyed_15: 1846513886643598704
+      HarborDestroyed_16: -2816769492267907835
+      HarborDestroyed_17: -7344332299262615418
+      HarborDestroyed_18: 4031888814372698237
+      HarborDestroyed_19: 5890174788600629776
+      HarborDestroyed_2: -8280486129128039406
+      HarborDestroyed_20: -9184991496573671029
+      HarborDestroyed_21: -6367706044043767246
+      HarborDestroyed_3: 6952539303033121154
+      HarborDestroyed_4: -1376346256279195320
+      HarborDestroyed_5: 1611640427897180374
+      HarborDestroyed_6: 1183754526053643690
+      HarborDestroyed_7: 2407694958681052926
+      HarborDestroyed_8: 8822928018995163887
+      HarborDestroyed_9: 9135600474339201459
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
