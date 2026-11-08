@@ -257,6 +257,8 @@ MonoBehaviour:
   noZeroDamageAttacks: 1
   tieFavorsShot: 1
   defensiveNarrows: 1
+  campaignReleaseOwnReach: 1
+  fogRiskWeight: 1
   productionPossibleFoes: 1
   productionAvoidFire: 1
   scoutUnits: 0

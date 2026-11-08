@@ -496,6 +496,7 @@ namespace HexTactica.AI {
                 if (t == null || t.tile == null || t.Strength <= 0 || !GameController.Targetable(t)) return false;
                 HexTile from = s.stop ?? u.tile;
                 if (!CombatMath.InFireRange(u, from, t.tile, t) || !u.CanAttack(from)) return false;
+                if (!u.CanTarget(t) || Unit.calculateDamage(u, t, t.tile, 0) <= 0) return false;   // the game's rule: an attack for damage
             }
             return true;
         }

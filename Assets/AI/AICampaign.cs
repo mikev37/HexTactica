@@ -85,7 +85,7 @@ namespace HexTactica.AI {
             staged.Clear(); enRoute.Clear(); engaged.Clear();
             foreach (Unit u in units) {
                 if (u == null || u.tile == null || u.Strength <= 0) continue;
-                if (map.TurnsToContact(u) <= p.campaignEngagedTurns) engaged.Add(u);
+                if ((p.campaignReleaseOwnReach ? map.TurnsToEngage(u) : map.TurnsToContact(u)) <= p.campaignEngagedTurns) engaged.Add(u);
                 else if (staging != null && map.Travel(u, u.tile, staging) <= stagingRadius) staged.Add(u);
                 else enRoute.Add(u);
             }

@@ -874,6 +874,10 @@ namespace HexTactica.AI {
         public bool tieFavorsShot = true;
         [Tooltip("Campaign: on the defensive (aggression under 0.25), the narrows (passages three tiles wide or less) near an enemy we see or remember are Hold objectives, ours or not, in sight or not.")]
         public bool defensiveNarrows = true;
+        [Tooltip("Campaign: a unit is in the fight (released from its task force's lean, counted engaged) by its own reach to an enemy, not by an enemy's reach to it.")]
+        public bool campaignReleaseOwnReach = true;
+        [Tooltip("Fog: the weight of what the fog may hide in a move's score (AIFog.FogRisk), against the forecast of the enemy we see or remember (1: as much).")]
+        public float fogRiskWeight = 1f;
         [Tooltip("Production: a fighting unit that can hurt nothing the enemy has or could field (its units at the start, what its buildings make) is not bought (anti-air on a map without air).")]
         public bool productionPossibleFoes = true;
         [Tooltip("Production: a unit is not built on a tile where the enemy we see or remember would destroy it next turn.")]

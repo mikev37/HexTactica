@@ -731,6 +731,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             // How much of the enemy we cannot place: the fog's unknown ground is feared by that share (AISigint).
             if (Profile.fogUncertainty) map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
             map.fogUnplacedPower = Mathf.Max(0f, knowledge.estimate - knowledge.known);
+            map.fogKnownAtStart = new HashSet<Unit>(map.enemyUnits);
             if (map.sigint != null) { string note = map.sigint.Prime(); if (Trace != null && note != null) Trace("   fog: " + note); }
             if (Trace != null) Trace("   " + knowledge + (Profile.fogUncertainty ? "; unknown ground feared at " + map.fogUncertainty.ToString("0.00") : ""));
         }

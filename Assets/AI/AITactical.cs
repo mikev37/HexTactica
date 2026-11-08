@@ -416,7 +416,9 @@ namespace HexTactica.AI {
             // In the fight (AIProfile.campaignReleaseTurns): the campaign has set the stage, and the unit
             // fights as it will — no lean toward staging or objective, no pace, no dip rule. (On BridgeCrossing
             // the enemy is two moves away from the start, and the task forces still gathered and held.)
-            if (profile.campaignReleaseTurns > 0 && map.TurnsToContact(unit) <= profile.campaignReleaseTurns) return 0f;
+            // (campaignReleaseOwnReach: by our reach to them. By theirs, a gunship that could reach the rear put grunts six
+            // tiles behind the line "in the fight", with no lean toward the front, and they milled about at the back.)
+            if (profile.campaignReleaseTurns > 0 && (profile.campaignReleaseOwnReach ? map.TurnsToEngage(unit) : map.TurnsToContact(unit)) <= profile.campaignReleaseTurns) return 0f;
             bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
             HexTile goal = gathering ? f.stagingTile : f.objectiveTile;
             if (goal == null) return 0f;

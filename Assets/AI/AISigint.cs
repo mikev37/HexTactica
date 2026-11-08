@@ -257,7 +257,10 @@ namespace HexTactica.AI {
                 foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Firepower > 0 && e.Strength > 0) { sum += AIScore.Worth(e) * e.Strength; n++; }
                 if (n == 0) foreach (Unit o in map.ownUnits) if (o != null && o.tile != null && o.Firepower > 0 && o.Strength > 0 && o.Hub == null) { sum += AIScore.Worth(o) * o.Strength; n++; }
                 float per = n > 0 ? sum / n : 1f;
-                massUnits = map.fogUnplacedPower / Mathf.Max(1f, per);
+                // Seen since the turn began (an earlier unit's move revealed it): placed now, out of the unplaced.
+                float unplaced = map.fogUnplacedPower;
+                if (map.fogKnownAtStart != null) foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0 && !map.fogKnownAtStart.Contains(e)) unplaced -= AIScore.Worth(e) * e.Strength;
+                massUnits = Mathf.Max(0f, unplaced) / Mathf.Max(1f, per);
                 List<KeyValuePair<HexTile, float>> anchors = new List<KeyValuePair<HexTile, float>>();
                 foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) anchors.Add(new KeyValuePair<HexTile, float>(e.tile, 1f));
                 FogOfWar.Knowledge k = FogOfWar.current;
