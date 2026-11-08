@@ -348,7 +348,7 @@ namespace HexTactica.AI {
         /// A rider whose transport has already moved this turn: put itself down where it can strike, if the wave goes in
         /// there (the transport puts down one; the rest get off themselves, still fresh). Null: stays aboard.
         /// </summary>
-        public static AIAction? RiderAction(Unit c, bool frontAttacks, AIMap map, AIProfile profile, HexTile ground = null) {
+        public static AIAction? RiderAction(Unit c, bool frontAttacks, AIMap map, AIProfile profile, HexTile ground = null, HexTile goal = null) {
             Unit t = c.trasnporter;
             if (t == null || t.tile == null || Riders(t).Count == 0 || !c.active) return null;
             if (t.active) return AIAction.Wait(c, "rides to the assault");   // its transport moves first
@@ -359,6 +359,28 @@ namespace HexTactica.AI {
                 if (!WaveGoesIn(t.tile, 1, frontAttacks, map, profile)) break;
                 Planned[c] = k;
                 return AIAction.Disembark(t, c, n, "assault: gets off to " + k.what);
+            }
+            if (profile.turnOrderSteps) {
+                List<HexTile> off = Transporting.UnloadOptions(t, c);
+                // Its goal within reach this turn from where it can get off (getting off costs nothing): out, to go there.
+                if (goal != null && goal != t.tile) {
+                    HexTile via = null;
+                    foreach (HexTile n in off) {
+                        bool there = n == goal;
+                        if (!there) { MoveField f = AIPath.ThisTurnFrom(c, n, AIPath.RangeThisTurn(c)); there = f.ReachableThisTurn(goal) && AIPath.CanFinishTurnOn(c, goal); AIPath.Release(f); }
+                        if (there && (via == null || CombatMath.Precedes(n, via))) via = n;
+                    }
+                    if (via != null) return AIAction.Disembark(t, c, via, "gets off at (" + via.x + "," + via.y + ") to reach its goal (" + goal.x + "," + goal.y + ") this turn");
+                }
+                // Its transport threatened where it stopped: out, onto the safest tile beside it, if it is safer there than aboard.
+                float aboard = map.ExpectedLoss(t, t.tile);
+                if (aboard > 0f) {
+                    HexTile best = null; float bl = float.MaxValue;
+                    foreach (HexTile n in off) { float l = map.ExpectedLoss(c, n); if (l < bl - 0.01f || (Mathf.Abs(l - bl) <= 0.01f && CombatMath.Precedes(n, best))) { bl = l; best = n; } }
+                    // Aboard it goes down with the transport: its loss there is the transport's, as a share of the transport's strength.
+                    float riskAboard = aboard / Mathf.Max(1f, t.Strength) * Mathf.Max(1, c.Strength);
+                    if (best != null && bl < riskAboard) return AIAction.Disembark(t, c, best, "its transport is threatened (" + aboard.ToString("0.0") + " strength): gets off at (" + best.x + "," + best.y + "), safer");
+                }
             }
             // Its transport fell back to its ordinary move, or it has reached the front line (in contact next turn): out,
             // and it thinks for itself (assaultFrontlineOut) — the transport's plan no longer speaks for it.

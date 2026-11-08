@@ -286,20 +286,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": aboard, decides again if put down — " + action.reason);
                     continue;
                 }
-                // A ship waiting to load (SeaLiftLoading): put off until everything else has moved — those it waits for get
-                // aboard first; then it decides again, and sails if they have.
-                if (action.kind == AIActionKind.Wait && action.reason != null && action.reason.StartsWith(LoadingReason) && (queue.Count > 0 || waitLater.Count > 0)) {
-                    int n; loadingDeferred.TryGetValue(unit, out n);
-                    if (n < 4) {
-                        loadingDeferred[unit] = n + 1; waitLater.Add(unit);
-                        if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": " + action.reason + ": decides again after the rest");
-                        continue;
-                    }
-                }
                 // Waiting (waitTwice): the first time, set aside to decide again once everything else has moved (what it
                 // waits on — a supply unit, a rider, a gap — may have come about); waiting again, it skips its turn.
                 if (Profile.waitTwice && action.kind == AIActionKind.Wait && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
-                    waitedOnce.Add(unit); waitLater.Add(unit);
+                    waitedOnce.Add(unit); SetAside(unit);
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": would wait (" + action.reason + "): decides again after the rest");
                     continue;
                 }
@@ -307,7 +297,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 // again after the line has moved (it moved ahead of the line, onto ground the line had not yet taken).
                 if (Profile.artilleryFireOrDefer && firesFirst.Contains(unit) && action.kind != AIActionKind.Attack && action.kind != AIActionKind.MoveAndAttack
                     && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
-                    waitedOnce.Add(unit); waitLater.Add(unit);
+                    waitedOnce.Add(unit); SetAside(unit);
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": artillery first to fire would " + action.kind + " (" + action.reason + "): decides again after the rest");
                     continue;
                 }
@@ -562,8 +552,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
     HashSet<Unit> supplyTransports = new HashSet<Unit>();
     /// <summary>Units that would have waited this turn, and those set aside to decide again after the rest (waitTwice).</summary>
     readonly HashSet<Unit> waitedOnce = new HashSet<Unit>();
-    /// <summary>Times this turn a ship waiting to load was put off until the rest had moved (SeaLiftLoading).</summary>
-    readonly Dictionary<Unit, int> loadingDeferred = new Dictionary<Unit, int>();
     readonly List<Unit> waitLater = new List<Unit>();
     /// <summary>Artillery with a target in range when the turn's order was made (artilleryFireOrDefer).</summary>
     readonly HashSet<Unit> firesFirst = new HashSet<Unit>();
@@ -601,6 +589,122 @@ public class AIPlayer : MonoBehaviour, IAIController {
         foreach (Unit t in loaded) { order.Add(t); foreach (Unit r in AIAssault.Riders(t)) if (queue.Contains(r)) order.Add(r); }
         order.AddRange(rest);
         queue.Clear(); queue.AddRange(order);
+    }
+
+    /// <summary>The units that move after everyone on foot this turn (TurnOrder steps 4 to 7): a unit set aside to decide again goes back in before them.</summary>
+    readonly HashSet<Unit> afterFoot = new HashSet<Unit>();
+
+    /// <summary>
+    /// The turn order (AIProfile.turnOrderSteps), each step keeping the order the units already had (coordinated plans
+    /// first, the supply chain's order):
+    ///   1. artillery that can fire (one that then would not is put back in at the end of 3);
+    ///   2. full transports;
+    ///   3. the riders of those, every other unit on foot, artillery with nothing in range, and supply units that are not
+    ///      links of the logistics chain;
+    ///   4. transports with room that carry someone: everyone who gets in this turn is in before they go;
+    ///   5. the chain's supply units; then the transports chosen for supply (one a supply unit rides, its chain truck, the
+    ///      ride its plan takes, the ship it is to cross in), empty or not, once every supply unit has decided;
+    ///   then empty transports nobody chose: after 5, whose supply units choose their transport only as they decide;
+    ///   6. the riders of the transports that moved in 4: out if they can strike, reach their goal, or are safer off;
+    ///   7. aircraft landing this turn.
+    /// (8, buying, is at the end of the turn.)
+    /// </summary>
+    void TurnOrder() {
+        List<Unit> landing = new List<Unit>();
+        foreach (AIAir.Landing l in map.landings.Values) if (l.turn == 1 && queue.Contains(l.unit)) landing.Add(l.unit);
+        landing.Sort(AIMap.CompareUnits);
+        HashSet<SupplyPoint> chain = new HashSet<SupplyPoint>();
+        if (logistics != null) foreach (SupplyPoint h in logistics.chainOf.Keys) chain.Add(h);
+        if (treePlan != null) foreach (SupplyPoint h in treePlan.links.Keys) chain.Add(h);
+        if (chainPlan != null) foreach (SupplyPoint h in chainPlan.links.Keys) chain.Add(h);
+        // The transport each supply unit has chosen: the one it is aboard, its chain truck, the ship it is to cross in.
+        Dictionary<Unit, Unit> truckOf = new Dictionary<Unit, Unit>();   // supply unit -> transport
+        HashSet<Unit> forSupply = new HashSet<Unit>();
+        foreach (Unit u in queue) {
+            SupplyPoint h = u.Hub;
+            if (h == null || h.producer) continue;
+            Unit t = null;
+            HexTactica.AI.AILogistics.Ride ride;
+            if (u.trasnporter != null && !AIAssault.SeaLiftShip(u.trasnporter, map)) t = u.trasnporter;
+            else if (logistics != null && logistics.chainTrucks.TryGetValue(h, out t) && t != null) { }
+            else if (logistics != null && logistics.rides.TryGetValue(h, out ride) && ride.truck != null) t = ride.truck;
+            else if (u.trasnporter == null && ghostRides.TryGetValue(u, out t) && t != null) { }
+            else if (u.trasnporter == null && Profile.seaLift) t = SeaLiftShipFor(u);
+            if (t != null && queue.Contains(t) && !forSupply.Contains(t)) { truckOf[u] = t; forSupply.Add(t); }
+        }
+        // Chosen for supply: riders may take only a seat the supply unit leaves free (AIAssault.Board, SpareSlot).
+        foreach (Unit t in forSupply) if (!AIAssault.SeaLiftShip(t, map)) supplyTransports.Add(t);
+        // Others chosen for supply this turn without a supply unit matched to them yet: with the chain, at the end of 5.
+        List<Unit> supplyTrucks = new List<Unit>();
+        foreach (Unit t in queue)
+            if (Transporting.IsTransport(t) && t.Firepower <= 1 && !forSupply.Contains(t) && !AIAssault.SeaLiftShip(t, map) && (supplyTransports.Contains(t) || IsLogisticsTruck(t) || AIAssault.CarriesHub(t))) supplyTrucks.Add(t);
+
+        List<Unit> s1 = new List<Unit>(), s2 = new List<Unit>(), s3 = new List<Unit>(), s4 = new List<Unit>(), s5 = new List<Unit>(), s6 = new List<Unit>();
+        HashSet<Unit> placed = new HashSet<Unit>(landing);
+        foreach (Unit t in supplyTrucks) placed.Add(t);
+        foreach (Unit t in forSupply) placed.Add(t);
+        System.Func<Unit, bool> carrier = t => Transporting.IsTransport(t) && t.Firepower <= 1;
+        // 2 and 4: transports not chosen for supply, by whether they are full.
+        foreach (Unit t in queue) {
+            if (placed.Contains(t) || !carrier(t) || t.trasnporter != null) continue;
+            (Transporting.FreeWeight(t) <= 0 ? s2 : s4).Add(t); placed.Add(t);
+        }
+        // Riders: of a full transport in 3 (first), of one with room in 6, of a supply transport straight after it.
+        List<Unit> riders3 = new List<Unit>();
+        foreach (Unit u in queue) {
+            if (placed.Contains(u) || u.trasnporter == null) continue;
+            if (s2.Contains(u.trasnporter)) { riders3.Add(u); placed.Add(u); }
+            else if (s4.Contains(u.trasnporter)) { s6.Add(u); placed.Add(u); }
+        }
+        // 1: artillery that can fire, on foot.
+        foreach (Unit u in queue) if (!placed.Contains(u) && u.trasnporter == null && firesFirst.Contains(u)) { s1.Add(u); placed.Add(u); }
+        // 3 and 5: the rest. Supply units: in 3 if they are not links of the chain, else in 5; the transports chosen for
+        // supply (and their riders) after every supply unit has decided — after its own, and while another may still take
+        // one (a supply unit's choice is made only as it decides: the plan at the start of the turn is a guess).
+        List<Unit> s5t = new List<Unit>();
+        System.Action<Unit> truckAfter = t => {
+            if (s5t.Contains(t)) return;
+            s5t.Add(t);
+            foreach (Unit r in queue) if (r.trasnporter == t && !placed.Contains(r)) { s5t.Add(r); placed.Add(r); }
+        };
+        s3.AddRange(riders3);
+        foreach (Unit u in queue) {
+            if (placed.Contains(u)) continue;
+            SupplyPoint h = u.Hub;
+            if (h != null && !h.producer && chain.Contains(h)) continue;   // 5
+            s3.Add(u); placed.Add(u);
+        }
+        foreach (Unit u in queue) if (!placed.Contains(u) && u.Hub != null && !u.Hub.producer) { s5.Add(u); placed.Add(u); }
+        foreach (Unit u in queue) { Unit t; if (truckOf.TryGetValue(u, out t)) truckAfter(t); }
+        foreach (Unit t in supplyTrucks) truckAfter(t);
+        s5.AddRange(s5t);
+        foreach (Unit u in queue) if (!placed.Contains(u)) { s3.Add(u); placed.Add(u); }   // anything left over: with everyone
+        // Supply ships first among those in 3: ships coming to them to be restocked go to where they end up (AIAir.Refit).
+        List<Unit> tenders = s3.FindAll(Player.IsSupplyShip);
+        foreach (Unit t in tenders) s3.Remove(t);
+        s3.InsertRange(0, tenders);
+
+        // Empty transports nobody has chosen yet: after the chain's supply units (5), which choose their transport only when
+        // they decide (one gone at 4 could not carry them). Anyone who gets into one in 3 rides it from there.
+        List<Unit> empties = s4.FindAll(t => t.transported.Count == 0);
+        foreach (Unit t in empties) s4.Remove(t);
+        List<Unit> order = new List<Unit>();
+        order.AddRange(s1); order.AddRange(s2); order.AddRange(s3); order.AddRange(s4); order.AddRange(s5); order.AddRange(empties); order.AddRange(s6); order.AddRange(landing);
+        afterFoot.Clear();
+        foreach (Unit u in s4) afterFoot.Add(u); foreach (Unit u in s5) afterFoot.Add(u); foreach (Unit u in empties) afterFoot.Add(u); foreach (Unit u in s6) afterFoot.Add(u); foreach (Unit u in landing) afterFoot.Add(u);
+        queue.Clear(); queue.AddRange(order);
+        if (Trace != null) Trace("   turn order by steps: 1 [" + Names(s1) + "] 2 [" + Names(s2) + "] 3 [" + Names(s3) + "] 4 [" + Names(s4) + "] 5 [" + Names(s5) + "] empty [" + Names(empties) + "] 6 [" + Names(s6) + "] 7 [" + Names(landing) + "]");
+    }
+
+    static string Names(List<Unit> l) { return string.Join(", ", l.Select(u => u.name.Replace("(Clone)", "")).ToArray()); }
+
+    /// <summary>A unit set aside to decide again (waitTwice, artilleryFireOrDefer): under the turn order (turnOrderSteps), back in before the transports with room (step 4), else after everyone.</summary>
+    void SetAside(Unit unit) {
+        if (Profile.turnOrderSteps) {
+            int at = queue.FindIndex(x => afterFoot.Contains(x));
+            if (at >= 0) { queue.Insert(at, unit); return; }
+        }
+        waitLater.Add(unit);
     }
 
     /// <summary>An enemy within <paramref name="u"/>'s move and fire, as the crow flies.</summary>
@@ -835,7 +939,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         putDownThisTurn.Clear();
         boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear(); riderRide.Clear(); riderGoal.Clear();
         foreach (Unit u in player.units) if (u != null && u.tile != null) turnStart[u] = u.tile;
-        waitedOnce.Clear(); waitLater.Clear(); loadingDeferred.Clear();
+        waitedOnce.Clear(); waitLater.Clear();
         AIAssault.Planned.Clear();
         AIAssault.FellBack.Clear();
         // The trucks the logistics claimed for the fronts' own supply units: theirs before any fighting
@@ -983,12 +1087,15 @@ public class AIPlayer : MonoBehaviour, IAIController {
             queue.InsertRange(0, first);
         }
         AIPerf.End("prepare: coordinated plans", __c);
+        if (Profile.turnOrderSteps) TurnOrder();
+        else {
         if (Profile.assaultRides && Profile.assaultOrderWithLine) OrderWithLine();
         // Aircraft landing this turn act last (after any coordinated plan too), once whatever was on their tiles has left.
         List<Unit> landingNow = new List<Unit>();
         foreach (AIAir.Landing l in map.landings.Values) if (l.turn == 1 && queue.Contains(l.unit)) landingNow.Add(l.unit);
         landingNow.Sort(AIMap.CompareUnits);
         foreach (Unit u in landingNow) { queue.Remove(u); queue.Add(u); }
+        }
         if (Trace != null) {
             Trace("   " + player.personal_name + " (this AI) reads the board: " + map.SupplyReport());
             string contact = "";
@@ -1005,7 +1112,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// supply that is coming. The supply unit still acts last, re-planning on the real board,
     /// so it can follow whatever the line actually did.
     /// </summary>
+    /// <summary>The transport each supply unit's ghost plan rides this turn (PlanGhosts): chosen for supply, it goes with it (TurnOrder).</summary>
+    readonly Dictionary<Unit, Unit> ghostRides = new Dictionary<Unit, Unit>();
+
     void PlanGhosts() {
+        ghostRides.Clear();
         for (int i = 0; i < map.ownHubs.Count; i++) {
             SupplyPoint hub = map.ownHubs[i];
             if (hub == null || hub.producer || hub.myUnit == null || !hub.myUnit.active) continue;
@@ -1028,6 +1139,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             try { plan = AISupplyPlanner.PlanHub(hub, map, Profile, new HashSet<Unit>(reservedTransports)); }
             finally { AISupplyPlanner.Ghost = false; }
             HexTile at = GhostTile(plan);
+            if (plan != null && plan.usesTransport && plan.transport != null) ghostRides[hub.myUnit] = plan.transport;
             if (at != null) map.SetGhost(hub, at);
             if (AISupplyPlanner.DebugLog != null) AISupplyPlanner.DebugLog("   ghost plan: " + (plan != null ? plan.ToString() : "none"));
             if (onGhost != null) onGhost(hub.myUnit, at);
@@ -1097,7 +1209,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // A transport with riders whose assault move was set aside for the ordinary one (a tile held for a supply link or a
         // landing; the guard): that is a fallback, and its riders decide for themselves (assaultFrontlineOut).
         if (Profile.assaultRides && unit != null && Transporting.IsTransport(unit) && AIAssault.Riders(unit).Count > 0
-            && (a.reason == null || !a.reason.StartsWith("assault") && !a.reason.StartsWith("medevac") && !a.reason.StartsWith("holds the line") && !a.reason.StartsWith("sea lift"))) {
+            && (a.reason == null || !a.reason.StartsWith("assault") && !a.reason.StartsWith("medevac") && !a.reason.StartsWith("holds the line")  && !a.reason.StartsWith("sea lift"))) {
             AIAssault.FellBack.Add(unit);
             if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": its move is not its assault ride (" + a.reason + "): its riders decide for themselves");
         }
@@ -1285,36 +1397,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
         return AIAction.Move(unit, step, 0f, "sea lift: goes to the ship that will carry it over");
     }
 
-    /// <summary>The reason a ship gives while it waits to load (SeaLiftLoading): such a wait is put off until everything else has moved.</summary>
-    const string LoadingReason = "sea lift loading: ";
-
-    /// <summary>
-    /// A ship under the sea lift with room left: it does not sail while one of our units that is to cross with it can still
-    /// get aboard this turn — a land unit whose ground is across water, or the supply unit going with it (SeaLiftShipFor).
-    /// It sails once full, or once all of those have moved (its wait is put off until then: the decision loop).
-    /// Null: nothing to wait for.
-    /// </summary>
-    AIAction? SeaLiftLoading(Unit ship) {
-        if (!AIAssault.SeaLiftShip(ship, map) || ship.tile == null) return null;
-        int room = Transporting.FreeWeight(ship);
-        if (room <= 0) return null;
-        foreach (Unit o in map.ownUnits) {
-            if (o == null || o == ship || o.tile == null || !o.active || o.trasnporter != null || LocomotionRules.IsNaval(o.locomotion) || LocomotionRules.IsAirborne(o.locomotion)) continue;
-            if (Mathf.Max(1, o.weight) > room || !Transporting.CanCarry(ship, o)) continue;
-            bool wants;
-            if (o.Hub != null) wants = !o.Hub.producer && SeaLiftShipFor(o) == ship;
-            else { HexTile g = o.Firepower > 0 ? GroundOf(o) : null; wants = g != null && map.AcrossWater(o.tile, g); }
-            if (!wants) continue;
-            bool reach = Transporting.CanBoardFrom(ship, o);
-            if (!reach) {
-                MoveField now = map.ReachThisTurn(o);
-                foreach (HexTile n in ship.tile.neighbors) if (n != null && now.ReachableThisTurn(n) && (n.occupier == null || n.occupier == o) && Transporting.CanBoardFromTile(ship, o, n)) { reach = true; break; }
-            }
-            if (reach) return AIAction.Wait(ship, LoadingReason + "waits for " + o.name.Replace("(Clone)", "") + " " + D(o.tile) + " to come aboard (room " + room + ")");
-        }
-        return null;
-    }
-
     /// <summary>
     /// A ship carrying a supply unit, the objective across water: to the landing — beside the land nearest our troops
     /// across the water (else the objective), on a tile where its supply is linked (SupplyNetwork: within a move of
@@ -1367,8 +1449,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (Profile.seaLift && LocomotionRules.IsNaval(truck.locomotion)) {
             // Troops aboard too (a convoy): it goes as their ride goes (the assault ride), its supply aboard throughout.
             if (AIAssault.Riders(truck).Count > 0) return false;
-            AIAction? load = SeaLiftLoading(truck);
-            if (load.HasValue) { action = load.Value; return true; }
             AIAction? sl = SeaLiftSupply(truck, hub);
             if (sl.HasValue) { action = sl.Value; return true; }
         }
@@ -1494,7 +1574,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 Front rf = FrontOf(unit);
                 AIAssault.HasFront = rf != null;
                 HexTile rground = rf == null ? null : rf.staging && rf.stagingTile != null ? rf.stagingTile : rf.objectiveTile;
-                AIAction? ra = AIAssault.RiderAction(unit, rf != null && rf.posture == Posture.Aggressive && !rf.staging, map, Profile, rf != null && (rf.posture != Posture.Aggressive || rf.staging) ? rground : null);
+                AIAction? ra = AIAssault.RiderAction(unit, rf != null && rf.posture == Posture.Aggressive && !rf.staging, map, Profile, rf != null && (rf.posture != Posture.Aggressive || rf.staging) ? rground : null, GroundOf(unit));
                 if (ra.HasValue) return ra.Value;
             } else if (unit.Firepower > 0 && !Profile.assaultBoardWeighs) {
                 HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
@@ -1767,10 +1847,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // Riding to the assault (assaultRides): a transport with fighting units aboard and no supply duty.
         if (Profile.assaultRides && Transporting.IsTransport(unit) && !transportAssignments.ContainsKey(unit)) {
             List<Unit> riders = AIAssault.Riders(unit);
-            if (riders.Count > 0 && Profile.seaLift) {
-                AIAction? wait = SeaLiftLoading(unit);
-                if (wait.HasValue) return wait.Value;
-            }
             if (riders.Count > 0) {
                 Front rf = FrontOf(riders[0]);
                 AIAssault.HasFront = rf != null;
@@ -1812,10 +1888,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 if (drop != null) return AITransportPlanner.TransportAction(unit, drop, map);
             }
             // An empty transport not held for supply goes back for more riders.
-            if (Profile.seaLift && unit.transported.Count == 0) {
-                AIAction? load = SeaLiftLoading(unit);
-                if (load.HasValue) return load.Value;
-            }
             if (Profile.assaultRides && unit.transported.Count == 0 && !supplyTransports.Contains(unit) && (logistics == null || !IsLogisticsTruck(unit))) {
                 long __af = AIPerf.Begin();
                 AIAction? fa = AIAssault.Fetch(unit, map, Profile, soughtRiders, Profile.seaLift ? (System.Func<Unit, HexTile>)GroundOf : null);
