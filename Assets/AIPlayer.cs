@@ -264,6 +264,13 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     : unit.locomotion == Locomotion.Jet ? "jet" : unit.locomotion == Locomotion.Rotor ? "helicopter" : "fighting unit"), __d);
                 action = KeepLinks(action);
                 action = SupplyStaysAboard(unit, action);
+                // Never an attack that deals nothing (noZeroDamageAttacks): move to the tile it would fire from, or hold.
+                if (Profile.noZeroDamageAttacks && (action.kind == AIActionKind.Attack || action.kind == AIActionKind.MoveAndAttack) && action.target != null && action.target.tile != null) {
+                    HexTile from = action.kind == AIActionKind.MoveAndAttack && action.destination != null ? action.destination : unit.tile;
+                    if (Unit.calculateDamage(unit, action.target, action.target.tile, 0) <= 0)
+                        action = from != unit.tile ? AIAction.Move(unit, from, action.score, "no damage to " + action.target.name.Replace("(Clone)", "") + ": moves, does not attack")
+                                                    : AIAction.Wait(unit, "no damage to " + action.target.name.Replace("(Clone)", "") + ": holds");
+                }
                 // No hopping on and off (noHopOff): a transport that has not moved this turn does not put down a rider that got
                 // in this turn (a Grunt walked into a Recon and was put down beside it: a tile more than it could walk).
                 if (Profile.noHopOff && action.kind == AIActionKind.Unload && action.unit != null && action.unit != action.target && action.target != null

@@ -32,6 +32,43 @@ namespace HexTactica.AI {
         static readonly Dictionary<Player, Dictionary<Unit, int>> seen = new Dictionary<Player, Dictionary<Unit, int>>();
 
         /// <summary>The enemy we buy against: what we see now, and what we have seen lately (a gunship gone behind the trees is still out there).</summary>
+        /// <summary>productionPossibleFoes: each enemy kind there was at the start of the game, by player (recorded once).</summary>
+        static readonly Dictionary<Player, HashSet<string>> startKinds = new Dictionary<Player, HashSet<string>>();
+        [System.ThreadStatic] static List<Unit> possibleFoes;
+
+        /// <summary>
+        /// productionPossibleFoes: one of each kind the enemy has or could field: its units at the start (a no-build map's whole
+        /// army), what its production buildings make, and what it has been seen with.
+        /// </summary>
+        static List<Unit> PossibleFoes(Player p, AIMap map) {
+            HashSet<string> names;
+            lock (startKinds) {
+                if (!startKinds.TryGetValue(p, out names)) {
+                    startKinds[p] = names = new HashSet<string>();
+                    if (GameController.gc != null && GameController.gc.players != null)
+                        foreach (Player o in GameController.gc.players)
+                            if (o != null && o != p && o.units != null) foreach (Unit u in o.units) if (u != null) names.Add(GameController.UnitName(u));
+                }
+            }
+            Dictionary<string, Unit> kinds = new Dictionary<string, Unit>();
+            foreach (string n in names) { Unit u = GameAssets.Unit(n); if (u != null) kinds[n] = u; }
+            foreach (Building b in Building.all) {
+                if (b == null || b.owner == null || b.owner == p || !b.CanProduce) continue;
+                foreach (Unit u in b.Purchasable()) if (u != null) kinds[GameController.UnitName(u)] = u;
+            }
+            foreach (Unit e in map.enemyUnits) if (e != null) kinds[GameController.UnitName(e)] = e;
+            List<string> keys = new List<string>(kinds.Keys); keys.Sort(System.StringComparer.Ordinal);
+            List<Unit> r = new List<Unit>(); foreach (string k in keys) r.Add(kinds[k]);
+            return r;
+        }
+
+        /// <summary>productionPossibleFoes: can <paramref name="t"/> hurt any kind the enemy has or could field?</summary>
+        static bool HurtsPossible(Unit t, HexTile at) {
+            if (possibleFoes == null || possibleFoes.Count == 0 || t.Firepower <= 0) return true;
+            foreach (Unit e in possibleFoes) if (Unit.calculateDamage(t, e, at, 0) > 0) return true;
+            return false;
+        }
+
         static List<Unit> Foes(Player p, AIMap map, AIProfile profile) {
             int day = GameController.gc != null ? GameController.gc.days : 0;
             Dictionary<Unit, int> mine;
@@ -109,6 +146,7 @@ namespace HexTactica.AI {
             List<Unit> bought = new List<Unit>();
             if (p == null || map == null || BuildingController.bc == null) return bought;
             allFoes = Foes(p, map, profile);
+            possibleFoes = profile.productionPossibleFoes ? PossibleFoes(p, map) : null;
             defenceWeightNow = profile.productionDefenceWeight;
             overkillNow = profile.productionOverkill;
             lifetimeNow = profile.productionLifetime; lifeMaxNow = Mathf.Max(1f, profile.productionLifeMax); lifeRefNow = profile.productionLifeRef; reachRefNow = profile.productionReachRef;
@@ -238,6 +276,10 @@ namespace HexTactica.AI {
             Dictionary<string, int> picked = new Dictionary<string, int>();
             // What a unit would add in this slot, given what is planned so far.
             System.Func<Unit, Slot, KeyValuePair<float, string>> worth = (t, sl) => {
+                // Nothing to shoot at (productionPossibleFoes): anti-air where the enemy has and can build no aircraft.
+                if (!HurtsPossible(t, sl.tile)) return new KeyValuePair<float, string>(0f, "hurts nothing the enemy has or can build");
+                // Destroyed where it stands next turn (productionAvoidFire): the enemy we see or remember has the building in range.
+                if (profile.productionAvoidFire && map.KnownLoss(t, sl.tile) >= Mathf.Max(1, t.Strength > 0 ? t.Strength : 6)) return new KeyValuePair<float, string>(0f, "destroyed there next turn");
                 int kindOf = Kind(t);
                 // A troop transport (assaultRides): what it adds to the riders waiting for room (the nearest of them, as many as
                 // it carries) — each one's value, times the turns sooner it reaches the fight riding (fetched from where it

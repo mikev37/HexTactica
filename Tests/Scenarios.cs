@@ -2853,6 +2853,7 @@ public static class Scenarios {
                 Func<Action<AIProfile>, Func<HexTactica.AI.AIMap, float>, float> with = (tweak, f) => {
                     AIProfile c = ScriptableObject.CreateInstance<AIProfile>();
                     foreach (System.Reflection.FieldInfo fi in typeof(AIProfile).GetFields()) if (!fi.IsStatic) fi.SetValue(c, fi.GetValue(prof));
+                    c.fogScreenBelowCost = 0;   // the grunt here measures the fear of unknown ground (screens ignore it)
                     if (tweak != null) tweak(c);
                     float v = float.NaN;
                     BoardView cv = FogOfWar.Conceal(a, true, c.fogMemoryTurns);

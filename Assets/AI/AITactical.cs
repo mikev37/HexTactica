@@ -510,6 +510,14 @@ namespace HexTactica.AI {
             // tiny ones decided everything.
             float tie = Mathf.Max(profile.worldTieMin, profile.worldTie * worth);
             List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - tie);
+            // Within the tie, a shot that does damage beats standing off (tieFavorsShot): as good by the forecast, the fight is
+            // taken on our terms. (Tied with an attack, a tank fell back five tiles by position, and the line never struck.)
+            // (Full strength only, and from supplied ground: a wounded unit rotates out, and none chases a shot out of supply.)
+            if (profile.tieFavorsShot && unit.Strength >= 6 && !AIAssault.Wounded(unit, profile, map)) {
+                List<Option> shots = kept.FindAll(o => o.shot.valid && o.shot.target != null && o.shot.target.tile != null && Unit.calculateDamage(unit, o.shot.target, o.shot.target.tile, 0) > 0
+                                                       && (unit.suppliesMax <= 0 || map.SupplyDepth(o.stop) > 0));
+                if (shots.Count > 0) kept = shots;
+            }
             Option best = null;
             Dictionary<HexTile, AIDenial.Result> denial = new Dictionary<HexTile, AIDenial.Result>();
             foreach (Option o in kept) {

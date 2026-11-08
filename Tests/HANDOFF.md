@@ -312,6 +312,19 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   Blue 149,750 v 34,500, new Red 129,000 v 119,083. Open: idle task forces next to a front under attack should join it
   (ChanceMeeting turn 34, Hold(5,5)); a task force holding more supply units than it needs should release them to
   fronts out of supply (Hold(5,5) held 4, need 0, while Clear@-4,-5 was short); rerun the eight games.
+- **Skittishness fixes (8 Nov; flags on, results mixed):** found: `fogConcentrate` (2 Nov) priced every expected
+  unplaced unit's full fire, uncapped: near the front a stop read as 3–4 strength lost (a tank: -4,196 against forecast
+  gaps of ~200), and the world-score tie then let position pick tiles in the rear. `fogConcentrateCapped`: at most one
+  unplaced unit's fire × chance one is in reach (1 − e^−expected) × the unplaced share. `fogScreenBelowCost` 3000: cheaper
+  units ignore unknown ground. `noZeroDamageAttacks`: a 0-damage attack becomes a move / hold. `tieFavorsShot`: in the
+  tie, a damaging shot wins (full strength, from supplied ground). `productionPossibleFoes`: no unit that hurts nothing
+  the enemy started with, builds, or has shown (AA without air). `productionAvoidFire`: no unit built where the known
+  enemy destroys it next turn. `defensiveNarrows`: on the defensive (aggression < 0.25) passages ≤ 3 wide near a known
+  enemy are Holds (`AICampaign.Narrows`). 12-round ChanceMeeting, new Blue v old Red at round 11: all on 79,750 v
+  181,583; all off 142,583 v 183,916; `fogScreenBelowCost=0,defensiveNarrows=false` 142,333 v 150,750; cap off 156,583 v
+  159,333. New Red: all on 172,833 v 145,333; all off 186,416 v 150,166. ForestClearing 14 rounds (new Blue): all on
+  77,666 v 57,416, all off 76,916 v 48,750. Reading: as Blue on ChanceMeeting, screens + narrows together spread the army
+  forward without coordinated attacks ("group battle" absent) and it was picked apart in rounds 2–4. Not resolved.
 - **Not done yet:** item 4's reserve and scouting parts, item 5
   (profile thinking time), item 6 (refresh OldAI); the owner's ForestClearing points (supply links bunched 1–2 tiles
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;

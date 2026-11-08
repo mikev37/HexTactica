@@ -204,13 +204,19 @@ namespace HexTactica.AI {
                     loss += dmg * f / Mathf.Max(1, sharers);
                 }
             }
+            // Screens (fogScreenBelowCost): a cheap unit does not fear what the fog may hide: finding it is its job.
+            if (unknownGround && profile.fogScreenBelowCost > 0 && u.cost > 0 && u.cost < profile.fogScreenBelowCost) unknownGround = false;
             if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && Concentrated) {
-                // fogConcentrate: the unplaced enemy expected within reach of this tile, each firing its kind's average.
+                // fogConcentrate: the chance that one of the unplaced enemy is within reach of this tile (1 - e^-expected),
+                // firing its kind's average, times the share of the enemy we cannot place. At most one unit's fire: the
+                // enemy we can see or remember is priced already. (Was every expected unit firing in full, uncapped: near
+                // the front a stop read as certain death, and the whole army fell back from the contact line.)
                 float e = UnplacedNear(at);
                 if (e > 0f) {
                     float dmg = 0f;
                     foreach (FogOfWar.Kind kd in kinds) dmg += Mathf.Min(u.Strength, kd.Damage(6, u, at));
-                    loss += dmg / kinds.Count * e;
+                    float uwc = UnknownWeight;
+                    loss += dmg / kinds.Count * (1f - (float)System.Math.Exp(-e)) * (profile.fogConcentrateCapped ? uwc : e / Mathf.Max(0.0001f, 1f - (float)System.Math.Exp(-e)));
                 }
                 return Mathf.Min(u.Strength, loss);
             }
