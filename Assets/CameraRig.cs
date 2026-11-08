@@ -83,6 +83,12 @@ public class CameraRig : MonoBehaviour {
         }
     }
 
+    /// <summary>Centre the view on <paramref name="world"/>, keeping the zoom.</summary>
+    public void CenterOn(Vector3 world) {
+        Vector3 p = transform.position;
+        transform.position = new Vector3(world.x, world.y, p.z);
+    }
+
     /// <summary>Centre on the board and zoom so all of it is visible.</summary>
     public void Frame() {
         if (HexGenerator.hg == null || HexGenerator.hg.tiles == null || HexGenerator.hg.tiles.Count == 0) return;

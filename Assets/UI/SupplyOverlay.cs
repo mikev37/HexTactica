@@ -432,8 +432,11 @@ public class SupplyOverlay : MonoBehaviour {
             else foreach (HexTile a in enemy.tile.AllInAttackRange(enemy)) threat.Add(a);
         }
         HexGenerator.forAllTiles(x => { x.G = 0; x.parent = null; return 0; });
-        foreach (HexTile t in threat) if (!moves.Contains(t)) t.ShowEnemy(UIState.ENEMY_THREAT, enemy.owner);
-        foreach (HexTile t in moves) if (t != enemy.tile) t.ShowEnemy(UIState.ENEMY_MOVE, enemy.owner);
+        // A unit that cannot move and fire (artillery) fires only from where it stands: its whole range shows, over its
+        // moves. One that can: its moves show, and where it could fire beyond them.
+        bool fixedFire = !enemy.moveAndAttack;
+        foreach (HexTile t in threat) if (fixedFire || !moves.Contains(t)) t.ShowEnemy(UIState.ENEMY_THREAT);
+        foreach (HexTile t in moves) if (t != enemy.tile && !(fixedFire && threat.Contains(t))) t.ShowEnemy(UIState.ENEMY_MOVE);
         enemyShown = true;
     }
 

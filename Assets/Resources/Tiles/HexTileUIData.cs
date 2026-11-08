@@ -17,6 +17,11 @@ public class HexTileUIData : ScriptableSingleton<HexTileUIData> {
     public Sprite capture;
     [Tooltip("A move tile where ending the move would leave the unit unable to reach a building that refuels it before it runs dry next turn (Unit.WouldDitchFrom). Empty: the ordinary move sprite.")]
     public Sprite move_warning;
+    [Header("An enemy unit clicked (SupplyOverlay.ShowEnemy)")]
+    [Tooltip("The tiles it can move to.")]
+    public Color enemyMove = new Color(0.6f, 0.6f, 0.6f, 0.5f);
+    [Tooltip("The tiles it can fire on (for a unit that cannot move and fire, its whole range from where it stands, over its moves).")]
+    public Color enemyShoot = new Color(1f, 0.55f, 0.1f, 0.5f);
        
 }
 

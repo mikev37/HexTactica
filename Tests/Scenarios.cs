@@ -705,6 +705,8 @@ public static class Scenarios {
              "Convoys: a ship with a supply unit aboard is a link if within one move (its own path) of supplied ground or of another linked carrier, to any length, and gives supply to land only beside it. Ten tiles of sea between Blue's shore and an island, ships moving 3: TS A within a move of Blue's shore, TS B within a move of A only, TS C within a move of B only and beside the island. C is linked through B through A, the Blue grunt on the island is supplied, A and B out at sea give nothing, and the supply line runs from the grunt through C, B and A to the HQ. Without A, B and C are cut off. A helicopter with supplies aboard in A's place over the water (linked by Blue's shore, giving nothing over water) links B in turn: a ship links through an aircraft.");
         make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
              "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
+        make("ui-next-unit", "nextUnit", (a, o) => { Put("Grunt", a, 0, 0); Put("Grunt", a, 2, 0); Put("Tank", a, 0, 2); Put("Grunt", o, 5, -2); },
+             "The HUD's Next unit (GameController.SelectNextIdle): selects Blue's idle units in turn, as a click on the unit's tile does (its tile SELECTED, its moves shown), wrapping round; a unit that has acted is skipped; nothing on an AI's turn.");
         make("rule-harbor-open", "harborOpen", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Rig.At(-3, 4).terrain = T("Bridge"); Put("Grunt", a, -3, 1); Put("Grunt", a, -4, 4); Put("Gunboat", a, 0, 0); Put("Grunt", o, 5, 0); },
              "A harbor (a naval yard's tile, on bridge ground) is open from every side: a grunt steps onto it from grassland with no road, a ship from the water, and supply reaches it from the land around it. A plain bridge keeps the road rule: the same grunt step onto one is refused.");
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
@@ -2410,21 +2412,24 @@ public static class Scenarios {
                 r.Add("artillery selected: " + marked + " tiles marked, " + wrong + " not an enemy; the enemy grunt " + enemy.tile.state + ", the Blue grunt in range " + friend.tile.state);
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
                 gc.activeUnit = null;
-                o.displayColor = new Color(0.9f, 0.2f, 0.25f, 1f);
                 SupplyOverlay.ShowEnemy(tank);
-                Color red = o.displayColor;
-                float sat = Math.Max(red.r, Math.Max(red.g, red.b)) <= 0f ? 0f : (Math.Max(red.r, Math.Max(red.g, red.b)) - Math.Min(red.r, Math.Min(red.g, red.b))) / Math.Max(red.r, Math.Max(red.g, red.b));
+                Func<Color, Color, bool> same = (x, y) => Math.Abs(x.r - y.r) + Math.Abs(x.g - y.g) + Math.Abs(x.b - y.b) + Math.Abs(x.a - y.a) < 1e-4;
                 int moveTiles = 0, reachTiles = 0, badMove = 0, badReach = 0;
                 foreach (HexTile t in Rig.hg.tiles) {
-                    Color c = t.overlay.color;
-                    float mx = Math.Max(c.r, Math.Max(c.g, c.b)), mn = Math.Min(c.r, Math.Min(c.g, c.b));
-                    float s2 = mx <= 0f ? 0f : (mx - mn) / mx;
-                    if (t.state == UIState.ENEMY_MOVE) { moveTiles++; if (Math.Abs(c.a - 0.5f) > 1e-4 || Math.Abs(s2 - sat * 0.5f) > 1e-3) badMove++; }
-                    if (t.state == UIState.ENEMY_THREAT) { reachTiles++; if (Math.Abs(c.a - 0.5f) > 1e-4 || Math.Abs(s2 - sat) > 1e-3) badReach++; }
+                    if (t.state == UIState.ENEMY_MOVE) { moveTiles++; if (!same(t.overlay.color, ui.enemyMove)) badMove++; }
+                    if (t.state == UIState.ENEMY_THREAT) { reachTiles++; if (!same(t.overlay.color, ui.enemyShoot)) badReach++; }
                 }
-                bool overlays = moveTiles > 0 && reachTiles > 0 && badMove == 0 && badReach == 0 && sat > 0f;
-                r.Add("enemy tank shown: " + moveTiles + " move tiles (" + badMove + " not at half opacity and half saturation), " + reachTiles + " reach tiles (" + badReach + " not at half opacity, full colour)");
                 SupplyOverlay.HideEnemy();
+                // Artillery (cannot move and fire): its whole range from where it stands shows as fire, over its moves.
+                SupplyOverlay.ShowEnemy(art);
+                int artRange = 0, artMissing = 0, artFireOverMove = 0;
+                foreach (HexTile t in Rig.hg.tiles) {
+                    int d = art.tile.Distance(t);
+                    if (d > art.MinRange && d <= art.AttackRange && t != art.tile) { artRange++; if (t.state != UIState.ENEMY_THREAT) artMissing++; else if (t.occupier == null && art.tile.Distance(t) <= art.moveRange) artFireOverMove++; }
+                }
+                SupplyOverlay.HideEnemy();
+                bool overlays = moveTiles > 0 && reachTiles > 0 && badMove == 0 && badReach == 0 && artRange > 0 && artMissing == 0 && artFireOverMove > 0;
+                r.Add("enemy tank shown: " + moveTiles + " move tiles (" + badMove + " not grey), " + reachTiles + " fire tiles (" + badReach + " not orange); artillery: " + artRange + " tiles in range, " + artMissing + " not shown as fire, " + artFireOverMove + " of its moves shown as fire");
                 // Capture: one Blue turn on each city.
                 Building neutral = Rig.At(-2, 3).building, theirs = Rig.At(3, 3).building;
                 string w0, v0; Player p0;
@@ -3309,6 +3314,33 @@ public static class Scenarios {
                 detail = "forest grunt fires first: normally " + before.defenderFiresFirst + ", against cover-ignoring " + after.defenderFiresFirst
                        + "; damage in the forest " + coverDmg + " (open ground " + openDmg + "), ignoring cover " + ignoringDmg + "; forecast to the grunt " + before.damageToDefender + " -> " + after.damageToDefender;
                 return before.defenderFiresFirst && !after.defenderFiresFirst && coverDmg < openDmg && ignoringDmg == openDmg && after.damageToDefender >= before.damageToDefender;
+            }
+            case "nextUnit": {
+                HexTileUIData ui = HexTileUIData.instance;
+                foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
+                foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
+                Unit g1 = Rig.At(0, 0).occupier, g2 = Rig.At(2, 0).occupier, tk = Rig.At(0, 2).occupier;
+                // Blue played by hand: its AI off (the harness gives every side one).
+                foreach (MonoBehaviour m in a.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = false;
+                List<Unit> order = new List<Unit>();
+                bool selectedLikeClick = true;
+                for (int i = 0; i < 4; i++) {
+                    Unit u = gc.SelectNextIdle();
+                    order.Add(u);
+                    int moves = 0; foreach (HexTile t in Rig.hg.tiles) if (t.state == UIState.MOVE) moves++;
+                    if (u == null || gc.activeUnit != u || u.tile.state != UIState.SELECTED || moves == 0) selectedLikeClick = false;
+                }
+                bool cycles = order[0] != null && order[0] != order[1] && order[1] != order[2] && order[3] == order[0];
+                g2.active = false;
+                Unit after = null; bool skipped = true;
+                for (int i = 0; i < 3; i++) { after = gc.SelectNextIdle(); if (after == g2) skipped = false; }
+                gc.activeUnit = null; HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+                // An AI's turn (Blue handed back to its AI): nothing.
+                foreach (MonoBehaviour m in a.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
+                bool redNone = gc.SelectNextIdle() == null && gc.activeUnit == null;
+                detail = "order " + string.Join(", ", order.ConvertAll(u => u != null ? u.name + Pos(u.tile) : "none")) + "; each selected as a click does " + selectedLikeClick
+                       + "; wraps round " + cycles + "; one that acted skipped " + skipped + "; on an AI's turn nothing " + redNone;
+                return selectedLikeClick && cycles && skipped && redNone;
             }
             case "harborOpen": {
                 HexTile yard = Rig.At(-2, 0), bridge = Rig.At(-3, 4);

@@ -14,6 +14,9 @@ using UnityEngine;
 /// Spawned when a scene starts (not in the headless harness). It also keeps sight up to date: if
 /// anything moved without saying so (FogOfWar.Changed), it notices from one frame to the next.
 /// A board loaded from a file (<see cref="BoardLoaded"/>) shows its fog at once, without fading.
+///
+/// Fog of war on but not shown on screen (GameController.fogShownOnScreen off): instead of one viewer's
+/// fog, every side's fog is laid over the board, one layer each at FogSettings.observerOpacity.
 /// </summary>
 public class FogView : MonoBehaviour {
 
@@ -26,6 +29,8 @@ public class FogView : MonoBehaviour {
 
     class Cover { public SpriteRenderer sr; public float alpha; }
     readonly Dictionary<HexTile, Cover> covers = new Dictionary<HexTile, Cover>();
+    /// <summary>Fog on but not shown on screen: one layer of covers per side, its fog at FogSettings.observerOpacity.</summary>
+    readonly Dictionary<Player, Dictionary<HexTile, Cover>> sideCovers = new Dictionary<Player, Dictionary<HexTile, Cover>>();
 
     /// <summary>A cell one step past the edge of the board: where it is, and the board tiles beside it.</summary>
     class Beyond { public int x, y; public List<HexTile> next = new List<HexTile>(); public Cover cover; }
@@ -69,12 +74,16 @@ public class FogView : MonoBehaviour {
             else if (fog) HexTilePlayerSupplyDisplay.WakeOthers(viewer);
             lastVersion = FogOfWar.Version; lastViewer = viewer; hadFog = fog;
         }
-        if (!fog && covers.Count == 0 && !AnyBeyondShown()) { snap = false; return; }
+        // Fog on but not shown on screen: each side's fog, faintly, one layer each (what each side sees).
+        GameController gc = GameController.gc;
+        bool observe = !fog && FogOfWar.On && gc != null && !gc.fogShownOnScreen;
+        if (!fog && !observe && covers.Count == 0 && sideCovers.Count == 0 && !AnyBeyondShown()) { snap = false; return; }
 
         FogSettings set = FogSettings.Instance;
         bool instant = snap || reloading || Time.timeSinceLevelLoad < 0.5f;
         snap = false;
         float step = Time.deltaTime / Mathf.Max(0.01f, set.fadeSeconds);
+        SideLayers(hg, observe, instant, step, set);
         foreach (HexTile t in hg.tiles) {
             if (t == null) continue;
             float want = fog && !FogOfWar.TileVisible(viewer, t) ? 1f : 0f;
@@ -87,7 +96,7 @@ public class FogView : MonoBehaviour {
                 c = new Cover { sr = Make(t, set), alpha = 0f };
                 covers[t] = c;
             }
-            Fade(c, want, instant, step, set);
+            Fade(c, want, instant, step, set, 1f);
         }
 
         // One cell past the edge: fogged, unless a unit the viewer sees stands beside it.
@@ -109,15 +118,65 @@ public class FogView : MonoBehaviour {
                 if (sr == null) continue;
                 b.cover = new Cover { sr = sr, alpha = 0f };   // from 0: Fade paints it (see above)
             }
-            Fade(b.cover, want, instant, step, set);
+            Fade(b.cover, want, instant, step, set, 1f);
         }
     }
 
-    static void Fade(Cover c, float want, bool instant, float step, FogSettings set) {
+    /// <summary>
+    /// The side layers (fog on, not shown on screen): over each tile a side does not see, that side's own cover at
+    /// FogSettings.observerOpacity, so a tile one side cannot see is faintly fogged and one neither sees more so.
+    /// Faded out (and left) when the fog is shown again or turned off.
+    /// </summary>
+    void SideLayers(HexGenerator hg, bool observe, bool instant, float step, FogSettings set) {
+        if (!observe && sideCovers.Count == 0) return;
+        List<Player> sides = new List<Player>();
+        if (observe && GameController.gc.players != null) foreach (Player p in GameController.gc.players) if (p != null) sides.Add(p);
+        foreach (Player p in sides) if (!sideCovers.ContainsKey(p)) sideCovers[p] = new Dictionary<HexTile, Cover>();
+        List<Player> gone = new List<Player>();
+        foreach (KeyValuePair<Player, Dictionary<HexTile, Cover>> kv in sideCovers) {
+            Player p = kv.Key;
+            bool on = observe && p != null && sides.Contains(p);
+            bool any = false;
+            foreach (HexTile t in hg.tiles) {
+                if (t == null) continue;
+                float want = on && !FogOfWar.TileVisible(p, t) ? 1f : 0f;
+                Cover c;
+                if (!kv.Value.TryGetValue(t, out c) || c.sr == null) {
+                    if (want <= 0f) { kv.Value.Remove(t); continue; }
+                    c = new Cover { sr = MakeLayer(t, set, p), alpha = 0f };
+                    kv.Value[t] = c;
+                }
+                Fade(c, want, instant, step, set, set.observerOpacity);
+                if (c.sr.enabled) any = true;
+            }
+            if (!on && !any) gone.Add(p);
+        }
+        foreach (Player p in gone) {
+            foreach (Cover c in sideCovers[p].Values) if (c.sr != null) Destroy(c.sr.gameObject);
+            sideCovers.Remove(p);
+        }
+    }
+
+    /// <summary>A cover for one side's layer over <paramref name="t"/>: a copy of the tile's own fog cover, beside it.</summary>
+    SpriteRenderer MakeLayer(HexTile t, FogSettings set, Player p) {
+        Cover main;
+        SpriteRenderer basis = covers.TryGetValue(t, out main) && main.sr != null ? main.sr : null;
+        if (basis == null) { Transform own = t.transform.Find("Fog"); basis = own != null ? own.GetComponent<SpriteRenderer>() : null; }
+        if (basis == null) { basis = Make(t, set); covers[t] = new Cover { sr = basis, alpha = 0f }; }
+        GameObject copy = GameObject.Instantiate(basis.gameObject, basis.transform.parent);
+        copy.name = "Fog (" + (p != null ? p.personal_name : "?") + ")";
+        copy.transform.localPosition = basis.transform.localPosition;
+        SpriteRenderer sr = copy.GetComponent<SpriteRenderer>();
+        sr.color = new Color(0f, 0f, 0f, 0f);
+        sr.enabled = false;
+        return sr;
+    }
+
+    static void Fade(Cover c, float want, bool instant, float step, FogSettings set, float opacity) {
         if (c.alpha == want && c.sr.enabled == (want > 0f)) return;
         c.alpha = instant ? want : Mathf.MoveTowards(c.alpha, want, step);
         Color col = set.fogColor;
-        col.a *= c.alpha;
+        col.a *= c.alpha * opacity;
         c.sr.color = col;
         c.sr.enabled = c.alpha > 0.001f;
     }

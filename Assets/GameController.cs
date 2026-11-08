@@ -232,9 +232,40 @@ public class GameController : MonoBehaviour
             });
         }
         // Space ends the turn of a human player only: an AI ends its own (and may be thinking on another thread).
-        if (Input.GetKeyDown(KeyCode.Space) && FogOfWar.IsHuman(activePlayer) && !endTurnPending) {
-            EndTurnWhenStill();
-        }
+        if (Input.GetKeyDown(KeyCode.Space)) HumanEndTurn();
+    }
+
+    /// <summary>
+    /// The player at the screen ends their turn: the Space key and the HUD's End turn button (TurnControls) both come
+    /// here. Only a human player's turn, not while one is already ending, not in a replay.
+    /// </summary>
+    public void HumanEndTurn() {
+        if (headless || gameOver || endTurnPending || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return;
+        EndTurnWhenStill();
+    }
+
+    Unit lastIdle;
+
+    /// <summary>
+    /// The HUD's Next unit button (TurnControls): the human player's next unit that has not acted this turn, after the
+    /// one selected (or the last one picked this way), in roster order; selected by a click on its tile
+    /// (HexTile.ClickBoard), as the player would. Null if none is left, or it is not a human player's turn.
+    /// </summary>
+    public Unit SelectNextIdle() {
+        if (gameOver || endTurnPending || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return null;
+        List<Unit> idle = new List<Unit>();
+        foreach (Unit u in activePlayer.units)
+            if (u != null && u.active && u.tile != null && u.Strength > 0 && (u.trasnporter == null || u.trasnporter == u)) idle.Add(u);
+        if (idle.Count == 0) return null;
+        Unit from = activeUnit != null ? activeUnit : lastIdle;
+        int i = from != null ? idle.IndexOf(from) : -1;
+        Unit next = idle[(i + 1) % idle.Count];
+        // Whatever was selected is dropped first, so the click on the next one's tile selects it.
+        activeUnit = null;
+        HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+        next.tile.ClickBoard();
+        lastIdle = next;
+        return next;
     }
 
     public static void ResetTileData() {

@@ -19,4 +19,5 @@ MonoBehaviour:
   sortingLayer: Building
   sortingOrder: 1000
   fadeSeconds: 0.35
+  observerOpacity: 0.5
   ownHiddenAlpha: 0.5
