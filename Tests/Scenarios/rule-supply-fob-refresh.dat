@@ -636,9 +636,9 @@
 {"x":14,"y":0,"z":-14,"damage":0,"combatCount":0,"terrain":"Grassland"}
 ],
 "buildings":[
-{"x":-13,"y":0,"z":13,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":112,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1},
-{"x":13,"y":0,"z":-13,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":0,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1},
-{"x":0,"y":0,"z":0,"gameobject_name":"FOB","personal_name":"Forward base","type":10,"owner_id":112,"income":0,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":6,"damageLevel":0,"capturePoints":10,"capturingPlayerId":-1}
+{"x":-13,"y":0,"z":13,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":112,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":0,"capturingPlayerId":-1},
+{"x":13,"y":0,"z":-13,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":0,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":0,"capturingPlayerId":-1},
+{"x":0,"y":0,"z":0,"gameobject_name":"FOB","personal_name":"Forward base","type":10,"owner_id":112,"income":0,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":6,"damageLevel":0,"capturePoints":0,"capturingPlayerId":-1}
 ],
 "units":[
 ]

@@ -129,7 +129,7 @@ namespace HexTactica.OldAI {
             // The slots: every free tile of every building that can build.
             List<Slot> slots = new List<Slot>();
             foreach (Building b in sites)
-                foreach (HexTile x in b.Footprint)
+                for (HexTile x = b.tile; x != null; x = null)
                     if (x.occupier == null && AIAir.MayBuildOn(x, map)) { bool any = false; foreach (Unit t in b.Purchasable()) if (t.cost > 0 && t.CanEnter(x)) { any = true; break; } if (any) slots.Add(new Slot { b = b, tile = x }); }
 
             // Where the fight is (productionTimeToFront): the enemy units we know of, else the enemy's HQ.
@@ -307,8 +307,8 @@ namespace HexTactica.OldAI {
 
         /// <summary>A footprint tile of <paramref name="b"/> where <paramref name="t"/> could be built now.</summary>
         static HexTile FreeTile(Building b, Unit t, AIMap map) {
-            foreach (HexTile x in b.Footprint) if (x.occupier == null && t.CanEnter(x) && AIAir.MayBuildOn(x, map)) return x;
-            return null;
+            HexTile x = b.tile;
+            return x != null && x.occupier == null && t.CanEnter(x) && AIAir.MayBuildOn(x, map) ? x : null;
         }
 
         /// <summary>

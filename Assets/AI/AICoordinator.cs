@@ -345,13 +345,12 @@ namespace HexTactica.AI {
         /// <summary>A tile <paramref name="u"/> can reach this turn and fire on <paramref name="at"/> from: free, not claimed, least exposed.</summary>
         static HexTile FreshTile(Unit u, HexTile at, HashSet<HexTile> claimed, AIMap map) {
             if (!u.CanAttack(u.tile)) return null;
-            int d0 = u.tile.Distance(at);
-            if (d0 <= u.AttackRange && d0 > u.MinRange && !claimed.Contains(u.tile)) return u.tile;
+            if (CombatMath.InFireRange(u, u.tile, at, at.occupier) && !claimed.Contains(u.tile)) return u.tile;
             if (!u.moveAndAttack) return null;
             MoveField f = map.ReachThisTurn(u);
             HexTile best = null; float bestLoss = float.MaxValue;
             foreach (HexTile r in AIPath.TilesInRange(at, u.MinRange, u.AttackRange)) {
-                if (r == u.tile || claimed.Contains(r) || !f.ReachableThisTurn(r) || !AIPath.CanFinishTurnOn(u, r)) continue;
+                if (r == u.tile || claimed.Contains(r) || !f.ReachableThisTurn(r) || !AIPath.CanFinishTurnOn(u, r) || !CombatMath.LineOfFire(u, r, at, at.occupier)) continue;
                 float loss = map.ExpectedLoss(u, r);
                 if (best == null || loss < bestLoss || (loss == bestLoss && CombatMath.Precedes(r, best))) { best = r; bestLoss = loss; }
             }
@@ -380,7 +379,7 @@ namespace HexTactica.AI {
                 HexTile stop = s.stop;
                 int d = stop != null ? stop.Distance(tAt) : 99;
                 bool reachable = stop != null && (stop == u.tile || (u.moveAndAttack && map.ReachThisTurn(u).ReachableThisTurn(stop) && AIPath.CanFinishTurnOn(u, stop)));
-                if (!reachable || d > u.AttackRange || d <= u.MinRange || claimed.Contains(stop)) stop = FreshTile(u, tAt, claimed, map);
+                if (!reachable || d > u.AttackRange || d <= u.MinRange || claimed.Contains(stop) || !CombatMath.LineOfFire(u, stop, tAt, tAt.occupier)) stop = FreshTile(u, tAt, claimed, map);
                 if (stop == null) continue;
                 claimed.Add(stop);
                 int dmg, back;

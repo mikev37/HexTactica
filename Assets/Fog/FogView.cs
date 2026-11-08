@@ -64,8 +64,10 @@ public class FogView : MonoBehaviour {
         bool fog = viewer != null;
         // Enemy supply borders are drawn only where the viewer sees: redraw them when sight changes.
         if (FogOfWar.Version != lastVersion || viewer != lastViewer || fog != hadFog) {
+            // Sight moved: only the other sides' borders depend on it. (The viewer or the fog itself changed: all.)
+            if (viewer != lastViewer || fog != hadFog) HexTilePlayerSupplyDisplay.WakeAll();
+            else if (fog) HexTilePlayerSupplyDisplay.WakeOthers(viewer);
             lastVersion = FogOfWar.Version; lastViewer = viewer; hadFog = fog;
-            HexTilePlayerSupplyDisplay.WakeAll();
         }
         if (!fog && covers.Count == 0 && !AnyBeyondShown()) { snap = false; return; }
 

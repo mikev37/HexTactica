@@ -174,8 +174,8 @@ public class LevelEditor : MonoBehaviour
 
     /// <summary>
     /// The terrain of that name: one in the editor's list (allTerrain), or one the game itself puts
-    /// on tiles, so a save can hold it without the list having it: a building's ground (Building.ground
-    /// and serviceGround, such as BuildingGround) or what a terrain becomes when destroyed
+    /// on tiles, so a save can hold it without the list having it: a building's ground (Building.ground,
+    /// such as BuildingGround) or what a terrain becomes when destroyed
     /// (TerrainData.destroyedInto). Null if none has that name.
     /// </summary>
     /// <summary>Terrains renamed since saves were written: old name, new name.</summary>
@@ -199,7 +199,6 @@ public class LevelEditor : MonoBehaviour
             foreach (Building b in singleton.allBuilding) {
                 if (b == null) continue;
                 if (b.ground != null && b.ground.name.Equals(name)) return b.ground;
-                if (b.serviceGround != null && b.serviceGround.name.Equals(name)) return b.serviceGround;
             }
         if (singleton.allTerrain != null)
             foreach (TerrainData t in singleton.allTerrain) {

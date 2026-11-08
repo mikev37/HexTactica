@@ -466,13 +466,15 @@ public class HexTile : MonoBehaviour
                 Unit mover = GameController.gc.activeUnit;
                 Unit transport = seen;
                 if (mover != null && transport != null) {
-                    if (!(neighbors.Contains(mover.tile) && Transporting.CanBoardOnto(mover, mover.tile, this, transport)) && mover.tile != this) {
-                        HexTile beside = null;
-                        foreach (HexTile n in neighbors) if (n != null && n.state == UIState.MOVE && FogOfWar.ApparentOccupier(n, mover.owner) == null && Transporting.CanBoardOnto(mover, n, this, transport) && (beside == null || n.G < beside.G)) beside = n;
-                        // Stopped on the way by an enemy it did not see (fog of war): no boarding, its move is over.
-                        if (beside != null && !mover.CompleteMove(beside)) { mover.FinishActive(); transport = null; }
+                    // The walk in (BoardingPath, as the AI boards too): its own tile if it can step in from there, else the
+                    // nearest tile beside the transport it reaches this turn — a friend's included, passed through on the way in.
+                    HexTile start = mover.tile;
+                    List<HexTile> steps = BoardingPath(mover, transport);
+                    if (steps != null) {
+                        bool boarded = mover.WalkAndBoard(steps, transport, true);
+                        // Boarded, or stopped on the way by an enemy it did not see (fog of war): its move is over.
+                        if (boarded || mover.tile != start) mover.FinishActive();
                     }
-                    if (transport != null && Transporting.Load(transport, mover)) mover.FinishActive();
                 }
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
             } else {
@@ -484,13 +486,13 @@ public class HexTile : MonoBehaviour
                     // Only what it can fire on now: enemies it sees in range (not its whole range, not friends or empty tiles).
                     CheckAttackRange(sel).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
                     changeState(UIState.SELECTED);
-                    // Our transports it can board: beside it now, or beside a tile it can move to.
+                    // Our transports it can board: beside it now, or beside a tile it can get to (a friend's too: it
+                    // passes through it on the way in).
                     Unit cargo = sel;
                     foreach (Unit tr in cargo.owner.units) {
                         if (tr == null || tr == cargo || tr.tile == null || !Transporting.CanCarry(tr, cargo)) continue;
-                        // From here or from a tile it can move to beside the transport, and able to step aboard from there.
                         bool reach = tr.tile.neighbors.Contains(this) && Transporting.CanBoardOnto(cargo, this, tr.tile, tr);
-                        foreach (HexTile n in tr.tile.neighbors) if (n != null && n.state == UIState.MOVE && Transporting.CanBoardOnto(cargo, n, tr.tile, tr)) reach = true;
+                        foreach (HexTile n in tr.tile.neighbors) if (n != null && n.G != 0 && BoardableFrom(cargo, n, tr)) reach = true;
                         if (reach) tr.tile.changeState(UIState.LOAD_CONFIRM);
                     }
                 } else if (state == UIState.MOVE) {
@@ -615,6 +617,38 @@ public class HexTile : MonoBehaviour
     // moveFormula removed: movement cost now lives in AIPath.StepCost, the single model.
 
 
+    /// <summary>
+    /// <paramref name="cargo"/> could step into <paramref name="transport"/> from <paramref name="n"/> as its side knows
+    /// the board: nothing there it knows of but a friend (fog of war: an enemy it does not see is not there).
+    /// </summary>
+    static bool BoardableFrom(Unit cargo, HexTile n, Unit transport) {
+        Unit o = FogOfWar.ApparentOccupier(n, cargo.owner);
+        if (o != null && o != cargo && o.owner != cargo.owner) return false;
+        return Transporting.CanBoardOnto(cargo, n, transport.tile, transport);
+    }
+
+    /// <summary>
+    /// The walk <paramref name="cargo"/> takes to board <paramref name="transport"/> this turn, its own tile first: just
+    /// that tile if it can step in from where it stands; else the cheapest path (the game's movement search, ties by
+    /// tile order) to a tile beside the transport it can step in from — a friend's tile included, as it only passes
+    /// through. Null if none. Leaves the tiles' search state cleared.
+    /// </summary>
+    public static List<HexTile> BoardingPath(Unit cargo, Unit transport) {
+        if (cargo == null || cargo.tile == null || transport == null || transport.tile == null || !Transporting.CanCarry(transport, cargo)) return null;
+        if ((cargo.tile == transport.tile || transport.tile.neighbors.Contains(cargo.tile)) && Transporting.CanBoardFromTile(transport, cargo, cargo.tile))
+            return new List<HexTile> { cargo.tile };
+        HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
+        List<HexTile> reach = cargo.tile.CheckMovementRange(cargo);
+        HexTile beside = null;
+        foreach (HexTile n in transport.tile.neighbors) {
+            if (n == null || n == cargo.tile || !reach.Contains(n) || !BoardableFrom(cargo, n, transport)) continue;
+            if (beside == null || n.G < beside.G || (n.G == beside.G && CombatMath.Precedes(n, beside))) beside = n;
+        }
+        List<HexTile> steps = beside != null ? beside.buildpath() : null;
+        HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
+        return steps != null && steps.Count > 1 && steps[0] == cargo.tile ? steps : null;
+    }
+
     public List<HexTile> CheckMovementRange(Unit mover) {
         return CheckMovementRange(mover, HexTactica.AI.AIPath.RangeThisTurn(mover));
     }
@@ -678,7 +712,10 @@ public class HexTile : MonoBehaviour
         // two-thirds of that cube where x+y+z != 0. CanAttack does not depend on the
         // target tile, so it is checked once rather than per tile.
         if (!attacker.CanAttack(this)) return new List<HexTile>();
-        return HexTactica.AI.AIPath.TilesInRange(this, attacker.MinRange, attacker.AttackRange);
+        List<HexTile> inRange = HexTactica.AI.AIPath.TilesInRange(this, attacker.MinRange, attacker.AttackRange);
+        // Direct fire does not go through higher ground (CombatMath.LineOfFire).
+        if (attacker.moveAndAttack) inRange.RemoveAll(t => !CombatMath.LineOfFire(attacker, this, t, t.occupier));
+        return inRange;
     }
 }
 

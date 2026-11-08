@@ -326,4 +326,46 @@ public static class CombatMath {
         if (attacker == null || defender == null || defender.tile == null) return 0;
         return Cap(Unit.calculateDamage(attacker, defender, defender.tile, 0), defender.Strength);
     }
+
+    /// <summary>
+    /// Line of fire: can <paramref name="shooter"/> on <paramref name="from"/> fire at <paramref name="to"/> (where
+    /// <paramref name="target"/> stands, if known) without higher ground in between? Only direct fire is held to it — a
+    /// unit that moves and shoots, on the ground, at a target on the ground two or more tiles off: a tile on the line
+    /// between them higher than both ends blocks it. Artillery (fires without moving) lobs over; aircraft, and shots at
+    /// aircraft, are not blocked. A line along the edge between two tiles is blocked only if both sides are.
+    /// The range itself is the caller's (InFireRange checks both).
+    /// </summary>
+    public static bool LineOfFire(Unit shooter, HexTile from, HexTile to, Unit target) {
+        if (shooter == null || from == null || to == null || !shooter.moveAndAttack) return true;
+        if (LocomotionRules.IgnoresTerrain(shooter.locomotion)) return true;
+        if (target != null && LocomotionRules.IgnoresTerrain(target.locomotion)) return true;
+        int n = from.Distance(to);
+        if (n < 2 || HexGenerator.hg == null) return true;
+        int top = Mathf.Max(Elevation(from), Elevation(to));
+        return !(LineBlocked(from, to, n, top, 1e-4f) && LineBlocked(from, to, n, top, -1e-4f));
+    }
+
+    /// <summary>Range and line of fire (LineOfFire): could <paramref name="shooter"/> on <paramref name="from"/> fire at <paramref name="to"/>?</summary>
+    public static bool InFireRange(Unit shooter, HexTile from, HexTile to, Unit target) {
+        if (shooter == null || from == null || to == null) return false;
+        int d = from.Distance(to);
+        return d <= shooter.AttackRange && d > shooter.MinRange && LineOfFire(shooter, from, to, target);
+    }
+
+    static int Elevation(HexTile t) { return t != null && t.terrain != null ? t.terrain.elevation : 0; }
+
+    static bool LineBlocked(HexTile a, HexTile b, int n, int top, float nudge) {
+        float ax = a.x + nudge, ay = a.y + nudge, az = a.z - 2f * nudge;
+        float bx = b.x + nudge, by = b.y + nudge, bz = b.z - 2f * nudge;
+        for (int i = 1; i < n; i++) {
+            float f = i / (float)n;
+            float x = ax + (bx - ax) * f, y = ay + (by - ay) * f, z = az + (bz - az) * f;
+            int rx = Mathf.RoundToInt(x), ry = Mathf.RoundToInt(y), rz = Mathf.RoundToInt(z);
+            float dx = Mathf.Abs(rx - x), dy = Mathf.Abs(ry - y), dz = Mathf.Abs(rz - z);
+            if (dx > dy && dx > dz) rx = -ry - rz; else if (dy > dz) ry = -rx - rz; else rz = -rx - ry;
+            HexTile t = HexGenerator.hg.get(rx, ry, rz);
+            if (t != null && Elevation(t) > top) return true;
+        }
+        return false;
+    }
 }

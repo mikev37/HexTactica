@@ -768,7 +768,7 @@ namespace HexTactica.AI {
                     if (d[t] != c || t.neighbors == null) continue;
                     foreach (HexTile n in t.neighbors) {
                         if (n == null || n.terrain == null) continue;
-                        if (n.terrain.elevation < 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;
+                        if (n.terrain.elevation < 0) continue;
                         if (!LocomotionRules.BridgeStep(n, t, Locomotion.Wheels)) continue;
                         int step = 1 + (map.EnemyStrikeTurns(n) <= 1 && n != target ? danger : 0);
                         int nd = c + step, old;

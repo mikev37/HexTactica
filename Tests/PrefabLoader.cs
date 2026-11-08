@@ -321,13 +321,10 @@ namespace HexTactica.Testing {
             b.gameObject.name = cached.name;   // what a save writes for it (GameLog, LevelEditor), as in Unity
             foreach (FieldInfo fi in SerializedFields(typeof(Building))) {
                 object v = fi.GetValue(cached);
-                if (v is List<TileOffset>) v = new List<TileOffset>((List<TileOffset>)v);
-                else if (v is List<Locomotion>) v = new List<Locomotion>((List<Locomotion>)v);
+                if (v is List<Locomotion>) v = new List<Locomotion>((List<Locomotion>)v);
                 else if (v is List<Unit>) v = new List<Unit>((List<Unit>)v);
                 fi.SetValue(b, v);
             }
-            b.tiles = new List<HexTile>();
-            b.runway = new List<HexTile>();
             b.tile = null;
             b.owner = null;
             return b;
@@ -353,18 +350,12 @@ namespace HexTactica.Testing {
                     else if (fi.FieldType.IsEnum) fi.SetValue(b, Enum.ToObject(fi.FieldType, int.Parse(raw)));
                 } catch (FormatException) { }
             }
-            b.footprint = new List<TileOffset>();
-            b.serviceTiles = new List<TileOffset>();
             b.services = new List<Locomotion>();
             b.buildable = new List<Unit>();
             List<string> lines = new List<string>(doc.Split('\n'));
             for (int i = 0; i < lines.Count; i++) {
                 string l = lines[i];
-                if (l.StartsWith("  footprint:") || l.StartsWith("  serviceTiles:")) {
-                    List<TileOffset> into = l.StartsWith("  footprint:") ? b.footprint : b.serviceTiles;
-                    for (int j = i + 1; j + 1 < lines.Count && lines[j].StartsWith("  - x:"); j += 2)
-                        into.Add(new TileOffset(int.Parse(lines[j].Substring(lines[j].IndexOf(':') + 1).Trim()), int.Parse(lines[j + 1].Substring(lines[j + 1].IndexOf(':') + 1).Trim())));
-                } else if (l.StartsWith("  services:")) {
+                if (l.StartsWith("  services:")) {
                     // Unity writes an int list either as "- n" lines or packed on the line as hex (4 bytes each, little-endian, then "i").
                     string packed = l.Substring("  services:".Length).Trim();
                     if (packed.Length > 0) foreach (int v in PackedInts(packed)) b.services.Add((Locomotion)v);
@@ -375,11 +366,11 @@ namespace HexTactica.Testing {
                         string unit = g != null ? AssetByGuid(Path.Combine(Root("Units")), "*.prefab.meta", g) : null;
                         if (unit != null && Has(unit)) { Unit arch = Load(unit); AttachHubIfAny(unit, arch); b.buildable.Add(arch); }   // as in Unity: the prefab carries its SupplyPoint
                     }
-                } else if (l.StartsWith("  ground:") || l.StartsWith("  serviceGround:")) {
+                } else if (l.StartsWith("  ground:")) {
                     string g = GuidIn(l);
                     string terrain = g != null ? AssetByGuid(Path.Combine(Root("Tiles")), "*.asset.meta", g) : null;
                     TerrainData td = terrain != null ? ScenarioFile.Terrain(terrain) : null;
-                    if (l.StartsWith("  ground:")) b.ground = td; else b.serviceGround = td;
+                    b.ground = td;
                 }
             }
             return b;

@@ -223,7 +223,7 @@ public static class SupplyNetwork {
                 Building b = relayBuildings[i];
                 if (buildingsOn.Contains(b)) continue;
                 bool reached = false;
-                foreach (HexTile t in b.Footprint) if (result.IsSupplied(t)) { reached = true; break; }
+                if (result.IsSupplied(b.tile)) reached = true;
                 if (!reached) continue;
                 buildingsOn.Add(b);
                 result.connectedBuildings.Add(b);
@@ -310,16 +310,17 @@ public static class SupplyNetwork {
             Result shown = result;
             Player viewer = ShownAsKnown && FogOfWar.On ? FogOfWar.Viewer : null;
             if (viewer != null && again != null) using (FogOfWar.Concealing(viewer)) shown = again();
+            // Borders to redraw: only where being supplied (as shown) changed, and beside it.
+            List<HexTile> flipped = new List<HexTile>();
             HexGenerator.forAllTiles(t => {
                 if (t.supplyShown == null) t.supplyShown = new Dictionary<Player, int>();
-                t.supplyShown[player] = shown.DepthAt(t);
+                int now = shown.DepthAt(t), was;
+                if (!t.supplyShown.TryGetValue(player, out was) || (was > 0) != (now > 0)) flipped.Add(t);
+                t.supplyShown[player] = now;
                 return 0;
             });
-        }
-        // (Into a board copy, if one is entered: only it changes. The displays are woken for the real board only.)
-        if (BoardView.current == null) {
             Published++;
-            HexTilePlayerSupplyDisplay.WakeAll();
+            HexTilePlayerSupplyDisplay.WakeAround(flipped, player);
         }
     }
 
@@ -385,7 +386,19 @@ public static class SupplyNetwork {
     /// </summary>
     static void FloodFromBuilding(Building b, Result result) {
         if (b.tile == null) return;
-        foreach (HexTile t in b.Footprint) Flood(t, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
+        Flood(b.tile, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
+    }
+
+    /// <summary>A tile of one of <paramref name="owner"/>'s buildings that services ships (a naval yard): boats come in to it.</summary>
+    static bool IsOurYard(HexTile t, Player owner) {
+        Building b = t != null ? t.building : null;
+        return b != null && b.owner == owner && b.tile == t && b.services != null && b.services.Contains(Locomotion.Ship);
+    }
+
+    /// <summary>A step supply takes onto or off a building's tile on bridge ground, from or to land (not water).</summary>
+    static bool SupplyOnto(HexTile from, HexTile to) {
+        if (from.terrain == null || to.terrain == null || from.terrain.elevation < 0 || to.terrain.elevation < 0) return false;
+        return (to.building != null && to.building.tile == to) || (from.building != null && from.building.tile == from);
     }
 
     static bool IsNavalHub(SupplyPoint hub) {
@@ -394,8 +407,8 @@ public static class SupplyNetwork {
 
     /// <summary>
     /// Is the supply boat on <paramref name="at"/> linked: within its range over water (one step a
-    /// tile) of a dock of one of our naval yards that is itself in supply, or of a supply boat already
-    /// linked?
+    /// tile) of a tile at or beside one of our naval yards that is itself in supply, or of a supply boat
+    /// already linked?
     /// </summary>
     static bool NavalLinked(SupplyPoint hub, HexTile at, Player owner, Result result, HashSet<SupplyPoint> activated,
                             SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
@@ -411,14 +424,13 @@ public static class SupplyNetwork {
         while (q.Count > 0) {
             HexTile t = q.Dequeue();
             if (t != at && linkedBoats.Contains(t)) return true;
-            Building b = t.building;
-            if (b != null && b.owner == owner && b.IsServiceTile(t)) {
-                foreach (HexTile f in b.Footprint) if (result.IsSupplied(f)) return true;
-            }
+            // At or beside one of our naval yards that is itself in supply (where its docks were).
+            if (IsOurYard(t, owner) && result.IsSupplied(t)) return true;
+            foreach (HexTile y in t.neighbors) if (IsOurYard(y, owner) && result.IsSupplied(y)) return true;
             if (cost[t] >= hub.range) continue;
             foreach (HexTile n in t.neighbors) {
                 if (n == null || n.terrain == null || cost.ContainsKey(n)) continue;
-                if (n.terrain.elevation >= 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;   // water (and docks) only
+                if (n.terrain.elevation >= 0 && !IsOurYard(n, owner)) continue;   // water (and our yards) only
                 if (n.occupier != null && n.occupier.owner != owner) continue;
                 cost[n] = cost[t] + 1;
                 q.Enqueue(n);
@@ -525,12 +537,13 @@ public static class SupplyNetwork {
 
                 // An enemy unit standing in the corridor severs it.
                 if (n.occupier != null && n.occupier.owner != owner) continue;
-                // On and off a bridge only by road, as units move.
-                if (!LocomotionRules.BridgeStep(current, n, loco)) continue;
+                // On and off a bridge only by road, as units move. (Supply reaches a building on bridge ground — a naval
+                // yard on the shore — from the land around it as any building: it is a depot, not a crossing.)
+                if (!LocomotionRules.BridgeStep(current, n, loco) && (asMover || !SupplyOnto(current, n))) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).
                 if (n.terrain.elevation < 0 && !LocomotionRules.IgnoresTerrain(loco) && !LocomotionRules.IsNaval(loco)) continue;
-                // A boat's move: water only (and its own docks).
-                if (asMover && LocomotionRules.IsNaval(loco) && n.terrain.elevation >= 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;
+                // A boat's move: water only (and its own naval yards).
+                if (asMover && LocomotionRules.IsNaval(loco) && n.terrain.elevation >= 0 && !IsOurYard(n, owner)) continue;
 
                 int step;
                 if (LocomotionRules.IgnoresTerrain(loco)) step = 1;

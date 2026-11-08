@@ -131,8 +131,7 @@ namespace HexTactica.AI {
                     Unit t = st.target;
                     if (t == null || !hp.ContainsKey(t) || hp[t] <= 0f) continue;
                     // Out of range now (an earlier shot drove it back): no shot.
-                    int range = at[x].Distance(at[t]);
-                    if (range > x.AttackRange || range <= x.MinRange) continue;
+                    if (!CombatMath.InFireRange(x, at[x], at[t], t)) continue;   // range, and line of fire
                     int dmg, back;
                     HexTile retreat = null;
                     bool pinned = false;
@@ -300,8 +299,8 @@ namespace HexTactica.AI {
                 return d <= e.AttackRange && d > e.MinRange ? origin : null;
             }
             List<HexTile> ring = AIPath.TilesInRangeSorted(target, e.MinRange, e.AttackRange);
-            if (ring.Contains(origin) && (!taken.Contains(origin) || origin.occupier == e)) return origin;
-            foreach (HexTile r in ring) if (pos.Contains(r) && !taken.Contains(r)) return r;
+            if (ring.Contains(origin) && (!taken.Contains(origin) || origin.occupier == e) && CombatMath.LineOfFire(e, origin, target, target.occupier)) return origin;
+            foreach (HexTile r in ring) if (pos.Contains(r) && !taken.Contains(r) && CombatMath.LineOfFire(e, r, target, target.occupier)) return r;
             return null;
         }
 
@@ -337,12 +336,11 @@ namespace HexTactica.AI {
         static List<HexTile> FiringOptions(Unit u, Unit target, AIMap map, HashSet<HexTile> claimed) {
             List<HexTile> list = new List<HexTile>();
             if (!u.CanAttack(u.tile) || !GameController.Targetable(target)) return list;
-            int d0 = u.tile.Distance(target.tile);
-            if (d0 <= u.AttackRange && d0 > u.MinRange && !claimed.Contains(u.tile)) list.Add(u.tile);
+            if (CombatMath.InFireRange(u, u.tile, target.tile, target) && !claimed.Contains(u.tile)) list.Add(u.tile);
             if (!u.moveAndAttack) return list;
             MoveField f = map.ReachThisTurn(u);
             foreach (HexTile r in AIPath.TilesInRange(target.tile, u.MinRange, u.AttackRange)) {
-                if (r == u.tile || claimed.Contains(r)) continue;
+                if (r == u.tile || claimed.Contains(r) || !CombatMath.LineOfFire(u, r, target.tile, target)) continue;
                 if (f.ReachableThisTurn(r) && AIPath.CanFinishTurnOn(u, r)) list.Add(r);
             }
             list.Sort((a, b) => {
@@ -497,8 +495,7 @@ namespace HexTactica.AI {
                 Unit t = s.target;
                 if (t == null || t.tile == null || t.Strength <= 0 || !GameController.Targetable(t)) return false;
                 HexTile from = s.stop ?? u.tile;
-                int d = from.Distance(t.tile);
-                if (d > u.AttackRange || d <= u.MinRange || !u.CanAttack(from)) return false;
+                if (!CombatMath.InFireRange(u, from, t.tile, t) || !u.CanAttack(from)) return false;
             }
             return true;
         }
