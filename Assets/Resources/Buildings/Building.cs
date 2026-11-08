@@ -322,9 +322,12 @@ public class Building : MonoBehaviour {
         return !b.IsServiceTile(t) && b.Capturable && CanCapture(u) && (b.owner != u.owner || (b.capturingPlayer != null && b.capturingPlayer != u.owner));
     }
 
-    /// <summary>Can this building change hands under the current rules? (Attrition: not the HQ.)</summary>
+    /// <summary>
+    /// Can this building change hands under the current rules? Not while destroyed (a ruin is nothing to
+    /// hold until it is repaired: its points stay as they were), and under attrition not the HQ.
+    /// </summary>
     public bool Capturable {
-        get { return !(IsHQ && GameController.gc != null && GameController.gc.rules == RuleSet.Attrition); }
+        get { return !Destroyed && !(IsHQ && GameController.gc != null && GameController.gc.rules == RuleSet.Attrition); }
     }
 
     // ------------------------------------------------------------------ placement

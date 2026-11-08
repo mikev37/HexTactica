@@ -786,6 +786,28 @@ public class Unit : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// The steps from this unit's tile to <paramref name="dest"/> along <paramref name="field"/>'s paths (its own
+    /// tile first), or null when the field does not reach it.
+    /// </summary>
+    internal List<HexTile> PathIn(HexTactica.AI.MoveField field, HexTile dest) {
+        if (field == null || dest == null || tile == null || !field.Reachable(dest)) return null;
+        List<HexTile> steps = new List<HexTile>();
+        for (HexTile t = dest; t != null && steps.Count < 256; t = t == tile ? null : field.ParentOf(t)) steps.Insert(0, t);
+        return steps.Count > 0 && steps[0] == tile ? steps : null;
+    }
+
+    /// <summary>
+    /// Go to <paramref name="dest"/>, <paramref name="tilesEntered"/> tiles away along <paramref name="field"/>: in
+    /// play, walked along the field's path, tile by tile, as a player's move is (a sprite sent straight there by
+    /// TeleportTo slid across whatever stood in between, enemy units included); headless, TeleportTo.
+    /// </summary>
+    internal void TravelTo(HexTile dest, HexTactica.AI.MoveField field, int tilesEntered, bool thenAttacks = false) {
+        List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathIn(field, dest) : null;
+        if (steps != null && steps.Count > 1) MoveAlong(steps, thenAttacks, true);
+        else TeleportTo(dest, tilesEntered, thenAttacks);
+    }
+
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
     internal void TeleportTo(HexTile hexTile, int tilesEntered, bool thenAttacks = false) {
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
@@ -821,6 +843,8 @@ public class Unit : MonoBehaviour
     /// </summary>
     public bool CanAttack(Unit opposition) {
         if (opposition == null || opposition.tile == null) return false;
+        // Aboard a transport: out of reach (the transport is what stands on the tile).
+        if (opposition.trasnporter != null && opposition.trasnporter != opposition) return false;
         if (!CanAttack(opposition.tile)) return false;
         if (!CanTarget(opposition)) return false;
         return calculateDamage(this, opposition, opposition.tile, 0) > 0;
@@ -901,8 +925,15 @@ public class Unit : MonoBehaviour
         active = false;
         FogOfWar.Refresh();
         GameController.RecalculateThreat();
+        // In play, every side's supply: any unit that moved may now stand in (or have left) a corridor of the
+        // other side's network — an enemy standing in it severs it — and the borders on screen must show that now,
+        // not at the next supply unit's move. (The headless harness keeps to what the rules need below; the AI
+        // solves supply on its own copies of the board.)
+        if (GameController.gc != null && !GameController.gc.headless && GameController.gc.players != null && BoardView.current == null && !Player.InUpkeep) {
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        }
         // Its supply moved with it: a supply unit, or a transport carrying one (its cargo rode along).
-        if (Hub || (ResupplyWithCargo && CarriesSupply(this))) {
+        else if (Hub || (ResupplyWithCargo && CarriesSupply(this))) {
             owner.Resupply();
         }
         if (Finished != null) Finished(this);

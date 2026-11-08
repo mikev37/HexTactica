@@ -410,6 +410,7 @@ namespace UnityEngine {
         public static string persistentDataPath { get { return "/tmp/hextactica"; } }
         public static string dataPath { get { return "/tmp/hextactica"; } }
         public static bool isPlaying { get { return true; } }
+        public static bool isFocused { get { return true; } }
     }
     public static class JsonUtility {
         public static string ToJson(object o) { return "{}"; }

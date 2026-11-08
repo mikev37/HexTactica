@@ -72,6 +72,8 @@ public class LevelEditor : MonoBehaviour
             json = json.Substring(0, json.Length - 1) + "\n],\n";
 
             json += "\n\"active\":" + GameController.gc.activePlayer.id;
+            // The day (round) the game is on: a save goes on from where it was (0 for a scenario's start).
+            json += ",\n\"day\":" + GameController.gc.days;
             // The scenario's purchase settings (GameController inspector).
             json += ",\n\"purchases\":\"" + GameController.gc.PurchasesSetting + "\",\n\"allowedUnits\":\"" + GameController.gc.AllowedUnitsSetting + "\"";
             // Fog of war (GameController inspector).
@@ -141,6 +143,7 @@ public class LevelEditor : MonoBehaviour
             FogOfWar.Reset();
             JSONObject pf = obj.GetField("purchases"), af = obj.GetField("allowedUnits");
             if (pf != null || af != null) GameController.gc.ApplyPurchaseRules(pf != null ? pf.stringValue : null, af != null ? af.stringValue : null);
+            GameController.gc.days = HexTactica.Harness.ScenarioLoader.DayOf(obj);
             long active_player = obj.GetField("active").longValue;
             GameController.gc.players.ForEach(pl => { if (pl.id == active_player) GameController.gc.activePlayer = pl; });
         }

@@ -55,7 +55,7 @@ namespace HexTactica.Harness {
                 unit.active = false;
                 if (unit.tile != null) unit.FinishActive();
             }
-            if (GameController.gc != null && !GameController.gc.gameOver) GameController.gc.EndTurn();
+            if (GameController.gc != null && !GameController.gc.gameOver) GameController.gc.EndTurnWhenStill();   // in play: once its moves have played
         }
 
         static float V(Dictionary<HexTile, float> d, HexTile t) {
@@ -130,7 +130,7 @@ namespace HexTactica.Harness {
             if (chosen != null && chosen != unit.tile && chosen.occupier == null) {
                 MoveField f = AIPath.ThisTurn(unit);
                 int steps = f.Reachable(chosen) ? f.Get(chosen).steps : 1;
-                unit.TeleportTo(chosen, steps);
+                unit.TravelTo(chosen, f, steps);
             }
         }
 

@@ -67,7 +67,8 @@ namespace HexTactica.Harness {
             if (GameController.gc != null) {
                 GameController.gc.gameOver = false;
                 GameController.gc.winner = null;
-                GameController.gc.days = 0;
+                // The day the file was saved on (a save goes on from there); 0 for a file without one.
+                GameController.gc.days = DayOf(obj);
                 GameController.gc.players.ForEach(p => {
                     if (p == null) return;
                     p.eliminated = false;
@@ -140,6 +141,12 @@ namespace HexTactica.Harness {
             }
 
             return true;
+        }
+
+        /// <summary>The day (round, from 0) a file was saved on: its "day", 0 if it has none.</summary>
+        public static int DayOf(JSONObject obj) {
+            JSONObject d = obj != null ? obj.GetField("day") : null;
+            return d != null && d.isNumber ? Mathf.Max(0, (int)d.intValue) : 0;
         }
 
         /// <summary>

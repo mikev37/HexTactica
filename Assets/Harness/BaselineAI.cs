@@ -46,6 +46,7 @@ namespace HexTactica.Harness {
             GameController gc = GameController.gc;
             if (gc == null || gc.headless || gc.gameOver || player == null) return;
             if (gc.activePlayer != player) { timer = turnDelay; return; }
+            if (gc.EndTurnPending) return;   // played: its turn ends once the moves have shown
             timer -= Time.deltaTime;
             if (timer > 0f) return;
             timer = turnDelay;
@@ -76,7 +77,7 @@ namespace HexTactica.Harness {
                 u.active = false;
             }
 
-            if (GameController.gc != null && !GameController.gc.gameOver) GameController.gc.EndTurn();
+            if (GameController.gc != null && !GameController.gc.gameOver) GameController.gc.EndTurnWhenStill();   // in play: once its moves have played
         }
 
         // ------------------------------------------------------------------ greedy
@@ -122,7 +123,7 @@ namespace HexTactica.Harness {
             if (bestTile != unit.tile && bestTile != null && bestTile.occupier == null) {
                 MoveField f = AIPath.ThisTurn(unit);
                 int steps = f.Reachable(bestTile) ? f.Get(bestTile).steps : 1;
-                unit.TeleportTo(bestTile, steps);
+                unit.TravelTo(bestTile, f, steps);
             }
             if (bestTarget != null && bestTarget.Strength > 0 && unit.Strength > 0) {
                 int d = unit.tile.Distance(bestTarget.tile);
@@ -165,7 +166,7 @@ namespace HexTactica.Harness {
                 HexTile dest = options[NextRandom(options.Count)];
                 if (dest != unit.tile && dest.occupier == null) {
                     int steps = reach.Reachable(dest) ? reach.Get(dest).steps : 1;
-                    unit.TeleportTo(dest, steps);
+                    unit.TravelTo(dest, reach, steps);
                 }
             }
 

@@ -562,7 +562,8 @@ public static class FogOfWar {
             if (!gc.fogShownOnScreen) return null;
             if (gc.fogViewer >= 0 && gc.fogViewer < gc.players.Count) return gc.players[gc.fogViewer];
             if (gc.activePlayer != null && IsHuman(gc.activePlayer)) lastHuman = gc.activePlayer;
-            if (lastHuman != null && gc.players.Contains(lastHuman)) return lastHuman;
+            // (Still human: a loaded scenario may have handed the last human's side to an AI.)
+            if (lastHuman != null && gc.players.Contains(lastHuman) && IsHuman(lastHuman)) return lastHuman;
             foreach (Player p in gc.players) if (p != null && IsHuman(p)) { lastHuman = p; return p; }
             return null;
         }

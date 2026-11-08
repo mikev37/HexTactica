@@ -79,7 +79,10 @@ public class FogView : MonoBehaviour {
             Cover c;
             if (!covers.TryGetValue(t, out c) || c.sr == null) {
                 if (want <= 0f) { covers.Remove(t); continue; }
-                c = new Cover { sr = Make(t, set), alpha = instant ? 1f : 0f };
+                // From 0, so Fade always paints it: a cover made already at its target opacity was taken
+                // for one already painted (Fade's early out) and left clear — a loaded board showed no fog
+                // until something faded every cover out and in again (the level editor toggled on and off).
+                c = new Cover { sr = Make(t, set), alpha = 0f };
                 covers[t] = c;
             }
             Fade(c, want, instant, step, set);
@@ -102,7 +105,7 @@ public class FogView : MonoBehaviour {
                 if (want <= 0f) continue;
                 SpriteRenderer sr = MakeBeyond(b, set);
                 if (sr == null) continue;
-                b.cover = new Cover { sr = sr, alpha = instant ? 1f : 0f };
+                b.cover = new Cover { sr = sr, alpha = 0f };   // from 0: Fade paints it (see above)
             }
             Fade(b.cover, want, instant, step, set);
         }
