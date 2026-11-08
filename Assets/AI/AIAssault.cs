@@ -556,8 +556,10 @@ namespace HexTactica.AI {
             if (c.trasnporter != null || c.tile == null || c.Hub != null || c.Firepower <= 0) return null;
             if (Capturing(c)) return null;   // taking a building: it stays on it
             bool hurt = Wounded(c, profile, map);
+            // Its ground across water: only a ship gets it there, however near the fight looks by sea (AIMap.SeaTravel).
+            bool crossing = profile.seaLift && ground != null && map.AcrossWater(c.tile, ground);
             if (!hurt) {
-                if (map.TurnsToContact(c) <= profile.assaultBoardTurns) return null;
+                if (map.TurnsToContact(c) <= profile.assaultBoardTurns && !crossing) return null;
                 // Mending on a building of ours: it stays until it is healthy.
                 if (c.Strength < 6 && Building.ServicingUnder(c) != null) return null;
             }

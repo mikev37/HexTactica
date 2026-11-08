@@ -591,6 +591,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
         queue.Clear(); queue.AddRange(order);
     }
 
+    /// <summary>Where each ship crossing with troops is taking them (sea lift), kept from turn to turn until they are ashore.</summary>
+    readonly Dictionary<Unit, HexTile> crossing = new Dictionary<Unit, HexTile>();
+
     /// <summary>The units that move after everyone on foot this turn (TurnOrder steps 4 to 7): a unit set aside to decide again goes back in before them.</summary>
     readonly HashSet<Unit> afterFoot = new HashSet<Unit>();
 
@@ -940,6 +943,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear(); riderRide.Clear(); riderGoal.Clear();
         foreach (Unit u in player.units) if (u != null && u.tile != null) turnStart[u] = u.tile;
         waitedOnce.Clear(); waitLater.Clear();
+        foreach (Unit t in new List<Unit>(crossing.Keys)) if (t == null || t.tile == null || AIAssault.Riders(t).Count == 0) crossing.Remove(t);
         AIAssault.Planned.Clear();
         AIAssault.FellBack.Clear();
         // The trucks the logistics claimed for the fronts' own supply units: theirs before any fighting
@@ -1199,7 +1203,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // A decision path that does not go through the tactical choice (which already leaves out tiles
         // reserved for a landing this turn) chose one: the unit decides again the ordinary way, so an
         // aircraft parked there lifts off to whatever mission it would pick anyway.
-        if (map != null && unit != null && unit.tile != null && !AIAir.MayEndOn(unit, AIAir.EndOf(unit, a), map)) {
+        // (Getting into a transport ends the turn aboard it, not on its tile: nothing to check.)
+        if (map != null && unit != null && unit.tile != null && a.kind != AIActionKind.Load && !AIAir.MayEndOn(unit, AIAir.EndOf(unit, a), map)) {
             Front f = FrontOf(unit);
             AIWorld.NoAssist = noAssist.Count > 0 ? noAssist : null;
             a = AITactical.Decide(unit, map, Profile, f != null ? f.posture : Posture.Defensive, f, objective);
@@ -1856,6 +1861,19 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 bool attacking = rf == null || (rf.posture == Posture.Aggressive && !rf.staging);
                 HexTile goal = attacking ? (NearestEnemyTile(unit) ?? (rf != null ? rf.objectiveTile : null))
                                          : (rf.staging && rf.stagingTile != null ? rf.stagingTile : rf.objectiveTile);
+                // A ship crossing with troops keeps the landing it set out for until they are ashore (their ground can change
+                // from turn to turn; the ship turned back mid-crossing each time it did). It sets out for the ground of the
+                // first rider whose ground is across the water.
+                if (AIAssault.SeaLiftShip(unit, map)) {
+                    HexTile landing;
+                    if (!crossing.TryGetValue(unit, out landing) || landing == null) {
+                        landing = null;
+                        foreach (Unit r in riders) { HexTile g = GroundOf(r); HexTile from = turnStart.ContainsKey(r) && turnStart[r] != null ? turnStart[r] : unit.tile; if (g != null && map.AcrossWater(from, g)) { landing = g; break; } }
+                        if (landing == null) foreach (Unit r in riders) { HexTile g = GroundOf(r); if (g != null && g.terrain != null && g.terrain.elevation >= 0) { landing = g; break; } }
+                        if (landing != null) crossing[unit] = landing;
+                    }
+                    if (landing != null) goal = landing;
+                }
                 long __as = AIPerf.Begin();
                 AIAction? ra = AIAssault.TransportAction(unit, goal, rf != null && rf.posture == Posture.Aggressive, map, Profile, !attacking);
                 AIPerf.End("assault: transport with riders", __as);
