@@ -85,35 +85,7 @@ public class Hud : MonoBehaviour {
         return true;
     }
 
-    bool hooked, detailsMade;
-
-    /// <summary>
-    /// A prefab made before the More button (its Hud has no details or button set): the button and the details rows
-    /// are made under the unit panel, after its last row, styled like the Strength row. Its icons are left out (the
-    /// prefab's art is not at hand at run time); remaking the prefab (HexTactica menu) gives them their icons.
-    /// </summary>
-    void EnsureDetails() {
-        if (detailsMade) return;
-        detailsMade = true;
-        if (detailsButton != null && details != null) return;
-        HudRow style = strength;
-        RectTransform up = unitPanel != null ? unitPanel.transform as RectTransform : (style != null ? style.transform.parent as RectTransform : null);
-        if (up == null) return;
-        GameObject oldDetails = details; Button oldButton = detailsButton;
-        MakeDetails(this, up, null);
-        if (oldButton != null) { Destroy(detailsButton.transform.parent.gameObject); detailsButton = oldButton; detailsButtonText = detailsButtonText ?? oldButton.GetComponentInChildren<TMP_Text>(); }
-        foreach (HudRow r in new[] { firepower, evasion, targeting, armor, piercing, concealment, moveRange, terrain, elevationMin, elevationMax }) {
-            if (r == null) continue;
-            if (style != null) { Restyle(r.label, style.label); Restyle(r.value, style.value); }
-            if (r.icon != null && r.icon.sprite == null) r.icon.enabled = false;
-        }
-        if (style != null) { Restyle(detailsButtonText, style.label); }
-        if (oldDetails != null) { Destroy(details); details = oldDetails; }
-    }
-
     void Update() {
-        EnsureDetails();
-        if (!hooked && detailsButton != null) { hooked = true; detailsButton.onClick.AddListener(ToggleDetails); }
         if (details != null && details.activeSelf != detailsOpen) details.SetActive(detailsOpen);
         if (detailsButtonText != null) detailsButtonText.text = detailsOpen ? "- Less" : "+ More";
         HexTile t = HexTile.lastClicked;
@@ -184,41 +156,20 @@ public class Hud : MonoBehaviour {
         }
         ShowCapture(b);
         ShowStore(b);
-        // An older prefab's owner row was labelled "Building".
-        if (owner != null && owner.label != null && owner.label.text == "Building") owner.label.text = "Owner";
     }
-
-    bool storeMade;
 
     /// <summary>A forward base's store: its turns of supply left of the most it holds (its SupplyDot pips show the same above it).</summary>
     void ShowStore(Building b) {
-        if (store == null && !storeMade) { storeMade = true; store = RowBelow(capture != null ? capture : owner, "Store"); }
         if (store == null) return;
         if (b == null || !SupplyDot.ShownTo(b)) { store.Show(false); return; }
         store.Set(SupplyDot.Filled(b), b.suppliesMax, false, this);
     }
 
-    /// <summary>A new row just below <paramref name="above"/>, styled like it (for rows an older prefab does not have).</summary>
-    HudRow RowBelow(HudRow above, string label) {
-        if (above == null || above.transform.parent == null) return null;
-        HudRow r = Row(above.transform.parent, label, above.icon != null ? above.icon.sprite : null, label, this);
-        r.transform.SetSiblingIndex(above.transform.GetSiblingIndex() + 1);
-        if (above.icon != null && r.icon != null) r.icon.color = above.icon.color;
-        Restyle(r.label, above.label);
-        Restyle(r.value, above.value);
-        r.gameObject.SetActive(false);
-        return r;
-    }
-
-    bool captureMade;
-
     /// <summary>
     /// The building's capture progress, if there is any (as the viewer last saw it, under fog of war):
-    /// a neutral building someone is taking — "Capturing: Blue 6/10"; an owned one brought down —
-    /// "Held: 4/10". Hidden otherwise.
+    /// someone taking it, from its owner or from nobody — "Capturing: Blue 6/10". Hidden otherwise.
     /// </summary>
     void ShowCapture(Building b) {
-        if (capture == null && !captureMade) MakeCaptureRow();
         if (capture == null) return;
         if (owner != null && (capture == owner || (capture.label != null && capture.label == owner.label) || (capture.value != null && capture.value == owner.value))) return;
         if (b == null) { capture.Show(false); return; }
@@ -227,28 +178,6 @@ public class Hud : MonoBehaviour {
         Color colour = whose != null ? whose.displayColor : text;
         if (capture.label != null && capture.label.text != what) capture.label.text = what;
         capture.SetText(value, colour);
-    }
-
-    /// <summary>
-    /// A prefab made before the capture row: a new row just below the Owner row, built like the
-    /// default prefab's rows and styled like the Owner row (its icon, fonts and colours). Built rather
-    /// than copied: a copy of a row whose texts are not its own children would write into the Owner
-    /// row's texts (the owner's name gave way to the capture line).
-    /// </summary>
-    void MakeCaptureRow() {
-        captureMade = true;
-        if (owner == null || owner.transform.parent == null) return;
-        capture = Row(owner.transform.parent, "Capture", owner.icon != null ? owner.icon.sprite : null, "Capture", this);
-        capture.transform.SetSiblingIndex(owner.transform.GetSiblingIndex() + 1);
-        if (owner.icon != null && capture.icon != null) capture.icon.color = owner.icon.color;
-        Restyle(capture.label, owner.label);
-        Restyle(capture.value, owner.value);
-        capture.gameObject.SetActive(false);
-    }
-
-    static void Restyle(TMP_Text to, TMP_Text from) {
-        if (to == null || from == null) return;
-        to.font = from.font; to.fontSize = from.fontSize; to.color = from.color;
     }
 
     /// <summary>The terrain's name: its asset's name (Grassland, Forest...).</summary>
@@ -339,7 +268,7 @@ public class Hud : MonoBehaviour {
 
     /// <summary>
     /// The More / Less button and the details rows it opens (every attribute that is not 0), added to the unit panel
-    /// <paramref name="up"/>: by Build for the default prefab, and at run time for an older prefab made without them.
+    /// <paramref name="up"/> (Build).
     /// </summary>
     static void MakeDetails(Hud h, RectTransform up, Func<string, Sprite> art) {
         Func<string, Sprite> A = n => art != null ? art(n) : null;
