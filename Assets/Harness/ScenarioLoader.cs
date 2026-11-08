@@ -137,13 +137,34 @@ namespace HexTactica.Harness {
             GameController.BoardLoaded();
 
             if (RecordGames && GameController.gc != null && !GameController.gc.headless) {
-                GameLog.Start(path, redKind, null);
+                // A saved game goes on with its own log (cut back to where it was saved); anything else starts one.
+                GameLog.SavePoint saved = SavePointOf(obj);
+                if (saved == null || !GameLog.Continue(saved, path, redKind, null)) GameLog.Start(path, redKind, null);
                 UnityEngine.Debug.Log("Recording this game to " + GameLog.Folder);
             }
-            // The statistics the post-game screen reads (GameStats), from this board on.
-            if (GameController.gc != null && !GameController.gc.headless) GameStats.Begin(path);
 
             return true;
+        }
+
+        /// <summary>The keys a saved game keeps its game log under (GameLog.SavePoint).</summary>
+        public const string LogFolderKey = "gameLog", LogLengthKey = "gameLogLength", LogTurnsKey = "gameLogTurns";
+
+        /// <summary>Where a saved game's log was when it was saved, or null (a scenario, or a save made without a log).</summary>
+        public static GameLog.SavePoint SavePointOf(JSONObject obj) {
+            JSONObject folder = obj.GetField(LogFolderKey);
+            if (folder == null || string.IsNullOrEmpty(folder.stringValue)) return null;
+            JSONObject length = obj.GetField(LogLengthKey), turns = obj.GetField(LogTurnsKey);
+            return new GameLog.SavePoint { folder = folder.stringValue, length = length != null ? length.longValue : 0, turns = turns != null ? turns.intValue : 0 };
+        }
+
+        /// <summary>A save's JSON with where its game log stands (so loading it goes on with that log).</summary>
+        public static string WithSavePoint(string json, GameLog.SavePoint at) {
+            if (at == null) return json;
+            JSONObject obj = new JSONObject(json);
+            obj.SetField(LogFolderKey, at.folder);
+            obj.SetField(LogLengthKey, at.length);
+            obj.SetField(LogTurnsKey, at.turns);
+            return obj.Print(true);
         }
 
         /// <summary>The day (round, from 0) a file was saved on: its "day", 0 if it has none.</summary>

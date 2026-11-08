@@ -76,7 +76,6 @@ public class GameSession : MonoBehaviour {
         if (playing && Input.GetKeyDown(FrontEndSettings.Get.menuKey)) { if (menuOpen) CloseMenu(); else OpenMenu(); }
         if (playing && gc.gameOver && !postShown) {
             postShown = true;
-            if (GameStats.Current != null) GameStats.Current.EndIfOver();
             if (menuOpen) CloseMenu();
             SceneManager.LoadScene(FrontEndSettings.Get.postGameScene, LoadSceneMode.Additive);
         }

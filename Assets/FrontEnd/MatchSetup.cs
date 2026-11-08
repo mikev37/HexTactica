@@ -60,7 +60,6 @@ public static class MatchSetup {
         Mode = SessionMode.None;
         FilePath = "";
         GameController.Paused = false;
-        GameStats.Stop();
         GameLog.Stop();
         SceneManager.LoadScene(FrontEndSettings.Get.mainMenuScene, LoadSceneMode.Single);
     }
@@ -91,10 +90,10 @@ public static class MatchSetup {
         return ok;
     }
 
-    /// <summary>A saved game: every side played as it was (the file's "AI" per side), the statistics kept beside it.</summary>
+    /// <summary>A saved game: every side played as it was (the file's "AI" per side), its game log going on from where it was saved.</summary>
     public static bool LoadSave(string path) {
         bool ok = Load(path, () => { ScenarioLoader.ControlFromFile = true; });
-        if (ok) { FilePath = path; GameStats.LoadBeside(path); }
+        if (ok) FilePath = path;
         return ok;
     }
 

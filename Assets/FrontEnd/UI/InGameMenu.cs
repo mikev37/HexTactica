@@ -5,7 +5,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// The in-game menu (the InGameMenu scene, over the game on the menu key; the game is held while it is open):
-/// Resume, Save (a name, into the saves folder — apart from the scenarios), Load (a saved game), Exit to the main menu.
+/// Resume, Save (a name, into the saves folder — apart from the scenarios; the save notes where the game log stands,
+/// so loading it goes on with the same log), Load (a saved game), Exit to the main menu.
 /// </summary>
 public class InGameMenu : MonoBehaviour {
     public TMP_InputField saveName;
@@ -28,7 +29,7 @@ public class InGameMenu : MonoBehaviour {
         if (saves != null) saves.ShowSaves();
         if (loadButton != null) loadButton.interactable = saves != null && saves.Selected != null;
         GameController gc = GameController.gc;
-        string scenario = GameStats.Current != null && GameStats.Current.source.Length > 0 ? Path.GetFileNameWithoutExtension(GameStats.Current.source) : "game";
+        string scenario = string.IsNullOrEmpty(MatchSetup.FilePath) ? "game" : Path.GetFileNameWithoutExtension(MatchSetup.FilePath);
         if (saveName != null) saveName.text = string.Format(defaultName, scenario, gc != null ? gc.days : 0);
         if (status != null) status.text = "";
     }
@@ -39,8 +40,7 @@ public class InGameMenu : MonoBehaviour {
         string name = saveName != null ? GameFiles.SafeName(saveName.text) : "";
         if (name.Length == 0) { Say("Give the save a name."); return; }
         string path = GameFiles.SavePath(name);
-        LevelEditor.SaveBoard(path);
-        GameStats.SaveBeside(path);
+        LevelEditor.SaveGame(path);
         if (saves != null) { saves.Refresh(); saves.PickNamed(name); }
         Say("Saved " + name + ".");
     }

@@ -4401,11 +4401,12 @@ public static class Scenarios {
     public static void Duel(string name, int rounds, Action<AIProfile> blue, Action<AIProfile> red, string root) {
         ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", blue, red);
         UseOldAI(l);
+        // STATS=1: the game recorded (GameLog) and, at the end, the post-game report read back from its game.log, as
+        // the post-game screen reads it.
+        bool stats = Environment.GetEnvironmentVariable("STATS") != null;
+        if (stats && root == null) root = Path.Combine(Path.GetTempPath(), "hextactica-stats");
         if (root != null) HexTactica.Harness.GameLog.Start(l.path, "Full", root);
         GameController gc = Rig.gc;
-        // STATS=1: the post-game statistics (GameStats) recorded, and the report printed at the end, as the post-game screen shows it.
-        bool stats = Environment.GetEnvironmentVariable("STATS") != null;
-        if (stats) GameStats.Begin(l.path);
         Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
                           + " | Red " + (Environment.GetEnvironmentVariable("SET_RED") ?? "defaults"));
         int startBlue = l.ai.units.Count, startRed = l.other.units.Count;
@@ -4474,12 +4475,14 @@ public static class Scenarios {
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")
                           + string.Format("; units lost: Blue {0} of {1}, Red {2} of {3}", startBlue - Alive(l.ai), startBlue, startRed - Alive(l.other), startRed));
         if (root != null) Console.WriteLine("log: " + folder);
-        if (stats && GameStats.Current != null) {
-            GameStats.Current.EndIfOver();
-            GameStats.Stop();
-            // STATS=you: written as the post-game screen writes it for a human playing Red ("you").
-            if (Environment.GetEnvironmentVariable("STATS") == "you") { GameStats.Side me = GameStats.Current.SideOf(l.other); if (me != null) me.ai = false; }
-            Console.WriteLine("\n== post-game report (viewer: Red)\n" + GameInsights.Report(GameStats.Current, l.other.id));
+        if (stats) {
+            GameRecord rec = GameRecord.Read(folder);
+            if (rec == null) Console.WriteLine("no game.log in " + folder);
+            else {
+                // STATS=you: written as the post-game screen writes it for a human playing Red ("you").
+                if (Environment.GetEnvironmentVariable("STATS") == "you") { GameRecord.Side me = rec.SideOf(l.other.id); if (me != null) me.ai = false; }
+                Console.WriteLine("\n== post-game report (viewer: Red)\n" + GameInsights.Report(rec, l.other.id));
+            }
         }
     }
 

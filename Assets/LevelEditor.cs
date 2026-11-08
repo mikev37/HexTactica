@@ -50,6 +50,16 @@ public class LevelEditor : MonoBehaviour
         Debug.Log("Saved the board to " + path);
     }
 
+    /// <summary>
+    /// Save a game in progress (the in-game menu): the board as a scenario file, plus where its game log stands, so
+    /// loading it goes on with the same log (GameLog.MarkSave, Continue) and the post-game report covers the whole game.
+    /// </summary>
+    public static void SaveGame(string path) {
+        HexTactica.Harness.GameLog.SavePoint at = HexTactica.Harness.GameLog.MarkSave(path);
+        File.WriteAllText(path, HexTactica.Harness.ScenarioLoader.WithSavePoint(BoardJson(), at));
+        Debug.Log("Saved the game to " + path);
+    }
+
     /// <summary>The board as a scenario file: tiles, players, purchase settings, buildings and units (what the S key saves, and HexTactica ▸ Save Scenario File).</summary>
     public static string BoardJson() {
         string json = "{\n\"width\":" + HexGenerator.hg.width + ",\n \"tiles\":[";

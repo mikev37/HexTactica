@@ -3,8 +3,8 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// The post-game screen (the PostGame scene, loaded over the game when it ends): who won, and what the game's
-/// statistics say (GameInsights) — a page of findings and a page of each side's units. Main Menu leaves; View Board
+/// The post-game screen (the PostGame scene, loaded over the game when it ends): who won, and what the game log
+/// says (read into a GameRecord; GameInsights) — a page of findings and a page of each side's units. Main Menu leaves; View Board
 /// closes the screen and leaves the board to look at; Play Again sets the same scenario up again.
 /// </summary>
 public class PostGameScreen : MonoBehaviour {
@@ -15,15 +15,16 @@ public class PostGameScreen : MonoBehaviour {
     public GameObject unitsPage;
     [Tooltip("A finding's heading, before and after it (TextMeshPro rich text).")]
     public string titleStart = "<b><size=115%>", titleEnd = "</size></b>";
-    [Tooltip("Shown when there are no statistics (the game was not started from a file).")]
-    public string noStatistics = "No statistics were recorded for this game.";
+    [Tooltip("Shown when the game has no game log (recording was turned off).")]
+    public string noStatistics = "This game was not recorded (no game log), so there is nothing to report.";
 
     void Awake() { TransportPanel.EnsureEventSystem(); }
 
     void Start() {
-        GameStats s = GameStats.Current;
-        long viewer = GameInsights.ViewerId();
-        if (headline != null) headline.text = GameInsights.Headline(s, viewer);
+        // The report is read from the game log (GameLog.Folder), the one record of the game.
+        GameRecord s = GameRecord.Read(HexTactica.Harness.GameLog.Folder);
+        long viewer = GameInsights.ViewerId(s);
+        if (headline != null) headline.text = s != null ? GameInsights.Headline(s, viewer) : noStatistics;
         if (findings != null) {
             if (s == null) findings.text = noStatistics;
             else {
@@ -34,8 +35,11 @@ public class PostGameScreen : MonoBehaviour {
             }
         }
         if (unitTables != null) unitTables.text = s != null ? GameInsights.UnitTables(s, viewer, true) : noStatistics;
+        source = s != null ? s.source : null;
         ShowFindings();
     }
+
+    string source;
 
     public void ShowFindings() { if (findingsPage != null) findingsPage.SetActive(true); if (unitsPage != null) unitsPage.SetActive(false); }
     public void ShowUnits() { if (findingsPage != null) findingsPage.SetActive(false); if (unitsPage != null) unitsPage.SetActive(true); }
@@ -46,8 +50,7 @@ public class PostGameScreen : MonoBehaviour {
 
     /// <summary>The same scenario again, from the pre-game screen.</summary>
     public void PlayAgain() {
-        GameStats s = GameStats.Current;
-        if (s != null && System.IO.File.Exists(s.source)) MatchSetup.SetUp(s.source);
+        if (!string.IsNullOrEmpty(source) && System.IO.File.Exists(source)) MatchSetup.SetUp(source);
         else MatchSetup.ToMainMenu();
     }
 }

@@ -6,7 +6,7 @@ using System.Text;
 using UnityEngine;
 
 /// <summary>
-/// What a game's statistics (GameStats) say, in sentences: how the strength of each side went, where it stalled,
+/// What a game's log says (read into a GameRecord), in sentences: how the strength of each side went, where it stalled,
 /// which kinds of unit were fed into the other side's answers, which killers went unanswered, which good trades
 /// production passed over. Each finding is a heading and a few sentences, as a player would tell it after the game.
 ///
@@ -45,17 +45,15 @@ public static class GameInsights {
     static Limits limits { get { return FrontEndSettings.Get.insights; } }
 
     /// <summary>The side the report is written for: the human at the screen, else the first side.</summary>
-    public static long ViewerId() {
-        GameController gc = GameController.gc;
-        if (gc != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) return p.id;
-        GameStats s = GameStats.Current;
+    public static long ViewerId(GameRecord s) {
+        if (s != null) foreach (GameRecord.Side side in s.sides) if (!side.ai) return side.id;
         return s != null && s.sides.Count > 0 ? s.sides[0].id : -1;
     }
 
     // ------------------------------------------------------------------ the report
 
     /// <summary>The whole report as text: the headline, every finding, and each side's units table.</summary>
-    public static string Report(GameStats s, long viewer) {
+    public static string Report(GameRecord s, long viewer) {
         StringBuilder sb = new StringBuilder();
         sb.AppendLine(Headline(s, viewer));
         sb.AppendLine();
@@ -69,7 +67,7 @@ public static class GameInsights {
     }
 
     /// <summary>"Blue won in round 31." / "No winner after 30 rounds."</summary>
-    public static string Headline(GameStats s, long viewer) {
+    public static string Headline(GameRecord s, long viewer) {
         if (s == null) return "No statistics were recorded for this game.";
         Ctx c = new Ctx(s, viewer);
         int rounds = s.lastRound + 1;
@@ -79,17 +77,17 @@ public static class GameInsights {
     }
 
     /// <summary>Every finding there is enough to say, most telling first.</summary>
-    public static List<Finding> Findings(GameStats s, long viewer) {
+    public static List<Finding> Findings(GameRecord s, long viewer) {
         List<Finding> all = new List<Finding>();
         if (s == null || s.sides.Count < 2) return all;
         Ctx c = new Ctx(s, viewer);
         Add(all, Strength(c));
         Add(all, Stalemate(c));
         Add(all, Cities(c));
-        foreach (GameStats.Side side in c.Sides) Add(all, FedIn(c, side.id));
-        foreach (GameStats.Side side in c.Sides) Add(all, Unanswered(c, side.id));
-        foreach (GameStats.Side side in c.Sides) Add(all, PassedOver(c, side.id));
-        foreach (GameStats.Side side in c.Sides) Add(all, Supply(c, side.id));
+        foreach (GameRecord.Side side in c.Sides) Add(all, FedIn(c, side.id));
+        foreach (GameRecord.Side side in c.Sides) Add(all, Unanswered(c, side.id));
+        foreach (GameRecord.Side side in c.Sides) Add(all, PassedOver(c, side.id));
+        foreach (GameRecord.Side side in c.Sides) Add(all, Supply(c, side.id));
         Add(all, Spending(c));
         return all;
     }
@@ -222,7 +220,7 @@ public static class GameInsights {
             if (value > worst) { worst = value; kind = k; }
         }
         if (kind == null) return null;
-        List<GameStats.Loss> lost_ = c.s.losses.Where(x => x.side == side && x.kind == kind).ToList();
+        List<GameRecord.Loss> lost_ = c.s.losses.Where(x => x.side == side && x.kind == kind).ToList();
         StringBuilder sb = new StringBuilder();
         int bought = c.Bought(side, kind), started = c.Started(side, kind);
         sb.Append(Cap(c.Name(side))).Append(' ');
@@ -261,14 +259,14 @@ public static class GameInsights {
         // The other side's main killer of them, and how this side answered it.
         if (killers.Count > 0) {
             string answerTo = killers[0].Key;
-            GameStats.Side me = c.s.SideOf(side);
+            GameRecord.Side me = c.s.SideOf(side);
             Faction f = me != null ? GameAssets.Faction(me.faction) : null;
             Unit baseUnit = GameAssets.Unit(answerTo);
             if (f != null && baseUnit != null && f.replacements != null) {
                 foreach (Faction.Replacement r in f.replacements) {
                     if (r == null || r.original == null || r.replacement == null || GameController.UnitName(r.original) != GameController.UnitName(baseUnit)) continue;
                     if (f.Cosmetic(r) || r.replacement.cost <= r.original.cost) continue;
-                    string own = GameStats.KindOf(r.replacement);
+                    string own = GameRecord.KindOf(GameController.UnitName(r.replacement));
                     int boughtOwn = c.Bought(side, own);
                     if (boughtOwn > 2) continue;
                     sb.Append('\n').Append(Cap(c.Name(side))).Append(" never contested ").Append(c.Poss(enemy)).Append(' ').Append(Plural(answerTo, 2)).Append(". ")
@@ -308,15 +306,15 @@ public static class GameInsights {
         long enemy = c.Other(side);
         Finding best = null; int bestKills = 0;
         foreach (string k in c.KindsOf(side)) {
-            List<GameStats.Attack> shots = c.s.attacks.Where(x => x.side == side && x.kind == k && x.targetSide == enemy).ToList();
+            List<GameRecord.Attack> shots = c.s.attacks.Where(x => x.side == side && x.kind == k && x.targetSide == enemy).ToList();
             int kills = shots.Count(x => x.killed);
             if (kills < limits.killerKills) continue;
-            List<GameStats.Attack> onIt = c.s.attacks.Where(x => x.side == enemy && x.targetKind == k && x.targetSide == side).ToList();
+            List<GameRecord.Attack> onIt = c.s.attacks.Where(x => x.side == enemy && x.targetKind == k && x.targetSide == side).ToList();
             int lastHit = onIt.Count > 0 ? onIt.Max(x => x.round) : -1;
             int lastRound = c.s.lastRound;
             int from = lastHit + 1;
             if (lastRound - from + 1 < limits.unansweredRounds) continue;
-            List<GameStats.Attack> after = shots.Where(x => x.round >= from).ToList();
+            List<GameRecord.Attack> after = shots.Where(x => x.round >= from).ToList();
             int killsAfter = after.Count(x => x.killed);
             if (killsAfter < limits.killerKills / 2 || killsAfter <= bestKills) continue;
             bestKills = killsAfter;
@@ -340,14 +338,14 @@ public static class GameInsights {
             else sb.Append(Cap(c.Name(enemy))).Append(" didn't attack one once after round ").Append(lastHit);
             sb.Append('.');
             float dist = after.Count > 0 ? (float)after.Average(x => x.distance) : 0f;
-            GameStats.Kind reach = c.KindsOf(enemy).Select(x => c.s.KindNamed(x)).Where(x => x != null && !x.Air).OrderByDescending(x => x.range).FirstOrDefault();
-            GameStats.Kind kk = c.s.KindNamed(k);
+            GameRecord.Kind reach = c.KindsOf(enemy).Select(x => c.s.KindNamed(x)).Where(x => x != null && !x.Air).OrderByDescending(x => x.range).FirstOrDefault();
+            GameRecord.Kind kk = c.s.KindNamed(k);
             if (dist >= 2f) {
                 sb.Append(" They fired from ").Append(dist.ToString("0.#", CultureInfo.InvariantCulture)).Append(" tiles away on average");
                 if (reach != null && reach.range < dist) sb.Append("; ").Append(c.Poss(enemy)).Append(" longest ground reach was ").Append(reach.range).Append(" (").Append(Plural(reach.name, 2)).Append(')');
                 sb.Append('.');
             }
-            List<string> air = c.KindsOf(enemy).Where(x => { GameStats.Kind q = c.s.KindNamed(x); return q != null && q.Air && c.s.attacks.Any(a => a.side == enemy && a.kind == x); }).ToList();
+            List<string> air = c.KindsOf(enemy).Where(x => { GameRecord.Kind q = c.s.KindNamed(x); return q != null && q.Air && c.s.attacks.Any(a => a.side == enemy && a.kind == x); }).ToList();
             if (air.Count > 0 && kk != null && !kk.Air) {
                 int airLost = c.s.losses.Count(x => x.side == enemy && air.Contains(x.kind) && x.round >= from);
                 if (airLost > 0) sb.Append(' ').Append(Cap(c.Poss(enemy))).Append(" aircraft, which could have reached them, lost ").Append(airLost).Append(" in the same rounds.");
@@ -385,15 +383,15 @@ public static class GameInsights {
 
     /// <summary>Units lost to supply (starved) and to fuel (aircraft ditched).</summary>
     static Finding Supply(Ctx c, long side) {
-        int starved = c.s.losses.Count(x => x.side == side && x.cause == "supply");
-        int ditched = c.s.losses.Count(x => x.side == side && x.cause == "fuel");
+        int starved = c.s.losses.Count(x => x.side == side && x.cause == HexTactica.Harness.GameLog.Lines.Supply);
+        int ditched = c.s.losses.Count(x => x.side == side && x.cause == HexTactica.Harness.GameLog.Lines.Fuel);
         if (starved + ditched < limits.supplyLosses) return null;
         StringBuilder sb = new StringBuilder(Cap(c.Name(side)) + " lost ");
         if (starved > 0) sb.Append(starved).Append(starved == 1 ? " unit" : " units").Append(" to starvation out of supply");
         if (starved > 0 && ditched > 0) sb.Append(" and ");
         if (ditched > 0) sb.Append(ditched).Append(ditched == 1 ? " aircraft" : " aircraft").Append(" that ran out of fuel");
         sb.Append('.');
-        var kinds = c.s.losses.Where(x => x.side == side && (x.cause == "supply" || x.cause == "fuel")).GroupBy(x => x.kind).OrderByDescending(g => g.Count()).Take(3).ToList();
+        var kinds = c.s.losses.Where(x => x.side == side && (x.cause == HexTactica.Harness.GameLog.Lines.Supply || x.cause == HexTactica.Harness.GameLog.Lines.Fuel)).GroupBy(x => x.kind).OrderByDescending(g => g.Count()).Take(3).ToList();
         if (kinds.Count > 0) sb.Append(" They were ").Append(string.Join(", ", kinds.Select(g => g.Count() + " " + Plural(g.Key, g.Count())).ToArray())).Append(kinds.Sum(g => g.Count()) < starved + ditched ? " and others." : ".");
         return new Finding { title = Cap(c.Poss(side)) + " supply and fuel cost " + c.Verb(side, "you", "it") + " units", body = sb.ToString() };
     }
@@ -401,8 +399,8 @@ public static class GameInsights {
     /// <summary>What each side spent its money on.</summary>
     static Finding Spending(Ctx c) {
         StringBuilder sb = new StringBuilder();
-        foreach (GameStats.Side side in c.Sides) {
-            List<GameStats.Buy> buys = c.s.buys.Where(x => x.side == side.id).ToList();
+        foreach (GameRecord.Side side in c.Sides) {
+            List<GameRecord.Buy> buys = c.s.buys.Where(x => x.side == side.id).ToList();
             if (buys.Count == 0) continue;
             int total = buys.Sum(x => x.cost);
             var top = buys.GroupBy(x => x.kind).Select(g => new { kind = g.Key, n = g.Count(), cost = g.Sum(x => x.cost) }).OrderByDescending(x => x.cost).Take(4).ToList();
@@ -416,11 +414,11 @@ public static class GameInsights {
     // ------------------------------------------------------------------ the units table
 
     /// <summary>Each side's kinds of unit: started, bought, lost, kills, and material killed for material lost. Rich text (TextMeshPro) or plain.</summary>
-    public static string UnitTables(GameStats s, long viewer, bool rich) {
+    public static string UnitTables(GameRecord s, long viewer, bool rich) {
         if (s == null) return "";
         Ctx c = new Ctx(s, viewer);
         StringBuilder sb = new StringBuilder();
-        foreach (GameStats.Side side in c.Sides) {
+        foreach (GameRecord.Side side in c.Sides) {
             sb.Append(rich ? "<b>" : "").Append(Cap(c.Name(side.id))).Append(side.faction.Length > 0 ? " (" + side.faction + ")" : "").Append(rich ? "</b>" : "").Append('\n');
             sb.Append(rich ? "<mspace=0.6em>" : "");
             sb.Append(string.Format(CultureInfo.InvariantCulture, "{0,-24}{1,6}{2,7}{3,6}{4,7}{5,9}\n", "unit", "start", "bought", "lost", "kills", "trade"));
@@ -487,43 +485,43 @@ public static class GameInsights {
 
     /// <summary>The statistics, read from the viewer's side.</summary>
     class Ctx {
-        public readonly GameStats s;
+        public readonly GameRecord s;
         public readonly long Viewer;
         public readonly bool ViewerHuman;
-        public readonly List<GameStats.Side> Sides;
+        public readonly List<GameRecord.Side> Sides;
         public readonly List<int> Rounds;
-        readonly Dictionary<int, GameStats.Snap> byRound = new Dictionary<int, GameStats.Snap>();
+        readonly Dictionary<int, GameRecord.Snap> byRound = new Dictionary<int, GameRecord.Snap>();
 
-        public Ctx(GameStats s, long viewer) {
+        public Ctx(GameRecord s, long viewer) {
             this.s = s;
             Sides = s.sides.Take(2).ToList();
             Viewer = Sides.Exists(x => x.id == viewer) ? viewer : (Sides.Count > 0 ? Sides[0].id : -1);
-            GameStats.Side v = s.SideOf(Viewer);
+            GameRecord.Side v = s.SideOf(Viewer);
             ViewerHuman = v != null && !v.ai;
             // The last snapshot of each round: the board as the round ended.
-            foreach (GameStats.Snap sn in s.snaps) byRound[sn.round] = sn;
+            foreach (GameRecord.Snap sn in s.snaps) byRound[sn.round] = sn;
             Rounds = byRound.Keys.OrderBy(r => r).ToList();
         }
 
-        public long Other(long id) { foreach (GameStats.Side x in Sides) if (x.id != id) return x.id; return -1; }
+        public long Other(long id) { foreach (GameRecord.Side x in Sides) if (x.id != id) return x.id; return -1; }
         bool You(long id) { return ViewerHuman && id == Viewer; }
-        public string Name(long id) { if (You(id)) return "you"; GameStats.Side x = s.SideOf(id); return x != null ? x.name : "?"; }
+        public string Name(long id) { if (You(id)) return "you"; GameRecord.Side x = s.SideOf(id); return x != null ? x.name : "?"; }
         public string Poss(long id) { if (You(id)) return "your"; return Name(id) + "'s"; }
         /// <summary>"its" for a side, "your" for the viewer.</summary>
         public string PossIts(long id) { return You(id) ? "your" : "its"; }
         public string Verb(long id, string you, string it) { return You(id) ? you : it; }
 
-        GameStats.SideSnap At(int round, long id) {
-            GameStats.Snap sn;
+        GameRecord.SideSnap At(int round, long id) {
+            GameRecord.Snap sn;
             if (!byRound.TryGetValue(round, out sn)) return null;
             return sn.sides.Find(x => x.id == id);
         }
-        public int Material(int round, long id) { GameStats.SideSnap x = At(round, id); return x != null ? x.material : 0; }
-        public int Cities(int round, long id) { GameStats.SideSnap x = At(round, id); return x != null ? x.cities : 0; }
-        public int Income(int round, long id) { GameStats.SideSnap x = At(round, id); return x != null ? x.income : 0; }
+        public int Material(int round, long id) { GameRecord.SideSnap x = At(round, id); return x != null ? x.material : 0; }
+        public int Cities(int round, long id) { GameRecord.SideSnap x = At(round, id); return x != null ? x.cities : 0; }
+        public int Income(int round, long id) { GameRecord.SideSnap x = At(round, id); return x != null ? x.income : 0; }
         /// <summary>The front in a round: midway between the two sides' average positions on the HQ-to-HQ line; -1 if unknown.</summary>
         public float Front(int round) {
-            GameStats.SideSnap a = At(round, Viewer), b = At(round, Other(Viewer));
+            GameRecord.SideSnap a = At(round, Viewer), b = At(round, Other(Viewer));
             if (a == null || b == null || a.front < 0 || b.front < 0) return -1f;
             return (a.front + b.front) * 0.5f;
         }
@@ -537,12 +535,15 @@ public static class GameInsights {
                 .Concat(s.losses.Where(x => x.side == side).Select(x => x.kind))
                 .Concat(s.attacks.Where(x => x.side == side).Select(x => x.kind)).Distinct();
         }
-        public int Started(long side, string k) { GameStats.Count c = s.start.Find(x => x.side == side && x.kind == k); return c != null ? c.n : 0; }
+        public int Started(long side, string k) { GameRecord.Count c = s.start.Find(x => x.side == side && x.kind == k); return c != null ? c.n : 0; }
         public int Bought(long side, string k) { return s.buys.Count(x => x.side == side && x.kind == k); }
         public int Fielded(long side, string k) { return Started(side, k) + Bought(side, k); }
-        /// <summary>How many of the kind were on the board as the round began (started + bought before it − lost before it).</summary>
+        /// <summary>How many of the kind it had as the round began (the log's "fields" line for the round).</summary>
         public int Fielded(long side, string k, int round) {
-            return Started(side, k) + s.buys.Count(x => x.side == side && x.kind == k && x.round < round) - s.losses.Count(x => x.side == side && x.kind == k && x.round < round);
+            GameRecord.Snap first = s.snaps.Find(x => x.round == round);
+            GameRecord.SideSnap ss = first != null ? first.sides.Find(x => x.id == side) : null;
+            int n;
+            return ss != null && ss.fielded.TryGetValue(k, out n) ? n : 0;
         }
         public int LostOf(long side, string k) { return s.losses.Count(x => x.side == side && x.kind == k); }
         public int KillsBy(long side, string k) { return s.losses.Count(x => x.killerSide == side && x.killerKind == k); }
@@ -556,15 +557,15 @@ public static class GameInsights {
         public float TradeOf(long side, string k) {
             float point = PointCost(k);
             float dealt = 0f, lost = 0f;
-            foreach (GameStats.Attack a in s.attacks) {
+            foreach (GameRecord.Attack a in s.attacks) {
                 if (a.side == side && a.kind == k) { dealt += a.dealt * PointCost(a.targetKind); lost += a.taken * point; }
                 if (a.targetSide == side && a.targetKind == k) { dealt += a.taken * PointCost(a.kind); lost += a.dealt * point; }
             }
-            foreach (GameStats.Loss l in s.losses) if (l.side == side && l.kind == k && l.cause != "attack" && l.cause != "return fire") lost += l.strength * point;
+            foreach (GameRecord.Loss l in s.losses) if (l.side == side && l.kind == k && l.cause != HexTactica.Harness.GameLog.Lines.Combat) lost += l.strength * point;
             return lost > 0f ? dealt / lost : (dealt > 0f ? float.PositiveInfinity : float.NaN);
         }
         /// <summary>What one point of strength of the kind is worth: its cost over its full strength.</summary>
-        float PointCost(string kind) { GameStats.Kind k = s.KindNamed(kind); return k != null ? k.cost / (float)Math.Max(1, k.maxStrength) : 0f; }
-        public bool FullStrength(string kind, int strength) { GameStats.Kind k = s.KindNamed(kind); return k != null && strength >= k.maxStrength; }
+        float PointCost(string kind) { GameRecord.Kind k = s.KindNamed(kind); return k != null ? k.cost / (float)Math.Max(1, k.maxStrength) : 0f; }
+        public bool FullStrength(string kind, int strength) { GameRecord.Kind k = s.KindNamed(kind); return k != null && strength >= k.maxStrength; }
     }
 }

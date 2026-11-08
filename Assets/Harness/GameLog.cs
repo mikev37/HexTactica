@@ -14,8 +14,12 @@ namespace HexTactica.Harness {
     ///
     /// Each recording is a folder (Application.persistentDataPath/game-logs/&lt;date-time&gt;/) with:
     ///   game.log          — the board at the start of every turn (same text drawing as the
-    ///                       headless narration), every move and attack by anyone, and for this
-    ///                       AI every decision with the options it weighed and the simulated reply
+    ///                       headless narration) and each side's state (worth, units by kind,
+    ///                       cities, income, what it can buy); every move, attack, purchase,
+    ///                       unit lost (and how) and building changing hands; and for this AI
+    ///                       every decision with the options it weighed and the simulated reply.
+    ///                       Event lines are worded by GameLog.Lines, which also reads them back
+    ///                       (replays, the post-game report: GameRecord).
     ///   turn-NNN-Side.dat — the board at the start of every turn, as a scenario file: load it
     ///                       in Unity (HexTactica ▸ Load Scenario File…) or headless to replay
     ///                       from that exact position
@@ -25,7 +29,7 @@ namespace HexTactica.Harness {
     /// Recording records whatever is on the board now. Writes as it goes, so stopping play mode
     /// mid-game loses nothing.
     /// </summary>
-    public static class GameLog {
+    public static partial class GameLog {
 
         public static bool Recording { get { return writer != null; } }
         public static string Folder { get; private set; }
@@ -34,7 +38,11 @@ namespace HexTactica.Harness {
         static string redKind = "?";
         static string source = "";
         static readonly Dictionary<Unit, HexTile> lastSeen = new Dictionary<Unit, HexTile>();
+        static readonly HashSet<Unit> ditching = new HashSet<Unit>();
         static bool finished;
+        /// <summary>The line the first two sides' HQs stand on (for each side's "front").</summary>
+        static Vector3 hqA, hqB;
+        static int axisTiles;
 
         public static string DefaultRoot {
             get { return Path.Combine(Application.persistentDataPath, "game-logs"); }
@@ -51,11 +59,26 @@ namespace HexTactica.Harness {
             writer.AutoFlush = true;
             finished = false;
             turns = 0;
-            lastSeen.Clear();
+            Listen();
 
+            Line("HexTactica game log, " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+            Line(Lines.Source(source.Length > 0 ? source : "board as it was"));
+            WriteSides();
+            Line("Blue (upper case) = this AI; Red (lower case) = " + (redKind == "Full" ? "this AI" : redKind));
+            if (GameController.gc != null) Line("rules: " + GameController.gc.rules + (GameController.gc.rules == RuleSet.Attrition ? " (HQs cannot be attacked; after " + GameController.gc.roundLimit + " rounds the most strength x cost left wins)" : GameController.gc.rules == RuleSet.Sandbox ? " (the game never ends)" : ""));
+            Line("glyphs: S supply unit, G grunt, T tank, A artillery; buildings (no unit on them) H HQ, C city, B forward base, P airport, D naval yard, = neutral; . grass, f forest, ^ mountain, ~ water");
+            OnTurnStarted(GameController.gc != null ? GameController.gc.activePlayer : null);
+        }
+
+        static void Listen() {
+            lastSeen.Clear();
+            ditching.Clear();
             Unit.Attacked += OnAttack;
             Building.Captured += OnCapture;
+            Building.OwnerChanged += OnOwnerChanged;
+            BuildingController.Produced += OnProduced;
             Unit.Ditched += OnDitch;
+            Unit.Died += OnDied;
             Unit.RanInto += OnRanInto;
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
@@ -64,20 +87,86 @@ namespace HexTactica.Harness {
             AISupplyPlanner.DebugLog = Line;
             HexTactica.AI.AISupplyChain.DebugLog = Line;
             HexTactica.AI.AISupplyTree.DebugLog = Line;
+        }
 
-            Line("HexTactica game log, " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
-            Line("source: " + (source.Length > 0 ? source : "board as it was"));
-            Line("Blue (upper case) = this AI; Red (lower case) = " + (redKind == "Full" ? "this AI" : redKind));
-            if (GameController.gc != null) Line("rules: " + GameController.gc.rules + (GameController.gc.rules == RuleSet.Attrition ? " (HQs cannot be attacked; after " + GameController.gc.roundLimit + " rounds the most strength x cost left wins)" : GameController.gc.rules == RuleSet.Sandbox ? " (the game never ends)" : ""));
-            Line("glyphs: S supply unit, G grunt, T tank, A artillery; buildings (no unit on them) H HQ, C city, B forward base, P airport, D naval yard, = neutral; . grass, f forest, ^ mountain, ~ water");
+        /// <summary>Each side (who plays it, its faction) and the HQ-to-HQ line fronts are measured on.</summary>
+        static void WriteSides() {
+            GameController gc = GameController.gc;
+            if (gc == null) return;
+            foreach (Player p in gc.players) if (p != null) Line(Lines.Side(p));
+            Player a = gc.players.Count > 0 ? gc.players[0] : null, b = gc.players.Count > 1 ? gc.players[1] : null;
+            Building ha = a != null ? GameController.HQOf(a) : null, hb = b != null ? GameController.HQOf(b) : null;
+            axisTiles = 0;
+            if (ha != null && hb != null && ha.tile != null && hb.tile != null) {
+                hqA = new Vector3(ha.tile.x, ha.tile.y, ha.tile.z); hqB = new Vector3(hb.tile.x, hb.tile.y, hb.tile.z);
+                axisTiles = Mathf.RoundToInt(Mathf.Max(Mathf.Abs(hqA.x - hqB.x), Mathf.Max(Mathf.Abs(hqA.y - hqB.y), Mathf.Abs(hqA.z - hqB.z))));
+            }
+            Line(Lines.Axis(axisTiles));
+        }
+
+        /// <summary>Where a game stood when it was saved: its log folder, how much of game.log was written, how many turn snapshots.</summary>
+        public class SavePoint { public string folder; public long length; public int turns; }
+
+        /// <summary>
+        /// Mark a save in the log: a saved game keeps where its log was, so loading it goes on with the same log
+        /// (cut back to this line) rather than starting a new one. Null when nothing is recording.
+        /// </summary>
+        public static SavePoint MarkSave(string path) {
+            if (writer == null) return null;
+            Line(Lines.Saved(path));
+            writer.Flush();
+            return new SavePoint { folder = Folder, length = writer.BaseStream.Position, turns = turns };
+        }
+
+        /// <summary>
+        /// A saved game loaded: a new recording that starts with its log as it was when saved (game.log up to the
+        /// save line, the turn snapshots taken before it), then goes on. False (nothing started) if that log is gone.
+        /// </summary>
+        public static bool Continue(SavePoint from, string savePath, string red, string root) {
+            if (from == null || string.IsNullOrEmpty(from.folder)) return false;
+            string oldLog = Path.Combine(from.folder, "game.log");
+            if (!File.Exists(oldLog)) return false;
+            Stop();
+            source = savePath ?? "";
+            redKind = string.IsNullOrEmpty(red) ? "?" : red;
+            Folder = Path.Combine(root ?? DefaultRoot, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture));
+            Directory.CreateDirectory(Folder);
+            using (FileStream src = File.OpenRead(oldLog))
+            using (FileStream dst = File.Create(Path.Combine(Folder, "game.log"))) {
+                byte[] buffer = new byte[65536];
+                long left = Math.Min(from.length, src.Length);
+                while (left > 0) {
+                    int n = src.Read(buffer, 0, (int)Math.Min(buffer.Length, left));
+                    if (n <= 0) break;
+                    dst.Write(buffer, 0, n);
+                    left -= n;
+                }
+            }
+            foreach (string f in Directory.GetFiles(from.folder, "turn-*.dat")) {
+                int index;
+                string name = Path.GetFileName(f);
+                if (name.Length > 8 && int.TryParse(name.Substring(5, 3), NumberStyles.Integer, CultureInfo.InvariantCulture, out index) && index < from.turns)
+                    File.Copy(f, Path.Combine(Folder, name), true);
+            }
+            writer = new StreamWriter(Path.Combine(Folder, "game.log"), true, new UTF8Encoding(false));
+            writer.AutoFlush = true;
+            finished = false;
+            turns = from.turns;
+            Listen();
+            Line(Lines.Resumed(source));
+            WriteSides();
             OnTurnStarted(GameController.gc != null ? GameController.gc.activePlayer : null);
+            return true;
         }
 
         public static void Stop() {
             if (writer == null) return;
             Unit.Attacked -= OnAttack;
             Building.Captured -= OnCapture;
+            Building.OwnerChanged -= OnOwnerChanged;
+            BuildingController.Produced -= OnProduced;
             Unit.Ditched -= OnDitch;
+            Unit.Died -= OnDied;
             Unit.Finished -= OnFinished;
             Unit.RanInto -= OnRanInto;
             GameController.TurnStarted -= OnTurnStarted;
@@ -104,10 +193,11 @@ namespace HexTactica.Harness {
             string side = p != null ? p.personal_name : "?";
             int round = gc != null ? gc.days : 0;
             Line("");
-            Line("== round " + round + ": " + side + " to move");
+            Line(Lines.Round(round, side));
             Line(Draw());
             Line("   units:" + Roster());
             if (Buildings().Length > 0) Line("   buildings:" + Buildings());
+            if (gc != null) foreach (Player q in gc.players) if (q != null) WriteState(q);
             string file = string.Format("turn-{0:000}-{1}.dat", TurnIndex(), Safe(side));
             try {
                 File.WriteAllText(Path.Combine(Folder, file), Snapshot(p, "snapshot of round " + round + ", " + side + " to move"));
@@ -131,8 +221,74 @@ namespace HexTactica.Harness {
             if (u.tile != null) lastSeen[u] = u.tile;
         }
 
+        /// <summary>Each side's state lines at the start of a turn (Lines.State, Fields, CanBuy).</summary>
+        static void WriteState(Player p) {
+            float worth = 0f, along = 0f;
+            int units = 0, placed = 0, cities = 0, buildings = 0, income = 0;
+            SortedDictionary<string, int> kinds = new SortedDictionary<string, int>(StringComparer.Ordinal);
+            foreach (Unit u in p.units) {
+                if (u == null || u.Strength <= 0) continue;
+                SupplyPoint sp = u.Hub;
+                if (sp != null && sp.producer) continue;   // an HQ that is a unit (older saves) is not a unit to count
+                units++;
+                worth += u.cost * u.Strength / (float)Mathf.Max(1, FullStrength(u));
+                string k = Lines.UnitName(u);
+                int n; kinds.TryGetValue(k, out n); kinds[k] = n + 1;
+                if (u.tile != null && axisTiles > 0) { along += Along(u.tile); placed++; }
+            }
+            SortedSet<string> buy = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Building b in Building.all) {
+                if (b == null || b.owner != p) continue;
+                buildings++;
+                income += b.income;
+                if (b.type == BuildingType.City) cities++;
+                foreach (Unit u in b.Purchasable()) buy.Add(Lines.UnitName(u));
+            }
+            Line(Lines.State(p.personal_name, Mathf.RoundToInt(worth), units, cities, buildings, income, p.money, placed > 0 ? along / placed : -1f));
+            if (kinds.Count > 0) Line(Lines.Fields(p.personal_name, kinds));
+            if (buy.Count > 0) Line(Lines.CanBuy(p.personal_name, buy));
+        }
+
+        static readonly Dictionary<string, int> fullStrength = new Dictionary<string, int>();
+        /// <summary>The strength a unit of its kind has when new (its prefab's).</summary>
+        static int FullStrength(Unit u) {
+            string n = Lines.UnitName(u);
+            int s;
+            if (fullStrength.TryGetValue(n, out s)) return s;
+            Unit prefab = GameAssets.Unit(n);
+            s = Mathf.Max(1, prefab != null ? prefab.Strength : u.Strength);
+            fullStrength[n] = s;
+            return s;
+        }
+
+        /// <summary>How far along the line from the first side's HQ to the second's a tile lies (0 at the first, 1 at the second).</summary>
+        static float Along(HexTile t) {
+            Vector3 ab = hqB - hqA, ap = new Vector3(t.x, t.y, t.z) - hqA;
+            float len2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+            return len2 > 0f ? (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / len2 : 0f;
+        }
+
+        static void OnProduced(Building b, Unit made) {
+            if (writer == null || made == null) return;
+            Line(Lines.Buy(b, made));
+        }
+
+        static void OnOwnerChanged(Building b, Player previous) {
+            if (writer == null || b == null) return;
+            Line(Lines.ChangesHands(b, previous));
+            if (GameController.gc != null && GameController.gc.gameOver) GameOver();
+        }
+
+        /// <summary>Every unit lost, and how: out of fuel, aboard a transport that went down, starved in upkeep, or in combat (the attack line after it says by whom).</summary>
+        static void OnDied(Unit u) {
+            if (writer == null || u == null) return;
+            string cause = ditching.Remove(u) ? Lines.Fuel : u.trasnporter != null ? Lines.Aboard : Player.InUpkeep ? Lines.Supply : Lines.Combat;
+            Line(Lines.Dies(u, cause));
+        }
+
         static void OnDitch(Unit u) {
             if (writer == null || u == null) return;
+            ditching.Add(u);
             Line("   " + Who(u) + " ditched at " + D(u.tile) + ": out of fuel");
         }
 
@@ -156,16 +312,7 @@ namespace HexTactica.Harness {
                 Line("   " + Who(attacker) + " moved " + D(was) + " -> " + D(from));
                 lastSeen[attacker] = from;
             }
-            StringBuilder sb = new StringBuilder();
-            sb.Append("   ").Append(Who(attacker)).Append(' ').Append(D(from)).Append(" attacks ").Append(Who(defender)).Append(' ').Append(D(at))
-              .Append(": deals ").Append(o.damageToDefender).Append(", takes ").Append(o.damageToAttacker);
-            if (o.defenderFiresFirst) sb.Append(" (ambush: defender fired first)");
-            if (o.defenderDies) sb.Append(", ").Append(defender.name.Replace("(Clone)", "")).Append(" destroyed");
-            else if (o.defenderSuppressed) sb.Append(", suppressed " + o.suppressionAdded + " (" + defender.suppressed + " of " + defender.Strength + " will not fire back until its turn)");
-            else if (o.defenderRetreats) sb.Append(o.defenderPinned ? ", pinned (1 of that for having nowhere to retreat)" : ", retreats");
-            if (o.attackerDies) sb.Append(", attacker destroyed");
-            sb.Append(" -> ").Append(attacker.Strength).Append(" v ").Append(defender.Strength);
-            Line(sb.ToString());
+            Line(Lines.Attack(attacker, defender, from, at, o));
             if (GameController.gc != null && GameController.gc.gameOver) GameOver();
         }
 
@@ -174,7 +321,7 @@ namespace HexTactica.Harness {
             finished = true;
             GameController gc = GameController.gc;
             Line("");
-            Line("== game over after round " + (gc != null ? gc.days : 0) + ": winner " + (gc != null && gc.winner != null ? gc.winner.personal_name : "none"));
+            Line(Lines.GameOver(gc != null ? gc.days : 0, gc != null ? gc.winner : null));
             Line(Draw());
             Line("   units:" + Roster());
             if (Buildings().Length > 0) Line("   buildings:" + Buildings());
@@ -182,12 +329,8 @@ namespace HexTactica.Harness {
 
         // ------------------------------------------------------------------ text
 
-        static string Who(Unit u) {
-            if (u == null) return "?";
-            return (u.owner != null ? u.owner.personal_name + " " : "") + u.name.Replace("(Clone)", "");
-        }
-
-        static string D(HexTile t) { return t == null ? "(gone)" : "(" + t.x + "," + t.y + ")"; }
+        static string Who(Unit u) { return Lines.Who(u); }
+        static string D(HexTile t) { return Lines.D(t); }
 
         static string Safe(string s) {
             StringBuilder sb = new StringBuilder();

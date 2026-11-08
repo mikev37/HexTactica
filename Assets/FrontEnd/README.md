@@ -39,8 +39,10 @@ building registry and camera rig now install only in a scene with a GameControll
   that is `Assets/Resources/Scenarios`. A build ships no `.dat` from Resources, so copy them to
   `StreamingAssets/Scenarios` for a build. Scenarios made in the map editor go to `<persistentDataPath>/scenarios`.
 - Saved games go to `<persistentDataPath>/saves`, a separate folder from scenarios. A save is the same format as a
-  scenario. It keeps who played each side (each player's `AI`), the round, fog, purchases and faction special units.
-  Its statistics are kept beside it (`<save>.stats.json`), so the post-game report covers the whole game.
+  scenario. It keeps who played each side (each player's `AI`), the round, fog, purchases and faction special units,
+  and where its game log stood (`gameLog`, `gameLogLength`, `gameLogTurns`). Loading it starts a new recording that
+  begins with that log cut back to the save (`GameLog.MarkSave`, `GameLog.Continue`), so one log covers the whole
+  game, however many sittings it took.
 - The map editor saves to the player's folder. With `editorSavesInPlace` (off by default), it saves back over the
   file it loaded, in the editor only, and keeps that file's `test` block.
 
@@ -58,28 +60,37 @@ When it is off, a faction only changes how units look:
 `PROBE=factions bash Tests/run.sh Assets` lists every replacement as "looks only" or "special", with the fields
 that differ. For example, "Tank Rebel Variant" is special: it differs in supplies.
 
-## Post-game statistics
+## Post-game report: read from the game log
 
-`GameStats` records each game from the moment a board loads. It uses the game log's events: purchases
-(`BuildingController.Produced`), attacks, deaths and their cause, buildings changing hands, and a snapshot of each
-side at every turn start. That snapshot holds its worth (cost × share of full strength), units, cities and where its
-units stand on the HQ-to-HQ line. At the end it also writes the report into the game log folder (`post-game.txt`).
+The game log (`Harness/GameLog.cs`) is the one record of a game: nothing else tracks statistics. Its event lines are
+worded in `Harness/GameLogLines.cs`, where every line has a writer and a reader next to each other. Replays, network
+turns and the post-game report all read what was written, through the same code. Besides moves and attacks, the log
+now records:
 
-`GameInsights` turns those statistics into findings, written for the human player ("you"):
+- each side at the start of every turn: `state` (worth, units, cities, buildings, income, gold, front), `fields`
+  (units by kind) and `can buy`;
+- purchases: `Blue buys Grunt at City (3,4) for 2500`;
+- every unit lost and how: `Blue Grunt (3,4) dies: combat|supply|fuel|aboard`. A combat death comes just before
+  the attack line that names the killer;
+- buildings changing hands: `City (3,4) changes hands: Red -> Blue`;
+- `side:` lines (id, faction, AI or human), the HQ-to-HQ `axis:`, and `-- saved as` / `-- resumed from` lines.
+
+`GameRecord.Read(folder)` parses a game.log. `GameInsights` turns the result into findings, written for the human
+player ("you"):
 
 - how strength went: the starting ratio, when the weaker side drew level, the end;
 - the longest stretch where both sides lost units and the front barely moved, or where one side bled for no ground;
-- who held the cities for most of the game;
+- cities and income;
 - the unit kind each side fed in: bought and lost, what killed them, their own kills and trade, the worst turn, and
-  the answer it bought. It also names a faction swap that priced the side out of contesting the enemy's main killer,
-  as in "Coalition swaps the Fighter for the 21,000 Stealth Fighter, and Blue bought 2 all game";
+  the answer it bought. It also names a faction swap that priced the side out of contesting the enemy's main
+  killer, as in "Coalition swaps the Fighter for the 21,000 Stealth Fighter, and Blue bought 2 all game";
 - a killer that went unanswered: its shots and kills after the enemy's last attack on it, firing distance against
   the enemy's longest ground reach, and losses of the enemy aircraft that could have reached it;
-- the best trade production hardly bought;
+- the best trade production hardly bought (only kinds it could buy);
 - units lost to supply and fuel, and what each side spent on what.
 
 Each finding appears only once there is enough data for it. The thresholds are in
-`FrontEndSettings ▸ Post-game report`. The AI's own forecasts (what it expected to lose, its fog notes) are not
-in these statistics. They are in the game log's AI trace.
+`FrontEndSettings ▸ Post-game report`. The AI's own forecasts (what it expected to lose, its fog notes) are written
+to the same log as trace lines, but the report doesn't read them yet.
 
-Headless: `STATS=1 PROBE=duel FILE=... bash Tests/run.sh Assets` prints the same report at the end of a duel.
+Headless: `STATS=1 PROBE=duel FILE=... bash Tests/run.sh Assets` records the duel to a game log and prints the report read back from it (`STATS=you` writes it for a human Red).
