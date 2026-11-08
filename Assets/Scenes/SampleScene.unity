@@ -7311,7 +7311,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   personal_name: Blue
   id: 112
-  displayColor: {r: 0, g: 0.5294118, b: 1, a: 0}
+  displayColor: {r: 0, g: 0.5294118, b: 1, a: 1}
   faction: {fileID: 11400000, guid: a2b8049f249d02d41ac3403e90abea9a, type: 2}
   mainPlayer: 0
   units: []
@@ -7494,7 +7494,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   personal_name: Red
   id: 0
-  displayColor: {r: 1, g: 0, b: 0, a: 0}
+  displayColor: {r: 1, g: 0, b: 0, a: 1}
   faction: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
   mainPlayer: 1
   units: []

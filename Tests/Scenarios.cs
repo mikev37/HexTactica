@@ -477,9 +477,11 @@ public static class Scenarios {
         make("rule-capture-on-action", "captureOnAction", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 2, 0); },
              "A Blue grunt (6) that ends its move on a neutral City captures there and then (6 Blue before the turn ends), and not again as the turn ends; standing there through its next turn it takes it.");
         make("rule-neutral-decay", "decay", (a, o) => { Building c = Rig.PlaceBuilding("City", null, 0, 0); c.capturingPlayer = o; c.capturePoints = 4; Put("Grunt", o, 3, 0); },
-             "A neutral City with 4 Red progress and no Red infantry on it: 2 after Red's turn. An owned building nobody is taking has nothing to decay.");
+             "A neutral City with 4 Red progress and no Red infantry on it: lost (0, nobody capturing) after Red's turn. An owned building nobody is taking has nothing to lose.");
         make("rule-hq-standard", "hqStandard", (a, o) => { Put("Grunt", o, -6, 0); },
              "Standard rules: a Red grunt (6) on Blue's HQ (10). Two Red turns take it (6, then 12): Blue has lost.");
+        make("rule-captured-hq-supplies-nobody", "capturedHQ", (a, o) => { },
+             "Sandbox rules: Blue's HQ taken by Red supplies Red nothing (an HQ supplies only the side it began with); retaken, it supplies Blue again. The home side is saved and loaded with the board.");
         make("attrition-rule-hq", "attritionHQ", (a, o) => { Put("Grunt", o, -6, 0); Put("Grunt", a, -3, 2); },
              "Attrition rules: the HQ cannot be captured, a Red grunt standing on it changes nothing.");
         make("rule-fob-battery", "battery", (a, o) => { Building f = Rig.PlaceBuilding("FOB", a, -4, 0); f.supplies = 0; Put("Grunt", a, -3, 1); },
@@ -499,7 +501,7 @@ public static class Scenarios {
         make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
              "A Fighter with 3 fuel flies 3 tiles onto its airport's runway (a plain move): refuelled and re-armed as it lands (fuel 14, ammo 6). Another lands there as a move and attack: nothing until its next turn (fuel 5 - 3 = 2, ammo 1). The airport is then lost before their next turn: the first burns a turn's fuel (11) and is not ditched.");
         make("attrition-rule-supply-aboard", "attritionSupplyAboard", (a, o) => { Put("APC", a, 1, 0); Put("Supplies", a, 2, 0); Put("Grunt", o, 6, -3); },
-             "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off.");
+             "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off. Exactly: with as many moves as it takes to drive onto supplied ground it links, with one fewer it does not (beside supplied ground is not enough for a land transport).");
         make("attrition-rule-supply-line", "attritionSupplyLine", (a, o) => { Put("Supplies", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 6, -3); },
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
         make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
@@ -703,6 +705,26 @@ public static class Scenarios {
                  Put("Transport Helo", a, -5, 3);
                  Put("Grunt", a, 6, -1); Put("Grunt", o, 7, -2); },
              "Convoys: a ship with a supply unit aboard is a link if within one move (its own path) of supplied ground or of another linked carrier, to any length, and gives supply to land only beside it. Ten tiles of sea between Blue's shore and an island, ships moving 3: TS A within a move of Blue's shore, TS B within a move of A only, TS C within a move of B only and beside the island. C is linked through B through A, the Blue grunt on the island is supplied, A and B out at sea give nothing, and the supply line runs from the grunt through C, B and A to the HQ. Without A, B and C are cut off. A helicopter with supplies aboard in A's place over the water (linked by Blue's shore, giving nothing over water) links B in turn: a ship links through an aircraft.");
+        make("attrition-rule-ship-line-on-water", "shipLineOnWater", (a, o) => {
+                 water(-4, 5, -7, 7);
+                 for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
+                 Put("TransportShip", a, -1, 0); Put("TransportShip", a, 3, 0);
+                 Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
+                 Put("Grunt", o, 7, -6); },
+             "Ten tiles of sea off Blue's shore with a strip of island (x 0..4) in it; TS A (supplies aboard) within a move of Blue's shore and beside the island, TS B (supplies aboard) beside the island too, within a move of A only. B links through A (a ship tries its convoy first), and every line between them keeps to the water: B's line to the HQ, and the faint line of B hanging on A when A is selected. A selected at sea, or moved out to sea in a preview, still shows its line to Blue's shore.");
+        make("ai-sea-lift", "seaLift", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("Grunt", a, -4, 1); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2);
+                 Put("Grunt", o, 5, -2); },
+             "The enemy HQ across a channel no land unit can cross: Blue (the AI, with a naval yard on its shore and gold) builds a transport ship and ferries infantry over, landing on Red's shore, and takes Red's HQ (Red, a human player here, does nothing).");
+        make("attrition-ai-sea-supply", "attritionSeaSupply", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("TransportShip", a, -2, 0); Put("Supplies", a, -3, 1);
+                 Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
+                 Put("Grunt", o, 6, -5); },
+             "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
         make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
              "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
         make("ui-next-unit", "nextUnit", (a, o) => { Put("Grunt", a, 0, 0); Put("Grunt", a, 2, 0); Put("Tank", a, 0, 2); Put("Grunt", o, 5, -2); },
@@ -764,7 +786,7 @@ public static class Scenarios {
             }
             case "decay": {
                 endTurn(); endTurn();
-                bool ok = at00.owner == null && at00.capturePoints == 2;
+                bool ok = at00.owner == null && at00.capturePoints == 0 && at00.capturingPlayer == null;
                 Building hq = GameController.HQOf(a);
                 int before = hq.capturePoints;
                 endTurn(); endTurn();
@@ -851,10 +873,19 @@ public static class Scenarios {
                 int moves = apc.moveRange;
                 apc.moveRange = 1;
                 bool cut = !SupplyNetwork.Solve(l.ai, false).connectedHubs.Contains(hub);
+                // Exactly its move: the fewest movement points to drive onto supplied ground links; one fewer does not.
+                HexTactica.AI.MoveField mf = HexTactica.AI.AIPath.ThisTurnFrom(apc, apc.tile, 99);
+                int need = 99;
+                foreach (HexTile t in mf.Tiles) if (t.terrain.elevation >= 0 && stat.IsSupplied(t) && mf.ReachableThisTurn(t)) need = Math.Min(need, mf.Get(t).used);
+                apc.moveRange = need;
+                bool exact = SupplyNetwork.Solve(l.ai, false).connectedHubs.Contains(hub);
+                apc.moveRange = need - 1;
+                bool short1 = !SupplyNetwork.Solve(l.ai, false).connectedHubs.Contains(hub);
                 apc.moveRange = moves;
                 SupplyNetwork.Solve(l.ai, false);
-                detail = "loaded " + loaded + "; HQ supply " + gap + " tiles from the APC; linked " + linked + "; spreads up to " + far + " tiles from the APC (range " + hub.range + "); with 1 move, cut off " + cut;
-                return loaded && gap > 1 && gap <= moves && linked && far <= hub.range && far > 0 && cut;
+                detail = "loaded " + loaded + "; HQ supply " + gap + " tiles from the APC; linked " + linked + "; spreads up to " + far + " tiles from the APC (range " + hub.range + "); with 1 move, cut off " + cut
+                       + "; " + need + " points to supplied ground: with " + need + " moves linked " + exact + ", with " + (need - 1) + " cut off " + short1;
+                return loaded && gap > 1 && gap <= moves && linked && far <= hub.range && far > 0 && cut && need > 1 && need <= moves && exact && short1;
             }
             case "attritionSupplyChainLine": {
                 Unit hubA = Rig.At(-3, 0).occupier, hubB = Rig.At(0, 0).occupier, g = Rig.At(3, 0).occupier, c = Rig.At(3, 3).occupier, d = Rig.At(4, 3).occupier;
@@ -3117,6 +3148,22 @@ public static class Scenarios {
                 detail = string.Join("; ", r.ToArray());
                 return parts && hit && badlands && undo && repaired && fell && stopped && back && water;
             }
+            case "capturedHQ": {
+                gc.rules = RuleSet.Sandbox;
+                Building hq = GameController.HQOf(l.ai);
+                bool home = hq.Home == l.ai;
+                bool before = SupplyNetwork.Solve(l.ai, false).IsSupplied(hq.tile);
+                hq.owner = l.other;
+                bool red = SupplyNetwork.Solve(l.other, false).IsSupplied(hq.tile);
+                bool blueOff = !SupplyNetwork.Solve(l.ai, false).IsSupplied(hq.tile);
+                BuildingData saved = new BuildingData(hq);
+                bool kept = saved.hasHome && saved.home_id == l.ai.id;
+                hq.owner = l.ai;
+                bool back = SupplyNetwork.Solve(l.ai, false).IsSupplied(hq.tile);
+                SupplyNetwork.Solve(l.other, false);
+                detail = "home Blue " + home + "; Blue supplied there " + before + "; taken by Red: Red supplied there " + red + ", Blue cut " + blueOff + "; saved home Blue " + kept + "; retaken: Blue supplied " + back;
+                return home && before && !red && blueOff && kept && back;
+            }
             case "sandboxTurns": {
                 gc.rules = RuleSet.Sandbox;
                 l.other.eliminated = true;
@@ -3304,6 +3351,79 @@ public static class Scenarios {
                 detail = "A, B, C linked and the island supplied " + chain + "; C through B through A " + through + "; A and B at sea give nothing " + atSeaNothing
                        + "; line through C, B, A to the HQ " + drawn + " (" + line.Count + " tiles); without A cut off " + cutOff + "; through a helicopter over the water " + air;
                 return chain && through && atSeaNothing && drawn && cutOff && air;
+            }
+            case "shipLineOnWater": {
+                Unit ta = Rig.At(-1, 0).occupier, tb = Rig.At(3, 0).occupier;
+                Unit sa = Rig.At(-6, 2).occupier, sb = Rig.At(-6, 3).occupier;
+                foreach (Unit t in new[] { ta, tb }) t.moveRange = 3;
+                Action<Unit, Unit> aboard = (ship, sup) => { sup.tile.occupier = null; sup.tile = ship.tile; sup.trasnporter = ship; ship.transported.Add(sup); };
+                aboard(ta, sa); aboard(tb, sb);
+                SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                SupplyPoint via;
+                bool linked = r.connectedHubs.Contains(sa.Hub) && r.connectedHubs.Contains(sb.Hub) && r.linkedThrough.TryGetValue(sb.Hub, out via) && via == sa.Hub;
+                Building hq = GameController.HQOf(a);
+                Func<List<HexTile>, HexTile, HexTile, bool> wet = (line, x, y) => {
+                    int i = line.IndexOf(x), j = line.IndexOf(y);
+                    if (i < 0 || j < 0) return false;
+                    for (int k = Math.Min(i, j); k <= Math.Max(i, j); k++) if (line[k].terrain.elevation >= 0) return false;
+                    return true;
+                };
+                List<HexTile> fromB = SupplyOverlay.SourcePath(a, tb.tile, r, null);
+                bool bLine = wet(fromB, tb.tile, ta.tile) && fromB.Contains(hq.tile);
+                Dictionary<SupplyPoint, List<HexTile>> deps = SupplyOverlay.Dependents(a, new List<SupplyPoint> { sa.Hub }, ta.tile, r, null);
+                List<HexTile> dep;
+                bool depLine = deps.TryGetValue(sb.Hub, out dep) && wet(dep, tb.tile, ta.tile);
+                List<HexTile> fromA = SupplyOverlay.SourcePath(a, ta.tile, r, null);
+                bool aLine = fromA.Count > 1 && fromA.Contains(hq.tile);
+                HexTile sea = Rig.At(-2, 2);
+                Dictionary<SupplyPoint, HexTile> preview = new Dictionary<SupplyPoint, HexTile> { { sa.Hub, sea } };
+                SupplyNetwork.Result pf = SupplyNetwork.SolvePreview(a, preview);
+                List<HexTile> moved = SupplyOverlay.SourcePath(a, sea, pf, preview);
+                bool previewLine = sea.terrain.elevation < 0 && moved.Count > 1 && moved.Contains(hq.tile);
+                SupplyNetwork.Solve(a, false);
+                detail = "B through A " + linked + "; B's line on the water to A and on to the HQ " + bLine + " (" + string.Join(" ", fromB.ConvertAll(t => Pos(t))) + ")"
+                       + "; B hanging on A, on the water " + depLine + "; A at sea shows its line " + aLine + "; A previewed further out shows its line " + previewLine;
+                return linked && bLine && depLine && aLine && previewLine;
+            }
+            case "seaLift": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                List<string> r = new List<string>();
+                a.money = 20000;
+                int landed = -1, bought = -1, blueTurns = 0;
+                for (int turn = 0; turn < 24 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    string line = "T" + blueTurns + ":";
+                    foreach (Unit u in a.units) {
+                        if (u == null || u.tile == null) continue;
+                        line += " " + u.name.Replace("(Clone)", "") + (u.trasnporter != null ? "[aboard]" : Pos(u.tile));
+                        if (LocomotionRules.IsNaval(u.locomotion) && Transporting.IsTransport(u) && bought < 0) bought = blueTurns;
+                        if (u.trasnporter == null && u.tile.x >= 3 && u.locomotion == Locomotion.Boots && landed < 0) landed = blueTurns;
+                    }
+                    r.Add(line + " gold " + a.money);
+                }
+                detail = string.Join(" | ", r.ToArray()) + "; ship from Blue turn " + bought + ", landed on Red's shore turn " + landed + "; game over " + gc.gameOver + (gc.winner != null ? ", " + gc.winner.personal_name + " wins" : "") + " after " + blueTurns + " Blue turns";
+                return bought > 0 && landed > 0 && gc.gameOver && gc.winner == a;
+            }
+            case "attritionSeaSupply": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit g1 = Rig.At(4, 1).occupier, g2 = Rig.At(4, 2).occupier, sup = Rig.At(-3, 1).occupier, ship = Rig.At(-2, 0).occupier;
+                List<string> r = new List<string>();
+                int supplied = -1, blueTurns = 0;
+                for (int turn = 0; turn < 6 && !gc.gameOver && supplied < 0; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    SupplyNetwork.Result net = SupplyNetwork.Solve(a, false);
+                    bool both = g1 != null && g2 != null && g1.tile != null && g2.tile != null && net.IsSupplied(g1.tile) && net.IsSupplied(g2.tile);
+                    r.Add("T" + blueTurns + ": supplies " + (sup.trasnporter != null ? "aboard" : Pos(sup.tile)) + ", ship " + Pos(ship.tile) + ", grunts " + Pos(g1.tile) + " " + Pos(g2.tile) + " supplied " + both);
+                    if (both) supplied = blueTurns;
+                }
+                detail = string.Join(" | ", r.ToArray());
+                return supplied > 0 && supplied <= 3;
             }
             case "ignoresCover": {
                 Unit tank = Rig.At(0, 0).occupier, g = Rig.At(1, 0).occupier;

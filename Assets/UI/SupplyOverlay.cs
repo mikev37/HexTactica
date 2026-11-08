@@ -159,8 +159,10 @@ public class SupplyOverlay : MonoBehaviour {
     /// <summary>As above, with the supply units in <paramref name="preview"/> standing where it says (a move being previewed), if given.</summary>
     public static List<HexTile> SourcePath(Player p, HexTile from, SupplyNetwork.Result field, Dictionary<SupplyPoint, HexTile> preview) {
         List<HexTile> points = new List<HexTile>();
-        if (from == null || field.DepthAt(from) <= 0) return points;
+        if (from == null) return points;
         HashSet<SupplyPoint> seen = new HashSet<SupplyPoint>();
+        // Supply carried on 'from' (a ship out at sea gives nothing where it floats): its line starts there, whatever the field.
+        if (field.DepthAt(from) <= 0 && Carried(HubOn(p, from, preview, seen)) == null) return points;
         HexTile at = from;
         SupplyNetwork.Result f = field;
         // The network as it stands (or as previewed): which carried supply links through another carrier (a convoy).
@@ -171,7 +173,13 @@ public class SupplyOverlay : MonoBehaviour {
             HexTile top;
             SupplyPoint source;
             if (next != null) { top = at; source = next; next = null; }   // a convoy's next carrier: the line is at it already
-            else {
+            else if (Carried(HubOn(p, at, preview, seen)) != null) {
+                // Carried supply here: it links by its carrier's own move (below), not up the field. (Climbing would
+                // cross the land beside two ships to the one that supplies it, not along the water.)
+                top = at;
+                if (points.Count == 0 || points[points.Count - 1] != at) points.Add(at);
+                source = HubOn(p, at, preview, seen);
+            } else {
                 top = Climb(at, f, points);
                 // Several supply units can share a tile (all aboard one transport): each in turn.
                 source = HubOn(p, top, preview, seen);
@@ -231,7 +239,7 @@ public class SupplyOverlay : MonoBehaviour {
 
     /// <summary>
     /// The way <paramref name="transport"/>, standing on <paramref name="from"/>, would drive in one move
-    /// to ground supplied in <paramref name="f"/> (or beside it, where its cargo can step off): the tiles
+    /// to ground supplied in <paramref name="f"/> (a ship, which cannot go ashore: beside it, where its cargo can step off): the tiles
     /// from <paramref name="from"/> to the nearest such tile (fewest movement points, then the board's
     /// order), then the supplied tile beside it if it is not supplied itself. Planned as its side knows
     /// the board (fog of war): around the enemies it sees, never through them. Null if there is none.
@@ -241,11 +249,12 @@ public class SupplyOverlay : MonoBehaviour {
         using (FogOfWar.Concealing(transport.owner))
             field = HexTactica.AI.AIPath.ThisTurnFrom(transport, from, transport.moveRange);
         HexTile best = null, step = null; int bestCost = int.MaxValue;
+        bool ship = LocomotionRules.IsNaval(transport.locomotion);
         foreach (HexTile t in field.Tiles) {
             if (!field.ReachableThisTurn(t) && t != from) continue;
             HexTile onto = null;
-            if (f.DepthAt(t) > 0) onto = t;
-            else foreach (HexTile n in t.neighbors) if (n != null && f.DepthAt(n) > 0 && (onto == null || CombatMath.Precedes(n, onto))) onto = n;
+            if (Ground(t, f)) onto = t;
+            else if (ship) foreach (HexTile n in t.neighbors) if (Ground(n, f) && (onto == null || CombatMath.Precedes(n, onto))) onto = n;
             if (onto == null) continue;
             int cost = t == from ? 0 : field.Get(t).used;
             if (best == null || cost < bestCost || (cost == bestCost && CombatMath.Precedes(t, best))) { best = t; bestCost = cost; step = onto; }
@@ -258,6 +267,11 @@ public class SupplyOverlay : MonoBehaviour {
         }
         HexTactica.AI.AIPath.Release(field);
         return path;
+    }
+
+    /// <summary>Supplied ground (SupplyNetwork.WithinMoveOfSupply's rule: water is never supplied ground).</summary>
+    static bool Ground(HexTile t, SupplyNetwork.Result f) {
+        return t != null && t.terrain != null && t.terrain.elevation >= 0 && f.DepthAt(t) > 0;
     }
 
     /// <summary>Where <paramref name="hub"/>'s unit stands (or is being moved to, in <paramref name="preview"/>).</summary>
@@ -343,6 +357,11 @@ public class SupplyOverlay : MonoBehaviour {
     /// not already on the line (<paramref name="seen"/>), if any. Several can share a tile: all aboard
     /// one transport.
     /// </summary>
+    /// <summary><paramref name="hub"/> if it is a supply unit aboard something, else null.</summary>
+    static SupplyPoint Carried(SupplyPoint hub) {
+        return hub != null && !hub.producer && hub.myUnit != null && hub.myUnit.trasnporter != null ? hub : null;
+    }
+
     static SupplyPoint HubOn(Player p, HexTile t, Dictionary<SupplyPoint, HexTile> preview, HashSet<SupplyPoint> seen) {
         if (t == null) return null;
         if (preview != null) foreach (KeyValuePair<SupplyPoint, HexTile> kv in preview) if (kv.Value == t && !seen.Contains(kv.Key)) return kv.Key;
