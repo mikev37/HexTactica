@@ -296,7 +296,7 @@ namespace HexTactica.Testing {
             List<FieldInfo> list = new List<FieldInfo>();
             foreach (FieldInfo fi in t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)) {
                 if (fi.IsInitOnly) continue;
-                if (fi.IsPublic || fi.GetCustomAttributes(typeof(SerializeFieldAttribute), false).Length > 0) list.Add(fi);
+                if (fi.IsPublic || fi.GetCustomAttributes(typeof(SerializeField), false).Length > 0) list.Add(fi);
             }
             return list;
         }

@@ -95,11 +95,18 @@ namespace HexTactica.Harness {
             if (offBoard > 0) UnityEngine.Debug.LogWarning("Scenario: " + offBoard + " tiles lie outside this scene's board (width " + HexGenerator.hg.width
                 + (obj.GetField("width") != null ? ", the file's is " + obj.GetField("width").intValue : "") + ") and were left out. Enlarge the board in the scene to play this map as made.");
 
+            Dictionary<long, bool> fileAI = new Dictionary<long, bool>();
             if (obj.GetField("players")) {
                 JSONObjectEnumerator players = obj.GetField("players").GetEnumerator();
                 while (players.MoveNext()) {
                     PlayerData pd = JsonUtility.FromJson<PlayerData>(players.Current.Print());
+                    fileAI[pd.id] = pd.AI;
                     Player loaded = pd.load();
+                    // The pre-game screen's faction for this side (before any unit is placed: units are placed as
+                    // their side's faction fields them).
+                    string faction;
+                    if (loaded != null && FactionOverride != null && FactionOverride.TryGetValue(loaded.id, out faction))
+                        loaded.faction = string.IsNullOrEmpty(faction) ? null : LevelEditor.FindFaction(faction);
                     // A scenario is the start of a game: everyone is in it, whatever the file says
                     // (a file saved after a side was knocked out keeps "eliminated":true, and that
                     // side's turns were then skipped for the rest of the game).
@@ -125,15 +132,39 @@ namespace HexTactica.Harness {
             UnitData.LoadAll(unitData);
 
             string redKind = ApplyTestBlock(obj);
+            ApplyControl(fileAI);
 
             GameController.BoardLoaded();
 
             if (RecordGames && GameController.gc != null && !GameController.gc.headless) {
-                GameLog.Start(path, redKind, null);
+                // A saved game goes on with its own log (cut back to where it was saved); anything else starts one.
+                GameLog.SavePoint saved = SavePointOf(obj);
+                if (saved == null || !GameLog.Continue(saved, path, redKind, null)) GameLog.Start(path, redKind, null);
                 UnityEngine.Debug.Log("Recording this game to " + GameLog.Folder);
             }
 
             return true;
+        }
+
+        /// <summary>The keys a saved game keeps its game log under (GameLog.SavePoint).</summary>
+        public const string LogFolderKey = "gameLog", LogLengthKey = "gameLogLength", LogTurnsKey = "gameLogTurns";
+
+        /// <summary>Where a saved game's log was when it was saved, or null (a scenario, or a save made without a log).</summary>
+        public static GameLog.SavePoint SavePointOf(JSONObject obj) {
+            JSONObject folder = obj.GetField(LogFolderKey);
+            if (folder == null || string.IsNullOrEmpty(folder.stringValue)) return null;
+            JSONObject length = obj.GetField(LogLengthKey), turns = obj.GetField(LogTurnsKey);
+            return new GameLog.SavePoint { folder = folder.stringValue, length = length != null ? length.longValue : 0, turns = turns != null ? turns.intValue : 0 };
+        }
+
+        /// <summary>A save's JSON with where its game log stands (so loading it goes on with that log).</summary>
+        public static string WithSavePoint(string json, GameLog.SavePoint at) {
+            if (at == null) return json;
+            JSONObject obj = new JSONObject(json);
+            obj.SetField(LogFolderKey, at.folder);
+            obj.SetField(LogLengthKey, at.length);
+            obj.SetField(LogTurnsKey, at.turns);
+            return obj.Print(true);
         }
 
         /// <summary>The day (round, from 0) a file was saved on: its "day", 0 if it has none.</summary>
@@ -193,6 +224,9 @@ namespace HexTactica.Harness {
             GameController.gc.ApplyPurchaseRules(PurchasesOverride ?? Setting(obj, test, "purchases"), Setting(obj, test, "allowedUnits"));
             // Fog of war: the menu's choice, else the file's ("fog":"on"), else off.
             GameController.gc.fogOfWar = GameController.ParseFog(FogOverride ?? Setting(obj, test, "fog"));
+            // Faction special units: the pre-game screen's choice, else the file's, else on.
+            string special = SpecialUnitsOverride ?? Setting(obj, test, "factionSpecialUnits");
+            GameController.gc.factionSpecialUnits = string.IsNullOrEmpty(special) || GameController.ParseFog(special);
             FogOfWar.Reset();
             // The file's round count is the attrition limit (30 when it gives none).
             int limit;
@@ -235,6 +269,56 @@ namespace HexTactica.Harness {
             if (test != null && test.GetField("question") != null) q = test.GetField("question").stringValue + " ";
             UnityEngine.Debug.Log("Scenario: " + q + "(Blue: this AI; Red: " + (kind == "Full" ? "this AI" : kind) + "; rules: " + GameController.gc.rules + ")");
             return kind;
+        }
+
+        /// <summary>"on", "off", or null to use the file (faction special units; on when the file says nothing). Set by the pre-game screen.</summary>
+        public static string SpecialUnitsOverride;
+
+        /// <summary>
+        /// Who plays each side, by player id: true an AI (this AI, AIPlayer), false a human. Set by the pre-game screen;
+        /// null: as the file's test block says (Blue this AI, Red the file's opponent). Applied after the test block.
+        /// </summary>
+        public static Dictionary<long, bool> ControlOverride;
+
+        /// <summary>Who plays each side as the file says (each player's "AI"): a saved game goes on as it was played. Set when loading a save.</summary>
+        public static bool ControlFromFile;
+
+        /// <summary>Each side's faction by player id (a Resources/Factions asset name; "" none). Set by the pre-game screen; null: the file's.</summary>
+        public static Dictionary<long, string> FactionOverride;
+
+        /// <summary>The pre-game screen's or a save's choice of who plays each side (ControlOverride, ControlFromFile), over the test block's.</summary>
+        static void ApplyControl(Dictionary<long, bool> fileAI) {
+            if (GameController.gc == null || (ControlOverride == null && !ControlFromFile)) return;
+            foreach (Player p in GameController.gc.players) {
+                if (p == null) continue;
+                bool ai;
+                if (ControlOverride != null && ControlOverride.TryGetValue(p.id, out ai)) SetControl(p, ai);
+                else if (ControlFromFile && fileAI.TryGetValue(p.id, out ai)) SetControl(p, ai);
+            }
+        }
+
+        /// <summary>
+        /// <paramref name="p"/> played by this AI (AIPlayer, set up as the harness runs it: no mission objective), or by a
+        /// human: every AI on it switched off and removed.
+        /// </summary>
+        public static void SetControl(Player p, bool ai) {
+            if (p == null) return;
+            AIPlayer full = p.GetComponent<AIPlayer>();
+            foreach (MonoBehaviour m in p.GetComponents<MonoBehaviour>()) {
+                if (m == null || m == full) continue;
+                if (m is BaselineAIPlayer) { m.enabled = false; Object.Destroy(m); }
+                else if (m is IAIController) m.enabled = false;
+            }
+            if (ai) {
+                if (full == null) full = p.gameObject.AddComponent<AIPlayer>();
+                full.player = p;
+                full.enabled = true;
+                full.objective = null;
+                full.ResetTurn();
+            } else if (full != null) {
+                full.enabled = false;
+                Object.Destroy(full);
+            }
         }
 
         /// <summary>Record every game played in play mode (GameLog): the scene's board, a loaded scenario, or a loaded save. On by default.</summary>

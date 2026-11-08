@@ -35,6 +35,19 @@ public class GameController : MonoBehaviour
 
     public string FogSetting { get { return fogOfWar ? "on" : "off"; } }
 
+    [Header("Factions")]
+    [Tooltip("Factions field their special units: versions of a base unit that play differently (other attributes on the unit), units only they have, and the units they lack. Off: a faction only changes how units look — its versions that differ from the base unit in nothing but looks, and every base unit. A scenario or the pre-game screen sets this (\"factionSpecialUnits\": \"on\"/\"off\").")]
+    public bool factionSpecialUnits = true;
+
+    public string SpecialUnitsSetting { get { return factionSpecialUnits ? "on" : "off"; } }
+
+    /// <summary>
+    /// The game is held: no side plays (AIs do not think or act, the board takes no clicks, no turn ends), while a
+    /// menu is open over it (the pre-game screen, the in-game menu, the map editor). Not a rule: nothing on the board
+    /// changes while it is set.
+    /// </summary>
+    public static bool Paused;
+
     [Header("Purchases")]
     [Tooltip("Can units be bought at buildings? (A scenario sets this; when it does not, Standard and Sandbox allow purchases and Attrition does not.)")]
     public bool purchasesAllowed = true;
@@ -219,6 +232,7 @@ public class GameController : MonoBehaviour
 
     public void Update() {
         if (headless) return;
+        if (Paused) return;   // a menu is open over the game: nothing plays, no keys
         if (endTurnPending && (!Unit.AnyAnimating() || Time.unscaledTime - endTurnAskedAt > maxEndTurnWait)) {
             endTurnPending = false;
             EndTurn();
@@ -240,7 +254,7 @@ public class GameController : MonoBehaviour
     /// here. Only a human player's turn, not while one is already ending, not in a replay.
     /// </summary>
     public void HumanEndTurn() {
-        if (headless || gameOver || endTurnPending || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return;
+        if (headless || gameOver || endTurnPending || Paused || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return;
         EndTurnWhenStill();
     }
 
@@ -252,7 +266,7 @@ public class GameController : MonoBehaviour
     /// (HexTile.ClickBoard), as the player would. Null if none is left, or it is not a human player's turn.
     /// </summary>
     public Unit SelectNextIdle() {
-        if (gameOver || endTurnPending || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return null;
+        if (gameOver || endTurnPending || Paused || HexTactica.Harness.Replay.Active || !FogOfWar.IsHuman(activePlayer)) return null;
         List<Unit> idle = new List<Unit>();
         foreach (Unit u in activePlayer.units)
             if (u != null && u.active && u.tile != null && u.Strength > 0 && (u.trasnporter == null || u.trasnporter == u)) idle.Add(u);

@@ -44,7 +44,7 @@ namespace HexTactica.Harness {
         /// </summary>
         void Update() {
             GameController gc = GameController.gc;
-            if (gc == null || gc.headless || gc.gameOver || player == null) return;
+            if (gc == null || gc.headless || gc.gameOver || player == null || GameController.Paused) return;
             if (gc.activePlayer != player) { timer = turnDelay; return; }
             if (gc.EndTurnPending) return;   // played: its turn ends once the moves have shown
             timer -= Time.deltaTime;

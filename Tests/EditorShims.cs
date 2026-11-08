@@ -16,6 +16,7 @@ namespace UnityEditor {
         public delegate void CallbackFunction();
         public static CallbackFunction delayCall;
         public static bool isPlayingOrWillChangePlaymode;
+        public static bool isPlaying;
     }
     public enum TextureImporterType { Default, Sprite }
     public enum SpriteImportMode { None, Single, Multiple }
@@ -34,6 +35,7 @@ namespace UnityEditor {
         public static string[] FindAssets(string filter) { return new string[0]; }
         public static string GUIDToAssetPath(string guid) { return ""; }
         public static T LoadAssetAtPath<T>(string path) where T : UnityEngine.Object { return null; }
+        public static T GetBuiltinExtraResource<T>(string path) where T : UnityEngine.Object { return null; }
         public static void CreateAsset(UnityEngine.Object o, string path) { }
         public static void SaveAssets() { }
         public static void Refresh() { }

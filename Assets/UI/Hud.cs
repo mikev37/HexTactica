@@ -72,6 +72,8 @@ public class Hud : MonoBehaviour {
     public const string PrefabName = "Hud";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Hook() { GameScene.WhenLoaded(Spawn); }
+
     static void Spawn() {
         if (GameController.gc != null && GameController.gc.headless) return;
         if (UnityEngine.Object.FindAnyObjectByType<Hud>() != null) return;

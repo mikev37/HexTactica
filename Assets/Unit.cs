@@ -23,9 +23,11 @@ public class Unit : MonoBehaviour
     public Animator animator;
 
     public int cost;
+    [Tooltip("What the unit is and how it is meant to be used, in a few sentences: shown in the main menu's unit explorer.")]
+    [TextArea(3, 8), LooksOnly] public string description;
 
     [Header("Personal Variables")]
-    public string personal_name;
+    [LooksOnly] public string personal_name;
     [Tooltip("Can this unit act this turn")]
     public bool active;
     [Tooltip("Which player owns the vehicle")]
@@ -146,9 +148,9 @@ public class Unit : MonoBehaviour
     public int elevationMax;
 
     [Tooltip("Just for animation - for movement edit moveRange")]
-    public int moveSpeed = 10;
+    [LooksOnly] public int moveSpeed = 10;
     [Tooltip("How much health the unit appears to have (for animations so the unit doesn't die before the shot is fired)")]
-    public int StrengthDisplay;
+    [LooksOnly] public int StrengthDisplay;
 
     [Tooltip("Strength pips suppressed by indirect fire: they do not fire back if the unit is attacked again before its own turn starts, when they all come back. Never more than Strength.")]
     public int suppressed;

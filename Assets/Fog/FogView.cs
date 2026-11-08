@@ -21,6 +21,8 @@ using UnityEngine;
 public class FogView : MonoBehaviour {
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Hook() { GameScene.WhenLoaded(Spawn); }
+
     static void Spawn() {
         if (GameController.gc != null && GameController.gc.headless) return;
         if (Object.FindAnyObjectByType<FogView>() != null) return;

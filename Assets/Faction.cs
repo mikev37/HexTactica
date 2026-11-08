@@ -39,12 +39,79 @@ public class Faction : ScriptableObject {
     public List<Unit> removed = new List<Unit>();
     public List<Extra> extras = new List<Extra>();
 
+    /// <summary>
+    /// Do factions field their special units (GameController.factionSpecialUnits)? Off: a faction only changes how
+    /// units look — only its versions that are cosmetic (<see cref="Cosmetic"/>), no extras, nothing removed.
+    /// </summary>
+    public static bool SpecialUnits { get { GameController gc = GameController.gc; return gc == null || gc.factionSpecialUnits; } }
+
     /// <summary>What this faction builds in place of <paramref name="u"/>: its version, the unit itself, or null when the faction does not have it.</summary>
     public Unit Map(Unit u) {
         if (u == null) return null;
-        if (removed != null) foreach (Unit x in removed) if (Same(x, u)) return null;
-        if (replacements != null) foreach (Replacement r in replacements) if (r != null && Same(r.original, u) && r.replacement != null) return r.replacement;
+        bool special = SpecialUnits;
+        if (special && removed != null) foreach (Unit x in removed) if (Same(x, u)) return null;
+        if (replacements != null) foreach (Replacement r in replacements)
+            if (r != null && Same(r.original, u) && r.replacement != null && (special || Cosmetic(r))) return r.replacement;
         return u;
+    }
+
+    /// <summary>
+    /// A version that only looks different: its unit (the component on the prefab's top-level object) has the same
+    /// value as the original's in every attribute — every serialized number, flag, enum and text; references to
+    /// sprites, prefabs and other assets are looks and not compared. A prefab variant that changes only its art is
+    /// cosmetic; one that changes its cost, firepower, range or anything else on the unit is a special unit.
+    /// </summary>
+    public bool Cosmetic(Replacement r) {
+        if (r == null || r.original == null || r.replacement == null) return false;
+        lock (cosmetic) {
+            bool same;
+            if (!cosmetic.TryGetValue(r, out same)) cosmetic[r] = same = SameAttributes(r.original, r.replacement);
+            return same;
+        }
+    }
+    [NonSerialized] readonly Dictionary<Replacement, bool> cosmetic = new Dictionary<Replacement, bool>();
+
+    /// <summary>Is every serialized attribute of <paramref name="a"/> and <paramref name="b"/> (numbers, flags, enums, texts, and lists of them) the same? Asset references are not compared.</summary>
+    public static bool SameAttributes(Unit a, Unit b) {
+        if (a == null || b == null) return false;
+        return Differences(a, b).Count == 0;
+    }
+
+    /// <summary>The names of the serialized attributes in which <paramref name="a"/> and <paramref name="b"/> differ (see SameAttributes).</summary>
+    public static List<string> Differences(Unit a, Unit b) {
+        List<string> diff = new List<string>();
+        for (Type t = typeof(Unit); t != null && t != typeof(MonoBehaviour); t = t.BaseType)
+            foreach (System.Reflection.FieldInfo f in t.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)) {
+                if (f.IsNotSerialized || f.IsInitOnly) continue;
+                if (!f.IsPublic && f.GetCustomAttributes(typeof(SerializeField), false).Length == 0) continue;
+                if (!Comparable(f.FieldType)) continue;
+                if (f.GetCustomAttributes(typeof(LooksOnlyAttribute), false).Length > 0) continue;
+                if (!SameValue(f.GetValue(a), f.GetValue(b))) diff.Add(f.Name);
+            }
+        return diff;
+    }
+
+    /// <summary>A plain value (number, flag, enum, text, colour, vector) or a list or array of them: an attribute, not a reference to an asset.</summary>
+    static bool Comparable(Type t) {
+        if (t.IsArray) return Comparable(t.GetElementType());
+        if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(List<>)) return Comparable(t.GetGenericArguments()[0]);
+        if (typeof(UnityEngine.Object).IsAssignableFrom(t)) return false;
+        return t.IsPrimitive || t.IsEnum || t == typeof(string) || (t.IsValueType && t.Namespace == "UnityEngine");
+    }
+
+    static bool SameValue(object x, object y) {
+        if (x == null || y == null) {
+            System.Collections.IList lx = x as System.Collections.IList, ly = y as System.Collections.IList;
+            return (x == null && y == null) || (lx != null && lx.Count == 0 && y == null) || (ly != null && ly.Count == 0 && x == null)
+                || (x is string && (string)x == "" && y == null) || (y is string && (string)y == "" && x == null);
+        }
+        System.Collections.IList a = x as System.Collections.IList, b = y as System.Collections.IList;
+        if (a != null && b != null) {
+            if (a.Count != b.Count) return false;
+            for (int i = 0; i < a.Count; i++) if (!SameValue(a[i], b[i])) return false;
+            return true;
+        }
+        return x.Equals(y);
     }
 
     /// <summary>The same unit: the same prefab, or one of the same name (a unit is known by its prefab's name, as saves know it).</summary>
@@ -67,7 +134,7 @@ public class Faction : ScriptableObject {
             Unit m = f != null ? f.Map(u) : u;
             if (m != null && !list.Exists(x => Same(x, m))) list.Add(m);
         }
-        if (f != null && f.extras != null && baseList != null && baseList.Count > 0)
+        if (f != null && SpecialUnits && f.extras != null && baseList != null && baseList.Count > 0)
             foreach (Extra e in f.extras) if (e != null && e.unit != null && e.builtAt != null && e.builtAt.Contains(type) && !list.Exists(x => Same(x, e.unit))) list.Add(e.unit);
         return list;
     }
@@ -78,3 +145,10 @@ public class Faction : ScriptableObject {
         if (extras != null) foreach (Extra e in extras) if (e != null && e.unit != null) yield return e.unit;
     }
 }
+
+/// <summary>
+/// A unit field that is about how the unit is shown (a name, a description, an animation speed), not how it plays:
+/// a faction's version that differs from the base unit only in such fields is still cosmetic (Faction.Cosmetic).
+/// </summary>
+[AttributeUsage(AttributeTargets.Field)]
+public class LooksOnlyAttribute : Attribute { }

@@ -18,11 +18,12 @@ namespace UnityEngine.EventSystems {
 
 namespace UnityEngine.UI {
     public class HorizontalLayoutGroup : UnityEngine.Behaviour { public float spacing; public UnityEngine.TextAnchor childAlignment; public bool childControlWidth, childControlHeight, childForceExpandWidth, childForceExpandHeight; public UnityEngine.RectOffset padding; }
-    public class LayoutElement : UnityEngine.Behaviour { public float preferredWidth, preferredHeight, minWidth, minHeight; }
+    public class LayoutElement : UnityEngine.Behaviour { public float preferredWidth, preferredHeight, minWidth, minHeight, flexibleWidth, flexibleHeight; }
 }
 namespace TMPro {
-    public enum TextAlignmentOptions { Left, Center, Right, MidlineLeft, Midline, MidlineRight }
+    public enum TextAlignmentOptions { Left, Center, Right, MidlineLeft, Midline, MidlineRight, TopLeft, Top, TopRight }
+    public enum FontStyles { Normal = 0, Bold = 1, Italic = 2 }
     public class TMP_FontAsset : UnityEngine.Object { }
-    public class TMP_Text : UnityEngine.UI.Graphic { public string text = ""; public float fontSize; public TMP_FontAsset font; public TextAlignmentOptions alignment; public UnityEngine.RectTransform rectTransform; }
+    public class TMP_Text : UnityEngine.UI.Graphic { public string text = ""; public float fontSize; public TMP_FontAsset font; public TextAlignmentOptions alignment; public FontStyles fontStyle; public UnityEngine.RectTransform rectTransform; }
     public class TextMeshProUGUI : TMP_Text { }
 }

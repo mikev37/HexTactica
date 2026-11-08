@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using HexTactica.AI;
 using HexTactica.Testing;
 
@@ -125,6 +126,43 @@ public static class Tests {
             // PROBE=perf FILE=<path or name> [ROUNDS=r]: time every AI step (one Update's worth of work in the game).
             string f = Environment.GetEnvironmentVariable("FILE");
             Scenarios.Perf(System.IO.File.Exists(f) ? f : Scenarios.Find(f), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "1"), tweak);
+            return 0;
+        }
+        if (probe == "factions") {
+            // Which faction versions only look different (Faction.Cosmetic): what "faction special units off" keeps.
+            // (The harness does not load factions: read here from the faction assets and the unit prefabs they name.)
+            Dictionary<string, string> byGuid = new Dictionary<string, string>();
+            foreach (string m in System.IO.Directory.GetFiles(PrefabLoader.Root("Units"), "*.prefab.meta", System.IO.SearchOption.AllDirectories)) {
+                System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(System.IO.File.ReadAllText(m), @"guid: (\w+)");
+                if (g.Success) byGuid[g.Groups[1].Value] = System.IO.Path.GetFileNameWithoutExtension(System.IO.Path.GetFileNameWithoutExtension(m));
+            }
+            Func<string, Unit> unitOf = line => {
+                System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(line, @"guid: (\w+)");
+                string n; if (!g.Success || !byGuid.TryGetValue(g.Groups[1].Value, out n)) return null;
+                Unit u = PrefabLoader.Load(n); u.name = n; return u;
+            };
+            List<Faction> factions = new List<Faction>();
+            foreach (string fa in System.IO.Directory.GetFiles(PrefabLoader.Root("Factions"), "*.asset")) {
+                Faction f = new Faction(); f.name = System.IO.Path.GetFileNameWithoutExtension(fa);
+                string section = ""; Faction.Replacement r = null;
+                foreach (string line in System.IO.File.ReadAllLines(fa)) {
+                    string t = line.Trim();
+                    if (t == "replacements:" || t == "removed:" || t == "extras:" || t.StartsWith("unitlist:")) { section = t.TrimEnd(':'); continue; }
+                    if (section == "replacements" && t.StartsWith("- original:")) { r = new Faction.Replacement { original = unitOf(t) }; f.replacements.Add(r); }
+                    else if (section == "replacements" && t.StartsWith("replacement:") && r != null) r.replacement = unitOf(t);
+                    else if (section == "removed" && t.StartsWith("- {")) f.removed.Add(unitOf(t));
+                    else if (section == "extras" && t.StartsWith("- unit:")) f.extras.Add(new Faction.Extra { unit = unitOf(t) });
+                }
+                factions.Add(f);
+            }
+            foreach (Faction f in factions) {
+                Console.WriteLine(f.name + ":");
+                foreach (Faction.Replacement r in f.replacements)
+                    if (r != null && r.original != null && r.replacement != null)
+                        Console.WriteLine("  " + r.original.name + " -> " + r.replacement.name + ": " + (f.Cosmetic(r) ? "looks only" : "special (" + string.Join(", ", Faction.Differences(r.original, r.replacement).ToArray()) + ")"));
+                foreach (Faction.Extra e in f.extras) if (e != null && e.unit != null) Console.WriteLine("  extra " + e.unit.name);
+                foreach (Unit u in f.removed) if (u != null) Console.WriteLine("  removed " + u.name);
+            }
             return 0;
         }
         if (probe == "duel") {

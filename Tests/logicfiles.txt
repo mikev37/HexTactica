@@ -25,6 +25,10 @@ Resources/Units/CombatMath.cs
 Resources/Units/Transporting.cs
 Resources/Buildings/Building.cs
 Resources/Buildings/BuildingController.cs
+FrontEnd/GameScene.cs
+FrontEnd/FrontEndSettings.cs
+FrontEnd/Stats/GameRecord.cs
+FrontEnd/Stats/GameInsights.cs
 Resources/Buildings/CaptureFlag.cs
 Supply/SupplyNetwork.cs
 AI/AIHeap.cs
@@ -55,6 +59,7 @@ Harness/BaselineAI.cs
 Harness/BatchRunner.cs
 Harness/ScenarioLoader.cs
 Harness/GameLog.cs
+Harness/GameLogLines.cs
 Harness/Replay.cs
 Harness/ReplayPanel.cs
 Harness/ScenarioMirror.cs
