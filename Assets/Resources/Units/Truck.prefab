@@ -933,7 +933,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3547141541890433994, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: m_Name
-      value: Truck Variant
+      value: Truck
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: cost
@@ -946,6 +946,14 @@ PrefabInstance:
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: lower
       value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
+      propertyPath: weight
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
+      propertyPath: maxWeight
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: moveRange
