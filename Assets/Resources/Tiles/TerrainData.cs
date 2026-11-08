@@ -8,6 +8,9 @@ using UnityEngine;
 		[TextArea(3, 10)]
 		public string description;
 
+		[Tooltip("Listed in the map editor's terrain palette. Off for terrain a map is not painted with: what a building puts under itself (Urban, City, Bunker, Bridge) and what terrain turns into when damaged (stumps, damaged roads, a collapsed bridge, broken ice).")]
+		public bool inMapEditor = true;
+
 		[Header("Terrain Sprites")]
 		public Sprite upper_normal;
 		[Tooltip("Older single damage picture: used as the first damage state when Damage States is empty.")]

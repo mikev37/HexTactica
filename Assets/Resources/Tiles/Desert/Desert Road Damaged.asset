@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Desert Road Damaged
   m_EditorClassIdentifier: 
   description: Road allows for easy movement but no cover
+  inMapEditor: 0
   upper_normal: {fileID: 21300000, guid: 6c8fcdf4e55b2dc4889f519f16040de4, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

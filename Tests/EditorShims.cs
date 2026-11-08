@@ -25,6 +25,7 @@ namespace UnityEditor {
     public static class PrefabUtility { public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject g, string path) { return g; } }
     public static class EditorUtility {
         public static bool DisplayDialog(string t, string m, string ok, string cancel) { return false; }
+        public static bool DisplayDialog(string t, string m, string ok) { return true; }
         public static void SetDirty(UnityEngine.Object o) { }
         public static void RevealInFinder(string path) { }
         public static string OpenFilePanel(string title, string dir, string ext) { return ""; }
@@ -37,6 +38,7 @@ namespace UnityEditor {
         public static T LoadAssetAtPath<T>(string path) where T : UnityEngine.Object { return null; }
         public static T GetBuiltinExtraResource<T>(string path) where T : UnityEngine.Object { return null; }
         public static void CreateAsset(UnityEngine.Object o, string path) { }
+        public static bool DeleteAsset(string path) { return true; }
         public static void SaveAssets() { }
         public static void Refresh() { }
     }

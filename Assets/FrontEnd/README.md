@@ -8,15 +8,21 @@ Open the project. `Editor/FrontEndScenes.cs` makes whatever is missing, once, an
   post-game report's thresholds;
 - `Assets/FrontEnd/UnitPreview.renderTexture`: the unit explorer's picture;
 - `Assets/Scenes/MainMenu.unity`, `PreGame.unity`, `PostGame.unity`, `InGameMenu.unity`, `MapEditor.unity`;
+- `Assets/FrontEnd/Prefabs/`: the rows the screens list things in (File Row, Unit Row, Attribute Row, Side Row,
+  Palette Entry, Map Side Row). Edit a prefab to change every row of its kind;
 - the build settings: these scenes are added and MainMenu goes first, so a build starts there.
+
+Scenes made by an older version of the tool don't pick up later layout changes.
+**HexTactica ▸ Front End ▸ Rebuild Front End Scenes (overwrites)** asks first, then deletes and remakes the five
+scenes and the row prefabs. Any edits you made to them are lost; the settings asset is kept.
 
 If an untitled scene is open, it skips the scenes. Save that scene, then run **HexTactica ▸ Front End ▸ Create
 Missing Scenes**. **HexTactica ▸ Front End ▸ Open Main Menu Scene** opens the menu; press Play.
 
 The generator only makes a first layout. After that the scenes are yours to edit in Unity: restyle, move or
 replace anything. Each screen's component finds its widgets through its inspector fields, and the buttons call its
-methods through their On Click lists. Lists such as files, units, sides and palette entries copy a hidden
-**template** child. Edit the template to change every row. Nothing builds or lays out UI at run time.
+methods through their On Click lists. Lists such as files, units, sides and palette entries copy a row
+**prefab**. Nothing builds or lays out UI at run time.
 `SampleScene` still plays its own board when you open it directly, as before.
 
 ## Screens
@@ -24,10 +30,10 @@ methods through their On Click lists. Lists such as files, units, sides and pale
 | Scene | Component | What it does |
 |---|---|---|
 | MainMenu | `MainMenu` | **Load Scenario** has two tabs. Scenarios: sets one up on the pre-game screen. Saved games: continues one. **Map Editor** edits a scenario or starts a new map. **Unit Explorer** (`UnitExplorer`, `UnitPreview`) and **Options** (`OptionsPanel`) open panels. **Exit** quits. |
-| PreGame (over SampleScene) | `PreGameMenu`, `PlayerSetupRow` | Shows the scenario's board. Each side gets an **AI** toggle and a **faction**. Also **Fog of war**, **Build units** (purchases) and **Faction special units**. **Start** reloads the scenario with these choices and the game plays. |
+| PreGame (over SampleScene) | `PreGameMenu`, `PlayerSetupRow` | Shows the scenario's board. Each side gets **who plays it** (Human, AI with the default profile, or AI with a profile from `FrontEndSettings.aiProfiles`) and a **faction** (fixed if the map sets it). Also **Fog of war**, **Build units** (purchases) and **Faction special units**. **Start** reloads the scenario with these choices and the game plays. |
 | PostGame (over the game, when it ends) | `PostGameScreen` | Shows who won and **What happened**, the findings from `GameInsights`. It also has a **Units** table for each side. **View board**, **Play again** and **Main menu** close it. |
 | InGameMenu (Esc, over the game) | `InGameMenu` | **Resume**, **Save** (named, into the saves folder), **Load** a saved game, **Exit to main menu**. The game is held while it is open. |
-| MapEditor (over SampleScene) | `MapEditorPanel`, `PaletteButton` | Tools: **Look**, **Terrain** (click or drag), **Units**, **Buildings**. Placement uses the chosen side, or neutral; clicking a unit or building again removes it. Also sets the name, width (**Resize**), fog and purchases. **New**, **Load**, **Save**, **Play** (pre-game on it) and **Exit**. |
+| MapEditor (over SampleScene) | `MapEditorPanel`, `PaletteButton`, `MapPlayerRow` | Tools: **Look**, **Terrain** (click or drag), **Units** (shown by base units, one faction's, or all), **Buildings**. Placement uses the chosen side, or neutral for buildings; clicking a unit or building again removes it. **Sides**: add or remove sides, rename them, change their colour, and fix a side's faction or leave it "Any". Also sets the name, width (**Resize**), fog and purchases. **New**, **Load**, **Save**, **Play** (pre-game on it) and **Exit**. |
 
 `GameSession` is created in every game scene, never in the menus. It opens what the menu asked for (`MatchSetup`),
 loads the overlays, and holds the game while one is open (`GameController.Paused`). The HUD, turn banner, fog view,
@@ -45,6 +51,26 @@ building registry and camera rig now install only in a scene with a GameControll
   game, however many sittings it took.
 - The map editor saves to the player's folder. With `editorSavesInPlace` (off by default), it saves back over the
   file it loaded, in the editor only, and keeps that file's `test` block.
+
+## AI profiles
+
+"AI (default)" is this AI (`AIPlayer`) with no profile, so it plays `AIProfile.Default`, the built-in defaults. Each
+`AIProfile` asset listed in `FrontEndSettings.aiProfiles` adds an "AI: <profileName>" choice. The tool fills the
+list with every AIProfile asset the first time, and only while the list is empty. Assets that aren't listed can't
+be chosen. A save keeps each side's profile by its profileName (`PlayerData.aiProfile`).
+
+## Map editor palette
+
+A terrain shows its top sprite. A unit or building is drawn from its prefab's sprites, the way the HUD draws one
+(`SpritePortrait`). The terrain palette lists only terrain with `TerrainData ▸ In Map Editor` on. It is off for what
+buildings put under themselves (Urban, City, Bunker, Bridge) and for damaged forms (stumps, damaged roads, the
+collapsed bridge, broken ice).
+
+## Sides
+
+A map can have any number of sides, at least two. Sides the scene doesn't have are created when the map loads, and
+scene sides the map doesn't have are left out. A side whose faction the map fixes is saved with
+`factionLocked: true`. The HUD and turn banner are hidden in the map editor and on the pre-game screen.
 
 ## Factions: special units on or off
 

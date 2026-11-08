@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Bunker
   m_EditorClassIdentifier: 
   description: Bunker Trenches
+  inMapEditor: 0
   upper_normal: {fileID: 0}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

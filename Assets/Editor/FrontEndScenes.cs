@@ -12,10 +12,12 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Makes the front end's scenes the first time the project opens without them — MainMenu, PreGame, PostGame,
-/// InGameMenu, MapEditor in Assets/Scenes — with the FrontEndSettings asset and the unit explorer's render texture,
-/// and lists them in the build settings (MainMenu first, so a build starts there). Each scene is a starting layout
-/// in the flat art of Sprites/UI/Widgets, wired to its component (MainMenu, PreGameMenu, PostGameScreen, InGameMenu,
-/// MapEditorPanel): after that the scenes are yours to edit in Unity, and nothing here touches one that exists.
+/// InGameMenu, MapEditor in Assets/Scenes — with the FrontEndSettings asset, the unit explorer's render texture, and
+/// the prefabs of the rows the screens list things in (Assets/FrontEnd/Prefabs: a file, a unit, an attribute, a side,
+/// a palette entry, a map side), and lists the scenes in the build settings (MainMenu first, so a build starts there).
+/// Each scene is a starting layout in the flat art of Sprites/UI/Widgets, wired to its component (MainMenu,
+/// PreGameMenu, PostGameScreen, InGameMenu, MapEditorPanel): after that the scenes and prefabs are yours to edit in
+/// Unity, and nothing here touches one that exists — except "Rebuild Front End Scenes (overwrites)", which asks first.
 /// The game never builds any of this at run time.
 /// </summary>
 [InitializeOnLoad]
@@ -23,6 +25,8 @@ static class FrontEndScenes {
     const string SceneFolder = "Assets/Scenes/";
     const string SettingsPath = "Assets/Resources/" + FrontEndSettings.ResourceName + ".asset";
     const string PreviewTexturePath = "Assets/FrontEnd/UnitPreview.renderTexture";
+    const string PrefabFolder = "Assets/FrontEnd/Prefabs/";
+    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row" };
 
     static FrontEndScenes() { EditorApplication.delayCall += () => CreateMissing(false); }
 
@@ -35,13 +39,44 @@ static class FrontEndScenes {
         EditorSceneManager.OpenScene(SceneFolder + Settings().mainMenuScene + ".unity", OpenSceneMode.Single);
     }
 
+    /// <summary>
+    /// Destructive, and named so: the five front-end scenes and the row prefabs are deleted and made again from this
+    /// file's layout (your edits to them are lost). Asks first. The settings asset is kept.
+    /// </summary>
+    [MenuItem("HexTactica/Front End/Rebuild Front End Scenes (overwrites)")]
+    static void Rebuild() {
+        FrontEndSettings s = Settings();
+        string[] names = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene };
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+            foreach (string n in names)
+                if (SceneManager.GetSceneAt(i).path == SceneFolder + n + ".unity") {
+                    EditorUtility.DisplayDialog("Rebuild Front End Scenes", "Open another scene first: " + n + " is open.", "OK");
+                    return;
+                }
+        if (!EditorUtility.DisplayDialog("Rebuild Front End Scenes",
+                "Delete and make again: the scenes " + string.Join(", ", names) + " and the row prefabs in " + PrefabFolder + ". Any changes you made to them are lost.",
+                "Rebuild", "Cancel")) return;
+        foreach (string n in names) AssetDatabase.DeleteAsset(SceneFolder + n + ".unity");
+        foreach (string r in RowPrefabs) AssetDatabase.DeleteAsset(PrefabFolder + r + ".prefab");
+        CreateMissing(true);
+    }
+
     static FrontEndSettings Settings() {
         FrontEndSettings s = AssetDatabase.LoadAssetAtPath<FrontEndSettings>(SettingsPath);
-        if (s != null) return s;
-        Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath));
-        s = ScriptableObject.CreateInstance<FrontEndSettings>();
-        AssetDatabase.CreateAsset(s, SettingsPath);
-        Debug.Log("Created " + SettingsPath + " (the front end's scenes, folders and report settings).");
+        if (s == null) {
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath));
+            s = ScriptableObject.CreateInstance<FrontEndSettings>();
+            AssetDatabase.CreateAsset(s, SettingsPath);
+            Debug.Log("Created " + SettingsPath + " (the front end's scenes, folders, AI profiles and report settings).");
+        }
+        // The AI profiles a side can be played by: every AIProfile asset, if none is listed yet (a list you set is kept).
+        if (s.aiProfiles.Count == 0) {
+            foreach (string guid in AssetDatabase.FindAssets("t:AIProfile")) {
+                HexTactica.AI.AIProfile p = AssetDatabase.LoadAssetAtPath<HexTactica.AI.AIProfile>(AssetDatabase.GUIDToAssetPath(guid));
+                if (p != null && !s.aiProfiles.Contains(p)) s.aiProfiles.Add(p);
+            }
+            if (s.aiProfiles.Count > 0) { EditorUtility.SetDirty(s); Debug.Log("FrontEndSettings: listed " + s.aiProfiles.Count + " AI profile(s) for the pre-game screen."); }
+        }
         return s;
     }
 
@@ -178,7 +213,7 @@ static class FrontEndScenes {
         GameObject body = Row(units.transform, "Body", -1f, 1f);
         RectTransform list = ScrollList(body.transform, "Units", 380f, -1f);
         explorer.listContent = list;
-        explorer.rowTemplate = UnitRow(list);
+        explorer.rowTemplate = RowPrefab("Unit Row", UnitRow);
         GameObject middle = Column(body.transform, "Picture", 640f, -1f, Vector2.zero, false);
         Flexible(middle, true);
         RawImage pic = Go("Preview", middle.transform, typeof(RawImage)).GetComponent<RawImage>();
@@ -197,7 +232,17 @@ static class FrontEndScenes {
         explorer.kindLine = Text(info.transform, "Kind", "", 22, TextAlignmentOptions.Left, FontStyles.Italic);
         RectTransform attrs = ScrollList(info.transform, "Attributes", -1f, 430f);
         explorer.attributeContent = attrs;
-        explorer.attributeTemplate = AttrRow(attrs);
+        explorer.attributeTemplate = RowPrefab("Attribute Row", AttrRow);
+        explorer.dotFull = Widget("bullet");
+        explorer.dotEmpty = Widget("bullet_empty");
+        string[,] icons = {
+            { "Strength", "icon_strength" }, { "Firepower", "icon_firepower" }, { "Targeting", "icon_targeting" }, { "Evasion", "icon_evasion" },
+            { "Armor", "icon_armor" }, { "Piercing", "icon_piercing" }, { "Concealment", "icon_concealment" }, { "Move range", "icon_moverange" },
+            { "Terrain penalty", "icon_terrain" }, { "Ammunition", "icon_ammo" }, { "Fuel", "icon_fuel" }, { "Supplies", "icon_supplies" },
+            { "Attack range", "icon_targeting" }, { "Vision", "icon_concealment" }, { "Cost", "icon_building" }, { "Locomotion", "icon_move" }
+        };
+        for (int i = 0; i < icons.GetLength(0); i++)
+            explorer.icons.Add(new UnitExplorer.AttributeIcon { attribute = icons[i, 0], icon = Widget(icons[i, 1]) });
         explorer.description = Text(info.transform, "Description", "", 24, TextAlignmentOptions.TopLeft, FontStyles.Normal);
         Flexible(explorer.description.gameObject, true);
         GameObject unitButtons = Row(units.transform, "Buttons", 60f);
@@ -232,13 +277,13 @@ static class FrontEndScenes {
     static void BuildPreGame() {
         Canvas canvas = MakeCanvas("Pre-Game", 100);
         PreGameMenu m = canvas.gameObject.AddComponent<PreGameMenu>();
-        GameObject panel = SidePanel(canvas.transform, "Setup", 680f, true);
+        GameObject panel = SidePanel(canvas.transform, "Setup", 760f, true);
         m.title = Text(panel.transform, "Title", "Scenario", 40, TextAlignmentOptions.Left, FontStyles.Bold);
         m.details = Text(panel.transform, "Details", "", 22, TextAlignmentOptions.TopLeft, FontStyles.Normal);
         Text(panel.transform, "Sides", "Sides", 28, TextAlignmentOptions.Left, FontStyles.Bold);
         GameObject rows = Column(panel.transform, "Rows", -1f, -1f, Vector2.zero, false);
         m.rows = (RectTransform)rows.transform;
-        m.rowTemplate = SetupRow(rows.transform);
+        m.rowTemplate = RowPrefab("Side Row", SetupRow);
         Text(panel.transform, "Rules", "Rules", 28, TextAlignmentOptions.Left, FontStyles.Bold);
         m.fog = Tog(panel.transform, "Fog of war");
         m.build = Tog(panel.transform, "Build units (purchases at buildings)");
@@ -306,7 +351,7 @@ static class FrontEndScenes {
     static void BuildMapEditor() {
         Canvas canvas = MakeCanvas("Map Editor", 100);
         MapEditorPanel m = canvas.gameObject.AddComponent<MapEditorPanel>();
-        GameObject panel = SidePanel(canvas.transform, "Tools", 460f, true);
+        GameObject panel = SidePanel(canvas.transform, "Tools", 480f, true);
         Text(panel.transform, "Heading", "Map Editor", 34, TextAlignmentOptions.Left, FontStyles.Bold);
         GameObject tools = Row(panel.transform, "Tools", 48f);
         Btn(tools.transform, "Look", m.ToolLook, -1f, 22);
@@ -315,19 +360,33 @@ static class FrontEndScenes {
         Btn(tools.transform, "Buildings", m.ToolBuildings, -1f, 22);
         m.toolLabel = Text(panel.transform, "Tool", "", 20, TextAlignmentOptions.Left, FontStyles.Italic);
         GameObject side = Row(panel.transform, "Side", 44f);
-        Text(side.transform, "Label", "Side", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 90f, -1f));
-        m.side = Drop(side.transform, 200f);
+        m.sideRow = side;
+        Text(side.transform, "Label", "For", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 60f, -1f));
+        m.side = Drop(side.transform, 220f);
         m.neutral = Tog(side.transform, "Neutral", 22);
+        GameObject filter = Row(panel.transform, "Unit Filter", 44f);
+        m.unitFilterRow = filter;
+        Text(filter.transform, "Label", "Show", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 60f, -1f));
+        m.unitFilter = Drop(filter.transform, 300f);
         RectTransform pal = ScrollList(panel.transform, "Palette", -1f, -1f);
         Flexible(pal.GetComponentInParent<ScrollRect>().gameObject, true);
         m.palette = pal;
-        m.paletteTemplate = PaletteRow(pal);
-        GameObject name = Row(panel.transform, "Name", 48f);
-        Text(name.transform, "Label", "Name", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 90f, -1f));
+        m.paletteTemplate = RowPrefab("Palette Entry", PaletteRow);
+
+        GameObject sidesHead = Row(panel.transform, "Sides Heading", 40f);
+        Text(sidesHead.transform, "Label", "Sides", 24, TextAlignmentOptions.Left, FontStyles.Bold).gameObject.Let(g => Flexible(g));
+        Btn(sidesHead.transform, "Add side", m.AddSide, 150f, 20);
+        GameObject sides = Column(panel.transform, "Sides", -1f, -1f, Vector2.zero, false);
+        sides.GetComponent<VerticalLayoutGroup>().spacing = 4f;
+        m.sides = (RectTransform)sides.transform;
+        m.sideTemplate = RowPrefab("Map Side Row", MapSideRow);
+
+        GameObject name = Row(panel.transform, "Name", 46f);
+        Text(name.transform, "Label", "Name", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 80f, -1f));
         m.scenarioName = Field(name.transform, "Scenario name");
         Flexible(m.scenarioName.gameObject);
-        GameObject width = Row(panel.transform, "Width", 48f);
-        Text(width.transform, "Label", "Width", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 90f, -1f));
+        GameObject width = Row(panel.transform, "Width", 46f);
+        Text(width.transform, "Label", "Width", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 80f, -1f));
         m.boardWidth = Field(width.transform, "Width");
         m.boardWidth.contentType = TMP_InputField.ContentType.IntegerNumber;
         Flexible(m.boardWidth.gameObject);
@@ -343,7 +402,6 @@ static class FrontEndScenes {
         Btn(file.transform, "Exit", m.Exit, -1f, 22);
         m.status = Text(panel.transform, "Status", "", 18, TextAlignmentOptions.Left, FontStyles.Italic);
 
-
         GameObject load = Window(canvas.transform, "Load", 1100f, 760f);
         Text(load.transform, "Heading", "Load a scenario to edit", 34, TextAlignmentOptions.Left, FontStyles.Bold);
         m.loadList = FileBrowser(load.transform, "Files");
@@ -355,10 +413,27 @@ static class FrontEndScenes {
         load.SetActive(false);
     }
 
-    // ================================================================== rows (hidden templates the lists copy)
+    // ================================================================== rows (prefabs the lists copy)
+
+    /// <summary>The row prefab of this name: made from <paramref name="build"/> if it does not exist (Assets/FrontEnd/Prefabs), else the one there.</summary>
+    static T RowPrefab<T>(string name, System.Func<Transform, T> build) where T : Component {
+        string path = PrefabFolder + name + ".prefab";
+        GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        if (existing != null) return existing.GetComponent<T>();
+        Directory.CreateDirectory(PrefabFolder);
+        T made = build(null);
+        GameObject go = made.gameObject;
+        go.name = name;
+        try {
+            GameObject saved = PrefabUtility.SaveAsPrefabAsset(go, path);
+            return saved.GetComponent<T>();
+        } finally {
+            Object.DestroyImmediate(go);
+        }
+    }
 
     static FileListRow FileRow(Transform parent) {
-        GameObject g = ListRow(parent, "Row Template", 46f);
+        GameObject g = ListRow(parent, "File Row", 46f);
         FileListRow r = g.AddComponent<FileListRow>();
         r.background = g.GetComponent<Image>();
         r.button = g.GetComponent<Button>();
@@ -366,12 +441,11 @@ static class FrontEndScenes {
         Flexible(r.label.gameObject);
         r.note = Text(g.transform, "Note", "2026-01-01 12:00", 18, TextAlignmentOptions.Right, FontStyles.Italic);
         Size(r.note.gameObject, 260f, -1f);
-        g.SetActive(false);
         return r;
     }
 
     static UnitListRow UnitRow(Transform parent) {
-        GameObject g = ListRow(parent, "Row Template", 44f);
+        GameObject g = ListRow(parent, "Unit Row", 44f);
         UnitListRow r = g.AddComponent<UnitListRow>();
         r.background = g.GetComponent<Image>();
         r.button = g.GetComponent<Button>();
@@ -379,23 +453,34 @@ static class FrontEndScenes {
         Flexible(r.label.gameObject);
         r.note = Text(g.transform, "Note", "", 16, TextAlignmentOptions.Right, FontStyles.Italic);
         Size(r.note.gameObject, 140f, -1f);
-        g.SetActive(false);
         return r;
     }
 
+    /// <summary>An attribute as the HUD shows one: icon, label, then dots (a hidden dot copied per dot) or a value.</summary>
     static AttributeRow AttrRow(Transform parent) {
-        GameObject g = Row(parent, "Attribute Template", 34f);
+        GameObject g = Row(parent, "Attribute Row", 34f);
         AttributeRow r = g.AddComponent<AttributeRow>();
+        r.icon = Go("Icon", g.transform, typeof(Image)).GetComponent<Image>();
+        r.icon.preserveAspect = true;
+        Size(r.icon.gameObject, 28f, 28f);
         r.label = Text(g.transform, "Label", "Firepower", 22, TextAlignmentOptions.Left, FontStyles.Normal);
-        Flexible(r.label.gameObject);
+        Size(r.label.gameObject, 210f, -1f);
+        GameObject dots = Go("Dots", g.transform);
+        HorizontalLayoutGroup h = HLayout(dots, 0, 4f);
+        Flexible(dots);
+        r.dots = (RectTransform)dots.transform;
+        r.dotTemplate = Go("Dot", dots.transform, typeof(Image)).GetComponent<Image>();
+        r.dotTemplate.sprite = Widget("bullet");
+        r.dotTemplate.preserveAspect = true;
+        Size(r.dotTemplate.gameObject, 18f, 18f);
+        r.dotTemplate.gameObject.SetActive(false);
         r.value = Text(g.transform, "Value", "0", 22, TextAlignmentOptions.Right, FontStyles.Bold);
-        Size(r.value.gameObject, 260f, -1f);
-        g.SetActive(false);
+        Size(r.value.gameObject, 240f, -1f);
         return r;
     }
 
     static PlayerSetupRow SetupRow(Transform parent) {
-        GameObject g = Row(parent, "Side Template", 52f);
+        GameObject g = Row(parent, "Side Row", 52f);
         PlayerSetupRow r = g.AddComponent<PlayerSetupRow>();
         r.swatch = Go("Colour", g.transform, typeof(Image)).GetComponent<Image>();
         r.swatch.sprite = Widget("hex");
@@ -403,24 +488,46 @@ static class FrontEndScenes {
         Size(r.swatch.gameObject, 36f, 36f);
         r.sideName = Text(g.transform, "Name", "Blue", 26, TextAlignmentOptions.Left, FontStyles.Bold);
         Flexible(r.sideName.gameObject);
-        r.ai = Tog(g.transform, "AI", 24);
-        Size(r.ai.gameObject, 90f, 44f);
-        r.faction = Drop(g.transform, 240f);
-        g.SetActive(false);
+        r.control = Drop(g.transform, 230f);
+        r.faction = Drop(g.transform, 230f);
+        TextMeshProUGUI locked = Text(g.transform, "Fixed by the map", "fixed", 16, TextAlignmentOptions.Left, FontStyles.Italic);
+        Size(locked.gameObject, 50f, -1f);
+        r.lockedMark = locked.gameObject;
         return r;
     }
 
     static PaletteButton PaletteRow(Transform parent) {
-        GameObject g = ListRow(parent, "Palette Template", 48f);
+        GameObject g = ListRow(parent, "Palette Entry", 64f);
         PaletteButton r = g.AddComponent<PaletteButton>();
         r.background = g.GetComponent<Image>();
         r.button = g.GetComponent<Button>();
-        r.icon = Go("Icon", g.transform, typeof(Image)).GetComponent<Image>();
+        GameObject box = Go("Picture Box", g.transform);
+        Size(box, 56f, 56f);
+        r.icon = Go("Icon", box.transform, typeof(Image)).GetComponent<Image>();
         r.icon.preserveAspect = true;
-        Size(r.icon.gameObject, 40f, 40f);
+        r.icon.raycastTarget = false;
+        Fill(r.icon.rectTransform);
+        r.picture = (RectTransform)Go("Picture", box.transform).transform;
+        Fill(r.picture);
         r.label = Text(g.transform, "Name", "Grassland", 22, TextAlignmentOptions.Left, FontStyles.Normal);
         Flexible(r.label.gameObject);
-        g.SetActive(false);
+        return r;
+    }
+
+    static MapPlayerRow MapSideRow(Transform parent) {
+        GameObject g = Row(parent, "Map Side Row", 44f);
+        MapPlayerRow r = g.AddComponent<MapPlayerRow>();
+        GameObject colour = Go("Colour", g.transform, typeof(Image), typeof(Button));
+        r.swatch = colour.GetComponent<Image>();
+        r.swatch.sprite = Widget("hex");
+        r.swatch.preserveAspect = true;
+        r.colour = colour.GetComponent<Button>();
+        r.colour.targetGraphic = r.swatch;
+        Size(colour, 34f, 34f);
+        r.sideName = Field(g.transform, "Name");
+        Size(r.sideName.gameObject, 130f, 40f);
+        r.faction = Drop(g.transform, 200f);
+        r.remove = Btn(g.transform, "X", null, 40f, 20);
         return r;
     }
 
@@ -699,7 +806,7 @@ static class FrontEndScenes {
         RectTransform content = ScrollList(row.transform, "List", 640f, -1f);
         FileList list = row.AddComponent<FileList>();
         list.content = content;
-        list.rowTemplate = FileRow(content);
+        list.rowTemplate = RowPrefab("File Row", FileRow);
         GameObject detailBox = Go("Details", row.transform, typeof(Image));
         Panel(detailBox, new Color(0f, 0f, 0f, 0.25f));
         VLayout(detailBox, 16, 6f);

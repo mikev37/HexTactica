@@ -6,11 +6,14 @@ using UnityEngine.UI;
 
 /// <summary>
 /// The unit explorer (a panel of the main menu): every unit in Resources/Units in a list; the one picked shown large
-/// and animated (UnitPreview), with its attributes and its description, and buttons that step through its animations.
-/// Faction versions and extras are listed with their faction. The list rows and attribute rows are copies of hidden
-/// templates the scene holds.
+/// and animated (UnitPreview), with its attributes — as dots against the most any unit has, as the HUD shows them —
+/// its description, and buttons that step through its animations. A faction's version shows as the unit it stands in
+/// for, its faction beside it. Rows are copies of the row prefabs.
 /// </summary>
 public class UnitExplorer : MonoBehaviour {
+    [System.Serializable]
+    public class AttributeIcon { public string attribute; public Sprite icon; }
+
     [Header("List")]
     public UnitListRow rowTemplate;
     public RectTransform listContent;
@@ -33,13 +36,26 @@ public class UnitExplorer : MonoBehaviour {
     [Tooltip("Shown for the animation when the unit has none.")]
     public string noAnimation = "No animations";
 
+    [Header("Attribute dots (as the HUD's)")]
+    [Tooltip("An attribute whose largest value among all units is above this is shown as a number, not dots.")]
+    public int dotLimit = 12;
+    public Color dotOn = new Color(0.36f, 0.82f, 0.36f, 1f);
+    public Color dotOff = new Color(1f, 1f, 1f, 0.22f);
+    public Sprite dotFull, dotEmpty;
+    [Tooltip("The icon shown beside each attribute, by its label.")]
+    public List<AttributeIcon> icons = new List<AttributeIcon>();
+
     readonly List<UnitListRow> rows = new List<UnitListRow>();
     readonly List<AttributeRow> attributes = new List<AttributeRow>();
+    readonly Dictionary<string, int> most = new Dictionary<string, int>();
     Unit picked;
 
+    /// <summary>An attribute: a number (shown as dots or a number), or a text.</summary>
+    struct Attr { public string name; public int v; public string text; }
+
     void Awake() {
-        if (rowTemplate != null) rowTemplate.gameObject.SetActive(false);
-        if (attributeTemplate != null) attributeTemplate.gameObject.SetActive(false);
+        if (rowTemplate != null && rowTemplate.gameObject.scene.IsValid()) rowTemplate.gameObject.SetActive(false);
+        if (attributeTemplate != null && attributeTemplate.gameObject.scene.IsValid()) attributeTemplate.gameObject.SetActive(false);
     }
 
     void OnEnable() {
@@ -51,30 +67,27 @@ public class UnitExplorer : MonoBehaviour {
     void OnDisable() { if (preview != null) preview.Clear(); }
 
     void Fill() {
+        List<Unit> all = GameAssets.AllUnits.Where(x => x != null && !hidden.Contains(x.name)).ToList();
+        // The most any unit has of each attribute: the dots' full row.
+        foreach (Unit u in all) foreach (Attr a in Attributes(u)) if (a.text == null) { int m; most.TryGetValue(a.name, out m); most[a.name] = Mathf.Max(m, a.v); }
         if (rowTemplate == null || listContent == null) return;
-        foreach (Unit u in GameAssets.AllUnits.Where(x => x != null && !hidden.Contains(x.name)).OrderBy(x => FactionOf(x) != null ? 1 : 0).ThenBy(x => x.name)) {
+        foreach (Unit u in all.OrderBy(x => UnitCatalog.FactionOf(x) != null ? 1 : 0).ThenBy(UnitCatalog.DisplayName).ThenBy(x => x.name)) {
             UnitListRow row = Instantiate(rowTemplate, listContent);
             row.gameObject.SetActive(true);
             row.name = u.name;
-            Faction f = FactionOf(u);
-            row.Show(u, f != null ? f.name : "", rowColor);
+            Faction f = UnitCatalog.FactionOf(u);
+            row.Show(u, UnitCatalog.DisplayName(u), f != null ? f.name : "", rowColor);
             Unit unit = u;
             if (row.button != null) row.button.onClick.AddListener(() => Pick(unit));
             rows.Add(row);
         }
     }
 
-    /// <summary>The faction that fields this unit as its own (a version or an extra), or null for a base unit.</summary>
-    static Faction FactionOf(Unit u) {
-        foreach (Faction f in GameAssets.AllFactions) foreach (Unit own in f.OwnUnits()) if (own == u) return f;
-        return null;
-    }
-
     public void Pick(Unit u) {
         picked = u;
         foreach (UnitListRow r in rows) if (r != null) r.Highlight(r.Unit == u ? pickedColor : rowColor);
         if (u == null) return;
-        if (unitName != null) unitName.text = u.name;
+        if (unitName != null) unitName.text = UnitCatalog.DisplayName(u);
         if (kindLine != null) kindLine.text = KindLine(u);
         if (description != null) description.text = string.IsNullOrEmpty(u.description) ? noDescription : u.description;
         ShowAttributes(u);
@@ -88,59 +101,62 @@ public class UnitExplorer : MonoBehaviour {
                 if (r != null && r.replacement == u && r.original != null) {
                     if (f.Cosmetic(r)) return f.name + "'s look for the " + r.original.name + " (plays the same)";
                     List<string> diff = Faction.Differences(r.original, u).Take(6).ToList();
-                    return f.name + "'s version of the " + r.original.name + ": a special unit (differs in " + string.Join(", ", diff.ToArray()) + ")";
+                    return f.name + " only: its special version of the " + r.original.name + " (differs in " + string.Join(", ", diff.ToArray()) + ")";
                 }
             if (f.extras != null) foreach (Faction.Extra e in f.extras)
                 if (e != null && e.unit == u) return f.name + " only: a special unit" + (e.builtAt != null && e.builtAt.Count > 0 ? ", built at " + string.Join(", ", e.builtAt.Select(b => b.ToString()).ToArray()) : "");
         }
-        return "A base unit: every side can field it" + RemovedBy(u);
-    }
-
-    static string RemovedBy(Unit u) {
         List<string> lacking = new List<string>();
         foreach (Faction f in GameAssets.AllFactions) if (f.removed != null && f.removed.Contains(u)) lacking.Add(f.name);
-        return lacking.Count > 0 ? " (but not " + string.Join(", ", lacking.ToArray()) + ")" : ".";
+        return "A base unit: every side can field it" + (lacking.Count > 0 ? " (but not " + string.Join(", ", lacking.ToArray()) + ")" : ".");
     }
 
     void ShowAttributes(Unit u) {
         foreach (AttributeRow r in attributes) if (r != null) Destroy(r.gameObject);
         attributes.Clear();
         if (attributeTemplate == null || attributeContent == null) return;
-        foreach (KeyValuePair<string, string> a in Attributes(u)) {
+        foreach (Attr a in Attributes(u)) {
             AttributeRow row = Instantiate(attributeTemplate, attributeContent);
             row.gameObject.SetActive(true);
-            row.Show(a.Key, a.Value);
+            Sprite pic = IconFor(a.name);
+            int cap;
+            if (a.text != null) row.ShowText(pic, a.name, a.text);
+            else if (most.TryGetValue(a.name, out cap) && cap > 0 && cap <= dotLimit && a.v > 0) row.ShowDots(pic, a.name, a.v, cap, dotOn, dotOff, dotFull, dotEmpty);
+            else row.ShowText(pic, a.name, a.v.ToString("N0"));
             attributes.Add(row);
         }
     }
 
-    /// <summary>What the unit is, in the terms the game uses: cost, strength, combat, movement, vision, supplies, and its special rules.</summary>
-    static List<KeyValuePair<string, string>> Attributes(Unit u) {
-        List<KeyValuePair<string, string>> a = new List<KeyValuePair<string, string>>();
-        System.Action<string, object> add = (k, v) => a.Add(new KeyValuePair<string, string>(k, v.ToString()));
-        add("Cost", u.cost.ToString("N0"));
-        add("Strength", u.Strength);
-        add("Firepower", u.Firepower);
-        add("Targeting", u.Targeting);
-        add("Evasion", u.Evasion);
-        add("Armor", u.Armor);
-        add("Piercing", u.Piercing);
-        add("Concealment", u.Concealment);
-        if (u.Vulnerability != 0) add("Vulnerability", u.Vulnerability);
-        add("Attack range", u.MinRange > 1 ? u.MinRange + "–" + u.AttackRange : u.AttackRange.ToString());
-        add("Moves and attacks", u.moveAndAttack ? "yes" : "no (move or attack)");
-        if (!u.retaliates) add("Returns fire", "no");
-        if (u.ignoresCover) add("Ignores cover", "yes");
-        add("Locomotion", u.locomotion);
-        add("Move range", u.moveRange);
-        if (u.terrainScramble != 0) add("Terrain penalty", u.terrainScramble);
-        if (u.amphibious) add("Amphibious", "yes");
-        add("Vision", u.visionRange);
-        if (u.stealthRange > 0) add("Stealth", "unseen from " + u.stealthRange + " tiles");
-        if (u.ammoMax > 0) add("Ammunition", u.ammoMax + (u.ammoPerShot != 1 ? " (" + u.ammoPerShot + " a shot)" : ""));
-        if (u.fuelMax > 0) add("Fuel", u.fuelMax + (u.minFuelPerTurn > 0 ? " (" + u.minFuelPerTurn + " a turn)" : ""));
-        if (u.suppliesMax > 0) add("Supplies", u.suppliesMax);
-        if (u.airTanker) add("Air tanker", "refuels aircraft beside it");
+    Sprite IconFor(string attribute) { AttributeIcon i = icons.Find(x => x.attribute == attribute); return i != null ? i.icon : null; }
+
+    /// <summary>What the unit is, in the terms the game uses; an attribute it has none of (0, or a rule it lacks) is left out.</summary>
+    static List<Attr> Attributes(Unit u) {
+        List<Attr> a = new List<Attr>();
+        System.Action<string, int> num = (k, v) => { if (v != 0) a.Add(new Attr { name = k, v = v }); };
+        System.Action<string, string> text = (k, v) => a.Add(new Attr { name = k, text = v });
+        text("Cost", u.cost.ToString("N0"));
+        num("Strength", u.Strength);
+        num("Firepower", u.Firepower);
+        num("Targeting", u.Targeting);
+        num("Evasion", u.Evasion);
+        num("Armor", u.Armor);
+        num("Piercing", u.Piercing);
+        num("Concealment", u.Concealment);
+        num("Vulnerability", u.Vulnerability);
+        if (u.AttackRange > 0) text("Attack range", u.MinRange > 1 ? u.MinRange + "–" + u.AttackRange : u.AttackRange.ToString());
+        num("Move range", u.moveRange);
+        num("Terrain penalty", u.terrainScramble);
+        num("Vision", u.visionRange);
+        num("Stealth", u.stealthRange);
+        num("Ammunition", u.ammoMax);
+        num("Fuel", u.fuelMax);
+        num("Supplies", u.suppliesMax);
+        text("Locomotion", u.locomotion.ToString());
+        if (u.AttackRange > 0) text("Moves and attacks", u.moveAndAttack ? "Yes" : "Move or attack");
+        if (u.AttackRange > 0 && !u.retaliates) text("Returns fire", "No");
+        if (u.ignoresCover) text("Ignores cover", "Yes");
+        if (u.amphibious) text("Amphibious", "Yes");
+        if (u.airTanker) text("Air tanker", "Refuels aircraft beside it");
         return a;
     }
 

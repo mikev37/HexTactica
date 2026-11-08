@@ -34,6 +34,17 @@ public class FrontEndSettings : ScriptableObject {
     [Tooltip("In the editor, the map editor saves a scenario back where it was loaded from (Assets/Resources/Scenarios); off, always to the user scenario folder.")]
     public bool editorSavesInPlace = true;
 
+    [Header("AI")]
+    [Tooltip("The AI profiles a side can be played by (the pre-game screen's list, after \"AI (default)\"). A save names a side's profile by its profileName, found here.")]
+    public List<HexTactica.AI.AIProfile> aiProfiles = new List<HexTactica.AI.AIProfile>();
+
+    /// <summary>The profile of this name (profileName, else the asset's name) among aiProfiles; null (the AI's default) for "" or one not listed.</summary>
+    public HexTactica.AI.AIProfile Profile(string name) {
+        if (string.IsNullOrEmpty(name)) return null;
+        foreach (HexTactica.AI.AIProfile p in aiProfiles) if (p != null && (p.profileName == name || p.name == name)) return p;
+        return null;
+    }
+
     [Header("Game")]
     [Tooltip("Opens and closes the in-game menu.")]
     public KeyCode menuKey = KeyCode.Escape;

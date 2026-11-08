@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Snow Pine Stump
   m_EditorClassIdentifier: 
   description: A Pine Forest
+  inMapEditor: 0
   upper_normal: {fileID: 21300000, guid: 176eb3b7990bb91489277c3c5b557dcf, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}
