@@ -3,7 +3,8 @@ using UnityEngine;
 /// <summary>
 /// Colours this sprite in its owner's colour, keeping its own opacity: a unit's owner, or a
 /// building's (put it on any sprite under a unit or a building). A building nobody holds takes
-/// <see cref="neutral"/>; it recolours when the building changes hands.
+/// <see cref="neutral"/>; it recolours when the building changes hands. A destroyed building's is hidden
+/// (nobody owns ruins).
 /// </summary>
 public class ColorObjectUnit : MonoBehaviour
 {
@@ -26,6 +27,9 @@ public class ColorObjectUnit : MonoBehaviour
     void Update()
     {
         if (render == null) return;
+        bool ruin = building != null && building.Destroyed;
+        if (render.enabled == ruin) render.enabled = !ruin;
+        if (ruin) return;
         // A building's owner as the screen shows it (under fog of war, as last seen).
         Player owner = unit != null ? unit.owner : building != null ? FogOfWar.ShownOwner(building) : null;
         Color pc = owner != null ? owner.displayColor : neutral;

@@ -30,8 +30,16 @@ public class HudRow : MonoBehaviour {
     /// (a move cost), drawn red however it is signed.
     /// </summary>
     public void Set(int v, int cap, bool badWhenPositive, Hud hud) {
+        Draw(v, cap, badWhenPositive, hud, cap > 0 && cap < hud.bulletLimit);
+    }
+
+    /// <summary>The value as bullets whatever its cap (a unit's attributes: Hud.attributeDots).</summary>
+    public void SetDots(int v, int cap, bool badWhenPositive, Hud hud) {
+        Draw(v, Mathf.Max(cap, Mathf.Abs(v)), badWhenPositive, hud, true);
+    }
+
+    void Draw(int v, int cap, bool badWhenPositive, Hud hud, bool asBullets) {
         Show(true);
-        bool asBullets = cap > 0 && cap < hud.bulletLimit;
         string key = v + "/" + cap + "/" + badWhenPositive + "/" + asBullets;
         if (key == shown) return;
         shown = key;

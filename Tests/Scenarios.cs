@@ -477,7 +477,7 @@ public static class Scenarios {
         make("rule-capture-on-action", "captureOnAction", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 2, 0); },
              "A Blue grunt (6) that ends its move on a neutral City captures there and then (6 Blue before the turn ends), and not again as the turn ends; standing there through its next turn it takes it.");
         make("rule-neutral-decay", "decay", (a, o) => { Building c = Rig.PlaceBuilding("City", null, 0, 0); c.capturingPlayer = o; c.capturePoints = 4; Put("Grunt", o, 3, 0); },
-             "A neutral City with 4 Red progress and no Red infantry on it: 2 after Red's turn. An owned building nobody is taking has nothing to decay.");
+             "A neutral City with 4 Red progress and no Red infantry on it: lost (0, nobody capturing) after Red's turn. An owned building nobody is taking has nothing to lose.");
         make("rule-hq-standard", "hqStandard", (a, o) => { Put("Grunt", o, -6, 0); },
              "Standard rules: a Red grunt (6) on Blue's HQ (10). Two Red turns take it (6, then 12): Blue has lost.");
         make("attrition-rule-hq", "attritionHQ", (a, o) => { Put("Grunt", o, -6, 0); Put("Grunt", a, -3, 2); },
@@ -764,7 +764,7 @@ public static class Scenarios {
             }
             case "decay": {
                 endTurn(); endTurn();
-                bool ok = at00.owner == null && at00.capturePoints == 2;
+                bool ok = at00.owner == null && at00.capturePoints == 0 && at00.capturingPlayer == null;
                 Building hq = GameController.HQOf(a);
                 int before = hq.capturePoints;
                 endTurn(); endTurn();

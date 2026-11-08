@@ -31,7 +31,7 @@ public enum BuildingType {
 ///     first. At CaptureThreshold (10) it changes hands straight to the capturer, progress cleared.
 ///   - Another side starting on it starts again from 0 (the earlier progress is lost).
 ///   - The owner's infantry on it brings a capturer's progress down by its strength.
-///   - Progress decays by 2 at the end of the capturing side's turn when it did not capture there.
+///   - Progress is lost (back to 0) at the end of the capturing side's turn when none of its infantry captured there.
 ///   - The HQ: losing it ends the game under standard rules; under attrition it cannot be captured.
 ///
 /// Supply: a building that produces supply is a relay when it is connected to its owner's network
@@ -268,12 +268,18 @@ public class Building : MonoBehaviour {
     }
 
     /// <summary>
-    /// 0..1: how far up its pole the flag stands. Held: full, coming down as someone takes it; neutral: the
-    /// capturer's progress (CaptureFlag shows it as the viewer last saw it).
+    /// 0..1: how far up its pole the flag stands. Being taken: the capturer's flag, at its progress (half way: half-mast),
+    /// whether the building is held or neutral; held with nobody taking it: the owner's, at the top; neutral: at the foot.
+    /// CaptureFlag shows it as the viewer last saw it.
     /// </summary>
     public static float FlagHeightOf(Player shownOwner, Player capturing, int points, int threshold) {
-        float p = capturing != null ? Mathf.Clamp01(points / (float)Mathf.Max(1, threshold)) : 0f;
-        return shownOwner != null ? 1f - p : p;
+        if (capturing != null && points > 0) return Mathf.Clamp01(points / (float)Mathf.Max(1, threshold));
+        return shownOwner != null ? 1f : 0f;
+    }
+
+    /// <summary>Whose colour the flag flies: the capturer's while it is being taken, else the owner's (null: neutral).</summary>
+    public static Player FlagColourOf(Player shownOwner, Player capturing, int points) {
+        return capturing != null && points > 0 ? capturing : shownOwner;
     }
 
 
@@ -365,7 +371,7 @@ public class Building : MonoBehaviour {
     /// <summary>
     /// End of <paramref name="side"/>'s turn (GameController, before the turn passes): its infantry standing on a
     /// building it has not captured this turn (it never acted, or got there without ending an action there) captures
-    /// now; progress <paramref name="side"/> made somewhere it did not capture this turn decays.
+    /// now; progress <paramref name="side"/> made somewhere it did not capture this turn is lost.
     /// </summary>
     public static void ResolveCaptures(Player side) {
         if (side == null) return;
@@ -383,11 +389,11 @@ public class Building : MonoBehaviour {
             Apply(side, u.Strength);
             return;
         }
-        // Progress fades when the side making it has not kept at it.
+        // Progress is lost when no unit of the side making it ended its turn capturing here.
         if (capturingPlayer == side && capturePoints > 0) {
             int before = capturePoints;
-            capturePoints = Mathf.Max(0, capturePoints - 2);
-            if (capturePoints == 0) capturingPlayer = null;
+            capturePoints = 0;
+            capturingPlayer = null;
             if (Captured != null) Captured(this, side, before, capturePoints);
         }
     }

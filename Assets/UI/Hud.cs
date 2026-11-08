@@ -35,6 +35,10 @@ public class Hud : MonoBehaviour {
     [Tooltip("Whether the details start open.")]
     public bool detailsOpen;
     public HudRow firepower, evasion, targeting, armor, piercing, concealment, moveRange, terrain, elevationMin, elevationMax;
+    [Tooltip("A transport's room: slots taken of its slots. Shown only for a transport.")]
+    public HudRow cargo;
+    [Tooltip("Bullets drawn for an attribute in the details (filled for its value, empty for the rest); a bigger value draws as many as it is.")]
+    public int attributeDots = 5;
 
     [Header("Tile panel (bottom left)")]
     public GameObject tilePanel;
@@ -51,6 +55,10 @@ public class Hud : MonoBehaviour {
     public HudRow capture;
     [Tooltip("A supply building's store (a forward base): the turns of supply it can give while cut off from the HQ, of the most it holds. Shown only for such a building, and under fog only while it is in sight. Left unset in an older prefab, it is made below the Owner row.")]
     public HudRow store;
+    [Tooltip("The Owner row's value for a building nobody holds.")]
+    public string neutralText = "Neutral";
+    [Tooltip("The Owner row's value for a destroyed building (nobody owns ruins).")]
+    public string ruinsText = "Ruins";
 
     [Header("Look")]
     [Tooltip("Values whose cap is below this are drawn as bullets; the rest as numbers.")]
@@ -120,13 +128,14 @@ public class Hud : MonoBehaviour {
             Attr(terrain, u.terrainScramble);
             Attr(elevationMin, u.elevationMin);
             Attr(elevationMax, u.elevationMax);
+            if (cargo != null) { if (u.transportSlots > 0) cargo.SetDots(Transporting.CarriedWeight(u), u.transportSlots, false, this); else cargo.Show(false); }
         }
     }
 
     /// <summary>An attribute's row: its value, or hidden when it is 0.</summary>
     void Attr(HudRow row, int v) {
         if (row == null) return;
-        if (v == 0) row.Show(false); else row.SetText(v.ToString(), text);
+        if (v == 0) row.Show(false); else row.SetDots(v, attributeDots, false, this);
     }
 
     /// <summary>The More / Less button.</summary>
@@ -151,7 +160,8 @@ public class Hud : MonoBehaviour {
         if (road != null) road.Show(false);
         if (owner != null) {
             Player bo = b != null ? FogOfWar.ShownOwner(b) : null;   // under fog of war, as last seen
-            if (b != null) owner.SetText(bo != null ? bo.personal_name : "Neutral", bo != null ? bo.displayColor : text);
+            if (b != null && b.Destroyed) owner.SetText(ruinsText, text);
+            else if (b != null) owner.SetText(bo != null ? bo.personal_name : neutralText, bo != null ? bo.displayColor : text);
             else owner.Show(false);
         }
         ShowCapture(b);
