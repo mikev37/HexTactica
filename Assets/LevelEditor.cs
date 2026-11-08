@@ -34,6 +34,9 @@ public class LevelEditor : MonoBehaviour
     void Update()
     {
         // The keys and the HexTactica menu go the same way: SaveBoard, and ScenarioLoader.LoadBoardFromPath.
+        // Not while a menu is open over the game (the map editor, the in-game menu): their own buttons save and load,
+        // and a name typed there would hit the keys.
+        if (GameController.Paused) return;
         if (Input.GetKeyDown("s")) SaveBoard(QuickSavePath);
         if (Input.GetKeyDown("l")) HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(QuickSavePath);
     }
@@ -75,6 +78,8 @@ public class LevelEditor : MonoBehaviour
             json += ",\n\"purchases\":\"" + GameController.gc.PurchasesSetting + "\",\n\"allowedUnits\":\"" + GameController.gc.AllowedUnitsSetting + "\"";
             // Fog of war (GameController inspector).
             json += ",\n\"fog\":\"" + GameController.gc.FogSetting + "\"";
+            // Faction special units (GameController inspector, the pre-game screen).
+            json += ",\n\"factionSpecialUnits\":\"" + GameController.gc.SpecialUnitsSetting + "\"";
         }
         if (BuildingController.bc != null && BuildingController.bc.buildings.Count > 0) {
             json += ",\n";

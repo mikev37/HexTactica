@@ -39,6 +39,7 @@ namespace UnityEngine {
         public static void Destroy(Object o, float t) { MainThreadOnly.Check("Destroy"); }
         public static void DestroyImmediate(Object o) { MainThreadOnly.Check("DestroyImmediate"); }
         public static T Instantiate<T>(T o, Transform p) where T : Object { return GameObject.Instantiate(o, p); }
+        public static T Instantiate<T>(T o, Transform p, bool worldPositionStays) where T : Object { return GameObject.Instantiate(o, p); }
         public static T FindObjectOfType<T>() where T : class { return null; }
         public static T FindAnyObjectByType<T>() where T : class { return null; }
     }
@@ -116,15 +117,43 @@ namespace UnityEngine {
         public Bounds(Vector3 c, Vector3 size) { center = c; extents = new Vector3(size.x / 2, size.y / 2, size.z / 2); }
         public Vector3 size { get { return new Vector3(extents.x * 2, extents.y * 2, extents.z * 2); } }
         public void Encapsulate(Vector3 p) { }
+        public void Encapsulate(Bounds b) { }
         public void Expand(float a) { }
     }
     public class Camera : Component {
         public static Camera main;
         public bool orthographic;
         public float orthographicSize, aspect;
+        public CameraClearFlags clearFlags;
+        public Color backgroundColor;
+        public RenderTexture targetTexture;
         public Vector3 ScreenToWorldPoint(Vector3 p) { return p; }
     }
     public enum RuntimeInitializeLoadType { AfterSceneLoad, BeforeSceneLoad }
+    public enum CameraClearFlags { Skybox = 1, SolidColor = 2, Depth = 3, Nothing = 4 }
+    public class RenderTexture : Texture { public RenderTexture(int w, int h, int depth) { } }
+    public struct Vector2Int { public int x, y; public Vector2Int(int x, int y) { this.x = x; this.y = y; } }
+    public struct Resolution { public int width, height; }
+    public class AudioListener : Behaviour { public static float volume = 1f; }
+    public static class QualitySettings {
+        public static string[] names { get { return new string[0]; } }
+        public static int vSyncCount;
+        public static int GetQualityLevel() { return 0; }
+        public static void SetQualityLevel(int i, bool expensive) { }
+    }
+    public static class PlayerPrefs {
+        public static bool HasKey(string k) { return false; }
+        public static float GetFloat(string k, float d) { return d; }
+        public static int GetInt(string k) { return 0; }
+        public static int GetInt(string k, int d) { return d; }
+        public static void SetFloat(string k, float v) { }
+        public static void SetInt(string k, int v) { }
+        public static void Save() { }
+    }
+    public class Motion : Object { }
+    public class AnimationClip : Motion { public float length; public bool isLooping; public void SampleAnimation(GameObject g, float t) { } }
+    public class RuntimeAnimatorController : Object { public AnimationClip[] animationClips { get { return new AnimationClip[0]; } } }
+    public class ParticleSystemRenderer : Renderer { }
     [AttributeUsage(AttributeTargets.Method)] public class RuntimeInitializeOnLoadMethodAttribute : Attribute {
         public RuntimeInitializeOnLoadMethodAttribute() { }
         public RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType t) { }
@@ -177,6 +206,7 @@ namespace UnityEngine {
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
         public T[] GetComponents<T>() where T : class { return gameObject.GetComponents<T>(); }
         public T AddComponent<T>() where T : class, new() { return gameObject.AddComponent<T>(); }
+        public string tag { get { return gameObject.tag; } set { gameObject.tag = value; } }
     }
 
     public class Behaviour : Component { public bool enabled = true; }
@@ -209,6 +239,12 @@ namespace UnityEngine {
 
         public GameObject() { }
         public GameObject(string n) { name = n; }
+        public GameObject(string n, params Type[] components) { name = n; foreach (Type t in components) AddComponent(t); }
+        public Component AddComponent(Type t) { Component c = (Component)Activator.CreateInstance(t); Attach(c); return c; }
+        public T GetComponentInChildren<T>(bool includeInactive) where T : class { return GetComponent<T>(); }
+        public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return GetComponents<T>(); }
+        public int layer;
+        public string tag = "Untagged";
 
         public Transform transform {
             get {
@@ -289,7 +325,7 @@ namespace UnityEngine {
         public void SetPixels(Color[] c) { }
         public void Apply() { }
     }
-    public class Renderer : Component { public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
+    public class Renderer : Component { public Bounds bounds; public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
     public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } public static int GetLayerValueFromID(int id) { return 0; } public static string IDToName(int id) { return "Default"; } }
     public class SpriteRenderer : Renderer {
         public Sprite sprite; public Color color;
@@ -334,6 +370,7 @@ namespace UnityEngine {
     public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; public static void ForceUpdateCanvases() { } }
     public class CanvasGroup : Behaviour { public float alpha = 1f; public bool blocksRaycasts = true, interactable = true; }
     public class Animator : Behaviour {
+        public RuntimeAnimatorController runtimeAnimatorController;
         public void SetBool(string s, bool b) { }
         public void SetTrigger(string s) { }
         public AnimatorControllerParameter[] parameters { get { return new AnimatorControllerParameter[0]; } }
@@ -356,7 +393,12 @@ namespace UnityEngine {
         public static int errors;
         public static void LogError(object o) { System.Threading.Interlocked.Increment(ref errors); Console.WriteLine("[error] " + o); }
     }
-    public static class Screen { public static int width { get { return 1920; } } public static int height { get { return 1080; } } }
+    public static class Screen {
+        public static int width { get { return 1920; } } public static int height { get { return 1080; } }
+        public static bool fullScreen;
+        public static Resolution[] resolutions { get { return new Resolution[0]; } }
+        public static void SetResolution(int w, int h, bool full) { }
+    }
     public static class GUI {
         public static bool enabled = true;
         public static Color color = Color.white;
@@ -413,6 +455,9 @@ namespace UnityEngine {
         public static string dataPath { get { return "/tmp/hextactica"; } }
         public static bool isPlaying { get { return true; } }
         public static bool isFocused { get { return true; } }
+        public static bool isEditor { get { return false; } }
+        public static string streamingAssetsPath { get { return "/tmp/hextactica/StreamingAssets"; } }
+        public static void Quit() { }
     }
     public static class JsonUtility {
         public static string ToJson(object o) { return "{}"; }
@@ -447,7 +492,7 @@ namespace UnityEngine {
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class RangeAttribute : Attribute { public RangeAttribute(float a, float b) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class TextAreaAttribute : Attribute { public TextAreaAttribute(int a, int b) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class CreateAssetMenuAttribute : Attribute { public string menuName; public string fileName; }
-    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class SerializeFieldAttribute : Attribute { }
+    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class SerializeField : Attribute { }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class HideInInspectorAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class SpaceAttribute : Attribute { public SpaceAttribute() { } public SpaceAttribute(float f) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class ContextMenuAttribute : Attribute { public ContextMenuAttribute(string s) { } }
@@ -462,13 +507,53 @@ namespace UnityEngine {
     public class Font : Object { }
     public enum TextAnchor { UpperLeft, UpperCenter, UpperRight, MiddleLeft, MiddleCenter, MiddleRight, LowerLeft, LowerCenter, LowerRight }
 }
-namespace UnityEngine.Events { public delegate void UnityAction(); }
+namespace UnityEngine.Events {
+    public delegate void UnityAction();
+    public delegate void UnityAction<T0>(T0 a);
+    public delegate void UnityAction<T0, T1>(T0 a, T1 b);
+    public abstract class UnityEventBase { public int GetPersistentEventCount() { return 0; } }
+    public class UnityEvent : UnityEventBase {
+        UnityAction calls;
+        public void AddListener(UnityAction a) { calls += a; }
+        public void RemoveListener(UnityAction a) { calls -= a; }
+        public void RemoveAllListeners() { calls = null; }
+        public void Invoke() { if (calls != null) calls(); }
+    }
+    public class UnityEvent<T0> : UnityEventBase {
+        UnityAction<T0> calls;
+        public void AddListener(UnityAction<T0> a) { calls += a; }
+        public void RemoveAllListeners() { calls = null; }
+        public void Invoke(T0 v) { if (calls != null) calls(v); }
+    }
+}
+namespace UnityEngine.SceneManagement {
+    public enum LoadSceneMode { Single, Additive }
+    public struct Scene {
+        public string name { get { return ""; } }
+        public string path { get { return ""; } }
+        public bool isLoaded { get { return false; } }
+        public bool IsValid() { return false; }
+    }
+    public static class SceneManager {
+        public static event UnityEngine.Events.UnityAction<Scene, LoadSceneMode> sceneLoaded;
+        public static int sceneCount { get { return 0; } }
+        public static Scene GetSceneAt(int i) { return new Scene(); }
+        public static Scene GetActiveScene() { return new Scene(); }
+        public static bool SetActiveScene(Scene s) { return true; }
+        public static Scene GetSceneByName(string n) { return new Scene(); }
+        public static void LoadScene(string n, LoadSceneMode m) { if (sceneLoaded != null) sceneLoaded(new Scene(), m); }
+        public static UnityEngine.AsyncOperation UnloadSceneAsync(Scene s) { return null; }
+    }
+}
+namespace UnityEngine { public class AsyncOperation { } }
 namespace UnityEngine.UI {
-    public class ButtonClickedEvent { public void AddListener(UnityEngine.Events.UnityAction a) { } public void RemoveAllListeners() { } }
+    public class ButtonClickedEvent : UnityEngine.Events.UnityEvent { }
+    public struct ColorBlock { public UnityEngine.Color normalColor, highlightedColor, pressedColor, selectedColor, disabledColor; }
+    public class Selectable : UnityEngine.Behaviour { public Graphic targetGraphic; public bool interactable = true; public ColorBlock colors; }
     public class Graphic : UnityEngine.Behaviour { public UnityEngine.Color color; public bool raycastTarget; }
     public class Text : Graphic { string _text = ""; public string text { get { UnityEngine.MainThreadOnly.Check("Text.get_text"); return _text; } set { UnityEngine.MainThreadOnly.Check("Text.set_text"); _text = value; } } public int fontSize; public UnityEngine.Font font; public UnityEngine.TextAnchor alignment; }
     public class Image : Graphic { public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public UnityEngine.Sprite sprite; public bool preserveAspect; public UnityEngine.RectTransform rectTransform; }
-    public class Button : UnityEngine.Behaviour { public Graphic targetGraphic; public bool interactable = true; public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
+    public class Button : Selectable { public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
 }
 
 namespace UnityEditor {

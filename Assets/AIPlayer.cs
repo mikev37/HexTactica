@@ -134,6 +134,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     void Update() {
         if (GameController.gc == null || GameController.gc.headless) return;
         if (GameController.gc.gameOver) return;
+        if (GameController.Paused) return;   // a menu is open over the game
         if (LevelEditor.singleton != null &&
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
         if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; Abandon(); MaybeSpeculate(); return; }

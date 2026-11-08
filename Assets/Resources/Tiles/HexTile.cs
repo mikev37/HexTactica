@@ -399,10 +399,13 @@ public class HexTile : MonoBehaviour
     }
 
 	public void OnMouseOver() {
-		if (LevelEditor.singleton.mouseDown) {
+		if (LevelEditor.singleton.mouseDown && !OverUI()) {
             WorldEdit();
         }
     }
+
+    /// <summary>The pointer is over a panel (the map editor's, a menu's): a click there is the panel's, not the board's.</summary>
+    static bool OverUI() { return TransportMenu.PointerOverUI != null && TransportMenu.PointerOverUI(); }
 
 	public void OnMouseUp() {
         LevelEditor.singleton.mouseDown = false;
@@ -413,10 +416,11 @@ public class HexTile : MonoBehaviour
 
 	public void OnMouseDown() {
         if (HexTactica.Harness.Replay.Active) return;   // a replay: the board is only watched
+        if (OverUI()) return;   // the map editor's panel or a menu over the board
         WorldEdit();
         if (LevelEditor.singleton.editing) {
             LevelEditor.singleton.mouseDown = true;
-		} else if(!LevelEditor.singleton.unit_placement && !LevelEditor.singleton.building_placement) { 
+		} else if(!LevelEditor.singleton.unit_placement && !LevelEditor.singleton.building_placement && !GameController.Paused) { 
             // A click on the UI (a panel, the HUD) or an open menu is theirs: neither the UI nor IMGUI
             // stops it reaching the board.
             if ((TransportMenu.PointerOverUI != null && TransportMenu.PointerOverUI()) || BuildingMenu.Covers(Input.mousePosition)) return;

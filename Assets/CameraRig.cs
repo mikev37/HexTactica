@@ -22,6 +22,8 @@ public class CameraRig : MonoBehaviour {
     Vector3 dragOrigin;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Hook() { GameScene.WhenLoaded(Install); }
+
     static void Install() {
         Camera c = Camera.main;
         if (c != null && c.orthographic && c.GetComponent<CameraRig>() == null) c.gameObject.AddComponent<CameraRig>();

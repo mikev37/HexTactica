@@ -15,10 +15,16 @@ public class BuildingController : MonoBehaviour {
     /// <summary>How a produced unit is made (the harness swaps in its own); default UnitController.CreateUnit.</summary>
     public static System.Func<Player, Unit, HexTile, Unit> Spawner;
 
+    /// <summary>A unit was bought and made at a building (Produce): the building, the new unit (paid for, on the board). For logs and statistics.</summary>
+    public static event System.Action<Building, Unit> Produced;
+
     void Awake() { bc = this; }
     void Start() { bc = this; }
 
+    /// <summary>In every scene that plays the game (GameScene), not in the menus.</summary>
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Hook() { GameScene.WhenLoaded(Install); }
+
     static void Install() {
         if (bc != null) return;
         GameObject go = new GameObject("BuildingController");
@@ -78,6 +84,7 @@ public class BuildingController : MonoBehaviour {
         if (made == null) return null;
         b.owner.money -= unit.cost;
         made.active = false;
+        if (Produced != null) Produced(b, made);
         return made;
     }
 }

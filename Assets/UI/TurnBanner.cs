@@ -20,6 +20,8 @@ public class TurnBanner : MonoBehaviour {
     public float fadeIn = 0.15f, fadeOut = 0.25f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Hook() { GameScene.WhenLoaded(Spawn); }
+
     static void Spawn() {
         if (GameController.gc != null && GameController.gc.headless) return;
         if (Object.FindAnyObjectByType<TurnBanner>() != null) return;
