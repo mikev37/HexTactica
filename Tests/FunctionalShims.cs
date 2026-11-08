@@ -38,6 +38,7 @@ namespace UnityEngine {
         public static void Destroy(Object o) { MainThreadOnly.Check("Destroy"); }
         public static void Destroy(Object o, float t) { MainThreadOnly.Check("Destroy"); }
         public static void DestroyImmediate(Object o) { MainThreadOnly.Check("DestroyImmediate"); }
+        public static T Instantiate<T>(T o, Transform p) where T : Object { return GameObject.Instantiate(o, p); }
         public static T FindObjectOfType<T>() where T : class { return null; }
         public static T FindAnyObjectByType<T>() where T : class { return null; }
     }
@@ -218,6 +219,7 @@ namespace UnityEngine {
         }
 
         public bool activeSelf { get { MainThreadOnly.Check("get_activeSelf"); return true; } }
+        public bool activeInHierarchy { get { MainThreadOnly.Check("get_activeInHierarchy"); return true; } }
         public void SetActive(bool b) { MainThreadOnly.Check("SetActive"); }
 
         internal void Attach(Component c) {

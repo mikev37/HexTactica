@@ -23,7 +23,6 @@ public class BuildingController : MonoBehaviour {
         if (bc != null) return;
         GameObject go = new GameObject("BuildingController");
         bc = go.AddComponent<BuildingController>();
-        go.AddComponent<BuildingMenu>();
         go.AddComponent<TransportMenu>();
         go.AddComponent<SupplyOverlay>();
     }

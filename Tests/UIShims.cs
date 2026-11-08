@@ -1,6 +1,7 @@
 // Type-check-only shim for the uGUI parts of Assets/UI/TransportPanel.cs (not run by the harness).
 using System;
 namespace UnityEngine {
+    public static class RectTransformUtility { public static bool RectangleContainsScreenPoint(RectTransform r, Vector2 p, Camera c) { return false; } }
     public static class BuiltinResources { }
 }
 namespace UnityEngine.UI {
