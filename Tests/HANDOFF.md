@@ -345,6 +345,36 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
 
 ## 7. Open work, in the order I'd take it
 
+**First, when there is budget: why fog screens and defensive narrows make the AI worse.** Both are off by default since
+8 Nov (`fogScreenBelowCost` 0, `defensiveNarrows` false). With them on, new Blue on ChanceMeeting lost badly at round 11
+(136,416 v 153,000 on the merged rules; 79,750 v 181,583 before the attack-rule and release fixes), against 154,250 v
+115,166 with both off. Owner's hunch: something is wrong in how they were built, for example task forces sent away from
+the main group to hold narrows far from the action that do not matter. Method:
+1. **One at a time.** Never both in one game. Baseline: both off. Then `SET_BLUE="fogScreenBelowCost=3000"` alone, then
+   `SET_BLUE="defensiveNarrows=true"` alone. Same map, same side, same rounds as the baseline (ChanceMeeting, new Blue v
+   old Red, fog on, purchases on, `DUELTRACE=1 BOARD=1`), so the first turn the games differ is where the flag acted.
+2. **Small traced games, read before running another.** 6–8 rounds is enough: the losses came in rounds 2–4. Find the
+   first turn the logs diverge (the `== turn` blocks), and read that turn in full before going on.
+3. **Defensive narrows, trace:** list every `objective Hold(...) narrows` line per turn with its units, staging and
+   distance from the rest of the army; for each, how far it is from the nearest enemy and from our main body (the front
+   with the most units); which units left which front for it (compare the task-force rosters turn on turn); whether a
+   narrows Hold took units out of a fight in progress or out of a battle plan (`coordination: N units in battle
+   plans`); and whether the narrows chosen lie between the enemy and anything of ours worth guarding, or off to the side.
+   Check `AICampaign.Narrows()` itself on the map (print the tiles; `PROBE=chokes` shows the old one-tile chokepoints for
+   comparison): does it find passages three wide or less flanked by impassable ground, or does it also mark ordinary
+   ground by mistake? Check the trigger too: `map.knowledge.aggression < 0.25` is the usual state under fog (it read 0.00
+   on ChanceMeeting), so "on the defensive" may be true nearly all game.
+4. **Fog screens, trace:** for each unit under 3,000, its moves with and without the flag (`EXPLAIN=Blue:Grunt
+   BREAKDOWN=1` with `PROBE=game` on a saved board from the diverging turn): the fog term per option, the tile chosen,
+   and where it ends relative to the rest of the line. Questions: do screens now run ahead alone, out of support and
+   out of battle plans; do they pull the line forward piecemeal (the expensive units following into fire); and are they
+   lost one by one (count Blue losses by unit kind per Red turn, `losses.py`).
+5. **Compare fronts and coordination** across the three games each turn: front count and size, units in battle plans,
+   attacks per turn, Blue losses per turn and where.
+6. **Report before fixing:** what each flag did differently, on which turn, and why, from the logs. Fix only behind the
+   same flag, re-run the same small games, then the three test maps from both sides.
+
+
 1. **The ChanceMeeting regression** (new Red v old Blue: `OLD=Blue`, fog on, traced): run with
    `SET_RED="unifiedLinkPlacement=false"` and with `SET_RED="boardSpentTransports=false"`; read the chain lines
    (`chain toward ...: ... holds; spare N`) and `campaign: not taken on ... supply units` counts. The fix is likely a
