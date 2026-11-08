@@ -636,6 +636,8 @@ namespace HexTactica.AI {
 
         [Tooltip("Sea lift: when the objective lies across water (no land way to it), troops whose ground is over the water get into a ship even when they would otherwise hold (it is the only way there), a front counts the units already crossing as gathered, and a supply unit gets into an empty ship and is taken to the landing — beside the shore nearest our troops across, where its supply is linked — so the troops over there are supplied (a convoy).")]
         public bool seaLift = true;
+        [Tooltip("Sea lift: how much a transport ship is worth to buy, times the land units waiting to cross that it would take over (their value, discounted for the turns to get them there). Above 1: the AI puts a ship ahead of a fighting unit of the same value, since without one the units across the water do nothing.")]
+        public float seaLiftWeight = 3f;
         [Tooltip("With assaultRides on, fighting units also take combatRides' hop (in and out the same turn) in an armed transport. Off: assault rides carry them in armed transports too, aboard until they can strike.")]
         public bool assaultArmedRides = false;
         [Tooltip("Riding to the assault: a rider put down to strike makes the strike its transport planned (where to stand, what to hit or take). Off: it decides afresh where it lands.")]

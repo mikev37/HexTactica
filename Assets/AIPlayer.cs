@@ -286,6 +286,16 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + ": aboard, decides again if put down — " + action.reason);
                     continue;
                 }
+                // A ship waiting to load (SeaLiftLoading): put off until everything else has moved — those it waits for get
+                // aboard first; then it decides again, and sails if they have.
+                if (action.kind == AIActionKind.Wait && action.reason != null && action.reason.StartsWith(LoadingReason) && (queue.Count > 0 || waitLater.Count > 0)) {
+                    int n; loadingDeferred.TryGetValue(unit, out n);
+                    if (n < 4) {
+                        loadingDeferred[unit] = n + 1; waitLater.Add(unit);
+                        if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": " + action.reason + ": decides again after the rest");
+                        continue;
+                    }
+                }
                 // Waiting (waitTwice): the first time, set aside to decide again once everything else has moved (what it
                 // waits on — a supply unit, a rider, a gap — may have come about); waiting again, it skips its turn.
                 if (Profile.waitTwice && action.kind == AIActionKind.Wait && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
@@ -374,8 +384,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 if (logistics == null) BuySupply();
                 if (Profile.buyUnits && map != null) {
                     SetReserveDemand();
+                    AIProduction.GroundOf = Profile.seaLift ? (System.Func<Unit, HexTile>)GroundOf : null;
                     List<Unit> bought = AIProduction.Buy(player, map, Profile, Trace, logistics);
-                    AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f;
+                    AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f; AIProduction.GroundOf = null;
                     if (AIProduction.ReserveBought != null) { foreach (Unit u in AIProduction.ReserveBought) if (u != null) HexTactica.AI.AICampaign.ReserveHeld.Add(u); AIProduction.ReserveBought.Clear(); }
                     if (onBuy != null) foreach (Unit u in bought) onBuy(u);
                 }
@@ -551,6 +562,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
     HashSet<Unit> supplyTransports = new HashSet<Unit>();
     /// <summary>Units that would have waited this turn, and those set aside to decide again after the rest (waitTwice).</summary>
     readonly HashSet<Unit> waitedOnce = new HashSet<Unit>();
+    /// <summary>Times this turn a ship waiting to load was put off until the rest had moved (SeaLiftLoading).</summary>
+    readonly Dictionary<Unit, int> loadingDeferred = new Dictionary<Unit, int>();
     readonly List<Unit> waitLater = new List<Unit>();
     /// <summary>Artillery with a target in range when the turn's order was made (artilleryFireOrDefer).</summary>
     readonly HashSet<Unit> firesFirst = new HashSet<Unit>();
@@ -822,7 +835,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         putDownThisTurn.Clear();
         boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear(); riderRide.Clear(); riderGoal.Clear();
         foreach (Unit u in player.units) if (u != null && u.tile != null) turnStart[u] = u.tile;
-        waitedOnce.Clear(); waitLater.Clear();
+        waitedOnce.Clear(); waitLater.Clear(); loadingDeferred.Clear();
         AIAssault.Planned.Clear();
         AIAssault.FellBack.Clear();
         // The trucks the logistics claimed for the fronts' own supply units: theirs before any fighting
@@ -1084,7 +1097,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // A transport with riders whose assault move was set aside for the ordinary one (a tile held for a supply link or a
         // landing; the guard): that is a fallback, and its riders decide for themselves (assaultFrontlineOut).
         if (Profile.assaultRides && unit != null && Transporting.IsTransport(unit) && AIAssault.Riders(unit).Count > 0
-            && (a.reason == null || !a.reason.StartsWith("assault") && !a.reason.StartsWith("medevac") && !a.reason.StartsWith("holds the line"))) {
+            && (a.reason == null || !a.reason.StartsWith("assault") && !a.reason.StartsWith("medevac") && !a.reason.StartsWith("holds the line") && !a.reason.StartsWith("sea lift"))) {
             AIAssault.FellBack.Add(unit);
             if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": its move is not its assault ride (" + a.reason + "): its riders decide for themselves");
         }
@@ -1106,7 +1119,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
         Front bf = FrontOf(unit);
         HexTile ground = bf == null ? null : bf.staging && bf.stagingTile != null ? bf.stagingTile : bf.objectiveTile;
         // Its ground across water from it: no walk gets it there, so holding where it is is no task (a ship takes it).
-        bool overWater = Profile.seaLift && ground != null && !LocomotionRules.IsAirborne(unit.locomotion) && !LocomotionRules.IsNaval(unit.locomotion) && map.AcrossWater(unit.tile, ground);
+        HexTile wants = ground ?? GroundOf(unit);
+        bool overWater = Profile.seaLift && wants != null && !LocomotionRules.IsAirborne(unit.locomotion) && !LocomotionRules.IsNaval(unit.locomotion) && map.AcrossWater(unit.tile, wants);
+        if (overWater && ground == null) ground = wants;
         if (!hurt && onFoot.kind != AIActionKind.Move && !overWater) return onFoot;   // holding where it is (its objective, its line) is its task
         // Walking onto a building to take: its task, if it lives to take it (else a wounded one rides to mend).
         if (onFoot.kind == AIActionKind.Move && onFoot.destination != null && onFoot.destination.building != null && onFoot.destination.building.owner != player && Building.CanCapture(unit)) {
@@ -1124,6 +1139,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
         AIAction? ba = AIAssault.Board(unit, map, Profile, busy, supplyTransports, SupplyGoing(), ground);
         if (ba.HasValue && ground != null) riderGoal[unit] = ground;
         AIPerf.End("assault: boarding", __ab);
+        // Across water and no ship to get into here: to the naval yard, where ships take troops on (while we have a ship).
+        if (!ba.HasValue && overWater) {
+            AIAction? walk = SeaLiftWalk(unit);
+            if (walk.HasValue) return walk.Value;
+        }
         if (!ba.HasValue) return onFoot;
         // A ride for the fight: only if the walk does not already get it there (its ground, else the nearest enemy).
         if (!hurt) {
@@ -1179,35 +1199,120 @@ public class AIPlayer : MonoBehaviour, IAIController {
         return goal != null && from != null && map.AcrossWater(from, goal) ? goal : null;
     }
 
+    /// <summary>Where <paramref name="u"/> wants to be: its front's ground (its staging tile while it gathers, else its objective), else the campaign's objective.</summary>
+    HexTile GroundOf(Unit u) {
+        Front f = FrontOf(u);
+        if (f != null) { HexTile g = f.staging && f.stagingTile != null ? f.stagingTile : f.objectiveTile; if (g != null) return g; }
+        return AISupplyChain.Objective(map);
+    }
+
     /// <summary>
-    /// A supply unit on the shore, its objective across water: into a ship with room for it and no troops aboard
-    /// (troops go first; the supply follows them over) — from where it stands, or from a tile beside the ship it can
-    /// walk to this turn; else a step toward the nearest such ship. Null: none.
+    /// A land unit whose ground is across water, with no ship to get into where it stands: a step toward the naval yard it
+    /// walks to soonest, while we have a ship to take it over (or one being built). Null: beside the yard already, or no ship.
+    /// </summary>
+    AIAction? SeaLiftWalk(Unit unit) {
+        bool ships = false;
+        foreach (Unit t in map.ownUnits) if (AIAssault.SeaLiftShip(t, map) && Transporting.CanCarry(t, unit)) { ships = true; break; }
+        if (!ships) return null;
+        Building yard = AIAssault.NearestYard(unit, map);
+        if (yard == null || unit.tile.Distance(yard.tile) <= 1) return null;
+        HexTile step = AITransportPlanner.SafeStepToward(unit, yard.tile, map.ReachHorizon(unit), map, false);
+        if (step == null || step == unit.tile || step == yard.tile) return null;
+        return AIAction.Move(unit, step, 0f, "sea lift: walks to the naval yard (" + yard.tile.x + "," + yard.tile.y + ") to cross");
+    }
+
+    /// <summary>Our supply already reaches the land <paramref name="ground"/> stands on (a landing made before, a building taken there).</summary>
+    bool LandingSupplied(HexTile ground) {
+        Dictionary<HexTile, int> land = ground != null ? map.LandSteps(ground) : null;
+        if (land == null) return false;
+        foreach (HexTile t in land.Keys) if (map.SupplyDepth(t) > 0) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Where a ship's troops are going over the water: the ground of the first of them whose ground is across water from
+    /// the ship's side; for an empty ship, the campaign's objective when that is across water from our HQ. Null: none.
+    /// </summary>
+    HexTile SeaLiftLanding(Unit ship) {
+        foreach (Unit r in AIAssault.Riders(ship)) { HexTile g = GroundOf(r); if (g != null) return g; }
+        Building home = GameController.HQOf(player);
+        return SeaLiftGoal(home != null ? home.tile : null);
+    }
+
+    /// <summary>
+    /// A ship (troops aboard or none) the supply unit <paramref name="unit"/> should get into to go with them: one with room
+    /// for it and no supply aboard, going over water to land our supply does not reach yet; of our supply units on foot
+    /// that could, the nearest to it goes. Null: none.
+    /// </summary>
+    Unit SeaLiftShipFor(Unit unit) {
+        Unit best = null; int bestD = int.MaxValue;
+        foreach (Unit t in Transporting.AvailableFor(player, unit)) {
+            if (t == null || t.tile == null || !AIAssault.SeaLiftShip(t, map) || AIAssault.CarriesHub(t)) continue;
+            HexTile landing = SeaLiftLanding(t);
+            if (landing == null || !map.AcrossWater(unit.tile, landing) || LandingSupplied(landing)) continue;
+            // The nearest of our supply units on foot to this ship goes (one per ship).
+            int d = map.Travel(unit, unit.tile, t.tile);
+            bool nearer = false;
+            foreach (SupplyPoint h in map.ownHubs) {
+                Unit o = h != null ? h.myUnit : null;
+                if (o == null || o == unit || h.producer || o.tile == null || o.trasnporter != null || LocomotionRules.IsNaval(o.locomotion) || !Transporting.CanCarry(t, o)) continue;
+                int od = map.Travel(o, o.tile, t.tile);
+                if (od < d || (od == d && CombatMath.Precedes(o.tile, unit.tile))) { nearer = true; break; }
+            }
+            if (nearer) continue;
+            if (best == null || d < bestD || (d == bestD && CombatMath.Precedes(t.tile, best.tile))) { best = t; bestD = d; }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// A supply unit on the shore: into the ship SeaLiftShipFor gives it — from where it stands, or from a tile beside the
+    /// ship it can walk to this turn; else a step toward it. Null: no ship for it.
     /// </summary>
     AIAction? SeaLiftBoard(Unit unit) {
-        MoveField now = null;
-        Unit best = null; HexTile bestAt = null; int bestD = int.MaxValue;
-        foreach (Unit t in Transporting.AvailableFor(player, unit)) {
-            if (t == null || t.tile == null || !LocomotionRules.IsNaval(t.locomotion) || AIAssault.Riders(t).Count > 0 || AIAssault.CarriesHub(t)) continue;
-            HexTile at = null;
-            if (Transporting.CanBoardFrom(t, unit)) at = unit.tile;
-            else {
-                if (now == null) now = map.ReachThisTurn(unit);
-                foreach (HexTile n in t.tile.neighbors)
-                    if (n != null && now.ReachableThisTurn(n) && (n.occupier == null || n.occupier == unit) && Transporting.CanBoardFromTile(t, unit, n) && (at == null || CombatMath.Precedes(n, at))) at = n;
-            }
-            int d = map.Travel(unit, unit.tile, t.tile);
-            if (at != null) d = -1;   // boards this turn: first
-            if (best == null || d < bestD || (d == bestD && CombatMath.Precedes(t.tile, best.tile))) { best = t; bestAt = at; bestD = d; }
+        Unit ship = SeaLiftShipFor(unit);
+        if (ship == null) return null;
+        HexTile at = null;
+        if (Transporting.CanBoardFrom(ship, unit)) at = unit.tile;
+        else {
+            MoveField now = map.ReachThisTurn(unit);
+            foreach (HexTile n in ship.tile.neighbors)
+                if (n != null && now.ReachableThisTurn(n) && (n.occupier == null || n.occupier == unit) && Transporting.CanBoardFromTile(ship, unit, n) && (at == null || CombatMath.Precedes(n, at))) at = n;
         }
-        if (best == null) return null;
-        if (bestAt != null) {
-            reservedTransports.Add(best);
-            return AIAction.Board(unit, best, bestAt, "sea lift: boards a ship to carry its supply across the water");
-        }
-        HexTile step = AITransportPlanner.SafeStepToward(unit, best.tile, map.ReachHorizon(unit), map, true);
+        if (at != null) return AIAction.Board(unit, ship, at, "sea lift: boards the ship to carry supply over with its troops");
+        HexTile step = AITransportPlanner.SafeStepToward(unit, ship.tile, map.ReachHorizon(unit), map, true);
         if (step == null || step == unit.tile) return null;
-        return AIAction.Move(unit, step, 0f, "sea lift: goes to the ship that will carry it");
+        return AIAction.Move(unit, step, 0f, "sea lift: goes to the ship that will carry it over");
+    }
+
+    /// <summary>The reason a ship gives while it waits to load (SeaLiftLoading): such a wait is put off until everything else has moved.</summary>
+    const string LoadingReason = "sea lift loading: ";
+
+    /// <summary>
+    /// A ship under the sea lift with room left: it does not sail while one of our units that is to cross with it can still
+    /// get aboard this turn — a land unit whose ground is across water, or the supply unit going with it (SeaLiftShipFor).
+    /// It sails once full, or once all of those have moved (its wait is put off until then: the decision loop).
+    /// Null: nothing to wait for.
+    /// </summary>
+    AIAction? SeaLiftLoading(Unit ship) {
+        if (!AIAssault.SeaLiftShip(ship, map) || ship.tile == null) return null;
+        int room = Transporting.FreeWeight(ship);
+        if (room <= 0) return null;
+        foreach (Unit o in map.ownUnits) {
+            if (o == null || o == ship || o.tile == null || !o.active || o.trasnporter != null || LocomotionRules.IsNaval(o.locomotion) || LocomotionRules.IsAirborne(o.locomotion)) continue;
+            if (Mathf.Max(1, o.weight) > room || !Transporting.CanCarry(ship, o)) continue;
+            bool wants;
+            if (o.Hub != null) wants = !o.Hub.producer && SeaLiftShipFor(o) == ship;
+            else { HexTile g = o.Firepower > 0 ? GroundOf(o) : null; wants = g != null && map.AcrossWater(o.tile, g); }
+            if (!wants) continue;
+            bool reach = Transporting.CanBoardFrom(ship, o);
+            if (!reach) {
+                MoveField now = map.ReachThisTurn(o);
+                foreach (HexTile n in ship.tile.neighbors) if (n != null && now.ReachableThisTurn(n) && (n.occupier == null || n.occupier == o) && Transporting.CanBoardFromTile(ship, o, n)) { reach = true; break; }
+            }
+            if (reach) return AIAction.Wait(ship, LoadingReason + "waits for " + o.name.Replace("(Clone)", "") + " " + D(o.tile) + " to come aboard (room " + room + ")");
+        }
+        return null;
     }
 
     /// <summary>
@@ -1228,7 +1333,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
             int d = u.tile.Distance(goal);
             if (d < ld || (d == ld && CombatMath.Precedes(u.tile, land))) { land = u.tile; ld = d; }
         }
-        if (land == null) land = goal;
+        // Nobody across yet: it does not go alone; it waits for troops to take over with it.
+        if (land == null) return AIAction.Wait(ship, "sea lift: holds with its supply for troops to take across");
         MoveField f = map.ReachThisTurn(ship);
         Dictionary<SupplyPoint, Unit> wasAboard = SupplyNetwork.PlannedAboard;
         HexTile best = null; bool bestLinked = false, bestShore = false; int bestD = int.MaxValue;
@@ -1259,6 +1365,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (cargo == null) return false;
         SupplyPoint hub = cargo.Hub;
         if (Profile.seaLift && LocomotionRules.IsNaval(truck.locomotion)) {
+            // Troops aboard too (a convoy): it goes as their ride goes (the assault ride), its supply aboard throughout.
+            if (AIAssault.Riders(truck).Count > 0) return false;
+            AIAction? load = SeaLiftLoading(truck);
+            if (load.HasValue) { action = load.Value; return true; }
             AIAction? sl = SeaLiftSupply(truck, hub);
             if (sl.HasValue) { action = sl.Value; return true; }
         }
@@ -1427,11 +1537,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
 
             // Sea lift: the objective across water. Aboard a ship it rides it (the ship takes it to the landing,
             // SeaLiftSupply); on the shore, it gets into a ship with room for it.
-            if (Profile.seaLift && unit.trasnporter == null && !LocomotionRules.IsNaval(unit.locomotion) && SeaLiftGoal(unit.tile) != null) {
+            if (Profile.seaLift && unit.trasnporter == null && !LocomotionRules.IsNaval(unit.locomotion)) {
                 AIAction? sb = SeaLiftBoard(unit);
                 if (sb.HasValue) return sb.Value;
             }
-            if (Profile.seaLift && unit.trasnporter != null && LocomotionRules.IsNaval(unit.trasnporter.locomotion) && SeaLiftGoal(GameController.HQOf(player) != null ? GameController.HQOf(player).tile : null) != null)
+            if (Profile.seaLift && AIAssault.SeaLiftShip(unit.trasnporter, map))
                 return AIAction.Wait(unit, "sea lift: rides its ship to the landing");
 
             // A link of the supply backbone (supplyBackbone): aboard its transport, on the way to its place or holding it.
@@ -1657,6 +1767,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // Riding to the assault (assaultRides): a transport with fighting units aboard and no supply duty.
         if (Profile.assaultRides && Transporting.IsTransport(unit) && !transportAssignments.ContainsKey(unit)) {
             List<Unit> riders = AIAssault.Riders(unit);
+            if (riders.Count > 0 && Profile.seaLift) {
+                AIAction? wait = SeaLiftLoading(unit);
+                if (wait.HasValue) return wait.Value;
+            }
             if (riders.Count > 0) {
                 Front rf = FrontOf(riders[0]);
                 AIAssault.HasFront = rf != null;
@@ -1698,9 +1812,13 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 if (drop != null) return AITransportPlanner.TransportAction(unit, drop, map);
             }
             // An empty transport not held for supply goes back for more riders.
+            if (Profile.seaLift && unit.transported.Count == 0) {
+                AIAction? load = SeaLiftLoading(unit);
+                if (load.HasValue) return load.Value;
+            }
             if (Profile.assaultRides && unit.transported.Count == 0 && !supplyTransports.Contains(unit) && (logistics == null || !IsLogisticsTruck(unit))) {
                 long __af = AIPerf.Begin();
-                AIAction? fa = AIAssault.Fetch(unit, map, Profile, soughtRiders);
+                AIAction? fa = AIAssault.Fetch(unit, map, Profile, soughtRiders, Profile.seaLift ? (System.Func<Unit, HexTile>)GroundOf : null);
                 AIPerf.End("assault: empty transport fetches", __af);
                 if (fa.HasValue) return fa.Value;
             }

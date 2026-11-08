@@ -208,7 +208,7 @@ public class Unit : MonoBehaviour
     public int transportSlots;
     [Tooltip("Not used: capacity is transportSlots, counted in weight.")]
     public int maxWeight;
-    [Tooltip("Slots this unit takes aboard a transport (a grunt 1, supplies 2).")]
+    [Tooltip("Slots this unit takes aboard a transport (a grunt 1, a supply unit 1, a tank 2).")]
     public int weight;
     [Tooltip("The locomotion types this transport carries (an APC: Boots). Empty: Boots only.")]
     public List<Locomotion> carries = new List<Locomotion>();
