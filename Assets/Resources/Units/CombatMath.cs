@@ -216,13 +216,16 @@ public static class CombatMath {
     /// (Before: cover plus veterancy against veterancy alone, so every defender on grassland
     /// fired first.)
     ///
+    /// An attacker that ignores cover (Unit.ignoresCover) leaves the defender its veterancy alone.
+    ///
     /// An aircraft is never ambushed by a unit on the ground or at sea: they cannot use the ground
     /// to hide from it (only another aircraft, by veterancy, can fire on one first).
     /// </summary>
     public static bool Ambush(Unit attacker, Unit defender, HexTile defenderTile) {
         if (attacker == null || defender == null) return false;
         if (LocomotionRules.IsAirborne(attacker.locomotion) && !LocomotionRules.IsAirborne(defender.locomotion)) return false;
-        int hidden = CoverFor(defender, defenderTile) + defender.Veterancy;
+        // Against an attacker that ignores cover (napalm, flamethrowers) the ground hides nothing: veterancy alone.
+        int hidden = (attacker.ignoresCover ? 0 : CoverFor(defender, defenderTile)) + defender.Veterancy;
         int seen = (LocomotionRules.IsAirborne(attacker.locomotion) ? 0 : attacker.Concealment) + attacker.Veterancy;
         return hidden > seen;
     }

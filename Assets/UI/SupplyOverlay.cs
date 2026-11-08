@@ -163,14 +163,36 @@ public class SupplyOverlay : MonoBehaviour {
         HashSet<SupplyPoint> seen = new HashSet<SupplyPoint>();
         HexTile at = from;
         SupplyNetwork.Result f = field;
+        // The network as it stands (or as previewed): which carried supply links through another carrier (a convoy).
+        SupplyNetwork.Result whole = preview != null ? SupplyNetwork.SolveMoved(p, preview) : SupplyNetwork.Solve(p, false);
+        SupplyPoint next = null;
         int guard = 0;
-        while (at != null && guard++ < 16) {
-            HexTile top = Climb(at, f, points);
-            // Several supply units can share a tile (all aboard one transport): each in turn.
-            SupplyPoint source = HubOn(p, top, preview, seen);
+        while (at != null && guard++ < 32) {
+            HexTile top;
+            SupplyPoint source;
+            if (next != null) { top = at; source = next; next = null; }   // a convoy's next carrier: the line is at it already
+            else {
+                top = Climb(at, f, points);
+                // Several supply units can share a tile (all aboard one transport): each in turn.
+                source = HubOn(p, top, preview, seen);
+            }
             if (source == null || source.producer) break;   // a building or the HQ: the root
             seen.Add(source);
             Unit carrier = source.myUnit != null ? source.myUnit.trasnporter : null;
+            // A convoy: it links through another carrier (SupplyNetwork.CarriedLinked). The line goes the way this
+            // carrier would move to it (its own path), then on from that carrier.
+            SupplyPoint via;
+            if (carrier != null && whole.linkedThrough.TryGetValue(source, out via) && via != null && !seen.Contains(via)) {
+                HexTile viaTile = TileOfHub(via, preview);
+                List<HexTile> leg = viaTile != null ? MoveTo(carrier, top, viaTile) : null;
+                if (leg != null) {
+                    for (int i = 1; i < leg.Count; i++) points.Add(leg[i]);
+                    if (points[points.Count - 1] != viaTile) points.Add(viaTile);
+                    f = SolveWithout(p, seen, preview);
+                    at = viaTile; next = via;
+                    continue;
+                }
+            }
             if (carrier != null) {
                 // Aboard: if its transport can drive straight to ground the network supplies without
                 // any supply unit that is aboard something, that is its link (rather than through a
@@ -233,6 +255,41 @@ public class SupplyOverlay : MonoBehaviour {
             path = best == from ? new List<HexTile> { from } : field.PathTo(best);
             if (path.Count == 0) path.Add(from);
             if (step != best) path.Add(step);
+        }
+        HexTactica.AI.AIPath.Release(field);
+        return path;
+    }
+
+    /// <summary>Where <paramref name="hub"/>'s unit stands (or is being moved to, in <paramref name="preview"/>).</summary>
+    static HexTile TileOfHub(SupplyPoint hub, Dictionary<SupplyPoint, HexTile> preview) {
+        HexTile t;
+        if (preview != null && preview.TryGetValue(hub, out t) && t != null) return t;
+        return hub.myUnit != null ? hub.myUnit.tile : null;
+    }
+
+    /// <summary>
+    /// The way <paramref name="carrier"/>, on <paramref name="from"/>, would move in one move to <paramref name="target"/>
+    /// or beside it (a ship cannot sail onto the land an aircraft is over): its own path, planned as its side knows the
+    /// board (fog of war). Null if it cannot get there.
+    /// </summary>
+    static List<HexTile> MoveTo(Unit carrier, HexTile from, HexTile target) {
+        if (from == target) return new List<HexTile> { from };
+        HexTactica.AI.MoveField field;
+        using (FogOfWar.Concealing(carrier.owner))
+            field = HexTactica.AI.AIPath.ThisTurnFrom(carrier, from, carrier.moveRange);
+        HexTile best = null; int bestCost = int.MaxValue;
+        foreach (HexTile t in field.Tiles) {
+            if (!field.ReachableThisTurn(t) && t != from) continue;
+            if (t != target && !target.neighbors.Contains(t)) continue;
+            int cost = t == from ? 0 : field.Get(t).used;
+            // Onto it if it can (an aircraft over a ship), else the nearest tile beside it; then fewest movement points, then board order.
+            bool isT = t == target, bestT = best == target;
+            if (best == null || (isT && !bestT) || (isT == bestT && (cost < bestCost || (cost == bestCost && CombatMath.Precedes(t, best))))) { best = t; bestCost = cost; }
+        }
+        List<HexTile> path = null;
+        if (best != null) {
+            path = best == from ? new List<HexTile> { from } : field.PathTo(best);
+            if (path.Count == 0) path.Add(from);
         }
         HexTactica.AI.AIPath.Release(field);
         return path;

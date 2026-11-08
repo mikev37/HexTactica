@@ -698,9 +698,13 @@ public static class Scenarios {
              "A supply ship refuels and restocks the ships beside it at the start of the turn, as an air tanker does aircraft: the Gunboat beside it (fuel 10, 1 supply) is full after a turn; one away from it is not; a supply ship beside it is not tended by it (a tender is never tended by another).");
         make("attrition-rule-ship-carried-supply", "shipCarriedSupply", (a, o) => {
                  water(-4, 5, -7, 7);
-                 Put("TransportShip", a, 5, 0); Put("TransportShip", a, 0, 0); Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
+                 Put("TransportShip", a, -1, 0); Put("TransportShip", a, 3, 0); Put("TransportShip", a, 5, 0);
+                 Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3); Put("Supplies", a, -6, 4); Put("Supplies", a, -5, 4);
+                 Put("Transport Helo", a, -5, 3);
                  Put("Grunt", a, 6, -1); Put("Grunt", o, 7, -2); },
-             "A supply unit aboard a ship spreads supply to the shore only when the ship is beside the shore and either (B) within its move of a tile beside supplied ground, or (C) within its move of another supply-carrying ship that is in condition B. Ten tiles of sea between Blue's shore and an island: a ship by the island with supplies aboard, 9 tiles out, is not linked on its own; with a second ship carrying supplies 4 tiles off Blue's shore (B, but out at sea: not itself beside a shore, so it spreads nothing) within its move, it is, and the Blue grunt on the island is supplied. Brought beside the island near Blue's own shore it is linked by B.");
+             "Convoys: a ship with a supply unit aboard is a link if within one move (its own path) of supplied ground or of another linked carrier, to any length, and gives supply to land only beside it. Ten tiles of sea between Blue's shore and an island, ships moving 3: TS A within a move of Blue's shore, TS B within a move of A only, TS C within a move of B only and beside the island. C is linked through B through A, the Blue grunt on the island is supplied, A and B out at sea give nothing, and the supply line runs from the grunt through C, B and A to the HQ. Without A, B and C are cut off. A helicopter with supplies aboard in A's place over the water (linked by Blue's shore, giving nothing over water) links B in turn: a ship links through an aircraft.");
+        make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
+             "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
         make("rule-harbor-open", "harborOpen", (a, o) => { water(-1, 2, -7, 7); Rig.PlaceBuilding("NavalYard", a, -2, 0); Rig.At(-3, 4).terrain = T("Bridge"); Put("Grunt", a, -3, 1); Put("Grunt", a, -4, 4); Put("Gunboat", a, 0, 0); Put("Grunt", o, 5, 0); },
              "A harbor (a naval yard's tile, on bridge ground) is open from every side: a grunt steps onto it from grassland with no road, a ship from the water, and supply reaches it from the land around it. A plain bridge keeps the road rule: the same grunt step onto one is refused.");
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
@@ -3264,23 +3268,47 @@ public static class Scenarios {
                 return g.fuel == g.fuelMax && g.supplies == g.suppliesMax && far.fuel == 10 && sb2.fuel == 10;
             }
             case "shipCarriedSupply": {
-                Unit far = Rig.At(5, 0).occupier, near = Rig.At(0, 0).occupier;
-                Unit s1 = Rig.At(-6, 2).occupier, s2 = Rig.At(-6, 3).occupier, g = Rig.At(6, -1).occupier;
+                Unit ta = Rig.At(-1, 0).occupier, tb = Rig.At(3, 0).occupier, tc = Rig.At(5, 0).occupier, helo = Rig.At(-5, 3).occupier;
+                Unit sa = Rig.At(-6, 2).occupier, sb = Rig.At(-6, 3).occupier, sc = Rig.At(-6, 4).occupier, sh = Rig.At(-5, 4).occupier;
+                Unit g = Rig.At(6, -1).occupier;
+                foreach (Unit t in new[] { ta, tb, tc }) t.moveRange = 3;
                 Action<Unit, Unit> aboard = (ship, sup) => { sup.tile.occupier = null; sup.tile = ship.tile; sup.trasnporter = ship; ship.transported.Add(sup); };
-                aboard(far, s1);
-                SupplyNetwork.Result alone = SupplyNetwork.Solve(a, false);
-                bool aloneOut = !alone.connectedHubs.Contains(s1.Hub) && !alone.IsSupplied(g.tile);
-                aboard(near, s2);
-                SupplyNetwork.Result relay = SupplyNetwork.Solve(a, false);
-                bool viaC = relay.connectedHubs.Contains(s1.Hub) && relay.IsSupplied(g.tile);
-                bool nearSpreadsNot = !relay.connectedHubs.Contains(s2.Hub);   // out at sea, beside no shore
-                // The far ship brought in beside Blue's own shore: B on its own.
-                near.TeleportTo(Rig.At(0, 6), 0); s2.tile = near.tile;
-                far.TeleportTo(Rig.At(-4, 1), 0); s1.tile = far.tile;
-                SupplyNetwork.Result home = SupplyNetwork.Solve(a, false);
-                bool viaB = home.connectedHubs.Contains(s1.Hub);
-                detail = "island ship alone: linked " + !aloneOut + "; with a B ship within its move: linked and island grunt supplied " + viaC + " (the B ship at sea spreads nothing " + nearSpreadsNot + "); beside Blue's shore: linked " + viaB;
-                return aloneOut && viaC && nearSpreadsNot && viaB;
+                aboard(ta, sa); aboard(tb, sb); aboard(tc, sc);
+                SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                bool chain = r.connectedHubs.Contains(sa.Hub) && r.connectedHubs.Contains(sb.Hub) && r.connectedHubs.Contains(sc.Hub) && r.IsSupplied(g.tile);
+                SupplyPoint viaC, viaB;
+                bool through = r.linkedThrough.TryGetValue(sc.Hub, out viaC) && viaC == sb.Hub && r.linkedThrough.TryGetValue(sb.Hub, out viaB) && viaB == sa.Hub && !r.linkedThrough.ContainsKey(sa.Hub);
+                bool atSeaNothing = r.DepthAt(ta.tile) == 0 && r.DepthAt(tb.tile) == 0;
+                List<HexTile> line = SupplyOverlay.SourcePath(a, g.tile, r, null);
+                Building hq = GameController.HQOf(a);
+                bool drawn = line.Contains(tc.tile) && line.Contains(tb.tile) && line.Contains(ta.tile) && hq != null && line.Contains(hq.tile)
+                             && line.IndexOf(tc.tile) < line.IndexOf(tb.tile) && line.IndexOf(tb.tile) < line.IndexOf(ta.tile);
+                // Without A: nothing for B or C to reach.
+                HexTile aAt = ta.tile;
+                ta.TeleportTo(Rig.At(-3, -3), 0); sa.tile = ta.tile;
+                SupplyNetwork.Result cut = SupplyNetwork.Solve(a, false);
+                bool cutOff = !cut.connectedHubs.Contains(sb.Hub) && !cut.connectedHubs.Contains(sc.Hub) && !cut.IsSupplied(g.tile);
+                // A helicopter with supplies in A's place over the water: B and C link through it.
+                ta.TeleportTo(Rig.At(-4, -3), 0); sa.tile = ta.tile;
+                helo.TeleportTo(aAt, 0); aboard(helo, sh);
+                SupplyNetwork.Result viaAir = SupplyNetwork.Solve(a, false);
+                SupplyPoint viaH;
+                bool air = viaAir.connectedHubs.Contains(sh.Hub) && viaAir.DepthAt(helo.tile) == 0 && viaAir.linkedThrough.TryGetValue(sb.Hub, out viaH) && viaH == sh.Hub
+                           && viaAir.connectedHubs.Contains(sc.Hub) && viaAir.IsSupplied(g.tile);
+                detail = "A, B, C linked and the island supplied " + chain + "; C through B through A " + through + "; A and B at sea give nothing " + atSeaNothing
+                       + "; line through C, B, A to the HQ " + drawn + " (" + line.Count + " tiles); without A cut off " + cutOff + "; through a helicopter over the water " + air;
+                return chain && through && atSeaNothing && drawn && cutOff && air;
+            }
+            case "ignoresCover": {
+                Unit tank = Rig.At(0, 0).occupier, g = Rig.At(1, 0).occupier;
+                CombatOutcome before = CombatMath.Resolve(tank, g, tank.tile);
+                int coverDmg = Unit.calculateDamage(tank, g, g.tile, 0), openDmg = Unit.calculateDamage(tank, g, null, 0);
+                tank.ignoresCover = true;
+                CombatOutcome after = CombatMath.Resolve(tank, g, tank.tile);
+                int ignoringDmg = Unit.calculateDamage(tank, g, g.tile, 0);
+                detail = "forest grunt fires first: normally " + before.defenderFiresFirst + ", against cover-ignoring " + after.defenderFiresFirst
+                       + "; damage in the forest " + coverDmg + " (open ground " + openDmg + "), ignoring cover " + ignoringDmg + "; forecast to the grunt " + before.damageToDefender + " -> " + after.damageToDefender;
+                return before.defenderFiresFirst && !after.defenderFiresFirst && coverDmg < openDmg && ignoringDmg == openDmg && after.damageToDefender >= before.damageToDefender;
             }
             case "harborOpen": {
                 HexTile yard = Rig.At(-2, 0), bridge = Rig.At(-3, 4);

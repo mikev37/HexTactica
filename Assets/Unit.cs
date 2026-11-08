@@ -114,6 +114,8 @@ public class Unit : MonoBehaviour
     public int AttackRange;
     public int MinRange;
     public bool retaliates = true;
+    [Tooltip("Its attacks ignore the defender's cover (napalm, flamethrowers): no cover off its damage, and a defender cannot use the ground to fire first on it (an ambush by veterancy alone still can).")]
+    public bool ignoresCover;
 
     [Header("Vision (fog of war)")]
     [Range(0, 10)]
@@ -1312,7 +1314,7 @@ public class Unit : MonoBehaviour
         float penetration = Mathf.Max(1, defender.Armor - attacker.Piercing);
         float aquire = Mathf.Max(1, defender.Evasion - attacker.Targeting);
         float toughness = 6;
-        if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion))
+        if (tile != null && tile.terrain != null && !LocomotionRules.IsAirborne(defender.locomotion) && !attacker.ignoresCover)
             cover = Math.Min(defender.Concealment, tile.EffectiveCover);
         int minDamage = 1;
         return (int) Mathf.Max(minDamage, Mathf.Floor(

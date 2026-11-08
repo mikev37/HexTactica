@@ -85,9 +85,34 @@ public class Hud : MonoBehaviour {
         return true;
     }
 
-    bool hooked;
+    bool hooked, detailsMade;
+
+    /// <summary>
+    /// A prefab made before the More button (its Hud has no details or button set): the button and the details rows
+    /// are made under the unit panel, after its last row, styled like the Strength row. Its icons are left out (the
+    /// prefab's art is not at hand at run time); remaking the prefab (HexTactica menu) gives them their icons.
+    /// </summary>
+    void EnsureDetails() {
+        if (detailsMade) return;
+        detailsMade = true;
+        if (detailsButton != null && details != null) return;
+        HudRow style = strength;
+        RectTransform up = unitPanel != null ? unitPanel.transform as RectTransform : (style != null ? style.transform.parent as RectTransform : null);
+        if (up == null) return;
+        GameObject oldDetails = details; Button oldButton = detailsButton;
+        MakeDetails(this, up, null);
+        if (oldButton != null) { Destroy(detailsButton.transform.parent.gameObject); detailsButton = oldButton; detailsButtonText = detailsButtonText ?? oldButton.GetComponentInChildren<TMP_Text>(); }
+        foreach (HudRow r in new[] { firepower, evasion, targeting, armor, piercing, concealment, moveRange, terrain, elevationMin, elevationMax }) {
+            if (r == null) continue;
+            if (style != null) { Restyle(r.label, style.label); Restyle(r.value, style.value); }
+            if (r.icon != null && r.icon.sprite == null) r.icon.enabled = false;
+        }
+        if (style != null) { Restyle(detailsButtonText, style.label); }
+        if (oldDetails != null) { Destroy(details); details = oldDetails; }
+    }
 
     void Update() {
+        EnsureDetails();
         if (!hooked && detailsButton != null) { hooked = true; detailsButton.onClick.AddListener(ToggleDetails); }
         if (details != null && details.activeSelf != detailsOpen) details.SetActive(detailsOpen);
         if (detailsButtonText != null) detailsButtonText.text = detailsOpen ? "- Less" : "+ More";
@@ -274,34 +299,7 @@ public class Hud : MonoBehaviour {
         h.ammo = Row(up, "Ammo", A("icon_ammo"), "Ammo", h);
         h.supplies = Row(up, "Supplies", A("icon_supplies"), "Supplies", h);
         h.suppressed = Row(up, "Suppressed", A("icon_suppressed"), "Suppressed", h);
-        // More / Less: every attribute that is not 0.
-        RectTransform more = Line(up, "More", 8f);
-        Image mbg = Img(more, "Button", A("panel"), 110f, 30f, new Color(0.22f, 0.26f, 0.32f, 1f));
-        if (mbg.sprite != null) { mbg.type = Image.Type.Sliced; mbg.preserveAspect = false; }
-        mbg.raycastTarget = true;
-        h.detailsButton = mbg.gameObject.AddComponent<Button>();
-        h.detailsButton.targetGraphic = mbg;
-        h.detailsButtonText = Txt(mbg.rectTransform, "Text", 18f, 0f);
-        Stretch(h.detailsButtonText.rectTransform, 4f);
-        h.detailsButtonText.alignment = TextAlignmentOptions.Center;
-        h.detailsButtonText.text = "+ More";
-        GameObject d = new GameObject("Details");
-        RectTransform drt = d.AddComponent<RectTransform>();
-        drt.SetParent(up, false);
-        VerticalLayoutGroup dv = d.AddComponent<VerticalLayoutGroup>();
-        dv.spacing = 6f; dv.childControlWidth = true; dv.childControlHeight = true; dv.childForceExpandWidth = false; dv.childForceExpandHeight = false;
-        h.details = d;
-        h.firepower = Row(drt, "Firepower", A("icon_firepower"), "Firepower", h);
-        h.evasion = Row(drt, "Evasion", A("icon_evasion"), "Evasion", h);
-        h.targeting = Row(drt, "Targeting", A("icon_targeting"), "Targeting", h);
-        h.armor = Row(drt, "Armor", A("icon_armor"), "Armor", h);
-        h.piercing = Row(drt, "Piercing", A("icon_piercing"), "Piercing", h);
-        h.concealment = Row(drt, "Concealment", A("icon_concealment"), "Concealment", h);
-        h.moveRange = Row(drt, "MoveRange", A("icon_moverange"), "Move range", h);
-        h.terrain = Row(drt, "Terrain", A("icon_terrain"), "Terrain", h);
-        h.elevationMin = Row(drt, "ElevationMin", A("icon_elevmin"), "Lowest ground", h);
-        h.elevationMax = Row(drt, "ElevationMax", A("icon_elevmax"), "Highest ground", h);
-        d.SetActive(false);
+        MakeDetails(h, up, A);
 
         // Bottom left: the tile.
         RectTransform tp = Panel(root.transform, "TilePanel", new Vector2(0f, 0f), new Vector2(16f, 16f), A("panel"));
@@ -337,6 +335,41 @@ public class Hud : MonoBehaviour {
         fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
         fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         return rt;
+    }
+
+    /// <summary>
+    /// The More / Less button and the details rows it opens (every attribute that is not 0), added to the unit panel
+    /// <paramref name="up"/>: by Build for the default prefab, and at run time for an older prefab made without them.
+    /// </summary>
+    static void MakeDetails(Hud h, RectTransform up, Func<string, Sprite> art) {
+        Func<string, Sprite> A = n => art != null ? art(n) : null;
+        RectTransform more = Line(up, "More", 8f);
+        Image mbg = Img(more, "Button", A("panel"), 110f, 30f, new Color(0.22f, 0.26f, 0.32f, 1f));
+        if (mbg.sprite != null) { mbg.type = Image.Type.Sliced; mbg.preserveAspect = false; }
+        mbg.raycastTarget = true;
+        h.detailsButton = mbg.gameObject.AddComponent<Button>();
+        h.detailsButton.targetGraphic = mbg;
+        h.detailsButtonText = Txt(mbg.rectTransform, "Text", 18f, 0f);
+        Stretch(h.detailsButtonText.rectTransform, 4f);
+        h.detailsButtonText.alignment = TextAlignmentOptions.Center;
+        h.detailsButtonText.text = "+ More";
+        GameObject d = new GameObject("Details");
+        RectTransform drt = d.AddComponent<RectTransform>();
+        drt.SetParent(up, false);
+        VerticalLayoutGroup dv = d.AddComponent<VerticalLayoutGroup>();
+        dv.spacing = 6f; dv.childControlWidth = true; dv.childControlHeight = true; dv.childForceExpandWidth = false; dv.childForceExpandHeight = false;
+        h.details = d;
+        h.firepower = Row(drt, "Firepower", A("icon_firepower"), "Firepower", h);
+        h.evasion = Row(drt, "Evasion", A("icon_evasion"), "Evasion", h);
+        h.targeting = Row(drt, "Targeting", A("icon_targeting"), "Targeting", h);
+        h.armor = Row(drt, "Armor", A("icon_armor"), "Armor", h);
+        h.piercing = Row(drt, "Piercing", A("icon_piercing"), "Piercing", h);
+        h.concealment = Row(drt, "Concealment", A("icon_concealment"), "Concealment", h);
+        h.moveRange = Row(drt, "MoveRange", A("icon_moverange"), "Move range", h);
+        h.terrain = Row(drt, "Terrain", A("icon_terrain"), "Terrain", h);
+        h.elevationMin = Row(drt, "ElevationMin", A("icon_elevmin"), "Lowest ground", h);
+        h.elevationMax = Row(drt, "ElevationMax", A("icon_elevmax"), "Highest ground", h);
+        d.SetActive(false);
     }
 
     static RectTransform Line(Transform parent, string name, float spacing) {
