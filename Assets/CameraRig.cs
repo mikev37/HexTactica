@@ -29,12 +29,29 @@ public class CameraRig : MonoBehaviour {
 
     void Awake() { cam = GetComponent<Camera>(); }
 
+    /// <summary>The first frame after the window got focus back: its input is not ours (see LateUpdate).</summary>
+    int ignoreInputUntil;
+
+    void OnApplicationFocus(bool focus) { if (focus) ignoreInputUntil = Time.frameCount + 1; }
+
+    /// <summary>
+    /// Input meant for the game: the window has focus and the cursor is over it. Wheel turns while
+    /// another window had focus were kept by Unity and handed over all at once on refocus, so the
+    /// zoom jumped; they, and the frame focus comes back on, are dropped.
+    /// </summary>
+    bool OurInput() {
+        if (!Application.isFocused || Time.frameCount <= ignoreInputUntil) return false;
+        Vector3 m = Input.mousePosition;
+        return m.x >= 0f && m.y >= 0f && m.x <= Screen.width && m.y <= Screen.height;
+    }
+
     void LateUpdate() {
         if (cam == null) return;
         if (!framed && HexGenerator.hg != null && HexGenerator.hg.tiles != null && HexGenerator.hg.tiles.Count > 0) {
             Frame();
             framed = true;
         }
+        if (!Application.isFocused || Time.frameCount <= ignoreInputUntil) return;   // not ours (OurInput)
         if (Input.GetKeyDown(KeyCode.Home)) Frame();
 
         Vector3 move = Vector3.zero;
@@ -52,7 +69,7 @@ public class CameraRig : MonoBehaviour {
             transform.position += d;
         }
 
-        float wheel = Input.mouseScrollDelta.y;
+        float wheel = OurInput() ? Input.mouseScrollDelta.y : 0f;
         if (Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus)) wheel += 1;
         if (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus)) wheel -= 1;
         if (wheel != 0f) {
@@ -64,6 +81,12 @@ public class CameraRig : MonoBehaviour {
             d.z = 0;
             transform.position += d;
         }
+    }
+
+    /// <summary>Centre the view on <paramref name="world"/>, keeping the zoom.</summary>
+    public void CenterOn(Vector3 world) {
+        Vector3 p = transform.position;
+        transform.position = new Vector3(world.x, world.y, p.z);
     }
 
     /// <summary>Centre on the board and zoom so all of it is visible.</summary>

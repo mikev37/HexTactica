@@ -46,6 +46,7 @@ namespace HexTactica.Harness {
             GameController gc = GameController.gc;
             if (gc == null || gc.headless || gc.gameOver || player == null) return;
             if (gc.activePlayer != player) { timer = turnDelay; return; }
+            if (gc.EndTurnPending) return;   // played: its turn ends once the moves have shown
             timer -= Time.deltaTime;
             if (timer > 0f) return;
             timer = turnDelay;
@@ -76,7 +77,7 @@ namespace HexTactica.Harness {
                 u.active = false;
             }
 
-            if (GameController.gc != null && !GameController.gc.gameOver) GameController.gc.EndTurn();
+            if (GameController.gc != null && !GameController.gc.gameOver) GameController.gc.EndTurnWhenStill();   // in play: once its moves have played
         }
 
         // ------------------------------------------------------------------ greedy
@@ -110,7 +111,7 @@ namespace HexTactica.Harness {
                 for (int j = 0; j < inRange.Count; j++) {
                     HexTile t = inRange[j];
                     if (t.occupier == null || t.occupier.owner == unit.owner || !GameController.Targetable(t.occupier)) continue;
-                    if (!unit.CanAttack(from)) continue;
+                    if (!unit.CanAttack(from) || !CombatMath.LineOfFire(unit, from, t, t.occupier)) continue;
 
                     int damage = CombatMath.PredictDamage(unit, t.occupier, from);
                     float value = damage * Mathf.Max(1, t.occupier.value());
@@ -122,11 +123,10 @@ namespace HexTactica.Harness {
             if (bestTile != unit.tile && bestTile != null && bestTile.occupier == null) {
                 MoveField f = AIPath.ThisTurn(unit);
                 int steps = f.Reachable(bestTile) ? f.Get(bestTile).steps : 1;
-                unit.TeleportTo(bestTile, steps);
+                unit.TravelTo(bestTile, f, steps);
             }
             if (bestTarget != null && bestTarget.Strength > 0 && unit.Strength > 0) {
-                int d = unit.tile.Distance(bestTarget.tile);
-                if (d <= unit.AttackRange && d > unit.MinRange && unit.CanAttack(unit.tile)) {
+                if (CombatMath.InFireRange(unit, unit.tile, bestTarget.tile, bestTarget) && unit.CanAttack(unit.tile)) {
                     unit.OrderAttack(bestTarget);
                 }
             }
@@ -165,7 +165,7 @@ namespace HexTactica.Harness {
                 HexTile dest = options[NextRandom(options.Count)];
                 if (dest != unit.tile && dest.occupier == null) {
                     int steps = reach.Reachable(dest) ? reach.Get(dest).steps : 1;
-                    unit.TeleportTo(dest, steps);
+                    unit.TravelTo(dest, reach, steps);
                 }
             }
 
@@ -173,7 +173,8 @@ namespace HexTactica.Harness {
             List<HexTile> inRange = AIPath.TilesInRange(unit.tile, unit.MinRange, unit.AttackRange);
             List<Unit> targets = new List<Unit>();
             for (int i = 0; i < inRange.Count; i++) {
-                if (inRange[i].occupier != null && inRange[i].occupier.owner != unit.owner && GameController.Targetable(inRange[i].occupier)) {
+                if (inRange[i].occupier != null && inRange[i].occupier.owner != unit.owner && GameController.Targetable(inRange[i].occupier)
+                    && CombatMath.LineOfFire(unit, unit.tile, inRange[i], inRange[i].occupier)) {
                     targets.Add(inRange[i].occupier);
                 }
             }

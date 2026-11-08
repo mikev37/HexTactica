@@ -74,6 +74,16 @@ public static class LocomotionRules {
         return t != null && t.terrain != null && t.terrain.elevation < 0;
     }
 
+    /// <summary>
+    /// A harbor: the tile of a building that services ships (a naval yard), whoever holds it. It stands on bridge ground
+    /// but is not held to the bridge rule (BridgeStep): units and supply step onto and off it from any land around it,
+    /// ships from any water.
+    /// </summary>
+    public static bool IsHarbor(HexTile t) {
+        Building b = t != null ? t.building : null;
+        return b != null && b.tile == t && b.services != null && b.services.Contains(Locomotion.Ship);
+    }
+
     public static bool IsBridge(HexTile t) {
         return t != null && t.terrain != null && t.terrain.elevation == 0;
     }
@@ -85,6 +95,8 @@ public static class LocomotionRules {
     /// </summary>
     public static bool BridgeStep(HexTile from, HexTile to, Locomotion l) {
         if (from == null || to == null || IgnoresTerrain(l)) return true;
+        // A harbor (IsHarbor) joins every tile around it, land and water alike: it is a port, not a crossing.
+        if (IsHarbor(from) || IsHarbor(to)) return true;
         // Between a bridge and the water under it: always (a boat leaving a yard on a bridge, or coming in to it). Whether
         // the unit may be on either tile at all is its own reach (Unit.CanEnter): a land unit still cannot step into water.
         if (IsWater(from) || IsWater(to)) return true;

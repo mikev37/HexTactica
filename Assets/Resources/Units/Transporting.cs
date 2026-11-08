@@ -78,7 +78,25 @@ public static class Transporting {
     }
 
     public static bool Load(Unit transport, Unit cargo) {
-        if (!CanBoardFrom(transport, cargo)) return false;
+        return cargo != null && BoardFrom(transport, cargo, cargo.tile);
+    }
+
+    /// <summary>
+    /// Could <paramref name="cargo"/> board <paramref name="transport"/> stepping in from <paramref name="from"/> (beside
+    /// it, or its own tile)? <paramref name="from"/> may hold a friendly unit: the cargo only passes through it on its
+    /// way in (Unit.WalkAndBoard), it never stops there.
+    /// </summary>
+    public static bool CanBoardFromTile(Unit transport, Unit cargo, HexTile from) {
+        if (!CanCarry(transport, cargo) || transport.tile == null || from == null) return false;
+        if (from != transport.tile && !transport.tile.neighbors.Contains(from)) return false;
+        Unit o = from.occupier;
+        if (o != null && o != cargo && o != transport && o.owner != cargo.owner) return false;
+        return CanBoardOnto(cargo, from, transport.tile, transport);
+    }
+
+    /// <summary>Board <paramref name="transport"/> from <paramref name="from"/> (see CanBoardFromTile): the cargo leaves its own tile for the transport's.</summary>
+    public static bool BoardFrom(Unit transport, Unit cargo, HexTile from) {
+        if (!CanBoardFromTile(transport, cargo, from)) return false;
 
         if (cargo.tile != null && cargo.tile.occupier == cargo) cargo.tile.occupier = null;
         cargo.tile = transport.tile;
@@ -121,8 +139,7 @@ public static class Transporting {
             Unit hidden = onto.occupier;
             if (FogOfWar.On && hidden.owner != transport.owner && !FogOfWar.Sees(transport.owner, hidden) && transport.tile != null) {
                 FogOfWar.Reveal(hidden, transport.owner);
-                int d = hidden.tile.Distance(transport.tile);
-                if (hidden.Strength > 0 && d <= hidden.AttackRange && d > hidden.MinRange && hidden.CanAttack(transport) && GameController.Targetable(transport))
+                if (hidden.Strength > 0 && CombatMath.InFireRange(hidden, hidden.tile, transport.tile, transport) && hidden.CanAttack(transport) && GameController.Targetable(transport))
                     hidden.OrderAttack(transport, true);
                 transport.ambushedBy = hidden;
             }

@@ -85,7 +85,7 @@ namespace HexTactica.AI {
             staged.Clear(); enRoute.Clear(); engaged.Clear();
             foreach (Unit u in units) {
                 if (u == null || u.tile == null || u.Strength <= 0) continue;
-                if (map.TurnsToContact(u) <= p.campaignEngagedTurns) engaged.Add(u);
+                if ((p.campaignReleaseOwnReach ? map.TurnsToEngage(u) : map.TurnsToContact(u)) <= p.campaignEngagedTurns) engaged.Add(u);
                 else if (staging != null && map.Travel(u, u.tile, staging) <= stagingRadius) staged.Add(u);
                 else enRoute.Add(u);
             }
@@ -455,6 +455,19 @@ namespace HexTactica.AI {
                     if (p.campaignHoldContested && !Contested(kv.Key, map, p)) continue;
                     places.Add(new CampaignObjective { kind = CampaignKind.Hold, target = kv.Key, lasting = true, placeKind = kv.Value });
                 }
+                // On the defensive (defensiveNarrows): the narrows (passages three tiles wide or less, flanked by ground an army
+                // cannot cross) between us and an enemy we see or remember are held, ours or not, in sight or not.
+                if (p.defensiveNarrows && map.knowledge != null && map.knowledge.aggression < 0.25f) {
+                    int near = Mathf.Max(1, p.fogStaleRadius) * 2;
+                    foreach (HexTile t in Narrows()) {
+                        if (places.Exists(x => x.target == t)) continue;
+                        bool enemy = false;
+                        foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.tile.Distance(t) <= near) { enemy = true; break; }
+                        if (!enemy && FogOfWar.current != null) foreach (FogOfWar.Phantom ph in FogOfWar.current.phantoms) if (ph.last != null && ph.last.Distance(t) <= near) { enemy = true; break; }
+                        if (!enemy || NearestOwn(t, map) > near) continue;
+                        places.Add(new CampaignObjective { kind = CampaignKind.Hold, target = t, lasting = true, placeKind = "narrows" });
+                    }
+                }
                 // The nearest to our units only (each costs a route to plan).
                 places.Sort((a, b) => { int c = NearestOwn(a.target, map).CompareTo(NearestOwn(b.target, map)); return c != 0 ? c : CombatMath.CompareTiles(a.target, b.target); });
                 if (places.Count > p.campaignPlaces) places.RemoveRange(p.campaignPlaces, places.Count - p.campaignPlaces);
@@ -531,6 +544,42 @@ namespace HexTactica.AI {
             }
             r.Sort((a, b) => CombatMath.CompareTiles(a.Key, b.Key));
             return r;
+        }
+
+        static List<HexTile> narrows;
+        static HexGenerator narrowsOf;
+        /// <summary>
+        /// defensiveNarrows: tiles in a passage three tiles wide or less: army ground whose own ring (it and its neighbours)
+        /// splits the army ground within three tiles of it into two or more parts. Computed once per map.
+        /// </summary>
+        public static List<HexTile> Narrows() {
+            if (HexGenerator.hg == null) return new List<HexTile>();
+            lock (typeof(AICampaign)) {
+                if (narrows != null && narrowsOf == HexGenerator.hg) return narrows;
+                List<HexTile> r = new List<HexTile>();
+                foreach (HexTile t in HexGenerator.hg.tiles) {
+                    if (!ArmyGround(t) || t.neighbors == null) continue;
+                    HashSet<HexTile> cut = new HashSet<HexTile> { t };
+                    foreach (HexTile n in t.neighbors) if (n != null) cut.Add(n);
+                    HashSet<HexTile> area = new HashSet<HexTile>();
+                    List<HexTile> q = new List<HexTile> { t };
+                    for (int i = 0; i < q.Count; i++) foreach (HexTile n in q[i].neighbors) if (n != null && !area.Contains(n) && n.Distance(t) <= 3 && ArmyGround(n)) { area.Add(n); q.Add(n); }
+                    area.ExceptWith(cut);
+                    int open = 0; foreach (HexTile n in t.neighbors) if (ArmyGround(n)) open++;
+                    if (area.Count == 0 || open > 4) continue;
+                    // parts of the area left once the ring is removed
+                    int parts = 0; HashSet<HexTile> seen = new HashSet<HexTile>();
+                    foreach (HexTile s0 in area) {
+                        if (seen.Contains(s0)) continue;
+                        parts++; List<HexTile> st = new List<HexTile> { s0 }; seen.Add(s0);
+                        for (int i = 0; i < st.Count; i++) foreach (HexTile n in st[i].neighbors) if (n != null && area.Contains(n) && !seen.Contains(n)) { seen.Add(n); st.Add(n); }
+                    }
+                    if (parts >= 2) r.Add(t);
+                }
+                r.Sort(CombatMath.CompareTiles);
+                narrows = r; narrowsOf = HexGenerator.hg;
+                return r;
+            }
         }
 
         static int NearestOwn(HexTile t, AIMap map) {
@@ -768,7 +817,7 @@ namespace HexTactica.AI {
                     if (d[t] != c || t.neighbors == null) continue;
                     foreach (HexTile n in t.neighbors) {
                         if (n == null || n.terrain == null) continue;
-                        if (n.terrain.elevation < 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;
+                        if (n.terrain.elevation < 0) continue;
                         if (!LocomotionRules.BridgeStep(n, t, Locomotion.Wheels)) continue;
                         int step = 1 + (map.EnemyStrikeTurns(n) <= 1 && n != target ? danger : 0);
                         int nd = c + step, old;

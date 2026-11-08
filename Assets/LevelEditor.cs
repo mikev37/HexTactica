@@ -33,21 +33,18 @@ public class LevelEditor : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown("s")) {
-            Save();
-        }
-        if (Input.GetKeyDown("l")) {
-            Load();
-        }
+        // The keys and the HexTactica menu go the same way: SaveBoard, and ScenarioLoader.LoadBoardFromPath.
+        if (Input.GetKeyDown("s")) SaveBoard(QuickSavePath);
+        if (Input.GetKeyDown("l")) HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(QuickSavePath);
     }
 
-    void Save() {
-        string json = BoardJson();
-        Debug.Log(json);
+    /// <summary>Where the S and L keys save and load: save.dat in the game's data folder.</summary>
+    public static string QuickSavePath { get { return Path.Combine(Application.persistentDataPath, "save.dat"); } }
 
-        string destination = Application.persistentDataPath + "/save.dat";
-        Debug.Log(destination);
-        File.WriteAllText(destination, json);
+    /// <summary>Save the board as it stands to <paramref name="path"/> (the S key, and HexTactica ▸ Save Scenario File).</summary>
+    public static void SaveBoard(string path) {
+        File.WriteAllText(path, BoardJson());
+        Debug.Log("Saved the board to " + path);
     }
 
     /// <summary>The board as a scenario file: tiles, players, purchase settings, buildings and units (what the S key saves, and HexTactica ▸ Save Scenario File).</summary>
@@ -72,6 +69,8 @@ public class LevelEditor : MonoBehaviour
             json = json.Substring(0, json.Length - 1) + "\n],\n";
 
             json += "\n\"active\":" + GameController.gc.activePlayer.id;
+            // The day (round) the game is on: a save goes on from where it was (0 for a scenario's start).
+            json += ",\n\"day\":" + GameController.gc.days;
             // The scenario's purchase settings (GameController inspector).
             json += ",\n\"purchases\":\"" + GameController.gc.PurchasesSetting + "\",\n\"allowedUnits\":\"" + GameController.gc.AllowedUnitsSetting + "\"";
             // Fog of war (GameController inspector).
@@ -103,76 +102,11 @@ public class LevelEditor : MonoBehaviour
         return json;
     }
 
-    void Load() {
-        List<Unit> allunits = new List<Unit>();
-        allunits.AddRange(UnitController.uc.units);
-        allunits.ForEach(x => x.Delete());
-        string destination = Application.persistentDataPath + "/save.dat";
-        Debug.Log(destination);
-        string json = File.ReadAllText(destination);
-        Debug.Log(json);
-        //HexGenerator.hg.load()
-        JSONObject obj = new JSONObject(json);
-        if (BuildingController.bc != null) BuildingController.bc.Clear();
-        Debug.Log(obj.GetField("tiles"));
-        HexTactica.Harness.ScenarioLoader.FitBoard(obj);    // a save for a bigger board: the board grows
-        HexTactica.Harness.ScenarioLoader.FloodWater();   // a save for a smaller board: the rest is water
-        JSONObjectEnumerator numobj =
-            obj.GetField("tiles").GetEnumerator();
-        while (numobj.MoveNext()) {
-            Debug.Log(numobj.Current.Print());
-            TileData td = JsonUtility.FromJson<TileData>(numobj.Current.Print());
-            td.load();
-        }
-        if (obj.GetField("players")) {
-            JSONObjectEnumerator numplayer =
-                obj.GetField("players").GetEnumerator();
-            while (numplayer.MoveNext()) {
-                Debug.Log(numplayer.Current.Print());
-                PlayerData pd = JsonUtility.FromJson<PlayerData>(numplayer.Current.Print());
-                Player loaded = pd.load();
-                // Everyone starts in the game (a file saved after a side was knocked out says
-                // "eliminated":true, and its turns were skipped from then on). A side with nothing
-                // left is knocked out again by the next victory check, except in Sandbox.
-                if (loaded != null) loaded.eliminated = false;
-            }
-            JSONObject ff = obj.GetField("fog");
-            if (ff != null) GameController.gc.fogOfWar = GameController.ParseFog(ff.stringValue);
-            FogOfWar.Reset();
-            JSONObject pf = obj.GetField("purchases"), af = obj.GetField("allowedUnits");
-            if (pf != null || af != null) GameController.gc.ApplyPurchaseRules(pf != null ? pf.stringValue : null, af != null ? af.stringValue : null);
-            long active_player = obj.GetField("active").longValue;
-            GameController.gc.players.ForEach(pl => { if (pl.id == active_player) GameController.gc.activePlayer = pl; });
-        }
-        if (obj.GetField("buildings")) {
-            JSONObjectEnumerator numbuilding =
-                obj.GetField("buildings").GetEnumerator();
-            while (numbuilding.MoveNext()) {
-                BuildingData bd = JsonUtility.FromJson<BuildingData>(numbuilding.Current.Print());
-                bd.load();
-            }
-        }
-        if (obj.GetField("units")) {
-            JSONObjectEnumerator numunit =
-                obj.GetField("units").GetEnumerator();
-            List<UnitData> all = new List<UnitData>();
-            while (numunit.MoveNext()) {
-                Debug.Log(numunit.Current.Print());
-                all.Add(JsonUtility.FromJson<UnitData>(numunit.Current.Print()));
-            }
-            UnitData.LoadAll(all);
-        }
-        GameController.BoardLoaded();
-        if (HexTactica.Harness.ScenarioLoader.RecordGames && GameController.gc != null && !GameController.gc.headless) {
-            HexTactica.Harness.GameLog.Start(destination, null, null);
-            Debug.Log("Recording this game to " + HexTactica.Harness.GameLog.Folder);
-        }
-    }
 
     /// <summary>
     /// The terrain of that name: one in the editor's list (allTerrain), or one the game itself puts
-    /// on tiles, so a save can hold it without the list having it: a building's ground (Building.ground
-    /// and serviceGround, such as BuildingGround) or what a terrain becomes when destroyed
+    /// on tiles, so a save can hold it without the list having it: a building's ground (Building.ground,
+    /// such as BuildingGround) or what a terrain becomes when destroyed
     /// (TerrainData.destroyedInto). Null if none has that name.
     /// </summary>
     /// <summary>Terrains renamed since saves were written: old name, new name.</summary>
@@ -196,7 +130,6 @@ public class LevelEditor : MonoBehaviour
             foreach (Building b in singleton.allBuilding) {
                 if (b == null) continue;
                 if (b.ground != null && b.ground.name.Equals(name)) return b.ground;
-                if (b.serviceGround != null && b.serviceGround.name.Equals(name)) return b.serviceGround;
             }
         if (singleton.allTerrain != null)
             foreach (TerrainData t in singleton.allTerrain) {

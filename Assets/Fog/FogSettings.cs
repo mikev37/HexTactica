@@ -20,6 +20,8 @@ public class FogSettings : ScriptableObject {
     public int sortingOrder = 1000;
     [Tooltip("Seconds for a unit or a tile to fade fully in or out of sight.")]
     public float fadeSeconds = 0.35f;
+    [Tooltip("Fog of war on but not shown on screen (GameController.fogShownOnScreen off): every side's fog is laid over the board at this share of the fog's opacity, one layer per side, so you see what each side sees.")]
+    [Range(0, 1)] public float observerOpacity = 0.5f;
     [Tooltip("Opacity of the viewer's own units that no enemy sees.")]
     [Range(0, 1)] public float ownHiddenAlpha = 0.5f;
 

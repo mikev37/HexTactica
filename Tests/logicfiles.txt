@@ -15,6 +15,7 @@ GoTo.cs
 DestroyUnits.cs
 LevelEditor.cs
 HexTilePlayerSupplyDisplay.cs
+SupplyBorderPump.cs
 setOpacity.cs
 setSize.cs
 scripts/PriorityQueue.cs

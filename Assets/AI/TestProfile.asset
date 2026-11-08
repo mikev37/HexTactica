@@ -252,6 +252,15 @@ MonoBehaviour:
   fogAnchorFalloff: 2
   fogHQWeight: 4
   fogProductionWeight: 2
+  fogConcentrateCapped: 1
+  fogScreenBelowCost: 0
+  noZeroDamageAttacks: 1
+  tieFavorsShot: 1
+  defensiveNarrows: 0
+  campaignReleaseOwnReach: 1
+  fogRiskWeight: 1
+  productionPossibleFoes: 1
+  productionAvoidFire: 1
   scoutUnits: 0
   scoutPull: 0.3
   scoutThreatBonus: 1

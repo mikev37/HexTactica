@@ -139,6 +139,8 @@ public class OldAIPlayer : MonoBehaviour, IAIController {
         if (LevelEditor.singleton != null &&
             (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement)) return;
         if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; Abandon(); return; }
+        // Our turn is over and waits for what is still playing on screen (GameController.EndTurnWhenStill).
+        if (GameController.gc.EndTurnPending) return;
 
         // A thought under way: act on it once it is ready (the frame is free meanwhile).
         if (thinking != null) {
@@ -390,7 +392,7 @@ public class OldAIPlayer : MonoBehaviour, IAIController {
                 refreshPending = true;
                 // The game's supply borders and alarms read the published supply: the AI's thoughts
                 // publish only into their copies, so publish the real fields after its action.
-                if (!headless && GameController.gc != null) foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+                // (FinishActive already re-solves every side's supply in play.)
             }
 
             Annotate(unit, action);
@@ -1527,7 +1529,7 @@ public class OldAIPlayer : MonoBehaviour, IAIController {
         if (objective != null && objective.MissionFinished()) {
             UnityEngine.Debug.Log("OldAIPlayer: objective complete for " + player.personal_name);
         }
-        GameController.gc.EndTurn();
+        GameController.gc.EndTurnWhenStill();   // in play: once its moves have played
     }
 
     /// <summary>Exposed for tests and the harness: the AI's current read of the board.</summary>

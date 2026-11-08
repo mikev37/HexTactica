@@ -40,8 +40,10 @@ namespace HexTactica.AI {
             if (!attacker.CanAttack(from)) return a;
             if (defender.owner == attacker.owner) return a;
 
-            int distance = from.Distance(defender.tile);
-            if (distance > attacker.AttackRange || distance <= attacker.MinRange) return a;
+            if (!CombatMath.InFireRange(attacker, from, defender.tile, defender)) return a;   // range, and line of fire
+            // The game's own rule for offering an attack (Unit.CanAttack(Unit)): a target it can attack at all, for damage.
+            // (The AI took attacks the player is never offered: no damage, only a hoped-for retreat, and the reply.)
+            if (!attacker.CanTarget(defender) || Unit.calculateDamage(attacker, defender, defender.tile, 0) <= 0) return a;
 
             CombatOutcome o = CombatMath.Resolve(attacker, defender, from);
             if (o.damageToDefender <= 0 && !o.defenderRetreats) return a;

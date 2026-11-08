@@ -34,8 +34,7 @@ namespace HexTactica.Harness {
         }
 
         /// <summary>
-        /// Restore the board to a saved state. Mirrors LevelEditor.Load, but without
-        /// depending on keyboard input, and clears buildings as well as units.
+        /// Restore the board to a saved state (the one loader: the L key, the HexTactica menu and the harness all use it).
         /// </summary>
         public static bool LoadBoard(string fileName) {
             return LoadBoardFromPath(PathFor(fileName));
@@ -67,7 +66,8 @@ namespace HexTactica.Harness {
             if (GameController.gc != null) {
                 GameController.gc.gameOver = false;
                 GameController.gc.winner = null;
-                GameController.gc.days = 0;
+                // The day the file was saved on (a save goes on from there); 0 for a file without one.
+                GameController.gc.days = DayOf(obj);
                 GameController.gc.players.ForEach(p => {
                     if (p == null) return;
                     p.eliminated = false;
@@ -105,13 +105,7 @@ namespace HexTactica.Harness {
                     // side's turns were then skipped for the rest of the game).
                     if (loaded != null) loaded.eliminated = false;
                 }
-                JSONObject active = obj.GetField("active");
-                if (active != null && GameController.gc != null) {
-                    long activeId = active.longValue;
-                    GameController.gc.players.ForEach(pl => {
-                        if (pl.id == activeId) GameController.gc.activePlayer = pl;
-                    });
-                }
+                // (Who moves first: ApplyTestBlock, below.)
             }
 
             if (obj.GetField("buildings")) {
@@ -140,6 +134,12 @@ namespace HexTactica.Harness {
             }
 
             return true;
+        }
+
+        /// <summary>The day (round, from 0) a file was saved on: its "day", 0 if it has none.</summary>
+        public static int DayOf(JSONObject obj) {
+            JSONObject d = obj != null ? obj.GetField("day") : null;
+            return d != null && d.isNumber ? Mathf.Max(0, (int)d.intValue) : 0;
         }
 
         /// <summary>

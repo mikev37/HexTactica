@@ -17,29 +17,21 @@ public enum BuildingType {
     FOB
 }
 
-/// <summary>A tile a building covers, relative to its anchor tile (cube offsets: x + y + z = 0).</summary>
-[Serializable]
-public struct TileOffset {
-    public int x, y;
-    public TileOffset(int x, int y) { this.x = x; this.y = y; }
-}
-
 /// <summary>
-/// A building: a prefab (its own sprites and animations, like a unit) that stands on one or
-/// more tiles and replaces their ground (its own cover and movement cost, like a tile). Units
+/// A building: a prefab (its own sprites and animations, like a unit) that stands on one tile
+/// and replaces its ground (its own cover and movement cost, like a tile). Units
 /// stand on top of it. It belongs to a player, or to nobody.
 ///
-/// Capture is implicit: at the end of a player's turn, every infantry unit of theirs standing on
-/// one of the building's tiles that did not attack this turn captures, adding its strength.
-///   - It takes CaptureThreshold points (10, +5 per extra tile) to take a neutral building.
-///   - Ownership is sticky: a neutral building stays neutral until someone reaches the threshold,
-///     and an owned one stays owned until its points are brought down to 0, when it becomes
-///     neutral. Points beyond what it takes to bring it to 0 carry over as the capturer's
-///     progress: 3 Blue points and a 6-strength Red grunt leave it neutral with 3 Red.
-///   - Contested (infantry of another side also on it): nobody can raise points; the side
-///     capturing can still bring the others' points down to 0, but not past.
-///   - Neutral progress decays by 2 at the end of the capturing side's turn when none of its
-///     infantry is on the building. An owned building never decays.
+/// Capture is implicit: an infantry unit that ends its action on the building's tile without having
+/// attacked this turn captures there and then, adding its strength (CaptureBy, from Unit.FinishActive);
+/// one that stood there all turn without acting captures as the turn ends (ResolveCaptures). Once per
+/// turn per building.
+///   - capturePoints is capturingPlayer's progress toward taking it from whoever holds it (or from
+///     nobody). It starts from 0: an owned building does not have to be brought down to neutral
+///     first. At CaptureThreshold (10) it changes hands straight to the capturer, progress cleared.
+///   - Another side starting on it starts again from 0 (the earlier progress is lost).
+///   - The owner's infantry on it brings a capturer's progress down by its strength.
+///   - Progress decays by 2 at the end of the capturing side's turn when it did not capture there.
 ///   - The HQ: losing it ends the game under standard rules; under attrition it cannot be captured.
 ///
 /// Supply: a building that produces supply is a relay when it is connected to its owner's network
@@ -83,17 +75,9 @@ public class Building : MonoBehaviour {
 
     internal void Prime() { nameCache = base.name; }
 
-    [Header("Footprint and ground")]
-    [Tooltip("Extra tiles the building covers, relative to its anchor (cube x, y)")]
-    public List<TileOffset> footprint = new List<TileOffset>();
-    [Tooltip("The ground of every tile it covers: cover, movement cost and floor sprites. Empty keeps the terrain.")]
+    [Header("Ground")]
+    [Tooltip("The ground of its tile: cover, movement cost and floor sprites. Empty keeps the terrain.")]
     public TerrainData ground;
-    [Tooltip("Runway or dock tiles, relative to the anchor: they service units like the building, but are not part of it for capture")]
-    public List<TileOffset> serviceTiles = new List<TileOffset>();
-    [Tooltip("The ground of the runway or dock tiles (a runway: road). Empty keeps the terrain (docks stay water).")]
-    public TerrainData serviceGround;
-    [NonSerialized] public List<HexTile> tiles = new List<HexTile>();
-    [NonSerialized] public List<HexTile> runway = new List<HexTile>();
     readonly Dictionary<HexTile, TerrainData> underlying = new Dictionary<HexTile, TerrainData>();
 
     [Header("Render")]
@@ -144,7 +128,7 @@ public class Building : MonoBehaviour {
         get { BoardView v = BoardView.current; return v != null && v.Has(this) ? v.PointsOf(this) : _capturePoints; }
         set { BoardView v = BoardView.current; if (v != null && v.Has(this)) v.SetPoints(this, value); else _capturePoints = value; }
     }
-    [Tooltip("Whose progress capturePoints is, while neutral")]
+    [Tooltip("Whose progress capturePoints is (toward taking it from its owner, or from nobody)")]
     [SerializeField, FormerlySerializedAs("capturingPlayer")] Player _capturingPlayer;
     public Player capturingPlayer {
         get { BoardView v = BoardView.current; return v != null && v.Has(this) ? v.CapturingOf(this) : _capturingPlayer; }
@@ -265,42 +249,32 @@ public class Building : MonoBehaviour {
         return list;
     }
 
-    public int CaptureThreshold { get { return 10 + 5 * Mathf.Max(0, Footprint.Count - 1); } }
-
-    /// <summary>The tiles it stands on (anchor first).</summary>
-    public List<HexTile> Footprint {
-        get {
-            if (tiles.Count == 0 && tile != null) tiles.Add(tile);
-            return tiles;
-        }
-    }
+    /// <summary>Points it takes to take it (and an owner's full hold).</summary>
+    public int CaptureThreshold { get { return 10; } }
 
     /// <summary>
     /// Capture progress as the screen shows it (under fog of war, as the viewer last saw it), if
-    /// there is any: a neutral building someone is taking — "Capturing", "Blue 6/10", Blue; an owned
-    /// one brought down — "Held", "4/10", its owner. False when there is none (an owned building at
-    /// full points, a neutral one nobody is taking, one that cannot be captured).
+    /// there is any: someone taking it — "Capturing", "Blue 6/10", Blue (from its owner or from
+    /// nobody). False when there is none, or it cannot be captured.
     /// </summary>
     public bool ShownCaptureProgress(out string what, out string value, out Player whose) {
         what = null; value = null; whose = null;
         if (!Capturable) return false;
         Player capturing; int points;
         FogOfWar.ShownCapture(this, out capturing, out points);
-        Player held = FogOfWar.ShownOwner(this);
-        int threshold = CaptureThreshold;
-        if (held == null && capturing != null && points > 0) {
-            what = "Capturing"; value = capturing.personal_name + " " + points + "/" + threshold; whose = capturing;
-            return true;
-        }
-        if (held != null && points < threshold) {
-            what = "Held"; value = Mathf.Max(0, points) + "/" + threshold; whose = held;
-            return true;
-        }
-        return false;
+        if (capturing == null || points <= 0) return false;
+        what = "Capturing"; value = capturing.personal_name + " " + points + "/" + CaptureThreshold; whose = capturing;
+        return true;
     }
 
-    /// <summary>0..1: how far up its pole the flag is (CaptureFlag shows it as the viewer last saw it).</summary>
-    public float FlagHeight { get { return Mathf.Clamp01(capturePoints / (float)CaptureThreshold); } }
+    /// <summary>
+    /// 0..1: how far up its pole the flag stands. Held: full, coming down as someone takes it; neutral: the
+    /// capturer's progress (CaptureFlag shows it as the viewer last saw it).
+    /// </summary>
+    public static float FlagHeightOf(Player shownOwner, Player capturing, int points, int threshold) {
+        float p = capturing != null ? Mathf.Clamp01(points / (float)Mathf.Max(1, threshold)) : 0f;
+        return shownOwner != null ? 1f - p : p;
+    }
 
 
     /// <summary>Only infantry take ground. Vehicles can sit on a building but not flip it.</summary>
@@ -313,62 +287,44 @@ public class Building : MonoBehaviour {
 
     /// <summary>
     /// Would <paramref name="u"/> ending its turn on <paramref name="t"/> work toward taking a
-    /// building: one of its own tiles (not a runway or dock), not ours, capturable under the rules,
+    /// building: its tile, not ours, capturable under the rules,
     /// and <paramref name="u"/> a unit that captures.
     /// </summary>
     public static bool WouldCapture(Unit u, HexTile t) {
-        if (u == null || t == null || t.building == null) return false;
+        if (u == null || t == null || t.building == null || u.attackedThisTurn) return false;
         Building b = t.building;
-        return !b.IsServiceTile(t) && b.Capturable && CanCapture(u) && (b.owner != u.owner || (b.capturingPlayer != null && b.capturingPlayer != u.owner));
+        return b.Capturable && CanCapture(u) && (b.owner != u.owner || (b.capturingPlayer != null && b.capturingPlayer != u.owner && b.capturePoints > 0));
     }
 
-    /// <summary>Can this building change hands under the current rules? (Attrition: not the HQ.)</summary>
+    /// <summary>
+    /// Can this building change hands under the current rules? Not while destroyed (a ruin is nothing to
+    /// hold until it is repaired: its points stay as they were), and under attrition not the HQ.
+    /// </summary>
     public bool Capturable {
-        get { return !(IsHQ && GameController.gc != null && GameController.gc.rules == RuleSet.Attrition); }
+        get { return !Destroyed && !(IsHQ && GameController.gc != null && GameController.gc.rules == RuleSet.Attrition); }
     }
 
     // ------------------------------------------------------------------ placement
 
     /// <summary>
-    /// Stand on <paramref name="anchor"/> and the footprint around it: each tile takes the
-    /// building's ground (its old terrain is kept, for saving and for removal). The ground can be
-    /// painted over in the editor afterwards; a save keeps what is shown, and the terrain under it.
+    /// Stand on <paramref name="anchor"/>: the tile takes the building's ground (its old terrain is
+    /// kept, for saving and for removal). The ground can be painted over in the editor afterwards; a
+    /// save keeps what is shown, and the terrain under it.
     /// </summary>
     public void Occupy(HexTile anchor) {
         Release();
         tile = anchor;
-        tiles.Clear();
         if (anchor == null) return;
-        tiles.Add(anchor);
-        if (footprint != null && HexGenerator.hg != null) {
-            foreach (TileOffset o in footprint) {
-                HexTile t = HexGenerator.hg.get(anchor.x + o.x, anchor.y + o.y, anchor.z - o.x - o.y);
-                if (t != null && !tiles.Contains(t)) tiles.Add(t);
-            }
-        }
-        foreach (HexTile t in tiles) {
-            t.building = this;
-            // Loaded from a save that kept the ground as shown (painted in the editor, say): keep it.
-            TerrainData under = t.pendingUnder; t.pendingUnder = null;
-            underlying[t] = under ?? t.terrain;
-            if (under == null && ground != null) SetGround(t, ground);
-        }
-        runway.Clear();
-        if (serviceTiles != null && HexGenerator.hg != null) {
-            foreach (TileOffset o in serviceTiles) {
-                HexTile t = HexGenerator.hg.get(anchor.x + o.x, anchor.y + o.y, anchor.z - o.x - o.y);
-                if (t == null || tiles.Contains(t) || runway.Contains(t) || (t.building != null && t.building != this)) continue;
-                runway.Add(t);
-                t.building = this;
-                TerrainData under = t.pendingUnder; t.pendingUnder = null;
-                underlying[t] = under ?? t.terrain;
-                if (under == null && serviceGround != null) SetGround(t, serviceGround);
-            }
-        }
-        if (owner != null && capturePoints <= 0) capturePoints = CaptureThreshold;
+        anchor.building = this;
+        // Loaded from a save that kept the ground as shown (painted in the editor, say): keep it.
+        TerrainData under = anchor.pendingUnder; anchor.pendingUnder = null;
+        underlying[anchor] = under ?? anchor.terrain;
+        if (under == null && ground != null) SetGround(anchor, ground);
+        // (Points are a capturer's progress: none without one.)
+        if (capturingPlayer == null) capturePoints = 0;
     }
 
-    /// <summary>Give the tiles their own terrain back.</summary>
+    /// <summary>Give the tile its own terrain back.</summary>
     public void Release() {
         foreach (KeyValuePair<HexTile, TerrainData> kv in underlying) {
             if (kv.Key == null) continue;
@@ -376,16 +332,6 @@ public class Building : MonoBehaviour {
             if (kv.Value != null && kv.Key.terrain != kv.Value) SetGround(kv.Key, kv.Value);
         }
         underlying.Clear();
-        runway.Clear();
-    }
-
-    /// <summary>Is <paramref name="t"/> one of its runway or dock tiles (not part of it for capture)?</summary>
-    public bool IsServiceTile(HexTile t) { return runway.Contains(t); }
-
-    /// <summary>Its tiles where units are serviced: the building and its runways or docks.</summary>
-    public IEnumerable<HexTile> ServiceTiles() {
-        foreach (HexTile t in Footprint) yield return t;
-        foreach (HexTile t in runway) yield return t;
     }
 
     /// <summary>The terrain under the building on <paramref name="t"/> (what a save records).</summary>
@@ -400,68 +346,79 @@ public class Building : MonoBehaviour {
 
     // ------------------------------------------------------------------ capture
 
+    /// <summary>The side that captured here this turn (CaptureBy), so a unit adds its strength once; cleared as the turn ends.</summary>
+    [NonSerialized] public Player capturedThisTurnBy;
+
     /// <summary>
-    /// End of <paramref name="side"/>'s turn: its infantry on buildings capture (see the class
-    /// notes). Called by GameController before the turn passes.
+    /// <paramref name="u"/> ended its action here (Unit.FinishActive): it captures now if it is infantry of a side
+    /// that has not captured here this turn, and did not attack this turn. The real board only (not an AI's copy).
+    /// </summary>
+    public static void CaptureBy(Unit u) {
+        if (u == null || u.tile == null || u.tile.building == null || BoardView.current != null) return;
+        if (u.trasnporter != null && u.trasnporter != u) return;
+        Building b = u.tile.building;
+        if (b.tile != u.tile || !b.Capturable || !CanCapture(u) || u.attackedThisTurn || b.capturedThisTurnBy == u.owner) return;
+        b.capturedThisTurnBy = u.owner;
+        b.Apply(u.owner, u.Strength);
+    }
+
+    /// <summary>
+    /// End of <paramref name="side"/>'s turn (GameController, before the turn passes): its infantry standing on a
+    /// building it has not captured this turn (it never acted, or got there without ending an action there) captures
+    /// now; progress <paramref name="side"/> made somewhere it did not capture this turn decays.
     /// </summary>
     public static void ResolveCaptures(Player side) {
         if (side == null) return;
         List<Building> snapshot = new List<Building>(all);
         foreach (Building b in snapshot) if (b != null) b.ResolveCapture(side);
+        foreach (Building b in snapshot) if (b != null) b.capturedThisTurnBy = null;
     }
 
     void ResolveCapture(Player side) {
-        if (!Capturable) return;
-        int mine = 0;
-        bool opposed = false;
-        foreach (HexTile t in Footprint) {
-            Unit u = t.occupier;
-            if (u == null || !CanCapture(u)) continue;
-            if (u.owner == side) { if (!u.attackedThisTurn) mine += u.Strength; }
-            else opposed = true;
+        if (!Capturable || tile == null) return;
+        if (capturedThisTurnBy == side) return;
+        Unit u = tile.occupier;
+        if (u != null && u.owner == side && CanCapture(u) && !u.attackedThisTurn) {
+            capturedThisTurnBy = side;
+            Apply(side, u.Strength);
+            return;
         }
+        // Progress fades when the side making it has not kept at it.
+        if (capturingPlayer == side && capturePoints > 0) {
+            int before = capturePoints;
+            capturePoints = Mathf.Max(0, capturePoints - 2);
+            if (capturePoints == 0) capturingPlayer = null;
+            if (Captured != null) Captured(this, side, before, capturePoints);
+        }
+    }
+
+    /// <summary>
+    /// The capture rule, on any state: <paramref name="side"/> captures with <paramref name="strength"/> a building
+    /// held by <paramref name="owner"/> (null: nobody) with <paramref name="capturing"/>'s <paramref name="points"/>.
+    /// The owner's own infantry brings a capturer's progress down; anyone else's adds to its own progress, from 0
+    /// if the progress there was another side's, and at <paramref name="threshold"/> takes it.
+    /// </summary>
+    public static void CaptureStep(int threshold, Player owner, Player capturing, int points, Player side, int strength,
+                                   out Player ownerAfter, out Player capturingAfter, out int pointsAfter) {
+        ownerAfter = owner; capturingAfter = capturing; pointsAfter = capturing != null ? Mathf.Max(0, points) : 0;
+        if (side == null || strength <= 0) return;
+        if (owner == side) {
+            pointsAfter = Mathf.Max(0, pointsAfter - strength);
+            if (pointsAfter == 0) capturingAfter = null;
+            return;
+        }
+        if (capturingAfter != side) pointsAfter = 0;
+        capturingAfter = side;
+        pointsAfter += strength;
+        if (pointsAfter >= threshold) { ownerAfter = side; capturingAfter = null; pointsAfter = 0; }
+    }
+
+    void Apply(Player side, int strength) {
         int before = capturePoints;
         Player prevOwner = owner;
-        int threshold = CaptureThreshold;
-
-        if (mine == 0) {
-            // Neutral progress fades when the side making it has left.
-            if (owner == null && capturingPlayer == side && capturePoints > 0) {
-                capturePoints = Mathf.Max(0, capturePoints - 2);
-                if (capturePoints == 0) capturingPlayer = null;
-            }
-        } else if (owner == side) {
-            // Reinforcing: back up to full, unless contested.
-            if (!opposed) capturePoints = Mathf.Min(threshold, capturePoints + mine);
-        } else if (owner != null) {
-            // Someone else's: bring their points down; anything beyond carries over.
-            int left = capturePoints - mine;
-            if (left > 0) capturePoints = left;
-            else {
-                owner = null;
-                capturingPlayer = null;
-                capturePoints = 0;
-                if (left < 0 && !opposed) { capturingPlayer = side; capturePoints = -left; }
-            }
-        } else if (capturingPlayer == null || capturingPlayer == side) {
-            // Neutral, ours to raise — unless contested.
-            if (!opposed) { capturingPlayer = side; capturePoints += mine; }
-        } else {
-            // Neutral with another side's progress: bring it down; beyond 0 it becomes ours.
-            int left = capturePoints - mine;
-            if (left > 0) capturePoints = left;
-            else {
-                capturingPlayer = null;
-                capturePoints = 0;
-                if (left < 0 && !opposed) { capturingPlayer = side; capturePoints = -left; }
-            }
-        }
-
-        if (owner == null && capturingPlayer != null && capturePoints >= threshold) {
-            owner = capturingPlayer;
-            capturingPlayer = null;
-            capturePoints = threshold;
-        }
+        Player o, c; int pts;
+        CaptureStep(CaptureThreshold, owner, capturingPlayer, capturePoints, side, strength, out o, out c, out pts);
+        owner = o; capturingPlayer = c; capturePoints = pts;
 
         if (capturePoints != before || owner != prevOwner) {
             if (Captured != null) Captured(this, side, before, capturePoints);
@@ -474,28 +431,31 @@ public class Building : MonoBehaviour {
     }
 
     /// <summary>
-    /// What a capture by <paramref name="side"/> with <paramref name="strength"/> would leave: the
-    /// owner afterwards and the points (signed: + for <paramref name="side"/>, - for anyone else).
-    /// The same rule as ResolveCapture, for the AI to forecast with.
+    /// How far <paramref name="side"/> holds a building in that state, in points from -threshold to +threshold:
+    /// held by it, threshold less a capturer's progress; held by another, minus (threshold less our progress);
+    /// neutral, our progress (+) or another's (-).
+    /// </summary>
+    public static int Signed(int threshold, Player side, Player owner, Player capturing, int points) {
+        int p = capturing != null ? Mathf.Clamp(points, 0, threshold) : 0;
+        if (owner == side) return threshold - p;
+        if (owner != null) return -(threshold - (capturing == side ? p : 0));
+        return capturing == side ? p : -p;
+    }
+
+    /// <summary>How far <paramref name="side"/> holds it now (Signed).</summary>
+    public int SignedFor(Player side) { return Signed(CaptureThreshold, side, owner, capturingPlayer, capturePoints); }
+
+    /// <summary>
+    /// What a capture by <paramref name="side"/> with <paramref name="strength"/> would leave: the owner afterwards
+    /// and how far <paramref name="side"/> then holds it (Signed). The same rule as CaptureBy, for the AI to forecast
+    /// with. (<paramref name="opposed"/>: kept for callers; one tile holds one unit, so nothing contests a capture.)
     /// </summary>
     public int ForecastPoints(Player side, int strength, bool opposed, out Player ownerAfter) {
         ownerAfter = owner;
-        int threshold = CaptureThreshold;
-        if (!Capturable || strength <= 0) return owner == side || capturingPlayer == side ? capturePoints : -capturePoints;
-        if (owner == side) return opposed ? capturePoints : Mathf.Min(threshold, capturePoints + strength);
-        Player other = owner ?? capturingPlayer;
-        if (other == null || other == side) {
-            if (opposed) return capturePoints;
-            int p = capturePoints + strength;
-            if (p >= threshold) { ownerAfter = side; return threshold; }
-            return p;
-        }
-        int left = capturePoints - strength;
-        if (left > 0) return -left;
-        if (owner != null) ownerAfter = null;
-        if (opposed || left == 0) return 0;
-        if (-left >= threshold) { ownerAfter = side; return threshold; }
-        return -left;
+        if (!Capturable || strength <= 0) return SignedFor(side);
+        Player c; int pts;
+        CaptureStep(CaptureThreshold, owner, capturingPlayer, capturePoints, side, strength, out ownerAfter, out c, out pts);
+        return Signed(CaptureThreshold, side, ownerAfter, c, pts);
     }
 
 

@@ -111,14 +111,7 @@ MonoBehaviour:
   type: 7
   tile: {fileID: 0}
   _owner: {fileID: 0}
-  footprint: []
   ground: {fileID: 11400000, guid: 6f2859b697f240d4eacc4b38407d1822, type: 2}
-  serviceTiles:
-  - x: 1
-    y: 0
-  - x: 1
-    y: -1
-  serviceGround: {fileID: 0}
   sprite: {fileID: 2120000000000000001}
   visionRange: 2
   income: 0

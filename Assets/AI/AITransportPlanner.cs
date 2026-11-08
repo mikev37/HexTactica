@@ -390,13 +390,13 @@ namespace HexTactica.AI {
             }
 
             // In reach of a tile beside the transport this turn: walk there and board (as a
-            // player can: move next to it, then get in).
+            // player can: move next to it — a friend's tile too, passed through — then get in).
             if (Transporting.CanCarry(transport, cargo) && transport.tile != null) {
                 MoveField now = map.ReachThisTurn(cargo);
                 HexTile beside = null;
                 foreach (HexTile n in transport.tile.neighbors) {
-                    if (n == null || n.occupier != null || !now.ReachableThisTurn(n)) continue;
-                    if (!Transporting.CanBoardOnto(cargo, n, transport.tile, transport)) continue;
+                    if (n == null || n == cargo.tile || !now.ReachableThisTurn(n)) continue;
+                    if (!Transporting.CanBoardFromTile(transport, cargo, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) return AIAction.Board(cargo, transport, beside, "walk and board: " + plan.ToString());

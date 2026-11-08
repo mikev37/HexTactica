@@ -63,18 +63,16 @@ namespace HexTactica.AI {
         /// How many of its turns <paramref name="u"/> needs to take <paramref name="b"/> on its own (getting there
         /// included), or -1 if it would be gone first. Turn by turn as the rules play it: its walk there; at the start
         /// of each of its turns out of supply a supply used up, and once they are gone a strength lost (Player.Starve);
-        /// at the end of each turn on the building its strength added to the capture (an enemy's building brought down to
-        /// nothing first, then raised to CaptureThreshold); each night what the enemy can do to it there
+        /// at the end of each turn on the building its strength added to the capture (from 0 to CaptureThreshold, owned
+        /// or not); each night what the enemy can do to it there
         /// (AIMap.ExpectedLoss). <paramref name="supplied"/>: our supply will be there (null: as it is now).
         /// </summary>
         public static int TurnsToTake(Unit u, Building b, AIMap map, bool? supplied = null, int horizon = 10) {
             if (u == null || b == null || b.tile == null || u.tile == null || !Building.CanCapture(u)) return -1;
             if (b.owner == u.owner) return 0;
             int threshold = b.CaptureThreshold;
-            int need;
-            if (b.owner != null) need = Mathf.Max(1, b.capturePoints) + threshold;
-            else if (b.capturingPlayer == null || b.capturingPlayer == u.owner) need = threshold - (b.capturingPlayer == u.owner ? b.capturePoints : 0);
-            else need = b.capturePoints + threshold;
+            // From 0, or from our own progress there (anyone else's is lost: Building.CaptureStep).
+            int need = threshold - (b.capturingPlayer == u.owner ? Mathf.Max(0, b.capturePoints) : 0);
             bool fed = supplied ?? map.SupplyDepth(b.tile) > 0;
             int walk = u.tile == b.tile ? 0 : map.Travel(u, u.tile, b.tile);
             if (walk >= 9999) return -1;
@@ -539,7 +537,7 @@ namespace HexTactica.AI {
                 else {
                     if (now == null) now = map.ReachThisTurn(c);
                     foreach (HexTile n in t.tile.neighbors) {
-                        if (n == null || n.occupier != null || !now.ReachableThisTurn(n) || !Transporting.CanBoardOnto(c, n, t.tile, t)) continue;
+                        if (n == null || n == c.tile || !now.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, c, n)) continue;
                         if (at == null || CombatMath.Precedes(n, at)) at = n;
                     }
                 }

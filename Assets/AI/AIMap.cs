@@ -318,6 +318,8 @@ namespace HexTactica.AI {
         public float fogUncertainty = -1f;
         /// <summary>fogConcentrate: the enemy's power we cannot place this turn (estimate - known, AIKnowledge); -1 unset.</summary>
         public float fogUnplacedPower = -1f;
+        /// <summary>The enemy units we knew of when fogUnplacedPower was set: one seen later in the turn is taken out of the unplaced (not counted twice).</summary>
+        public HashSet<Unit> fogKnownAtStart;
         /// <summary>All out (AIKnowledge): enemy known and much weaker.</summary>
         public bool AllOut { get { return knowledge != null && knowledge.allOut; } }
 
@@ -841,7 +843,7 @@ namespace HexTactica.AI {
                 HexTile t = q.Dequeue();
                 foreach (HexTile n in t.neighbors) {
                     if (n == null || n.terrain == null || d.ContainsKey(n)) continue;
-                    if (n.terrain.elevation < 0 && !(n.building != null && n.building.IsServiceTile(n))) continue;
+                    if (n.terrain.elevation < 0) continue;
                     if (!LocomotionRules.BridgeStep(t, n, Locomotion.Wheels)) continue;
                     d[n] = d[t] + 1;
                     q.Enqueue(n);
@@ -863,6 +865,18 @@ namespace HexTactica.AI {
             Dictionary<HexTile, int> d = LandSteps(to);
             int s;
             return d.TryGetValue(from, out s) ? s : from.Distance(to) + 64;
+        }
+
+        /// <summary>Turns before <paramref name="u"/> can strike an enemy combat unit we see (our reach only, not theirs).</summary>
+        public int TurnsToEngage(Unit u) {
+            if (u == null || u.tile == null || u.Firepower <= 0) return 99;
+            int best = 99;
+            for (int i = 0; i < enemyUnits.Count; i++) {
+                Unit e = enemyUnits[i];
+                if (e == null || e.tile == null || e.Firepower <= 0 || e.Hub != null) continue;
+                best = Mathf.Min(best, Turns(Travel(u, u.tile, e.tile) - u.AttackRange, u.moveRange));
+            }
+            return best;
         }
 
         public int TurnsToContact(Unit u) {

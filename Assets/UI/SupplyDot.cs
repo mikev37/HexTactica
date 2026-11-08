@@ -69,7 +69,7 @@ public class SupplyDot : MonoBehaviour {
         if (!FogOfWar.On) return true;
         Player viewer = FogOfWar.Viewer;
         if (viewer == null || b.owner == viewer) return true;
-        foreach (HexTile t in b.Footprint) if (FogOfWar.TileVisible(viewer, t)) return true;
+        if (b.tile != null && FogOfWar.TileVisible(viewer, b.tile)) return true;
         return false;
     }
 }

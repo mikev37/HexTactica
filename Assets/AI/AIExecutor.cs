@@ -36,18 +36,24 @@ namespace HexTactica.AI {
                     return moved || fired;
                 }
 
-                case AIActionKind.Load:
-                    // A destination beside the transport: walk there first, then board.
-                    if (action.destination != null && action.unit.tile != action.destination && action.transport != null && action.destination != action.transport.tile) {
-                        if (!DoMove(action.unit, action.destination, headless, map)) return false;
-                        if (action.unit.tile != action.destination) return true;
+                case AIActionKind.Load: {
+                    // A destination beside the transport (perhaps a friend's tile, passed through on the way in): walk there
+                    // and board, as a player does (Unit.WalkAndBoard).
+                    Unit cargo = action.unit;
+                    HexTile start = cargo.tile;
+                    List<HexTile> steps = new List<HexTile> { start };
+                    if (action.destination != null && start != action.destination && action.transport != null && action.destination != action.transport.tile) {
+                        steps = PathFor(cargo, action.destination, headless, map);
+                        if (steps == null) return false;
                     }
-                    if (Transporting.Load(action.transport, action.unit)) {
-                        map.Invalidate(action.unit);
-                        map.Invalidate(action.transport);
+                    bool boarded = cargo.WalkAndBoard(steps, action.transport, !headless);
+                    if (boarded || cargo.tile != start) {
+                        map.Invalidate(cargo);
+                        if (action.transport != null) map.Invalidate(action.transport);
                         return true;
                     }
                     return false;
+                }
 
                 case AIActionKind.Unload:
                     // Drive there first, then put the cargo down (same turn: getting off costs nothing).
@@ -68,6 +74,29 @@ namespace HexTactica.AI {
                     return false;
             }
             return false;
+        }
+
+        /// <summary>
+        /// The path <paramref name="unit"/> walks to <paramref name="dest"/> this turn, its own tile first: in play the
+        /// game's own search from where it stands (what a player's click follows), else the plan's field (and headless,
+        /// the plan's field, as the harness moves). Never one that does not start on its tile — CompleteMove on a tile the
+        /// search did not reach built the one-tile "path" [dest], and the sprite slid there in a straight line across
+        /// whatever stood in between. Null if neither reaches it.
+        /// </summary>
+        static List<HexTile> PathFor(Unit unit, HexTile dest, bool headless, AIMap map) {
+            List<HexTile> steps = null;
+            if (!headless) {
+                HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
+                List<HexTile> reach = unit.tile.CheckMovementRange(unit);
+                steps = reach.Contains(dest) ? dest.buildpath() : null;
+                HexGenerator.forAllTiles(t => { t.Reset(); return 0; });
+            }
+            if (steps == null || steps.Count < 2 || steps[0] != unit.tile) {
+                MoveField field;
+                using (FogOfWar.Concealing(unit.owner)) field = map.ReachThisTurn(unit);
+                steps = unit.PathIn(field, dest);
+            }
+            return steps != null && steps.Count >= 2 ? steps : null;
         }
 
         static bool DoMove(Unit unit, HexTile dest, bool headless, AIMap map, bool thenAttacks = false) {
@@ -93,11 +122,12 @@ namespace HexTactica.AI {
                 int steps = field.Reachable(dest) ? field.Get(dest).steps : unit.tile.Distance(dest);
                 unit.TeleportTo(dest, steps, thenAttacks);
             } else {
-                // CompleteMove reads the parent chain that CheckMovementRange leaves on
-                // the tiles, so that has to be primed first.
-                HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
-                unit.tile.CheckMovementRange(unit);
-                unit.CompleteMove(dest, thenAttacks);
+                List<HexTile> steps = PathFor(unit, dest, false, map);
+                if (steps == null) {
+                    Debug.LogWarning("AI: " + unit.name + " cannot reach (" + dest.x + "," + dest.y + ") on the board as it stands: it stays put");
+                    return false;
+                }
+                unit.MoveAlong(steps, thenAttacks, true);
             }
 
             map.Invalidate(unit);
@@ -106,13 +136,15 @@ namespace HexTactica.AI {
 
         static bool DoAttack(Unit attacker, Unit defender, AIMap map) {
             if (attacker == null || defender == null || defender.tile == null) return false;
+            // Aboard a transport since the plan was made (it boarded, or under fog of war it was last seen on foot):
+            // cargo cannot be fired on — its tile is its transport's, so the range check below would let the shot through.
+            if (defender.trasnporter != null && defender.trasnporter != defender) return false;
             if (attacker.tile == null) return false;
             if (!attacker.CanAttack(attacker.tile)) return false;
 
             // Under fog of war only what its side sees (it may have planned on where it believed an enemy was).
             if (!FogOfWar.CanTarget(attacker.owner, defender)) return false;
-            int distance = attacker.tile.Distance(defender.tile);
-            if (distance > attacker.AttackRange || distance <= attacker.MinRange) return false;
+            if (!CombatMath.InFireRange(attacker, attacker.tile, defender.tile, defender)) return false;   // range, and line of fire
 
             attacker.OrderAttack(defender);
 

@@ -154,7 +154,7 @@ namespace HexTactica.AI {
                 Dictionary<Unit, HashSet<HexTile>> positions = new Dictionary<Unit, HashSet<HexTile>>();
                 if (moving) { from.occupier = null; at.occupier = u; }
                 try {
-                    foreach (Unit e in attackers) positions[e] = Positions(e);
+                    foreach (Unit e in attackers) positions[e] = AIPath.FiringPositions(e);
                 } finally {
                     if (moving) { at.occupier = null; from.occupier = u; }
                 }
@@ -183,19 +183,6 @@ namespace HexTactica.AI {
                 if (total > worst || hqStrength == 0) { worst = Mathf.Max(worst, total); hqStrength = hq.Strength; }
             }
             return worst;
-        }
-
-        /// <summary>Every tile this enemy could stand on to fire tonight, given current occupancy.</summary>
-        static HashSet<HexTile> Positions(Unit e) {
-            HashSet<HexTile> positions = new HashSet<HexTile>();
-            positions.Add(e.tile);
-            if (e.moveAndAttack) {
-                MoveField f = AIPath.ThisTurn(e);
-                foreach (HexTile p in f.Tiles) {
-                    if (p != e.tile && f.ReachableThisTurn(p) && AIPath.CanFinishTurnOn(e, p)) positions.Add(p);
-                }
-            }
-            return positions;
         }
 
         /// <summary>Tiles this unit can reach within two turns from where it stands.</summary>

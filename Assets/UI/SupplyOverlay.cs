@@ -11,8 +11,7 @@ using UnityEngine;
 ///   - once a tile is picked to move to (the first tap or click on it), the supply it would give
 ///     from there is shown on the board in place of the real supply, until the move is made or
 ///     another tile is picked.
-/// With any of your units selected, a picked tile that would take it out of supply says so on the
-/// unit ("Leaves supply") and is tinted.
+/// Whether a picked tile is in supply is shown by the board's supply borders alone.
 /// Everything follows the picked tile, not the pointer, so it works the same with a finger.
 /// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there.
 /// </summary>
@@ -27,9 +26,6 @@ public class SupplyOverlay : MonoBehaviour {
     Unit shownUnit;
     HexTile shownTile;
     Player previewPlayer;
-    HexTile warnedTile;
-    Color warnedColour;
-    bool warnedText;
     int shownFrameCheck;
 
     void Awake() { instance = this; }
@@ -74,12 +70,6 @@ public class SupplyOverlay : MonoBehaviour {
         if (movingHub) previewPlayer = p;
 
         HexTile from = dest ?? u.tile;
-        // Leaving supply: supplied where it stands, not where it is going.
-        // (As the screen's player knows the board: under fog an enemy it does not see does not cut supply here.)
-        if (dest != null && u.tile.isSuppliedShown(p) && !dest.isSuppliedShown(p) && !movingHub) {
-            if (dest.overlay != null) { warnedTile = dest; warnedColour = dest.overlay.color; dest.overlay.color = new Color(1f, 0.55f, 0.1f, 1f); }
-            if (u.textArea != null) { u.textArea.text = "Leaves supply"; warnedText = true; }
-        }
         // The line is for supply units (and what carries them): where their supply comes from.
         if (carried.Count > 0) DrawSupplyLine(p, from, field, preview, carried);
     }
@@ -100,10 +90,6 @@ public class SupplyOverlay : MonoBehaviour {
         foreach (LineRenderer l in lines) if (l != null) l.gameObject.SetActive(false);
         if (previewPlayer != null) SupplyNetwork.Solve(previewPlayer, false);   // the real field back
         previewPlayer = null;
-        if (warnedTile != null && warnedTile.overlay != null) warnedTile.overlay.color = warnedColour;
-        warnedTile = null;
-        if (warnedText && shownUnit != null && shownUnit.textArea != null) shownUnit.textArea.text = "";
-        warnedText = false;
     }
 
     /// <summary>
@@ -177,14 +163,36 @@ public class SupplyOverlay : MonoBehaviour {
         HashSet<SupplyPoint> seen = new HashSet<SupplyPoint>();
         HexTile at = from;
         SupplyNetwork.Result f = field;
+        // The network as it stands (or as previewed): which carried supply links through another carrier (a convoy).
+        SupplyNetwork.Result whole = preview != null ? SupplyNetwork.SolveMoved(p, preview) : SupplyNetwork.Solve(p, false);
+        SupplyPoint next = null;
         int guard = 0;
-        while (at != null && guard++ < 16) {
-            HexTile top = Climb(at, f, points);
-            // Several supply units can share a tile (all aboard one transport): each in turn.
-            SupplyPoint source = HubOn(p, top, preview, seen);
+        while (at != null && guard++ < 32) {
+            HexTile top;
+            SupplyPoint source;
+            if (next != null) { top = at; source = next; next = null; }   // a convoy's next carrier: the line is at it already
+            else {
+                top = Climb(at, f, points);
+                // Several supply units can share a tile (all aboard one transport): each in turn.
+                source = HubOn(p, top, preview, seen);
+            }
             if (source == null || source.producer) break;   // a building or the HQ: the root
             seen.Add(source);
             Unit carrier = source.myUnit != null ? source.myUnit.trasnporter : null;
+            // A convoy: it links through another carrier (SupplyNetwork.CarriedLinked). The line goes the way this
+            // carrier would move to it (its own path), then on from that carrier.
+            SupplyPoint via;
+            if (carrier != null && whole.linkedThrough.TryGetValue(source, out via) && via != null && !seen.Contains(via)) {
+                HexTile viaTile = TileOfHub(via, preview);
+                List<HexTile> leg = viaTile != null ? MoveTo(carrier, top, viaTile) : null;
+                if (leg != null) {
+                    for (int i = 1; i < leg.Count; i++) points.Add(leg[i]);
+                    if (points[points.Count - 1] != viaTile) points.Add(viaTile);
+                    f = SolveWithout(p, seen, preview);
+                    at = viaTile; next = via;
+                    continue;
+                }
+            }
             if (carrier != null) {
                 // Aboard: if its transport can drive straight to ground the network supplies without
                 // any supply unit that is aboard something, that is its link (rather than through a
@@ -247,6 +255,41 @@ public class SupplyOverlay : MonoBehaviour {
             path = best == from ? new List<HexTile> { from } : field.PathTo(best);
             if (path.Count == 0) path.Add(from);
             if (step != best) path.Add(step);
+        }
+        HexTactica.AI.AIPath.Release(field);
+        return path;
+    }
+
+    /// <summary>Where <paramref name="hub"/>'s unit stands (or is being moved to, in <paramref name="preview"/>).</summary>
+    static HexTile TileOfHub(SupplyPoint hub, Dictionary<SupplyPoint, HexTile> preview) {
+        HexTile t;
+        if (preview != null && preview.TryGetValue(hub, out t) && t != null) return t;
+        return hub.myUnit != null ? hub.myUnit.tile : null;
+    }
+
+    /// <summary>
+    /// The way <paramref name="carrier"/>, on <paramref name="from"/>, would move in one move to <paramref name="target"/>
+    /// or beside it (a ship cannot sail onto the land an aircraft is over): its own path, planned as its side knows the
+    /// board (fog of war). Null if it cannot get there.
+    /// </summary>
+    static List<HexTile> MoveTo(Unit carrier, HexTile from, HexTile target) {
+        if (from == target) return new List<HexTile> { from };
+        HexTactica.AI.MoveField field;
+        using (FogOfWar.Concealing(carrier.owner))
+            field = HexTactica.AI.AIPath.ThisTurnFrom(carrier, from, carrier.moveRange);
+        HexTile best = null; int bestCost = int.MaxValue;
+        foreach (HexTile t in field.Tiles) {
+            if (!field.ReachableThisTurn(t) && t != from) continue;
+            if (t != target && !target.neighbors.Contains(t)) continue;
+            int cost = t == from ? 0 : field.Get(t).used;
+            // Onto it if it can (an aircraft over a ship), else the nearest tile beside it; then fewest movement points, then board order.
+            bool isT = t == target, bestT = best == target;
+            if (best == null || (isT && !bestT) || (isT == bestT && (cost < bestCost || (cost == bestCost && CombatMath.Precedes(t, best))))) { best = t; bestCost = cost; }
+        }
+        List<HexTile> path = null;
+        if (best != null) {
+            path = best == from ? new List<HexTile> { from } : field.PathTo(best);
+            if (path.Count == 0) path.Add(from);
         }
         HexTactica.AI.AIPath.Release(field);
         return path;
@@ -389,8 +432,11 @@ public class SupplyOverlay : MonoBehaviour {
             else foreach (HexTile a in enemy.tile.AllInAttackRange(enemy)) threat.Add(a);
         }
         HexGenerator.forAllTiles(x => { x.G = 0; x.parent = null; return 0; });
-        foreach (HexTile t in threat) if (!moves.Contains(t)) t.ShowEnemy(UIState.ENEMY_THREAT, enemy.owner);
-        foreach (HexTile t in moves) if (t != enemy.tile) t.ShowEnemy(UIState.ENEMY_MOVE, enemy.owner);
+        // A unit that cannot move and fire (artillery) fires only from where it stands: its whole range shows, over its
+        // moves. One that can: its moves show, and where it could fire beyond them.
+        bool fixedFire = !enemy.moveAndAttack;
+        foreach (HexTile t in threat) if (fixedFire || !moves.Contains(t)) t.ShowEnemy(UIState.ENEMY_THREAT);
+        foreach (HexTile t in moves) if (t != enemy.tile && !(fixedFire && threat.Contains(t))) t.ShowEnemy(UIState.ENEMY_MOVE);
         enemyShown = true;
     }
 
