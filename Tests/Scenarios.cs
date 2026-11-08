@@ -712,6 +712,19 @@ public static class Scenarios {
                  Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
                  Put("Grunt", o, 7, -6); },
              "Ten tiles of sea off Blue's shore with a strip of island (x 0..4) in it; TS A (supplies aboard) within a move of Blue's shore and beside the island, TS B (supplies aboard) beside the island too, within a move of A only. B links through A (a ship tries its convoy first), and every line between them keeps to the water: B's line to the HQ, and the faint line of B hanging on A when A is selected. A selected at sea, or moved out to sea in a preview, still shows its line to Blue's shore.");
+        make("ai-sea-lift", "seaLift", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("Grunt", a, -4, 1); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2);
+                 Put("Grunt", o, 5, -2); },
+             "The enemy HQ across a channel no land unit can cross: Blue (the AI, with a naval yard on its shore and gold) builds a transport ship and ferries infantry over, landing on Red's shore, and takes Red's HQ (Red, a human player here, does nothing).");
+        make("attrition-ai-sea-supply", "attritionSeaSupply", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("TransportShip", a, -2, 0); Put("Supplies", a, -3, 1);
+                 Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
+                 Put("Grunt", o, 6, -5); },
+             "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
         make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
              "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
         make("ui-next-unit", "nextUnit", (a, o) => { Put("Grunt", a, 0, 0); Put("Grunt", a, 2, 0); Put("Tank", a, 0, 2); Put("Grunt", o, 5, -2); },
@@ -3370,6 +3383,46 @@ public static class Scenarios {
                 detail = "B through A " + linked + "; B's line on the water to A and on to the HQ " + bLine + " (" + string.Join(" ", fromB.ConvertAll(t => Pos(t))) + ")"
                        + "; B hanging on A, on the water " + depLine + "; A at sea shows its line " + aLine + "; A previewed further out shows its line " + previewLine;
                 return linked && bLine && depLine && aLine && previewLine;
+            }
+            case "seaLift": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                List<string> r = new List<string>();
+                a.money = 20000;
+                int landed = -1, bought = -1, blueTurns = 0;
+                for (int turn = 0; turn < 24 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    string line = "T" + blueTurns + ":";
+                    foreach (Unit u in a.units) {
+                        if (u == null || u.tile == null) continue;
+                        line += " " + u.name.Replace("(Clone)", "") + (u.trasnporter != null ? "[aboard]" : Pos(u.tile));
+                        if (LocomotionRules.IsNaval(u.locomotion) && Transporting.IsTransport(u) && bought < 0) bought = blueTurns;
+                        if (u.trasnporter == null && u.tile.x >= 3 && u.locomotion == Locomotion.Boots && landed < 0) landed = blueTurns;
+                    }
+                    r.Add(line + " gold " + a.money);
+                }
+                detail = string.Join(" | ", r.ToArray()) + "; ship from Blue turn " + bought + ", landed on Red's shore turn " + landed + "; game over " + gc.gameOver + (gc.winner != null ? ", " + gc.winner.personal_name + " wins" : "") + " after " + blueTurns + " Blue turns";
+                return bought > 0 && landed > 0 && gc.gameOver && gc.winner == a;
+            }
+            case "attritionSeaSupply": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit g1 = Rig.At(4, 1).occupier, g2 = Rig.At(4, 2).occupier, sup = Rig.At(-3, 1).occupier, ship = Rig.At(-2, 0).occupier;
+                List<string> r = new List<string>();
+                int supplied = -1, blueTurns = 0;
+                for (int turn = 0; turn < 6 && !gc.gameOver && supplied < 0; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    SupplyNetwork.Result net = SupplyNetwork.Solve(a, false);
+                    bool both = g1 != null && g2 != null && g1.tile != null && g2.tile != null && net.IsSupplied(g1.tile) && net.IsSupplied(g2.tile);
+                    r.Add("T" + blueTurns + ": supplies " + (sup.trasnporter != null ? "aboard" : Pos(sup.tile)) + ", ship " + Pos(ship.tile) + ", grunts " + Pos(g1.tile) + " " + Pos(g2.tile) + " supplied " + both);
+                    if (both) supplied = blueTurns;
+                }
+                detail = string.Join(" | ", r.ToArray());
+                return supplied > 0 && supplied <= 3;
             }
             case "ignoresCover": {
                 Unit tank = Rig.At(0, 0).occupier, g = Rig.At(1, 0).occupier;

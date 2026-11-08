@@ -633,6 +633,9 @@ namespace HexTactica.AI {
 
         [Tooltip("Riding to the assault (AIAssault), as a player uses transports: a fighting unit far from the fight gets into a transport with room (one carrying no supply unit, not on supply duty) and stays aboard while it moves up with the army, out of the enemy's reach; riders are put down only where they can strike this turn (getting off costs nothing: they still move and fight) and when the wave goes in; empty transports (not trucks, which carry the supply) go back for more. Replaces combatRides' hop to supplied ground for fighting units.")]
         public bool assaultRides = true;
+
+        [Tooltip("Sea lift: when the objective lies across water (no land way to it), troops whose ground is over the water get into a ship even when they would otherwise hold (it is the only way there), a front counts the units already crossing as gathered, and a supply unit gets into an empty ship and is taken to the landing — beside the shore nearest our troops across, where its supply is linked — so the troops over there are supplied (a convoy).")]
+        public bool seaLift = true;
         [Tooltip("With assaultRides on, fighting units also take combatRides' hop (in and out the same turn) in an armed transport. Off: assault rides carry them in armed transports too, aboard until they can strike.")]
         public bool assaultArmedRides = false;
         [Tooltip("Riding to the assault: a rider put down to strike makes the strike its transport planned (where to stand, what to hit or take). Off: it decides afresh where it lands.")]

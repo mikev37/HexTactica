@@ -856,6 +856,16 @@ namespace HexTactica.AI {
         /// profile.travelDistance and a unit that walks: steps over land (hex distance plus the
         /// map's width when there is no land route). Otherwise, and for aircraft and ships, hex distance.
         /// </summary>
+        /// <summary>
+        /// No way over land from <paramref name="from"/> to <paramref name="to"/> (water between them: LandSteps does
+        /// not reach it). Across water only a ship (or an aircraft) gets a land unit there.
+        /// </summary>
+        public bool AcrossWater(HexTile from, HexTile to) {
+            if (from == null || to == null || from == to) return false;
+            Dictionary<HexTile, int> d = LandSteps(to);
+            return d != null && !d.ContainsKey(from);
+        }
+
         public int Travel(Unit u, HexTile from, HexTile to) {
             if (from == null || to == null) return 99;
             if (!profile.travelDistance || (u != null && (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion))))

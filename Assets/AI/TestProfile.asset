@@ -161,6 +161,7 @@ MonoBehaviour:
   buyUnits: 1
   combatRides: 1
   assaultRides: 1
+  seaLift: 1
   assaultArmedRides: 0
   assaultCarryOut: 1
   assaultBoardWeighs: 1

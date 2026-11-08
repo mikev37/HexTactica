@@ -1095,16 +1095,18 @@ public class AIPlayer : MonoBehaviour, IAIController {
         bool hurt = AIAssault.Wounded(unit, Profile, map);
         // Its own move is worth more than any ride: a strike, a capture, a load it already chose.
         if (onFoot.kind == AIActionKind.Attack || onFoot.kind == AIActionKind.MoveAndAttack || onFoot.kind == AIActionKind.Capture || onFoot.kind == AIActionKind.Load || onFoot.kind == AIActionKind.Unload) return onFoot;
-        if (!hurt && onFoot.kind != AIActionKind.Move) return onFoot;   // holding where it is (its objective, its line) is its task
+        Front bf = FrontOf(unit);
+        HexTile ground = bf == null ? null : bf.staging && bf.stagingTile != null ? bf.stagingTile : bf.objectiveTile;
+        // Its ground across water from it: no walk gets it there, so holding where it is is no task (a ship takes it).
+        bool overWater = Profile.seaLift && ground != null && !LocomotionRules.IsAirborne(unit.locomotion) && !LocomotionRules.IsNaval(unit.locomotion) && map.AcrossWater(unit.tile, ground);
+        if (!hurt && onFoot.kind != AIActionKind.Move && !overWater) return onFoot;   // holding where it is (its objective, its line) is its task
         // Walking onto a building to take: its task, if it lives to take it (else a wounded one rides to mend).
         if (onFoot.kind == AIActionKind.Move && onFoot.destination != null && onFoot.destination.building != null && onFoot.destination.building.owner != player && Building.CanCapture(unit)) {
             int take = AIAssault.TurnsToTake(unit, onFoot.destination.building, map);
             if (take >= 0 || !hurt) return onFoot;
             if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": would go to take " + onFoot.destination.building.name.Replace("(Clone)", "") + D(onFoot.destination) + " but would be gone before it fell: rides to mend instead");
         }
-        Front bf = FrontOf(unit);
-        HexTile ground = bf == null ? null : bf.staging && bf.stagingTile != null ? bf.stagingTile : bf.objectiveTile;
-        bool goes = bf == null || (bf.posture == Posture.Aggressive && !bf.staging)
+        bool goes = bf == null || (bf.posture == Posture.Aggressive && !bf.staging) || overWater
                  || (ground != null && map.Travel(unit, unit.tile, ground) > Profile.assaultBoardTurns * Mathf.Max(1, unit.moveRange));
         if (!goes && !hurt) return onFoot;
         HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
@@ -1158,6 +1160,89 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// <summary>Last turn's chain trucks (AILogistics.chainTrucks): a truck keeps the link it was coming for.</summary>
     Dictionary<SupplyPoint, Unit> lastChainTrucks;
 
+    // ------------------------------------------------------------------ sea lift (AIProfile.seaLift)
+
+    /// <summary>
+    /// The objective (AISupplyChain.Objective: the enemy HQ, else its nearest unit) when it lies across water from
+    /// <paramref name="from"/>: no land unit walks there, so the army and its supply go by ship. Null otherwise.
+    /// </summary>
+    HexTile SeaLiftGoal(HexTile from) {
+        HexTile goal = AISupplyChain.Objective(map);
+        return goal != null && from != null && map.AcrossWater(from, goal) ? goal : null;
+    }
+
+    /// <summary>
+    /// A supply unit on the shore, its objective across water: into a ship with room for it and no troops aboard
+    /// (troops go first; the supply follows them over) — from where it stands, or from a tile beside the ship it can
+    /// walk to this turn; else a step toward the nearest such ship. Null: none.
+    /// </summary>
+    AIAction? SeaLiftBoard(Unit unit) {
+        MoveField now = null;
+        Unit best = null; HexTile bestAt = null; int bestD = int.MaxValue;
+        foreach (Unit t in Transporting.AvailableFor(player, unit)) {
+            if (t == null || t.tile == null || !LocomotionRules.IsNaval(t.locomotion) || AIAssault.Riders(t).Count > 0 || AIAssault.CarriesHub(t)) continue;
+            HexTile at = null;
+            if (Transporting.CanBoardFrom(t, unit)) at = unit.tile;
+            else {
+                if (now == null) now = map.ReachThisTurn(unit);
+                foreach (HexTile n in t.tile.neighbors)
+                    if (n != null && now.ReachableThisTurn(n) && (n.occupier == null || n.occupier == unit) && Transporting.CanBoardFromTile(t, unit, n) && (at == null || CombatMath.Precedes(n, at))) at = n;
+            }
+            int d = map.Travel(unit, unit.tile, t.tile);
+            if (at != null) d = -1;   // boards this turn: first
+            if (best == null || d < bestD || (d == bestD && CombatMath.Precedes(t.tile, best.tile))) { best = t; bestAt = at; bestD = d; }
+        }
+        if (best == null) return null;
+        if (bestAt != null) {
+            reservedTransports.Add(best);
+            return AIAction.Board(unit, best, bestAt, "sea lift: boards a ship to carry its supply across the water");
+        }
+        HexTile step = AITransportPlanner.SafeStepToward(unit, best.tile, map.ReachHorizon(unit), map, true);
+        if (step == null || step == unit.tile) return null;
+        return AIAction.Move(unit, step, 0f, "sea lift: goes to the ship that will carry it");
+    }
+
+    /// <summary>
+    /// A ship carrying a supply unit, the objective across water: to the landing — beside the land nearest our troops
+    /// across the water (else the objective), on a tile where its supply is linked (SupplyNetwork: within a move of
+    /// supplied shore, or through another carrier) and so gives supply ashore. Where nothing linked is in reach, it holds
+    /// where it is linked, or heads for the landing. Null: not a sea lift.
+    /// </summary>
+    AIAction? SeaLiftSupply(Unit ship, SupplyPoint hub) {
+        Building home = GameController.HQOf(player);
+        HexTile goal = SeaLiftGoal(home != null ? home.tile : null);
+        if (goal == null) return null;
+        // The landing: our troops already across (nearest the objective), else the objective itself.
+        HexTile land = null; int ld = int.MaxValue;
+        foreach (Unit u in map.ownUnits) {
+            if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || u.Firepower <= 0 || LocomotionRules.IsNaval(u.locomotion) || LocomotionRules.IsAirborne(u.locomotion)) continue;
+            if (map.AcrossWater(u.tile, goal)) continue;   // still on our side
+            int d = u.tile.Distance(goal);
+            if (d < ld || (d == ld && CombatMath.Precedes(u.tile, land))) { land = u.tile; ld = d; }
+        }
+        if (land == null) land = goal;
+        MoveField f = map.ReachThisTurn(ship);
+        Dictionary<SupplyPoint, Unit> wasAboard = SupplyNetwork.PlannedAboard;
+        HexTile best = null; bool bestLinked = false, bestShore = false; int bestD = int.MaxValue;
+        try {
+            SupplyNetwork.PlannedAboard = new Dictionary<SupplyPoint, Unit> { { hub, ship } };
+            foreach (HexTile t in f.Tiles) {
+                if (t != ship.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(ship, t) || !AIAir.MayEndOn(ship, t, map))) continue;
+                bool shore = Unit.BordersLand(t);
+                bool linked = SupplyNetwork.SolvePlanned(player, new Dictionary<SupplyPoint, HexTile> { { hub, t } }).connectedHubs.Contains(hub);
+                int d = t.Distance(land);
+                bool better;
+                if (best == null) better = true;
+                else if (linked != bestLinked) better = linked;
+                else if (linked && shore != bestShore) better = shore;
+                else better = d < bestD || (d == bestD && CombatMath.Precedes(t, best));
+                if (better) { best = t; bestLinked = linked; bestShore = shore; bestD = d; }
+            }
+        } finally { SupplyNetwork.PlannedAboard = wasAboard; SupplyNetwork.Solve(player, false); }
+        if (best == null || best == ship.tile) return AIAction.Wait(ship, "sea lift: holds with its supply" + (bestLinked ? " (linked)" : ""));
+        return AIAction.Move(ship, best, 0f, "sea lift: takes its supply toward the landing at (" + land.x + "," + land.y + ")" + (bestLinked ? ", linked" : ", not linked"));
+    }
+
     bool CarriesSupply(Unit truck, out AIAction action) {
         action = default(AIAction);
         if (logistics == null || truck == null || truck.tile == null || !Transporting.IsTransport(truck)) return false;
@@ -1165,6 +1250,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
         foreach (Unit c in truck.transported) if (c != null && c.Hub != null && !c.Hub.producer) { cargo = c; break; }
         if (cargo == null) return false;
         SupplyPoint hub = cargo.Hub;
+        if (Profile.seaLift && LocomotionRules.IsNaval(truck.locomotion)) {
+            AIAction? sl = SeaLiftSupply(truck, hub);
+            if (sl.HasValue) { action = sl.Value; return true; }
+        }
         // Relieved (Relieve): the step it was relieved to make.
         HexTile upTo;
         if (relieved.TryGetValue(hub, out upTo) && upTo.occupier == null && !CutsOff(hub, upTo)) {
@@ -1327,6 +1416,15 @@ public class AIPlayer : MonoBehaviour, IAIController {
             if (hub.producer) return AIAction.Wait(unit, "HQ holds");
             // The real move is planned on the real board: the ghost has served its purpose.
             map.ClearGhost(hub);
+
+            // Sea lift: the objective across water. Aboard a ship it rides it (the ship takes it to the landing,
+            // SeaLiftSupply); on the shore, it gets into a ship with room for it.
+            if (Profile.seaLift && unit.trasnporter == null && !LocomotionRules.IsNaval(unit.locomotion) && SeaLiftGoal(unit.tile) != null) {
+                AIAction? sb = SeaLiftBoard(unit);
+                if (sb.HasValue) return sb.Value;
+            }
+            if (Profile.seaLift && unit.trasnporter != null && LocomotionRules.IsNaval(unit.trasnporter.locomotion) && SeaLiftGoal(GameController.HQOf(player) != null ? GameController.HQOf(player).tile : null) != null)
+                return AIAction.Wait(unit, "sea lift: rides its ship to the landing");
 
             // A link of the supply backbone (supplyBackbone): aboard its transport, on the way to its place or holding it.
             if (Profile.supplyBackbone) {

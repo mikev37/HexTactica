@@ -537,13 +537,19 @@ namespace HexTactica.AI {
                 if (staging == null) continue;
 
                 float full = 0f, gathered = 0f, committedPower = 0f;
+                // Across water from the objective, the staging tile is the shore: a unit already on its way over (aboard a
+                // ship nearer it, or landed beyond) has gathered. (Counted as not, it called the ship back each turn.)
+                bool overWater = profile.seaLift && map.AcrossWater(staging, objective);
+                int stagingAway = overWater ? staging.Distance(objective) : 0;
                 foreach (Front f in group) {
                     for (int i = 0; i < f.assigned.Count; i++) {
                         Unit u = f.assigned[i];
                         if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                         float w = AIScore.Worth(u);
                         full += w * MAX_STRENGTH;
-                        if (u.Strength >= healthy && map.Travel(u, u.tile, staging) <= profile.stagingRadius) gathered += w * u.Strength;
+                        HexTile at = u.trasnporter != null && u.trasnporter.tile != null ? u.trasnporter.tile : u.tile;
+                        bool ahead = overWater && (u.trasnporter != null ? at.Distance(objective) < stagingAway : !map.AcrossWater(at, objective));
+                        if (u.Strength >= healthy && (ahead || map.Travel(u, u.tile, staging) <= profile.stagingRadius)) gathered += w * u.Strength;
                         if (u.Strength > profile.withdrawStrength) committedPower += w * u.Strength;
                     }
                 }

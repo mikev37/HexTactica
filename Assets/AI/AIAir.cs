@@ -284,8 +284,9 @@ namespace HexTactica.AI {
             Landing land = LandingOf(u, map);
             List<HexTile> bases = Bases(u, map);
             Dictionary<HexTile, int> toBase = DistanceToBase(u, bases);
-            HexTile stop = action.destination ?? u.tile;
-            if (action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack) stop = u.tile;
+            // Where it ends the turn (EndOf): a ship putting troops ashore stays on the water it unloads from, not on the
+            // land they step onto (read as the land, every unloading ship was "out of fuel" and held).
+            HexTile stop = EndOf(u, action);
             if (Margin(u, stop, toBase, bases, land, map) >= 0 && MayEndOn(u, stop, map)) return action;
             MoveField f = map.ReachThisTurn(u);
             HexTile best = null; int bestMargin = int.MinValue, bestDist = int.MaxValue;
