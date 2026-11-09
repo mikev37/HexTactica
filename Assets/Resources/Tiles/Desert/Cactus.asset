@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: Cactus
   m_EditorClassIdentifier: 
   description: The Bush is hard country
+  inMapEditor: 1
+  paletteGroup: Desert
   upper_normal: {fileID: 21300000, guid: 7362d9bc054d2bd49b3085f6cfb08541, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

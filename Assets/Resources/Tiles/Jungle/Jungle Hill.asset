@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: Jungle Hill
   m_EditorClassIdentifier: 
   description: Hills make traversing this land difficult
+  inMapEditor: 1
+  paletteGroup: Jungle
   upper_normal: {fileID: 21300000, guid: b690a2d626f10df48b6ed9f66b9a288d, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

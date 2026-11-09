@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: Snow Hills
   m_EditorClassIdentifier: 
   description: Hills make traversing this land difficult
+  inMapEditor: 1
+  paletteGroup: Snow
   upper_normal: {fileID: 21300000, guid: ce7e885baf741304abd161dfcc4c49c3, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}
