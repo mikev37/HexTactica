@@ -124,7 +124,19 @@ public static class SpritePortrait {
     /// parent's name (below the unit; case ignored) is left out of the picture. They are the nested
     /// prefabs every unit has: pips, chevrons, shadow, exhaust smoke and muzzle flashes.
     /// </summary>
-    public static string[] UnitSkips = { "shadow", "HealthCircles", "Veterancy", "SmokeStack", "Cannon", "GunMuzzle" };
+    public static string[] UnitSkips = { "shadow", "HealthCircles", "Veterancy", "SmokeStack" };
+
+    /// <summary>
+    /// Nested effect prefabs left out by the start of their name, case kept: the muzzle flashes ("Cannon", "Cannon (1)",
+    /// "GunMuzzle") — not a gun's own sprite ("tank_cannon"), which is part of the unit.
+    /// </summary>
+    public static string[] UnitSkipPrefixes = { "Cannon", "GunMuzzle" };
+
+    static bool Skipped(string name) {
+        foreach (string skip in UnitSkips) if (name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        foreach (string p in UnitSkipPrefixes) if (name.StartsWith(p, StringComparison.Ordinal)) return true;
+        return false;
+    }
 
     /// <summary>Sorting layers that are never the unit's body (pips and chevrons are on UI).</summary>
     public static string[] SkipLayers = { "UI", "Effects", "UnitShadow" };
@@ -137,8 +149,7 @@ public static class SpritePortrait {
         string layer = SortingLayer.IDToName(r.sortingLayerID);
         foreach (string l in SkipLayers) if (layer == l) return false;
         for (Transform t = r.transform; t != null && t != u.transform; t = t.parent)
-            foreach (string skip in UnitSkips)
-                if (t.name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return false;
+            if (Skipped(t.name)) return false;
         return true;
     }
 
@@ -148,8 +159,15 @@ public static class SpritePortrait {
     /// A unit or building prefab (not on the board) drawn from its own sprites: those switched on in the prefab, not
     /// on a canvas, not of a unit it holds; for a unit, not its shadow, pips, chevrons, smoke or flashes.
     /// </summary>
-    public static bool ComposePrefab(Transform root, RectTransform target, bool isUnit) {
-        return Compose(root, target, true, r => PrefabPart(root, r, isUnit) ? new Look { color = r.color } : (Look?)null);
+    /// <param name="owner">The colour its owner-coloured sprites (ColorObjectUnit) are drawn in: the side it is placed for.</param>
+    public static bool ComposePrefab(Transform root, RectTransform target, bool isUnit, Color? owner = null) {
+        return Compose(root, target, true, r => {
+            if (!PrefabPart(root, r, isUnit)) return (Look?)null;
+            Color c = r.color;
+            ColorObjectUnit tint = r.GetComponent<ColorObjectUnit>();
+            if (tint != null) { Color o = owner.HasValue ? owner.Value : tint.neutral; c = new Color(o.r, o.g, o.b, r.color.a); }
+            return new Look { color = c };
+        });
     }
 
     static bool PrefabPart(Transform root, SpriteRenderer r, bool isUnit) {
@@ -162,7 +180,7 @@ public static class SpritePortrait {
             if (!t.gameObject.activeSelf || t.GetComponent<Canvas>() != null) return false;
             if (t == root) return true;
             if (t.GetComponent<Unit>() != null) return false;   // a unit it carries
-            if (isUnit) foreach (string skip in UnitSkips) if (t.name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return false;
+            if (isUnit && Skipped(t.name)) return false;
         }
         return false;
     }

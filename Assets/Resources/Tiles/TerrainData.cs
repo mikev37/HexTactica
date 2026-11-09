@@ -10,6 +10,8 @@ using UnityEngine;
 
 		[Tooltip("Listed in the map editor's terrain palette. Off for terrain a map is not painted with: what a building puts under itself (Urban, City, Bunker) and what terrain turns into when damaged (stumps, damaged roads, a collapsed bridge, broken ice).")]
 		public bool inMapEditor = true;
+		[Tooltip("The map editor lists terrain by this group, then by name: its folder under Resources/Tiles (filled in from the folder when empty; change it to regroup).")]
+		public string paletteGroup;
 
 		[Header("Terrain Sprites")]
 		public Sprite upper_normal;

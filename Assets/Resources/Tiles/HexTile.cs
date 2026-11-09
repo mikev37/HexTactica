@@ -119,14 +119,22 @@ public class HexTile : MonoBehaviour
         aiData = new AITileData();
         threat = new Dictionary<Player, Heat>();
         supply = new Dictionary<Player, int>();
-        GameController.gc.players.ForEach(x => {
-            threat.Add(x, new Heat());
-            supply.Add(x, 0);
-            HexTilePlayerSupplyDisplay dis = GameObject.Instantiate(supplyDisplayPrefab, transform).GetComponent<HexTilePlayerSupplyDisplay>();
-            dis.myPlayer = x;
-            dis.myTile = this;
-        });
+        GameController.gc.players.ForEach(AddSide);
         loadData(terrain);
+    }
+
+    /// <summary>A side's per-tile state and supply border, for a side that joined after the board was made (a map with more sides).</summary>
+    public void EnsureSide(Player x) {
+        if (threat == null || x == null || threat.ContainsKey(x)) return;
+        AddSide(x);
+    }
+
+    void AddSide(Player x) {
+        threat.Add(x, new Heat());
+        supply.Add(x, 0);
+        HexTilePlayerSupplyDisplay dis = GameObject.Instantiate(supplyDisplayPrefab, transform).GetComponent<HexTilePlayerSupplyDisplay>();
+        dis.myPlayer = x;
+        dis.myTile = this;
     }
 
     public void loadData(TerrainData td) {
