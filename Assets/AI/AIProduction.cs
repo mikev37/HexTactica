@@ -127,6 +127,8 @@ namespace HexTactica.AI {
         /// producer nearest it, a unit's value raised by the shortfall.
         /// </summary>
         [System.ThreadStatic] public static HexTile ReserveRally;
+        /// <summary>Where each of our units wants to be (AIProfile.seaLift; set by the AI before buying, else null): a land unit whose ground is across water is a rider only a ship can take.</summary>
+        [System.ThreadStatic] public static System.Func<Unit, HexTile> GroundOf;
         [System.ThreadStatic] public static float ReserveShort;
         /// <summary>Units bought this turn for the reserve (reserveDemand): the AI keeps them out of task forces.</summary>
         [System.ThreadStatic] public static List<Unit> ReserveBought;
@@ -198,19 +200,30 @@ namespace HexTactica.AI {
             // transports we have (not those held for supply, AIAssault.SupplyTransports). A transport bought takes its room off.
             List<Unit> waitingRiders = new List<Unit>();
             int troopRoom = 0;
+            // Sea lift (seaLift, GroundOf): land units whose ground is across water, with where; and the room in our ships.
+            // Only a ship gets them there: a truck or an APC helps none of them, and a ship none of the others.
+            Dictionary<Unit, HexTile> seaRiders = new Dictionary<Unit, HexTile>();
+            int seaRoom = 0;
+            System.Func<Unit, HexTile> groundOf = GroundOf;
             HashSet<Unit> forSupply = profile.assaultRides ? AIAssault.SupplyTransports(map.player, map, null) : new HashSet<Unit>();
             if (profile.assaultRides && profile.assaultTransportWeight > 0f) {
                 foreach (Unit u in map.ownUnits) {
                     if (u == null || u.tile == null) continue;
                     if (Transporting.IsTransport(u) && u.Firepower <= 1) {
-                        if (!forSupply.Contains(u)) troopRoom += Transporting.FreeWeight(u);
+                        if (groundOf != null && LocomotionRules.IsNaval(u.locomotion)) seaRoom += Transporting.FreeWeight(u);
+                        else if (!forSupply.Contains(u)) troopRoom += Transporting.FreeWeight(u);
                         continue;
                     }
-                    if (u.trasnporter == null && u.Hub == null && u.Firepower > 0 && u.locomotion == Locomotion.Boots && map.TurnsToContact(u) > profile.assaultBoardTurns) waitingRiders.Add(u);
+                    if (u.trasnporter != null || u.Hub != null || u.Firepower <= 0) continue;
+                    HexTile g = groundOf != null && !LocomotionRules.IsAirborne(u.locomotion) && !LocomotionRules.IsNaval(u.locomotion) ? groundOf(u) : null;
+                    if (g != null && map.AcrossWater(u.tile, g)) { seaRiders[u] = g; continue; }
+                    if (u.locomotion == Locomotion.Boots && map.TurnsToContact(u) > profile.assaultBoardTurns) waitingRiders.Add(u);
                 }
+                int seaWeight = 0; foreach (Unit u in seaRiders.Keys) seaWeight += Mathf.Max(1, u.weight);
+                if (trace != null && seaRiders.Count > 0) trace("   sea lift: " + seaRiders.Count + " land units want to be across water (weight " + seaWeight + "), room in our ships " + seaRoom);
             }
             if (trace != null && profile.assaultRides) trace("   riders waiting for a transport: " + waitingRiders.Count + ", room in empty troop transports " + troopRoom);
-            int troopPlanned = 0;
+            int troopPlanned = 0, seaPlanned = 0;
             // Room in empty troop transports beside each base (assaultFillBonus), and infantry planned there this turn.
             Dictionary<Building, int> roomAt = new Dictionary<Building, int>(), fillPlanned = new Dictionary<Building, int>();
             if (profile.assaultRides && profile.assaultFillBonus > 0f)
@@ -281,6 +294,33 @@ namespace HexTactica.AI {
                 // Destroyed where it stands next turn (productionAvoidFire): the enemy we see or remember has the building in range.
                 if (profile.productionAvoidFire && map.KnownLoss(t, sl.tile) >= Mathf.Max(1, t.Strength > 0 ? t.Strength : 6)) return new KeyValuePair<float, string>(0f, "destroyed there next turn");
                 int kindOf = Kind(t);
+                // A ship for the sea lift: what it adds to the land units waiting to cross (the nearest, as much as it carries)
+                // — each one's value, discounted for the turns until a ship bought now has it at its ground.
+                if (seaRiders.Count > 0 && t.cost > 0 && t.CanEnter(sl.tile) && LocomotionRules.IsNaval(t.locomotion) && Transporting.IsTransport(t) && t.Firepower <= 1) {
+                    int seaShort = -seaRoom - seaPlanned; foreach (Unit u in seaRiders.Keys) seaShort += Mathf.Max(1, u.weight);
+                    if (seaShort > 0) {
+                        List<Unit> near = new List<Unit>(seaRiders.Keys);
+                        near.Sort((x, y) => { int c = map.Travel(t, sl.tile, x.tile).CompareTo(map.Travel(t, sl.tile, y.tile)); return c != 0 ? c : CombatMath.CompareTiles(x.tile, y.tile); });
+                        int room = Mathf.Min(Mathf.Max(1, t.transportSlots), seaShort);
+                        float tv = 0f; int counted = 0, used = 0;
+                        foreach (Unit rider in near) {
+                            if (used >= room) break;
+                            if (!Transporting.CarriesKind(t, rider) || used + Mathf.Max(1, rider.weight) > room) continue;
+                            int fetch = map.Travel(t, sl.tile, rider.tile), ride = map.Travel(t, rider.tile, seaRiders[rider]);
+                            float rideTurns = 1f + (fetch + ride) / (float)Mathf.Max(1, t.moveRange);   // built this turn, out next
+                            // Without a ship it never gets there: all of its value, discounted for the turns to get it there as a
+                            // unit bought for the fight is (productionTimeHorizon).
+                            float gain = 1f / (1f + rideTurns / Mathf.Max(0.1f, profile.productionTimeHorizon));
+                            tv += Value(rider, rider.tile, map) * gain;
+                            used += Mathf.Max(1, rider.weight); counted++;
+                        }
+                        tv *= profile.seaLiftWeight;
+                        // The army short of its share (reserveDemand) is short because these cannot get there: the same pull.
+                        if (profile.reserveDemand && ReserveShort > 0f) tv *= (1f + ReserveShort) * profile.productionFrontWeight;
+                        if (DebugValues != null) DebugValues(GameController.UnitName(t) + " at " + sl.tile.x + "," + sl.tile.y + " for the sea lift: " + tv.ToString("0") + " (" + counted + " units)");
+                        if (tv > 0f) return new KeyValuePair<float, string>(tv, "sea lift: " + counted + " land units to take across the water");
+                    }
+                }
                 // A troop transport (assaultRides): what it adds to the riders waiting for room (the nearest of them, as many as
                 // it carries) — each one's value, times the turns sooner it reaches the fight riding (fetched from where it
                 // stands) than walking, over the turns its value is measured on (productionLifeRef), at most all of it.
@@ -367,7 +407,10 @@ namespace HexTactica.AI {
             System.Action<Unit, int> count = (t, d) => {
                 string name = GameController.UnitName(t); int c; picked.TryGetValue(name, out c); picked[name] = c + d;
                 int k = Kind(t); if (k == 1) supplyPlanned += d; else if (k == 2) trucksPlanned += d;
-                if (Transporting.IsTransport(t) && t.Firepower <= 1) troopPlanned += d * Mathf.Max(1, t.transportSlots);
+                if (Transporting.IsTransport(t) && t.Firepower <= 1) {
+                    if (groundOf != null && LocomotionRules.IsNaval(t.locomotion)) seaPlanned += d * Mathf.Max(1, t.transportSlots);
+                    else troopPlanned += d * Mathf.Max(1, t.transportSlots);
+                }
             };
             System.Action<Unit, Slot, int> plan = (t, sl, d) => {
                 count(t, d);

@@ -226,6 +226,9 @@ MonoBehaviour:
   combatRides: 1
   assaultRides: 1
   seaLift: 1
+  seaLiftWeight: 3
+  seaLiftBoardSteps: 2
+  turnOrderSteps: 1
   assaultArmedRides: 0
   assaultCarryOut: 1
   assaultBoardWeighs: 1

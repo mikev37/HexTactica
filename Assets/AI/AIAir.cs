@@ -75,10 +75,10 @@ namespace HexTactica.AI {
         public const int LandingHorizon = 3;
 
         /// <summary>The tiles of our buildings that service <paramref name="u"/>, whatever is on them.</summary>
-        static List<HexTile> AllBases(Unit u) {
+        static List<HexTile> AllBases(Unit u, System.Func<Building, bool> gives = null) {
             List<HexTile> list = new List<HexTile>();
             foreach (Building b in Building.all) {
-                if (b == null || b.owner != u.owner || !b.Services(u)) continue;
+                if (b == null || b.owner != u.owner || !b.Services(u) || (gives != null && !gives(b))) continue;
                 if (b.tile != null && u.CanEnter(b.tile)) list.Add(b.tile);
             }
             return list;
@@ -111,6 +111,21 @@ namespace HexTactica.AI {
             List<HexTile> list = new List<HexTile>();
             foreach (HexTile t in AllBases(u)) if (t.occupier == null || t.occupier.owner == u.owner) list.Add(t);
             foreach (HexTile t in homes) if (!list.Contains(t)) list.Add(t);
+            foreach (HexTile t in BesideTenders(u)) if (!list.Contains(t)) list.Add(t);
+            return list;
+        }
+
+        /// <summary>
+        /// For a ship: the water beside our supply ships (Player.IsSupplyShip), where it is refuelled and restocked at the start
+        /// of its turn (not rearmed: only a naval yard does that). None for anything else, or for a supply ship itself.
+        /// </summary>
+        static List<HexTile> BesideTenders(Unit u) {
+            List<HexTile> list = new List<HexTile>();
+            if (u == null || u.owner == null || !LocomotionRules.IsNaval(u.locomotion) || Player.IsSupplyShip(u)) return list;
+            foreach (Unit t in u.owner.units) {
+                if (t == null || t == u || t.tile == null || t.Strength <= 0 || !Player.IsSupplyShip(t)) continue;
+                foreach (HexTile n in t.tile.neighbors) if (n != null && !list.Contains(n) && u.CanEnter(n) && (n.occupier == null || n.occupier == u)) list.Add(n);
+            }
             return list;
         }
 
@@ -212,6 +227,7 @@ namespace HexTactica.AI {
         }
 
         static bool BesideTanker(Unit u, HexTile at) {
+            if (LocomotionRules.IsNaval(u.locomotion)) return BesideTenders(u).Contains(at);
             if (u.airTanker || !LocomotionRules.IsAirborne(u.locomotion) || u.owner == null) return false;
             foreach (Unit t in u.owner.units) {
                 if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
@@ -280,6 +296,7 @@ namespace HexTactica.AI {
         }
 
         public static AIAction Guard(Unit u, AIAction action, AIMap map) {
+            if (u != null && u.tile != null && u.trasnporter == null && LocomotionRules.IsNaval(u.locomotion)) action = Refit(u, action, map);
             if (!NeedsBase(u) || u.fuelMax <= 0 || u.tile == null || u.trasnporter != null) return action;
             Landing land = LandingOf(u, map);
             List<HexTile> bases = Bases(u, map);
@@ -305,6 +322,42 @@ namespace HexTactica.AI {
             if (best == null || best == stop) return action;
             if (best == u.tile) return AIAction.Wait(u, "bingo fuel: holds (fuel " + u.fuel + ")");
             return AIAction.Move(u, best, 0f, "bingo fuel: heading for base (fuel " + u.fuel + ", margin " + bestMargin + ")");
+        }
+
+        /// <summary>
+        /// A ship back for what it is running out of, to where it is given it — as the buildings' prefabs say: one of ours
+        /// that serves ships (Building.Services) and rearms it (Building.rearm) when it is out of ammunition; one that
+        /// restocks it (Building.resupply), or the water beside a supply ship of ours (Player.TankerBeside), when its
+        /// supplies are down to the turns it takes to get there (and one more). It moves as far toward the nearest as it can
+        /// this turn, or stays if it is there. (Out of supplies a ship loses a strength a turn; fuel is Guard's.) Its action
+        /// stands if it is already going to end the turn there, or if it has nothing to go back for.
+        /// </summary>
+        static AIAction Refit(Unit u, AIAction action, AIMap map) {
+            bool noAmmo = u.Firepower > 0 && u.ammoMax > 0 && u.ammo <= 0;
+            List<HexTile> homes = new List<HexTile>();
+            foreach (HexTile t in AllBases(u, b => noAmmo ? b.rearm : b.resupply)) if (t.occupier == null || t.occupier == u || t.occupier.owner == u.owner) homes.Add(t);
+            if (!noAmmo) foreach (HexTile t in BesideTenders(u)) if (!homes.Contains(t)) homes.Add(t);
+            if (homes.Count == 0) return action;
+            Dictionary<HexTile, int> toHome = DistanceToBase(u, homes);
+            int here; if (!toHome.TryGetValue(u.tile, out here)) return action;
+            int turnsHome = Mathf.CeilToInt(here / (float)Mathf.Max(1, u.moveRange));
+            bool lowSupplies = u.suppliesMax > 0 && u.supplies <= turnsHome + 1;
+            if (!noAmmo && !lowSupplies) return action;
+            HexTile stop = EndOf(u, action);
+            if (homes.Contains(stop)) return action;
+            // Putting troops ashore, with the supplies to get back after it: that first.
+            if (action.kind == AIActionKind.Unload && !noAmmo && u.supplies > turnsHome) return action;
+            MoveField f = map.ReachThisTurn(u);
+            HexTile best = null; int bd = int.MaxValue;
+            foreach (HexTile t in f.Tiles) {
+                if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
+                if (!MayEndOn(u, t, map)) continue;
+                int d; if (!toHome.TryGetValue(t, out d)) continue;
+                if (best == null || d < bd || (d == bd && CombatMath.Precedes(t, best))) { best = t; bd = d; }
+            }
+            string why = noAmmo ? "out of ammunition" : "supplies " + u.supplies + ", " + turnsHome + " turns from restocking";
+            if (best == null || best == u.tile) return AIAction.Wait(u, "refit: " + why + ": holds" + (homes.Contains(u.tile) ? " where it is restocked" : ""));
+            return AIAction.Move(u, best, 0f, "refit: " + why + ": heads " + (bd == 0 ? "to " : "toward ") + (noAmmo ? "a base that rearms it" : "a base that restocks it, or a supply ship"));
         }
 
         /// <summary>

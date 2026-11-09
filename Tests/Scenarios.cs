@@ -725,6 +725,23 @@ public static class Scenarios {
                  Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
                  Put("Grunt", o, 6, -5); },
              "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
+        make("ai-sea-convoy", "seaConvoy", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("TransportShip", a, -2, 0); Put("Supplies", a, -3, 1); Put("Tank", a, -3, 0); Put("Grunt", a, -2, 1);
+                 Put("Grunt", o, 6, -5); },
+             "One ship takes troops and their supply together: a transport ship (4 slots) at Blue's naval yard with a grunt (1) aboard, a supply unit (weight 1) and a tank (2) beside it, Red's HQ across the channel and nothing of Blue's supply over there. Loaded, the ship acts first in Blue's turn, but it does not sail while either of them can still get aboard: in Blue's first turn all three get in; it sails full, and the supply aboard is linked off Red's shore, where the troops are put down.");
+        make("ai-turn-order", "turnOrder", (a, o) => {
+                 Put("Artillery", a, -2, 0); Put("APC", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 3);
+                 Put("APC", a, -4, -2); Put("Grunt", a, -3, -2); Put("Grunt", a, -4, 0);
+                 Put("Grunt", o, 1, 0); },
+             "The AI's turn order (AIProfile.turnOrderSteps): artillery with an enemy in range first; then a full transport (an APC with two grunts aboard); then the units on foot (its riders, and the rest); then a transport with room (an empty APC with a grunt beside it), after the grunt beside it has had the chance to get in.");
+        make("ai-ship-refit", "shipRefit", (a, o) => {
+                 for (int x = -1; x <= 5; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("Gunboat", a, 3, -2); Put("Gunboat", a, 4, 3); Put("SupplyBoat", a, 1, 4);
+                 Put("Grunt", o, 6, -5); },
+             "Ships go back for what they run out of: a gunboat out of ammunition five tiles from Blue's naval yard heads for the yard (only a yard rearms) and is rearmed there; a gunboat with one turn of supplies left, far from the yard, goes beside Blue's supply boat instead, and is restocked there at the start of its next turn.");
         make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
              "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
         make("ui-next-unit", "nextUnit", (a, o) => { Put("Grunt", a, 0, 0); Put("Grunt", a, 2, 0); Put("Tank", a, 0, 2); Put("Grunt", o, 5, -2); },
@@ -3386,7 +3403,7 @@ public static class Scenarios {
                 return linked && bLine && depLine && aLine && previewLine;
             }
             case "seaLift": {
-                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIProduction.DebugValues = Console.WriteLine; }
                 List<string> r = new List<string>();
                 a.money = 20000;
                 int landed = -1, bought = -1, blueTurns = 0;
@@ -3424,6 +3441,66 @@ public static class Scenarios {
                 }
                 detail = string.Join(" | ", r.ToArray());
                 return supplied > 0 && supplied <= 3;
+            }
+            case "seaConvoy": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit ship = Rig.At(-2, 0).occupier, sup = Rig.At(-3, 1).occupier, tank = Rig.At(-3, 0).occupier, g = Rig.At(-2, 1).occupier;
+                // The grunt starts aboard: a loaded transport moves first in the AI's turn order, before the others can get in.
+                bool gruntIn = Transporting.Load(ship, g);
+                List<string> r = new List<string>();
+                bool allAboard = false, sailedFull = false, landedSupplied = false;
+                int blueTurns = 0;
+                for (int turn = 0; turn < 8 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    HexTile before = ship.tile;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    bool aboard = sup.trasnporter == ship && tank.trasnporter == ship && g.trasnporter == ship;
+                    if (blueTurns == 1) allAboard = aboard || (sup.trasnporter == ship && ship.tile != before);
+                    if (ship.tile != before && sup.trasnporter == ship && Transporting.CarriedWeight(ship) == ship.transportSlots) sailedFull = true;
+                    SupplyNetwork.Result net = SupplyNetwork.Solve(a, false);
+                    foreach (Unit u in new[] { tank, g }) if (u != null && u.trasnporter == null && u.tile != null && u.tile.x >= 3 && net.IsSupplied(u.tile)) landedSupplied = true;
+                    r.Add("T" + blueTurns + ": ship " + Pos(ship.tile) + " carrying " + Transporting.CarriedWeight(ship) + "/" + ship.transportSlots + "; supplies " + (sup.trasnporter == ship ? "aboard" : Pos(sup.tile)) + ", tank " + (tank.trasnporter == ship ? "aboard" : Pos(tank.tile)) + ", grunt " + (g.trasnporter == ship ? "aboard" : Pos(g.tile)));
+                    if (landedSupplied) break;
+                }
+                detail = "grunt aboard at the start " + gruntIn + "; " + string.Join(" | ", r.ToArray()) + "; all three aboard in turn 1 " + allAboard + ", sailed full with its supply " + sailedFull + ", troops landed in supply " + landedSupplied;
+                return allAboard && sailedFull && landedSupplied;
+            }
+            case "turnOrder": {
+                Unit art = Rig.At(-2, 0).occupier, full = Rig.At(-4, 2).occupier, r1 = Rig.At(-5, 2).occupier, r2 = Rig.At(-5, 3).occupier;
+                Unit empty = Rig.At(-4, -2).occupier, beside = Rig.At(-3, -2).occupier, walker = Rig.At(-4, 0).occupier;
+                bool loaded = Transporting.Load(full, r1) && Transporting.Load(full, r2);
+                r1.active = true; r2.active = true;   // aboard, still to act this turn
+                List<Unit> acted = new List<Unit>();
+                AIPlayer ap = a.GetComponent<AIPlayer>();
+                ap.onDecision += (u, act, did) => { if (did && u != null && !acted.Contains(u)) acted.Add(u); };
+                ScenarioFile.PlayTurn();
+                Func<Unit, int> at = u => acted.IndexOf(u);
+                string names = string.Join(", ", acted.ConvertAll(u => u.name.Replace("(Clone)", "") + Pos(u.trasnporter != null ? u.trasnporter.tile : u.tile)).ToArray());
+                bool artFirst = at(art) == 0;
+                bool fullBeforeFoot = at(full) >= 0 && at(walker) >= 0 && at(full) < at(walker) && at(full) < at(beside);
+                bool emptyAfterFoot = at(empty) > at(walker) && at(empty) > at(beside);
+                detail = "loaded " + loaded + "; acted in order: " + names + "; artillery first " + artFirst + ", the full APC before those on foot " + fullBeforeFoot + ", the empty APC after them " + emptyAfterFoot;
+                return loaded && artFirst && fullBeforeFoot && emptyAfterFoot;
+            }
+            case "shipRefit": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit dry = Rig.At(3, -2).occupier, hungry = Rig.At(4, 3).occupier, tender = Rig.At(1, 4).occupier;
+                HexTile yard = Rig.At(-2, 0);
+                dry.ammo = 0; hungry.supplies = 1;
+                List<string> r = new List<string>();
+                bool rearmed = false, restocked = false;
+                for (int turn = 0; turn < 8 && !gc.gameOver && !(rearmed && restocked); turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    if (dry.ammo == dry.ammoMax) rearmed = true;
+                    if (hungry.supplies == hungry.suppliesMax) restocked = true;
+                    r.Add("dry " + Pos(dry.tile) + " ammo " + dry.ammo + ", hungry " + Pos(hungry.tile) + " supplies " + hungry.supplies + " (strength " + hungry.Strength + "), tender " + Pos(tender.tile));
+                }
+                detail = string.Join(" | ", r.ToArray()) + "; rearmed " + rearmed + ", restocked " + restocked + " without losing strength " + (hungry.Strength == 6);
+                return rearmed && restocked && hungry.Strength == 6;
             }
             case "ignoresCover": {
                 Unit tank = Rig.At(0, 0).occupier, g = Rig.At(1, 0).occupier;
@@ -4079,6 +4156,7 @@ public static class Scenarios {
                 // (combatRides, which this documents: under assaultRides grunts take a free transport and ride it to the assault.)
                 l.ai.GetComponent<AIPlayer>().Profile.assaultRides = false;
                 if (Environment.GetEnvironmentVariable("SET") == null) l.ai.GetComponent<AIPlayer>().Profile.combatRides = true;
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
                 HexTile home = GameController.HQOf(l.ai).tile;
                 Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
                 Func<HexTile, int> hs = t => { int v; return t != null && fromHome.TryGetValue(t, out v) ? v : -1; };
@@ -4538,7 +4616,7 @@ public static class Scenarios {
         // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
         Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
         Unit.RanInto += rh; Unit.Attacking += sh;
-        if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.OldAI.OldAIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; HexTactica.AI.AICampaign.Debug = x => { if (x.StartsWith("not taken on") || x.StartsWith("given up") || x.StartsWith("reserve drafts")) Console.WriteLine("   campaign: " + x); }; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
+        if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIProduction.DebugValues = x => { if (x.Contains("sea lift")) Console.WriteLine("   value: " + x); }; HexTactica.OldAI.OldAIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; HexTactica.AI.AICampaign.Debug = x => { if (x.StartsWith("not taken on") || x.StartsWith("given up") || x.StartsWith("reserve drafts")) Console.WriteLine("   campaign: " + x); }; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
         double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
         // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.
         int[] supplyDrops = new int[2], boards = new int[2], drops = new int[2], aboardTurns = new int[2], transportsBought = new int[2];

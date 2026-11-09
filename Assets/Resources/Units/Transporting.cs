@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Loading and unloading. A transport has slots, the locomotion types it carries, and (like every
 /// unit) a weight: the slots it takes when it is carried itself. An APC (2 slots, Boots) takes two
-/// grunts (weight 1) or one supply unit (weight 2), and no tanks (Treads). A loaded transport can
+/// grunts or supply units (weight 1 each), and no tanks (Treads). A loaded transport can
 /// itself be carried; it takes its own weight.
 ///
 /// Boarding is from beside the transport, onto its tile, so the unit must be able to step onto

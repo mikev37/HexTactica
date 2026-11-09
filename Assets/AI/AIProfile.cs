@@ -636,6 +636,12 @@ namespace HexTactica.AI {
 
         [Tooltip("Sea lift: when the objective lies across water (no land way to it), troops whose ground is over the water get into a ship even when they would otherwise hold (it is the only way there), a front counts the units already crossing as gathered, and a supply unit gets into an empty ship and is taken to the landing — beside the shore nearest our troops across, where its supply is linked — so the troops over there are supplied (a convoy).")]
         public bool seaLift = true;
+        [Tooltip("The turn order (AIPlayer.TurnOrder): 1 artillery that can fire (one that then would not waits for 3); 2 full transports; 3 the riders of those, everyone on foot, artillery not firing, and supply units not in the logistics chain; 4 transports with room (partly full or empty), so all who get in this turn are in; 5 the chain's supply units, each with its transport; 6 riders of the transports that moved in 4, who get out if they can strike, reach their ground this turn, or are safer off a threatened transport; 7 aircraft landing this turn; 8 builds. A transport chosen for supply goes with its supply unit. Off: the older order (assaultOrderWithLine).")]
+        public bool turnOrderSteps = true;
+        [Tooltip("Sea lift: how much a transport ship is worth to buy, times the land units waiting to cross that it would take over (their value, discounted for the turns to get them there). Above 1: the AI puts a ship ahead of a fighting unit of the same value, since without one the units across the water do nothing.")]
+        public float seaLiftWeight = 3f;
+        [Tooltip("Sea lift: steps added to a trip by sea (AIMap.SeaTravel) for getting into the ship at a naval yard and out on the far shore.")]
+        public int seaLiftBoardSteps = 2;
         [Tooltip("With assaultRides on, fighting units also take combatRides' hop (in and out the same turn) in an armed transport. Off: assault rides carry them in armed transports too, aboard until they can strike.")]
         public bool assaultArmedRides = false;
         [Tooltip("Riding to the assault: a rider put down to strike makes the strike its transport planned (where to stand, what to hit or take). Off: it decides afresh where it lands.")]
