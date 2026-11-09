@@ -48,6 +48,9 @@ public class MusicManager : MonoBehaviour {
     void Awake() {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        // A scenario's Play Music and Stop Music actions (ScenarioGame).
+        ScenarioGame.PlayMusicHook = (track, loop) => PlaySpecial(track, loop);
+        ScenarioGame.StopMusicHook = StopSpecial;
         for (int i = 0; i < 2; i++) {
             AudioSource s = gameObject.AddComponent<AudioSource>();
             s.playOnAwake = false;

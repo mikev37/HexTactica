@@ -339,6 +339,18 @@ public class HexTile : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Put the terrain back as it was before every destruction (UndoDestruction, as often as it was destroyed), with no
+    /// damage on it (a scenario's Repair Tile action). A building standing here is not repaired (Building.Repair).
+    /// True if anything changed.
+    /// </summary>
+    public bool RepairFully() {
+        bool changed = false;
+        while (UndoDestruction(0)) changed = true;
+        if (damage > 0) { damage = 0; RefreshDamageSprite(); changed = true; }
+        return changed;
+    }
+
     /// <summary>The terrain changed under whatever stands here: units that cannot be on it are lost; supply and sight are worked out again.</summary>
     void AfterTerrainChange() {
         if (occupier != null && occupier.Strength > 0 && !occupier.CanEnter(this)) occupier.Perish();

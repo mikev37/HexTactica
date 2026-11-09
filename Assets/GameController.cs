@@ -43,10 +43,18 @@ public class GameController : MonoBehaviour
 
     /// <summary>
     /// The game is held: no side plays (AIs do not think or act, the board takes no clicks, no turn ends), while a
-    /// menu is open over it (the pre-game screen, the in-game menu, the map editor). Not a rule: nothing on the board
-    /// changes while it is set.
+    /// menu is open over it (the pre-game screen, the in-game menu, the map editor), or while a scenario's dialogue is
+    /// on screen (<see cref="ScriptHold"/>). Not a rule: nothing on the board changes while it is set. Setting it sets
+    /// the menus' hold (<see cref="MenuHeld"/>); the dialogue's is its own, so closing a menu does not end it.
     /// </summary>
-    public static bool Paused;
+    public static bool Paused { get { return menuHeld || ScriptHold; } set { menuHeld = value; } }
+    static bool menuHeld;
+
+    /// <summary>A menu holds the game (the pre-game screen, the in-game menu, the map editor): the scenario's script does not run either.</summary>
+    public static bool MenuHeld { get { return menuHeld; } }
+
+    /// <summary>A scenario's dialogue is on screen (ScenarioDialogue): the game is held until it is closed.</summary>
+    public static bool ScriptHold;
 
     [Header("Purchases")]
     [Tooltip("Can units be bought at buildings? (A scenario sets this; when it does not, Standard and Sandbox allow purchases and Attrition does not.)")]
@@ -381,6 +389,18 @@ public class GameController : MonoBehaviour
             if (GameEnded != null) GameEnded();
         }
         if (TurnStarted != null) TurnStarted(activePlayer);
+    }
+
+    /// <summary>
+    /// End the game now with <paramref name="winner"/> the winner (null: a draw), as a scenario's Win or Lose action
+    /// does. Nothing if it is over already.
+    /// </summary>
+    public void EndGame(Player winner) {
+        if (gameOver) return;
+        gameOver = true;
+        this.winner = winner;
+        CancelPendingEndTurn();
+        if (GameEnded != null) GameEnded();
     }
 
     /// <summary>The game has just ended (gameOver and winner are set): however it ended, an HQ taken, a side eliminated, the round limit. For logs.</summary>

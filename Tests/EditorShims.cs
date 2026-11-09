@@ -47,4 +47,59 @@ namespace UnityEditor {
         public static void Refresh() { }
     }
     public static class Undo { public static void RecordObject(UnityEngine.Object o, string name) { } }
+
+    // (Inspectors and scene views: Editor/ScenarioTriggerDrawers.)
+    public enum SerializedPropertyType { Generic, Integer, Boolean, Float, String }
+    public class SerializedObject { public UnityEngine.Object targetObject; public void Update() { } public bool ApplyModifiedProperties() { return true; } public SerializedProperty FindProperty(string n) { return new SerializedProperty(); } }
+    public class SerializedProperty {
+        public SerializedObject serializedObject = new SerializedObject();
+        public string name = "", propertyPath = "", displayName = "", tooltip = "", stringValue = "";
+        public int intValue; public long longValue; public bool boolValue, isExpanded; public float floatValue;
+        public SerializedPropertyType propertyType;
+        public SerializedProperty FindPropertyRelative(string n) { return null; }
+    }
+    public abstract class PropertyDrawer {
+        public UnityEngine.PropertyAttribute attribute;
+        public virtual float GetPropertyHeight(SerializedProperty p, UnityEngine.GUIContent l) { return 16f; }
+        public virtual void OnGUI(UnityEngine.Rect r, SerializedProperty p, UnityEngine.GUIContent l) { }
+    }
+    [AttributeUsage(AttributeTargets.Class)] public class CustomPropertyDrawer : Attribute { public CustomPropertyDrawer(Type t) { } }
+    [AttributeUsage(AttributeTargets.Class)] public class CustomEditor : Attribute { public CustomEditor(Type t) { } }
+    public class Editor : UnityEngine.ScriptableObject { public UnityEngine.Object target; public SerializedObject serializedObject = new SerializedObject(); public virtual void OnInspectorGUI() { } }
+    public enum MessageType { None, Info, Warning, Error }
+    public static class EditorGUIUtility { public static float singleLineHeight = 18f, standardVerticalSpacing = 2f; }
+    public static class EditorGUI {
+        public static int indentLevel;
+        public static void BeginProperty(UnityEngine.Rect r, UnityEngine.GUIContent l, SerializedProperty p) { }
+        public static void EndProperty() { }
+        public static float GetPropertyHeight(SerializedProperty p, bool children) { return 18f; }
+        public static bool PropertyField(UnityEngine.Rect r, SerializedProperty p, UnityEngine.GUIContent l, bool children) { return false; }
+        public static bool PropertyField(UnityEngine.Rect r, SerializedProperty p, UnityEngine.GUIContent l) { return false; }
+        public static bool Foldout(UnityEngine.Rect r, bool open, UnityEngine.GUIContent l, bool toggleOnLabelClick) { return open; }
+        public static bool Foldout(UnityEngine.Rect r, bool open, string l, bool toggleOnLabelClick) { return open; }
+        public static int Popup(UnityEngine.Rect r, string l, int i, string[] o) { return i; }
+        public static long LongField(UnityEngine.Rect r, long v) { return v; }
+    }
+    public static class EditorGUILayout {
+        public static void LabelField(string a, string b) { }
+        public static void HelpBox(string m, MessageType t) { }
+        public static bool PropertyField(SerializedProperty p, bool children) { return false; }
+        public static void BeginHorizontal() { }
+        public static void EndHorizontal() { }
+    }
+    public enum GizmoType { NonSelected = 1, Selected = 4 }
+    [AttributeUsage(AttributeTargets.Method)] public class DrawGizmo : Attribute { public DrawGizmo(GizmoType t) { } }
+    public static class Handles {
+        public delegate void CapFunction(int id, UnityEngine.Vector3 p, UnityEngine.Quaternion r, float s, UnityEngine.EventType e);
+        public static UnityEngine.Color color;
+        public static void DrawPolyLine(params UnityEngine.Vector3[] p) { }
+        public static void Label(UnityEngine.Vector3 p, string s) { }
+        public static UnityEngine.Vector3 FreeMoveHandle(UnityEngine.Vector3 p, float size, UnityEngine.Vector3 snap, CapFunction cap) { return p; }
+        public static void DotHandleCap(int id, UnityEngine.Vector3 p, UnityEngine.Quaternion r, float s, UnityEngine.EventType e) { }
+    }
+    public static class HandleUtility { public static float GetHandleSize(UnityEngine.Vector3 p) { return 1f; } }
+    public static class Selection { public static UnityEngine.Object activeObject; }
+}
+namespace UnityEngine {
+    public enum EventType { Repaint, Layout }
 }

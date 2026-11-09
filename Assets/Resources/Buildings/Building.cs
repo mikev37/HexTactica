@@ -462,6 +462,27 @@ public class Building : MonoBehaviour {
     }
 
     /// <summary>
+    /// The building now belongs to <paramref name="newOwner"/> (null: nobody), as if taken (a scenario's Give Building
+    /// action): any capture in progress is dropped, and it changes hands as a capture does (OwnerChanged; an HQ taken
+    /// from its side ends the game for that side). A destroyed building belongs to nobody: it is not given.
+    /// </summary>
+    public void ChangeOwner(Player newOwner) {
+        if (Destroyed) return;
+        Player prevOwner = owner, capturer = capturingPlayer;
+        int before = capturePoints;
+        capturingPlayer = null;
+        capturePoints = 0;
+        if (before != 0 && Captured != null) Captured(this, capturer, before, 0);
+        if (newOwner == prevOwner) return;
+        owner = newOwner;
+        if (GameController.gc != null && GameController.gc.players != null)
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        FogOfWar.Changed();
+        if (OwnerChanged != null) OwnerChanged(this, prevOwner);
+        if (IsHQ && prevOwner != null && GameController.gc != null) GameController.gc.OnHQCaptured(this, prevOwner);
+    }
+
+    /// <summary>
     /// How far <paramref name="side"/> holds a building in that state, in points from -threshold to +threshold:
     /// held by it, threshold less a capturer's progress; held by another, minus (threshold less our progress);
     /// neutral, our progress (+) or another's (-).

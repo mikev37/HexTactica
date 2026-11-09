@@ -41,9 +41,17 @@ namespace UnityEngine {
         public static void DontDestroyOnLoad(Object o) { }
         public static T Instantiate<T>(T o, Transform p) where T : Object { return GameObject.Instantiate(o, p); }
         public static T Instantiate<T>(T o, Transform p, bool worldPositionStays) where T : Object { return GameObject.Instantiate(o, p); }
+        public static T Instantiate<T>(T o) where T : Object { return GameObject.Instantiate(o); }
+        public static T Instantiate<T>(T o, Vector3 at, Quaternion q) where T : Object { return GameObject.Instantiate(o, at, q); }
+        public static T Instantiate<T>(T o, Vector3 at, Quaternion q, Transform p) where T : Object { return GameObject.Instantiate(o, at, q, p); }
         public static T FindObjectOfType<T>() where T : class { return null; }
         public static T FindAnyObjectByType<T>() where T : class { return null; }
+        public static T[] FindObjectsByType<T>(FindObjectsSortMode m) where T : class { return new T[0]; }
+        public HideFlags hideFlags;
     }
+    public enum FindObjectsSortMode { None, InstanceID }
+    [Flags] public enum HideFlags { None = 0, DontSave = 52 }
+    public class ParticleSystem : Component { public void Clear() { } public void Play() { } }
 
     public struct Vector2 {
         public float x, y;
@@ -168,7 +176,7 @@ namespace UnityEngine {
         public RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType t) { }
     }
 
-    public static class Mathf {
+    public static class Mathf { public const float PI = (float)Math.PI;
         public static float Atan2(float y, float x) { return (float)Math.Atan2(y, x); }
         public const float Rad2Deg = 57.29578f;
         public static float MoveTowards(float a, float b, float d) { return Math.Abs(b - a) <= d ? b : a + Math.Sign(b - a) * d; }
@@ -362,6 +370,7 @@ namespace UnityEngine {
         public static T[] FindObjectsOfTypeAll<T>() where T : class { return new T[0]; }
         /// <summary>The harness's Resources folder: what it finds under that path, by type (PrefabLoader; null: nothing).</summary>
         public static System.Func<System.Type, string, object[]> Provider;
+        public static Object[] LoadAll(string path) { return LoadAll<Object>(path); }
         public static T[] LoadAll<T>(string path) where T : class {
             object[] found = Provider != null ? Provider(typeof(T), path) : null;
             if (found == null) return new T[0];
@@ -389,6 +398,8 @@ namespace UnityEngine {
         public AnimatorControllerParameter[] parameters { get { return new AnimatorControllerParameter[0]; } }
         public void ResetTrigger(string s) { }
         public AnimatorStateInfo GetCurrentAnimatorStateInfo(int layer) { return new AnimatorStateInfo(); }
+        public void Rebind() { }
+        public void Update(float dt) { }
     }
     public class AnimatorControllerParameter { public string name; }
     public struct AnimatorStateInfo { public float normalizedTime { get { return 0; } } }
@@ -441,7 +452,7 @@ namespace UnityEngine {
         public GUIStyleState normal = new GUIStyleState();
         public Vector2 CalcSize(GUIContent c) { return new Vector2(100, 20); }
     }
-    public class GUIContent { public GUIContent(string s) { } }
+    public class GUIContent { public string text = ""; public GUIContent(string s) { text = s; } public GUIContent(string s, string tip) { text = s; } }
     public class GUISkin { public GUIStyle label = new GUIStyle(), box = new GUIStyle(); }
 
     public static class Time {
@@ -462,7 +473,7 @@ namespace UnityEngine {
         public static Vector3 mousePosition { get { return new Vector3(); } }
         public static Vector2 mouseScrollDelta { get { return new Vector2(); } }
     }
-    public enum KeyCode { None, Space, Escape, Return, Tab, Home, End, LeftArrow, RightArrow, UpArrow, DownArrow, Equals, Minus, KeypadPlus, KeypadMinus, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
+    public enum KeyCode { None, Space, Escape, Return, KeypadEnter, Tab, Home, End, LeftArrow, RightArrow, UpArrow, DownArrow, Equals, Minus, KeypadPlus, KeypadMinus, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
     public static class Application {
         public static string persistentDataPath { get { return "/tmp/hextactica"; } }
         public static string dataPath { get { return "/tmp/hextactica"; } }
@@ -509,6 +520,7 @@ namespace UnityEngine {
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class HideInInspectorAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class SpaceAttribute : Attribute { public SpaceAttribute() { } public SpaceAttribute(float f) { } }
     [AttributeUsage(AttributeTargets.All, AllowMultiple = true)] public class ContextMenuAttribute : Attribute { public ContextMenuAttribute(string s) { } }
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)] public abstract class PropertyAttribute : Attribute { }
 }
 
 namespace UnityEngine {
