@@ -138,7 +138,7 @@ public class MusicManager : MonoBehaviour {
             if (c != null) Switch(c, Settings.musicFadeIn, false, Settings.musicFadeIn);
         }
 
-        float vol = Mathf.Clamp01(Settings.musicVolume);
+        float vol = Mathf.Clamp01(Settings.musicVolume) * GameOptions.MusicVolume;   // the mix level, times the options' music volume
         foreach (Deck d in decks) {
             d.level = Mathf.MoveTowards(d.level, d.target, d.speed * dt);
             d.source.volume = d.level * vol;

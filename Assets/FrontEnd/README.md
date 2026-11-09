@@ -53,6 +53,19 @@ building registry and camera rig now install only in a scene with a GameControll
 - The map editor saves to the player's folder. With `editorSavesInPlace` (off by default), it saves back over the
   file it loaded, in the editor only, and keeps that file's `test` block.
 
+## Options
+
+`GameOptions` keeps every option in PlayerPrefs. Each one is saved as it changes and applied when the game starts,
+before the first scene loads. The options are:
+
+- **Master volume** (`AudioListener.volume`);
+- **Music** (MusicManager plays at `GameSounds.musicVolume` × this);
+- **Sound effects** (`GameSounds.Play` and each unit's sounds play at this);
+- full screen, resolution, quality and vsync.
+
+Full screen and resolution only take effect in a build, not in the editor's Game view. **Update Scenes** adds the
+Music and Sound effects rows to an existing MainMenu scene, as copies of its volume row.
+
 ## AI profiles
 
 "AI (default)" is this AI (`AIPlayer`) with no profile, so it plays `AIProfile.Default`, the built-in defaults. Each
