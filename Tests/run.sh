@@ -27,7 +27,7 @@ mcs -target:exe -out:"$WORK/tests.exe" -nowarn:0108,0168,0219,0414,0067,0649,016
   $FILES "$HERE/FunctionalShims.cs" "$HERE/Rig.cs" "$HERE/PrefabLoader.cs" \
   "$HERE/Tests.cs" "$HERE/ScenarioFile.cs" "$HERE/Scenarios.cs"
 # The front end (menus, pre-game, post-game, in-game menu, map editor; Assets/FrontEnd) is type-checked with them.
-FRONT="$WORK/Assets/FrontEnd/UnitCatalog.cs $WORK/Assets/FrontEnd/GameFiles.cs $WORK/Assets/FrontEnd/MatchSetup.cs $WORK/Assets/FrontEnd/GameSession.cs $WORK/Assets/MusicManager.cs $(ls "$WORK"/Assets/FrontEnd/UI/*.cs | tr '\n' ' ') $HERE/FrontEndShims.cs"
+FRONT="$WORK/Assets/SpriteAnimator.cs $WORK/Assets/FrontEnd/UnitCatalog.cs $WORK/Assets/FrontEnd/GameFiles.cs $WORK/Assets/FrontEnd/MatchSetup.cs $WORK/Assets/FrontEnd/GameSession.cs $WORK/Assets/MusicManager.cs $(ls "$WORK"/Assets/FrontEnd/UI/*.cs | tr '\n' ' ') $HERE/FrontEndShims.cs"
 # Type-check the editor menus and the camera too (Unity-only code; nothing runs).
 mcs -target:library -out:"$WORK/editor.dll" -define:UNITY_EDITOR -nowarn:0108,0168,0219,0414,0067,0649,0162,0169 \
   $FILES "$HERE/FunctionalShims.cs" "$HERE/EditorShims.cs" "$HERE/UIShims.cs" "$WORK/Assets/UI/TransportPanel.cs" "$WORK/Assets/UI/Hud.cs" "$WORK/Assets/UI/HudRow.cs" "$WORK/Assets/UI/SpritePortrait.cs" "$WORK/Assets/UI/ProductionPanel.cs" "$WORK/Assets/UI/TurnControls.cs" "$WORK"/Assets/Editor/*.cs "$WORK/Assets/CameraRig.cs" $FRONT >/dev/null \
