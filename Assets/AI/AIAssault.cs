@@ -412,12 +412,32 @@ namespace HexTactica.AI {
             if (u == null || u.tile == null) return null;
             Building best = null; int bd = int.MaxValue;
             foreach (Building b in Building.all) {
-                if (b == null || b.tile == null || b.owner != u.owner || !b.Functioning || b.services == null || !b.services.Contains(Locomotion.Ship)) continue;
+                if (b == null || b.tile == null || b.owner != u.owner || !b.Functioning || !ServesShips(b)) continue;
                 if (map.AcrossWater(u.tile, b.tile)) continue;
                 int d = map.Travel(u, u.tile, b.tile);
                 if (d < bd || (d == bd && CombatMath.Precedes(b.tile, best.tile))) { bd = d; best = b; }
             }
             return best;
+        }
+
+        /// <summary>
+        /// <paramref name="b"/> serves ships (its prefab's services, Building.Services, for a ship): troops get into a
+        /// ship there (Transporting.CanBoardOnto), and the sea lift's trips start there (AIMap.SeaTravel).
+        /// </summary>
+        public static bool ServesShips(Building b) {
+            if (b == null) return false;
+            foreach (Unit t in ShipKinds()) if (b.Services(t)) return true;
+            return false;
+        }
+
+        static List<Unit> shipKinds;
+        /// <summary>The ship prefabs (Resources/Units, locomotion naval): what "serves ships" is asked with.</summary>
+        static List<Unit> ShipKinds() {
+            if (shipKinds != null) return shipKinds;
+            List<Unit> l = new List<Unit>();
+            foreach (Unit t in UnityEngine.Resources.LoadAll<Unit>("Units")) if (t != null && LocomotionRules.IsNaval(t.locomotion)) l.Add(t);
+            shipKinds = l;
+            return l;
         }
 
         public static bool CarriesHub(Unit t) {

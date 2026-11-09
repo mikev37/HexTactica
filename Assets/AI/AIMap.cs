@@ -906,7 +906,7 @@ namespace HexTactica.AI {
                 foreach (Unit u in ownUnits) if (u != null && LocomotionRules.IsNaval(u.locomotion) && Transporting.IsTransport(u) && u.transportSlots > 0) { can = true; break; }
                 if (!can)
                     foreach (Building b in Building.all) {
-                        if (b == null || b.owner != player || !b.CanProduce || b.services == null || !b.services.Contains(Locomotion.Ship)) continue;
+                        if (b == null || b.owner != player || !b.CanProduce || !AIAssault.ServesShips(b)) continue;
                         foreach (Unit t in b.Purchasable()) if (t != null && LocomotionRules.IsNaval(t.locomotion) && t.transportSlots > 0) { can = true; break; }
                         if (can) break;
                     }
@@ -935,7 +935,7 @@ namespace HexTactica.AI {
                     int c = cost[t];
                     bool onLand = t.terrain != null && t.terrain.elevation >= 0;
                     Building yb = t.building;
-                    bool yard = yb != null && yb.tile == t && yb.services != null && yb.services.Contains(Locomotion.Ship);
+                    bool yard = yb != null && yb.tile == t && AIAssault.ServesShips(yb);
                     if (yard && yb.owner == player && !land.ContainsKey(t)) {
                         int had; if (!r.TryGetValue(t, out had) || c < had) r[t] = c;
                         continue;   // ashore on our side: the walk from here is LandSteps'
@@ -944,7 +944,7 @@ namespace HexTactica.AI {
                     foreach (HexTile n in t.neighbors) {
                         if (n == null || n.terrain == null) continue;
                         Building nb = n.building;
-                        bool nYard = nb != null && nb.tile == n && nb.services != null && nb.services.Contains(Locomotion.Ship);
+                        bool nYard = nb != null && nb.tile == n && AIAssault.ServesShips(nb);
                         if (n.terrain.elevation >= 0 && !nYard) continue;   // the water, and yards on its shores
                         int nc = c + 1, prev;
                         if (cost.TryGetValue(n, out prev) && prev <= nc) continue;
