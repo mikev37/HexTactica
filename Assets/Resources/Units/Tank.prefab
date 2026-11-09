@@ -162,9 +162,17 @@ MonoBehaviour:
   lower: {fileID: 0}
   weaponImpact: {fileID: 3652074506526222895, guid: 237dda73323d86848bef36528bce2bd2, type: 3}
   deathExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
+  orderSound: {fileID: 0}
+  moveBurstSound: {fileID: 0}
+  moveLoopSound: {fileID: 8300000, guid: 7a515b4784a4df0438b297b6a3d9cc92, type: 3}
+  fireSound: {fileID: 0}
+  dieSound: {fileID: 8300000, guid: 34e2b69fe32887a4589eaee49c28da99, type: 3}
+  moveLoopFadeOut: 0.5
+  moveLoopEndPitch: 0.6
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 7000
+  description: 
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -185,6 +193,7 @@ MonoBehaviour:
   AttackRange: 1
   MinRange: 0
   retaliates: 1
+  ignoresCover: 0
   visionRange: 2
   stealthRange: 0
   move_display: {fileID: 0}

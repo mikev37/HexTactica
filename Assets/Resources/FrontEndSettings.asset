@@ -25,6 +25,8 @@ MonoBehaviour:
   savesFolder: saves
   fileExtension: .dat
   editorSavesInPlace: 1
+  aiProfiles:
+  - {fileID: 11400000, guid: 52326c7ff6b5cdd488363944484cc01c, type: 2}
   menuKey: 27
   insights:
     stallRounds: 6

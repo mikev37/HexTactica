@@ -1117,6 +1117,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
+      propertyPath: moveLoopSound
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
       propertyPath: transportSlots
       value: 1
       objectReference: {fileID: 0}
