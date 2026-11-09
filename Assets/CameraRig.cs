@@ -29,7 +29,47 @@ public class CameraRig : MonoBehaviour {
         if (c != null && c.orthographic && c.GetComponent<CameraRig>() == null) c.gameObject.AddComponent<CameraRig>();
     }
 
-    void Awake() { cam = GetComponent<Camera>(); }
+    void Awake() {
+        cam = GetComponent<Camera>();
+        // A scenario's camera actions (ScenarioGame): Camera Focus and Camera Frame Board.
+        ScenarioGame.CameraFocusHook = FocusOn;
+        ScenarioGame.CameraFrameHook = Frame;
+    }
+
+    void OnDestroy() {
+        if (ScenarioGame.CameraFocusHook == (System.Action<Vector3, float, float>)FocusOn) ScenarioGame.CameraFocusHook = null;
+        if (ScenarioGame.CameraFrameHook == (System.Action)Frame) ScenarioGame.CameraFrameHook = null;
+    }
+
+    // A glide to a point (FocusOn): from, to, and when.
+    bool focusing;
+    Vector3 focusFrom, focusTo;
+    float sizeFrom, sizeTo, focusStart, focusSeconds;
+
+    /// <summary>
+    /// Glide the view to <paramref name="world"/> over <paramref name="seconds"/> (0: at once), zooming to
+    /// <paramref name="size"/> (orthographic size; 0 keeps the zoom). A scenario's Camera Focus action.
+    /// </summary>
+    public void FocusOn(Vector3 world, float size, float seconds) {
+        if (cam == null) return;
+        framed = true;   // (the first frame's framing of the board does not undo it)
+        focusFrom = transform.position;
+        focusTo = new Vector3(world.x, world.y, transform.position.z);
+        sizeFrom = cam.orthographicSize;
+        sizeTo = size > 0f ? Mathf.Clamp(size, minSize, maxSize) : sizeFrom;
+        focusStart = Time.unscaledTime;
+        focusSeconds = Mathf.Max(0f, seconds);
+        focusing = true;
+        if (focusSeconds <= 0f) Glide();
+    }
+
+    void Glide() {
+        float t = focusSeconds <= 0f ? 1f : Mathf.Clamp01((Time.unscaledTime - focusStart) / focusSeconds);
+        float e = t * t * (3f - 2f * t);
+        transform.position = Vector3.Lerp(focusFrom, focusTo, e);
+        cam.orthographicSize = Mathf.Lerp(sizeFrom, sizeTo, e);
+        if (t >= 1f) focusing = false;
+    }
 
     /// <summary>The first frame after the window got focus back: its input is not ours (see LateUpdate).</summary>
     int ignoreInputUntil;
@@ -53,6 +93,7 @@ public class CameraRig : MonoBehaviour {
             Frame();
             framed = true;
         }
+        if (focusing) { Glide(); return; }   // a scenario moves the camera: the player's input waits until it is there
         if (!Application.isFocused || Time.frameCount <= ignoreInputUntil) return;   // not ours (OurInput)
         if (Input.GetKeyDown(KeyCode.Home)) Frame();
 
@@ -95,6 +136,7 @@ public class CameraRig : MonoBehaviour {
 
     /// <summary>Centre on the board and zoom so all of it is visible.</summary>
     public void Frame() {
+        focusing = false;
         if (HexGenerator.hg == null || HexGenerator.hg.tiles == null || HexGenerator.hg.tiles.Count == 0) return;
         Bounds b = new Bounds(HexGenerator.hg.tiles[0].transform.position, Vector3.zero);
         foreach (HexTile t in HexGenerator.hg.tiles) if (t != null) b.Encapsulate(t.transform.position);

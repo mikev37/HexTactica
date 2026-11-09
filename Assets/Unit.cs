@@ -200,6 +200,22 @@ public class Unit : MonoBehaviour
     }
 
     /// <summary>
+    /// The unit, and whatever it carries, now belongs to <paramref name="newOwner"/> (a scenario's Give Units action):
+    /// off its owner's roster onto the new one's, where it stands. Supply and sight are worked out again for everyone.
+    /// </summary>
+    public void ChangeOwner(Player newOwner) {
+        if (newOwner == null || newOwner == owner || dead) return;
+        if (owner != null && owner.units != null) owner.units.Remove(this);
+        owner = newOwner;
+        if (newOwner.units != null && !newOwner.units.Contains(this)) newOwner.units.Add(this);
+        if (transported != null) foreach (Unit c in transported.ToArray()) if (c != null) c.ChangeOwner(newOwner);
+        if (GameController.gc != null && GameController.gc.players != null)
+            foreach (Player p in GameController.gc.players) if (p != null) p.Resupply();
+        FogOfWar.Changed();
+        if (GameController.gc != null) GameController.gc.CheckVictory();
+    }
+
+    /// <summary>
     /// Lost without a shot (starved, ditched): off the board at once, like any death, and on screen
     /// it plays its death as if shot (the explosion and the "Die" animation, whose end removes it).
     /// </summary>

@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cba62ac924d47ceb92491950c94ac84, type: 3}
+  m_Name: Placeholder Commander
+  m_EditorClassIdentifier: 
+  displayName: Placeholder Commander
+  portrait: {fileID: 21300000, guid: 6cd34e89e5044f0d9458d8ef4b17a2d2, type: 3}
+  nameColour: {r: 0.92, g: 0.36, b: 0.33, a: 1}
+  voice: {fileID: 0}
+  facesLeft: 0

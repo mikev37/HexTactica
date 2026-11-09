@@ -24,6 +24,7 @@ namespace TMPro {
     public enum TextAlignmentOptions { Left, Center, Right, MidlineLeft, Midline, MidlineRight, TopLeft, Top, TopRight }
     public enum FontStyles { Normal = 0, Bold = 1, Italic = 2 }
     public class TMP_FontAsset : UnityEngine.Object { }
-    public class TMP_Text : UnityEngine.UI.Graphic { public string text = ""; public float fontSize; public TMP_FontAsset font; public TextAlignmentOptions alignment; public FontStyles fontStyle; public UnityEngine.RectTransform rectTransform; }
+    public class TMP_Text : UnityEngine.UI.Graphic { public int maxVisibleCharacters = 99999; public string text = ""; public float fontSize; public TMP_FontAsset font; public TextAlignmentOptions alignment; public FontStyles fontStyle; public UnityEngine.RectTransform rectTransform; }
     public class TextMeshProUGUI : TMP_Text { }
+    public class TextMeshPro : TMP_Text { public int sortingLayerID, sortingOrder; }
 }

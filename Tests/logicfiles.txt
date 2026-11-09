@@ -128,3 +128,10 @@ OldAI/AITransportPlanner.cs
 OldAI/AIWorld.cs
 OldAI/OldAIPlayer.cs
 OldAI/OldMission.cs
+Scenario/ScenarioTrigger.cs
+Scenario/ScenarioJson.cs
+Scenario/ScenarioGame.cs
+Scenario/ScenarioDialogue.cs
+Scenario/ScenarioScript.cs
+Scenario/ScenarioAssets.cs
+Scenario/DialogueCharacter.cs

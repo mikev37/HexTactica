@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cba62ac924d47ceb92491950c94ac84, type: 3}
+  m_Name: Placeholder Officer
+  m_EditorClassIdentifier: 
+  displayName: Placeholder Officer
+  portrait: {fileID: 21300000, guid: 98c2e6c0368f4821a06c55d6b5816dda, type: 3}
+  nameColour: {r: 0.85, g: 0.74, b: 0.55, a: 1}
+  voice: {fileID: 0}
+  facesLeft: 0

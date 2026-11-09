@@ -22,7 +22,7 @@ using HexTactica.Testing;
 /// maps (random mountains/water/forest plus two cut paths between the HQs) with full armies,
 /// against the original AI ported faithfully (Legacy) and the defend-only baseline (Greedy).
 /// </summary>
-public static class Scenarios {
+public static partial class Scenarios {
 
     public static string Dir = "Scenarios";
 
@@ -760,12 +760,14 @@ public static class Scenarios {
         make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
                  Put("TransportShip", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
              "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; a marine that boards a transport ship from the shore (it can step into water beside land) neither heals nor uses its supplies while the ship has supplies, and starves once the ship's are gone.");
+        n += ExportScriptChecks(make);
         make("attrition-rule-amphibious", "attritionAmphibious", (a, o) => { water(-1, 2, -7, 7); Put("Marine", a, -2, 1); Put("Grunt", a, -2, 2); Put("Grunt", o, 5, 0); },
              "A Marine can enter water beside land but not open water away from it; a Grunt cannot enter water.");
         return n;
     }
 
     static bool RuleCheck(ScenarioFile.Loaded l, out string detail) {
+        if (l.meta.Get("check", "").StartsWith("script")) return ScriptCheck(l, out detail);   // scenario triggers (ScenarioTriggerChecks.cs)
         GameController gc = Rig.gc;
         Player a = l.ai, o = l.other;
         Building at00 = Rig.At(0, 0).building;

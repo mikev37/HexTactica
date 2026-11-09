@@ -105,6 +105,9 @@ public static class ScenarioFile {
     /// Write the current headless board as a scenario file: every tile of SampleScene's board
     /// (those outside the generated map as Water), every unit, and the test block.
     /// </summary>
+    /// <summary>The scenario script the next Save writes (its triggers: ScenarioScript.ToJson), then forgets; null: none.</summary>
+    public static Defective.JSON.JSONObject ScriptToSave;
+
     public static void Save(string path, Dictionary<string, string> test, Player ai, Player other, Player first) {
         StringBuilder sb = new StringBuilder();
         sb.Append("{\n\"width\":").Append(2 * Board + 1).Append(",\n\"active\":").Append(first == ai ? AI_ID : OTHER_ID).Append(",\n\"test\":{");
@@ -151,7 +154,10 @@ public static class ScenarioFile {
             sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"Strength\":{3},\"Veterancy\":{4},\"personalName\":\"{5}\",\"active\":true,\"owner_id\":{6},\"supplies\":{7},\"fuel\":{8},\"ammo\":{9},\"gameobject_name\":\"{10}\",\"transporterIndexPlusOne\":{11}}}",
                 u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab, carrier));
         }
-        sb.Append("\n]\n}\n");
+        sb.Append("\n]");
+        // A scenario script (its triggers), as the game's own save writes it (LevelEditor.BoardJson).
+        if (ScriptToSave != null) { sb.Append(",\n\"").Append(ScenarioScript.FileKey).Append("\":").Append(ScriptToSave.Print(true)); ScriptToSave = null; }
+        sb.Append("\n}\n");
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         File.WriteAllText(path, sb.ToString());
     }
@@ -296,6 +302,8 @@ public static class ScenarioFile {
         FogOfWar.Reset();
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
+        // The scenario's script (its triggers), as the game loads it (ScenarioLoader); none: no triggers.
+        ScenarioScript.LoadFromBoard(json.Contains("\"" + ScenarioScript.FileKey + "\"") ? new Defective.JSON.JSONObject(json) : null, path);
         return l;
     }
 

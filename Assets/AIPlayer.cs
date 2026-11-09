@@ -146,6 +146,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
             if (!thinking.IsCompleted) return;
             Thought t;
             if (!Collect(out t)) return;
+            // A scenario's script changed the board while it was being made: think again on the board as it is.
+            if (TakeScriptChange(t.unit)) { Dispatch(); return; }
             Outcome o = Act(t, false);
             if (o == Outcome.NotDone) { Dispatch(); return; }   // nothing was done: the next unit thinks at once
             timer = actionInterval;
@@ -157,6 +159,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             if (WaitsOnRetreat(held) && animationWait < maxAnimationWait) { animationWait += Time.deltaTime; return; }
             animationWait = 0f;
             AIAction a = held; holding = false;
+            if (TakeScriptChange(a.unit)) { Dispatch(); return; }
             Run(a.unit, a, false);
             timer = actionInterval;
             return;
@@ -166,6 +169,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (timer > 0) return;
         timer = actionInterval;
         if (player == null || player.eliminated) return;
+        TakeScriptChange();
         Dispatch();
     }
 
@@ -216,6 +220,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// </summary>
     public bool StepOnce(bool headless) {
         if (player == null || player.eliminated) return false;
+        TakeScriptChange();
         while (true) {
             bool prepare = !turnPrepared;
             if (prepare) FogOfWar.Changed();
@@ -519,9 +524,40 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (Trace != null) Trace("   " + player.personal_name + " buys " + pick.name.Replace("(Clone)", "") + " at the HQ: the supply chain is stretched (" + (Profile.supplyTree ? treePlan.ToString() : chainPlan.ToString()) + ")");
     }
 
+    /// <summary>
+    /// A scenario's script changed the board outside any side's action (units made, given or taken away, destroyed,
+    /// ground or buildings changed). Taken in between thoughts (<see cref="TakeScriptChange"/>): a thought under way
+    /// runs on (it may be using this turn's queue on its thread) and, made on the board as it was, is set aside when it
+    /// comes in: its unit goes back to the front of the queue and decides again on the board as it is now.
+    /// </summary>
+    public void BoardChangedByScript() { scriptChanged = true; }
+
+    bool scriptChanged;
+
+    /// <summary>
+    /// The board changed under this turn (BoardChangedByScript): read again before the next thought; units no longer
+    /// ours leave the queue, and units that became ours and can still act this turn (given or made by the script) join
+    /// it at the end, so they play this turn. Main thread, no thought under way. True if there was a change.
+    /// </summary>
+    bool TakeScriptChange(Unit putBack = null) {
+        if (!scriptChanged) return false;
+        scriptChanged = false;
+        if (!turnPrepared) return true;   // the turn is not prepared yet: it will read the board as it is
+        refreshPending = true;
+        queue.RemoveAll(u => u == null || u.owner != player);
+        if (putBack != null && putBack.owner == player && putBack.active && putBack.tile != null && putBack.Strength > 0 && !queue.Contains(putBack)) queue.Insert(0, putBack);
+        foreach (Unit u in player.units) {
+            if (u == null || !u.active || u.tile == null || u.Strength <= 0 || queue.Contains(u)) continue;
+            queue.Add(u);
+            if (!turnStart.ContainsKey(u)) turnStart[u] = u.tile;
+        }
+        return true;
+    }
+
     /// <summary>Forget the turn in progress and everything remembered between turns: a new board was loaded.</summary>
     public void ResetTurn() {
         Abandon();
+        scriptChanged = false;
         refreshPending = false;
         turnPrepared = false;
         holding = false;

@@ -9,6 +9,12 @@
   - Tunable values live in assets or serialized fields, not constants in code.
 - More standing rules for working on this project: `Tests/HANDOFF.md`, section 1.
 
+## Campaign scripting: scenario triggers and dialogue
+
+A scenario file can carry a script: triggers (*when this happens, do these things*) edited in the inspector, with a
+dialogue box, markers on tiles, camera moves, music, spawns, ownership changes and win or loss. See
+`Assets/Scenario/README.md`.
+
 ## Supply carried by transports, ships and aircraft
 
 A supply unit aboard something links to its side's network through what carries it (SupplyNetwork.CarriedLinked):

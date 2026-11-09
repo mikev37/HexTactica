@@ -146,6 +146,9 @@ namespace HexTactica.Harness {
             string redKind = ApplyTestBlock(obj);
             ApplyControl(fileAI, fileProfile);
 
+            // The scenario's triggers (and, in a save, how far they got): replace the last board's.
+            ScenarioScript.LoadFromBoard(obj, path);
+
             GameController.BoardLoaded();
 
             if (RecordGames && GameController.gc != null && !GameController.gc.headless) {

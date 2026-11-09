@@ -48,6 +48,9 @@ public class MusicManager : MonoBehaviour {
     void Awake() {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        // A scenario's Play Music and Stop Music actions (ScenarioGame).
+        ScenarioGame.PlayMusicHook = (track, loop) => PlaySpecial(track, loop);
+        ScenarioGame.StopMusicHook = StopSpecial;
         for (int i = 0; i < 2; i++) {
             AudioSource s = gameObject.AddComponent<AudioSource>();
             s.playOnAwake = false;
@@ -74,6 +77,7 @@ public class MusicManager : MonoBehaviour {
         AudioClip clip = null;
         AudioClip[] all = m.Folder("Special");
         if (string.IsNullOrEmpty(track)) clip = m.Pick(all);
+        else if (track.IndexOf('/') >= 0) clip = Resources.Load<AudioClip>(track);   // a clip elsewhere under Resources, by its path (ScenarioAssets)
         else foreach (AudioClip c in all) if (c != null && c.name == track) { clip = c; break; }
         if (clip == null) return false;
         m.special = true;
