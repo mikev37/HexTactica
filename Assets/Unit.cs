@@ -448,10 +448,7 @@ public class Unit : MonoBehaviour
     // ---- Sounds (on screen only: nothing here changes the rules). Volume is the options menu's, through
     // AudioListener.volume (GameOptions.Volume), which every AudioSource follows. ----
 
-    /// <summary>Sounds are played: not headless (tests, the harness), and on the main thread outside any board view.</summary>
-    bool SoundsOn {
-        get { return BoardView.current == null && (GameController.gc == null || !GameController.gc.headless); }
-    }
+    bool SoundsOn { get { return GameSounds.On; } }
 
     /// <summary>Can whoever is watching see this unit (fog of war)? Unseen units make no sound, as they show no explosion.</summary>
     bool Audible {
@@ -476,21 +473,12 @@ public class Unit : MonoBehaviour
         oneShotSource.PlayOneShot(clip);
     }
 
-    /// <summary>Play a clip that outlives this unit (its death: the unit's object goes when the animation ends).</summary>
-    static void PlayDetached(AudioClip clip) {
-        if (clip == null) return;
-        GameObject go = new GameObject("Sound " + clip.name);
-        AudioSource s = go.AddComponent<AudioSource>();
-        s.playOnAwake = false;
-        s.spatialBlend = 0f;
-        s.clip = clip;
-        s.Play();
-        Destroy(go, clip.length + 0.1f);
-    }
-
     /// <summary>A human player selected this unit (HexTile.ClickBoard): its order sound.</summary>
     internal void PlayOrderSound() {
+        // Only the human whose turn it is, selecting one of their own units: nothing for an AI's units, a replay,
+        // or a unit of someone else's clicked to look at it.
         if (owner == null || !FogOfWar.IsHuman(owner) || HexTactica.Harness.Replay.Active) return;
+        if (GameController.gc == null || owner != GameController.gc.activePlayer) return;
         PlaySound(orderSound);
     }
 
@@ -1397,7 +1385,7 @@ public class Unit : MonoBehaviour
         // Not where anyone watching can see it (fog of war): no explosion to give it away.
         FogFader fader = GetComponent<FogFader>();
         if (deathExplosion != null && (fader == null || fader.Shown)) GameObject.Instantiate(deathExplosion, transform.position, transform.rotation);
-        if (dieSound != null && SoundsOn && (fader == null || fader.Shown)) PlayDetached(dieSound);
+        if (dieSound != null && SoundsOn && (fader == null || fader.Shown)) GameSounds.Play(dieSound);
         Destroy(gameObject, 6f);
     }
 
