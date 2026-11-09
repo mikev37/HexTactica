@@ -63,7 +63,7 @@ be chosen. A save keeps each side's profile by its profileName (`PlayerData.aiPr
 
 A terrain shows its top sprite. A unit or building is drawn from its prefab's sprites, the way the HUD draws one
 (`SpritePortrait`). The terrain palette lists only terrain with `TerrainData ▸ In Map Editor` on. It is off for what
-buildings put under themselves (Urban, City, Bunker, Bridge) and for damaged forms (stumps, damaged roads, the
+buildings put under themselves (Urban, City, Bunker) and for damaged forms (stumps, damaged roads, the
 collapsed bridge, broken ice).
 
 ## Sides

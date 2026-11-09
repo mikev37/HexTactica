@@ -13,7 +13,6 @@ MonoBehaviour:
   m_Name: Bridge
   m_EditorClassIdentifier: 
   description: A Bridge Crosses the Water tile allowing for land and water movement
-  inMapEditor: 0
   upper_normal: {fileID: 0}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}
