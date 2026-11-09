@@ -496,6 +496,21 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     a supply unit from a far yard and the north island was never taken (new Red 178,833 v 150,666, 19 buildings each).
     With troops first: both games the same as without it (no station ever got a ship: troops always waiting; 2–3
     ships per post for the convoy, demand 4–5 ships at 7,500–13,000, below the troop transports' cargo value).
+  - Owner's rules (9 Nov, evening): a troop ship bound for land without supply carries a supply unit too and, once
+    the troops are ashore, is that shore's supply ship for good (never back for more troops; moves only when relieved);
+    a second wave to supplied land stays a troop ship. Supply's ask counts every unit out of supply and every short front.
+    - `seaSupplyRideAlong` (OFF): troop ships bound for land without supply (riders' ground on land with no supply of
+      ours, or empty while troops wait to cross there) go in `supplyTransports` so riders leave a seat
+      (`AIAssault.SpareSlot`); a free supply unit is told to board it (`BoardTroopShip`), and one waits at each yard where
+      such troops gather (`staged`, kept from turn to turn). Laden ships take shore stations before convoy ones
+      (`Stationed`: no troops board them, `AIAssault.Board`). Channel new Blue with it: 118,000 v 188,833 (much worse);
+      no supply unit ever rode along (the trace never shows "rides along"; staged supply units got stuck or were taken
+      by the logistics for trucks). Putting empty troop ships in `supplyTransports` likely changed how they move — the
+      first thing to read in a traced game before turning it on.
+    - `supplyAskPerUnit` (on): a supply unit's worth is at least the value of every unit of ours out of supply plus
+      every short front's; a sea supply ship's, every unit ashore without its ship. Channel new Blue 20 rounds: on
+      185,916 v 178,166 (22 buildings; island: (-2,6) r13 only), off 160,500 v 165,833 (25 buildings; island (-6,9) r16,
+      (-6,8) r17). New Red with both (ride-along on): 190,416 v 180,333, island city (1,-6) only (was all three).
 
 ## 7. Open work, in the order I'd take it
 

@@ -26,7 +26,7 @@ namespace HexTactica.AI {
         public class Post { public int land; public HexTile shore; public float power; public int units; public bool wantsTruck; public readonly List<Station> stations = new List<Station>(); }
 
         /// <summary>What a side's sea supply is short of, for production (AIProduction).</summary>
-        public class Want { public int ships, hubs, trucks; public float power; }
+        public class Want { public int ships, hubs, trucks; public float power; public readonly List<Unit> ashore = new List<Unit>(); }
         static readonly Dictionary<Player, Want> demand = new Dictionary<Player, Want>();
         public static Want Demand(Player p) { lock (demand) { Want w; return p != null && demand.TryGetValue(p, out w) ? w : null; } }
 
@@ -39,6 +39,16 @@ namespace HexTactica.AI {
         readonly AIMap map; readonly AIProfile profile; readonly Player player;
         readonly Dictionary<HexTile, int> landOf = new Dictionary<HexTile, int>();
         System.Func<Unit, HexTile> groundOf;
+        readonly HashSet<int> suppliedLand = new HashSet<int>();
+        readonly Dictionary<Post, List<Unit>> ashoreOf = new Dictionary<Post, List<Unit>>();
+        /// <summary>Troop ships bound for land without supply, and the supply unit riding along in each (a seat kept for it).</summary>
+        public readonly Dictionary<Unit, Unit> troopShipHub = new Dictionary<Unit, Unit>();
+        readonly Dictionary<Unit, Unit> hubForTroopShip = new Dictionary<Unit, Unit>();
+        /// <summary>Supply units sent to wait at a naval yard where troops gather to cross to land without supply.</summary>
+        readonly Dictionary<Unit, Building> staged = new Dictionary<Unit, Building>();
+        static readonly Dictionary<Player, Dictionary<Unit, Building>> stagedBefore = new Dictionary<Player, Dictionary<Unit, Building>>();
+        /// <summary>Ships holding a station: no troops get into them (AIAssault.Board).</summary>
+        [System.ThreadStatic] public static HashSet<Unit> Stationed;
 
         public static System.Action<string> Debug;
 
@@ -51,7 +61,7 @@ namespace HexTactica.AI {
         public static AISeaSupply Plan(Player p, AIMap map, AIProfile profile, HashSet<Unit> busy, HashSet<SupplyPoint> chainLinks, System.Func<Unit, HexTile> groundOf) {
             AISeaSupply s = new AISeaSupply(p, map, profile);
             s.groundOf = groundOf;
-            Loading = new HashSet<Unit>();
+            Loading = new HashSet<Unit>(); Stationed = new HashSet<Unit>();
             s.Make(busy, chainLinks);
             return s;
         }
@@ -82,12 +92,13 @@ namespace HexTactica.AI {
                 List<Unit> list; if (!needy.TryGetValue(l, out list)) needy[l] = list = new List<Unit>();
                 list.Add(u);
             }
-            if (needy.Count == 0) { Publish(new Want()); return; }
+            // Land where our supply reaches now, by any means (a second wave goes there: its ships stay troop ships).
+            HexGenerator.forAllTiles(t => { int l; if (t != null && map.SupplyDepth(t) > 0 && landOf.TryGetValue(t, out l)) suppliedLand.Add(l); return 0; });
             // A ship to measure the water by: ours, else one we can build.
             Unit shipKind = null;
             foreach (Unit u in map.ownUnits) if (IsSupplyShip(u)) { shipKind = u; break; }
             if (shipKind == null) foreach (Building b in Building.all) if (b != null && b.owner == player) foreach (Unit t in b.Purchasable()) if (IsSupplyShip(t)) { shipKind = t; break; }
-            if (shipKind == null) { Publish(new Want()); return; }
+            if (needy.Count == 0 || shipKind == null) { Assign(busy, chainLinks); return; }
             int move = Mathf.Max(1, shipKind.moveRange);
             // Water beside home supplied ground: where a laden ship is linked by itself.
             HashSet<HexTile> anchor = new HashSet<HexTile>();
@@ -101,7 +112,7 @@ namespace HexTactica.AI {
             List<int> lands = new List<int>(needy.Keys); lands.Sort();
             foreach (int l in lands) {
                 List<Unit> us = needy[l];
-                Post post = new Post { land = l, units = us.Count };
+                Post post = new Post { land = l, units = us.Count }; ashoreOf[post] = us;
                 foreach (Unit u in us) post.power += AIScore.Worth(u) * u.Strength;
                 // The shore: water beside that land, nearest the units in all.
                 HexTile best = null; int bs = int.MaxValue;
@@ -181,9 +192,10 @@ namespace HexTactica.AI {
             empty.RemoveRange(0, forTroops);
             foreach (Unit sh in laden) {
                 Station best = null; int bd = int.MaxValue;
-                foreach (Station s in open) { if (s.ship != null) continue; int d = sh.tile.Distance(s.tile); if (d < bd || (d == bd && best != null && s.post.power > best.post.power)) { bd = d; best = s; } }
+                // The shores first (the troops landed there need it now), then the convoy behind them.
+                foreach (Station s in open) { if (s.ship != null) continue; int d = sh.tile.Distance(s.tile) + (s.index > 0 ? 1000 : 0); if (d < bd || (d == bd && best != null && s.post.power > best.post.power)) { bd = d; best = s; } }
                 if (best == null) break;
-                best.ship = sh; shipOf[sh] = best;
+                best.ship = sh; shipOf[sh] = best; Stationed.Add(sh);
                 foreach (Unit c in sh.transported) if (c != null && c.Hub != null && !c.Hub.producer) { best.hub = c; hubOf[c] = best; break; }
             }
             // Supply units free for it: on foot, not a link of a front's chain, on home land.
@@ -196,6 +208,59 @@ namespace HexTactica.AI {
             }
             free.Sort(AIMap.CompareUnits);
             Want want = new Want();
+            // A troop ship bound for land without supply carries a supply unit too (a seat kept for it): once the troops are
+            // ashore it is their supply ship, off that shore (a laden ship, above), until another relieves it. One bound
+            // where our supply already reaches (a second wave) stays a troop ship. Where troops gather at a yard to cross to
+            // land without supply, a supply unit goes ahead to wait there.
+            int waitingBare = 0; HashSet<Building> gatherYards = new HashSet<Building>();
+            if (groundOf != null && profile.seaSupplyRideAlong)
+                foreach (Unit u in map.ownUnits) {
+                    if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || u.Firepower <= 0 || LocomotionRules.IsNaval(u.locomotion) || LocomotionRules.IsAirborne(u.locomotion)) continue;
+                    HexTile g = groundOf(u); int lg;
+                    if (g == null || !map.AcrossWater(u.tile, g) || !landOf.TryGetValue(g, out lg) || suppliedLand.Contains(lg)) continue;
+                    waitingBare++;
+                    Building y = AIAssault.NearestYard(u, map); if (y != null) gatherYards.Add(y);
+                }
+            List<Unit> troopShips = new List<Unit>();
+            if (profile.seaSupplyRideAlong) foreach (Unit u in map.ownUnits) {
+                if (!IsSupplyShip(u) || u.tile == null || AIAssault.CarriesHub(u) || Transporting.FreeWeight(u) < 1) continue;
+                List<Unit> riders = AIAssault.Riders(u);
+                HexTile landing = null;
+                if (groundOf != null) foreach (Unit r in riders) { HexTile g = groundOf(r); if (g != null) { landing = g; break; } }
+                if (landing != null) { int ll; if (!landOf.TryGetValue(landing, out ll) || suppliedLand.Contains(ll)) continue; }
+                else if (riders.Count > 0 || waitingBare == 0) continue;   // (empty, troops waiting to cross to land without supply: it will carry them)
+                troopShips.Add(u);
+            }
+            troopShips.Sort(AIMap.CompareUnits);
+            foreach (Unit sh in troopShips) {
+                Unit hub = null; int hd = int.MaxValue;
+                foreach (Unit h in free) {
+                    if (hubForTroopShip.ContainsKey(h) || !Transporting.CarriesKind(sh, h)) continue;
+                    int d = map.Travel(h, h.tile, sh.tile);
+                    if (d < hd) { hd = d; hub = h; }
+                }
+                if (hub == null) { want.hubs++; continue; }
+                troopShipHub[sh] = hub; hubForTroopShip[hub] = sh;
+            }
+            foreach (Building y in gatherYards) {
+                bool has = false;
+                foreach (KeyValuePair<Unit, Unit> kv in hubForTroopShip) if (kv.Value.tile != null && kv.Value.tile.Distance(y.tile) <= 1) has = true;
+                if (has) continue;
+                Unit hub = null; int hd = int.MaxValue;
+                // The one sent there before keeps going (not a new one each turn).
+                Dictionary<Unit, Building> before; lock (stagedBefore) stagedBefore.TryGetValue(player, out before);
+                if (before != null) foreach (KeyValuePair<Unit, Building> kv in before) if (kv.Value == y && free.Contains(kv.Key) && !hubForTroopShip.ContainsKey(kv.Key)) { hub = kv.Key; break; }
+                if (hub == null) foreach (Unit h in free) {
+                    if (hubForTroopShip.ContainsKey(h) || staged.ContainsKey(h)) continue;
+                    Building hy = AIAssault.NearestYard(h, map); if (hy != y) continue;
+                    int d = map.Travel(h, h.tile, y.tile);
+                    if (d < hd) { hd = d; hub = h; }
+                }
+                if (hub == null) { want.hubs++; continue; }
+                staged[hub] = y;
+            }
+            free.RemoveAll(h => hubForTroopShip.ContainsKey(h) || staged.ContainsKey(h));
+            lock (stagedBefore) stagedBefore[player] = new Dictionary<Unit, Building>(staged);
             foreach (Station s in open) {
                 if (s.ship != null) continue;
                 // An empty ship and the supply unit nearest a yard it can reach.
@@ -214,13 +279,15 @@ namespace HexTactica.AI {
                 if (sh == null || hub == null) continue;
                 s.ship = sh; s.hub = hub; s.yard = yard; shipOf[sh] = s; hubOf[hub] = s;
             }
-            foreach (Post p in posts) { if (p.wantsTruck) want.trucks++; want.power += p.power; }
+            foreach (Post p in posts) { if (p.wantsTruck) want.trucks++; want.power += p.power; if (p.stations.Count > 0 && p.stations[0].ship == null) foreach (Unit u in ashoreOf[p]) if (map.SupplyDepth(u.tile) <= 0) want.ashore.Add(u); }
             Publish(want);
             if (Debug != null) foreach (Post p in posts) {
                 List<string> st = new List<string>();
                 foreach (Station s in p.stations) st.Add("(" + s.tile.x + "," + s.tile.y + ")" + (s.ship != null ? " " + s.ship.name.Replace("(Clone)", "") + "(" + s.ship.tile.x + "," + s.ship.tile.y + ")" + (AIAssault.CarriesHub(s.ship) ? " laden" : " empty, " + (s.hub != null ? "supply from (" + s.hub.tile.x + "," + s.hub.tile.y + ") at yard (" + s.yard.tile.x + "," + s.yard.tile.y + ")" : "")) : " none"));
                 Debug("sea supply: land " + p.land + ", " + p.units + " units, shore (" + p.shore.x + "," + p.shore.y + "), " + p.stations.Count + " ships: " + string.Join("; ", st.ToArray()) + (p.wantsTruck ? "; a truck wanted ashore" : ""));
             }
+            if (Debug != null) foreach (KeyValuePair<Unit, Unit> kv in troopShipHub) Debug("sea supply: troop ship " + kv.Key.name.Replace("(Clone)", "") + "(" + kv.Key.tile.x + "," + kv.Key.tile.y + ") bound for land without supply: supply unit (" + kv.Value.tile.x + "," + kv.Value.tile.y + ") rides along");
+            if (Debug != null) foreach (KeyValuePair<Unit, Building> kv in staged) Debug("sea supply: supply unit (" + kv.Key.tile.x + "," + kv.Key.tile.y + ") waits at yard (" + kv.Value.tile.x + "," + kv.Value.tile.y + ") for troops crossing to land without supply");
             if (Debug != null && (want.ships > 0 || want.hubs > 0 || want.trucks > 0)) Debug("sea supply short: " + want.ships + " ships, " + want.hubs + " supply units, " + want.trucks + " trucks (power ashore " + want.power.ToString("0") + ")");
         }
 
@@ -240,6 +307,14 @@ namespace HexTactica.AI {
         public AIAction? Decide(Unit u) {
             Station s;
             if (shipOf.TryGetValue(u, out s)) return ShipAction(u, s);
+            Unit tsh; Building y;
+            if (hubForTroopShip.TryGetValue(u, out tsh) && u.trasnporter == null) return BoardTroopShip(u, tsh);
+            if (staged.TryGetValue(u, out y) && u.trasnporter == null) {
+                if (u.tile.Distance(y.tile) <= 1) return AIAction.Wait(u, "sea supply: waits at the yard (" + y.tile.x + "," + y.tile.y + ") to cross with the troops");
+                HexTile step = StepTo(u, y.tile);
+                if (step == null || step == u.tile || step == y.tile) return AIAction.Wait(u, "sea supply: waits to cross with the troops");
+                return AIAction.Move(u, step, 0f, "sea supply: to the yard (" + y.tile.x + "," + y.tile.y + ") where troops cross to land without supply");
+            }
             if (hubOf.TryGetValue(u, out s)) {
                 if (u.trasnporter != null) return AIAction.Wait(u, "sea supply: rides its ship to (" + s.tile.x + "," + s.tile.y + ")");
                 return HubAction(u, s);
@@ -282,6 +357,30 @@ namespace HexTactica.AI {
             return AIAction.Move(ship, step, 0f, "sea supply: to the yard (" + s.yard.tile.x + "," + s.yard.tile.y + ") for a supply unit");
         }
 
+        /// <summary>A step toward <paramref name="goal"/>, out of danger if it can be, else along its way.</summary>
+        HexTile StepTo(Unit u, HexTile goal) {
+            MoveField f = map.ReachHorizon(u);
+            HexTile step = AITransportPlanner.SafeStepToward(u, goal, f, map, true);
+            if (step == null || step == u.tile) step = f.StepToward(goal);
+            return step;
+        }
+
+        /// <summary>A supply unit to ride along in a troop ship bound for land without supply: in, or toward it.</summary>
+        AIAction BoardTroopShip(Unit hub, Unit ship) {
+            if (Transporting.CanBoardFrom(ship, hub)) return AIAction.Board(hub, ship, hub.tile, "sea supply: rides along with the troops to land without supply");
+            MoveField now = map.ReachThisTurn(hub);
+            HexTile at = null;
+            foreach (HexTile x in ship.tile.neighbors)
+                if (x != null && now.ReachableThisTurn(x) && (x.occupier == null || x.occupier == hub) && Transporting.CanBoardFromTile(ship, hub, x) && (at == null || CombatMath.Precedes(x, at))) at = x;
+            if (at != null) return AIAction.Board(hub, ship, at, "sea supply: rides along with the troops to land without supply");
+            Building y = NearYard(ship);
+            HexTile goal = y != null ? y.tile : ship.tile;
+            if (hub.tile.Distance(goal) <= 1) return AIAction.Wait(hub, "sea supply: waits for the troop ship to ride along");
+            HexTile step = StepTo(hub, goal);
+            if (step == null || step == hub.tile || step == goal) return AIAction.Wait(hub, "sea supply: waits for the troop ship");
+            return AIAction.Move(hub, step, 0f, "sea supply: to the troop ship's yard (" + goal.x + "," + goal.y + ") to ride along");
+        }
+
         AIAction HubAction(Unit hub, Station s) {
             Unit ship = s.ship;
             if (ship != null && ship.tile != null && Transporting.CanBoardFrom(ship, hub)) return AIAction.Board(hub, ship, hub.tile, "sea supply: boards its ship for (" + s.tile.x + "," + s.tile.y + ")");
@@ -294,7 +393,7 @@ namespace HexTactica.AI {
             }
             if (s.yard == null) return AIAction.Wait(hub, "sea supply: no yard");
             if (hub.tile.Distance(s.yard.tile) <= 1) return AIAction.Wait(hub, "sea supply: waits by the yard for its ship");
-            HexTile step = AITransportPlanner.SafeStepToward(hub, s.yard.tile, map.ReachHorizon(hub), map, true);
+            HexTile step = StepTo(hub, s.yard.tile);
             if (step == null || step == hub.tile || step == s.yard.tile) return AIAction.Wait(hub, "sea supply: waits for its ship");
             return AIAction.Move(hub, step, 0f, "sea supply: walks to the yard (" + s.yard.tile.x + "," + s.yard.tile.y + ") to board");
         }

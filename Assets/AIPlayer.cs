@@ -987,6 +987,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             seaSupply = AISeaSupply.Plan(player, map, Profile, reservedTransports, links, Profile.seaLift ? (System.Func<Unit, HexTile>)GroundOf : null);
             AISeaSupply.Debug = null;
             foreach (Unit sh in seaSupply.shipOf.Keys) { reservedTransports.Add(sh); supplyTransports.Add(sh); }
+            foreach (Unit sh in seaSupply.troopShipHub.Keys) supplyTransports.Add(sh);   // a seat kept for the supply unit riding along (AIAssault.SpareSlot)
         }
         if (Trace != null && Profile.assaultRides) {
             List<string> st = new List<string>(); foreach (Unit t in supplyTransports) st.Add(t.name.Replace("(Clone)", "") + D(t.tile));

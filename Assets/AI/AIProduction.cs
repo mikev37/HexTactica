@@ -441,6 +441,19 @@ namespace HexTactica.AI {
             // Supply over water (seaSupplyChain): what it is short of — ships, supply units, trucks — worth the power ashore it would supply.
             AISeaSupply.Want seaWant = profile.seaSupplyChain ? AISeaSupply.Demand(p) : null;
             int seaShipsPlanned = 0, seaHubsPlanned = 0, seaTrucksPlanned = 0;
+            // supplyAskPerUnit: what supply is asked for — every unit of ours out of supply (each one's value, as each rider
+            // waiting asks for a transport), and every front whose supply is short.
+            float supplyAsk = 0f; int outOfSupply = 0;
+            if (profile.supplyAskPerUnit) {
+                foreach (Unit u in map.ownUnits) {
+                    if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || u.Firepower <= 0 || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) continue;
+                    if (map.SupplyDepth(u.tile) > 0) continue;
+                    supplyAsk += Value(u, u.tile, map); outOfSupply++;
+                }
+                if (logistics != null) foreach (AILogistics.Task task in logistics.tasks) if (!task.ordinary && task.short_) supplyAsk += task.unsupplied * profile.productionSupplyWeight * supplyScale;
+            }
+            float seaAsk = 0f;
+            if (seaWant != null) foreach (Unit u in seaWant.ashore) if (u != null && u.tile != null) seaAsk += Value(u, u.tile, map);
             Unit supplyKind = null;
             foreach (Unit u in map.ownUnits) if (u != null && u.Hub != null && !u.Hub.producer) { supplyKind = u; break; }
             if (supplyKind == null) foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) if (Kind(t) == 1) { supplyKind = t; break; }
@@ -461,7 +474,7 @@ namespace HexTactica.AI {
                         bool sails = LocomotionRules.IsNaval(t.locomotion), ground = !sails && !LocomotionRules.IsAirborne(t.locomotion);
                         int shortOf = sails ? seaWant.ships - seaShipsPlanned : ground ? seaWant.trucks - seaTrucksPlanned : 0;
                         if (shortOf > 0) {
-                            float sv = seaWant.power * profile.productionSupplyWeight * supplyScale;
+                            float sv = profile.supplyAskPerUnit && sails ? seaAsk : seaWant.power * profile.productionSupplyWeight * supplyScale;
                             if (sv > cv) { cv = sv; ctag = "sea supply: " + shortOf + (sails ? " ships" : " trucks") + " short"; }
                         }
                     }
@@ -595,6 +608,7 @@ namespace HexTactica.AI {
                     }
                 } else if (kindOf == 1) {
                     if (hubsHave + supplyPlanned >= supplyCap) return new KeyValuePair<float, string>(-1f, null);
+                    if (profile.supplyAskPerUnit && supplyAsk > 0f && supplyAsk * mix > v) { v = supplyAsk * mix; tag = "supply asked: " + outOfSupply + " units out of supply"; }
                     if (seaWant != null && seaWant.hubs - seaHubsPlanned > 0) {
                         float sv = seaWant.power * profile.productionSupplyWeight * supplyScale * mix;
                         if (sv > v) { v = sv; tag = "sea supply: " + (seaWant.hubs - seaHubsPlanned) + " supply units short"; }

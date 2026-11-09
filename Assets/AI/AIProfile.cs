@@ -133,6 +133,10 @@ namespace HexTactica.AI {
         public bool campaignSupplyByTransport = true;
         [Tooltip("Supply over water (AISeaSupply): land our supply buildings do not reach over land where we have fighting units is supplied by a transport ship with a supply unit aboard kept beside its shore, linked by a convoy of laden ships a move apart back to our supplied shore. Free transport ships (not carrying troops over) and supply units are claimed for it; what is short is asked of production. Off: only a sea invasion's ship carries supply over.")]
         public bool seaSupplyChain = true;
+        [Tooltip("Production: a supply unit is worth every unit of ours out of supply (each one's value, as every rider waiting asks for a transport) and every front whose supply is short; a transport ship for supply over water, every unit ashore without its supply ship.")]
+        public bool supplyAskPerUnit = true;
+        [Tooltip("Supply over water (seaSupplyChain): a troop ship bound for land without supply keeps a seat for a supply unit, which rides along and makes it that shore's supply ship once the troops are ashore; supply units wait at the yards where troops gather to cross. Off for now: on Channel it made things worse (see HANDOFF).")]
+        public bool seaSupplyRideAlong = false;
         [Tooltip("Campaign: a chokepoint or junction in our vision is held (achieved, released, like a building taken); out of sight it is a Hold objective again only once it has gone dark for fogUnknownTurns, or an enemy unit seen or remembered comes within fogStaleRadius of it.")]
         public bool campaignHoldContested = true;
         [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
