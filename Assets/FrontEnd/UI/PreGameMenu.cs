@@ -46,12 +46,13 @@ public class PreGameMenu : MonoBehaviour {
 
     void Start() {
         factions = GameAssets.AllFactions.OrderBy(f => f.name).ToList();
-        MatchSetup.ReadFromBoard();
+        // (MatchSetup.ReadFromBoard was read by GameSession from the board as the file has it.)
         if (title != null) title.text = Path.GetFileNameWithoutExtension(MatchSetup.FilePath);
         if (details != null) details.text = GameFiles.Describe(MatchSetup.FilePath);
-        if (fog != null) fog.SetIsOnWithoutNotify(MatchSetup.Fog);
-        if (build != null) build.SetIsOnWithoutNotify(MatchSetup.Purchases);
-        if (specialUnits != null) specialUnits.SetIsOnWithoutNotify(MatchSetup.SpecialUnits);
+        // A rule the map fixes is shown as it is and cannot be changed.
+        if (fog != null) { fog.SetIsOnWithoutNotify(MatchSetup.Fog); fog.interactable = !MatchSetup.FogFixed; }
+        if (build != null) { build.SetIsOnWithoutNotify(MatchSetup.Purchases); build.interactable = !MatchSetup.PurchasesFixed; }
+        if (specialUnits != null) { specialUnits.SetIsOnWithoutNotify(MatchSetup.SpecialUnits); specialUnits.interactable = !MatchSetup.SpecialUnitsFixed; }
         List<string> names = new List<string> { noFaction };
         names.AddRange(factions.Select(f => f.name));
         GameController gc = GameController.gc;

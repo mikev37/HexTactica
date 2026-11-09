@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: SnowDrifts
   m_EditorClassIdentifier: 
   description: A land of snow
+  inMapEditor: 1
+  paletteGroup: Snow
   upper_normal: {fileID: 21300000, guid: 1ddb2f582a825474aa88918269aa7ac6, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

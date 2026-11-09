@@ -90,6 +90,8 @@ public class LevelEditor : MonoBehaviour
             json += ",\n\"fog\":\"" + GameController.gc.FogSetting + "\"";
             // Faction special units (GameController inspector, the pre-game screen).
             json += ",\n\"factionSpecialUnits\":\"" + GameController.gc.SpecialUnitsSetting + "\"";
+            // The rules the map fixes (the pre-game screen shows them and cannot change them).
+            json += ",\n\"fixedRules\":\"" + GameController.gc.FixedRulesSetting + "\"";
         }
         if (BuildingController.bc != null && BuildingController.bc.buildings.Count > 0) {
             json += ",\n";
@@ -253,7 +255,12 @@ public class LevelEditor : MonoBehaviour
 
     /// <summary>Placing units: on an empty tile, a new one; clicking a unit again removes it (as with buildings).</summary>
     public static void PlaceNewUnit(HexTile t) {
-        if (t.occupier != null) { t.occupier.Delete(); return; }
+        if (t.occupier != null) {
+            // Taken off the map being edited, not killed in a game.
+            Unit.Wiping = true;
+            try { t.occupier.Delete(); } finally { Unit.Wiping = false; }
+            return;
+        }
         PlaceNewUnit(GameController.gc.activePlayer, singleton.ut,t);
     }
 }

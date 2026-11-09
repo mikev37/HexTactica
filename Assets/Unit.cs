@@ -1272,9 +1272,17 @@ public class Unit : MonoBehaviour
     /// <summary>A unit is dying (before it leaves the board: its tile, owner and strength are still as they were).</summary>
     public static event System.Action<Unit> Died;
 
+    /// <summary>
+    /// The board is being wiped (a scenario or save about to be loaded, the map editor's New): units taken off are not
+    /// lost in the game — no Died event, no victory check, no resupply, and cargo is removed with its transport rather
+    /// than playing its death (no animation, explosion or sound).
+    /// </summary>
+    public static bool Wiping;
+
     private void DieActual() {
         if (dead) return;
         dead = true;
+        if (Wiping) { Wipe(); return; }
         if (Died != null) Died(this);
         // Dying aboard: it stays small where it rode (Update does not grow it back) and plays its own death there,
         // not taken down unseen with its transport's sprite (FallAboard).
@@ -1308,6 +1316,23 @@ public class Unit : MonoBehaviour
             if (ResupplyOnAnyDeath && Player.InUpkeep) Player.ResupplyAfterUpkeep = true;
             if (Hub) owner.Resupply();
         }
+    }
+
+    /// <summary>Off the board while it is wiped (Wiping): out of every list, its cargo with it, nothing played.</summary>
+    void Wipe() {
+        Strength = 0;
+        if (owner != null) owner.units.Remove(this);
+        if (UnitController.uc != null) UnitController.uc.units.Remove(this);
+        for (int i = transported.Count - 1; i >= 0; i--) {
+            Unit c = transported[i];
+            if (c == null) continue;
+            c.DieActual();
+            Destroy(c.gameObject);
+        }
+        transported.Clear();
+        if (trasnporter != null) { trasnporter.transported.Remove(this); trasnporter = null; }
+        if (tile != null && tile.occupier == this) tile.occupier = null;
+        tile = null;
     }
 
     /// <summary>

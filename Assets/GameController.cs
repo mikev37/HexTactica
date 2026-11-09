@@ -41,6 +41,33 @@ public class GameController : MonoBehaviour
 
     public string SpecialUnitsSetting { get { return factionSpecialUnits ? "on" : "off"; } }
 
+    [Header("Rules the map fixes")]
+    [Tooltip("The map fixes fog of war as it is: the pre-game screen shows it and cannot change it (\"fixedRules\" in the file).")]
+    public bool fogFixed;
+    [Tooltip("The map fixes purchases (building units) as they are: the pre-game screen cannot change them.")]
+    public bool purchasesFixed;
+    [Tooltip("The map fixes faction special units as they are: the pre-game screen cannot change them.")]
+    public bool specialUnitsFixed;
+
+    /// <summary>The rules the map fixes, as the file has them: "fog,purchases,factionSpecialUnits" (any of them).</summary>
+    public string FixedRulesSetting {
+        get {
+            List<string> f = new List<string>();
+            if (fogFixed) f.Add("fog");
+            if (purchasesFixed) f.Add("purchases");
+            if (specialUnitsFixed) f.Add("factionSpecialUnits");
+            return string.Join(",", f.ToArray());
+        }
+    }
+
+    /// <summary>Read the file's fixed rules (FixedRulesSetting).</summary>
+    public void ParseFixedRules(string s) {
+        s = s ?? "";
+        fogFixed = s.Contains("fog");
+        purchasesFixed = s.Contains("purchases");
+        specialUnitsFixed = s.Contains("factionSpecialUnits");
+    }
+
     /// <summary>
     /// The game is held: no side plays (AIs do not think or act, the board takes no clicks, no turn ends), while a
     /// menu is open over it (the pre-game screen, the in-game menu, the map editor), or while a scenario's dialogue is

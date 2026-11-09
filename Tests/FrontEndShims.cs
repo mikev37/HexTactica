@@ -28,6 +28,7 @@ namespace UnityEngine.UI {
         public ScrollbarVisibility horizontalScrollbarVisibility, verticalScrollbarVisibility;
     }
     public class RawImage : Graphic { public UnityEngine.Texture texture; }
+    public static class LayoutRebuilder { public static void ForceRebuildLayoutImmediate(UnityEngine.RectTransform r) { } }
     public static class DefaultControls {
         public struct Resources { public UnityEngine.Sprite standard, background, inputField, knob, checkmark, dropdown, mask; }
         public static UnityEngine.GameObject CreateSlider(Resources r) { return new UnityEngine.GameObject("Slider"); }
@@ -82,4 +83,8 @@ namespace UnityEditor.Events {
     public static class UnityEventTools {
         public static void AddPersistentListener(UnityEngine.Events.UnityEvent e, UnityEngine.Events.UnityAction call) { }
     }
+}
+namespace UnityEngine {
+    [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
+    public class RequireComponent : System.Attribute { public RequireComponent(System.Type t) { } }
 }

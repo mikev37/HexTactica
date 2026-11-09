@@ -40,6 +40,8 @@ public static class MatchSetup {
     public static string FilePath = "";
     public static readonly List<Side> Sides = new List<Side>();
     public static bool Fog, Purchases = true, SpecialUnits = true;
+    /// <summary>The rules the map fixes (GameController.fogFixed and the rest): the pre-game screen shows them, cannot change them, and the file's stand.</summary>
+    public static bool FogFixed, PurchasesFixed, SpecialUnitsFixed;
 
     // ------------------------------------------------------------------ from the menus
 
@@ -91,9 +93,9 @@ public static class MatchSetup {
             ScenarioLoader.ControlOverride = control;
             ScenarioLoader.ProfileOverride = profiles;
             ScenarioLoader.FactionOverride = factions;
-            ScenarioLoader.FogOverride = Fog ? "on" : "off";
-            ScenarioLoader.PurchasesOverride = Purchases ? "on" : "off";
-            ScenarioLoader.SpecialUnitsOverride = SpecialUnits ? "on" : "off";
+            if (!FogFixed) ScenarioLoader.FogOverride = Fog ? "on" : "off";
+            if (!PurchasesFixed) ScenarioLoader.PurchasesOverride = Purchases ? "on" : "off";
+            if (!SpecialUnitsFixed) ScenarioLoader.SpecialUnitsOverride = SpecialUnits ? "on" : "off";
         });
         if (ok) { Mode = SessionMode.Play; GameController.Paused = false; }
         return ok;
@@ -158,5 +160,8 @@ public static class MatchSetup {
         Fog = gc.fogOfWar;
         Purchases = gc.purchasesAllowed;
         SpecialUnits = gc.factionSpecialUnits;
+        FogFixed = gc.fogFixed;
+        PurchasesFixed = gc.purchasesFixed;
+        SpecialUnitsFixed = gc.specialUnitsFixed;
     }
 }

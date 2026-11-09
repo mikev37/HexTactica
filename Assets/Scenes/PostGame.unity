@@ -1559,13 +1559,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 22
-  m_fontSizeBase: 22
+  m_fontSize: 20
+  m_fontSizeBase: 20
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 2
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
   m_textAlignment: 65535
@@ -2183,6 +2183,9 @@ MonoBehaviour:
   headline: {fileID: 2112235619}
   findings: {fileID: 317856789}
   unitTables: {fileID: 1047725947}
+  unitRows: {fileID: 2088293904}
+  tableHeading: {fileID: 5578901989159564753, guid: 93407e12223d34e498d268a6650e75a1, type: 3}
+  tableRow: {fileID: 4485379000463701475, guid: 2a6f16ed1dd28734195f8593b5a0adbc, type: 3}
   findingsPage: {fileID: 48510729}
   unitsPage: {fileID: 1133885206}
   titleStart: <b><size=115%>

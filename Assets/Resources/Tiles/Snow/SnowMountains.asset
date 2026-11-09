@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: SnowMountains
   m_EditorClassIdentifier: 
   description: Mountains are impassible for vehicles and offer defense
+  inMapEditor: 1
+  paletteGroup: Snow
   upper_normal: {fileID: 21300000, guid: 8379cfc9893de0742b6925fef3b8da7e, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}
