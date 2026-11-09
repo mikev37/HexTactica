@@ -26,6 +26,8 @@ public static class SpritePortrait {
     public struct Look {
         public Color color;
         public Vector3? localScale;
+        /// <summary>A sprite drawn in this renderer's place (null: its own). How the map editor shows a terrain on a tile that has another.</summary>
+        public Sprite sprite;
     }
 
     /// <summary>
@@ -38,9 +40,9 @@ public static class SpritePortrait {
         List<SpriteRenderer> rs = new List<SpriteRenderer>();
         Dictionary<SpriteRenderer, Look> looks = new Dictionary<SpriteRenderer, Look>();
         foreach (SpriteRenderer r in root.GetComponentsInChildren<SpriteRenderer>(inactiveToo)) {
-            if (r == null || r.sprite == null || (!r.enabled && !inactiveToo)) continue;
+            if (r == null || (!r.enabled && !inactiveToo)) continue;
             Look? l = look(r);
-            if (!l.HasValue) continue;
+            if (!l.HasValue || (l.Value.sprite == null && r.sprite == null)) continue;
             looks[r] = l.Value;
             rs.Add(r);
         }
@@ -62,14 +64,15 @@ public static class SpritePortrait {
                 Matrix4x4 parent = t.parent != null ? t.parent.localToWorldMatrix : Matrix4x4.identity;
                 m = toRoot * parent * Matrix4x4.TRS(t.localPosition, t.localRotation, l.localScale.Value);
             }
-            Bounds b = r.sprite.bounds;   // in the sprite's local units, around its pivot
+            Sprite drawn = l.sprite != null ? l.sprite : r.sprite;
+            Bounds b = drawn.bounds;   // in the sprite's local units, around its pivot
             Vector3 c = b.center;
             Vector3 ax = m.MultiplyVector(Vector3.right), ay = m.MultiplyVector(Vector3.up);
             if (r.flipX) { c.x = -c.x; ax = -ax; }
             if (r.flipY) { c.y = -c.y; ay = -ay; }
             Vector3 p = m.MultiplyPoint3x4(c);
             parts.Add(new SpriteLayout.Part {
-                sprite = r.sprite, color = l.color,
+                sprite = drawn, color = l.color,
                 center = new Vector2(p.x, p.y),
                 axisX = new Vector2(ax.x, ax.y), axisY = new Vector2(ay.x, ay.y),
                 size = new Vector2(b.size.x, b.size.y)
@@ -138,6 +141,43 @@ public static class SpritePortrait {
                 if (t.name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return false;
         return true;
     }
+
+    // ---------------------------------------------------------------- prefabs and terrain (the map editor's palette)
+
+    /// <summary>
+    /// A unit or building prefab (not on the board) drawn from its own sprites: those switched on in the prefab, not
+    /// on a canvas, not of a unit it holds; for a unit, not its shadow, pips, chevrons, smoke or flashes.
+    /// </summary>
+    public static bool ComposePrefab(Transform root, RectTransform target, bool isUnit) {
+        return Compose(root, target, true, r => PrefabPart(root, r, isUnit) ? new Look { color = r.color } : (Look?)null);
+    }
+
+    static bool PrefabPart(Transform root, SpriteRenderer r, bool isUnit) {
+        if (!r.enabled || r.color.a < 0.02f) return false;
+        if (isUnit) {
+            string layer = SortingLayer.IDToName(r.sortingLayerID);
+            foreach (string l in SkipLayers) if (layer == l) return false;
+        }
+        for (Transform t = r.transform; t != null; t = t.parent) {
+            if (!t.gameObject.activeSelf || t.GetComponent<Canvas>() != null) return false;
+            if (t == root) return true;
+            if (t.GetComponent<Unit>() != null) return false;   // a unit it carries
+            if (isUnit) foreach (string skip in UnitSkips) if (t.name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return false;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// A terrain as a tile of it looks (its water, lower and upper sprites, stacked as on the board; never the floor),
+    /// drawn on <paramref name="tile"/>'s renderers whatever terrain that tile has.
+    /// </summary>
+    public static bool ComposeTerrain(TerrainData td, HexTile tile, RectTransform target) {
+        if (td == null || tile == null) return false;
+        return Compose(tile.transform, target, true, r =>
+            r == tile.water ? Layer(td.water) : r == tile.lower ? Layer(td.lower) : r == tile.upper ? Layer(td.upper_normal) : (Look?)null);
+    }
+
+    static Look? Layer(Sprite s) { return s != null ? new Look { color = Color.white, sprite = s } : (Look?)null; }
 
     // ---------------------------------------------------------------- pips and chevrons
 

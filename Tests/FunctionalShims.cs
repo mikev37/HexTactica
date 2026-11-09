@@ -202,6 +202,7 @@ namespace UnityEngine {
 
         public T GetComponent<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T GetComponentInParent<T>() where T : class { return gameObject.GetComponent<T>(); }
+        public T GetComponentInParent<T>(bool includeInactive) where T : class { return gameObject.GetComponent<T>(); }
         public T GetComponentInChildren<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
@@ -536,6 +537,7 @@ namespace UnityEngine.SceneManagement {
         public string path { get { return ""; } }
         public bool isLoaded { get { return false; } }
         public bool IsValid() { return false; }
+        public UnityEngine.GameObject[] GetRootGameObjects() { return new UnityEngine.GameObject[0]; }
     }
     public static class SceneManager {
         public static event UnityEngine.Events.UnityAction<Scene, LoadSceneMode> sceneLoaded;
@@ -544,6 +546,7 @@ namespace UnityEngine.SceneManagement {
         public static Scene GetActiveScene() { return new Scene(); }
         public static bool SetActiveScene(Scene s) { return true; }
         public static Scene GetSceneByName(string n) { return new Scene(); }
+        public static Scene GetSceneByPath(string p) { return new Scene(); }
         public static void LoadScene(string n, LoadSceneMode m) { if (sceneLoaded != null) sceneLoaded(new Scene(), m); }
         public static UnityEngine.AsyncOperation UnloadSceneAsync(Scene s) { return null; }
     }

@@ -5,13 +5,14 @@ using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 /// <summary>
-/// One terrain, unit or building in the map editor's palette: a picture and a name. A terrain shows its top sprite;
-/// a unit or building is drawn from its prefab's sprites as on the board (SpritePortrait), fitted into the picture box.
+/// One terrain, unit or building in the map editor's palette: a picture and a name. A terrain is drawn as a tile of
+/// it looks (water, lower and upper; never the floor), a unit or building from its prefab's sprites, as the HUD draws
+/// them (SpritePortrait), fitted into the picture box.
 /// </summary>
 public class PaletteButton : MonoBehaviour {
     public Button button;
     public TMP_Text label;
-    [Tooltip("A single sprite (a terrain's top). Optional.")]
+    [Tooltip("Not used (kept hidden): the picture box draws every kind.")]
     public Image icon;
     [Tooltip("The box a unit or building is drawn into from its sprites (SpritePortrait). Optional.")]
     public RectTransform picture;
@@ -22,15 +23,18 @@ public class PaletteButton : MonoBehaviour {
     public void Show(Object item, string name, Color normal) {
         Item = item;
         if (label != null) label.text = name;
-        bool composed = false;
+        bool drawn = false;
         Unit u = item as Unit;
         Building b = item as Building;
-        if (picture != null && u != null) composed = SpritePortrait.Compose(u.transform, picture, r => SpritePortrait.UnitPart(u, r));
-        else if (picture != null && b != null) composed = SpritePortrait.Compose(b.transform, picture, r => SpritePortrait.BuildingPart(b, r));
-        if (picture != null) picture.gameObject.SetActive(composed);
         TerrainData td = item as TerrainData;
-        Sprite top = td != null ? (td.upper_normal != null ? td.upper_normal : td.floor) : null;
-        if (icon != null) { icon.sprite = top; icon.gameObject.SetActive(top != null && !composed); icon.preserveAspect = true; }
+        if (picture != null) {
+            if (u != null) drawn = SpritePortrait.ComposePrefab(u.transform, picture, true);
+            else if (b != null) drawn = SpritePortrait.ComposePrefab(b.transform, picture, false);
+            // A terrain as a tile of it looks: water, lower and upper stacked as on the board (drawn on a board tile's layout).
+            else if (td != null) drawn = SpritePortrait.ComposeTerrain(td, FindAnyObjectByType<HexTile>(), picture);
+            picture.gameObject.SetActive(drawn);
+        }
+        if (icon != null) icon.gameObject.SetActive(false);
         Highlight(normal);
     }
 
