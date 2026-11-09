@@ -45,9 +45,70 @@ MonoBehaviour:
   campaignGiveUpTurns: 0
   campaignWings: 1
   campaignCohesionTurns: 2
+  campaignReleaseTurns: 2
+  campaignDefendHQ: 0
+  campaignEnemyNearestOnly: 1
+  campaignChainToUnits: 1
+  campaignScoutEscort: 0
+  campaignEngagedTurns: 2
+  campaignSurgeAbort: 1
+  campaignSurgeRatio: 1.5
+  campaignSurgeWithdrawTurns: 2
+  productionValueByIncome: 1
+  campaignHubNeedSimple: 1
+  campaignHoldContested: 1
+  campaignReserveShare: 0.33
+  campaignMinTaskForce: 0
+  campaignStageOnSupply: 1
+  campaignBreakShort: 1
+  campaignBreakShortRatio: 0.5
+  campaignReserve: 1
+  campaignMobileReserve: 1
+  campaignReserveMinMove: 5
+  campaignKnowledge: 1
+  knowledgeAllOutRatio: 2
+  knowledgeAllOutConfidence: 0.6
+  knowledgeReserveConfidence: 0.6
+  campaignActiveReserveShare: 0.1
+  regroup: 1
+  regroupExpensiveCost: 3000
+  regroupRisk: 2
+  strategicReplaceWeight: 0.3
+  strategicReplaceTurns: 3
+  strategicReplaceCap: 10
+  campaignStrikeFirst: 0
+  regroupTransportScreens: 1
+  regroupCommitRatio: 1
+  hqCaptureWeight: 2
+  hqThreatNear: 0.02
+  hqThreatOn: 0.1
+  buildingVacantShare: 0.02
+  buildingOccupyShare: 0.1
+  holdEnemyHQRule: 0
   campaignUnitsPerSupply: 6
   productionMemoryDays: 6
   productionCounterUnits: 2
+  productionVariety: 0.97
+  productionTimeToFront: 1
+  productionTimeHorizon: 3
+  productionFloor: 0.05
+  productionPresence: 0.25
+  productionDefenceWeight: 0.5
+  productionOverkill: 1
+  productionShieldCut: 0.6
+  productionShieldRatio: 2
+  productionTierCosts: {x: 5000, y: 11000}
+  productionLifetime: 1
+  productionReachRef: 6
+  productionLifeMax: 8
+  productionLifeRef: 3
+  productionDefenceFade: 20
+  productionFrontWeight: 1
+  productionSupplyWeight: 1
+  productionSupplyExtra: 2
+  productionSupplyCap: 0
+  productionSupplySuperiority: 1
+  productionSpendAll: 1
   campaignLeftoverToFronts: 0
   campaignPlaces: 12
   campaignPlaceWeight: 0.5
@@ -120,6 +181,7 @@ MonoBehaviour:
   withdrawStrength: 2
   woundedNeedsSafety: 0
   woundedSafetyGate: 1
+  woundedWorldCompare: 1
   objectivePull: 0.01
   siegePull: 8
   holdWeight: 0.4
@@ -149,6 +211,8 @@ MonoBehaviour:
   coordination: 0
   coordinationMargin: 500
   coordinationPasses: 1
+  coordinationReuse: 1
+  captureBlockCost: 0
   coordOffensiveOptions: 3
   coordNoAssist: 1
   coordKillsOnly: 1
@@ -169,10 +233,10 @@ MonoBehaviour:
   assaultFrontlineOut: 1
   assaultFireThenUnload: 1
   assaultBoardTurns: 2
-  assaultWaveRatio: 1
-  assaultMedevacStrength: 3
   assaultTransportWeight: 2
   assaultFillBonus: 0.5
+  assaultMedevacStrength: 3
+  assaultWaveRatio: 1
   idleTransportScreens: 0
   freshUnload: 1
   theaterForecast: 1
@@ -268,67 +332,3 @@ MonoBehaviour:
   noiseSeed: 0
   decisionNoise: 0.15
   annotateBoard: 1
-  campaignReleaseTurns: 2
-  campaignDefendHQ: 0
-  campaignEnemyNearestOnly: 1
-  campaignChainToUnits: 1
-  campaignScoutEscort: 0
-  campaignEngagedTurns: 2
-  campaignSurgeAbort: 1
-  campaignSurgeRatio: 1.5
-  campaignSurgeWithdrawTurns: 2
-  productionValueByIncome: 1
-  campaignHubNeedSimple: 1
-  campaignHoldContested: 1
-  campaignReserveShare: 0.33
-  campaignMinTaskForce: 0
-  campaignStageOnSupply: 1
-  campaignBreakShort: 1
-  campaignBreakShortRatio: 0.5
-  campaignReserve: 1
-  campaignActiveReserveShare: 0.1
-  regroup: 1
-  regroupExpensiveCost: 3000
-  regroupRisk: 2
-  strategicReplaceWeight: 0.3
-  strategicReplaceTurns: 3
-  strategicReplaceCap: 10
-  campaignStrikeFirst: 0
-  regroupTransportScreens: 1
-  regroupCommitRatio: 1
-  hqCaptureWeight: 2
-  hqThreatNear: 0.02
-  hqThreatOn: 0.1
-  buildingVacantShare: 0.02
-  buildingOccupyShare: 0.1
-  holdEnemyHQRule: 0
-  productionVariety: 0.97
-  productionFloor: 0.05
-  productionPresence: 0.25
-  productionDefenceWeight: 0.5
-  productionOverkill: 1
-  productionShieldCut: 0.6
-  productionShieldRatio: 2
-  productionTierCosts: {x: 5000, y: 11000}
-  productionDefenceFade: 20
-  productionLifetime: 1
-  productionLifeMax: 8
-  productionLifeRef: 3
-  productionReachRef: 6
-  productionFrontWeight: 1
-  productionSupplyWeight: 1
-  productionSupplyExtra: 2
-  productionSupplyCap: 0
-  productionSupplySuperiority: 1
-  productionSpendAll: 1
-  woundedWorldCompare: 1
-  coordinationReuse: 1
-  campaignMobileReserve: 1
-  campaignReserveMinMove: 5
-  campaignKnowledge: 1
-  knowledgeAllOutRatio: 2
-  knowledgeAllOutConfidence: 0.6
-  knowledgeReserveConfidence: 0.6
-  productionTimeToFront: 1
-  productionTimeHorizon: 3
-  captureBlockCost: 0

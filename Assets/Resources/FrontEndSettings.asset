@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dacb9dcfc9a0430e9899198837f0e26d, type: 3}
+  m_Name: FrontEndSettings
+  m_EditorClassIdentifier: Assembly-CSharp::FrontEndSettings
+  mainMenuScene: MainMenu
+  gameScene: SampleScene
+  preGameScene: PreGame
+  postGameScene: PostGame
+  inGameMenuScene: InGameMenu
+  mapEditorScene: MapEditor
+  scenarioFolders:
+  - Resources/Scenarios
+  - StreamingAssets/Scenarios
+  userScenarioFolder: scenarios
+  savesFolder: saves
+  fileExtension: .dat
+  editorSavesInPlace: 1
+  menuKey: 27
+  insights:
+    stallRounds: 6
+    stallTiles: 2.5
+    stallLosses: 5
+    fedLosses: 5
+    fedShare: 0.6
+    badRoundLosses: 3
+    killerKills: 8
+    unansweredRounds: 8
+    bestTradeKills: 3
+    bestTradeBought: 3
+    supplyLosses: 3
+    fedByOne: 0.4
+    evenTrade: 0.5
+    samePlural:
+    - Artillery
+    - Supplies
+    - Anti Air
+    - Cache
