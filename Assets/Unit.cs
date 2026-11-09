@@ -18,6 +18,22 @@ public class Unit : MonoBehaviour
     public GameObject weaponImpact;
     public GameObject deathExplosion;
 
+    [Header("Sounds")]
+    [Tooltip("Played when a human player selects this unit (never for an AI's units).")]
+    [LooksOnly] public AudioClip orderSound;
+    [Tooltip("Played once as the unit starts moving.")]
+    [LooksOnly] public AudioClip moveBurstSound;
+    [Tooltip("Looped while the unit moves; fades out and pitches down when it arrives.")]
+    [LooksOnly] public AudioClip moveLoopSound;
+    [Tooltip("Played when the unit plays its attack animation.")]
+    [LooksOnly] public AudioClip fireSound;
+    [Tooltip("Played when the unit dies.")]
+    [LooksOnly] public AudioClip dieSound;
+    [Tooltip("Seconds the move loop takes to fade out once the unit arrives.")]
+    [LooksOnly] public float moveLoopFadeOut = 0.5f;
+    [Tooltip("Pitch the move loop slides down to as it fades out (1 = no change).")]
+    [LooksOnly, Range(0.1f, 1f)] public float moveLoopEndPitch = 0.6f;
+
     public Text textArea;
 
     public Animator animator;
@@ -427,6 +443,91 @@ public class Unit : MonoBehaviour
         if (UnitController.uc == null) return false;
         foreach (Unit u in UnitController.uc.units) if (u != null && u.Animating) return true;
         return false;
+    }
+
+    // ---- Sounds (on screen only: nothing here changes the rules). Volume is the options menu's, through
+    // AudioListener.volume (GameOptions.Volume), which every AudioSource follows. ----
+
+    /// <summary>Sounds are played: not headless (tests, the harness), and on the main thread outside any board view.</summary>
+    bool SoundsOn {
+        get { return BoardView.current == null && (GameController.gc == null || !GameController.gc.headless); }
+    }
+
+    /// <summary>Can whoever is watching see this unit (fog of war)? Unseen units make no sound, as they show no explosion.</summary>
+    bool Audible {
+        get { FogFader f = GetComponent<FogFader>(); return f == null || f.Shown; }
+    }
+
+    AudioSource oneShotSource, moveLoopSource;
+    bool soundMoving;
+    float loopFadeT = -1f;
+
+    AudioSource NewSource() {
+        AudioSource s = gameObject.AddComponent<AudioSource>();
+        s.playOnAwake = false;
+        s.spatialBlend = 0f;
+        return s;
+    }
+
+    /// <summary>Play a clip from this unit (cut off if the unit is destroyed while it plays).</summary>
+    void PlaySound(AudioClip clip) {
+        if (clip == null || !SoundsOn || !Audible) return;
+        if (oneShotSource == null) oneShotSource = NewSource();
+        oneShotSource.PlayOneShot(clip);
+    }
+
+    /// <summary>Play a clip that outlives this unit (its death: the unit's object goes when the animation ends).</summary>
+    static void PlayDetached(AudioClip clip) {
+        if (clip == null) return;
+        GameObject go = new GameObject("Sound " + clip.name);
+        AudioSource s = go.AddComponent<AudioSource>();
+        s.playOnAwake = false;
+        s.spatialBlend = 0f;
+        s.clip = clip;
+        s.Play();
+        Destroy(go, clip.length + 0.1f);
+    }
+
+    /// <summary>A human player selected this unit (HexTile.ClickBoard): its order sound.</summary>
+    internal void PlayOrderSound() {
+        if (owner == null || !FogOfWar.IsHuman(owner) || HexTactica.Harness.Replay.Active) return;
+        PlaySound(orderSound);
+    }
+
+    /// <summary>
+    /// The move sounds, every frame: the burst and the start of the loop when the sprite starts walking, the
+    /// loop fading out and pitching down once it arrives.
+    /// </summary>
+    void LateUpdate() {
+        if (!SoundsOn) return;
+        bool moving = !deathPlayed && ((path != null && path.Count > 0) || boardingWalk.Count > 0);
+        if (moving && !soundMoving) {
+            soundMoving = true;
+            if (Audible) {
+                PlaySound(moveBurstSound);
+                if (moveLoopSound != null) {
+                    if (moveLoopSource == null) { moveLoopSource = NewSource(); moveLoopSource.loop = true; }
+                    moveLoopSource.clip = moveLoopSound;
+                    moveLoopSource.volume = 1f;
+                    moveLoopSource.pitch = 1f;
+                    moveLoopSource.Play();
+                }
+            }
+            loopFadeT = -1f;
+        } else if (!moving && soundMoving) {
+            soundMoving = false;
+            if (moveLoopSource != null && moveLoopSource.isPlaying) loopFadeT = 0f;
+        }
+        if (moveLoopSource == null) return;
+        // Walking into the fog: silent while unseen.
+        moveLoopSource.mute = !Audible;
+        if (loopFadeT >= 0f) {
+            loopFadeT += Time.deltaTime;
+            float k = moveLoopFadeOut > 0f ? Mathf.Clamp01(loopFadeT / moveLoopFadeOut) : 1f;
+            moveLoopSource.volume = 1f - k;
+            moveLoopSource.pitch = Mathf.Lerp(1f, moveLoopEndPitch, k);
+            if (k >= 1f) { moveLoopSource.Stop(); moveLoopSource.volume = 1f; moveLoopSource.pitch = 1f; loopFadeT = -1f; }
+        }
     }
 
     bool AnimatorIsPlaying() {
@@ -1230,6 +1331,7 @@ public class Unit : MonoBehaviour
         firing = defender != null;
         firedAt = Time.time;
         animator.SetTrigger("Fire!");
+        PlaySound(fireSound);
         attacking = false;
         if (target == null)
             return;
@@ -1295,6 +1397,7 @@ public class Unit : MonoBehaviour
         // Not where anyone watching can see it (fog of war): no explosion to give it away.
         FogFader fader = GetComponent<FogFader>();
         if (deathExplosion != null && (fader == null || fader.Shown)) GameObject.Instantiate(deathExplosion, transform.position, transform.rotation);
+        if (dieSound != null && SoundsOn && (fader == null || fader.Shown)) PlayDetached(dieSound);
         Destroy(gameObject, 6f);
     }
 
