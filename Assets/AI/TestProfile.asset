@@ -341,6 +341,16 @@ MonoBehaviour:
   procCaptureProducerValue: 5000
   procReserveRich: 15000
   procJiggle: 2000
+  procCargo: 1
+  procResupply: 1
+  procResupplyLow: 0.5
+  procTerrainReach: 1
+  productionRetaliation: 1
+  procBudgets: 1
+  procPriorityShare: 1
+  procWaitBase: 1.1
+  procWaitPower: 4
+  procStick: 1.25
   scoutUnits: 0
   scoutPull: 0.3
   scoutThreatBonus: 1

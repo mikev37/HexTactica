@@ -362,6 +362,39 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   units (BushWar's ArmyBases build nothing without a faction there). Not done: fronts the campaign could not form (only
   formed fronts reach production); the enemy's possible builds as resistance beyond the unplaced estimate.
 
+- **Facility budgets, cargo, tankers, terrain reach, retaliation (9 Nov, all on):**
+  - `procBudgets` (`AIProduction.Budgets`): each facility keeps its own account (static, by side, kept across turns).
+    Weight 1 + `procPriorityShare` × (½ its front's priority over the top + ½ its best option over the best anywhere), so
+    the split is near even and at most 2×. Gold no account holds (income, savings given up) is split by weight; gold spent
+    elsewhere cuts every account alike. A facility with the enemy on it, or where the known enemy would destroy a new
+    unit outright (`KnownLoss` ≥ its strength; with budgets off the old ≥ 3), is locked: no value, its account released.
+    Highest weight first, each takes the option with most value × `procWaitBase`^-(`procWaitPower` × wait) — wait = turns
+    for its account, plus the accounts of facilities that were saving for the same unit last turn, on their income shares,
+    to pay (≥ 1 if its tile is taken); options past `Proc.maxWait` skipped except supply; last turn's target ×`procStick`.
+    Wait 0 and tile free: bought, from its own account first, then the others saving for it (most saved first). Else it
+    saves. Replaces `SaveTarget`/`Choose` and the reserve's saving. Discount table (wait 1..4): 1.1^-4w .68 .47 .32 .22;
+    power 1/(1+w/3) .75 .60 .50 .43; 1.1^-2w² .83 .47 .18 .05 (fits "one turn not bad, more prohibitive" closest; not tried).
+  - `procCargo`: any transport that does not fight is valued by cargo (`cargoGain`): our land units far from contact
+    (beyond `assaultBoardTurns`) or across water from their ground, not already served by an empty transport we have or
+    one planned; per rider value × gain, gain = `assaultTransportWeight` × (walk − ride turns)/`productionLifeRef`, or
+    across water `seaLiftWeight`/(1 + ride/horizon) × reserve shortfall pull. Walk on the rider's own terrain path; ride =
+    fetch + carry, ground transports over terrain, aircraft and ships by the tile; a plane needing a runway loads at its
+    airport. Plus, with no truck free, a short front's supply for a transport that carries a supply unit. Replaces the
+    sea-lift, riders and truck rules; no-resistance ×1.5 now applies to any such transport.
+  - `procResupply`: tanker (supply ship) = Σ value × (1 − level) of our aircraft (ships) below `procResupplyLow` of fuel or
+    supplies, ÷ (1 + tankers we have or plan).
+  - `procTerrainReach` (`Reach`): turns to the fight in move points by the unit's own movement (`AIPath.StepCost`, CanEnter;
+    aircraft 1 a tile), falling back to `Travel` where it cannot get there.
+  - `productionRetaliation`: in the lifetime value, what it takes in a turn adds the return fire from each enemy it would
+    attack from beside it (range 1 only; enemy that retaliates and can target it).
+  - Trace: "budget <facility>: weight, share, has; buys / saves for X (value, turns: discounted)", "cargo:" lines; with
+    DebugValues, "for cargo:".
+  - 14 rounds, traced, single games: ForestClearing new Blue v old Red 75,416 v 50,583 (budgets off/procurement v1:
+    81,583 v 65,000); Biomes new Blue 102,000 v 53,250 (v1 116,833 v 64,666); ForestClearing new Red v old Blue 72,500 v
+    75,750, ending with 20,500 gold unspent (airport on 10,765 saving for a gunship, its tile taken by a gunship at rest).
+    `maxWait` on ForestClearing is 2 turns (15,000 at 70% of 18,000): the airport shows "nothing worth it" until its account
+    is within two turns of a gunship, then saves for it. Mixed; not yet run on the no-build maps (production only).
+
 ## 7. Open work, in the order I'd take it
 
 **First, when there is budget: why fog screens and defensive narrows make the AI worse.** Both are off by default since

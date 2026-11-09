@@ -915,6 +915,26 @@ namespace HexTactica.AI {
         public int procReserveRich = 15000;
         [Tooltip("Procurement: a fixed jiggle, up to this, added to a unit's value (by its kind, its facility and the day).")]
         public int procJiggle = 2000;
+        [Tooltip("Procurement: every transport that does not fight (truck, APC, helicopter, plane, ship) is worth what it carries: our units it can carry that are far from where they are going (or across water), each one's value times the turns sooner it gets them there than they get there themselves, on each one's own path over the terrain; and a supply unit waiting for a ride. Off: ground trucks for riders and supply, ships for the sea lift, aircraft only for riders.")]
+        public bool procCargo = true;
+        [Tooltip("Procurement: an air tanker (or supply ship) is worth our aircraft (or ships) running low on fuel or supplies (below procResupplyLow of their most): each one's value times how low it is, shared with the tankers we have.")]
+        public bool procResupply = true;
+        [Tooltip("Procurement (procResupply): fuel or supplies below this share of the most count as running low.")]
+        public float procResupplyLow = 0.5f;
+        [Tooltip("Production: the turns to the fight are counted over the terrain by each unit's own movement (scramble, roads, what it can enter; aircraft ignore terrain), not in tiles.")]
+        public bool procTerrainReach = true;
+        [Tooltip("Production (productionLifetime): what a unit takes in a turn includes the return fire from each enemy it would attack from beside it (none for one that fires from range, or at one that cannot fire back at it).")]
+        public bool productionRetaliation = true;
+        [Tooltip("Procurement: each facility has its own budget — the income split evenly, a facility serving a high-priority front or offering what is wanted most getting up to 1 + procPriorityShare times as much — kept from turn to turn. Each buys now, or saves for something better within the longest wait, its value cut by procWaitBase^-(procWaitPower x turns waited). Facilities saving for the same unit pool their savings and the highest-priority one builds it. A facility the enemy holds or can destroy a new unit on gives its savings to the others. Off: one plan over all the gold.")]
+        public bool procBudgets = true;
+        [Tooltip("Procurement (procBudgets): the most extra share of income a facility gets for its priority (1: up to twice as much).")]
+        public float procPriorityShare = 1f;
+        [Tooltip("Procurement (procBudgets): a unit saved for is worth its value times procWaitBase^-(procWaitPower x turns to wait).")]
+        public float procWaitBase = 1.1f;
+        [Tooltip("Procurement (procBudgets): see procWaitBase.")]
+        public float procWaitPower = 4f;
+        [Tooltip("Procurement (procBudgets): what a facility was saving for last turn is worth this much more (the choice holds).")]
+        public float procStick = 1.25f;
         [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]
         [Range(0, 4)]
         public int scoutUnits = 0;
