@@ -408,6 +408,25 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     - A facility with nothing worth it keeps its account (gold piles up).
     - The budget choice ignores price except through the wait: a Marine (a grunt that swims, +1,000) beat a grunt on
       ForestClearing, which has no water, on the jiggle.
+  - Fixed (9 Nov, afternoon):
+    - Longest wait per facility: turns to save `procSaveMost` on its weight share of (`procWaitMapShare` 0.5 × map income
+      + 0.5 × ours); never less than the turns to save the cheapest supply unit on its share of our income. Supply has no
+      free pass. (`Proc.maxWait` is now only used with budgets off.) ForestClearing 2–5 turns, Channel 6–8.
+    - Only buying or saving collects gold. A facility with nothing worth it gives up its savings and share at once; the
+      rest choose again with it. A facility that buys keeps nothing: what is left goes to the facilities still to choose
+      this turn (by weight). A saving facility keeps no more than its target costs (the rest is shared next turn). Before
+      this the HQ, the last facility choosing, collected everything released (18,000 on ForestClearing) and bought one
+      grunt a turn with it.
+    - `productionAmphibiousWater` (12): amphibious units are worth 0 at a facility with no water within 12 tiles (like
+      anti-air with no enemy aircraft).
+    - `offFacilities`: no move ends on our facility that can build (purchases on), the threat exception gone:
+      `AIAir.BlocksBuildSlot` (so `MayEndOn`, every planner that uses it) for any unit; `AITactical.BlocksProduction`;
+      and `AIPlayer.OffFacilities`, the last word on every Move (the walking supply unit's step included): the tile it can
+      reach this turn nearest the one it wanted. Exempt: aircraft and ships the facility services (they rearm, refuel and
+      land only there — ai-ship-refit failed without it). A unit already standing on one is not moved off by this.
+  - Results, traced, single games (material, new AI first): ForestClearing new Blue 90,666 v 52,500 (12 buildings to 3);
+    new Red 75,500 v 61,666. Channel (20 rounds) new Blue 186,583 v 145,583 (3 transport ships, 2 transport planes;
+    5 units boarded); new Red 204,750 v 161,500 (23 buildings to 16). Biomes new Blue 94,750 v 44,250.
 
 ## 7. Open work, in the order I'd take it
 

@@ -268,6 +268,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     : unit.locomotion == Locomotion.Jet ? "jet" : unit.locomotion == Locomotion.Rotor ? "helicopter" : "fighting unit"), __d);
                 action = KeepLinks(action);
                 action = SupplyStaysAboard(unit, action);
+                action = OffFacilities(action);
                 // Never an attack that deals nothing (noZeroDamageAttacks): move to the tile it would fire from, or hold.
                 if (Profile.noZeroDamageAttacks && (action.kind == AIActionKind.Attack || action.kind == AIActionKind.MoveAndAttack) && action.target != null && action.target.tile != null) {
                     HexTile from = action.kind == AIActionKind.MoveAndAttack && action.destination != null ? action.destination : unit.tile;
@@ -322,6 +323,27 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// supplied ground, or drove off with it, cut off every supply unit beyond it.
     /// Worked out on the thinking copy of the board (the transport moved there and put back).
     /// </summary>
+    /// <summary>
+    /// offFacilities: a move that would end on one of our facilities that can build (a walking supply unit's step, any
+    /// planner's) ends instead on the tile it can reach this turn nearest that one; if there is none, it stands as it was.
+    /// </summary>
+    AIAction OffFacilities(AIAction a) {
+        if (!Profile.offFacilities || a.kind != AIActionKind.Move || a.unit == null || a.unit.tile == null || a.destination == null) return a;
+        Unit u = a.unit;
+        if (!AIAir.BlocksBuildSlot(u, a.destination, map)) return a;
+        MoveField f = AIPath.ThisTurn(u);
+        HexTile best = null; int bd = int.MaxValue;
+        foreach (HexTile t in f.Tiles) {
+            if (t == a.destination || !f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t) || !AIAir.MayEndOn(u, t, map)) continue;
+            int d = t.Distance(a.destination);
+            if (d < bd || (d == bd && best != null && CombatMath.CompareTiles(t, best) < 0)) { bd = d; best = t; }
+        }
+        AIPath.Release(f);
+        if (best == null) return a;
+        if (best == u.tile) return AIAction.Wait(u, a.reason + "; not onto our facility at " + a.destination.x + "," + a.destination.y);
+        return AIAction.Move(u, best, a.score, a.reason + "; not onto our facility at " + a.destination.x + "," + a.destination.y);
+    }
+
     AIAction KeepLinks(AIAction a) {
         if (Profile.hubLinkPenalty <= 0f || a.unit == null || a.unit.tile == null) return a;
         if (a.kind != AIActionKind.Unload && a.kind != AIActionKind.Move && a.kind != AIActionKind.MoveAndAttack) return a;

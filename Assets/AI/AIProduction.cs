@@ -111,6 +111,11 @@ namespace HexTactica.AI {
         /// <summary>A building tile free to build on this turn, and what is planned for it.</summary>
         class Slot { public Building b; public HexTile tile; public Unit pick; public float value; public string why; public bool free = true; }
 
+        static bool WaterNear(HexTile at, int range) {
+            foreach (HexTile x in AIPath.TilesInRangeShared(at, 0, range)) if (x != null && LocomotionRules.IsWater(x)) return true;
+            return false;
+        }
+
         static int DistToSet(HexTile a, List<HexTile> set) { int d = int.MaxValue; foreach (HexTile x in set) if (x != null) d = Mathf.Min(d, a.Distance(x)); return d; }
 
         /// <summary>A transport that does not fight (truck, APC, helicopter, plane, ship).</summary>
@@ -479,6 +484,8 @@ namespace HexTactica.AI {
                 }
                 // Nothing to shoot at (productionPossibleFoes): anti-air where the enemy has and can build no aircraft.
                 if (!HurtsPossible(t, sl.tile)) return new KeyValuePair<float, string>(0f, "hurts nothing the enemy has or can build");
+                // No water near (productionAmphibiousWater): an amphibious unit (a marine) is not built.
+                if (t.amphibious && profile.productionAmphibiousWater > 0 && !WaterNear(sl.tile, profile.productionAmphibiousWater)) return new KeyValuePair<float, string>(0f, "no water within " + profile.productionAmphibiousWater + " tiles");
                 // Destroyed where it stands next turn (productionAvoidFire): the enemy we see or remember has the building in range.
                 if (profile.productionAvoidFire && map.KnownLoss(t, sl.tile) >= Mathf.Max(1, t.Strength > 0 ? t.Strength : 6)) return new KeyValuePair<float, string>(0f, "destroyed there next turn");
                 int kindOf = Kind(t);
@@ -882,12 +889,16 @@ namespace HexTactica.AI {
         /// <summary>
         /// procBudgets: each facility's budget and choice. Weights: 1 each, plus up to procPriorityShare for the priority of
         /// the front it serves and for how much its best is worth against the others' best (a front that wants a gunship
-        /// raises the airbase); a facility the enemy holds or can destroy a new unit on: 0, its savings given to the others.
-        /// The gold not in any budget (income, savings given up) is split by weight. Then, highest weight first, each
-        /// facility takes the option worth most after the wait (procWaitBase^-(procWaitPower x turns)) — the turns its
-        /// savings, and those of the facilities that were saving for the same unit, take to pay for it on their shares of
-        /// our income — the unit it was saving for procStick more. Paid for now (and its tile free): bought, from its own
-        /// savings first, then theirs. Returns the gold left.
+        /// raises the airbase); a facility the enemy holds or can destroy a new unit on: no budget, its savings given to the
+        /// others. Only a facility that buys or saves collects gold: the gold no budget holds (income, savings given up) is
+        /// split by weight among them, and a facility that chooses to buy nothing gives up its savings and its share at once
+        /// (to the others, who choose again with it). A facility's choice: the option worth most after the wait
+        /// (procWaitBase^-(procWaitPower x turns^procWaitExponent)) — the turns its savings, and those of the facilities that
+        /// were saving for the same unit, take to pay for it on their shares of our income — within its longest wait, the
+        /// unit it was saving for procStick more. Longest wait: the turns to save procSaveMost on its share of
+        /// (procWaitMapShare of the map's income + the rest of ours), never less than the turns to save for a supply unit on
+        /// its share of our income. Paid for now (its tile free): bought, from its own savings first, then theirs.
+        /// Returns the gold left.
         /// </summary>
         static int Budgets(Player p, AIProfile pr, Proc proc, List<Slot> all, System.Func<Unit, Slot, KeyValuePair<float, string>> worth, System.Action<Unit, Slot, int> plan, int money, System.Action<string> trace) {
             Budget bg; lock (budgets) { if (!budgets.TryGetValue(p, out bg)) budgets[p] = bg = new Budget(); }
@@ -906,23 +917,35 @@ namespace HexTactica.AI {
                 foreach (Unit t in s.b.Purchasable()) { if (t.cost <= 0 || !t.CanEnter(s.tile)) continue; bw = Mathf.Max(bw, worth(t, s).Key); }
                 want[s] = bw; topWant = Mathf.Max(topWant, bw);
             }
-            float wsum = 0f;
             foreach (Slot s in live) {
                 float prio = 0.5f * proc.FrontPriority(s) + 0.5f * (topWant > 0f ? want[s] / topWant : 0f);
-                wgt[s] = 1f + Mathf.Max(0f, pr.procPriorityShare) * prio; wsum += wgt[s];
+                wgt[s] = 1f + Mathf.Max(0f, pr.procPriorityShare) * prio;
             }
-            // The gold no budget holds: shared by weight (spent elsewhere: every budget cut alike).
-            float held = 0f; foreach (Slot s in live) { float a; bg.acct.TryGetValue(s.b, out a); held += a; }
-            float pool = money - held;
-            foreach (Slot s in live) {
-                float a; bg.acct.TryGetValue(s.b, out a);
-                bg.acct[s.b] = pool >= 0f ? a + pool * wgt[s] / wsum : (held > 0f ? a * money / held : 0f);
-            }
-            Dictionary<Slot, float> share = new Dictionary<Slot, float>();
-            foreach (Slot s in live) share[s] = Mathf.Max(1f, proc.income * wgt[s] / wsum);
             live.Sort((x, y) => { int c = wgt[y].CompareTo(wgt[x]); return c != 0 ? c : CombatMath.CompareTiles(x.tile, y.tile); });
+            // What each carries over from last turn (gold spent elsewhere: every budget cut alike).
+            Dictionary<Slot, float> carry = new Dictionary<Slot, float>();
+            float held = 0f; foreach (Slot s in live) { float a; bg.acct.TryGetValue(s.b, out a); carry[s] = a; held += a; }
+            if (held > money && held > 0f) foreach (Slot s in live) carry[s] = carry[s] * money / held;
             Dictionary<Building, Unit> was = new Dictionary<Building, Unit>(bg.target);
-            foreach (Slot s in live) {
+            float rateBase = Mathf.Clamp01(pr.procWaitMapShare) * proc.mapIncome + (1f - Mathf.Clamp01(pr.procWaitMapShare)) * proc.income;
+            List<Slot> active = new List<Slot>(live);
+            Dictionary<Slot, float> acct = new Dictionary<Slot, float>(), share = new Dictionary<Slot, float>();
+            Dictionary<Slot, int> longest = new Dictionary<Slot, int>();
+            // Splits the gold among the active facilities: what each carries, and the rest by weight.
+            System.Action split = () => {
+                float wsum = 0f, kept = 0f;
+                foreach (Slot s in active) { wsum += wgt[s]; kept += carry[s]; }
+                float pool = Mathf.Max(0f, money - kept);
+                foreach (Slot s in active) {
+                    acct[s] = carry[s] + pool * wgt[s] / wsum;
+                    share[s] = Mathf.Max(1f, proc.income * wgt[s] / wsum);
+                    int most = Mathf.CeilToInt(pr.procSaveMost / Mathf.Max(1f, rateBase * wgt[s] / wsum));
+                    int least = Mathf.CeilToInt(proc.supplyCost / share[s]);
+                    longest[s] = Mathf.Max(most, least);
+                }
+            };
+            // A facility's best: (unit, value, wait, score, why); null unit: nothing worth it.
+            System.Func<Slot, KeyValuePair<Unit, object[]>> decide = s => {
                 Unit prev; was.TryGetValue(s.b, out prev);
                 Unit best = null; float bs = 0f, bv = 0f; int bwait = 0; string bwhy = null;
                 foreach (Unit t in s.b.Purchasable()) {
@@ -930,30 +953,69 @@ namespace HexTactica.AI {
                     KeyValuePair<float, string> w = worth(t, s);
                     if (w.Key <= 0f) continue;
                     // Its savings, and those of the others saving for the same unit; their shares of income.
-                    float have = bg.acct[s.b], inc = share[s];
-                    foreach (Slot o in live) { Unit ot; if (o != s && was.TryGetValue(o.b, out ot) && ot == t) { have += bg.acct[o.b]; inc += share[o]; } }
+                    float have = acct[s], inc = share[s];
+                    foreach (Slot o in active) { Unit ot; if (o != s && was.TryGetValue(o.b, out ot) && ot == t) { have += acct[o]; inc += share[o]; } }
                     int wait = have >= t.cost ? 0 : Mathf.CeilToInt((t.cost - have) / inc);
                     if (!s.free) wait = Mathf.Max(wait, 1);
-                    if (wait > proc.maxWait && Kind(t) != 1) continue;
+                    if (wait > longest[s]) continue;
                     float sc = w.Key * WaitDiscount(pr, wait) * (prev == t ? Mathf.Max(1f, pr.procStick) : 1f);
                     if (sc > bs || (sc == bs && best != null && t.cost < best.cost)) { bs = sc; best = t; bv = w.Key; bwait = wait; bwhy = w.Value; }
                 }
+                return new KeyValuePair<Unit, object[]>(best, new object[] { bv, bwait, bs, bwhy });
+            };
+            // Those that would buy nothing give up their savings and share; the rest choose again with it.
+            List<string> gaveUp = new List<string>();
+            for (int round = 0; round <= live.Count && active.Count > 0; round++) {
+                split();
+                List<Slot> none = new List<Slot>();
+                foreach (Slot s in active) if (decide(s).Key == null) none.Add(s);
+                if (none.Count == 0) break;
+                foreach (Slot s in none) {
+                    if (trace != null) gaveUp.Add(s.b.name.Replace("(Clone)", "") + " (" + s.tile.x + "," + s.tile.y + ") " + carry[s].ToString("0"));
+                    carry[s] = 0f; active.Remove(s);
+                }
+            }
+            if (trace != null && gaveUp.Count > 0) trace("   " + p.personal_name + " budget: buys nothing, gives up its savings: " + string.Join(", ", gaveUp.ToArray()));
+            foreach (Slot s in live) if (!active.Contains(s)) { bg.acct.Remove(s.b); bg.target.Remove(s.b); }
+            if (active.Count == 0) return money;
+            split();
+            foreach (Slot s in active) bg.acct[s.b] = acct[s];
+            for (int i = 0; i < active.Count; i++) {
+                Slot s = active[i];
+                Unit prev; was.TryGetValue(s.b, out prev);
+                KeyValuePair<Unit, object[]> d = decide(s);
+                Unit best = d.Key;
                 string line = null;
-                if (trace != null) line = "   " + p.personal_name + " budget " + s.b.name.Replace("(Clone)", "") + " (" + s.tile.x + "," + s.tile.y + ")" + (proc.FrontOf(s) != null ? " for " + proc.FrontOf(s) : "") + ": weight " + wgt[s].ToString("0.00") + ", share " + share[s].ToString("0") + ", has " + bg.acct[s.b].ToString("0");
-                if (best == null) { bg.target.Remove(s.b); if (line != null) trace(line + "; nothing worth it"); continue; }
+                if (trace != null) line = "   " + p.personal_name + " budget " + s.b.name.Replace("(Clone)", "") + " (" + s.tile.x + "," + s.tile.y + ")" + (proc.FrontOf(s) != null ? " for " + proc.FrontOf(s) : "") + ": weight " + wgt[s].ToString("0.00") + ", share " + share[s].ToString("0") + ", has " + acct[s].ToString("0") + ", waits at most " + longest[s];
+                if (best == null) {
+                    // (What was bought before it changed its mind: its savings to those still to choose, by weight.)
+                    float rest = 0f; for (int j = i + 1; j < active.Count; j++) rest += wgt[active[j]];
+                    if (rest > 0f) for (int j = i + 1; j < active.Count; j++) { acct[active[j]] += acct[s] * wgt[active[j]] / rest; bg.acct[active[j].b] = acct[active[j]]; }
+                    acct[s] = 0f; bg.acct.Remove(s.b); bg.target.Remove(s.b);
+                    if (line != null) trace(line + "; nothing worth it now: gives up its savings");
+                    continue;
+                }
+                float bv = (float)d.Value[0], bs = (float)d.Value[2]; int bwait = (int)d.Value[1]; string bwhy = (string)d.Value[3];
                 if (bwait == 0 && s.free && best.cost <= money) {
                     // Paid for: its own savings first, then the others saving for it (the most saved first).
                     float owe = best.cost;
-                    float own = Mathf.Min(owe, bg.acct[s.b]); bg.acct[s.b] -= own; owe -= own;
+                    float own = Mathf.Min(owe, acct[s]); acct[s] -= own; owe -= own;
                     List<Slot> lenders = new List<Slot>();
-                    foreach (Slot o in live) { Unit ot; if (o != s && was.TryGetValue(o.b, out ot) && ot == best) lenders.Add(o); }
-                    lenders.Sort((x, y) => { int c = bg.acct[y.b].CompareTo(bg.acct[x.b]); return c != 0 ? c : CombatMath.CompareTiles(x.tile, y.tile); });
-                    foreach (Slot o in lenders) { if (owe <= 0f) break; float take = Mathf.Min(owe, bg.acct[o.b]); bg.acct[o.b] -= take; owe -= take; }
-                    if (owe > 0.5f) bg.acct[s.b] -= owe;   // (rounding)
+                    foreach (Slot o in active) { Unit ot; if (o != s && was.TryGetValue(o.b, out ot) && ot == best) lenders.Add(o); }
+                    lenders.Sort((x, y) => { int c = acct[y].CompareTo(acct[x]); return c != 0 ? c : CombatMath.CompareTiles(x.tile, y.tile); });
+                    foreach (Slot o in lenders) { if (owe <= 0f) break; float take = Mathf.Min(owe, acct[o]); acct[o] -= take; owe -= take; bg.acct[o.b] = acct[o]; }
+                    if (owe > 0.5f) acct[s] -= owe;   // (rounding)
                     s.pick = best; s.value = bv; s.why = bwhy; money -= best.cost; plan(best, s, 1);
                     bg.target.Remove(s.b);
+                    // Bought: it is not saving, so what is left goes to those still to choose (by weight), else back to be shared next turn.
+                    float left = Mathf.Max(0f, acct[s]), restW = 0f;
+                    for (int j = i + 1; j < active.Count; j++) restW += wgt[active[j]];
+                    if (restW > 0f) for (int j = i + 1; j < active.Count; j++) { acct[active[j]] += left * wgt[active[j]] / restW; bg.acct[active[j].b] = acct[active[j]]; }
+                    acct[s] = 0f; bg.acct.Remove(s.b);
                     if (line != null) trace(line + "; buys " + GameController.UnitName(best) + " (" + bv.ToString("0") + ")" + (lenders.Count > 0 ? " with " + lenders.Count + " others' savings" : ""));
                 } else {
+                    // Saving: it keeps no more than the unit costs (the rest back to be shared next turn).
+                    acct[s] = Mathf.Min(acct[s], best.cost); bg.acct[s.b] = acct[s];
                     bg.target[s.b] = best;
                     if (line != null) trace(line + "; saves for " + GameController.UnitName(best) + " (" + bv.ToString("0") + ", " + bwait + " turns: " + bs.ToString("0") + ")" + (prev == best ? " as before" : ""));
                 }
@@ -972,7 +1034,7 @@ namespace HexTactica.AI {
         /// </summary>
         class Proc {
             readonly Player p; readonly AIMap map; readonly AIProfile pr; readonly List<Slot> slots;
-            public int income, enemyIncome, mapIncome, minWait, maxWait;
+            public int income, enemyIncome, mapIncome, minWait, maxWait, supplyCost;
             readonly float ourPower;
             readonly Dictionary<Slot, CampaignObjective> serves = new Dictionary<Slot, CampaignObjective>();
             readonly Dictionary<Slot, bool> locked = new Dictionary<Slot, bool>();
@@ -991,7 +1053,7 @@ namespace HexTactica.AI {
                     if (b.owner == p && b.Functioning) income += b.income;
                     else if (b.owner != null && b.owner != p) enemyIncome += b.income;
                 }
-                int supplyCost = int.MaxValue; cheapest = int.MaxValue;
+                supplyCost = int.MaxValue; cheapest = int.MaxValue;
                 foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) {
                     if (t.cost <= 0 || !t.CanEnter(sl.tile)) continue;
                     if (Kind(t) == 1) supplyCost = Mathf.Min(supplyCost, t.cost);
@@ -1063,6 +1125,7 @@ namespace HexTactica.AI {
                 float v = w.Key; string why = w.Value;
                 if (v <= 0f && Kind(t) != 0) return w;
                 if (Kind(t) == 0 && !HurtsPossible(t, sl.tile)) return new KeyValuePair<float, string>(0f, "hurts nothing the enemy has or can build");
+                if (t.amphibious && pr.productionAmphibiousWater > 0 && !WaterNear(sl.tile, pr.productionAmphibiousWater)) return new KeyValuePair<float, string>(0f, "no water within " + pr.productionAmphibiousWater + " tiles");
                 CampaignObjective o; serves.TryGetValue(sl, out o);
                 float r = o != null ? resistance[o] : 0f;
                 bool fighter = Kind(t) == 0 && t.Firepower > 0 && !(Transporting.IsTransport(t) && t.Firepower <= 1);

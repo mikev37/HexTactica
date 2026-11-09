@@ -937,6 +937,12 @@ namespace HexTactica.AI {
         public float procWaitExponent = 1f;
         [Tooltip("Procurement (procBudgets): what a facility was saving for last turn is worth this much more (the choice holds).")]
         public float procStick = 1.25f;
+        [Tooltip("Procurement (procBudgets): a facility's longest wait is the turns to save procSaveMost on its share of this much of the map's income plus the rest of ours (0.5: half the map's, half ours); never less than the turns to save for a supply unit on its share of our income.")]
+        public float procWaitMapShare = 0.5f;
+        [Tooltip("Production: an amphibious unit (a marine) is not built at a facility with no water within this many tiles (as anti-air is not built against an enemy with no aircraft). 0: off.")]
+        public int productionAmphibiousWater = 12;
+        [Tooltip("Every move the AI makes (a walking supply unit, a transport, anyone): it does not end on one of our facilities that can build, while another tile on its way will do. Aircraft and ships the facility services are exempt (only there do they land, rearm or refuel).")]
+        public bool offFacilities = true;
         [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]
         [Range(0, 4)]
         public int scoutUnits = 0;

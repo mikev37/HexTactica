@@ -210,7 +210,8 @@ namespace HexTactica.AI {
             Building b = t.building;
             if (b == null || b.owner != unit.owner || b.Purchasable().Count == 0) return false;
             if (GameController.gc != null && !GameController.gc.purchasesAllowed) return false;
-            return map.EnemyStrikeTurns(t) > 1;
+            // offFacilities: never (not only where no enemy can strike it next turn).
+            return map.profile.offFacilities || map.EnemyStrikeTurns(t) > 1;
         }
 
         static AIAction Tiered(Unit unit, AIMap map, AIProfile profile, Posture posture,

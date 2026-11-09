@@ -352,6 +352,9 @@ MonoBehaviour:
   procWaitPower: 4
   procWaitExponent: 1
   procStick: 1.25
+  procWaitMapShare: 0.5
+  productionAmphibiousWater: 12
+  offFacilities: 1
   scoutUnits: 0
   scoutPull: 0.3
   scoutThreatBonus: 1
