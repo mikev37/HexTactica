@@ -129,7 +129,7 @@ namespace HexTactica.AI {
             readonly List<HexTile> set;
             public Reach(List<HexTile> set) { this.set = set; }
             static long Sig(Unit u) {
-                return (long)(int)u.locomotion | ((long)(u.terrainScramble & 0xff) << 8) | ((long)((u.elevationMin + 8) & 0xff) << 16) | ((long)((u.elevationMax + 8) & 0xff) << 24) | ((u.amphibious ? 1L : 0L) << 32);
+                return (long)(uint)u.locomotion | ((long)(u.terrainScramble & 0xff) << 8) | ((long)((u.elevationMin + 8) & 0xff) << 16) | ((long)((u.elevationMax + 8) & 0xff) << 24) | ((u.amphibious ? 1L : 0L) << 32);
             }
             static Dictionary<HexTile, int> Field(Unit mover, IEnumerable<HexTile> goals) {
                 Dictionary<HexTile, int> cost = new Dictionary<HexTile, int>();
@@ -877,7 +877,7 @@ namespace HexTactica.AI {
         static readonly Dictionary<Player, Budget> budgets = new Dictionary<Player, Budget>();
 
         /// <summary>procBudgets: a unit's value, waited for <paramref name="wait"/> turns.</summary>
-        static float WaitDiscount(AIProfile pr, int wait) { return wait <= 0 ? 1f : Mathf.Pow(Mathf.Max(1.0001f, pr.procWaitBase), -pr.procWaitPower * wait); }
+        static float WaitDiscount(AIProfile pr, int wait) { return wait <= 0 ? 1f : Mathf.Pow(Mathf.Max(1.0001f, pr.procWaitBase), -pr.procWaitPower * Mathf.Pow(wait, Mathf.Max(0.1f, pr.procWaitExponent))); }
 
         /// <summary>
         /// procBudgets: each facility's budget and choice. Weights: 1 each, plus up to procPriorityShare for the priority of

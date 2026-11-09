@@ -350,6 +350,7 @@ MonoBehaviour:
   procPriorityShare: 1
   procWaitBase: 1.1
   procWaitPower: 4
+  procWaitExponent: 1
   procStick: 1.25
   scoutUnits: 0
   scoutPull: 0.3

@@ -929,10 +929,12 @@ namespace HexTactica.AI {
         public bool procBudgets = true;
         [Tooltip("Procurement (procBudgets): the most extra share of income a facility gets for its priority (1: up to twice as much).")]
         public float procPriorityShare = 1f;
-        [Tooltip("Procurement (procBudgets): a unit saved for is worth its value times procWaitBase^-(procWaitPower x turns to wait).")]
+        [Tooltip("Procurement (procBudgets): a unit saved for is worth its value times procWaitBase^-(procWaitPower x turns to wait ^ procWaitExponent).")]
         public float procWaitBase = 1.1f;
         [Tooltip("Procurement (procBudgets): see procWaitBase.")]
         public float procWaitPower = 4f;
+        [Tooltip("Procurement (procBudgets): the turns waited are raised to this power in the discount (1: procWaitBase^-(procWaitPower x turns); 2: the first turn costs little, each more far more).")]
+        public float procWaitExponent = 1f;
         [Tooltip("Procurement (procBudgets): what a facility was saving for last turn is worth this much more (the choice holds).")]
         public float procStick = 1.25f;
         [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]

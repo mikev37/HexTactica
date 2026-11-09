@@ -394,6 +394,20 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     75,750, ending with 20,500 gold unspent (airport on 10,765 saving for a gunship, its tile taken by a gunship at rest).
     `maxWait` on ForestClearing is 2 turns (15,000 at 70% of 18,000): the airport shows "nothing worth it" until its account
     is within two turns of a gunship, then saves for it. Mixed; not yet run on the no-build maps (production only).
+  - Correction: the unit on the airport there was a supply unit, not a gunship. `AITransportPlanner.NextAction`'s walking
+    step (`StepToward`) does not check `AITactical.BlocksProduction`, which only filters `Tiered` move options.
+  - `procWaitExponent` (default 1): the discount is procWaitBase^-(procWaitPower × wait^exponent). ForestClearing new
+    Blue with 1.1^-2w² (`procWaitPower=2,procWaitExponent=2`): 75,583 v 56,500 (default 75,416 v 50,583).
+  - Known faults, found in the traces (not yet fixed):
+    - `Proc.maxWait` = ceil(`procSaveMost` / (0.7 × the whole map's income)): 2 turns on ForestClearing, 1 on Channel,
+      while waits are counted on one facility's share of our income. On Channel (20 rounds, new Blue v old Red, 153,583
+      v 164,333) neither naval yard ever bought a transport ship (4+ turns away), with 18–41 land units wanting across
+      water; they showed "nothing worth it" and kept their accounts — Blue ended on 30,000 gold.
+    - Supply is exempt from `maxWait` (meant: the minimum wait is the turns to save for a supply unit, and supersedes
+      the maximum).
+    - A facility with nothing worth it keeps its account (gold piles up).
+    - The budget choice ignores price except through the wait: a Marine (a grunt that swims, +1,000) beat a grunt on
+      ForestClearing, which has no water, on the jiggle.
 
 ## 7. Open work, in the order I'd take it
 
