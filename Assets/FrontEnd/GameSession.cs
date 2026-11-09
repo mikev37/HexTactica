@@ -15,8 +15,6 @@ public class GameSession : MonoBehaviour {
     public static GameSession Instance { get; private set; }
 
     bool menuOpen, postShown, ready;
-    bool fogShownWas = true;
-    GameController gc0;
     /// <summary>What this game scene was opened for (MatchSetup.Mode when it opened; Play once a set-up game starts).</summary>
     SessionMode mode;
     /// <summary>What this game scene is open for now (the music follows it: MusicManager).</summary>
@@ -55,9 +53,10 @@ public class GameSession : MonoBehaviour {
             case SessionMode.Setup:
                 GameController.Paused = true;
                 MatchSetup.LoadPreview();
-                // Who plays which side is not chosen yet: the board is shown whole, not through one side's fog.
-                gc0 = GameController.gc;
-                if (gc0 != null) { fogShownWas = gc0.fogShownOnScreen; gc0.fogShownOnScreen = false; FogOfWar.Changed(); }
+                MatchSetup.ReadFromBoard();   // the pre-game screen's starting choices, as the file has them
+                // Who plays which side is not chosen yet: the board is shown whole, with no fog at all (Start loads the
+                // scenario again, with the fog the pre-game screen chose).
+                if (GameController.gc != null) { GameController.gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); }
                 Frame();
                 SceneManager.LoadScene(s.preGameScene, LoadSceneMode.Additive);
                 break;
@@ -132,7 +131,6 @@ public class GameSession : MonoBehaviour {
     /// <summary>The pre-game screen started the game: it goes, and the game plays.</summary>
     public void SetupDone() {
         postShown = false;
-        if (GameController.gc != null) { GameController.gc.fogShownOnScreen = fogShownWas; FogOfWar.Changed(); }
         mode = SessionMode.Play;
         ShowGamePanels(mode);
         Unload(FrontEndSettings.Get.preGameScene);

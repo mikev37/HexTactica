@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: Ice
   m_EditorClassIdentifier: 
   description: A land of snow
+  inMapEditor: 1
+  paletteGroup: Snow
   upper_normal: {fileID: 0}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

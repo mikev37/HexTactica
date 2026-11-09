@@ -57,8 +57,11 @@ namespace HexTactica.Harness {
 
             // Wipe live state first.
             if (UnitController.uc != null) {
+                // Taken off, not killed: no deaths played or logged, no victory check (Unit.Wiping).
                 List<Unit> existing = new List<Unit>(UnitController.uc.units);
-                existing.ForEach(u => { if (u != null) u.Delete(); });
+                Unit.Wiping = true;
+                try { existing.ForEach(u => { if (u != null) u.Delete(); }); }
+                finally { Unit.Wiping = false; }
                 UnitController.uc.units.Clear();
             }
             if (BuildingController.bc != null) BuildingController.bc.Clear();
@@ -236,6 +239,8 @@ namespace HexTactica.Harness {
             // Faction special units: the pre-game screen's choice, else the file's, else on.
             string special = SpecialUnitsOverride ?? Setting(obj, test, "factionSpecialUnits");
             GameController.gc.factionSpecialUnits = string.IsNullOrEmpty(special) || GameController.ParseFog(special);
+            // The rules the map fixes (the pre-game screen leaves them as the file has them).
+            GameController.gc.ParseFixedRules(Setting(obj, test, "fixedRules"));
             FogOfWar.Reset();
             // The file's round count is the attrition limit (30 when it gives none).
             int limit;

@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: Shallows
   m_EditorClassIdentifier: 
   description: The shallow water
+  inMapEditor: 1
+  paletteGroup: Water
   upper_normal: {fileID: 0}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

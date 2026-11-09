@@ -121,6 +121,16 @@ static class FrontEndScenes {
             m.lookPanel = look;
             done.Add("Look page made (Sides, Name, Width, Rules moved onto it)");
         }
+        if (m.fogRule == null && m.lookPanel != null) {
+            // The rule lists take the place of the old Rules row (fog and purchases checkboxes).
+            Transform rules = m.lookPanel.transform.Find("Rules");
+            int at = rules != null ? rules.GetSiblingIndex() : m.lookPanel.transform.childCount;
+            int before = m.lookPanel.transform.childCount;
+            RuleRows(m.lookPanel.transform, m);
+            for (int i = before; i < m.lookPanel.transform.childCount; i++) m.lookPanel.transform.GetChild(i).SetSiblingIndex(at + (i - before));
+            if (rules != null) { Object.DestroyImmediate(rules.gameObject); m.fog = null; m.build = null; }
+            done.Add("rule lists for fog, purchases and special units (players choose, or the map fixes them)");
+        }
         Transform neutral = m.sideRow != null ? m.sideRow.transform.Find("Neutral") : null;
         if (neutral != null) { Object.DestroyImmediate(neutral.gameObject); done.Add("Neutral checkbox removed (Neutral is in the For list)"); }
     }
@@ -155,6 +165,21 @@ static class FrontEndScenes {
         Transform v = copy.transform.Find("Value");
         value = v != null ? v.GetComponent<TMP_Text>() : null;
         return copy.GetComponentInChildren<Slider>(true);
+    }
+
+    /// <summary>The map editor's rule lists: fog, purchases, faction special units (players choose, or the map fixes them).</summary>
+    static void RuleRows(Transform parent, MapEditorPanel m) {
+        m.fogRule = RuleRow(parent, "Fog Rule", "Fog of war");
+        m.buildRule = RuleRow(parent, "Purchases Rule", "Purchases");
+        m.specialRule = RuleRow(parent, "Special Units Rule", "Special units");
+    }
+
+    static TMP_Dropdown RuleRow(Transform parent, string name, string label) {
+        GameObject row = Row(parent, name, 44f);
+        Text(row.transform, "Label", label, 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 150f, -1f));
+        TMP_Dropdown d = Drop(row.transform, 260f);
+        Flexible(d.gameObject);
+        return d;
     }
 
     /// <summary>The post-game units page as a table: rows of the table prefabs in place of the one block of text (kept for the note under the tables).</summary>
@@ -192,6 +217,7 @@ static class FrontEndScenes {
     static void CreateMissing(bool fromMenu) {
         if (EditorApplication.isPlayingOrWillChangePlaymode) return;
         FrontEndSettings s = Settings();
+        GroupTerrain();
         List<string> made = new List<string>();
         Make(s.mainMenuScene, BuildMainMenu, fromMenu, made);
         Make(s.preGameScene, BuildPreGame, fromMenu, made);
@@ -227,6 +253,24 @@ static class FrontEndScenes {
             if (was.IsValid()) SceneManager.SetActiveScene(was);
             EditorSceneManager.CloseScene(scene, true);
         }
+    }
+
+    /// <summary>Each terrain's palette group, from its folder under Resources/Tiles, where it has none yet (one you set is kept).</summary>
+    static void GroupTerrain() {
+        const string root = "Assets/Resources/Tiles/";
+        int set = 0;
+        foreach (string guid in AssetDatabase.FindAssets("t:TerrainData", new[] { "Assets/Resources/Tiles" })) {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            TerrainData td = AssetDatabase.LoadAssetAtPath<TerrainData>(path);
+            if (td == null || !string.IsNullOrEmpty(td.paletteGroup) || !path.StartsWith(root)) continue;
+            string rest = path.Substring(root.Length);
+            int slash = rest.IndexOf('/');
+            if (slash <= 0) continue;   // straight in Tiles: no group (listed first)
+            td.paletteGroup = rest.Substring(0, slash);
+            EditorUtility.SetDirty(td);
+            set++;
+        }
+        if (set > 0) Debug.Log("Gave " + set + " terrain asset(s) their map editor palette group (their folder).");
     }
 
     /// <summary>The front end's scenes in the build settings (added if missing; MainMenu first, then the game scene).</summary>
@@ -506,9 +550,7 @@ static class FrontEndScenes {
         m.boardWidth.contentType = TMP_InputField.ContentType.IntegerNumber;
         Flexible(m.boardWidth.gameObject);
         Btn(width.transform, "Resize", m.Resize, 130f, 22);
-        GameObject rules = Row(panel.transform, "Rules", 44f);
-        m.fog = Tog(rules.transform, "Fog of war", 22);
-        m.build = Tog(rules.transform, "Purchases", 22);
+        RuleRows(panel.transform, m);
         panel = m.lookPanel.transform.parent.gameObject;
         GameObject file = Row(panel.transform, "File", 50f);
         Btn(file.transform, "New", m.NewMap, -1f, 22);

@@ -40,24 +40,14 @@ public static class UnitCatalog {
         return GameAssets.AllUnits.Where(u => u != null && FactionOf(u) == null).OrderBy(u => u.name).ToList();
     }
 
-    /// <summary>
-    /// What a faction fields: each base unit as its version (any version, special or not), less the units it lacks,
-    /// plus the units only it has.
-    /// </summary>
+    /// <summary>A faction's own units only: its versions of base units and the units only it has (not the base units it also fields).</summary>
     public static List<Unit> FactionUnits(Faction f) {
-        List<Unit> list = new List<Unit>();
-        foreach (Unit b in BaseUnits()) {
-            if (f.removed != null && f.removed.Contains(b)) continue;
-            Unit own = b;
-            if (f.replacements != null) foreach (Faction.Replacement r in f.replacements) if (r != null && r.original == b && r.replacement != null) { own = r.replacement; break; }
-            list.Add(own);
-        }
-        if (f.extras != null) foreach (Faction.Extra e in f.extras) if (e != null && e.unit != null && !list.Contains(e.unit)) list.Add(e.unit);
-        return list.OrderBy(DisplayName).ToList();
+        return f.OwnUnits().Where(u => u != null).Distinct().OrderBy(DisplayName).ToList();
     }
 
-    /// <summary>The terrain a map is painted with (TerrainData.inMapEditor).</summary>
+    /// <summary>The terrain a map is painted with (TerrainData.inMapEditor), by group (its folder) and then name; terrain with no group first.</summary>
     public static List<TerrainData> PaintableTerrain() {
-        return GameAssets.AllTerrains.Where(t => t != null && t.inMapEditor).OrderBy(t => t.name).ToList();
+        return GameAssets.AllTerrains.Where(t => t != null && t.inMapEditor)
+            .OrderBy(t => string.IsNullOrEmpty(t.paletteGroup) ? 0 : 1).ThenBy(t => t.paletteGroup ?? "").ThenBy(t => t.name).ToList();
     }
 }

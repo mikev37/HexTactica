@@ -10,12 +10,7 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        up.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f) ;
-        down.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
-        upright.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
-        upleft.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
-        downleft.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
-        downright.color = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
+        Tint();
         up.sortingOrder = 5 + GameController.gc.players.IndexOf(myPlayer);
         down.sortingOrder = 5 + GameController.gc.players.IndexOf(myPlayer);
         upright.sortingOrder = 5 + GameController.gc.players.IndexOf(myPlayer);
@@ -112,9 +107,16 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
         if (myTile != null && byTile.TryGetValue(myTile, out l)) l.Remove(this);
     }
 
+    /// <summary>The border in its side's colour as it is now (a loaded scenario or the map editor may have changed it).</summary>
+    void Tint() {
+        Color c = new Color(myPlayer.displayColor.r, myPlayer.displayColor.g, myPlayer.displayColor.b, .7f);
+        up.color = c; down.color = c; upright.color = c; upleft.color = c; downleft.color = c; downright.color = c;
+    }
+
     void Redraw()
     {
         if (myTile == null || myPlayer == null) return;
+        Tint();
         bool u = false, d = false, ur = false, ul = false, dl = false, dr = false;
         // Under fog of war an enemy's supply is drawn only on tiles the viewer sees (so it can be
         // cut), never in the fog.

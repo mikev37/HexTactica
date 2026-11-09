@@ -65,8 +65,18 @@ public class MapEditorPanel : MonoBehaviour {
     [Header("Scenario")]
     public TMP_InputField scenarioName;
     public TMP_InputField boardWidth;
+    [Tooltip("Older layout: fog on or off, which players may change. The rule lists below replace it.")]
     public Toggle fog;
+    [Tooltip("Older layout: purchases on or off, which players may change.")]
     public Toggle build;
+    [Tooltip("Fog of war: players choose (on or off to start with), or the map fixes it on or off.")]
+    public TMP_Dropdown fogRule;
+    [Tooltip("Purchases (building units): players choose, or the map fixes them.")]
+    public TMP_Dropdown buildRule;
+    [Tooltip("Faction special units: players choose, or the map fixes them.")]
+    public TMP_Dropdown specialRule;
+    [Tooltip("The rule lists' choices, in this order: players choose (starting on), players choose (starting off), always on, always off.")]
+    public List<string> ruleChoices = new List<string> { "Players choose (on)", "Players choose (off)", "Always on", "Always off" };
     [Tooltip("What was just done (saved, loaded, or why not).")]
     public TMP_Text status;
     [Tooltip("The name a new map starts with.")]
@@ -94,6 +104,9 @@ public class MapEditorPanel : MonoBehaviour {
         if (side != null) side.onValueChanged.AddListener(i => ApplySide());
         if (fog != null) fog.onValueChanged.AddListener(v => { if (GameController.gc != null) { GameController.gc.fogOfWar = v; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); } });
         if (build != null) build.onValueChanged.AddListener(v => { if (GameController.gc != null) GameController.gc.purchasesAllowed = v; });
+        Rule(fogRule, (gc, on, fixd) => { gc.fogOfWar = on; gc.fogFixed = fixd; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); });
+        Rule(buildRule, (gc, on, fixd) => { gc.purchasesAllowed = on; gc.purchasesFixed = fixd; });
+        Rule(specialRule, (gc, on, fixd) => { gc.factionSpecialUnits = on; gc.specialUnitsFixed = fixd; });
         if (unitFilter != null) {
             unitFilter.ClearOptions();
             List<string> opts = new List<string> { baseUnitsLabel };
@@ -113,6 +126,16 @@ public class MapEditorPanel : MonoBehaviour {
     void OnDestroy() { SetFlags(Tool.Look); Hud.Pinned = null; }
 
     /// <summary>The scenario's settings and sides as the board has them now (after a load).</summary>
+    /// <summary>A rule list: its choices, and what picking one sets (on or off; fixed by the map or not).</summary>
+    void Rule(TMP_Dropdown d, System.Action<GameController, bool, bool> set) {
+        if (d == null) return;
+        d.ClearOptions();
+        d.AddOptions(ruleChoices);
+        d.onValueChanged.AddListener(i => { if (GameController.gc != null) set(GameController.gc, i == 0 || i == 2, i >= 2); });
+    }
+
+    static int RuleChoice(bool on, bool fixd) { return fixd ? (on ? 2 : 3) : (on ? 0 : 1); }
+
     void ReadBoard() {
         GameController gc = GameController.gc;
         if (scenarioName != null) scenarioName.text = loadedPath != null ? Path.GetFileNameWithoutExtension(loadedPath) : newName;
@@ -121,6 +144,9 @@ public class MapEditorPanel : MonoBehaviour {
         firstToMove = gc.activePlayer;
         if (fog != null) fog.SetIsOnWithoutNotify(gc.fogOfWar);
         if (build != null) build.SetIsOnWithoutNotify(gc.purchasesAllowed);
+        if (fogRule != null) fogRule.SetValueWithoutNotify(RuleChoice(gc.fogOfWar, gc.fogFixed));
+        if (buildRule != null) buildRule.SetValueWithoutNotify(RuleChoice(gc.purchasesAllowed, gc.purchasesFixed));
+        if (specialRule != null) specialRule.SetValueWithoutNotify(RuleChoice(gc.factionSpecialUnits, gc.specialUnitsFixed));
         ShowSides();
     }
 
@@ -219,6 +245,7 @@ public class MapEditorPanel : MonoBehaviour {
         made.displayColor = free.a > 0f ? free : Color.white;
         made.money = ps.Count > 0 ? ps[0].money : 0;
         gc.players.Add(made);
+        HexGenerator.forAllTiles(t => { t.EnsureSide(made); return 0; });
         ShowSides();
         Say("Added " + made.personal_name + ": give it an HQ.");
     }
@@ -228,7 +255,9 @@ public class MapEditorPanel : MonoBehaviour {
         GameController gc = GameController.gc;
         if (gc == null || Players.Count <= minSides) return;
         
-        foreach (Unit u in new List<Unit>(p.units)) if (u != null) u.Delete();
+        Unit.Wiping = true;
+        try { foreach (Unit u in new List<Unit>(p.units)) if (u != null) u.Delete(); }
+        finally { Unit.Wiping = false; }
         foreach (Building b in Building.all) if (b != null && b.owner == p) b.owner = null;
         gc.players.Remove(p);
         if (gc.activePlayer == p) gc.activePlayer = gc.players.FirstOrDefault(x => x != null);
@@ -287,6 +316,27 @@ public class MapEditorPanel : MonoBehaviour {
             if (b.button != null) b.button.onClick.AddListener(() => Pick(me));
             buttons.Add(b);
         }
+        // Pictures are fitted to their boxes' real size: lay the palette out first.
+        LayoutRebuilder.ForceRebuildLayoutImmediate(palette);
+        DrawPalette(true);
+    }
+
+    /// <summary>The palette's pictures, units and buildings in the colour of the side they are placed for.</summary>
+    void DrawPalette(bool always = false) {
+        Color? owner = SideColour();
+        if (!always && owner == drawnFor) return;
+        drawnFor = owner;
+        foreach (PaletteButton b in buttons) if (b != null) b.Draw(owner);
+    }
+    Color? drawnFor;
+
+    /// <summary>The colour of the side being placed for (null for Neutral: a building's neutral colour).</summary>
+    Color? SideColour() {
+        GameController gc = GameController.gc;
+        LevelEditor le = LevelEditor.singleton;
+        if (gc == null || gc.activePlayer == null || (le != null && le.placeNeutral)) return null;
+        Color c = gc.activePlayer.displayColor;
+        return new Color(c.r, c.g, c.b, 1f);
     }
 
     void Pick(PaletteButton b) {
@@ -336,6 +386,7 @@ public class MapEditorPanel : MonoBehaviour {
             le.placeNeutral = tool == Tool.Buildings && side.value == ps.Count;
             if (pickedItem is Unit) le.ut = ForSide((Unit)pickedItem);
         }
+        if (tool == Tool.Units || tool == Tool.Buildings) DrawPalette();
     }
 
     void ShowTool() {
@@ -365,7 +416,9 @@ public class MapEditorPanel : MonoBehaviour {
 
     static void Clear() {
         if (UnitController.uc != null) {
-            foreach (Unit u in new List<Unit>(UnitController.uc.units)) if (u != null) u.Delete();
+            Unit.Wiping = true;   // taken off, not killed (no deaths played, no victory check)
+            try { foreach (Unit u in new List<Unit>(UnitController.uc.units)) if (u != null) u.Delete(); }
+            finally { Unit.Wiping = false; }
             UnitController.uc.units.Clear();
         }
         if (BuildingController.bc != null) BuildingController.bc.Clear();

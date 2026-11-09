@@ -23,19 +23,25 @@ public class PaletteButton : MonoBehaviour {
     public void Show(Object item, string name, Color normal) {
         Item = item;
         if (label != null) label.text = name;
-        bool drawn = false;
-        Unit u = item as Unit;
-        Building b = item as Building;
-        TerrainData td = item as TerrainData;
-        if (picture != null) {
-            if (u != null) drawn = SpritePortrait.ComposePrefab(u.transform, picture, true);
-            else if (b != null) drawn = SpritePortrait.ComposePrefab(b.transform, picture, false);
-            // A terrain as a tile of it looks: water, lower and upper stacked as on the board (drawn on a board tile's layout).
-            else if (td != null) drawn = SpritePortrait.ComposeTerrain(td, FindAnyObjectByType<HexTile>(), picture);
-            picture.gameObject.SetActive(drawn);
-        }
         if (icon != null) icon.gameObject.SetActive(false);
         Highlight(normal);
+    }
+
+    /// <summary>
+    /// Draw the picture: once the palette is laid out (the picture box has its real size, so every unit fits it the
+    /// same way), and again when the side placed for changes (its owner-coloured sprites take <paramref name="owner"/>).
+    /// </summary>
+    public void Draw(Color? owner) {
+        if (picture == null) return;
+        bool drawn = false;
+        Unit u = Item as Unit;
+        Building b = Item as Building;
+        TerrainData td = Item as TerrainData;
+        if (u != null) drawn = SpritePortrait.ComposePrefab(u.transform, picture, true, owner);
+        else if (b != null) drawn = SpritePortrait.ComposePrefab(b.transform, picture, false, owner);
+        // A terrain as a tile of it looks: water, lower and upper stacked as on the board (drawn on a board tile's layout).
+        else if (td != null) drawn = SpritePortrait.ComposeTerrain(td, FindAnyObjectByType<HexTile>(), picture);
+        picture.gameObject.SetActive(drawn);
     }
 
     public void Highlight(Color c) { if (background != null) background.color = c; }
