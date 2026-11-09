@@ -22,6 +22,7 @@ public class SpriteShadow : MonoBehaviour
         shadowGo = new GameObject("Shadow");
         shadowGo.transform.localScale = transform.localScale;
         shadowGo.transform.position = transform.position;
+        shadowGo.transform.localRotation = Quaternion.identity;
         shadowGo.transform.parent = transform;
         southGo = new GameObject("ShadowSouthObj");
         southGo.transform.localScale = transform.localScale;
