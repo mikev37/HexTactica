@@ -139,16 +139,26 @@ public static class SpritePortrait {
     /// <summary>Sorting layers that are never the unit's body (pips and chevrons are on UI).</summary>
     public static string[] SkipLayers = { "UI", "Effects", "UnitShadow" };
 
-    /// <summary>A unit's own sprites: not its shadow, pips, chevrons, smoke or flashes, not the units it carries.</summary>
-    public static bool UnitPart(Unit u, SpriteRenderer r) {
+    /// <summary>
+    /// A unit's own sprites: not its shadow, pips, chevrons, smoke or flashes; not the units it carries, unless
+    /// <paramref name="withRiders"/> — then theirs too (and their riders'), as they show riding in its slots on the map.
+    /// </summary>
+    public static bool UnitPart(Unit u, SpriteRenderer r, bool withRiders = false) {
         if (r.color.a < 0.02f) return false;   // hidden by its animation
         if (r.GetComponentInParent<Canvas>() != null) return false;
-        if (r.GetComponentInParent<Unit>() != u) return false;
+        Unit owner = r.GetComponentInParent<Unit>();
+        if (owner != u && !(withRiders && Rides(owner, u))) return false;
         string layer = SortingLayer.IDToName(r.sortingLayerID);
         foreach (string l in SkipLayers) if (layer == l) return false;
-        for (Transform t = r.transform; t != null && t != u.transform; t = t.parent)
+        for (Transform t = r.transform; t != null && t != owner.transform; t = t.parent)
             if (Skipped(t)) return false;
         return true;
+    }
+
+    /// <summary><paramref name="rider"/> is aboard <paramref name="carrier"/>, or aboard something aboard it.</summary>
+    static bool Rides(Unit rider, Unit carrier) {
+        for (Unit t = rider != null ? rider.trasnporter : null; t != null; t = t.trasnporter) if (t == carrier) return true;
+        return false;
     }
 
     // ---------------------------------------------------------------- prefabs and terrain (the map editor's palette)

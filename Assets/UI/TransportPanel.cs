@@ -101,7 +101,8 @@ public class TransportPanel : MonoBehaviour {
         Canvas.ForceUpdateCanvases();
         foreach (KeyValuePair<Unit, RectTransform> kv in pictures) {
             Unit u = kv.Key;
-            SpritePortrait.Compose(u.transform, kv.Value, r => SpritePortrait.UnitPart(u, r));
+            // With the units riding in it (a transport aboard shows its own riders in their slots, as on the map).
+            SpritePortrait.Compose(u.transform, kv.Value, r => SpritePortrait.UnitPart(u, r, true));
         }
         foreach (KeyValuePair<Unit, RectTransform> kv in pips) {
             bool drawn = SpritePortrait.ComposePips(kv.Key, kv.Value);
