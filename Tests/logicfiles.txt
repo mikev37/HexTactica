@@ -43,6 +43,7 @@ AI/AIMapRead.cs
 AI/AIAction.cs
 AI/AITransportPlanner.cs
 AI/AIAssault.cs
+AI/AISeaSupply.cs
 AI/AISupplyPlanner.cs
 AI/AITargeting.cs
 AI/AITactical.cs

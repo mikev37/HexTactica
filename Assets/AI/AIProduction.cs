@@ -438,6 +438,12 @@ namespace HexTactica.AI {
                 return new KeyValuePair<float, int>(tv, n);
             };
             int resupPlannedAir = 0, resupPlannedSea = 0;
+            // Supply over water (seaSupplyChain): what it is short of — ships, supply units, trucks — worth the power ashore it would supply.
+            AISeaSupply.Want seaWant = profile.seaSupplyChain ? AISeaSupply.Demand(p) : null;
+            int seaShipsPlanned = 0, seaHubsPlanned = 0, seaTrucksPlanned = 0;
+            Unit supplyKind = null;
+            foreach (Unit u in map.ownUnits) if (u != null && u.Hub != null && !u.Hub.producer) { supplyKind = u; break; }
+            if (supplyKind == null) foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) if (Kind(t) == 1) { supplyKind = t; break; }
             Dictionary<string, int> picked = new Dictionary<string, int>();
             // What a unit would add in this slot, given what is planned so far.
             System.Func<Unit, Slot, KeyValuePair<float, string>> worth = null;
@@ -451,6 +457,14 @@ namespace HexTactica.AI {
                     KeyValuePair<float, int> cg = cargoGain(t, sl.tile);
                     float cv = cg.Key; string ctag = cg.Value > 0 ? "cargo: " + cg.Value + " units it gets where they are going sooner" : null;
                     if (DebugValues != null) DebugValues(GameController.UnitName(t) + " at " + sl.tile.x + "," + sl.tile.y + " for cargo: " + cv.ToString("0") + " (" + cg.Value + " of " + cargoRiders.Count + " riders)");
+                    if (seaWant != null && supplyKind != null && Transporting.CarriesKind(t, supplyKind)) {
+                        bool sails = LocomotionRules.IsNaval(t.locomotion), ground = !sails && !LocomotionRules.IsAirborne(t.locomotion);
+                        int shortOf = sails ? seaWant.ships - seaShipsPlanned : ground ? seaWant.trucks - seaTrucksPlanned : 0;
+                        if (shortOf > 0) {
+                            float sv = seaWant.power * profile.productionSupplyWeight * supplyScale;
+                            if (sv > cv) { cv = sv; ctag = "sea supply: " + shortOf + (sails ? " ships" : " trucks") + " short"; }
+                        }
+                    }
                     if (logistics != null && freeTrucks + trucksPlanned <= 0) {
                         bool carriesSupply = false;
                         foreach (Unit h in map.ownUnits) if (h != null && h.Hub != null && !h.Hub.producer && Transporting.CarriesKind(t, h)) { carriesSupply = true; break; }
@@ -581,6 +595,10 @@ namespace HexTactica.AI {
                     }
                 } else if (kindOf == 1) {
                     if (hubsHave + supplyPlanned >= supplyCap) return new KeyValuePair<float, string>(-1f, null);
+                    if (seaWant != null && seaWant.hubs - seaHubsPlanned > 0) {
+                        float sv = seaWant.power * profile.productionSupplyWeight * supplyScale * mix;
+                        if (sv > v) { v = sv; tag = "sea supply: " + (seaWant.hubs - seaHubsPlanned) + " supply units short"; }
+                    }
                     foreach (KeyValuePair<AILogistics.Task, Building> kv in nearest[1]) {
                         if (kv.Value != sl.b || !kv.Key.short_) continue;
                         float fv = kv.Key.unsupplied * profile.productionSupplyWeight * supplyScale * mix;
@@ -616,6 +634,10 @@ namespace HexTactica.AI {
                     plannedRoom += d * Mathf.Max(1, t.transportSlots);
                 }
                 if (IsResupplier(t)) { if (t.airTanker) resupPlannedAir += d; else resupPlannedSea += d; }
+                if (seaWant != null) {
+                    if (Kind(t) == 1) seaHubsPlanned += d;
+                    else if (IsCarrier(t) && supplyKind != null && Transporting.CarriesKind(t, supplyKind)) { if (LocomotionRules.IsNaval(t.locomotion)) seaShipsPlanned += d; else if (!LocomotionRules.IsAirborne(t.locomotion)) seaTrucksPlanned += d; }
+                }
                 if (Transporting.IsTransport(t) && t.Firepower <= 1) { int r0; roomAt.TryGetValue(sl.b, out r0); roomAt[sl.b] = r0 + d * Mathf.Max(1, t.transportSlots); }
                 if (t.locomotion == Locomotion.Boots && Kind(t) == 0) { int f0; fillPlanned.TryGetValue(sl.b, out f0); fillPlanned[sl.b] = f0 + d; }
                 if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); if (tierCount != null) tierCount[Tier(t)] += d; }

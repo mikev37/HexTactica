@@ -57,6 +57,7 @@ MonoBehaviour:
   productionValueByIncome: 1
   campaignHubNeedSimple: 1
   campaignSupplyByTransport: 1
+  seaSupplyChain: 1
   campaignHoldContested: 1
   campaignReserveShare: 0.33
   campaignMinTaskForce: 0

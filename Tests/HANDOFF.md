@@ -481,6 +481,21 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     campaign's one objective (the enemy HQ) — not each front across water; it picks a linked tile but never places ships
     as a convoy. Nothing plans a supply unit in a truck in a ship, and the landing (assault rides) plans no supply for
     going inland. Channel ch6/ch7: no supply unit boarded a ship on either side; planes made 73–75 "supply leap" turns.
+  - `seaSupplyChain` (`AISeaSupply`, planned in AIPlayer after the supply transports; its ships and supply units decide
+    first in `DecideFor`): land masses with no static supplied ground (`SupplyNetwork.SolveStatic`) where our fighting
+    units stand are posts; the post's shore is the water beside that land nearest its units in all; a convoy of stations
+    a ship's move apart along the water back to water beside home supplied ground (`WaterPath`). Stations take laden ships
+    at sea first, then an empty transport ship (no troops aboard) and a free supply unit (not a chain link): the ship
+    waits on the supply unit's nearest naval yard (`Loading`: exempt from `offFacilities`), the supply unit walks there
+    and boards, the ship sails to its station through linked tiles. Short ships, supply units, trucks (a post whose
+    units are beyond a supply unit's range from the shore with no ground transport on that land) go to production as
+    `AISeaSupply.Demand` (worth the power ashore × `productionSupplyWeight`). Troops waiting to cross keep the empty
+    ships they need (sea invasion first). Not done: the matryoshka (truck with supply in a ship) — only asked for.
+    `attrition-ai-sea-supply` passes through it (a bug sent the ship the wrong way along its path first: fixed).
+  - Channel, 20 rounds: first version (empty ships taken for supply whatever): new Red's troop ship was taken to fetch
+    a supply unit from a far yard and the north island was never taken (new Red 178,833 v 150,666, 19 buildings each).
+    With troops first: both games the same as without it (no station ever got a ship: troops always waiting; 2–3
+    ships per post for the convoy, demand 4–5 ships at 7,500–13,000, below the troop transports' cargo value).
 
 ## 7. Open work, in the order I'd take it
 

@@ -977,6 +977,17 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (logistics != null) foreach (Unit tr in logistics.chainTrucks.Values) reservedTransports.Add(tr);
         // Transports earmarked for supply this turn (by what they carry, AIAssault.SupplyTransports): supply first, troops after.
         supplyTransports = Profile.assaultRides ? AIAssault.SupplyTransports(player, map, reservedTransports) : new HashSet<Unit>();
+        // Supply over water (seaSupplyChain): laden ships off the shores of land our supply does not reach, in convoys back
+        // to our supplied shore; empty ships and supply units claimed to make them. Theirs before anyone else's.
+        seaSupply = null;
+        if (Profile.seaSupplyChain) {
+            HashSet<SupplyPoint> links = new HashSet<SupplyPoint>();
+            if (logistics != null) foreach (SupplyPoint h in logistics.chainOf.Keys) links.Add(h);
+            AISeaSupply.Debug = Trace;
+            seaSupply = AISeaSupply.Plan(player, map, Profile, reservedTransports, links, Profile.seaLift ? (System.Func<Unit, HexTile>)GroundOf : null);
+            AISeaSupply.Debug = null;
+            foreach (Unit sh in seaSupply.shipOf.Keys) { reservedTransports.Add(sh); supplyTransports.Add(sh); }
+        }
         if (Trace != null && Profile.assaultRides) {
             List<string> st = new List<string>(); foreach (Unit t in supplyTransports) st.Add(t.name.Replace("(Clone)", "") + D(t.tile));
             st.Sort(string.CompareOrdinal);
@@ -1194,7 +1205,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// Pick an action for one unit. Supply hubs and transports get the joint planner;
     /// everything else goes to its role-specific tactical decider.
     /// </summary>
+    AISeaSupply seaSupply;
+
     public AIAction DecideFor(Unit unit) {
+        // Supply over water (seaSupplyChain): its ships and supply units do what its plan says.
+        if (seaSupply != null) { AIAction? sea = seaSupply.Decide(unit); if (sea.HasValue) return sea.Value; }
         // A supply unit cut off from the network (cutOffSeeksSupply) first heads back toward supplied ground or a transport.
         if (Profile.cutOffSeeksSupply && map != null && unit.Hub != null && !unit.Hub.producer && unit.trasnporter == null && unit.tile != null) {
             AIAction? back = SeekSupply(unit);
