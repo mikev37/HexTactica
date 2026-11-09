@@ -246,9 +246,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 3079283973069089095}
   - {fileID: 1656918143001318466}
-  - {fileID: 6735747076178374860}
   m_Father: {fileID: 2943102861557311610}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &3014106376701661810
@@ -283,7 +281,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2896273207728554583
 Transform:
   m_ObjectHideFlags: 0
@@ -961,6 +959,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2135191360486941227}
+  - {fileID: 3079283973069089095}
+  - {fileID: 6735747076178374860}
   m_Father: {fileID: 1931104194641916894}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3612915981829789073
@@ -1352,7 +1352,7 @@ Transform:
   m_GameObject: {fileID: 4312796817325619208}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.3399999, y: 1.0749999, z: 0}
+  m_LocalPosition: {x: -0.379998, y: -1.9450006, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1360,7 +1360,7 @@ Transform:
   - {fileID: 2896273207728554583}
   - {fileID: 7410033503509834459}
   - {fileID: 4182496225563734764}
-  m_Father: {fileID: 1931104194641916894}
+  m_Father: {fileID: 1656918143001318466}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3236029663782994771
 SpriteRenderer:
@@ -1524,6 +1524,7 @@ MonoBehaviour:
   textArea: {fileID: 1329960248101425089}
   animator: {fileID: 1659976870339393091}
   cost: 20000
+  description: 
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -1532,8 +1533,6 @@ MonoBehaviour:
   _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
-  refuelStock: 0
-  refuelStockMax: 0
   Firepower: 8
   Evasion: 5
   Targeting: 0
@@ -1546,6 +1545,7 @@ MonoBehaviour:
   AttackRange: 3
   MinRange: 1
   retaliates: 0
+  ignoresCover: 0
   visionRange: 5
   stealthRange: 0
   move_display: {fileID: 0}
@@ -1575,6 +1575,9 @@ MonoBehaviour:
   trasnporter: {fileID: 0}
   cargoSlots: []
   cargoScale: 0.45
+  parachutePrefab: {fileID: 0}
+  dropHeight: 0.6
+  dropSpeed: 0.6
   threatValue: 0
   attacking: 0
   target: {fileID: 0}
@@ -3665,13 +3668,13 @@ Transform:
   m_GameObject: {fileID: 7370707064840725383}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.165, y: 3.4199998, z: 0}
+  m_LocalPosition: {x: 0.12500116, y: 0.39999962, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6521086572531729246}
   - {fileID: 146563337075136265}
-  m_Father: {fileID: 1931104194641916894}
+  m_Father: {fileID: 1656918143001318466}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &851056390621430744
 SpriteRenderer:
