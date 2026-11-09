@@ -91,15 +91,21 @@ named condition you can reuse. Its counts still go up while it is off.
 
 ## Timing
 
-- **Delay and Repeat Every are in seconds of play, not turns.** The clock stops while a menu is open.
-- **Delay** is how long the condition must hold, without a break, before the trigger fires. Use it for a pause
-  before the actions, or for "stays in the area for 3 seconds". If the condition breaks, the wait starts over.
+Timing is counted in **turns**:
+
+- **Delay (turns)** is how many turns the condition must keep holding, without a break, before the trigger fires.
+  For example, "hold the bridge for 2 turns" is Units In Area with Delay 2. It fires as the last of those turns
+  starts. If the condition breaks, even for a moment (the unit is shot off the bridge), the count starts over.
+- **Turns Of** says whose turns are counted. The default is the player's; Any side counts every turn, whoever's it
+  is.
 - **Repeat** off: the trigger fires once, ever. Repeat on: it fires again each time its condition is met anew. A
   counted condition starts counting from 0 after each firing, so *Unit Killed* with Repeat fires on every kill.
-  *Repeat Every* is the least time between two firings.
-- For turns, use the conditions: *Turn Started* (a side's 3rd turn), *Day Reached* (day 5, on a given side's turn),
-  or *After Trigger* to chain triggers in order.
-- Triggers are checked every frame, in list order, while the game plays. They are not checked during the pre-game
+  **Repeat Every (turns)** limits it to at most once in that many turns; 0 means no limit.
+- For a specific turn or day, use the conditions: *Turn Started* (a side's 3rd turn), *Day Reached* (day 5, on a
+  given side's turn), or *After Trigger* to chain triggers in order.
+- The only thing measured in seconds is the **Wait** action. It paces a scene within one moment, for example a pause
+  after the camera pans before the next line.
+- Triggers are checked continuously, in list order, while the game plays. They are not checked during the pre-game
   screen, the map editor, the in-game menu, or a replay.
 - An **Enable Trigger** action switches a trigger on. Its counts start from then, so "after the briefing, the next
   kill…" counts only kills after the briefing. **Reset Trigger** lets a trigger fire again.
@@ -124,7 +130,7 @@ named condition you can reuse. Its counts still go up while it is off.
 | Destroy Units (20) | the matching units die |
 | Play Sound (21) | plays a sound from `Resources/Dialogue` once |
 | Ready Units (23) | the matching units can act again this turn (Value 1), or have used their turn (Value 0) |
-| Wait (24) | the trigger's next action waits *Seconds* |
+| Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |
 
 If an action matches nothing, it says so once in the console: no unit to give, no side by that name, no such marker
 prefab. It never fails silently.
@@ -166,7 +172,8 @@ the first time Unity opens the project, and every Show Marker action uses it unl
 
 - A scenario file keeps the triggers as authored.
 - A saved game (the in-game menu, the S key) also keeps how far they have got:
-  - each trigger's fired count, its counts, its Delay timer, and whether it is on;
+  - each trigger's fired count, its counts, how many turns it has been held, and whether it is on;
+  - how many turns each side has begun;
   - the level clock;
   - the markers shown;
   - actions still waiting;
@@ -181,7 +188,7 @@ the first time Unity opens the project, and every Show Marker action uses it unl
 
 1. **Briefing**: Level Start → Camera Focus on the bridge (3,-1), zoom 25 → Dialogue (Placeholder Officer: "Take
    the bridge before nightfall.") → Show Marker `Marker`, id `bridge`, text "Take the bridge", at (3,-1).
-2. **Across**: Units In Area, the player's units, (3,-1) radius 0, after a 1-second Delay → Hide Marker `bridge` →
+2. **Across**: Units In Area, the player's units, (3,-1) radius 0, held for 1 of the player's turns (Delay 1) → Hide Marker `bridge` →
    Dialogue (Placeholder Scout, right: "We're over!") → Spawn Unit 2 Tank for the AI at (7,-4), named "Counterattack".
 3. **Counterattack beaten**: Units At Most, the AI's units named "Counterattack", 0 → Play Music (a track you have put in
    `Resources/Music/Special`; that folder is empty for now) → Win for the player.

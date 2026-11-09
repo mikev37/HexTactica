@@ -203,6 +203,7 @@
 			"Count":1,
 			"Value":999999,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[

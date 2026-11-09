@@ -308,8 +308,8 @@ static class FieldList {
 [CustomPropertyDrawer(typeof(ScenarioTrigger))]
 class ScenarioTriggerDrawer : PropertyDrawer {
     static readonly string[] Head = { "Name", "Enabled", "Condition" };
-    static readonly string[] Timing = { "Delay", "Repeat", "RepeatEvery", "Actions" };
-    static string TimingLabel(string f) { return f == "Delay" ? "Delay (seconds)" : f == "RepeatEvery" ? "Repeat Every (seconds)" : null; }
+    static readonly string[] Timing = { "Delay", "Repeat", "RepeatEvery", "TurnsOf", "Actions" };
+    static string TimingLabel(string f) { return f == "Delay" ? "Delay (turns)" : f == "RepeatEvery" ? "Repeat Every (turns)" : f == "TurnsOf" ? "Turns Of" : null; }
 
     public override float GetPropertyHeight(SerializedProperty p, GUIContent label) {
         float h = FieldList.Line;
@@ -322,7 +322,8 @@ class ScenarioTriggerDrawer : PropertyDrawer {
         EditorGUI.BeginProperty(r, label, p);
         ScenarioEditing.Shown = ScenarioEditing.Script(p);
         ScenarioTrigger t = ScenarioEditing.Target(p) as ScenarioTrigger;
-        string summary = t == null ? label.text : t.Name + (t.Enabled ? "" : " (off)") + ": when " + TriggerFields.Describe(t) + ", "
+        string summary = t == null ? label.text : t.Name + (t.Enabled ? "" : " (off)") + ": when " + TriggerFields.Describe(t)
+            + (t.Delay > 0 ? " for " + t.Delay + " of " + TriggerFields.Side(t.TurnsOf) + "'s turns" : "") + (t.Repeat ? " (repeats)" : "") + ", "
             + (t.Actions != null ? t.Actions.Count : 0) + " action" + (t.Actions != null && t.Actions.Count == 1 ? "" : "s")
             + (Application.isPlaying && t.TimesFired > 0 ? "  [fired " + t.TimesFired + "×]" : "")
             + (Application.isPlaying && t.Events > 0 ? "  [" + t.Events + " so far]" : "");

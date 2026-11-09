@@ -115,7 +115,7 @@ public enum TriggerActionType {
     ResetTrigger = 22,
     /// <summary>The units matching the unit filter may act again this turn (or, with Value 0, have used their turn).</summary>
     ReadyUnits = 23,
-    /// <summary>The trigger's next action waits Seconds of play.</summary>
+    /// <summary>The trigger's next action waits Seconds of play: pacing within a scene (a pause after a camera move, before a line). For waiting turns, use a trigger's Delay.</summary>
     Wait = 24,
     /// <summary>The camera shows the whole board.</summary>
     CameraFrameBoard = 25,
@@ -306,12 +306,14 @@ public class ScenarioTrigger {
     public int Value;
 
     [Header("Timing")]
-    [Tooltip("Seconds (real seconds of play, not turns) the condition must hold, without a break, before it fires: a pause before the actions, or 'stays in the area for 3 seconds'. 0: at once.")]
-    public float Delay;
+    [Tooltip("Turns (of the side in Turns Of) the condition must hold, without a break, before it fires: 'hold the bridge for 2 turns'. It fires as the last of those turns starts. If the condition breaks, the count starts over. 0: at once.")]
+    public int Delay;
+    [Tooltip("Delay, Repeat Every: whose turns are counted (Any side: every turn, whoever's it is).")]
+    [SideChoice(false)] public long TurnsOf = TriggerSide.Human;
     [Tooltip("Off: the trigger fires once, ever. On: it fires again each time its condition is met anew (a counted condition starts counting from 0 after each firing, so 'Unit Killed, Repeat' fires on every kill).")]
     public bool Repeat;
-    [Tooltip("Repeat: the least time, in seconds of play, between two firings (0: no limit).")]
-    public float RepeatEvery;
+    [Tooltip("Repeat: at most once in this many turns (of the side in Turns Of). 0: no limit.")]
+    public int RepeatEvery;
 
     [Header("Actions (in order)")]
     public List<TriggerAction> Actions = new List<TriggerAction>();
@@ -319,8 +321,10 @@ public class ScenarioTrigger {
     // ---- Progress in a game (saved in a game, not part of the scenario as authored) ----
     [HideInInspector, ScenarioState] public int TimesFired;
     [HideInInspector, ScenarioState] public int Events;
-    [HideInInspector, ScenarioState] public float ConditionMetAt = -1f;
-    [HideInInspector, ScenarioState] public float LastFiredAt;
+    /// <summary>The turn count (TurnsOf's) when the condition began to hold without a break; -1: it does not hold.</summary>
+    [HideInInspector, ScenarioState] public int ConditionMetTurn = -1;
+    /// <summary>The turn count (TurnsOf's) when it last fired.</summary>
+    [HideInInspector, ScenarioState] public int LastFiredTurn;
 }
 
 /// <summary>A marker shown on the board by a Show Marker action (kept in a save).</summary>
@@ -343,9 +347,14 @@ public class RunningActions {
     public float WaitUntil;
 }
 
+/// <summary>How many turns a side has begun in this game (Delay and Repeat Every count them; kept in a save).</summary>
+[Serializable]
+public class SideTurns { public long Id; public int Count; }
+
 /// <summary>Everything a scenario's script is, as the scenario file keeps it ("script").</summary>
 [Serializable]
 public class ScenarioScriptData {
+    [ScenarioState] public List<SideTurns> TurnStarts = new List<SideTurns>();
     public int Version = 1;
     public List<ScenarioTrigger> Triggers = new List<ScenarioTrigger>();
     [ScenarioState] public bool Started;

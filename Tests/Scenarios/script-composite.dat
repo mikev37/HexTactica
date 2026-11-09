@@ -201,6 +201,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -252,6 +253,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -306,6 +308,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -360,6 +363,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -414,6 +418,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -465,6 +470,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -518,6 +524,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -571,6 +578,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -622,6 +630,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
@@ -673,6 +682,7 @@
 			"Count":1,
 			"Value":0,
 			"Delay":0,
+			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
 			"Actions":[
