@@ -2970,6 +2970,8 @@ MonoBehaviour:
   - {fileID: 1140000000000000001, guid: b49024d89d75c4b4e91f445309f4029d, type: 3}
   - {fileID: 1140000000000000001, guid: 848fa27dc54d69b4da6ec26a58667e5b, type: 3}
   - {fileID: 1140000000000000001, guid: 4b6fb3bc75b3e524d8a7bae85d0dc910, type: 3}
+  - {fileID: 1140000000000000001, guid: ac5d7f26c7a7416f8c2da72d4df50b3f, type: 3}
+  - {fileID: 1140000000000000001, guid: f1343516a830492598a4a7dea53773cd, type: 3}
   allFaction: []
 --- !u!4 &561226231
 Transform:

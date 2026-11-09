@@ -92,6 +92,26 @@ public class Building : MonoBehaviour {
     [Range(0, 10)]
     [Tooltip("Tiles its owner sees around each of its tiles when fog of war is on.")]
     public int visionRange = 1;
+    [Tooltip("Its vision is not blocked by higher ground (a radar mast): every tile within visionRange is seen.")]
+    public bool visionOverTerrain;
+    [Range(0, 10)]
+    [Tooltip("Stealth detection: a stealthy enemy unit of any kind (land, air or sea) this many steps from it or fewer is seen by its owner, wherever its own vision reaches or not (0: none). Fog of war only.")]
+    public int detectRange;
+
+    [Header("Garrison")]
+    [Tooltip("Its owner's units on it are never driven back by an attack (and so never pinned): they stand and take the damage.")]
+    public bool holdsGround;
+    [Tooltip("Added to the attack of its owner's units on it, as veterancy is (to the damage they do).")]
+    public int attackBonus;
+    [Tooltip("Taken off the attack of whoever fires on its owner's units on it: veterancy's mirror (the attacker's firepower and veterancy less this).")]
+    public int defenseBonus;
+
+    /// <summary>The building on <paramref name="at"/> whose garrison bonuses (holdsGround, attackBonus, defenseBonus) <paramref name="u"/> has there: one of its owner's, standing. Null: none.</summary>
+    public static Building GarrisonFor(Unit u, HexTile at) {
+        if (u == null || at == null) return null;
+        Building b = at.building;
+        return b != null && b.owner != null && b.owner == u.owner && b.Functioning ? b : null;
+    }
 
     [Header("Economy")]
     [Tooltip("Cash gathered per turn for the owner")]

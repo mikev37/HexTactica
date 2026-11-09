@@ -1397,13 +1397,18 @@ public class Unit : MonoBehaviour
         return displayAttackOdds(attacker, this.tile, 0);
     }
 
-    internal static int calculateDamage(Unit attacker, Unit defender, HexTile tile, int firstStrike) {
+    /// <param name="attackerAt">Where the attacker fires from (default: where it stands); <paramref name="defenderAt"/>
+    /// where the defender stands (default: <paramref name="tile"/>, else where it stands). Only for a building's
+    /// garrison bonuses (Building.attackBonus, defenseBonus): <paramref name="tile"/> is for cover, and null for none.</param>
+    internal static int calculateDamage(Unit attacker, Unit defender, HexTile tile, int firstStrike, HexTile attackerAt = null, HexTile defenderAt = null) {
         if (attacker.Strength - firstStrike <= 0)
             return 0;
         // Not something it can attack (artillery at a jet): no damage, and no return fire either way.
         if (!attacker.CanTarget(defender)) return 0;
         float cover = 0;
-        float destruction = (attacker.Firepower + attacker.Veterancy + defender.Vulnerability);
+        Building atk = Building.GarrisonFor(attacker, attackerAt ?? attacker.tile);
+        Building def = Building.GarrisonFor(defender, defenderAt ?? tile ?? defender.tile);
+        float destruction = Mathf.Max(0, attacker.Firepower + attacker.Veterancy + (atk != null ? atk.attackBonus : 0) + defender.Vulnerability - (def != null ? def.defenseBonus : 0));
         float penetration = Mathf.Max(1, defender.Armor - attacker.Piercing);
         float aquire = Mathf.Max(1, defender.Evasion - attacker.Targeting);
         float toughness = 6;

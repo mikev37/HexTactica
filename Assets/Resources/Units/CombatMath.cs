@@ -73,19 +73,19 @@ public static class CombatMath {
             // Defender pre-empts: retaliation damage lands first and degrades the
             // attacker's shot, since calculateDamage scales by attacker Strength.
             o.damageToAttacker = Cap(
-                Unit.calculateDamage(defender, attacker, null, quiet),
+                Unit.calculateDamage(defender, attacker, null, quiet, defender.tile, attackerTile),
                 attacker.Strength);
             o.damageToDefender = Cap(
-                Unit.calculateDamage(attacker, defender, defender.tile, o.damageToAttacker),
+                Unit.calculateDamage(attacker, defender, defender.tile, o.damageToAttacker, attackerTile),
                 defender.Strength);
         } else {
             o.damageToDefender = Cap(
-                Unit.calculateDamage(attacker, defender, defender.tile, 0),
+                Unit.calculateDamage(attacker, defender, defender.tile, 0, attackerTile),
                 defender.Strength);
             if (o.retaliationHappens) {
                 // Retaliation ignores cover, per the doc.
                 o.damageToAttacker = Cap(
-                    Unit.calculateDamage(defender, attacker, null, o.damageToDefender + quiet),
+                    Unit.calculateDamage(defender, attacker, null, o.damageToDefender + quiet, defender.tile, attackerTile),
                     attacker.Strength);
             }
         }
@@ -98,12 +98,16 @@ public static class CombatMath {
             // the casualties and seeing who had more + the veterancy of each."
             int defenderPressure = o.damageToDefender - defender.Veterancy;
             int attackerPressure = o.damageToAttacker - attacker.Veterancy;
-            // An immobile unit (an HQ) is never driven back, so never pinned either.
+            // An immobile unit (an HQ) is never driven back, so never pinned either; nor is one on a building of its side
+            // that holds its ground (Building.holdsGround): it stands and takes the damage.
+            // (Indirect fire still suppresses it.)
+            Building garrison = Building.GarrisonFor(defender, defender.tile);
+            bool holds = garrison != null && garrison.holdsGround;
             if (defenderPressure > attackerPressure && defender.moveRange > 0 && Suppresses(attacker)) {
                 // Indirect fire: suppressed where it stands instead of driven back.
                 o.defenderSuppressed = true;
                 o.suppressionAdded = SuppressionFrom(defender.Strength - o.damageToDefender, defender.suppressed);
-            } else if (defenderPressure > attackerPressure && defender.moveRange > 0) {
+            } else if (defenderPressure > attackerPressure && defender.moveRange > 0 && !holds) {
                 o.defenderRetreats = true;
                 o.retreatTile = FindRetreatTile(defender, attackerTile);
                 o.defenderPinned = o.retreatTile == null;
@@ -197,12 +201,12 @@ public static class CombatMath {
                         && defender.retaliates && defender.CanAttack(attackerTile);
         bool defenderFirst = retaliation && Ambush(attacker, defender, defenderTile);
         if (defenderFirst) {
-            toAttacker = Cap(Unit.calculateDamage(defender, attacker, null, defenderDown + quiet), attackerStrength);
-            toDefender = Cap(Unit.calculateDamage(attacker, defender, defenderTile, attackerDown + toAttacker), defenderStrength);
+            toAttacker = Cap(Unit.calculateDamage(defender, attacker, null, defenderDown + quiet, defenderTile, attackerTile), attackerStrength);
+            toDefender = Cap(Unit.calculateDamage(attacker, defender, defenderTile, attackerDown + toAttacker, attackerTile), defenderStrength);
         } else {
-            toDefender = Cap(Unit.calculateDamage(attacker, defender, defenderTile, attackerDown), defenderStrength);
+            toDefender = Cap(Unit.calculateDamage(attacker, defender, defenderTile, attackerDown, attackerTile), defenderStrength);
             if (retaliation && toDefender < defenderStrength)
-                toAttacker = Cap(Unit.calculateDamage(defender, attacker, null, defenderDown + toDefender + quiet), attackerStrength);
+                toAttacker = Cap(Unit.calculateDamage(defender, attacker, null, defenderDown + toDefender + quiet, defenderTile, attackerTile), attackerStrength);
         }
     }
 

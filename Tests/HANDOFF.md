@@ -375,6 +375,38 @@ the main group to hold narrows far from the action that do not matter. Method:
    same flag, re-run the same small games, then the three test maps from both sides.
 
 
+**Proposed and waiting (owner's request, 8 Nov): do these later.**
+
+*UI for the new buildings (the owner asked to wait on it).* The Radar and Stronghold prefabs
+(`Assets/Resources/Buildings/Prefabs/`) work in the rules, fog and AI combat math, and are in the level editor's
+building list (`SampleScene`, `allBuilding`), but nothing shows them yet:
+- The tile panel (Hud prefab, TilePanel) has no rows for a building's detection range, vision over terrain, holding
+  ground, or attack/defence bonus. Add rows to the prefab (clone an existing row, as the details rows were), and a
+  way to show the radar's detection range on the board (an overlay, like the supply borders).
+- The attack preview (Unit.displayAttackOdds, CombatMath.Resolve) already includes the bonuses and the held ground;
+  the preview may want to say why (a "holds" marker where a retreat would have been).
+- Both use the Bunker's sprites as placeholders; they need their own art.
+- Values are on the prefabs (Radar: visionRange 5, visionOverTerrain, detectRange 3; Stronghold: holdsGround,
+  attackBonus 1, defenseBonus 1) for the owner to tune.
+- The AI does not yet value them as objectives (taking or holding a radar or stronghold is worth what any building is)
+  nor seek a stronghold to defend from; production is unchanged.
+
+*Sea lift: the two gaps found on Channel (8 Nov).* The sea lift buys ships, ferries troops and supply, and lands them
+(on Channel, 30 rounds: Blue's first ship after round 11, landings from round 18; 9 ships Blue, 6 Red). Two gaps:
+1. **Crossings sized against what can contest them.** A loaded ship's move only avoids tiles where tonight's expected
+   loss (x loadedTransportRisk 2.5) would destroy it (AITransportPlanner.SafeStepToward); dangerModel 2 assumes each
+   enemy fires at its most valuable target, so several focusing one ship exceed the estimate. Nothing judges the whole
+   crossing: enemy ships and aircraft able to intercept over a multi-turn trip, or whether the troops landed can hold
+   (the front's posture compares strength at the objective, not on the route or the landing). Proposal: a crossing
+   waits until the force aboard or gathered at the yard is enough for the landing, judged against the enemy that can
+   reach the route and the landing over the trip (as land assaults wait to gather: AIStrategic staging).
+2. **Escorts.** Production values gunboats, anti-air, bombers and rockets by the damage they could do near where they
+   are built, never for covering our transports; no unit moves to cover a ship (only the world score's own-loss term
+   makes killing a threat to one worth something). Proposal: value escort units for the threats to our transports'
+   routes, and have them move with the ship.
+Also: `seaLiftWeight` (3) — the multiplier on a transport ship's worth to buy — left as is; one 12-round game at 6 lost
+an early lone ship, which is one game, not a finding.
+
 1. **The ChanceMeeting regression** (new Red v old Blue: `OLD=Blue`, fog on, traced): run with
    `SET_RED="unifiedLinkPlacement=false"` and with `SET_RED="boardSpentTransports=false"`; read the chain lines
    (`chain toward ...: ... holds; spare N`) and `campaign: not taken on ... supply units` counts. The fix is likely a
