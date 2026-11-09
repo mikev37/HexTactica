@@ -21,6 +21,9 @@ namespace UnityEditor {
     public enum TextureImporterType { Default, Sprite }
     public enum SpriteImportMode { None, Single, Multiple }
     public class AssetImporter { public static AssetImporter GetAtPath(string p) { return null; } public void SaveAndReimport() { } }
+    public class AssetPostprocessor { public string assetPath; public AssetImporter assetImporter; }
+    public struct AudioImporterSampleSettings { public UnityEngine.AudioClipLoadType loadType; public UnityEngine.AudioCompressionFormat compressionFormat; public float quality; }
+    public class AudioImporter : AssetImporter { public bool importSettingsMissing, loadInBackground; public AudioImporterSampleSettings defaultSampleSettings; }
     public class TextureImporter : AssetImporter { public TextureImporterType textureType; public SpriteImportMode spriteImportMode; public bool mipmapEnabled, alphaIsTransparency; public UnityEngine.Vector4 spriteBorder; }
     public static class PrefabUtility { public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject g, string path) { return g; } }
     public static class EditorUtility {

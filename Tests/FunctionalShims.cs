@@ -138,8 +138,10 @@ namespace UnityEngine {
     public struct Resolution { public int width, height; }
     public class AudioListener : Behaviour { public static float volume = 1f; }
     public class AudioClip : Object { public float length; }
+    public enum AudioClipLoadType { DecompressOnLoad, CompressedInMemory, Streaming }
+    public enum AudioCompressionFormat { PCM, Vorbis, ADPCM, MP3 }
     public class AudioSource : Behaviour {
-        public AudioClip clip; public bool playOnAwake, loop, mute, isPlaying; public float volume = 1f, pitch = 1f, spatialBlend;
+        public AudioClip clip; public bool playOnAwake, loop, mute, isPlaying, ignoreListenerPause; public float volume = 1f, pitch = 1f, spatialBlend, time;
         public void Play() { isPlaying = true; } public void Stop() { isPlaying = false; } public void PlayOneShot(AudioClip c) { } public void PlayOneShot(AudioClip c, float v) { }
     }
     public static class QualitySettings {

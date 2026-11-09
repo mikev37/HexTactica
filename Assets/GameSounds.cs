@@ -12,6 +12,16 @@ public class GameSounds : ScriptableObject {
     [Tooltip("A building changes hands (captured by anyone the viewer can see it happen to).")]
     public AudioClip buildingCaptured;
 
+    [Header("Music (MusicManager: the tracks are in Resources/Music)")]
+    [Tooltip("Music volume, under the options menu's volume (0 to 1).")]
+    [Range(0, 1)] public float musicVolume = 0.6f;
+    [Tooltip("Seconds before a track ends that it starts fading out, as the next one fades in.")]
+    public float musicEndFade = 10f;
+    [Tooltip("Seconds a track takes to fade in.")]
+    public float musicFadeIn = 3f;
+    [Tooltip("Seconds the music takes to change on a trigger (game start, game over, a scenario's special track).")]
+    public float musicSwitchFade = 2f;
+
     public const string ResourceName = "GameSounds";
     static GameSounds instance;
 

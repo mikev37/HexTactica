@@ -19,6 +19,8 @@ public class GameSession : MonoBehaviour {
     GameController gc0;
     /// <summary>What this game scene was opened for (MatchSetup.Mode when it opened; Play once a set-up game starts).</summary>
     SessionMode mode;
+    /// <summary>What this game scene is open for now (the music follows it: MusicManager).</summary>
+    public SessionMode Mode { get { return mode; } }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Hook() { GameScene.WhenLoaded(Install); }
