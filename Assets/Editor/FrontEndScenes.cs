@@ -73,6 +73,7 @@ static class FrontEndScenes {
         FrontEndSettings s = Settings();
         UpdateScene<MapEditorPanel>(s.mapEditorScene, UpdateMapEditor);
         UpdateScene<PostGameScreen>(s.postGameScene, UpdatePostGame);
+        UpdateScene<OptionsPanel>(s.mainMenuScene, UpdateOptions);
         AssetDatabase.SaveAssets();
     }
 
@@ -122,6 +123,38 @@ static class FrontEndScenes {
         }
         Transform neutral = m.sideRow != null ? m.sideRow.transform.Find("Neutral") : null;
         if (neutral != null) { Object.DestroyImmediate(neutral.gameObject); done.Add("Neutral checkbox removed (Neutral is in the For list)"); }
+    }
+
+    /// <summary>
+    /// Music and sound-effects volume rows under the volume row: copies of your volume row (so they look like it),
+    /// relabelled; the first row's label becomes "Master volume".
+    /// </summary>
+    static void UpdateOptions(OptionsPanel op, List<string> done) {
+        if (op.volume == null) return;
+        Transform row = op.volume.transform.parent;
+        int at = row.GetSiblingIndex();
+        if (op.effectsVolume == null) {
+            op.effectsVolume = CopyVolumeRow(row, "Effects Volume", "Sound effects", at + 1, out op.effectsValue);
+            done.Add("sound-effects volume row added");
+        }
+        if (op.musicVolume == null) {
+            op.musicVolume = CopyVolumeRow(row, "Music Volume", "Music", at + 1, out op.musicValue);
+            done.Add("music volume row added");
+        }
+        Transform label = row.Find("Label");
+        TMP_Text t = label != null ? label.GetComponent<TMP_Text>() : null;
+        if (t != null && t.text == "Sound volume") { t.text = "Master volume"; done.Add("volume row labelled Master volume"); }
+    }
+
+    static Slider CopyVolumeRow(Transform row, string name, string label, int at, out TMP_Text value) {
+        GameObject copy = Object.Instantiate(row.gameObject, row.parent);
+        copy.name = name;
+        copy.transform.SetSiblingIndex(at);
+        Transform l = copy.transform.Find("Label");
+        if (l != null && l.GetComponent<TMP_Text>() != null) l.GetComponent<TMP_Text>().text = label;
+        Transform v = copy.transform.Find("Value");
+        value = v != null ? v.GetComponent<TMP_Text>() : null;
+        return copy.GetComponentInChildren<Slider>(true);
     }
 
     /// <summary>The post-game units page as a table: rows of the table prefabs in place of the one block of text (kept for the note under the tables).</summary>
@@ -326,14 +359,12 @@ static class FrontEndScenes {
         menu.unitsPanel = units;
 
         // Options.
-        GameObject options = Window(root, "Options", 760f, 640f);
+        GameObject options = Window(root, "Options", 760f, 760f);
         OptionsPanel op = options.AddComponent<OptionsPanel>();
         Text(options.transform, "Heading", "Options", 40, TextAlignmentOptions.Left, FontStyles.Bold);
-        GameObject vol = Row(options.transform, "Volume", 50f);
-        Text(vol.transform, "Label", "Sound volume", 26, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 260f, -1f));
-        op.volume = Slide(vol.transform);
-        op.volumeValue = Text(vol.transform, "Value", "100%", 26, TextAlignmentOptions.Right, FontStyles.Normal);
-        Size(op.volumeValue.gameObject, 90f, -1f);
+        VolumeRow(options.transform, "Volume", "Master volume", out op.volume, out op.volumeValue);
+        VolumeRow(options.transform, "Music Volume", "Music", out op.musicVolume, out op.musicValue);
+        VolumeRow(options.transform, "Effects Volume", "Sound effects", out op.effectsVolume, out op.effectsValue);
         op.fullScreen = Tog(options.transform, "Full screen");
         GameObject res = Row(options.transform, "Resolution", 50f);
         Text(res.transform, "Label", "Resolution", 26, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 260f, -1f));
@@ -609,6 +640,17 @@ static class FrontEndScenes {
             Size(t.gameObject, i == 0 ? TableNameWidth : TableCellWidth, -1f);
             if (into != null) into.Add(t);
         }
+    }
+
+    /// <summary>A volume row: its label, a slider, the value as a percentage.</summary>
+    static GameObject VolumeRow(Transform parent, string name, string label, out Slider slider, out TMP_Text value) {
+        GameObject row = Row(parent, name, 50f);
+        Text(row.transform, "Label", label, 26, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 260f, -1f));
+        slider = Slide(row.transform);
+        TextMeshProUGUI v = Text(row.transform, "Value", "100%", 26, TextAlignmentOptions.Right, FontStyles.Normal);
+        Size(v.gameObject, 90f, -1f);
+        value = v;
+        return row;
     }
 
     static UnitTableHeading TableHeading(Transform parent) {

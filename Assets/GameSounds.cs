@@ -54,7 +54,7 @@ public class GameSounds : ScriptableObject {
             source.playOnAwake = false;
             source.spatialBlend = 0f;
         }
-        source.PlayOneShot(clip, volume);
+        source.PlayOneShot(clip, volume * GameOptions.EffectsVolume);   // the options' sound-effects volume
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

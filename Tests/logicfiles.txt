@@ -27,6 +27,7 @@ Resources/Buildings/Building.cs
 Resources/Buildings/BuildingController.cs
 FrontEnd/GameScene.cs
 FrontEnd/FrontEndSettings.cs
+FrontEnd/GameOptions.cs
 FrontEnd/Stats/GameRecord.cs
 FrontEnd/Stats/GameInsights.cs
 Resources/Buildings/CaptureFlag.cs

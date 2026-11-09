@@ -470,7 +470,7 @@ public class Unit : MonoBehaviour
     void PlaySound(AudioClip clip) {
         if (clip == null || !SoundsOn || !Audible) return;
         if (oneShotSource == null) oneShotSource = NewSource();
-        oneShotSource.PlayOneShot(clip);
+        oneShotSource.PlayOneShot(clip, GameOptions.EffectsVolume);
     }
 
     /// <summary>A human player selected this unit (HexTile.ClickBoard): its order sound.</summary>
@@ -496,7 +496,7 @@ public class Unit : MonoBehaviour
                 if (moveLoopSound != null) {
                     if (moveLoopSource == null) { moveLoopSource = NewSource(); moveLoopSource.loop = true; }
                     moveLoopSource.clip = moveLoopSound;
-                    moveLoopSource.volume = 1f;
+                    moveLoopSource.volume = GameOptions.EffectsVolume;
                     moveLoopSource.pitch = 1f;
                     moveLoopSource.Play();
                 }
@@ -512,10 +512,10 @@ public class Unit : MonoBehaviour
         if (loopFadeT >= 0f) {
             loopFadeT += Time.deltaTime;
             float k = moveLoopFadeOut > 0f ? Mathf.Clamp01(loopFadeT / moveLoopFadeOut) : 1f;
-            moveLoopSource.volume = 1f - k;
+            moveLoopSource.volume = (1f - k) * GameOptions.EffectsVolume;
             moveLoopSource.pitch = Mathf.Lerp(1f, moveLoopEndPitch, k);
             if (k >= 1f) { moveLoopSource.Stop(); moveLoopSource.volume = 1f; moveLoopSource.pitch = 1f; loopFadeT = -1f; }
-        }
+        } else if (moveLoopSource.isPlaying) moveLoopSource.volume = GameOptions.EffectsVolume;   // the options' slider, as it moves
     }
 
     bool AnimatorIsPlaying() {

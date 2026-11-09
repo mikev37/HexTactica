@@ -1,11 +1,13 @@
 using UnityEngine;
 
 /// <summary>
-/// The player's options, kept between runs (PlayerPrefs) and put in force when the game starts: sound volume,
-/// full screen, resolution, graphics quality, vertical sync. The options panel (OptionsPanel) changes them.
+/// The player's options, kept between runs (PlayerPrefs, saved as each changes) and put in force when the game starts,
+/// before the first scene: master volume, music volume, sound-effects volume, full screen, resolution, graphics
+/// quality, vertical sync. The options panel (OptionsPanel) changes them. Music (MusicManager) plays at
+/// MusicVolume, every sound effect (GameSounds, a unit's sounds) at EffectsVolume, all under the master volume.
 /// </summary>
 public static class GameOptions {
-    const string VolumeKey = "options.volume", FullScreenKey = "options.fullscreen", WidthKey = "options.width", HeightKey = "options.height",
+    const string VolumeKey = "options.volume", MusicKey = "options.music", EffectsKey = "options.effects", FullScreenKey = "options.fullscreen", WidthKey = "options.width", HeightKey = "options.height",
                  QualityKey = "options.quality", VSyncKey = "options.vsync";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -17,7 +19,19 @@ public static class GameOptions {
         else if (PlayerPrefs.HasKey(FullScreenKey)) Screen.fullScreen = FullScreen;
     }
 
-    /// <summary>Every sound, 0 to 1.</summary>
+    /// <summary>Music, 0 to 1 (under the master volume).</summary>
+    public static float MusicVolume {
+        get { return PlayerPrefs.GetFloat(MusicKey, 1f); }
+        set { PlayerPrefs.SetFloat(MusicKey, Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+    }
+
+    /// <summary>Sound effects (game sounds, unit sounds), 0 to 1 (under the master volume).</summary>
+    public static float EffectsVolume {
+        get { return PlayerPrefs.GetFloat(EffectsKey, 1f); }
+        set { PlayerPrefs.SetFloat(EffectsKey, Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+    }
+
+    /// <summary>Every sound (master), 0 to 1.</summary>
     public static float Volume {
         get { return PlayerPrefs.GetFloat(VolumeKey, 1f); }
         set { AudioListener.volume = Mathf.Clamp01(value); PlayerPrefs.SetFloat(VolumeKey, AudioListener.volume); PlayerPrefs.Save(); }
