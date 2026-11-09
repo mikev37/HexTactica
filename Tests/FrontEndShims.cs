@@ -28,6 +28,7 @@ namespace UnityEngine.UI {
         public ScrollbarVisibility horizontalScrollbarVisibility, verticalScrollbarVisibility;
     }
     public class RawImage : Graphic { public UnityEngine.Texture texture; }
+    public static class LayoutRebuilder { public static void ForceRebuildLayoutImmediate(UnityEngine.RectTransform r) { } }
     public static class DefaultControls {
         public struct Resources { public UnityEngine.Sprite standard, background, inputField, knob, checkmark, dropdown, mask; }
         public static UnityEngine.GameObject CreateSlider(Resources r) { return new UnityEngine.GameObject("Slider"); }

@@ -338,6 +338,7 @@ public struct PlayerData {
             output = go.AddComponent<Player>();
             output.id = that.id;
             GameController.gc.players.Add(output);
+            HexGenerator.forAllTiles(t => { t.EnsureSide(output); return 0; });
         }
         output.factionLocked = that.factionLocked;
         output.personal_name = that.personal_name;

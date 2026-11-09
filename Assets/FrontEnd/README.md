@@ -84,9 +84,28 @@ palette. **For** sets the side units and buildings are placed for, with **Neutra
 placed for a side with a faction becomes that faction's version (a Conscript for a Union side is the Union
 Conscript).
 
-The terrain palette lists only terrain with `TerrainData ▸ In Map Editor` on. It is off for what buildings put
+Terrain is listed by `TerrainData ▸ Palette Group`, then by name. The tool fills the group from the asset's folder
+under Resources/Tiles when it's empty; change it to regroup. Terrain straight in Tiles has no group and is listed
+first. A faction in **Show** lists only that faction's own units (its versions and extras). Pictures are drawn once
+the palette is laid out, so every unit fits its box the same way, and owner-coloured sprites take the colour of the
+side you're placing for. The terrain palette lists only terrain with `TerrainData ▸ In Map Editor` on. It is off for what buildings put
 under themselves (Urban, City, Bunker) and for destroyed or damaged forms (stumps, damaged roads, the collapsed
 bridge, broken ice, Tidal Mud, Permafrost, Badlands).
+
+## Rules the map fixes
+
+On the Look page, fog of war, purchases and faction special units each have a list. The choices are: players choose
+(starting on), players choose (starting off), always on, always off. A fixed rule is saved as `"fixedRules":
+"fog,purchases,factionSpecialUnits"` (whichever are fixed; `GameController.fogFixed` and the rest). The pre-game
+screen shows a fixed rule and can't change it, the same as a faction the map fixes. **Update Scenes** replaces the
+old Rules row (two checkboxes) with these lists.
+
+## Loading a board
+
+Units already on the board are removed without dying (`Unit.Wiping`): no death animations, sounds, log lines or
+victory check. Before this, units riding transports played their deaths when a scenario started. Supply borders
+take their side's current colour each time they redraw. A side added after the board was made (more sides than the
+scene has) gets its per-tile state and borders (`HexTile.EnsureSide`).
 
 ## Sides
 
