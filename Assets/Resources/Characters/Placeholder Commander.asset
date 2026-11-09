@@ -15,5 +15,4 @@ MonoBehaviour:
   displayName: Placeholder Commander
   portrait: {fileID: 21300000, guid: 6cd34e89e5044f0d9458d8ef4b17a2d2, type: 3}
   nameColour: {r: 0.92, g: 0.36, b: 0.33, a: 1}
-  voice: {fileID: 0}
-  facesLeft: 0
+  drawnFacing: 0

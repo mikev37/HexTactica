@@ -7,16 +7,17 @@ using UnityEngine;
 /// </summary>
 [CreateAssetMenu(menuName = "HexTactica/Dialogue Character", fileName = "Character")]
 public class DialogueCharacter : ScriptableObject {
+    /// <summary>Which way a portrait looks as drawn. Saved by number: append only.</summary>
+    public enum PortraitFacing { Right = 0, Left = 1 }
+
     [Tooltip("The name shown above what they say (empty: the asset's name).")]
     public string displayName = "";
     [Tooltip("Their picture beside the text: a full-body portrait, its feet at the bottom of the box. Empty: no picture.")]
     public Sprite portrait;
     [Tooltip("The colour of their name.")]
     public Color nameColour = Color.white;
-    [Tooltip("Played with each of their lines that has no sound of its own (a voice blip, a radio crackle). Empty: silent.")]
-    public AudioClip voice;
-    [Tooltip("The portrait faces left as drawn: it is mirrored when it stands on the left, so it faces the text (and the other way round).")]
-    public bool facesLeft;
+    [Tooltip("Which way the person in the portrait looks, as drawn. The box mirrors the picture when needed so they always look toward the text: a portrait drawn looking right is mirrored when it stands on the right.")]
+    public PortraitFacing drawnFacing = PortraitFacing.Right;
 
     public string ShownName { get { return string.IsNullOrEmpty(displayName) ? name : displayName; } }
 

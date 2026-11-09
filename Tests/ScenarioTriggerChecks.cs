@@ -45,11 +45,11 @@ public static partial class Scenarios {
         make("script-timing", "scriptTiming", (a, o) => {
                  Put("Grunt", a, -2, 0);
                  Script(Trig("Start", TriggerCondition.LevelStart, null, Money(Blue, 100)),
-                        Trig("Hold", TriggerCondition.UnitsInArea, t => { t.Side = Blue; t.TileX = 0; t.TileY = 0; t.Radius = 0; t.Delay = 2f; }, Money(Blue, 1)),
+                        Trig("Hold", TriggerCondition.UnitsInArea, t => { t.Side = Blue; t.TileX = 0; t.TileY = 0; t.Radius = 0; t.Delay = 2; t.TurnsOf = Blue; }, Money(Blue, 1)),
                         Trig("Every Blue turn", TriggerCondition.TurnOver, t => { t.Side = Blue; t.Repeat = true; }, Money(Red, 10)),
                         Trig("Second Blue turn", TriggerCondition.TurnOver, t => { t.Side = Blue; t.Count = 2; }, Money(Red, 1000)));
              },
-             "Scenario trigger timing (ScenarioScript): Level Start fires once however long the game runs; a trigger with Delay 2 fires only after its condition (a Blue unit on (0,0)) has held 2 seconds without a break, and the wait starts again when it breaks; Turn Over with Repeat fires at the end of every Blue turn; with Count 2 (and no Repeat), once, at the end of the second.");
+             "Scenario trigger timing (ScenarioScript): Level Start fires once however long the game runs; a trigger with Delay 2 (turns of Blue) fires only once its condition (a Blue unit on (0,0)) has held through two of Blue's turns starting, without a break, and the count starts again when it breaks; Turn Over with Repeat fires at the end of every Blue turn; with Count 2 (and no Repeat), once, at the end of the second.");
         n++;
         make("script-events", "scriptEvents", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0);
@@ -61,6 +61,7 @@ public static partial class Scenarios {
                         Trig("Captured", TriggerCondition.BuildingCaptured, t => { t.Side = Blue; t.BuildingKind = "City"; }),
                         Trig("Entered", TriggerCondition.UnitEnters, t => { t.Side = Blue; t.UnitKind = "Tank"; t.TileX = 3; t.TileY = -3; t.Radius = 1; }),
                         Trig("Day 2", TriggerCondition.DayReached, t => { t.Value = 2; }),
+                        Trig("Day 2 on Blue's turn", TriggerCondition.DayReached, t => { t.Value = 2; t.Side = Blue; }),
                         Trig("Red turn starts", TriggerCondition.TurnStarted, t => { t.Side = Red; }),
                         Trig("Built", TriggerCondition.UnitBuilt, t => { t.Side = Blue; }),
                         Trig("Destroyed", TriggerCondition.BuildingDestroyed, t => { t.BuildingKind = "City"; t.InArea = true; t.TileX = 3; t.TileY = 3; }),
@@ -106,16 +107,17 @@ public static partial class Scenarios {
                             Act(TriggerActionType.SetStat, x => { x.UnitSide = Blue; x.UnitTag = "Reinforcement"; x.Stat = UnitStat.Health; x.Mode = ValueMode.Add; x.Value = -1; }),
                             Act(TriggerActionType.SetStat, x => { x.UnitSide = Blue; x.UnitKind = "Tank"; x.Stat = UnitStat.Ammo; x.Mode = ValueMode.Set; x.Value = 0; }),
                             Act(TriggerActionType.ShowMarker, x => { x.Marker = "Marker"; x.MarkerId = "goal"; x.Text = "Take it"; x.TileX = 5; x.TileY = 0; })),
-                        Trig("Then", TriggerCondition.AfterTrigger, t => { t.AfterTrigger = "Do it"; t.Delay = 1.5f; },
+                        Trig("Then", TriggerCondition.AfterTrigger, t => { t.AfterTrigger = "Do it"; },
+                            Act(TriggerActionType.Wait, x => x.Seconds = 1.5f),
                             Act(TriggerActionType.RepairTile, x => { x.TileX = 2; x.TileY = 2; }),
                             Act(TriggerActionType.RepairBuilding, x => { x.BuildingSide = TriggerSide.Any; x.BuildingKind = "City"; }),
                             Act(TriggerActionType.DestroyUnits, x => { x.UnitSide = Blue; x.UnitKind = "Grunt"; x.InArea = true; x.TileX = 0; x.TileY = 0; x.Radius = 0; }),
                             Act(TriggerActionType.HideMarker, x => { x.MarkerId = "goal"; })),
                         Trig("Victory", TriggerCondition.AfterTrigger, t => { t.AfterTrigger = "Then"; },
-                            Act(TriggerActionType.Wait, x => x.Seconds = 1f),
+                            Act(TriggerActionType.Wait, x => x.Seconds = 2.5f),
                             Act(TriggerActionType.Win, x => x.Side = Blue)));
              },
-             "Every board action, in order: two tagged Blue grunts spawned (strength 4, veterancy 1, spent this turn) beside a taken tile; Red's tank given to Blue; the neutral city given to Blue; a forest destroyed; Red's city destroyed; the spawned grunts' veterancy raised by 1 and strength lowered by 1; the tank's ammunition set to 0; a marker shown. After 1.5 s the forest and the city are repaired, the grunt on (0,0) destroyed and the marker hidden; a second later (a Wait) Blue wins.");
+             "Every board action, in order: two tagged Blue grunts spawned (strength 4, veterancy 1, spent this turn) beside a taken tile; Red's tank given to Blue; the neutral city given to Blue; a forest destroyed; Red's city destroyed; the spawned grunts' veterancy raised by 1 and strength lowered by 1; the tank's ammunition set to 0; a marker shown. After a 1.5 s Wait (pacing, as in a cutscene) the forest and the city are repaired, the grunt on (0,0) destroyed and the marker hidden; at 2.5 s Blue wins.");
         n++;
         make("script-dialogue", "scriptDialogue", (a, o) => {
                  Put("Grunt", a, 0, 0);
@@ -184,18 +186,17 @@ public static partial class Scenarios {
                 Unit g = Rig.At(-2, 0).occupier;
                 for (int i = 0; i < 5; i++) s.Tick(0.1f);
                 bool once = a.money == 100 && Fired(s, "Start") == 1;
-                MoveTo(g, 0, 0);
-                s.Tick(1f); s.Tick(1.5f);                 // held 1.5 s: not yet
+                MoveTo(g, 0, 0); s.Tick(0.1f);                                    // held from Blue's turn 0
+                gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // Blue's turn 1 starts: held 1 turn
                 bool notYet = Fired(s, "Hold") == 0;
-                MoveTo(g, -1, 0); s.Tick(0.1f);           // broken
-                MoveTo(g, 0, 0); s.Tick(1.5f); s.Tick(1f);  // held 1 s again (the wait started over)
+                MoveTo(g, -1, 0); s.Tick(0.1f); MoveTo(g, 0, 0); s.Tick(0.1f);   // broken, held again from turn 1
+                gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // turn 2: 1 turn since
                 bool restarted = Fired(s, "Hold") == 0;
-                s.Tick(1.1f);                              // held 2.1 s
+                gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // turn 3: 2 turns since
                 bool held = Fired(s, "Hold") == 1 && a.money == 101;
-                for (int i = 0; i < 4; i++) { gc.EndTurn(); s.Tick(0.1f); }   // Blue, Red, Blue, Red
-                bool repeat = Fired(s, "Every Blue turn") == 2 && Fired(s, "Second Blue turn") == 1 && o.money == 1020;
-                detail = "Level Start once " + once + " (Blue " + a.money + "); Delay 2: held 1.5 s fired " + !notYet + ", wait started over after a break " + restarted + ", fired once held 2 s " + held
-                       + "; four turn ends: every Blue turn " + Fired(s, "Every Blue turn") + "x, second Blue turn " + Fired(s, "Second Blue turn") + "x (Red " + o.money + ")";
+                bool repeat = Fired(s, "Every Blue turn") == 3 && Fired(s, "Second Blue turn") == 1 && o.money == 1030;
+                detail = "Level Start once " + once + " (Blue " + a.money + "); Delay 2 turns: fired after 1 turn " + !notYet + ", count started over after a break " + restarted + ", fired once held 2 of Blue's turns " + held
+                       + "; three Blue turn ends: every Blue turn " + Fired(s, "Every Blue turn") + "x, second Blue turn " + Fired(s, "Second Blue turn") + "x (Red " + o.money + ")";
                 return once && notYet && restarted && held && repeat;
             }
             case "scriptEvents": {
@@ -224,7 +225,12 @@ public static partial class Scenarios {
                 MoveTo(tank, 3, -2); s.Tick(0.1f);
                 bool entered = Fired(s, "Entered") == 1;
                 bool day1 = Fired(s, "Day 2") == 0;
-                for (int i = 0; i < 3; i++) { gc.EndTurn(); s.Tick(0.1f); }   // Blue, Red, Blue: the grunt on the city takes it
+                bool dayOnBlue = true;
+                for (int i = 0; i < 3; i++) {   // Blue, Red, Blue: the grunt on the city takes it
+                    gc.EndTurn(); s.Tick(0.1f);
+                    if (i == 0) dayOnBlue &= Fired(s, "Day 2") == 1 && gc.activePlayer == o && Fired(s, "Day 2 on Blue's turn") == 0;
+                }
+                dayOnBlue &= Fired(s, "Day 2 on Blue's turn") == 1;
                 bool captured = city.owner == a && Fired(s, "Captured") == 1 && Fired(s, "City held") == 1;
                 bool turns = Fired(s, "Day 2") == 1 && Fired(s, "Red turn starts") == 1 && Fired(s, "Human turn over") == 1;
                 a.money = 100000; s.Tick(0.1f);
@@ -245,9 +251,9 @@ public static partial class Scenarios {
                 o.money = 0; s.Tick(0.1f);
                 broke &= Fired(s, "Broke") == 1;
                 detail = "nothing fired early " + quiet + (quiet ? "" : " (" + string.Join(", ", early.ToArray()) + ")") + "; Red grunt hurt (" + hurtAt + ") and killed in " + shots + " shots " + killed
-                       + "; tank healed to 6 " + healed + "; entered (not before " + notEntered + ") " + entered + "; city captured and held " + captured + " (day 2 not before " + day1 + "; turns and day " + turns
+                       + "; tank healed to 6 " + healed + "; entered (not before " + notEntered + ") " + entered + "; city captured and held " + captured + " (day 2 not before " + day1 + "; turns and day " + turns + ", day 2 waits for Blue's turn " + dayOnBlue
                        + "); rich " + rich + "; built, then 3 Blue units " + built + "; destroyed " + destroyed + "; states not before " + preStates + ", starving / no ammo / low fuel " + low + ", no fuel " + empty + "; broke at 0, not at 50 " + broke;
-                return quiet && killed && healed && notEntered && entered && day1 && captured && turns && rich && built && threeNotBefore && destroyed && preStates && low && empty && broke;
+                return quiet && killed && healed && notEntered && entered && day1 && captured && turns && dayOnBlue && rich && built && threeNotBefore && destroyed && preStates && low && empty && broke;
             }
             case "scriptComposite": {
                 Unit red = Rig.At(4, 0).occupier, blue = Rig.At(0, 0).occupier;
@@ -332,6 +338,7 @@ public static partial class Scenarios {
                 s.Tick(0.5f);
                 Rig.At(3, 0).occupier.Perish();
                 s.Tick(0.5f);
+                s.turnStarts.Add(new SideTurns { Id = Blue, Count = 3 });   // (as three Blue turns would leave it)
                 string json = s.ToJson(true).Print(true);
                 string authored = s.ToJson(false).Print(true);
                 bool partWay = s.Find("Two kills").Events == 1 && Fired(s, "Talk") == 1 && a.money == 0 && box.shown.Count == 1;
@@ -340,7 +347,7 @@ public static partial class Scenarios {
                 ScenarioDialogue.Presenter = box2;
                 s.Load(new Defective.JSON.JSONObject(json), l.path);
                 bool back = s.Find("Two kills").Events == 1 && Fired(s, "Talk") == 1 && Fired(s, "Mark") == 1 && s.markers.Count == 1 && s.running.Count == 1
-                         && Math.Abs(s.Clock - 0.5f) < 0.01f && box2.shown.Count == 1 && box2.shown[0] == "Saved mid-sentence." && GameController.Paused;
+                         && Math.Abs(s.Clock - 0.5f) < 0.01f && s.TurnsOf(Blue) == 3 && s.TurnsOf(TriggerSide.Any) == 3 && box2.shown.Count == 1 && box2.shown[0] == "Saved mid-sentence." && GameController.Paused;
                 s.Tick(0.1f);
                 bool waits = a.money == 0;
                 ScenarioDialogue.Next(); s.Tick(0.1f);

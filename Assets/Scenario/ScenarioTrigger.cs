@@ -21,7 +21,7 @@ public enum TriggerCondition {
     BuildingCaptured = 3,
     /// <summary>A building matching the building filter has been destroyed (its health ran out): Count of them.</summary>
     BuildingDestroyed = 4,
-    /// <summary>The day shown on screen ("day 3") is Value or later.</summary>
+    /// <summary>The day shown on screen ("day 3") is Value or later, on Side's turn (Any: whoever's turn it is).</summary>
     DayReached = 5,
     /// <summary>At least Count units matching the unit filter stand within Radius of the tile (now).</summary>
     UnitsInArea = 6,
@@ -115,7 +115,7 @@ public enum TriggerActionType {
     ResetTrigger = 22,
     /// <summary>The units matching the unit filter may act again this turn (or, with Value 0, have used their turn).</summary>
     ReadyUnits = 23,
-    /// <summary>The trigger's next action waits Seconds of play.</summary>
+    /// <summary>The trigger's next action waits Seconds of play: pacing within a scene (a pause after a camera move, before a line). For waiting turns, use a trigger's Delay.</summary>
     Wait = 24,
     /// <summary>The camera shows the whole board.</summary>
     CameraFrameBoard = 25,
@@ -143,7 +143,7 @@ public static class TriggerSide {
     public const long Neutral = -4;
 }
 
-/// <summary>Marks a field that is the script's progress in a game, not part of the scenario as authored: saved in a game, not written by "Save triggers into scenario file".</summary>
+/// <summary>Marks a field that is the script's progress in a game, not part of the scenario as authored: saved in a game, not in the scenario as authored (ScenarioScript.ToJson(false)).</summary>
 [AttributeUsage(AttributeTargets.Field)]
 public class ScenarioStateAttribute : Attribute { }
 
@@ -154,7 +154,7 @@ public class DialogueLine {
     [ResourceName("Characters", typeof(DialogueCharacter))] public string Character = "";
     [Tooltip("What they say.")]
     [TextArea(2, 6)] public string Text = "";
-    [Tooltip("A sound played with the line (an AudioClip in Resources/Dialogue, by name): a voice line or a noise. Empty: the character's own Voice, if it has one; else silent. It stops when the line is closed, so lines never talk over each other.")]
+    [Tooltip("A sound played with the line (drag a clip in): a voice line or a noise. Empty: silent. It stops when the line is closed, so lines never talk over each other.")]
     [ResourceName("Dialogue", typeof(AudioClip))] public string Sound = "";
     [Tooltip("Where the portrait stands. Left or right of the text.")]
     public PortraitSide Portrait = PortraitSide.Left;
@@ -180,10 +180,10 @@ public class TriggerAction {
     [Tooltip("Camera Focus: seconds the camera takes to get there (0: at once). Wait: seconds the next action waits.")]
     public float Seconds = 1f;
 
-    [Tooltip("Show Marker: the marker prefab in Resources/ScenarioMarkers, by name.")]
-    [ResourceName("ScenarioMarkers", typeof(GameObject), ResourceKind.Marker)] public string Marker = "";
-    [Tooltip("Show Marker, Hide Marker: the marker's id, so a later action can remove it (empty on Hide Marker: every marker). Showing an id again moves that marker.")]
-    public string MarkerId = "";
+    [Tooltip("Show Marker: what the marker looks like: a marker prefab (the default ring-and-arrow is Marker; drag in another to use it).")]
+    [ResourceName("ScenarioMarkers", typeof(GameObject), ResourceKind.Marker)] public string Marker = "Marker";
+    [Tooltip("Show Marker: a name for this marker, so a Hide Marker action can remove it later (optional: without one, only Hide Marker's 'every marker' removes it). Showing a name again moves that marker. Hide Marker: the marker to remove, or every marker.")]
+    [MarkerName] public string MarkerId = "";
     [Tooltip("Show Marker: the text shown with the marker (empty: none).")]
     public string Text = "";
 
@@ -249,6 +249,9 @@ public class ResourceNameAttribute : PropertyAttribute {
     public ResourceNameAttribute(string folder, Type type, ResourceKind kind = ResourceKind.Any) { this.folder = folder; this.type = type; this.kind = kind; }
 }
 
+/// <summary>A marker's name: typed where a Show Marker names it, chosen from those names where a Hide Marker removes one.</summary>
+public class MarkerNameAttribute : PropertyAttribute { }
+
 /// <summary>A tile field (x; its y is the next field): drawn with a slot to drag a tile of the board onto, and the last tile clicked.</summary>
 public class TileFieldAttribute : PropertyAttribute { }
 
@@ -279,7 +282,7 @@ public class ScenarioTrigger {
     [Tooltip("After Trigger: the trigger that must have fired, by name.")]
     [TriggerName] public string AfterTrigger = "";
 
-    [Tooltip("Unit conditions: whose units. Building Captured: who took it. Building Owned: who holds it. Money At Least / At Most, Turn Over, Turn Started: whose. A player's id, or Any (-1), Human (-2: any side a person plays), AI (-3), Neutral (-4: nobody; Building Owned only).")]
+    [Tooltip("Unit conditions: whose units. Building Captured: who took it. Building Owned: who holds it. Money At Least / At Most: whose. Turn Over, Turn Started, Day Reached: whose turn. A player's id, or Any (-1), Human (-2: any side a person plays), AI (-3), Neutral (-4: nobody; Building Owned only).")]
     [SideChoice(true)] public long Side = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this kind (the unit prefab's name: Grunt, Tank ...; a faction's version counts as its base unit). Empty: any kind.")]
     [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
@@ -297,18 +300,20 @@ public class ScenarioTrigger {
     [Tooltip("Unit Enters, Units In Area, and any condition with In Area: tiles within this many steps of the centre (0: the tile only).")]
     public int Radius;
 
-    [Tooltip("How many (at least 1): Unit Enters, Unit Killed, Unit Built, Unit Damaged, Unit Healed, Building Captured, Building Destroyed, Turn Over, Turn Started (times it happened); Units In Area, Unit Starving, Out Of Ammo, Out Of Fuel, Low On Fuel, Cut Off, Building Owned (at least this many now).")]
+    [Tooltip("How many (at least 1): Unit Enters, Unit Killed, Unit Built, Unit Damaged, Unit Healed, Building Captured, Building Destroyed (times it happened); Turn Started, Turn Over (that side's turn number: 3 is its third turn); Units In Area, Unit Starving, Out Of Ammo, Out Of Fuel, Low On Fuel, Cut Off, Building Owned (at least this many now).")]
     public int Count = 1;
     [Tooltip("Day Reached: the day as the screen shows it (from 1). Money At Least / At Most: gold. Unit Damaged: strength left, at most (0: destroyed). Unit Healed: strength reached, at least. Low On Fuel: percent of a full tank, at most. Units At Most: how many units, at most (0: none left). Units At Least: how many units, at least.")]
     public int Value;
 
     [Header("Timing")]
-    [Tooltip("Seconds of play the condition must hold, without a break, before it fires (0: at once).")]
-    public float Delay;
-    [Tooltip("Fire again each time the condition is met anew (counts start again from 0 once it fires). Off: once.")]
+    [Tooltip("Turns (of the side in Turns Of) the condition must hold, without a break, before it fires: 'hold the bridge for 2 turns'. It fires as the last of those turns starts. If the condition breaks, the count starts over. 0: at once.")]
+    public int Delay;
+    [Tooltip("Delay, Repeat Every: whose turns are counted (Any side: every turn, whoever's it is).")]
+    [SideChoice(false)] public long TurnsOf = TriggerSide.Human;
+    [Tooltip("Off: the trigger fires once, ever. On: it fires again each time its condition is met anew (a counted condition starts counting from 0 after each firing, so 'Unit Killed, Repeat' fires on every kill).")]
     public bool Repeat;
-    [Tooltip("Repeat: seconds of play at least between two firings.")]
-    public float RepeatEvery;
+    [Tooltip("Repeat: at most once in this many turns (of the side in Turns Of). 0: no limit.")]
+    public int RepeatEvery;
 
     [Header("Actions (in order)")]
     public List<TriggerAction> Actions = new List<TriggerAction>();
@@ -316,8 +321,10 @@ public class ScenarioTrigger {
     // ---- Progress in a game (saved in a game, not part of the scenario as authored) ----
     [HideInInspector, ScenarioState] public int TimesFired;
     [HideInInspector, ScenarioState] public int Events;
-    [HideInInspector, ScenarioState] public float ConditionMetAt = -1f;
-    [HideInInspector, ScenarioState] public float LastFiredAt;
+    /// <summary>The turn count (TurnsOf's) when the condition began to hold without a break; -1: it does not hold.</summary>
+    [HideInInspector, ScenarioState] public int ConditionMetTurn = -1;
+    /// <summary>The turn count (TurnsOf's) when it last fired.</summary>
+    [HideInInspector, ScenarioState] public int LastFiredTurn;
 }
 
 /// <summary>A marker shown on the board by a Show Marker action (kept in a save).</summary>
@@ -340,9 +347,14 @@ public class RunningActions {
     public float WaitUntil;
 }
 
+/// <summary>How many turns a side has begun in this game (Delay and Repeat Every count them; kept in a save).</summary>
+[Serializable]
+public class SideTurns { public long Id; public int Count; }
+
 /// <summary>Everything a scenario's script is, as the scenario file keeps it ("script").</summary>
 [Serializable]
 public class ScenarioScriptData {
+    [ScenarioState] public List<SideTurns> TurnStarts = new List<SideTurns>();
     public int Version = 1;
     public List<ScenarioTrigger> Triggers = new List<ScenarioTrigger>();
     [ScenarioState] public bool Started;

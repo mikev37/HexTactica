@@ -15,5 +15,4 @@ MonoBehaviour:
   displayName: Placeholder Officer
   portrait: {fileID: 21300000, guid: 98c2e6c0368f4821a06c55d6b5816dda, type: 3}
   nameColour: {r: 0.85, g: 0.74, b: 0.55, a: 1}
-  voice: {fileID: 0}
-  facesLeft: 0
+  drawnFacing: 0

@@ -109,15 +109,18 @@ public static class ScenarioGame {
         return Mathf.Max(Mathf.Abs(ax - bx), Mathf.Max(Mathf.Abs(ay - by), Mathf.Abs(az - bz)));
     }
 
-    /// <summary>Where a tile is in the world: the board's tile, or (no board yet, in the editor) where the board would put it (HexGenerator's layout).</summary>
+    /// <summary>The middle of a tile's hex face above its root (where its highlight sits: HexTile's UI child).</summary>
+    const float FaceAbove = 1.88f;
+
+    /// <summary>The middle of a tile's hex face in the world: the board's tile, or (no board yet, in the editor) where the board would put it (HexGenerator's layout).</summary>
     public static Vector3 TilePosition(int x, int y) {
         HexTile t = Tile(x, y);
-        if (t != null) return t.transform.position;
+        if (t != null) return t.overlay != null ? new Vector3(t.overlay.transform.position.x, t.overlay.transform.position.y, t.transform.position.z) : t.transform.position + Vector3.up * FaceAbove;
         Vector3 origin = HexGenerator.hg != null ? HexGenerator.hg.transform.position : Vector3.zero;
         int z = -x - y;
         int j = z + (x - (x & 1)) / 2;
         float offset = x % 2 == 0 ? 3.25f : 0f;
-        return origin + new Vector3(x * 4f * 2f / 1.5f, j * 3.25f * 2f - offset, 0f);
+        return origin + new Vector3(x * 4f * 2f / 1.5f, j * 3.25f * 2f - offset + FaceAbove, 0f);
     }
 
     static bool KindIs(string name, string display, string kind) {

@@ -23,18 +23,11 @@ An asset dragged from outside a Resources folder can't be loaded by the game. Th
 the right folder for you, such as `Resources/Music/Special` for music. An asset can also live in a subfolder of any
 Resources folder: the file then keeps its path.
 
-Every normal save writes a scenario's triggers, and every load reads them: the S key, the map editor's Save, and the
-in-game Save. The inspector's own Save button is for edits made in the inspector. Edits made outside play have no
-running game to save them, and edits made in play are lost when play stops. The button writes only the triggers into
-the file, as authored, without any game's progress.
+Every normal save writes a scenario's triggers, and every load reads them: the map editor's Save, the S key, and
+the in-game Save. Like any change made in play, an edit you don't save is lost when play stops.
 
-- **Outside play:** HexTactica ▸ Scenario Triggers ▸ Open Scenario File… opens a `.dat` file. It puts its triggers on a
-  *Scenario Script (editing a file)* object in the open scene. That object is never saved with the scene. Select it,
-  edit the triggers, then press **Save triggers into it**. Save writes only the file's `"script"` and leaves the rest
-  of the file as it was.
-- **While playing:** select **Scenario Script** in the Hierarchy. Its triggers are live: a change applies at once,
-  and each folded trigger shows how often it has fired. Changes made in play are lost when play stops. To keep them,
-  press **Save triggers into it**. The file gets the triggers as you authored them, without the game's progress.
+- While a game is playing, the triggers are live: a change applies at once, and each folded trigger shows how often
+  it has fired, which is handy for trying things out.
 - The inspector shows only the fields a trigger's condition, or an action's type, uses. A folded trigger reads as one
   sentence: `Ambush: when the player's Tank enters (3,-3) r1, 2 actions`. Other triggers and sides are picked from
   lists. Everything else is dragged in (see above).
@@ -48,7 +41,8 @@ the file, as authored, without any game's progress.
 
 ## Sides
 
-A side is a player's id from the scenario file (0, 112, …), or one of these:
+Pick a side from the list, which names the scenario's players, or drag a player (its object in the Hierarchy) onto
+the slot beside the list. The list also has:
 
 - **Any side**.
 - **The player**: a side a person plays. Where one side is meant, such as "give this unit to the player", it is the
@@ -69,19 +63,19 @@ units or buildings must match at least.
 | Unit Killed (2) | matching units die, in any way (combat, starving, ditched, destroyed by a trigger): *Count* of them | side, kind, name, in area |
 | Building Captured (3) | a matching building is taken by *Side*, by capture or by a Give Building action: *Count* times | taken by, kind, in area |
 | Building Destroyed (4) | a matching building's health runs out (any owner) | kind, in area |
-| Day Reached (5) | the day on screen is *Value* or later (day 1 is the first) | day |
+| Day Reached (5) | the day on screen is *Value* or later (day 1 is the first), on *Side*'s turn (any side: whoever's turn it is) | day, on whose turn |
 | Units In Area (6) | now: at least *Count* matching units within the area | side, kind, name, area |
 | Money At Least (7) / At Most (8) | now: *Side* has at least / at most *Value* gold | whose, gold |
 | Unit Built (9) | matching units are bought at a building: *Count* of them | side, kind, name, in area |
 | Unit Damaged (10) | a matching unit loses strength and is left at *Value* or less (0 is destroyed) | side, kind, name, in area, strength |
-| Turn Over (11) | *Side*'s turn ends: *Count* times | whose |
+| Turn Over (11) | *Side*'s turn number *Count* ends (2: the end of its second turn) | on whose turn, turn number |
 | Unit Healed (12) | a matching unit gains strength and reaches *Value* or more | side, kind, name, in area, strength |
 | Unit Starving (13) | now: matching units out of supplies (they lose a strength each turn) | side, kind, name, in area |
 | Unit Out Of Ammo (14) / Out Of Fuel (15) | now: matching units with none left | side, kind, name, in area |
 | Unit Low On Fuel (16) | now: matching units with *Value* % of a full tank or less, but some left | side, kind, name, in area, % |
 | After Trigger (17) | the named trigger has fired at least once (sequencing) | trigger |
 | All Of (18) / Any Of (19) / None Of (20) | the named triggers' conditions hold now: all of them / at least one / none | parts |
-| Turn Started (21) | *Side*'s turn begins (after its upkeep): *Count* times | whose |
+| Turn Started (21) | *Side*'s turn number *Count* begins (3: its third turn), after its upkeep | on whose turn, turn number |
 | Units At Most (22) | now: at most *Value* matching units are alive (0: all gone, as in "destroy every enemy tank") | side, kind, name, in area |
 | Building Owned (23) | now: at least *Count* matching buildings are held by *Side* | held by, kind, in area |
 | Unit Cut Off (24) | now: matching units stand outside their side's supply | side, kind, name, in area |
@@ -97,12 +91,22 @@ named condition you can reuse. Its counts still go up while it is off.
 
 ## Timing
 
-- A trigger fires **once**, unless **Repeat** is on. With Repeat it fires each time it is met anew, at most every
-  *Repeat Every* seconds. Its counts start again from 0 each time it fires.
-- **Delay** is how long the condition must have held, in seconds of play, without a break. If the condition breaks,
-  the wait starts over.
-- Triggers are checked every frame, in list order, while the game plays. They are not checked during the pre-game
-  screen, the map editor, the in-game menu, or a replay. The level clock stops while a menu is open.
+Timing is counted in **turns**:
+
+- **Delay (turns)** is how many turns the condition must keep holding, without a break, before the trigger fires.
+  For example, "hold the bridge for 2 turns" is Units In Area with Delay 2. It fires as the last of those turns
+  starts. If the condition breaks, even for a moment (the unit is shot off the bridge), the count starts over.
+- **Turns Of** says whose turns are counted. The default is the player's; Any side counts every turn, whoever's it
+  is.
+- **Repeat** off: the trigger fires once, ever. Repeat on: it fires again each time its condition is met anew. A
+  counted condition starts counting from 0 after each firing, so *Unit Killed* with Repeat fires on every kill.
+  **Repeat Every (turns)** limits it to at most once in that many turns; 0 means no limit.
+- For a specific turn or day, use the conditions: *Turn Started* (a side's 3rd turn), *Day Reached* (day 5, on a
+  given side's turn), or *After Trigger* to chain triggers in order.
+- The only thing measured in seconds is the **Wait** action. It paces a scene within one moment, for example a pause
+  after the camera pans before the next line.
+- Triggers are checked continuously, in list order, while the game plays. They are not checked during the pre-game
+  screen, the map editor, the in-game menu, or a replay.
 - An **Enable Trigger** action switches a trigger on. Its counts start from then, so "after the briefing, the next
   kill…" counts only kills after the briefing. **Reset Trigger** lets a trigger fire again.
 
@@ -126,7 +130,7 @@ named condition you can reuse. Its counts still go up while it is off.
 | Destroy Units (20) | the matching units die |
 | Play Sound (21) | plays a sound from `Resources/Dialogue` once |
 | Ready Units (23) | the matching units can act again this turn (Value 1), or have used their turn (Value 0) |
-| Wait (24) | the trigger's next action waits *Seconds* |
+| Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |
 
 If an action matches nothing, it says so once in the console: no unit to give, no side by that name, no such marker
 prefab. It never fails silently.
@@ -143,9 +147,9 @@ prefab. It never fails silently.
   clicks, and the turn can't be ended. The box's full-screen shade catches clicks too.
 - **Sounds never overlap.** Each line's sound plays on the box's own audio source and stops when the line closes. If
   two triggers speak at once, their lines are queued and shown one after the other.
-- A line names a **character**: a `DialogueCharacter` asset in `Assets/Resources/Characters` with a display name,
-  portrait, name colour, an optional voice (played with lines that have no sound of their own) and which way the
-  picture faces (it is mirrored to face the text). Three placeholders are there for now (`Placeholder Officer`,
+- A line names a **character**: a `DialogueCharacter` asset in `Assets/Resources/Characters`, with a display name, a
+  portrait and a name colour. It also records which way the person in the portrait looks as drawn, so the box can
+  mirror the picture to look toward the text whichever side it stands on. Three placeholders are there for now (`Placeholder Officer`,
   `Placeholder Scout`, `Placeholder Commander`, from `Assets/Sprites/Portraits`). Replace their portraits, or add new
   characters, when the real art exists.
 - With no dialogue box (headless tests, or a missing prefab), each line goes to the log and nothing waits. A missing
@@ -153,15 +157,23 @@ prefab. It never fails silently.
 
 ## Markers
 
-`Assets/Resources/ScenarioMarkers/Marker.prefab` (made by Recreate Marker Prefab) is a ring round the tile, an arrow
-bobbing over it, and the action's text. Add other marker prefabs beside it; each needs a `ScenarioMarker` on its root.
-Its own particle systems and animators restart each time it is shown.
+A marker is a "go here" sign on a tile: a ring round the tile, an arrow bobbing over it, and the action's text
+("Take the bridge"). You don't need to make one. `Assets/Resources/ScenarioMarkers/Marker.prefab` is made for you
+the first time Unity opens the project, and every Show Marker action uses it unless you drag another prefab into
+*Looks Like*.
+
+- *Name (to hide it later)* is optional. Give the marker a name, such as `bridge`, if a later Hide Marker action
+  should remove just this one; Hide Marker then offers it in a list. Without a name, only Hide Marker's
+  "every marker" removes it.
+- For other looks (a skull for "destroy this", a flag), add more marker prefabs beside it. Each needs a
+  `ScenarioMarker` component on its root. A marker's particle systems and animators restart each time it is shown.
 
 ## Saving
 
 - A scenario file keeps the triggers as authored.
 - A saved game (the in-game menu, the S key) also keeps how far they have got:
-  - each trigger's fired count, its counts, its Delay timer, and whether it is on;
+  - each trigger's fired count, its counts, how many turns it has been held, and whether it is on;
+  - how many turns each side has begun;
   - the level clock;
   - the markers shown;
   - actions still waiting;
@@ -176,7 +188,7 @@ Its own particle systems and animators restart each time it is shown.
 
 1. **Briefing**: Level Start → Camera Focus on the bridge (3,-1), zoom 25 → Dialogue (Placeholder Officer: "Take
    the bridge before nightfall.") → Show Marker `Marker`, id `bridge`, text "Take the bridge", at (3,-1).
-2. **Across**: Units In Area, the player's units, (3,-1) radius 0, after a 1-second Delay → Hide Marker `bridge` →
+2. **Across**: Units In Area, the player's units, (3,-1) radius 0, held for 1 of the player's turns (Delay 1) → Hide Marker `bridge` →
    Dialogue (Placeholder Scout, right: "We're over!") → Spawn Unit 2 Tank for the AI at (7,-4), named "Counterattack".
 3. **Counterattack beaten**: Units At Most, the AI's units named "Counterattack", 0 → Play Music (a track you have put in
    `Resources/Music/Special`; that folder is empty for now) → Win for the player.

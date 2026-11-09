@@ -6,16 +6,16 @@ using UnityEngine;
 /// <summary>
 /// A scenario's script: its triggers (when this happens, do these things), run while the game is played. One per game
 /// scene (made when the scene opens). Its triggers are part of the scenario file ("script"): loading a scenario or a
-/// save replaces them, and saving writes them (a save with their progress). Edit them in the inspector: select
-/// "Scenario Script" in the Hierarchy while playing, or open a scenario file with HexTactica ▸ Scenario Triggers in
-/// the editor; its Save button writes them into the file.
+/// save replaces them, and saving writes them (a save with their progress). Edit them in the inspector: open the
+/// scenario in the map editor, select "Scenario Script" in the Hierarchy, and save the scenario as usual.
 ///
 /// How it runs (every frame of play, after the pre-game screen, never while a menu is open):
 /// <list type="bullet">
 /// <item>Facts that happen and are gone (a unit killed, a building taken, a turn over, a unit damaged) are counted, as
 ///   they happen, on every trigger that asks about them (its Events), including triggers switched off (parts).</item>
-/// <item>Then every trigger switched on is evaluated in order: by default it fires once; Delay is how long its condition
-///   must hold without a break; Repeat fires it again each time it is met anew, at most every RepeatEvery seconds.</item>
+/// <item>Then every trigger switched on is evaluated in order: by default it fires once; Delay is how many turns (of
+///   TurnsOf) its condition must hold without a break; Repeat fires it again each time it is met anew, at most once in
+///   RepeatEvery turns.</item>
 /// <item>A trigger that fires runs its actions in order. A Dialogue action's lines are queued (ScenarioDialogue) and
 ///   the next action waits until they are closed; a Wait action waits that long. Win or Lose ends the game, and
 ///   evaluation stops for the frame.</item>
@@ -27,7 +27,7 @@ public class ScenarioScript : MonoBehaviour {
     [Tooltip("The scenario's triggers, evaluated in this order.")]
     public List<ScenarioTrigger> triggers = new List<ScenarioTrigger>();
 
-    [Tooltip("The scenario file these triggers were loaded from (the inspector's Save button writes them back into it).")]
+    [HideInInspector, Tooltip("The scenario file these triggers were loaded from (for the log).")]
     public string scenarioPath = "";
 
     /// <summary>A side of the scenario, for the inspector's side choices (from the file's players, or the game's).</summary>
@@ -124,10 +124,11 @@ public class ScenarioScript : MonoBehaviour {
             ScenarioTrigger t = triggers[i];
             if (t == null || !t.Enabled) continue;
             if (!t.Repeat && t.TimesFired > 0) continue;                                          // once by default
-            if (t.Repeat && t.TimesFired > 0 && clock - t.LastFiredAt < t.RepeatEvery) continue;
-            if (!IsMet(t, 0)) { t.ConditionMetAt = -1f; continue; }                               // Delay counts unbroken holding
-            if (t.ConditionMetAt < 0f) t.ConditionMetAt = clock;
-            if (clock - t.ConditionMetAt < t.Delay) continue;
+            int turns = TurnsOf(t.TurnsOf);
+            if (t.Repeat && t.TimesFired > 0 && turns - t.LastFiredTurn < t.RepeatEvery) continue;
+            if (!IsMet(t, 0)) { t.ConditionMetTurn = -1; continue; }                               // Delay counts unbroken holding
+            if (t.ConditionMetTurn < 0) t.ConditionMetTurn = turns;
+            if (turns - t.ConditionMetTurn < t.Delay) continue;
             Fire(i);
             if (gc.gameOver) return;                                                              // a Win / Lose ends evaluation
         }
@@ -154,7 +155,8 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.TurnOver:
             case TriggerCondition.TurnStarted:
                 return t.Events >= count;
-            case TriggerCondition.DayReached: return ScenarioGame.Day >= t.Value;
+            case TriggerCondition.DayReached:
+                return ScenarioGame.Day >= t.Value && (t.Side == TriggerSide.Any || (GameController.gc != null && ScenarioGame.SideIs(GameController.gc.activePlayer, t.Side)));
             case TriggerCondition.UnitsInArea: return ScenarioGame.CountUnits(uf) >= count;
             case TriggerCondition.MoneyAtLeast:
                 foreach (Player p in ScenarioGame.Players) if (ScenarioGame.SideIs(p, t.Side) && !p.eliminated && p.money >= t.Value) return true;
@@ -316,7 +318,27 @@ public class ScenarioScript : MonoBehaviour {
 
     void OnTurnStarted(Player p) {
         if (!Counting || GameController.gc == null || GameController.gc.gameOver) return;
+        if (p != null) {
+            SideTurns st = turnStarts.Find(x => x.Id == p.id);
+            if (st == null) turnStarts.Add(st = new SideTurns { Id = p.id });
+            st.Count++;
+        }
         Count(TriggerCondition.TurnStarted, t => ScenarioGame.SideIs(p, t.Side));
+    }
+
+    /// <summary>Turns begun in this game by every side; Delay and Repeat Every count them (TurnsOf).</summary>
+    [HideInInspector] public List<SideTurns> turnStarts = new List<SideTurns>();
+
+    /// <summary>How many turns the sides <paramref name="side"/> means have begun since play started (Any: every turn).</summary>
+    public int TurnsOf(long side) {
+        int n = 0;
+        foreach (SideTurns st in turnStarts) {
+            if (side == TriggerSide.Any) { n += st.Count; continue; }
+            Player p = null;
+            foreach (Player q in ScenarioGame.Players) if (q.id == st.Id) p = q;
+            if (p != null ? ScenarioGame.SideIs(p, side) : st.Id == side) n += st.Count;
+        }
+        return n;
     }
 
     // ------------------------------------------------------------------ actions
@@ -325,9 +347,9 @@ public class ScenarioScript : MonoBehaviour {
     public void Fire(int index) {
         ScenarioTrigger t = triggers[index];
         t.TimesFired++;
-        t.LastFiredAt = clock;
+        t.LastFiredTurn = TurnsOf(t.TurnsOf);
         t.Events = 0;
-        t.ConditionMetAt = -1f;
+        t.ConditionMetTurn = -1;
         if (t.Actions == null || t.Actions.Count == 0) { Warn(t, "it fired, but it has no actions."); return; }
         RunningActions r = new RunningActions { Trigger = index, Next = 0 };
         if (!Run(r)) running.Add(r);
@@ -443,7 +465,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.ResetTrigger: {
                 ScenarioTrigger other = string.IsNullOrEmpty(a.Trigger) ? t : Find(a.Trigger);
                 if (other == null) { Warn(t, a.Type + ": no trigger named '" + a.Trigger + "'."); return; }
-                other.ConditionMetAt = -1f;
+                other.ConditionMetTurn = -1;
                 if (a.Type == TriggerActionType.DisableTrigger) { other.Enabled = false; return; }
                 other.Events = 0;   // counts start from now
                 if (a.Type == TriggerActionType.EnableTrigger) other.Enabled = true;
@@ -486,6 +508,7 @@ public class ScenarioScript : MonoBehaviour {
             d.Clock = clock;
             d.Markers = markers;
             d.Running = running;
+            d.TurnStarts = turnStarts;
             d.PendingLines = ScenarioDialogue.Pending();
         }
         return ScenarioJson.Write(d, withState);
@@ -506,6 +529,7 @@ public class ScenarioScript : MonoBehaviour {
         started = d.Started;
         clock = d.Clock;
         running = d.Running ?? new List<RunningActions>();
+        turnStarts = d.TurnStarts ?? new List<SideTurns>();
         warned.Clear();
         seen.Clear();
         snapshotTaken = false;
