@@ -136,6 +136,11 @@ namespace UnityEngine {
     public struct Vector2Int { public int x, y; public Vector2Int(int x, int y) { this.x = x; this.y = y; } }
     public struct Resolution { public int width, height; }
     public class AudioListener : Behaviour { public static float volume = 1f; }
+    public class AudioClip : Object { public float length; }
+    public class AudioSource : Behaviour {
+        public AudioClip clip; public bool playOnAwake, loop, mute, isPlaying; public float volume = 1f, pitch = 1f, spatialBlend;
+        public void Play() { isPlaying = true; } public void Stop() { isPlaying = false; } public void PlayOneShot(AudioClip c) { }
+    }
     public static class QualitySettings {
         public static string[] names { get { return new string[0]; } }
         public static int vSyncCount;

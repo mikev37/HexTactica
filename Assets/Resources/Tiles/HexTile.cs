@@ -486,6 +486,8 @@ public class HexTile : MonoBehaviour
                 // Only what it can fire on now: enemies it sees in range (not its whole range, not friends or empty tiles).
                 CheckAttackRange(sel).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
                 changeState(UIState.SELECTED);
+                // A human's order: the unit acknowledges (the AI selects its units without clicking, so never for them).
+                sel.PlayOrderSound();
                 // Our transports it can board: beside it now, or beside a tile it can get to (a friend's too: it
                 // passes through it on the way in).
                 Unit cargo = sel;
