@@ -62,7 +62,7 @@ public static class GameInsights {
             sb.AppendLine(f.body);
             sb.AppendLine();
         }
-        sb.Append(UnitTables(s, viewer, false));
+        sb.Append(UnitTables(s, viewer));
         return sb.ToString();
     }
 
@@ -237,7 +237,7 @@ public static class GameInsights {
             }
         }
         int otherWays = lost_.Count(x => x.killerSide != enemy);
-        if (otherWays > 0) sb.Append(otherWays == lost_.Count ? ", none in combat" : "; " + otherWays + " to supply, fuel or going down aboard");
+        if (otherWays > 0) sb.Append(otherWays == lost_.Count ? ", none in combat" : "; " + otherWays + " outside combat (supply, fuel, aboard a transport, or with their side)");
         sb.Append('.');
         int kills = c.KillsBy(side, kind);
         string topKiller = c.KindsOf(side).OrderByDescending(k => c.KillsBy(side, k)).FirstOrDefault();
@@ -413,23 +413,46 @@ public static class GameInsights {
 
     // ------------------------------------------------------------------ the units table
 
-    /// <summary>Each side's kinds of unit: started, bought, lost, kills, and material killed for material lost. Rich text (TextMeshPro) or plain.</summary>
-    public static string UnitTables(GameRecord s, long viewer, bool rich) {
-        if (s == null) return "";
+    /// <summary>One side's units table: its title, and a row per kind (unit, start, bought, lost, kills, trade).</summary>
+    public class UnitTable {
+        public string title;
+        public List<string[]> rows = new List<string[]>();
+    }
+
+    /// <summary>What the trade column means (the post-game screen shows it under the tables).</summary>
+    public const string TradeNote = "Trade: the worth a kind destroyed (damage x the target's cost per strength point) for the worth it lost; above 1 it paid for itself.";
+
+    /// <summary>Each side's kinds of unit: started, bought, lost, kills, and the worth they destroyed for the worth they lost.</summary>
+    public static List<UnitTable> UnitTablesOf(GameRecord s, long viewer) {
+        List<UnitTable> tables = new List<UnitTable>();
+        if (s == null) return tables;
         Ctx c = new Ctx(s, viewer);
-        StringBuilder sb = new StringBuilder();
         foreach (GameRecord.Side side in c.Sides) {
-            sb.Append(rich ? "<b>" : "").Append(Cap(c.Name(side.id))).Append(side.faction.Length > 0 ? " (" + side.faction + ")" : "").Append(rich ? "</b>" : "").Append('\n');
-            sb.Append(rich ? "<mspace=0.6em>" : "");
-            sb.Append(string.Format(CultureInfo.InvariantCulture, "{0,-24}{1,6}{2,7}{3,6}{4,7}{5,9}\n", "unit", "start", "bought", "lost", "kills", "trade"));
+            UnitTable t = new UnitTable { title = Cap(c.Name(side.id)) + (side.faction.Length > 0 ? " (" + side.faction + ")" : "") };
             foreach (string k in c.KindsOf(side.id).OrderByDescending(k => c.Bought(side.id, k) + c.Started(side.id, k))) {
-                float t = c.TradeOf(side.id, k);
-                sb.Append(string.Format(CultureInfo.InvariantCulture, "{0,-24}{1,6}{2,7}{3,6}{4,7}{5,9}\n", Trim(k, 23), c.Started(side.id, k), c.Bought(side.id, k), c.LostOf(side.id, k), c.KillsBy(side.id, k),
-                    float.IsNaN(t) ? "-" : float.IsInfinity(t) ? "no losses" : t.ToString("0.00", CultureInfo.InvariantCulture)));
+                float tr = c.TradeOf(side.id, k);
+                t.rows.Add(new[] {
+                    k, c.Started(side.id, k).ToString(CultureInfo.InvariantCulture), c.Bought(side.id, k).ToString(CultureInfo.InvariantCulture),
+                    c.LostOf(side.id, k).ToString(CultureInfo.InvariantCulture), c.KillsBy(side.id, k).ToString(CultureInfo.InvariantCulture),
+                    float.IsNaN(tr) ? "-" : float.IsInfinity(tr) ? "no losses" : tr.ToString("0.00", CultureInfo.InvariantCulture)
+                });
             }
-            sb.Append(rich ? "</mspace>" : "").Append('\n');
+            tables.Add(t);
         }
-        sb.Append(rich ? "<i>" : "").Append("trade: the worth it destroyed (damage x the target's cost per strength point) for the worth it lost; above 1 it paid for itself.").Append(rich ? "</i>" : "").Append('\n');
+        return tables;
+    }
+
+    /// <summary>The units tables as plain text (the headless report).</summary>
+    public static string UnitTables(GameRecord s, long viewer) {
+        StringBuilder sb = new StringBuilder();
+        foreach (UnitTable t in UnitTablesOf(s, viewer)) {
+            sb.Append(t.title).Append('\n');
+            sb.Append(string.Format(CultureInfo.InvariantCulture, "{0,-24}{1,6}{2,7}{3,6}{4,7}{5,10}\n", "unit", "start", "bought", "lost", "kills", "trade"));
+            foreach (string[] r in t.rows)
+                sb.Append(string.Format(CultureInfo.InvariantCulture, "{0,-24}{1,6}{2,7}{3,6}{4,7}{5,10}\n", Trim(r[0], 23), r[1], r[2], r[3], r[4], r[5]));
+            sb.Append('\n');
+        }
+        sb.Append(TradeNote).Append('\n');
         return sb.ToString();
     }
 

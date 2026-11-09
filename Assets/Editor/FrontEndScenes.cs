@@ -26,7 +26,7 @@ static class FrontEndScenes {
     const string SettingsPath = "Assets/Resources/" + FrontEndSettings.ResourceName + ".asset";
     const string PreviewTexturePath = "Assets/FrontEnd/UnitPreview.renderTexture";
     const string PrefabFolder = "Assets/FrontEnd/Prefabs/";
-    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row" };
+    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row" };
 
     static FrontEndScenes() { EditorApplication.delayCall += () => CreateMissing(false); }
 
@@ -71,7 +71,14 @@ static class FrontEndScenes {
     static void UpdateScenes() {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
         FrontEndSettings s = Settings();
-        string path = SceneFolder + s.mapEditorScene + ".unity";
+        UpdateScene<MapEditorPanel>(s.mapEditorScene, UpdateMapEditor);
+        UpdateScene<PostGameScreen>(s.postGameScene, UpdatePostGame);
+        AssetDatabase.SaveAssets();
+    }
+
+    /// <summary>Open the scene (if it exists), run <paramref name="update"/> on its component, save it if anything changed, and say what.</summary>
+    static void UpdateScene<T>(string name, System.Action<T, List<string>> update) where T : Component {
+        string path = SceneFolder + name + ".unity";
         if (!File.Exists(path)) { Debug.Log("No " + path + ": nothing to update (Create Missing Scenes makes it new)."); return; }
         Scene was = SceneManager.GetActiveScene();
         bool open = false;
@@ -79,36 +86,54 @@ static class FrontEndScenes {
         Scene scene = open ? SceneManager.GetSceneByPath(path) : EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
         List<string> done = new List<string>();
         try {
-            MapEditorPanel m = null;
-            foreach (GameObject root in scene.GetRootGameObjects()) { m = root.GetComponentInChildren<MapEditorPanel>(true); if (m != null) break; }
-            if (m == null) { Debug.LogWarning(path + " has no MapEditorPanel: not updated."); return; }
-            if (m.paletteView == null && m.palette != null) {
-                ScrollRect sr = m.palette.GetComponentInParent<ScrollRect>(true);
-                if (sr != null) { m.paletteView = sr.gameObject; done.Add("palette view linked"); }
-            }
-            if (m.lookPanel == null && m.paletteView != null) {
-                Transform panel = m.paletteView.transform.parent;
-                GameObject look = new GameObject("Look Panel", typeof(RectTransform));
-                look.layer = 5;
-                look.transform.SetParent(panel, false);
-                look.transform.SetSiblingIndex(m.paletteView.transform.GetSiblingIndex() + 1);
-                VLayout(look, 0, 14f);
-                Flexible(look, true);
-                foreach (string n in new[] { "Sides Heading", "Sides", "Name", "Width", "Rules" }) {
-                    Transform t = panel.Find(n);
-                    if (t != null) t.SetParent(look.transform, false);
-                }
-                m.lookPanel = look;
-                done.Add("Look page made (Sides, Name, Width, Rules moved onto it)");
-            }
-            Transform neutral = m.sideRow != null ? m.sideRow.transform.Find("Neutral") : null;
-            if (neutral != null) { Object.DestroyImmediate(neutral.gameObject); done.Add("Neutral checkbox removed (Neutral is in the For list)"); }
+            T m = null;
+            foreach (GameObject root in scene.GetRootGameObjects()) { m = root.GetComponentInChildren<T>(true); if (m != null) break; }
+            if (m == null) { Debug.LogWarning(path + " has no " + typeof(T).Name + ": not updated."); return; }
+            SceneManager.SetActiveScene(scene);
+            update(m, done);
             if (done.Count > 0) { EditorUtility.SetDirty(m); EditorSceneManager.MarkSceneDirty(scene); EditorSceneManager.SaveScene(scene); }
         } finally {
-            if (!open) EditorSceneManager.CloseScene(scene, true);
             if (was.IsValid()) SceneManager.SetActiveScene(was);
+            if (!open) EditorSceneManager.CloseScene(scene, true);
         }
         Debug.Log(done.Count > 0 ? "Updated " + path + ": " + string.Join("; ", done.ToArray()) + "." : path + " is up to date.");
+    }
+
+    /// <summary>The map editor's Look page (the sides, name, width and rules move onto it), the palette's view linked, Neutral into the For list.</summary>
+    static void UpdateMapEditor(MapEditorPanel m, List<string> done) {
+        if (m.paletteView == null && m.palette != null) {
+            ScrollRect sr = m.palette.GetComponentInParent<ScrollRect>(true);
+            if (sr != null) { m.paletteView = sr.gameObject; done.Add("palette view linked"); }
+        }
+        if (m.lookPanel == null && m.paletteView != null) {
+            Transform panel = m.paletteView.transform.parent;
+            GameObject look = new GameObject("Look Panel", typeof(RectTransform));
+            look.layer = 5;
+            look.transform.SetParent(panel, false);
+            look.transform.SetSiblingIndex(m.paletteView.transform.GetSiblingIndex() + 1);
+            VLayout(look, 0, 14f);
+            Flexible(look, true);
+            foreach (string n in new[] { "Sides Heading", "Sides", "Name", "Width", "Rules" }) {
+                Transform t = panel.Find(n);
+                if (t != null) t.SetParent(look.transform, false);
+            }
+            m.lookPanel = look;
+            done.Add("Look page made (Sides, Name, Width, Rules moved onto it)");
+        }
+        Transform neutral = m.sideRow != null ? m.sideRow.transform.Find("Neutral") : null;
+        if (neutral != null) { Object.DestroyImmediate(neutral.gameObject); done.Add("Neutral checkbox removed (Neutral is in the For list)"); }
+    }
+
+    /// <summary>The post-game units page as a table: rows of the table prefabs in place of the one block of text (kept for the note under the tables).</summary>
+    static void UpdatePostGame(PostGameScreen m, List<string> done) {
+        if (m.unitRows == null && m.unitTables != null) {
+            m.unitRows = (RectTransform)m.unitTables.transform.parent;
+            m.unitTables.fontSize = 20f;
+            m.unitTables.fontStyle = FontStyles.Italic;
+            done.Add("units page is a table (the text under it explains trade)");
+        }
+        if (m.tableHeading == null) { m.tableHeading = RowPrefab("Unit Table Heading", TableHeading); done.Add("table heading prefab linked"); }
+        if (m.tableRow == null) { m.tableRow = RowPrefab("Unit Table Row", TableRow); done.Add("table row prefab linked"); }
     }
 
     static FrontEndSettings Settings() {
@@ -365,7 +390,10 @@ static class FrontEndScenes {
         m.findingsPage = f.GetComponentInParent<ScrollRect>().gameObject;
         RectTransform u = ScrollList(pages.transform, "Units", -1f, -1f);
         Flexible(u.GetComponentInParent<ScrollRect>().gameObject, true);
-        m.unitTables = Text(u, "Text", "", 22, TextAlignmentOptions.TopLeft, FontStyles.Normal);
+        m.unitRows = u;
+        m.tableHeading = RowPrefab("Unit Table Heading", TableHeading);
+        m.tableRow = RowPrefab("Unit Table Row", TableRow);
+        m.unitTables = Text(u, "Text", "", 20, TextAlignmentOptions.TopLeft, FontStyles.Italic);
         m.unitsPage = u.GetComponentInParent<ScrollRect>().gameObject;
         GameObject buttons = Row(w.transform, "Buttons", 64f);
         Btn(buttons.transform, "View board", m.ViewBoard, 240f);
@@ -568,6 +596,39 @@ static class FrontEndScenes {
         Fill(r.picture);
         r.label = Text(g.transform, "Name", "Grassland", 22, TextAlignmentOptions.Left, FontStyles.Normal);
         Flexible(r.label.gameObject);
+        return r;
+    }
+
+    /// <summary>The post-game units table's columns: the unit's name, then five numbers.</summary>
+    static readonly string[] TableColumns = { "Unit", "Start", "Bought", "Lost", "Kills", "Trade" };
+    const float TableNameWidth = 420f, TableCellWidth = 130f;
+
+    static void TableCells(GameObject row, string[] texts, FontStyles style, List<TMP_Text> into) {
+        for (int i = 0; i < texts.Length; i++) {
+            TextMeshProUGUI t = Text(row.transform, TableColumns[i], texts[i], 22, i == 0 ? TextAlignmentOptions.Left : TextAlignmentOptions.Right, style);
+            Size(t.gameObject, i == 0 ? TableNameWidth : TableCellWidth, -1f);
+            if (into != null) into.Add(t);
+        }
+    }
+
+    static UnitTableHeading TableHeading(Transform parent) {
+        GameObject g = Go("Unit Table Heading", parent);
+        VLayout(g, 0, 4f);
+        UnitTableHeading h = g.AddComponent<UnitTableHeading>();
+        h.title = Text(g.transform, "Side", "Blue", 28, TextAlignmentOptions.Left, FontStyles.Bold);
+        GameObject cols = Row(g.transform, "Columns", 32f);
+        Image line = cols.AddComponent<Image>();
+        line.sprite = Widget("panel"); line.type = Image.Type.Sliced; line.color = new Color(1f, 1f, 1f, 0.1f);
+        TableCells(cols, TableColumns, FontStyles.Bold, null);
+        return h;
+    }
+
+    static UnitTableRow TableRow(Transform parent) {
+        GameObject g = Row(parent, "Unit Table Row", 30f);
+        UnitTableRow r = g.AddComponent<UnitTableRow>();
+        List<TMP_Text> cells = new List<TMP_Text>();
+        TableCells(g, new[] { "Grunt", "0", "0", "0", "0", "-" }, FontStyles.Normal, cells);
+        r.cells = cells.ToArray();
         return r;
     }
 

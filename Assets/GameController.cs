@@ -378,9 +378,13 @@ public class GameController : MonoBehaviour
             }
             gameOver = true;
             winner = tie ? null : best;
+            if (GameEnded != null) GameEnded();
         }
         if (TurnStarted != null) TurnStarted(activePlayer);
     }
+
+    /// <summary>The game has just ended (gameOver and winner are set): however it ended, an HQ taken, a side eliminated, the round limit. For logs.</summary>
+    public static event System.Action GameEnded;
 
     /// <summary>A player's turn has begun (after its upkeep), or the game just ended. For logs.</summary>
     public static event System.Action<Player> TurnStarted;
@@ -432,6 +436,7 @@ public class GameController : MonoBehaviour
         if (alive <= 1) {
             gameOver = true;
             winner = survivor;
+            if (GameEnded != null) GameEnded();
         }
     }
 

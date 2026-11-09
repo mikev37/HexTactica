@@ -10,7 +10,12 @@ using UnityEngine;
 public class PostGameScreen : MonoBehaviour {
     public TMP_Text headline;
     public TMP_Text findings;
+    [Tooltip("Under the tables: what the trade column means.")]
     public TMP_Text unitTables;
+    [Tooltip("Where each side's units table goes (a vertical layout): a heading, then a row per kind of unit.")]
+    public RectTransform unitRows;
+    public UnitTableHeading tableHeading;
+    public UnitTableRow tableRow;
     public GameObject findingsPage;
     public GameObject unitsPage;
     [Tooltip("A finding's heading, before and after it (TextMeshPro rich text).")]
@@ -34,12 +39,26 @@ public class PostGameScreen : MonoBehaviour {
                 findings.text = sb.Length > 0 ? sb.ToString() : noStatistics;
             }
         }
-        if (unitTables != null) unitTables.text = s != null ? GameInsights.UnitTables(s, viewer, true) : noStatistics;
+        ShowTables(s, viewer);
         source = s != null ? s.source : null;
         ShowFindings();
     }
 
     string source;
+
+    /// <summary>A heading and rows per side (copies of the table prefabs), then the note on trade.</summary>
+    void ShowTables(GameRecord s, long viewer) {
+        if (unitTables != null) unitTables.text = s != null ? GameInsights.TradeNote : noStatistics;
+        if (s == null || unitRows == null || tableRow == null) return;
+        foreach (GameInsights.UnitTable t in GameInsights.UnitTablesOf(s, viewer)) {
+            if (tableHeading != null) {
+                UnitTableHeading h = Instantiate(tableHeading, unitRows);
+                if (h.title != null) h.title.text = t.title;
+            }
+            foreach (string[] r in t.rows) Instantiate(tableRow, unitRows).Show(r);
+        }
+        if (unitTables != null && unitTables.transform.parent == unitRows) unitTables.transform.SetAsLastSibling();
+    }
 
     public void ShowFindings() { if (findingsPage != null) findingsPage.SetActive(true); if (unitsPage != null) unitsPage.SetActive(false); }
     public void ShowUnits() { if (findingsPage != null) findingsPage.SetActive(false); if (unitsPage != null) unitsPage.SetActive(true); }

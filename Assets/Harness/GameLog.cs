@@ -82,6 +82,7 @@ namespace HexTactica.Harness {
             Unit.RanInto += OnRanInto;
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
+            GameController.GameEnded += GameOver;
             AIPlayer.Trace = Line;
             AITactical.DecisionLog = Line;
             AISupplyPlanner.DebugLog = Line;
@@ -170,6 +171,7 @@ namespace HexTactica.Harness {
             Unit.Finished -= OnFinished;
             Unit.RanInto -= OnRanInto;
             GameController.TurnStarted -= OnTurnStarted;
+            GameController.GameEnded -= GameOver;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
             if (AITactical.DecisionLog == (Action<string>)Line) AITactical.DecisionLog = null;
             if (AISupplyPlanner.DebugLog == (Action<string>)Line) AISupplyPlanner.DebugLog = null;
@@ -282,7 +284,8 @@ namespace HexTactica.Harness {
         /// <summary>Every unit lost, and how: out of fuel, aboard a transport that went down, starved in upkeep, or in combat (the attack line after it says by whom).</summary>
         static void OnDied(Unit u) {
             if (writer == null || u == null) return;
-            string cause = ditching.Remove(u) ? Lines.Fuel : u.trasnporter != null ? Lines.Aboard : Player.InUpkeep ? Lines.Supply : Lines.Combat;
+            string cause = ditching.Remove(u) ? Lines.Fuel : u.owner != null && u.owner.eliminated ? Lines.Eliminated
+                         : u.trasnporter != null ? Lines.Aboard : Player.InUpkeep ? Lines.Supply : Lines.Combat;
             Line(Lines.Dies(u, cause));
         }
 
@@ -314,6 +317,11 @@ namespace HexTactica.Harness {
             }
             Line(Lines.Attack(attacker, defender, from, at, o));
             if (GameController.gc != null && GameController.gc.gameOver) GameOver();
+        }
+
+        /// <summary>The game has ended (an HQ taken, a side eliminated: not every end has a turn after it): write its end, once.</summary>
+        public static void EndIfOver() {
+            if (writer != null && GameController.gc != null && GameController.gc.gameOver) GameOver();
         }
 
         static void GameOver() {
