@@ -9,7 +9,9 @@ public class Player : MonoBehaviour
     public Color displayColor;
     public Faction faction;
     public bool mainPlayer;
-    public List<Unit> units;
+    // Never null: a side made in code (AddComponent: a side the file has and the scene does not, or one the map
+    // editor adds) gets no list from Unity's serialisation.
+    public List<Unit> units = new List<Unit>();
 
     [Header("Economy")]
     public int money;
