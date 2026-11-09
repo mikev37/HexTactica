@@ -65,6 +65,7 @@ Harness/ReplayPanel.cs
 Harness/ScenarioMirror.cs
 UI/UnitStatusIcon.cs
 UI/UnitAlarmSprites.cs
+GameSounds.cs
 UI/UnitAlarmIcon.cs
 UI/SupplyDot.cs
 UI/SpriteLayout.cs

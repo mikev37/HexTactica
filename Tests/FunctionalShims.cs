@@ -38,6 +38,7 @@ namespace UnityEngine {
         public static void Destroy(Object o) { MainThreadOnly.Check("Destroy"); }
         public static void Destroy(Object o, float t) { MainThreadOnly.Check("Destroy"); }
         public static void DestroyImmediate(Object o) { MainThreadOnly.Check("DestroyImmediate"); }
+        public static void DontDestroyOnLoad(Object o) { }
         public static T Instantiate<T>(T o, Transform p) where T : Object { return GameObject.Instantiate(o, p); }
         public static T Instantiate<T>(T o, Transform p, bool worldPositionStays) where T : Object { return GameObject.Instantiate(o, p); }
         public static T FindObjectOfType<T>() where T : class { return null; }
@@ -139,7 +140,7 @@ namespace UnityEngine {
     public class AudioClip : Object { public float length; }
     public class AudioSource : Behaviour {
         public AudioClip clip; public bool playOnAwake, loop, mute, isPlaying; public float volume = 1f, pitch = 1f, spatialBlend;
-        public void Play() { isPlaying = true; } public void Stop() { isPlaying = false; } public void PlayOneShot(AudioClip c) { }
+        public void Play() { isPlaying = true; } public void Stop() { isPlaying = false; } public void PlayOneShot(AudioClip c) { } public void PlayOneShot(AudioClip c, float v) { }
     }
     public static class QualitySettings {
         public static string[] names { get { return new string[0]; } }
