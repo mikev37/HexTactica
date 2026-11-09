@@ -20,9 +20,9 @@ public class DialogueCharacter : ScriptableObject {
 
     public string ShownName { get { return string.IsNullOrEmpty(displayName) ? name : displayName; } }
 
-    /// <summary>The character named <paramref name="assetName"/> in Resources/Characters, or null.</summary>
+    /// <summary>The character a line names (its name in Resources/Characters, or its path under any Resources folder: ScenarioAssets), or null.</summary>
     public static DialogueCharacter Find(string assetName) {
         if (string.IsNullOrEmpty(assetName)) return null;
-        return Resources.Load<DialogueCharacter>(ScenarioDialogue.CharacterFolder + assetName.Trim());
+        return ScenarioAssets.Load<DialogueCharacter>(assetName, ScenarioDialogue.CharacterFolder);
     }
 }

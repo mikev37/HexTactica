@@ -38,7 +38,8 @@ public class ScenarioMarkers : MonoBehaviour {
             return;
         }
         Hide(m.Id);
-        ScenarioMarker prefab = Resources.Load<ScenarioMarker>(ScenarioMarker.Folder + m.Marker);
+        GameObject asset = ScenarioAssets.Load<GameObject>(m.Marker, ScenarioMarker.Folder);
+        ScenarioMarker prefab = asset != null ? asset.GetComponent<ScenarioMarker>() : null;
         if (prefab == null) { Debug.LogWarning("Scenario: no marker prefab '" + m.Marker + "' in Resources/" + ScenarioMarker.Folder + " (it needs a ScenarioMarker on its root)."); return; }
         mk = Instantiate(prefab, at, Quaternion.identity, transform);
         mk.name = m.Marker + " (" + m.Id + ")";

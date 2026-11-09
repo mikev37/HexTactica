@@ -133,4 +133,5 @@ Scenario/ScenarioJson.cs
 Scenario/ScenarioGame.cs
 Scenario/ScenarioDialogue.cs
 Scenario/ScenarioScript.cs
+Scenario/ScenarioAssets.cs
 Scenario/DialogueCharacter.cs

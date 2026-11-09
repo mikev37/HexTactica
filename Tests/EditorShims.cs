@@ -30,6 +30,7 @@ namespace UnityEditor {
         public static bool DisplayDialog(string t, string m, string ok, string cancel) { return false; }
         public static bool DisplayDialog(string t, string m, string ok) { return true; }
         public static void SetDirty(UnityEngine.Object o) { }
+        public static bool IsPersistent(UnityEngine.Object o) { return false; }
         public static void RevealInFinder(string path) { }
         public static string OpenFilePanel(string title, string dir, string ext) { return ""; }
         public static string OpenFolderPanel(string title, string dir, string name) { return ""; }
@@ -45,6 +46,10 @@ namespace UnityEditor {
         public static bool DeleteAsset(string path) { return true; }
         public static void SaveAssets() { }
         public static void Refresh() { }
+        public static string GetAssetPath(UnityEngine.Object o) { return ""; }
+        public static string MoveAsset(string a, string b) { return ""; }
+        public static bool IsValidFolder(string p) { return true; }
+        public static string CreateFolder(string parent, string name) { return ""; }
     }
     public static class Undo { public static void RecordObject(UnityEngine.Object o, string name) { } }
 
@@ -79,6 +84,10 @@ namespace UnityEditor {
         public static bool Foldout(UnityEngine.Rect r, bool open, string l, bool toggleOnLabelClick) { return open; }
         public static int Popup(UnityEngine.Rect r, string l, int i, string[] o) { return i; }
         public static long LongField(UnityEngine.Rect r, long v) { return v; }
+        public static UnityEngine.Object ObjectField(UnityEngine.Rect r, UnityEngine.GUIContent l, UnityEngine.Object o, Type t, bool scene) { return o; }
+        public static string TextField(UnityEngine.Rect r, UnityEngine.GUIContent l, string v) { return v; }
+        public static bool DropdownButton(UnityEngine.Rect r, UnityEngine.GUIContent c, UnityEngine.FocusType f) { return false; }
+        public static void HelpBox(UnityEngine.Rect r, string m, MessageType t) { }
     }
     public static class EditorGUILayout {
         public static void LabelField(string a, string b) { }
@@ -99,7 +108,9 @@ namespace UnityEditor {
     }
     public static class HandleUtility { public static float GetHandleSize(UnityEngine.Vector3 p) { return 1f; } }
     public static class Selection { public static UnityEngine.Object activeObject; }
+    public class GenericMenu { public delegate void MenuFunction(); public void AddItem(UnityEngine.GUIContent c, bool on, MenuFunction f) { } public void DropDown(UnityEngine.Rect r) { } }
 }
 namespace UnityEngine {
     public enum EventType { Repaint, Layout }
+    public enum FocusType { Passive, Keyboard }
 }

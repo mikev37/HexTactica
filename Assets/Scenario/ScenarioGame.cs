@@ -198,7 +198,7 @@ public static class ScenarioGame {
 
     public static void PlaySound(string name) {
         if (string.IsNullOrEmpty(name)) return;
-        AudioClip c = Resources.Load<AudioClip>(ScenarioDialogue.SoundFolder + name);
+        AudioClip c = ScenarioAssets.Load<AudioClip>(name, ScenarioDialogue.SoundFolder);
         if (c == null) { Debug.LogWarning("Scenario: no sound '" + name + "' in Resources/" + ScenarioDialogue.SoundFolder); return; }
         GameSounds.Play(c);
     }

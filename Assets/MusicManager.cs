@@ -77,6 +77,7 @@ public class MusicManager : MonoBehaviour {
         AudioClip clip = null;
         AudioClip[] all = m.Folder("Special");
         if (string.IsNullOrEmpty(track)) clip = m.Pick(all);
+        else if (track.IndexOf('/') >= 0) clip = Resources.Load<AudioClip>(track);   // a clip elsewhere under Resources, by its path (ScenarioAssets)
         else foreach (AudioClip c in all) if (c != null && c.name == track) { clip = c; break; }
         if (clip == null) return false;
         m.special = true;

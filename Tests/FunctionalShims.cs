@@ -262,6 +262,7 @@ namespace UnityEngine {
         public Component AddComponent(Type t) { Component c = (Component)Activator.CreateInstance(t); Attach(c); return c; }
         public T GetComponentInChildren<T>(bool includeInactive) where T : class { return GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return GetComponents<T>(); }
+        public T GetComponentInParent<T>() where T : class { return GetComponent<T>(); }
         public int layer;
         public string tag = "Untagged";
         public UnityEngine.SceneManagement.Scene scene { get { return new UnityEngine.SceneManagement.Scene(); } }
@@ -371,6 +372,7 @@ namespace UnityEngine {
         /// <summary>The harness's Resources folder: what it finds under that path, by type (PrefabLoader; null: nothing).</summary>
         public static System.Func<System.Type, string, object[]> Provider;
         public static Object[] LoadAll(string path) { return LoadAll<Object>(path); }
+        public static Object Load(string path, System.Type t) { return null; }
         public static T[] LoadAll<T>(string path) where T : class {
             object[] found = Provider != null ? Provider(typeof(T), path) : null;
             if (found == null) return new T[0];
@@ -432,6 +434,7 @@ namespace UnityEngine {
         public static void Label(Rect r, string s, GUIStyle st) { }
         public static void DrawTexture(Rect r, Texture t) { }
         public static bool Button(Rect r, string s) { return false; }
+        public static bool Button(Rect r, GUIContent c) { return false; }
     }
     public static class GUILayout {
         public static void Label(string s, GUIStyle st) { }

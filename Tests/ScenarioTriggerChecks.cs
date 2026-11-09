@@ -352,10 +352,13 @@ public static partial class Scenarios {
                 string board = "";
                 try { board = LevelEditor.BoardJson(); } catch (Exception e) { board = "(BoardJson: " + e.GetType().Name + ")"; }
                 bool inBoard = board.Contains("\"" + ScenarioScript.FileKey + "\"");
+                // Keys for dragged assets: a name in the kind's folder, else the path under Resources.
+                bool keys = ScenarioAssets.KeyOf("Music/Special/Theme", "Music/Special") == "Theme" && ScenarioAssets.KeyOf("Campaign/Theme", "Music/Special") == "Campaign/Theme"
+                         && ScenarioAssets.KeyOf("Music/Special/Act1/Theme", "Music/Special") == "Music/Special/Act1/Theme";
                 ScenarioDialogue.Presenter = null;
                 detail = "loaded from the file " + fromFile + "; part way (1 kill of 2, a line up, its action waiting) " + partWay + "; back from the save " + back + "; still waiting " + waits
-                       + "; closed, the action runs " + ran + "; second kill fires " + second + "; the authored script has no progress " + noState + ", conditions by number " + byNumber + "; in the game's save " + inBoard;
-                return fromFile && partWay && back && waits && ran && second && noState && byNumber && inBoard;
+                       + "; closed, the action runs " + ran + "; second kill fires " + second + "; the authored script has no progress " + noState + ", conditions by number " + byNumber + "; in the game's save " + inBoard + "; asset keys " + keys;
+                return fromFile && partWay && back && waits && ran && second && noState && byNumber && inBoard && keys;
             }
         }
         detail = "no such check";

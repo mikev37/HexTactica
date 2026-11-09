@@ -6,6 +6,23 @@ Triggers are not in the map editor. You edit them in the Unity inspector.
 
 ## Editing triggers
 
+**The easiest way is the map editor.** Open the scenario in the map editor and select **Scenario Script** in the
+Hierarchy. Edit its triggers in the inspector, then save with the map editor's Save. The units, buildings and tiles
+of the map are on the board, so you can drag them straight into the trigger fields.
+
+You never type a key:
+- **Assets:** drag the asset into its field: a music clip, a sound, a character, a marker prefab, or a unit or
+  building prefab.
+- **A specific unit:** drag the unit from the Hierarchy or the Scene view into Unit Name. If it has no name of its
+  own, it gets one, such as "Grunt 2", which is saved with the map. The ▾ beside the field lists the names in use,
+  including the ones your Spawn Unit actions give.
+- **A specific building:** drag it into the kind field. That sets its kind, and its tile with radius 0.
+- **A tile:** drag a tile, a unit or a building into the Tile slot, or press **Last clicked**.
+
+An asset dragged from outside a Resources folder can't be loaded by the game. The inspector offers to move it into
+the right folder for you, such as `Resources/Music/Special` for music. An asset can also live in a subfolder of any
+Resources folder: the file then keeps its path.
+
 Every normal save writes a scenario's triggers, and every load reads them: the S key, the map editor's Save, and the
 in-game Save. The inspector's own Save button is for edits made in the inspector. Edits made outside play have no
 running game to save them, and edits made in play are lost when play stops. The button writes only the triggers into
@@ -19,15 +36,14 @@ the file, as authored, without any game's progress.
   and each folded trigger shows how often it has fired. Changes made in play are lost when play stops. To keep them,
   press **Save triggers into it**. The file gets the triggers as you authored them, without the game's progress.
 - The inspector shows only the fields a trigger's condition, or an action's type, uses. A folded trigger reads as one
-  sentence: `Ambush: when the player's Tank enters (3,-3) r1, 2 actions`. Names are chosen from lists: other
-  triggers, sides, unit and building kinds, characters, markers, music tracks and sounds.
+  sentence: `Ambush: when the player's Tank enters (3,-3) r1, 2 actions`. Other triggers and sides are picked from
+  lists. Everything else is dragged in (see above).
 - Problems show above the list: a part or an After Trigger naming a trigger that isn't there, two triggers with one
   name, a Dialogue action with no lines. They are also logged when the scenario loads. A trigger whose condition can
   never be met warns once, in play.
 - **Areas on the board:** with the Scenario Script selected, the Scene view outlines every area a trigger or action
   uses (yellow for trigger areas, blue for action tiles), with the trigger's name. Drag the dot in an area's centre
-  to move it to another tile. While playing, the inspector shows the last tile you clicked, so you can copy its
-  coordinates.
+  to move it to another tile.
 - Tiles are given as cube coordinates `x, y` (z is −x−y): the same ones the scenario file uses.
 
 ## Sides

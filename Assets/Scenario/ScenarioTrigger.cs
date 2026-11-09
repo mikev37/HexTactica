@@ -151,11 +151,11 @@ public class ScenarioStateAttribute : Attribute { }
 [Serializable]
 public class DialogueLine {
     [Tooltip("Who speaks: a Dialogue Character asset in Resources/Characters, by its asset name (its portrait, name and colour). Empty: nobody (no portrait, no name).")]
-    [ResourceName("Characters")] public string Character = "";
+    [ResourceName("Characters", typeof(DialogueCharacter))] public string Character = "";
     [Tooltip("What they say.")]
     [TextArea(2, 6)] public string Text = "";
     [Tooltip("A sound played with the line (an AudioClip in Resources/Dialogue, by name): a voice line or a noise. Empty: the character's own Voice, if it has one; else silent. It stops when the line is closed, so lines never talk over each other.")]
-    [ResourceName("Dialogue")] public string Sound = "";
+    [ResourceName("Dialogue", typeof(AudioClip))] public string Sound = "";
     [Tooltip("Where the portrait stands. Left or right of the text.")]
     public PortraitSide Portrait = PortraitSide.Left;
 }
@@ -169,7 +169,7 @@ public class TriggerAction {
     public List<DialogueLine> Lines = new List<DialogueLine>();
 
     [Tooltip("Camera Focus, Show Marker, Spawn Unit, Destroy Tile, Repair Tile, and the unit and building filters (with In Area): the tile, x (cube coordinates, as the HUD and the scenario file give them).")]
-    public int TileX;
+    [TileField] public int TileX;
     [Tooltip("Camera Focus, Show Marker, Spawn Unit, Destroy Tile, Repair Tile, and the unit and building filters (with In Area): the tile, y (z is -x-y).")]
     public int TileY;
     [Tooltip("Destroy Tile, Repair Tile: tiles within this many steps of the tile (0: the tile only). Unit and building filters with In Area: the area's radius.")]
@@ -181,14 +181,14 @@ public class TriggerAction {
     public float Seconds = 1f;
 
     [Tooltip("Show Marker: the marker prefab in Resources/ScenarioMarkers, by name.")]
-    [ResourceName("ScenarioMarkers")] public string Marker = "";
+    [ResourceName("ScenarioMarkers", typeof(GameObject), ResourceKind.Marker)] public string Marker = "";
     [Tooltip("Show Marker, Hide Marker: the marker's id, so a later action can remove it (empty on Hide Marker: every marker). Showing an id again moves that marker.")]
     public string MarkerId = "";
     [Tooltip("Show Marker: the text shown with the marker (empty: none).")]
     public string Text = "";
 
     [Tooltip("Play Music: the track in Resources/Music/Special, by its clip's name (empty: one at random).")]
-    [ResourceName("Music/Special")] public string Track = "";
+    [ResourceName("Music/Special", typeof(AudioClip))] public string Track = "";
     [Tooltip("Play Music: play it until Stop Music (else the game's music comes back when it ends).")]
     public bool Loop;
 
@@ -199,9 +199,9 @@ public class TriggerAction {
     [Tooltip("Unit filter: whose units (a player's id, Any -1, Human -2, AI -3).")]
     [SideChoice(false)] public long UnitSide = TriggerSide.Any;
     [Tooltip("Spawn Unit: the unit prefab to make (by name: Grunt, Tank ...; a side with a faction gets its version). Unit filter: only units of this kind (empty: any kind; a faction's version counts as its base unit).")]
-    [ResourceName("Units", ResourceKind.Unit)] public string UnitKind = "";
+    [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
     [Tooltip("Spawn Unit: the name the new units go by (their personal name), so later triggers can pick them out. Unit filter: only units of this name (empty: any).")]
-    public string UnitTag = "";
+    [UnitName] public string UnitTag = "";
     [Tooltip("Unit and building filters: only those within Radius of the tile (off: anywhere on the board).")]
     public bool InArea;
 
@@ -209,7 +209,7 @@ public class TriggerAction {
     [Tooltip("Building filter: whose buildings (a player's id, Any -1, Human -2, AI -3, Neutral -4).")]
     [SideChoice(true)] public long BuildingSide = TriggerSide.Any;
     [Tooltip("Building filter: only buildings of this kind (the building prefab's name: City, HQ, ...; empty: any). With In Area and Radius 0: the building on the tile.")]
-    [ResourceName("Buildings", ResourceKind.Building)] public string BuildingKind = "";
+    [ResourceName("Buildings", typeof(Building), ResourceKind.Building)] public string BuildingKind = "";
 
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
     public int Count = 1;
@@ -227,21 +227,33 @@ public class TriggerAction {
     [Tooltip("Enable Trigger, Disable Trigger, Reset Trigger: the trigger, by name (empty: this one).")]
     [TriggerName] public string Trigger = "";
     [Tooltip("Play Sound: the sound in Resources/Dialogue, by name.")]
-    [ResourceName("Dialogue")] public string Sound = "";
+    [ResourceName("Dialogue", typeof(AudioClip))] public string Sound = "";
 }
 
 /// <summary>Draws a string field as a choice of this scenario's trigger names (Editor/ScenarioTriggerDrawers).</summary>
 public class TriggerNameAttribute : PropertyAttribute { }
 
-/// <summary>What a ResourceName field lists: any asset in the folder, or only unit or building prefabs.</summary>
-public enum ResourceKind { Any, Unit, Building }
+/// <summary>What a ResourceName field takes: an asset of its type, or a unit, building or marker prefab (units and buildings: from the board too).</summary>
+public enum ResourceKind { Any, Unit, Building, Marker }
 
-/// <summary>Draws a string field as a choice of the assets in a Resources folder, by name (Editor/ScenarioTriggerDrawers).</summary>
+/// <summary>
+/// Draws a text field as an object field (Editor/ScenarioTriggerDrawers): drag an asset in (a clip, a character, a
+/// marker, a unit or building prefab, or a unit or building on the board), and its key is kept as text, which the
+/// scenario file can hold (ScenarioAssets.KeyOf). The asset must be in a Resources folder for the game to load it:
+/// the inspector offers to move it there.
+/// </summary>
 public class ResourceNameAttribute : PropertyAttribute {
     public readonly string folder;
+    public readonly Type type;
     public readonly ResourceKind kind;
-    public ResourceNameAttribute(string folder, ResourceKind kind = ResourceKind.Any) { this.folder = folder; this.kind = kind; }
+    public ResourceNameAttribute(string folder, Type type, ResourceKind kind = ResourceKind.Any) { this.folder = folder; this.type = type; this.kind = kind; }
 }
+
+/// <summary>A tile field (x; its y is the next field): drawn with a slot to drag a tile of the board onto, and the last tile clicked.</summary>
+public class TileFieldAttribute : PropertyAttribute { }
+
+/// <summary>A unit's name field (a unit filter): drawn with a slot to drag a unit of the board onto (the name is given to that unit if it has none of its own), and a choice of the names in use.</summary>
+public class UnitNameAttribute : PropertyAttribute { }
 
 /// <summary>Draws a side field (a player's id, or Any / Human / AI / Neutral) as a choice of the scenario's sides (Editor/ScenarioTriggerDrawers).</summary>
 public class SideChoiceAttribute : PropertyAttribute {
@@ -270,16 +282,16 @@ public class ScenarioTrigger {
     [Tooltip("Unit conditions: whose units. Building Captured: who took it. Building Owned: who holds it. Money At Least / At Most, Turn Over, Turn Started: whose. A player's id, or Any (-1), Human (-2: any side a person plays), AI (-3), Neutral (-4: nobody; Building Owned only).")]
     [SideChoice(true)] public long Side = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this kind (the unit prefab's name: Grunt, Tank ...; a faction's version counts as its base unit). Empty: any kind.")]
-    [ResourceName("Units", ResourceKind.Unit)] public string UnitKind = "";
+    [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
-    public string UnitTag = "";
+    [UnitName] public string UnitTag = "";
     [Tooltip("Building conditions: only buildings of this kind (the building prefab's name: City, HQ, ...). Empty: any. With In Area and Radius 0: the building on the tile.")]
-    [ResourceName("Buildings", ResourceKind.Building)] public string BuildingKind = "";
+    [ResourceName("Buildings", typeof(Building), ResourceKind.Building)] public string BuildingKind = "";
 
     [Tooltip("Unit and building conditions: only within Radius of the tile (off: anywhere). Unit Enters and Units In Area always use the area.")]
     public bool InArea;
     [Tooltip("Unit Enters, Units In Area, and any condition with In Area: the centre tile, x (cube coordinates, as the HUD and the scenario file give them).")]
-    public int TileX;
+    [TileField] public int TileX;
     [Tooltip("Unit Enters, Units In Area, and any condition with In Area: the centre tile, y (z is -x-y).")]
     public int TileY;
     [Tooltip("Unit Enters, Units In Area, and any condition with In Area: tiles within this many steps of the centre (0: the tile only).")]

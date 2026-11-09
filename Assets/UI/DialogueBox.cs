@@ -136,7 +136,7 @@ public class DialogueBox : MonoBehaviour, IDialoguePresenter {
         if (voice == null) return;
         AudioClip clip = null;
         if (!string.IsNullOrEmpty(line.Sound)) {
-            clip = Resources.Load<AudioClip>(ScenarioDialogue.SoundFolder + line.Sound);
+            clip = ScenarioAssets.Load<AudioClip>(line.Sound, ScenarioDialogue.SoundFolder);
             if (clip == null) Debug.LogWarning("Dialogue: no sound '" + line.Sound + "' in Resources/" + ScenarioDialogue.SoundFolder + ".");
         }
         if (clip == null && who != null) clip = who.voice;

@@ -379,39 +379,251 @@ class TriggerNameDrawer : PropertyDrawer {
     }
 }
 
+/// <summary>Sibling fields of a trigger or action, and the board, for the drawers that fill several fields from one drag.</summary>
+static class Fields {
+    public static SerializedProperty Sibling(SerializedProperty p, string name) {
+        string path = p.propertyPath;
+        int dot = path.LastIndexOf('.');
+        return p.serializedObject.FindProperty(dot >= 0 ? path.Substring(0, dot + 1) + name : name);
+    }
+
+    public static HexTile TileAt(int x, int y) { return HexGenerator.hg != null ? HexGenerator.hg.get(x, y, -x - y) : null; }
+
+    /// <summary>The tile a dragged object stands for: a tile, or the tile a unit or building is on.</summary>
+    public static HexTile TileOf(Object o) {
+        HexTile t = o as HexTile;
+        if (t != null) return t;
+        Unit u = o as Unit;
+        if (u != null) return u.tile;
+        Building b = o as Building;
+        if (b != null) return b.tile;
+        GameObject g = o as GameObject;
+        if (g != null) { t = g.GetComponentInParent<HexTile>(); if (t != null) return t; u = g.GetComponentInParent<Unit>(); if (u != null) return u.tile; b = g.GetComponentInParent<Building>(); if (b != null) return b.tile; }
+        return null;
+    }
+
+    public static void SetTile(SerializedProperty anyField, HexTile t) {
+        if (t == null) return;
+        SerializedProperty x = Sibling(anyField, "TileX"), y = Sibling(anyField, "TileY");
+        if (x != null) x.intValue = t.x;
+        if (y != null) y.intValue = t.y;
+    }
+
+    /// <summary>On the board: a scene object (a unit or building placed in the game), not a prefab asset.</summary>
+    public static bool OnBoard(Object o) { return o != null && !EditorUtility.IsPersistent(o); }
+
+    public static readonly float Line = EditorGUIUtility.singleLineHeight;
+    public static readonly float Gap = EditorGUIUtility.standardVerticalSpacing;
+}
+
+/// <summary>
+/// A name field as an object slot: drag the asset in (a clip, a character, a marker prefab, a unit or building prefab,
+/// or a unit or building on the board) and its key is written for you (ScenarioAssets.KeyOf). An asset outside a
+/// Resources folder cannot be loaded by the game: dropping one offers to move it into its folder.
+/// </summary>
 [CustomPropertyDrawer(typeof(ResourceNameAttribute))]
 class ResourceNameDrawer : PropertyDrawer {
-    static readonly Dictionary<string, string[]> cache = new Dictionary<string, string[]>();
 
-    static string[] Names(ResourceNameAttribute a) {
-        string key = a.folder + "|" + a.kind;
-        string[] n;
-        if (cache.TryGetValue(key, out n)) return n;
-        SortedSet<string> found = new SortedSet<string>();
-        foreach (Object o in Resources.LoadAll(a.folder)) {
-            if (o == null) continue;
-            GameObject g = o as GameObject;
-            if (a.kind == ResourceKind.Unit && (g == null || g.GetComponent<Unit>() == null)) continue;
-            if (a.kind == ResourceKind.Building && (g == null || g.GetComponent<Building>() == null)) continue;
-            if (a.kind == ResourceKind.Any && !(o is GameObject || o is ScriptableObject || o is AudioClip)) continue;
-            found.Add(o.name);
+    static System.Type SlotType(ResourceNameAttribute a) {
+        switch (a.kind) {
+            case ResourceKind.Unit: return typeof(Unit);
+            case ResourceKind.Building: return typeof(Building);
+            case ResourceKind.Marker: return typeof(ScenarioMarker);
         }
-        n = new List<string>(found).ToArray();
-        cache[key] = n;
-        return n;
+        return a.type;
+    }
+
+    static string Folder(ResourceNameAttribute a) { return a.folder.EndsWith("/") ? a.folder : a.folder + "/"; }
+
+    /// <summary>What the key names now, or null.</summary>
+    static Object Current(ResourceNameAttribute a, string key) {
+        if (string.IsNullOrEmpty(key)) return null;
+        switch (a.kind) {
+            case ResourceKind.Unit: return GameAssets.Unit(key);
+            case ResourceKind.Building: return GameAssets.Building(key);
+            case ResourceKind.Marker: { GameObject g = ScenarioAssets.Load<GameObject>(key, Folder(a)); return g != null ? g.GetComponent<ScenarioMarker>() : null; }
+        }
+        Object o = key.IndexOf('/') < 0 ? Resources.Load(Folder(a) + key, a.type) : null;
+        return o != null ? o : Resources.Load(key, a.type);
+    }
+
+    public override float GetPropertyHeight(SerializedProperty p, GUIContent label) {
+        return Fields.Line + (Missing(p) ? Fields.Gap + 2f * Fields.Line : 0f);
+    }
+
+    bool Missing(SerializedProperty p) {
+        return p.propertyType == SerializedPropertyType.String && !string.IsNullOrEmpty(p.stringValue) && Current((ResourceNameAttribute)attribute, p.stringValue) == null;
     }
 
     public override void OnGUI(Rect r, SerializedProperty p, GUIContent label) {
         if (p.propertyType != SerializedPropertyType.String) { EditorGUI.PropertyField(r, p, label); return; }
         ResourceNameAttribute a = (ResourceNameAttribute)attribute;
-        List<string> names = new List<string> { "(none)" };
-        names.AddRange(Names(a));
-        int at = string.IsNullOrEmpty(p.stringValue) ? 0 : names.IndexOf(p.stringValue);
-        if (at < 0) { names.Add(p.stringValue + " (not in Resources/" + a.folder + ")"); at = names.Count - 1; }
         EditorGUI.BeginProperty(r, label, p);
-        int now = EditorGUI.Popup(r, label.text, at, names.ToArray());
-        if (now != at) p.stringValue = now == 0 ? "" : names[now];
+        Rect slot = new Rect(r.x, r.y, r.width, Fields.Line);
+        Object now = Current(a, p.stringValue);
+        bool board = a.kind == ResourceKind.Unit || a.kind == ResourceKind.Building;
+        Object picked = EditorGUI.ObjectField(slot, label, now, SlotType(a), board);
+        if (picked != now) Take(a, p, picked);
+        if (Missing(p))
+            EditorGUI.HelpBox(new Rect(r.x, r.y + Fields.Line + Fields.Gap, r.width, 2f * Fields.Line),
+                "'" + p.stringValue + "' is not in Resources/" + a.folder + " (or under any Resources folder): drag the asset in again.", MessageType.Warning);
         EditorGUI.EndProperty();
+    }
+
+    static void Take(ResourceNameAttribute a, SerializedProperty p, Object picked) {
+        if (picked == null) { p.stringValue = ""; return; }
+        if (a.kind == ResourceKind.Unit) {
+            Unit u = picked as Unit;
+            // A unit on the board stands for its kind (a faction's version: the base unit it stands in for).
+            string kind = Fields.OnBoard(u) ? GameController.DisplayName(u, u.owner) : u.name;
+            if (GameAssets.Unit(kind) == null && GameAssets.Unit(u.name) == null) {
+                EditorUtility.DisplayDialog("Not a unit the game knows", u.name + " is not in Assets/Resources/Units, where the game finds units by name. Move the prefab there first.", "OK");
+                return;
+            }
+            p.stringValue = kind;
+            return;
+        }
+        if (a.kind == ResourceKind.Building) {
+            Building b = picked as Building;
+            p.stringValue = b.name.Replace("(Clone)", "").Trim();
+            // A building on the board: that one (its tile, radius 0).
+            if (Fields.OnBoard(b) && b.tile != null) {
+                SerializedProperty inArea = Fields.Sibling(p, "InArea"), radius = Fields.Sibling(p, "Radius");
+                if (inArea != null) inArea.boolValue = true;
+                if (radius != null) radius.intValue = 0;
+                Fields.SetTile(p, b.tile);
+            }
+            return;
+        }
+        Object asset = a.kind == ResourceKind.Marker ? (Object)((ScenarioMarker)picked).gameObject : picked;
+        string path = AssetDatabase.GetAssetPath(asset);
+        string rel = ResourcesPath(path);
+        if (rel == null) {
+            string folder = "Assets/Resources/" + a.folder;
+            if (!EditorUtility.DisplayDialog("Move into Resources?", asset.name + " is not in a Resources folder, so the game cannot load it. Move it to " + folder + "?", "Move", "Cancel")) return;
+            MakeFolders(folder);
+            string to = folder + "/" + System.IO.Path.GetFileName(path);
+            string error = AssetDatabase.MoveAsset(path, to);
+            if (!string.IsNullOrEmpty(error)) { EditorUtility.DisplayDialog("Could not move it", error, "OK"); return; }
+            rel = ResourcesPath(to);
+        }
+        p.stringValue = ScenarioAssets.KeyOf(rel, a.folder);
+    }
+
+    /// <summary>The path under the (last) Resources folder, without the extension; null if not under one.</summary>
+    static string ResourcesPath(string assetPath) {
+        if (string.IsNullOrEmpty(assetPath)) return null;
+        int i = assetPath.LastIndexOf("/Resources/");
+        if (i < 0) return null;
+        string rel = assetPath.Substring(i + "/Resources/".Length);
+        int dot = rel.LastIndexOf('.');
+        return dot > 0 ? rel.Substring(0, dot) : rel;
+    }
+
+    static void MakeFolders(string folder) {
+        string[] parts = folder.Split('/');
+        string at = parts[0];
+        for (int i = 1; i < parts.Length; i++) {
+            string next = at + "/" + parts[i];
+            if (!AssetDatabase.IsValidFolder(next)) AssetDatabase.CreateFolder(at, parts[i]);
+            at = next;
+        }
+    }
+}
+
+/// <summary>
+/// A tile (Tile X, with Tile Y after it): a slot to drag a tile, a unit or a building of the board onto (its tile is
+/// taken), and Last Clicked (the tile last clicked in the game). Tile X and Tile Y are below, to fine-tune.
+/// </summary>
+[CustomPropertyDrawer(typeof(TileFieldAttribute))]
+class TileFieldDrawer : PropertyDrawer {
+    public override float GetPropertyHeight(SerializedProperty p, GUIContent label) { return 2f * Fields.Line + Fields.Gap; }
+
+    public override void OnGUI(Rect r, SerializedProperty p, GUIContent label) {
+        SerializedProperty y = Fields.Sibling(p, "TileY");
+        HexTile now = Fields.TileAt(p.intValue, y != null ? y.intValue : 0);
+        Rect slot = new Rect(r.x, r.y, r.width - 96f, Fields.Line);
+        Rect last = new Rect(r.xMax - 92f, r.y, 92f, Fields.Line);
+        Object picked = EditorGUI.ObjectField(slot, new GUIContent("Tile", "Drag a tile, a unit or a building from the board (Hierarchy or Scene view) here: its tile is used."), now, typeof(MonoBehaviour), true);
+        if (picked != now && picked != null) Fields.SetTile(p, Fields.TileOf(picked));
+        GUI.enabled = HexTile.lastClicked != null;
+        if (GUI.Button(last, new GUIContent("Last clicked", "The tile last clicked on the board, in play or in the map editor."))) Fields.SetTile(p, HexTile.lastClicked);
+        GUI.enabled = true;
+        EditorGUI.PropertyField(new Rect(r.x, r.y + Fields.Line + Fields.Gap, r.width, Fields.Line), p, label);
+    }
+}
+
+/// <summary>
+/// A unit filter's name: drag a unit of the board onto the slot to mean that unit (it is given a name of its own if it
+/// has none, kept with it in the scenario file), or choose a name already in use (units on the board, and the names
+/// this script's Spawn Unit actions give). Spawn Unit's own field is the name it gives, typed.
+/// </summary>
+[CustomPropertyDrawer(typeof(UnitNameAttribute))]
+class UnitNameDrawer : PropertyDrawer {
+    public override void OnGUI(Rect r, SerializedProperty p, GUIContent label) {
+        if (p.propertyType != SerializedPropertyType.String) { EditorGUI.PropertyField(r, p, label); return; }
+        SerializedProperty type = Fields.Sibling(p, "Type");
+        bool naming = p.propertyPath.Contains("Actions") && type != null && type.intValue == (int)TriggerActionType.SpawnUnit;
+        EditorGUI.BeginProperty(r, label, p);
+        if (naming) { p.stringValue = EditorGUI.TextField(r, new GUIContent(label.text, "The name the new units go by: later triggers pick them out by it (their Unit Name)."), p.stringValue); EditorGUI.EndProperty(); return; }
+
+        Unit now = Named(p.stringValue);
+        Rect slot = new Rect(r.x, r.y, r.width - 24f, r.height);
+        Rect pick = new Rect(r.xMax - 22f, r.y, 22f, r.height);
+        Object picked = EditorGUI.ObjectField(slot, new GUIContent(label.text, "Drag a unit from the board to mean that unit. Empty: any unit." + (now == null && !string.IsNullOrEmpty(p.stringValue) ? " Now: units named '" + p.stringValue + "' (none on the board yet)." : "")), now, typeof(Unit), true);
+        if (picked != now) {
+            Unit u = picked as Unit;
+            if (u == null) p.stringValue = "";
+            else if (!Fields.OnBoard(u)) EditorUtility.DisplayDialog("Drag a unit from the board", "This field means one unit on the board (or units a Spawn Unit names). Drag the unit itself, from the Hierarchy or the Scene view, while the scenario is open in play or in the map editor.", "OK");
+            else p.stringValue = NameOf(u);
+        }
+        if (EditorGUI.DropdownButton(pick, new GUIContent("▾", "Names in use"), FocusType.Passive)) {
+            GenericMenu menu = new GenericMenu();
+            SerializedObject so = p.serializedObject;
+            string path = p.propertyPath;
+            menu.AddItem(new GUIContent("(any unit)"), string.IsNullOrEmpty(p.stringValue), () => Set(so, path, ""));
+            foreach (string n in NamesInUse(ScenarioEditing.Script(p))) { string v = n; menu.AddItem(new GUIContent(v), v == p.stringValue, () => Set(so, path, v)); }
+            menu.DropDown(pick);
+        }
+        EditorGUI.EndProperty();
+    }
+
+    static void Set(SerializedObject so, string path, string v) { so.Update(); so.FindProperty(path).stringValue = v; so.ApplyModifiedProperties(); }
+
+    static IEnumerable<Unit> Board() {
+        if (UnitController.uc == null || UnitController.uc.units == null) yield break;
+        foreach (Unit u in UnitController.uc.units) if (u != null) yield return u;
+    }
+
+    static Unit Named(string name) {
+        if (string.IsNullOrEmpty(name)) return null;
+        foreach (Unit u in Board()) if (string.Equals((u.personal_name ?? "").Trim(), name.Trim(), System.StringComparison.OrdinalIgnoreCase)) return u;
+        return null;
+    }
+
+    /// <summary>The unit's own name; one is made for it (its kind and a number) if it has none, or shares it with another unit.</summary>
+    static string NameOf(Unit u) {
+        string mine = (u.personal_name ?? "").Trim();
+        bool shared = false;
+        if (mine.Length > 0) foreach (Unit o in Board()) if (o != u && string.Equals((o.personal_name ?? "").Trim(), mine, System.StringComparison.OrdinalIgnoreCase)) shared = true;
+        if (mine.Length > 0 && !shared) return mine;
+        string kind = GameController.DisplayName(u, u.owner);
+        HashSet<string> used = new HashSet<string>();
+        foreach (Unit o in Board()) if (!string.IsNullOrEmpty(o.personal_name)) used.Add(o.personal_name.Trim().ToLowerInvariant());
+        int n = 1;
+        while (used.Contains((kind + " " + n).ToLowerInvariant())) n++;
+        Undo.RecordObject(u, "Name unit");
+        u.personal_name = kind + " " + n;
+        Debug.Log("Named the " + kind + " at (" + (u.tile != null ? u.tile.x + "," + u.tile.y : "?") + ") '" + u.personal_name + "' so triggers can pick it out: save the scenario to keep the name.");
+        return u.personal_name;
+    }
+
+    static List<string> NamesInUse(ScenarioScript s) {
+        SortedSet<string> names = new SortedSet<string>();
+        foreach (Unit u in Board()) if (!string.IsNullOrEmpty(u.personal_name)) names.Add(u.personal_name.Trim());
+        if (s != null) foreach (ScenarioTrigger t in s.triggers) if (t != null && t.Actions != null)
+            foreach (TriggerAction a in t.Actions) if (a != null && a.Type == TriggerActionType.SpawnUnit && !string.IsNullOrEmpty(a.UnitTag)) names.Add(a.UnitTag.Trim());
+        return new List<string>(names);
     }
 }
 
@@ -465,9 +677,9 @@ class ScenarioScriptEditor : Editor {
         }
         EditorGUILayout.EndHorizontal();
         if (Application.isPlaying)
-            EditorGUILayout.HelpBox("Playing: changes here apply at once, and are lost when play stops unless you save them into the file. Saved without the game's progress. Level clock " + s.Clock.ToString("0.0") + " s.", MessageType.Info);
-        if (HexTile.lastClicked != null)
-            EditorGUILayout.LabelField("Last tile clicked", "(" + HexTile.lastClicked.x + "," + HexTile.lastClicked.y + ")  — use it as a trigger's Tile X, Tile Y");
+            EditorGUILayout.HelpBox("Changes here apply at once. They are kept when you save the scenario (the map editor's Save, or the S key), or with the button above; they are lost when play stops if you do neither. Drag units, buildings and tiles from the board (Hierarchy or Scene view) into the trigger fields. Level clock " + s.Clock.ToString("0.0") + " s.", MessageType.Info);
+        else
+            EditorGUILayout.HelpBox("Outside play there is no board: assets (clips, characters, markers, prefabs) can be dragged in, but units, buildings and tiles of the map only while it is open in play or in the map editor.", MessageType.Info);
         foreach (string problem in s.Validate(false)) EditorGUILayout.HelpBox(problem, MessageType.Warning);
         serializedObject.Update();
         EditorGUILayout.PropertyField(serializedObject.FindProperty("triggers"), true);
