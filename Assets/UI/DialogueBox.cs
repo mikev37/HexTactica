@@ -122,7 +122,7 @@ public class DialogueBox : MonoBehaviour, IDialoguePresenter {
             speaking.sprite = face;
             speaking.color = Color.white;
             // Facing the text: mirrored when the picture faces away from it.
-            bool mirror = who != null && (who.facesLeft == (speaking == leftPortrait));
+            bool mirror = who != null && ((who.drawnFacing == DialogueCharacter.PortraitFacing.Left) == (speaking == leftPortrait));
             Vector3 s = speaking.rectTransform.localScale;
             speaking.rectTransform.localScale = new Vector3(mirror ? -Mathf.Abs(s.x) : Mathf.Abs(s.x), s.y, s.z);
         }
@@ -139,7 +139,6 @@ public class DialogueBox : MonoBehaviour, IDialoguePresenter {
             clip = ScenarioAssets.Load<AudioClip>(line.Sound, ScenarioDialogue.SoundFolder);
             if (clip == null) Debug.LogWarning("Dialogue: no sound '" + line.Sound + "' in Resources/" + ScenarioDialogue.SoundFolder + ".");
         }
-        if (clip == null && who != null) clip = who.voice;
         if (clip == null || !GameSounds.On) return;
         voice.clip = clip;
         voice.loop = false;

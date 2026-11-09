@@ -6,9 +6,8 @@ using UnityEngine;
 /// <summary>
 /// A scenario's script: its triggers (when this happens, do these things), run while the game is played. One per game
 /// scene (made when the scene opens). Its triggers are part of the scenario file ("script"): loading a scenario or a
-/// save replaces them, and saving writes them (a save with their progress). Edit them in the inspector: select
-/// "Scenario Script" in the Hierarchy while playing, or open a scenario file with HexTactica ▸ Scenario Triggers in
-/// the editor; its Save button writes them into the file.
+/// save replaces them, and saving writes them (a save with their progress). Edit them in the inspector: open the
+/// scenario in the map editor, select "Scenario Script" in the Hierarchy, and save the scenario as usual.
 ///
 /// How it runs (every frame of play, after the pre-game screen, never while a menu is open):
 /// <list type="bullet">
@@ -27,7 +26,7 @@ public class ScenarioScript : MonoBehaviour {
     [Tooltip("The scenario's triggers, evaluated in this order.")]
     public List<ScenarioTrigger> triggers = new List<ScenarioTrigger>();
 
-    [Tooltip("The scenario file these triggers were loaded from (the inspector's Save button writes them back into it).")]
+    [HideInInspector, Tooltip("The scenario file these triggers were loaded from (for the log).")]
     public string scenarioPath = "";
 
     /// <summary>A side of the scenario, for the inspector's side choices (from the file's players, or the game's).</summary>
@@ -154,7 +153,8 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.TurnOver:
             case TriggerCondition.TurnStarted:
                 return t.Events >= count;
-            case TriggerCondition.DayReached: return ScenarioGame.Day >= t.Value;
+            case TriggerCondition.DayReached:
+                return ScenarioGame.Day >= t.Value && (t.Side == TriggerSide.Any || (GameController.gc != null && ScenarioGame.SideIs(GameController.gc.activePlayer, t.Side)));
             case TriggerCondition.UnitsInArea: return ScenarioGame.CountUnits(uf) >= count;
             case TriggerCondition.MoneyAtLeast:
                 foreach (Player p in ScenarioGame.Players) if (ScenarioGame.SideIs(p, t.Side) && !p.eliminated && p.money >= t.Value) return true;

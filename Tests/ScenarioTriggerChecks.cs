@@ -61,6 +61,7 @@ public static partial class Scenarios {
                         Trig("Captured", TriggerCondition.BuildingCaptured, t => { t.Side = Blue; t.BuildingKind = "City"; }),
                         Trig("Entered", TriggerCondition.UnitEnters, t => { t.Side = Blue; t.UnitKind = "Tank"; t.TileX = 3; t.TileY = -3; t.Radius = 1; }),
                         Trig("Day 2", TriggerCondition.DayReached, t => { t.Value = 2; }),
+                        Trig("Day 2 on Blue's turn", TriggerCondition.DayReached, t => { t.Value = 2; t.Side = Blue; }),
                         Trig("Red turn starts", TriggerCondition.TurnStarted, t => { t.Side = Red; }),
                         Trig("Built", TriggerCondition.UnitBuilt, t => { t.Side = Blue; }),
                         Trig("Destroyed", TriggerCondition.BuildingDestroyed, t => { t.BuildingKind = "City"; t.InArea = true; t.TileX = 3; t.TileY = 3; }),
@@ -224,7 +225,12 @@ public static partial class Scenarios {
                 MoveTo(tank, 3, -2); s.Tick(0.1f);
                 bool entered = Fired(s, "Entered") == 1;
                 bool day1 = Fired(s, "Day 2") == 0;
-                for (int i = 0; i < 3; i++) { gc.EndTurn(); s.Tick(0.1f); }   // Blue, Red, Blue: the grunt on the city takes it
+                bool dayOnBlue = true;
+                for (int i = 0; i < 3; i++) {   // Blue, Red, Blue: the grunt on the city takes it
+                    gc.EndTurn(); s.Tick(0.1f);
+                    if (i == 0) dayOnBlue &= Fired(s, "Day 2") == 1 && gc.activePlayer == o && Fired(s, "Day 2 on Blue's turn") == 0;
+                }
+                dayOnBlue &= Fired(s, "Day 2 on Blue's turn") == 1;
                 bool captured = city.owner == a && Fired(s, "Captured") == 1 && Fired(s, "City held") == 1;
                 bool turns = Fired(s, "Day 2") == 1 && Fired(s, "Red turn starts") == 1 && Fired(s, "Human turn over") == 1;
                 a.money = 100000; s.Tick(0.1f);
@@ -245,9 +251,9 @@ public static partial class Scenarios {
                 o.money = 0; s.Tick(0.1f);
                 broke &= Fired(s, "Broke") == 1;
                 detail = "nothing fired early " + quiet + (quiet ? "" : " (" + string.Join(", ", early.ToArray()) + ")") + "; Red grunt hurt (" + hurtAt + ") and killed in " + shots + " shots " + killed
-                       + "; tank healed to 6 " + healed + "; entered (not before " + notEntered + ") " + entered + "; city captured and held " + captured + " (day 2 not before " + day1 + "; turns and day " + turns
+                       + "; tank healed to 6 " + healed + "; entered (not before " + notEntered + ") " + entered + "; city captured and held " + captured + " (day 2 not before " + day1 + "; turns and day " + turns + ", day 2 waits for Blue's turn " + dayOnBlue
                        + "); rich " + rich + "; built, then 3 Blue units " + built + "; destroyed " + destroyed + "; states not before " + preStates + ", starving / no ammo / low fuel " + low + ", no fuel " + empty + "; broke at 0, not at 50 " + broke;
-                return quiet && killed && healed && notEntered && entered && day1 && captured && turns && rich && built && threeNotBefore && destroyed && preStates && low && empty && broke;
+                return quiet && killed && healed && notEntered && entered && day1 && captured && turns && dayOnBlue && rich && built && threeNotBefore && destroyed && preStates && low && empty && broke;
             }
             case "scriptComposite": {
                 Unit red = Rig.At(4, 0).occupier, blue = Rig.At(0, 0).occupier;

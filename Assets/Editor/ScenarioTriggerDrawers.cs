@@ -31,7 +31,7 @@ static class TriggerFields {
             case TriggerCondition.BuildingCaptured:
             case TriggerCondition.BuildingOwned: return new[] { "Side", "BuildingKind", "InArea", "Count" };
             case TriggerCondition.BuildingDestroyed: return new[] { "BuildingKind", "InArea", "Count" };
-            case TriggerCondition.DayReached: return new[] { "Value" };
+            case TriggerCondition.DayReached: return new[] { "Value", "Side" };
             case TriggerCondition.MoneyAtLeast:
             case TriggerCondition.MoneyAtMost: return new[] { "Side", "Value" };
             case TriggerCondition.TurnOver:
@@ -50,7 +50,8 @@ static class TriggerFields {
             case "Side":
                 if (c == TriggerCondition.BuildingCaptured) return "Taken By";
                 if (c == TriggerCondition.BuildingOwned) return "Held By";
-                if (c == TriggerCondition.MoneyAtLeast || c == TriggerCondition.MoneyAtMost || c == TriggerCondition.TurnOver || c == TriggerCondition.TurnStarted) return "Whose";
+                if (c == TriggerCondition.MoneyAtLeast || c == TriggerCondition.MoneyAtMost) return "Whose";
+                if (c == TriggerCondition.TurnOver || c == TriggerCondition.TurnStarted || c == TriggerCondition.DayReached) return "On Whose Turn";
                 return "Whose Units";
             case "Value":
                 switch (c) {
@@ -69,6 +70,7 @@ static class TriggerFields {
                     case TriggerCondition.UnitsInArea: case TriggerCondition.UnitStarving: case TriggerCondition.UnitOutOfAmmo:
                     case TriggerCondition.UnitOutOfFuel: case TriggerCondition.UnitLowOnFuel: case TriggerCondition.UnitCutOff:
                     case TriggerCondition.BuildingOwned: return "At Least";
+                    case TriggerCondition.TurnStarted: case TriggerCondition.TurnOver: return "Their Turn Number";
                 }
                 return "Times";
         }
@@ -125,6 +127,8 @@ static class TriggerFields {
                 if (a == TriggerActionType.GiveMoney) return "Gold";
                 return null;
             case "UnitTag": return a == TriggerActionType.SpawnUnit ? "Name Them" : "Unit Name";
+            case "MarkerId": return a == TriggerActionType.ShowMarker ? "Name (To Hide It Later)" : "Marker To Hide";
+            case "Marker": return "Looks Like";
             case "Seconds": return a == TriggerActionType.Wait ? "Wait Seconds" : "Glide Seconds";
         }
         return null;
@@ -152,15 +156,15 @@ static class TriggerFields {
             case TriggerCondition.UnitKilled: return (t.Count > 1 ? t.Count + " of " : "") + units + " killed";
             case TriggerCondition.BuildingCaptured: return building + " taken by " + Side(t.Side) + times;
             case TriggerCondition.BuildingDestroyed: return building + " destroyed" + times;
-            case TriggerCondition.DayReached: return "day " + t.Value;
+            case TriggerCondition.DayReached: return "day " + t.Value + (t.Side == TriggerSide.Any ? "" : ", on " + Side(t.Side) + "'s turn");
             case TriggerCondition.UnitsInArea: return Mathf.Max(1, t.Count) + "+ " + Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, false, 0, 0, 0) + " in " + area;
             case TriggerCondition.MoneyAtLeast: return Side(t.Side) + " has " + t.Value + "+ gold";
             case TriggerCondition.MoneyAtMost: return Side(t.Side) + " has " + t.Value + " gold or less";
             case TriggerCondition.UnitBuilt: return units + " built" + times;
             case TriggerCondition.UnitDamaged: return units + " damaged to " + t.Value + " or less" + times;
             case TriggerCondition.UnitHealed: return units + " healed to " + t.Value + " or more" + times;
-            case TriggerCondition.TurnOver: return Side(t.Side) + "'s turn ends" + times;
-            case TriggerCondition.TurnStarted: return Side(t.Side) + "'s turn starts" + times;
+            case TriggerCondition.TurnOver: return Side(t.Side) + "'s " + Nth(t.Count) + "turn ends";
+            case TriggerCondition.TurnStarted: return Side(t.Side) + "'s " + Nth(t.Count) + "turn starts";
             case TriggerCondition.UnitStarving: return units + " starving";
             case TriggerCondition.UnitOutOfAmmo: return units + " out of ammo";
             case TriggerCondition.UnitOutOfFuel: return units + " out of fuel";
@@ -176,6 +180,8 @@ static class TriggerFields {
         }
         return t.Condition.ToString();
     }
+
+    static string Nth(int n) { n = Mathf.Max(1, n); return n == 1 ? "" : n + (n % 10 == 2 && n % 100 != 12 ? "nd " : n % 10 == 3 && n % 100 != 13 ? "rd " : n % 10 == 1 && n % 100 != 11 ? "st " : "th "); }
 
     static string Names(List<string> parts) { return parts == null || parts.Count == 0 ? "(nothing)" : "'" + string.Join("', '", parts.ToArray()) + "'"; }
 
@@ -303,6 +309,7 @@ static class FieldList {
 class ScenarioTriggerDrawer : PropertyDrawer {
     static readonly string[] Head = { "Name", "Enabled", "Condition" };
     static readonly string[] Timing = { "Delay", "Repeat", "RepeatEvery", "Actions" };
+    static string TimingLabel(string f) { return f == "Delay" ? "Delay (seconds)" : f == "RepeatEvery" ? "Repeat Every (seconds)" : null; }
 
     public override float GetPropertyHeight(SerializedProperty p, GUIContent label) {
         float h = FieldList.Line;
@@ -328,7 +335,7 @@ class ScenarioTriggerDrawer : PropertyDrawer {
             rest.y = y;
             y = FieldList.Draw(rest, p, TriggerFields.For(c), f => TriggerFields.Label(c, f));
             rest.y = y;
-            FieldList.Draw(rest, p, Timing, f => null);
+            FieldList.Draw(rest, p, Timing, TimingLabel);
             EditorGUI.indentLevel--;
         }
         EditorGUI.EndProperty();
@@ -627,28 +634,64 @@ class UnitNameDrawer : PropertyDrawer {
     }
 }
 
+/// <summary>
+/// A side: a choice of Any side / the player (human) / the AI / nobody and the scenario's players by name, and a slot to
+/// drag a player (its Player component, from the Hierarchy) onto. Kept as the player's id.
+/// </summary>
 [CustomPropertyDrawer(typeof(SideChoiceAttribute))]
 class SideChoiceDrawer : PropertyDrawer {
+    static IEnumerable<Player> Live() {
+        if (GameController.gc == null || GameController.gc.players == null) yield break;
+        foreach (Player p in GameController.gc.players) if (p != null) yield return p;
+    }
+
     public override void OnGUI(Rect r, SerializedProperty p, GUIContent label) {
         if (p.propertyType != SerializedPropertyType.Integer) { EditorGUI.PropertyField(r, p, label); return; }
         bool neutral = ((SideChoiceAttribute)attribute).neutral;
         ScenarioScript s = ScenarioEditing.Script(p);
         List<long> ids = new List<long> { TriggerSide.Any, TriggerSide.Human, TriggerSide.AI };
-        List<string> names = new List<string> { "Any side", "The player (human)", "The AI" };
+        List<string> names = new List<string> { "Any side", "The player (any human side)", "The AI (any AI side)" };
         if (neutral) { ids.Add(TriggerSide.Neutral); names.Add("Nobody (neutral)"); }
-        if (s != null) foreach (ScenarioScript.KnownSide k in s.sides) { ids.Add(k.id); names.Add(k.name + " (id " + k.id + ")"); }
+        foreach (Player pl in Live()) if (!ids.Contains(pl.id)) { ids.Add(pl.id); names.Add(pl.personal_name); }
+        if (s != null) foreach (ScenarioScript.KnownSide k in s.sides) if (!ids.Contains(k.id)) { ids.Add(k.id); names.Add(k.name); }
         long v = p.longValue;
         int at = ids.IndexOf(v);
-        if (at < 0) { ids.Add(v); names.Add("side id " + v); at = ids.Count - 1; }
+        if (at < 0) { ids.Add(v); names.Add("a side not in this scenario"); at = ids.Count - 1; }
+        Player now = null;
+        foreach (Player pl in Live()) if (pl.id == v) now = pl;
+
         EditorGUI.BeginProperty(r, label, p);
-        Rect pop = new Rect(r.x, r.y, r.width - 70f, r.height);
-        Rect num = new Rect(r.xMax - 66f, r.y, 66f, r.height);
-        int now = EditorGUI.Popup(pop, label.text, at, names.ToArray());
-        if (now != at) p.longValue = ids[now];
+        Rect pop = new Rect(r.x, r.y, r.width - 124f, r.height);
+        Rect slot = new Rect(r.xMax - 120f, r.y, 120f, r.height);
+        int chosen = EditorGUI.Popup(pop, label.text, at, names.ToArray());
+        if (chosen != at) p.longValue = ids[chosen];
         int indent = EditorGUI.indentLevel; EditorGUI.indentLevel = 0;
-        long typed = EditorGUI.LongField(num, p.longValue);
-        if (typed != p.longValue) p.longValue = typed;
+        Object dropped = EditorGUI.ObjectField(slot, new GUIContent("", "Drag a player (its Player object in the Hierarchy) here."), now, typeof(Player), true);
+        if (dropped != now && dropped != null) p.longValue = ((Player)dropped).id;
         EditorGUI.indentLevel = indent;
+        EditorGUI.EndProperty();
+    }
+}
+
+/// <summary>A marker's name: typed on Show Marker (it names the marker), chosen on Hide Marker from the names Show Marker actions give.</summary>
+[CustomPropertyDrawer(typeof(MarkerNameAttribute))]
+class MarkerNameDrawer : PropertyDrawer {
+    public override void OnGUI(Rect r, SerializedProperty p, GUIContent label) {
+        SerializedProperty type = Fields.Sibling(p, "Type");
+        EditorGUI.BeginProperty(r, label, p);
+        if (type == null || type.intValue != (int)TriggerActionType.HideMarker) {
+            p.stringValue = EditorGUI.TextField(r, new GUIContent(label.text, "Optional: a name a Hide Marker action can pick, to remove this marker later."), p.stringValue);
+            EditorGUI.EndProperty();
+            return;
+        }
+        List<string> names = new List<string> { "(every marker)" };
+        ScenarioScript s = ScenarioEditing.Script(p);
+        if (s != null) foreach (ScenarioTrigger t in s.triggers) if (t != null && t.Actions != null)
+            foreach (TriggerAction a in t.Actions) if (a != null && a.Type == TriggerActionType.ShowMarker && !string.IsNullOrEmpty(a.MarkerId) && !names.Contains(a.MarkerId)) names.Add(a.MarkerId);
+        int at = string.IsNullOrEmpty(p.stringValue) ? 0 : names.IndexOf(p.stringValue);
+        if (at < 0) { names.Add(p.stringValue + " (no Show Marker names it)"); at = names.Count - 1; }
+        int chosen = EditorGUI.Popup(r, label.text, at, names.ToArray());
+        if (chosen != at) p.stringValue = chosen == 0 ? "" : names[chosen];
         EditorGUI.EndProperty();
     }
 }
@@ -665,21 +708,9 @@ class ScenarioScriptEditor : Editor {
     public override void OnInspectorGUI() {
         ScenarioScript s = (ScenarioScript)target;
         ScenarioEditing.Shown = s;
-        EditorGUILayout.LabelField("Scenario file", string.IsNullOrEmpty(s.scenarioPath) ? "(none: this scene's own)" : s.scenarioPath);
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("Open scenario file...")) ScenarioTriggerFiles.Open();
-        GUI.enabled = !string.IsNullOrEmpty(s.scenarioPath);
-        if (GUILayout.Button("Save triggers into it")) ScenarioTriggerFiles.Save(s, s.scenarioPath);
-        GUI.enabled = true;
-        if (GUILayout.Button("Save as...")) {
-            string path = EditorUtility.OpenFilePanel("Save the triggers into a scenario file", ScenarioTriggerFiles.Folder, "dat");
-            if (!string.IsNullOrEmpty(path)) ScenarioTriggerFiles.Save(s, path);
-        }
-        EditorGUILayout.EndHorizontal();
-        if (Application.isPlaying)
-            EditorGUILayout.HelpBox("Changes here apply at once. They are kept when you save the scenario (the map editor's Save, or the S key), or with the button above; they are lost when play stops if you do neither. Drag units, buildings and tiles from the board (Hierarchy or Scene view) into the trigger fields. Level clock " + s.Clock.ToString("0.0") + " s.", MessageType.Info);
-        else
-            EditorGUILayout.HelpBox("Outside play there is no board: assets (clips, characters, markers, prefabs) can be dragged in, but units, buildings and tiles of the map only while it is open in play or in the map editor.", MessageType.Info);
+        EditorGUILayout.HelpBox(Application.isPlaying
+            ? "This scenario's triggers. Save the scenario as usual (the map editor's Save) to keep changes: they are lost when play stops otherwise. Drag players, units, buildings and tiles from the Hierarchy or Scene view into the fields."
+            : "Triggers belong to a scenario file: open the scenario in the map editor (in play) to edit them, and save it there.", MessageType.Info);
         foreach (string problem in s.Validate(false)) EditorGUILayout.HelpBox(problem, MessageType.Warning);
         serializedObject.Update();
         EditorGUILayout.PropertyField(serializedObject.FindProperty("triggers"), true);
@@ -762,58 +793,5 @@ static class ScenarioAreas {
                 float d = (q.x - p.x) * (q.x - p.x) + (q.y - p.y) * (q.y - p.y);
                 if (d < best) { best = d; x = i; y = j; }
             }
-    }
-}
-
-/// <summary>
-/// Scenario triggers in their files, from the editor: HexTactica ▸ Scenario Triggers ▸ Open Scenario File… puts a
-/// file's triggers on a Scenario Script in the open scene (not saved with the scene) to edit in the inspector; its
-/// Save button writes them back into the file's "script", touching nothing else in it.
-/// </summary>
-static class ScenarioTriggerFiles {
-    public static string Folder { get { return Path.Combine(Application.dataPath, "Resources/Scenarios"); } }
-
-    [MenuItem("HexTactica/Scenario Triggers/Open Scenario File...")]
-    public static void Open() {
-        string path = EditorUtility.OpenFilePanel("Edit the triggers of a scenario file", Folder, "dat");
-        if (string.IsNullOrEmpty(path)) return;
-        ScenarioScript s = Application.isPlaying ? ScenarioScript.Current : Editing();
-        Defective.JSON.JSONObject file = new Defective.JSON.JSONObject(File.ReadAllText(path));
-        if (Application.isPlaying) {
-            // In play the board is the game's: only the triggers are taken from the file (load the scenario itself to play it).
-            s.Load(file.GetField(ScenarioScript.FileKey), path);
-        } else {
-            s.Load(file.GetField(ScenarioScript.FileKey), path);
-            s.sides.Clear();
-            Defective.JSON.JSONObject players = file.GetField("players");
-            if (players != null && players.list != null)
-                foreach (Defective.JSON.JSONObject p in players.list) {
-                    Defective.JSON.JSONObject id = p.GetField("id"), name = p.GetField("personal_name");
-                    if (id != null) s.sides.Add(new ScenarioScript.KnownSide { id = id.longValue, name = name != null ? name.stringValue : "side " + id.longValue });
-                }
-        }
-        Selection.activeObject = s.gameObject;
-        Debug.Log("Editing the triggers of " + path + " (" + s.triggers.Count + "): select '" + s.gameObject.name + "' and use Save in its inspector.");
-    }
-
-    /// <summary>The Scenario Script to edit files on outside play: made in the open scene, never saved with it.</summary>
-    static ScenarioScript Editing() {
-        foreach (ScenarioScript s in Object.FindObjectsByType<ScenarioScript>(FindObjectsSortMode.None)) if (s != null) return s;
-        GameObject g = new GameObject("Scenario Script (editing a file)");
-        g.hideFlags = HideFlags.DontSave;
-        return g.AddComponent<ScenarioScript>();
-    }
-
-    /// <summary>Write <paramref name="s"/>'s triggers (as authored: no game progress) into the scenario file at <paramref name="path"/>.</summary>
-    public static void Save(ScenarioScript s, string path) {
-        if (s == null || string.IsNullOrEmpty(path) || !File.Exists(path)) { Debug.LogError("No scenario file " + path + " to save the triggers into."); return; }
-        Defective.JSON.JSONObject file = new Defective.JSON.JSONObject(File.ReadAllText(path));
-        if (s.triggers.Count > 0) file.SetField(ScenarioScript.FileKey, s.ToJson(false));
-        else file.RemoveField(ScenarioScript.FileKey);
-        File.WriteAllText(path, file.Print(true));
-        s.scenarioPath = path;
-        AssetDatabase.Refresh();
-        Debug.Log("Saved " + s.triggers.Count + " trigger(s) into " + path);
-        foreach (string p in s.Validate(false)) Debug.LogWarning("Scenario script (" + path + "): " + p);
     }
 }

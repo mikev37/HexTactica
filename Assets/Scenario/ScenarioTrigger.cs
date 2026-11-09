@@ -21,7 +21,7 @@ public enum TriggerCondition {
     BuildingCaptured = 3,
     /// <summary>A building matching the building filter has been destroyed (its health ran out): Count of them.</summary>
     BuildingDestroyed = 4,
-    /// <summary>The day shown on screen ("day 3") is Value or later.</summary>
+    /// <summary>The day shown on screen ("day 3") is Value or later, on Side's turn (Any: whoever's turn it is).</summary>
     DayReached = 5,
     /// <summary>At least Count units matching the unit filter stand within Radius of the tile (now).</summary>
     UnitsInArea = 6,
@@ -143,7 +143,7 @@ public static class TriggerSide {
     public const long Neutral = -4;
 }
 
-/// <summary>Marks a field that is the script's progress in a game, not part of the scenario as authored: saved in a game, not written by "Save triggers into scenario file".</summary>
+/// <summary>Marks a field that is the script's progress in a game, not part of the scenario as authored: saved in a game, not in the scenario as authored (ScenarioScript.ToJson(false)).</summary>
 [AttributeUsage(AttributeTargets.Field)]
 public class ScenarioStateAttribute : Attribute { }
 
@@ -154,7 +154,7 @@ public class DialogueLine {
     [ResourceName("Characters", typeof(DialogueCharacter))] public string Character = "";
     [Tooltip("What they say.")]
     [TextArea(2, 6)] public string Text = "";
-    [Tooltip("A sound played with the line (an AudioClip in Resources/Dialogue, by name): a voice line or a noise. Empty: the character's own Voice, if it has one; else silent. It stops when the line is closed, so lines never talk over each other.")]
+    [Tooltip("A sound played with the line (drag a clip in): a voice line or a noise. Empty: silent. It stops when the line is closed, so lines never talk over each other.")]
     [ResourceName("Dialogue", typeof(AudioClip))] public string Sound = "";
     [Tooltip("Where the portrait stands. Left or right of the text.")]
     public PortraitSide Portrait = PortraitSide.Left;
@@ -180,10 +180,10 @@ public class TriggerAction {
     [Tooltip("Camera Focus: seconds the camera takes to get there (0: at once). Wait: seconds the next action waits.")]
     public float Seconds = 1f;
 
-    [Tooltip("Show Marker: the marker prefab in Resources/ScenarioMarkers, by name.")]
-    [ResourceName("ScenarioMarkers", typeof(GameObject), ResourceKind.Marker)] public string Marker = "";
-    [Tooltip("Show Marker, Hide Marker: the marker's id, so a later action can remove it (empty on Hide Marker: every marker). Showing an id again moves that marker.")]
-    public string MarkerId = "";
+    [Tooltip("Show Marker: what the marker looks like: a marker prefab (the default ring-and-arrow is Marker; drag in another to use it).")]
+    [ResourceName("ScenarioMarkers", typeof(GameObject), ResourceKind.Marker)] public string Marker = "Marker";
+    [Tooltip("Show Marker: a name for this marker, so a Hide Marker action can remove it later (optional: without one, only Hide Marker's 'every marker' removes it). Showing a name again moves that marker. Hide Marker: the marker to remove, or every marker.")]
+    [MarkerName] public string MarkerId = "";
     [Tooltip("Show Marker: the text shown with the marker (empty: none).")]
     public string Text = "";
 
@@ -249,6 +249,9 @@ public class ResourceNameAttribute : PropertyAttribute {
     public ResourceNameAttribute(string folder, Type type, ResourceKind kind = ResourceKind.Any) { this.folder = folder; this.type = type; this.kind = kind; }
 }
 
+/// <summary>A marker's name: typed where a Show Marker names it, chosen from those names where a Hide Marker removes one.</summary>
+public class MarkerNameAttribute : PropertyAttribute { }
+
 /// <summary>A tile field (x; its y is the next field): drawn with a slot to drag a tile of the board onto, and the last tile clicked.</summary>
 public class TileFieldAttribute : PropertyAttribute { }
 
@@ -279,7 +282,7 @@ public class ScenarioTrigger {
     [Tooltip("After Trigger: the trigger that must have fired, by name.")]
     [TriggerName] public string AfterTrigger = "";
 
-    [Tooltip("Unit conditions: whose units. Building Captured: who took it. Building Owned: who holds it. Money At Least / At Most, Turn Over, Turn Started: whose. A player's id, or Any (-1), Human (-2: any side a person plays), AI (-3), Neutral (-4: nobody; Building Owned only).")]
+    [Tooltip("Unit conditions: whose units. Building Captured: who took it. Building Owned: who holds it. Money At Least / At Most: whose. Turn Over, Turn Started, Day Reached: whose turn. A player's id, or Any (-1), Human (-2: any side a person plays), AI (-3), Neutral (-4: nobody; Building Owned only).")]
     [SideChoice(true)] public long Side = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this kind (the unit prefab's name: Grunt, Tank ...; a faction's version counts as its base unit). Empty: any kind.")]
     [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
@@ -297,17 +300,17 @@ public class ScenarioTrigger {
     [Tooltip("Unit Enters, Units In Area, and any condition with In Area: tiles within this many steps of the centre (0: the tile only).")]
     public int Radius;
 
-    [Tooltip("How many (at least 1): Unit Enters, Unit Killed, Unit Built, Unit Damaged, Unit Healed, Building Captured, Building Destroyed, Turn Over, Turn Started (times it happened); Units In Area, Unit Starving, Out Of Ammo, Out Of Fuel, Low On Fuel, Cut Off, Building Owned (at least this many now).")]
+    [Tooltip("How many (at least 1): Unit Enters, Unit Killed, Unit Built, Unit Damaged, Unit Healed, Building Captured, Building Destroyed (times it happened); Turn Started, Turn Over (that side's turn number: 3 is its third turn); Units In Area, Unit Starving, Out Of Ammo, Out Of Fuel, Low On Fuel, Cut Off, Building Owned (at least this many now).")]
     public int Count = 1;
     [Tooltip("Day Reached: the day as the screen shows it (from 1). Money At Least / At Most: gold. Unit Damaged: strength left, at most (0: destroyed). Unit Healed: strength reached, at least. Low On Fuel: percent of a full tank, at most. Units At Most: how many units, at most (0: none left). Units At Least: how many units, at least.")]
     public int Value;
 
     [Header("Timing")]
-    [Tooltip("Seconds of play the condition must hold, without a break, before it fires (0: at once).")]
+    [Tooltip("Seconds (real seconds of play, not turns) the condition must hold, without a break, before it fires: a pause before the actions, or 'stays in the area for 3 seconds'. 0: at once.")]
     public float Delay;
-    [Tooltip("Fire again each time the condition is met anew (counts start again from 0 once it fires). Off: once.")]
+    [Tooltip("Off: the trigger fires once, ever. On: it fires again each time its condition is met anew (a counted condition starts counting from 0 after each firing, so 'Unit Killed, Repeat' fires on every kill).")]
     public bool Repeat;
-    [Tooltip("Repeat: seconds of play at least between two firings.")]
+    [Tooltip("Repeat: the least time, in seconds of play, between two firings (0: no limit).")]
     public float RepeatEvery;
 
     [Header("Actions (in order)")]
