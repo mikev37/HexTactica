@@ -430,14 +430,22 @@ namespace HexTactica.AI {
             return false;
         }
 
-        static List<Unit> shipKinds;
-        /// <summary>The ship prefabs (Resources/Units, locomotion naval): what "serves ships" is asked with.</summary>
-        static List<Unit> ShipKinds() {
-            if (shipKinds != null) return shipKinds;
+        static volatile List<Unit> shipKinds;
+        /// <summary>
+        /// Load the ship prefabs (GameAssets: Resources) once, on the main thread — AIPlayer.Dispatch calls it before the
+        /// AI thinks, since prefabs cannot be loaded from the thread the AI thinks on.
+        /// </summary>
+        public static void LoadShipKinds() {
+            if (shipKinds != null) return;
             List<Unit> l = new List<Unit>();
-            foreach (Unit t in UnityEngine.Resources.LoadAll<Unit>("Units")) if (t != null && LocomotionRules.IsNaval(t.locomotion)) l.Add(t);
+            foreach (Unit t in GameAssets.AllUnits) if (t != null && LocomotionRules.IsNaval(t.locomotion)) l.Add(t);
             shipKinds = l;
-            return l;
+        }
+
+        /// <summary>The ship prefabs (locomotion naval): what "serves ships" is asked with. Loaded by LoadShipKinds.</summary>
+        static List<Unit> ShipKinds() {
+            if (shipKinds == null) LoadShipKinds();   // main thread only (the AI's thinking has them loaded first)
+            return shipKinds;
         }
 
         public static bool CarriesHub(Unit t) {

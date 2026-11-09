@@ -176,6 +176,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         bool refresh = refreshPending;
         refreshPending = false;
         BoardView v = NewView();   // made here, on the main thread: it reads the real board
+        AIAssault.LoadShipKinds();  // likewise: it loads prefabs, which only the main thread may
         thinkingPrepares = prepare;
         thinkingGeneration = generation;
         thinkingSince = Time.unscaledTime;
