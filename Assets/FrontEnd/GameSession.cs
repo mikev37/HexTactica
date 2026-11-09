@@ -15,6 +15,8 @@ public class GameSession : MonoBehaviour {
     public static GameSession Instance { get; private set; }
 
     bool menuOpen, postShown, ready;
+    /// <summary>What this game scene was opened for (MatchSetup.Mode when it opened; Play once a set-up game starts).</summary>
+    SessionMode mode;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Hook() { GameScene.WhenLoaded(Install); }
@@ -37,7 +39,10 @@ public class GameSession : MonoBehaviour {
         // Every object of the scene has started (the board is built, the level editor is ready).
         yield return null;
         FrontEndSettings s = FrontEndSettings.Get;
-        switch (MatchSetup.Mode) {
+        mode = MatchSetup.Mode;
+        // The game's own panels (gold, next unit, end turn; the turn banner) are for playing: not while setting up or editing.
+        ShowGamePanels(mode != SessionMode.Setup && mode != SessionMode.Editor);
+        switch (mode) {
             case SessionMode.Setup:
                 GameController.Paused = true;
                 MatchSetup.LoadPreview();
@@ -72,7 +77,7 @@ public class GameSession : MonoBehaviour {
         if (!ready) return;
         GameController gc = GameController.gc;
         if (gc == null) return;
-        bool playing = MatchSetup.Mode == SessionMode.Play || MatchSetup.Mode == SessionMode.None;
+        bool playing = mode == SessionMode.Play || mode == SessionMode.None;
         if (playing && Input.GetKeyDown(FrontEndSettings.Get.menuKey)) { if (menuOpen) CloseMenu(); else OpenMenu(); }
         if (playing && gc.gameOver && !postShown) {
             postShown = true;
@@ -93,7 +98,7 @@ public class GameSession : MonoBehaviour {
     public void CloseMenu() {
         if (!menuOpen) return;
         menuOpen = false;
-        GameController.Paused = MatchSetup.Mode == SessionMode.Setup || MatchSetup.Mode == SessionMode.Editor;
+        GameController.Paused = mode == SessionMode.Setup || mode == SessionMode.Editor;
         Unload(FrontEndSettings.Get.inGameMenuScene);
     }
 
@@ -101,12 +106,20 @@ public class GameSession : MonoBehaviour {
     public void ClosePostGame() { Unload(FrontEndSettings.Get.postGameScene); }
 
     /// <summary>A game was loaded or started again: the post-game screen may show again when it ends.</summary>
-    public void NewGame() { postShown = false; }
+    public void NewGame() { postShown = false; mode = SessionMode.Play; }
 
     /// <summary>The pre-game screen started the game: it goes, and the game plays.</summary>
     public void SetupDone() {
         postShown = false;
+        mode = SessionMode.Play;
+        ShowGamePanels(true);
         Unload(FrontEndSettings.Get.preGameScene);
+    }
+
+    /// <summary>The HUD and the turn banner shown or hidden.</summary>
+    static void ShowGamePanels(bool on) {
+        foreach (Hud h in Resources.FindObjectsOfTypeAll<Hud>()) if (h != null && h.gameObject.scene.IsValid()) h.gameObject.SetActive(on);
+        foreach (TurnBanner b in Resources.FindObjectsOfTypeAll<TurnBanner>()) if (b != null && b.gameObject.scene.IsValid()) b.gameObject.SetActive(on);
     }
 
     public static void Unload(string scene) {

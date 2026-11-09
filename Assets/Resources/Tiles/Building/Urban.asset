@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Urban
   m_EditorClassIdentifier: 
   description: Urban Center
+  inMapEditor: 0
   upper_normal: {fileID: 0}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

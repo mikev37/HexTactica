@@ -12,9 +12,9 @@ public class UnitListRow : MonoBehaviour {
 
     public Unit Unit { get; private set; }
 
-    public void Show(Unit u, string faction, Color normal) {
+    public void Show(Unit u, string shownName, string faction, Color normal) {
         Unit = u;
-        if (label != null) label.text = u.name;
+        if (label != null) label.text = shownName;
         if (note != null) note.text = (faction.Length > 0 ? faction + "  " : "") + u.cost.ToString("N0");
         Highlight(normal);
     }

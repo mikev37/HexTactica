@@ -71,7 +71,9 @@ public class CameraRig : MonoBehaviour {
             transform.position += d;
         }
 
-        float wheel = OurInput() ? Input.mouseScrollDelta.y : 0f;
+        // The wheel over a panel scrolls the panel (a list), not the map.
+        bool overUI = TransportMenu.PointerOverUI != null && TransportMenu.PointerOverUI();
+        float wheel = OurInput() && !overUI ? Input.mouseScrollDelta.y : 0f;
         if (Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus)) wheel += 1;
         if (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus)) wheel -= 1;
         if (wheel != 0f) {

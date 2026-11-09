@@ -37,8 +37,10 @@ namespace UnityEngine.UI {
 namespace TMPro {
     public class TMP_InputField : UnityEngine.UI.Selectable {
         public enum ContentType { Standard, Autocorrected, IntegerNumber, DecimalNumber, Alphanumeric, Name, EmailAddress, Password, Pin, Custom }
+        public class SubmitEvent : UnityEngine.Events.UnityEvent<string> { }
         public string text = "";
         public ContentType contentType;
+        public SubmitEvent onEndEdit = new SubmitEvent();
         public TMP_Text textComponent;
         public UnityEngine.UI.Graphic placeholder;
     }

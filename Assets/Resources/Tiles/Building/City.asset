@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: City
   m_EditorClassIdentifier: 
   description: The City provides protection and Funding
+  inMapEditor: 0
   upper_normal: {fileID: 21300000, guid: 3557a23bfa58e1c41bd2fac44fda1058, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

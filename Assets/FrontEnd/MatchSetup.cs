@@ -27,6 +27,10 @@ public static class MatchSetup {
         public string name;
         /// <summary>This AI plays the side; false: a human at the screen.</summary>
         public bool ai;
+        /// <summary>The AI profile it plays with (an AIProfile's profileName, FrontEndSettings.aiProfiles); "" the AI's default.</summary>
+        public string profile = "";
+        /// <summary>The map makes the side its faction: the pre-game screen shows it and cannot change it.</summary>
+        public bool factionLocked;
         /// <summary>A Resources/Factions asset name; "" no faction (the base units).</summary>
         public string faction = "";
     }
@@ -79,8 +83,13 @@ public static class MatchSetup {
         bool ok = Load(FilePath, () => {
             Dictionary<long, bool> control = new Dictionary<long, bool>();
             Dictionary<long, string> factions = new Dictionary<long, string>();
-            foreach (Side s in Sides) { control[s.id] = s.ai; factions[s.id] = s.faction ?? ""; }
+            Dictionary<long, string> profiles = new Dictionary<long, string>();
+            foreach (Side s in Sides) {
+                control[s.id] = s.ai; profiles[s.id] = s.profile ?? "";
+                if (!s.factionLocked) factions[s.id] = s.faction ?? "";
+            }
             ScenarioLoader.ControlOverride = control;
+            ScenarioLoader.ProfileOverride = profiles;
             ScenarioLoader.FactionOverride = factions;
             ScenarioLoader.FogOverride = Fog ? "on" : "off";
             ScenarioLoader.PurchasesOverride = Purchases ? "on" : "off";
@@ -112,6 +121,7 @@ public static class MatchSetup {
         string red = ScenarioLoader.RedOverride, rules = ScenarioLoader.RulesOverride, buy = ScenarioLoader.PurchasesOverride,
                fog = ScenarioLoader.FogOverride, special = ScenarioLoader.SpecialUnitsOverride;
         Dictionary<long, bool> control = ScenarioLoader.ControlOverride;
+        Dictionary<long, string> profilesWere = ScenarioLoader.ProfileOverride;
         Dictionary<long, string> factions = ScenarioLoader.FactionOverride;
         bool fromFile = ScenarioLoader.ControlFromFile, recording = ScenarioLoader.RecordGames;
         try {
@@ -120,12 +130,14 @@ public static class MatchSetup {
             ScenarioLoader.RedOverride = null; ScenarioLoader.RulesOverride = null; ScenarioLoader.PurchasesOverride = null;
             ScenarioLoader.FogOverride = null; ScenarioLoader.SpecialUnitsOverride = null;
             ScenarioLoader.ControlOverride = null; ScenarioLoader.FactionOverride = null; ScenarioLoader.ControlFromFile = false;
+            ScenarioLoader.ProfileOverride = null;
             choices();
             return ScenarioLoader.LoadBoardFromPath(path);
         } finally {
             ScenarioLoader.RedOverride = red; ScenarioLoader.RulesOverride = rules; ScenarioLoader.PurchasesOverride = buy;
             ScenarioLoader.FogOverride = fog; ScenarioLoader.SpecialUnitsOverride = special;
             ScenarioLoader.ControlOverride = control; ScenarioLoader.FactionOverride = factions; ScenarioLoader.ControlFromFile = fromFile;
+            ScenarioLoader.ProfileOverride = profilesWere;
             ScenarioLoader.RecordGames = recording;
         }
     }
@@ -137,7 +149,11 @@ public static class MatchSetup {
         if (gc == null) return;
         foreach (Player p in gc.players) {
             if (p == null) continue;
-            Sides.Add(new Side { id = p.id, name = p.personal_name, ai = AIControl.Of(p) != null, faction = p.faction != null ? p.faction.name : "" });
+            AIPlayer full = p.GetComponent<AIPlayer>();
+            Sides.Add(new Side {
+                id = p.id, name = p.personal_name, ai = AIControl.Of(p) != null, faction = p.faction != null ? p.faction.name : "",
+                profile = full != null && full.profile != null ? full.profile.profileName : "", factionLocked = p.factionLocked
+            });
         }
         Fog = gc.fogOfWar;
         Purchases = gc.purchasesAllowed;

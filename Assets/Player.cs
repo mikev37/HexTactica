@@ -281,6 +281,10 @@ public class Player : MonoBehaviour
         }
     }
 
+    /// <summary>The map makes this side this faction (the pre-game screen shows it and cannot change it).</summary>
+    [Tooltip("The map makes this side its faction: the pre-game screen cannot change it.")]
+    public bool factionLocked;
+
     /// <summary>Set once this player has been seen holding an HQ. Losing it afterwards eliminates them.</summary>
     [HideInInspector] public bool hadHQ;
 
@@ -301,6 +305,10 @@ public struct PlayerData {
     /// <summary>The faction's asset name (a reference does not survive a save): resolved through LevelEditor.FindFaction.</summary>
     public string factionName;
     public bool AI;
+    /// <summary>The AI profile that plays it (an AIProfile's profileName, among FrontEndSettings.aiProfiles); "" the default.</summary>
+    public string aiProfile;
+    /// <summary>The map makes this side this faction: the pre-game screen cannot change it.</summary>
+    public bool factionLocked;
     public int money;
     public bool eliminated;
     public PlayerData(Player t) {
@@ -309,6 +317,9 @@ public struct PlayerData {
         displayColor = t.displayColor;
         factionName = t.faction != null ? t.faction.name : "";
         AI = AIControl.Of(t) != null;
+        AIPlayer full = t.GetComponent<AIPlayer>();
+        aiProfile = AI && full != null && full.profile != null ? full.profile.profileName : "";
+        factionLocked = t.factionLocked;
         money = t.money;
         eliminated = t.eliminated;
     }
@@ -322,9 +333,13 @@ public struct PlayerData {
             }
         });
         if(output == null) {
-            GameObject go = GameObject.Instantiate(new GameObject());
+            // A side the scene does not have (a map made with more players): made here, and it plays.
+            GameObject go = new GameObject(that.personal_name + " (player)");
             output = go.AddComponent<Player>();
+            output.id = that.id;
+            GameController.gc.players.Add(output);
         }
+        output.factionLocked = that.factionLocked;
         output.personal_name = that.personal_name;
         output.displayColor = that.displayColor;
         // (A save that names none — older ones, or a side without a faction — leaves the side's faction as the scene set it.)

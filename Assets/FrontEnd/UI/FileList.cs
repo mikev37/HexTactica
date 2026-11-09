@@ -38,7 +38,7 @@ public class FileList : MonoBehaviour {
     public string Selected { get { return picked != null ? picked.path : null; } }
     public GameFile SelectedFile { get { return picked; } }
 
-    void Awake() { if (rowTemplate != null) rowTemplate.gameObject.SetActive(false); }
+    void Awake() { if (rowTemplate != null && rowTemplate.gameObject.scene.IsValid()) rowTemplate.gameObject.SetActive(false); }   // a template in the scene; a prefab is left alone
     void OnEnable() { Refresh(); }
 
     public void ShowScenarios() { source = Source.Scenarios; Refresh(); }

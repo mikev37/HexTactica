@@ -7,9 +7,9 @@ using UnityEngine.UI;
 
 /// <summary>
 /// The pre-game screen (the PreGame scene, over the game scene with the scenario's board shown and held): for each
-/// side, whether this AI plays it and its faction; fog of war, purchases (building units), and faction special units.
-/// Start loads the scenario again with these choices and lets it play; Back returns to the main menu.
-/// The side rows are copies of a hidden template the scene holds.
+/// side, who plays it (a human, or this AI with one of its profiles) and its faction (unless the map fixes it); fog of
+/// war, purchases (building units), and faction special units. Start loads the scenario again with these choices and
+/// lets it play; Back returns to the main menu. The side rows are copies of a row prefab.
 /// </summary>
 public class PreGameMenu : MonoBehaviour {
     public TMP_Text title;
@@ -26,13 +26,20 @@ public class PreGameMenu : MonoBehaviour {
     public TMP_Text specialNote;
     [Tooltip("The faction list's first entry: no faction (the base units).")]
     public string noFaction = "No faction";
+    [Tooltip("Who plays a side: a human at the screen.")]
+    public string humanLabel = "Human";
+    [Tooltip("Who plays a side: this AI with its default profile.")]
+    public string defaultAiLabel = "AI (default)";
+    [Tooltip("Who plays a side: this AI with a profile from FrontEndSettings.aiProfiles; {0} the profile's name.")]
+    public string profileAiLabel = "AI: {0}";
     public Button startButton;
 
     readonly List<PlayerSetupRow> made = new List<PlayerSetupRow>();
     List<Faction> factions;
+    List<HexTactica.AI.AIProfile> profiles;
 
     void Awake() {
-        if (rowTemplate != null) rowTemplate.gameObject.SetActive(false);
+        if (rowTemplate != null && rowTemplate.gameObject.scene.IsValid()) rowTemplate.gameObject.SetActive(false);
         TransportPanel.EnsureEventSystem();
         if (specialUnits != null) specialUnits.onValueChanged.AddListener(v => ShowSpecialNote());
     }
@@ -48,13 +55,18 @@ public class PreGameMenu : MonoBehaviour {
         List<string> names = new List<string> { noFaction };
         names.AddRange(factions.Select(f => f.name));
         GameController gc = GameController.gc;
+        profiles = FrontEndSettings.Get.aiProfiles.Where(x => x != null).ToList();
+        List<string> controls = new List<string> { humanLabel, defaultAiLabel };
+        controls.AddRange(profiles.Select(x => string.Format(profileAiLabel, x.profileName)));
         foreach (MatchSetup.Side side in MatchSetup.Sides) {
             if (rowTemplate == null || rows == null) break;
             PlayerSetupRow row = Instantiate(rowTemplate, rows);
             row.gameObject.SetActive(true);
             Player p = gc != null ? gc.players.Find(x => x != null && x.id == side.id) : null;
             int pick = factions.FindIndex(f => f.name == side.faction) + 1;
-            row.Show(side, p != null ? p.displayColor : Color.white, names, pick);
+            int profile = profiles.FindIndex(x => x.profileName == side.profile);
+            int control = !side.ai ? 0 : profile >= 0 ? 2 + profile : 1;
+            row.Show(side, p != null ? p.displayColor : Color.white, controls, control, names, pick);
             if (row.faction != null) row.faction.onValueChanged.AddListener(i => ShowSpecialNote());
             made.Add(row);
         }
@@ -84,9 +96,13 @@ public class PreGameMenu : MonoBehaviour {
     public void StartGame() {
         foreach (PlayerSetupRow row in made) {
             if (row.Side == null) continue;
-            row.Side.ai = row.ai != null && row.ai.isOn;
-            Faction f = FactionAt(row.faction != null ? row.faction.value : 0);
-            row.Side.faction = f != null ? f.name : "";
+            int c = row.control != null ? row.control.value : 0;
+            row.Side.ai = c > 0;
+            row.Side.profile = c >= 2 && c - 2 < profiles.Count ? profiles[c - 2].profileName : "";
+            if (!row.Side.factionLocked) {
+                Faction f = FactionAt(row.faction != null ? row.faction.value : 0);
+                row.Side.faction = f != null ? f.name : "";
+            }
         }
         MatchSetup.Fog = fog != null && fog.isOn;
         MatchSetup.Purchases = build == null || build.isOn;

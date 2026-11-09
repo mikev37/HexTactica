@@ -96,11 +96,15 @@ namespace HexTactica.Harness {
                 + (obj.GetField("width") != null ? ", the file's is " + obj.GetField("width").intValue : "") + ") and were left out. Enlarge the board in the scene to play this map as made.");
 
             Dictionary<long, bool> fileAI = new Dictionary<long, bool>();
+            Dictionary<long, string> fileProfile = new Dictionary<long, string>();
             if (obj.GetField("players")) {
+                HashSet<long> inFile = new HashSet<long>();
                 JSONObjectEnumerator players = obj.GetField("players").GetEnumerator();
                 while (players.MoveNext()) {
                     PlayerData pd = JsonUtility.FromJson<PlayerData>(players.Current.Print());
                     fileAI[pd.id] = pd.AI;
+                    fileProfile[pd.id] = pd.aiProfile ?? "";
+                    inFile.Add(pd.id);
                     Player loaded = pd.load();
                     // The pre-game screen's faction for this side (before any unit is placed: units are placed as
                     // their side's faction fields them).
@@ -112,6 +116,11 @@ namespace HexTactica.Harness {
                     // side's turns were then skipped for the rest of the game).
                     if (loaded != null) loaded.eliminated = false;
                 }
+                // The file's sides are the game's sides: a side of the scene's that the file does not have is out of
+                // this game (put away, not destroyed: another file may bring it back by its id).
+                if (inFile.Count > 0)
+                    foreach (Player p in GameController.gc.players.ToArray())
+                        if (p != null && !inFile.Contains(p.id)) { GameController.gc.players.Remove(p); p.gameObject.SetActive(false); }
                 // (Who moves first: ApplyTestBlock, below.)
             }
 
@@ -132,7 +141,7 @@ namespace HexTactica.Harness {
             UnitData.LoadAll(unitData);
 
             string redKind = ApplyTestBlock(obj);
-            ApplyControl(fileAI);
+            ApplyControl(fileAI, fileProfile);
 
             GameController.BoardLoaded();
 
@@ -280,6 +289,9 @@ namespace HexTactica.Harness {
         /// </summary>
         public static Dictionary<long, bool> ControlOverride;
 
+        /// <summary>The AI profile for each side an AI plays, by player id (an AIProfile's profileName; "" the default). Set by the pre-game screen with ControlOverride.</summary>
+        public static Dictionary<long, string> ProfileOverride;
+
         /// <summary>Who plays each side as the file says (each player's "AI"): a saved game goes on as it was played. Set when loading a save.</summary>
         public static bool ControlFromFile;
 
@@ -287,21 +299,27 @@ namespace HexTactica.Harness {
         public static Dictionary<long, string> FactionOverride;
 
         /// <summary>The pre-game screen's or a save's choice of who plays each side (ControlOverride, ControlFromFile), over the test block's.</summary>
-        static void ApplyControl(Dictionary<long, bool> fileAI) {
+        static void ApplyControl(Dictionary<long, bool> fileAI, Dictionary<long, string> fileProfile) {
             if (GameController.gc == null || (ControlOverride == null && !ControlFromFile)) return;
-            foreach (Player p in GameController.gc.players) {
+            foreach (Player p in GameController.gc.players.ToArray()) {
                 if (p == null) continue;
-                bool ai;
-                if (ControlOverride != null && ControlOverride.TryGetValue(p.id, out ai)) SetControl(p, ai);
-                else if (ControlFromFile && fileAI.TryGetValue(p.id, out ai)) SetControl(p, ai);
+                bool ai; string profile;
+                if (ControlOverride != null && ControlOverride.TryGetValue(p.id, out ai)) {
+                    if (ProfileOverride == null || !ProfileOverride.TryGetValue(p.id, out profile)) profile = "";
+                    SetControl(p, ai, profile);
+                } else if (ControlFromFile && fileAI.TryGetValue(p.id, out ai)) {
+                    if (!fileProfile.TryGetValue(p.id, out profile)) profile = "";
+                    SetControl(p, ai, profile);
+                }
             }
         }
 
         /// <summary>
-        /// <paramref name="p"/> played by this AI (AIPlayer, set up as the harness runs it: no mission objective), or by a
+        /// <paramref name="p"/> played by this AI (AIPlayer, set up as the harness runs it: no mission objective) with the
+        /// profile named <paramref name="profile"/> (FrontEndSettings.aiProfiles; "" or unknown: the default), or by a
         /// human: every AI on it switched off and removed.
         /// </summary>
-        public static void SetControl(Player p, bool ai) {
+        public static void SetControl(Player p, bool ai, string profile = "") {
             if (p == null) return;
             AIPlayer full = p.GetComponent<AIPlayer>();
             foreach (MonoBehaviour m in p.GetComponents<MonoBehaviour>()) {
@@ -314,6 +332,7 @@ namespace HexTactica.Harness {
                 full.player = p;
                 full.enabled = true;
                 full.objective = null;
+                full.profile = FrontEndSettings.Get.Profile(profile);
                 full.ResetTurn();
             } else if (full != null) {
                 full.enabled = false;

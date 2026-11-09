@@ -102,6 +102,7 @@ namespace UnityEngine {
     public struct Color {
         public float r, g, b, a;
         public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; }
+        public Color(float r, float g, float b) { this.r = r; this.g = g; this.b = b; this.a = 1f; }
         public static bool operator ==(Color x, Color y) { return x.r == y.r && x.g == y.g && x.b == y.b && x.a == y.a; }
         public static bool operator !=(Color x, Color y) { return !(x == y); }
         public override bool Equals(object o) { return o is Color && (Color)o == this; } public override int GetHashCode() { return 0; }
@@ -245,6 +246,7 @@ namespace UnityEngine {
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return GetComponents<T>(); }
         public int layer;
         public string tag = "Untagged";
+        public UnityEngine.SceneManagement.Scene scene { get { return new UnityEngine.SceneManagement.Scene(); } }
 
         public Transform transform {
             get {
@@ -347,6 +349,7 @@ namespace UnityEngine {
     public static class Resources {
         public static T Load<T>(string path) where T : class { return null; }
         public static T GetBuiltinResource<T>(string path) where T : class { return null; }
+        public static T[] FindObjectsOfTypeAll<T>() where T : class { return new T[0]; }
         /// <summary>The harness's Resources folder: what it finds under that path, by type (PrefabLoader; null: nothing).</summary>
         public static System.Func<System.Type, string, object[]> Provider;
         public static T[] LoadAll<T>(string path) where T : class {
