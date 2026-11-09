@@ -448,6 +448,14 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     rounds). What is still late is the demand: 2–4 units waiting across water until round 8, 14 at round 8, 23 at round 12
     — the campaign sends few units to objectives across water early. Empty transports while units waited: Blue 3 turns,
     Red 6.
+  - Channel supply (ch5 traces): new Blue 118 unit-turns out of supply, 3 lost to attrition (old Red 12, 0); new Red 75
+    (old Blue 26). Out of supply from round 5, steep from round 13. Blue's big task force (Clear@-2,6, 24–29 units) ran
+    "chain 0, its own 0, chain short, nothing spare". Only 4 supply units bought in 20 rounds: the HQ is the only facility
+    that builds them, on its weight share (~1,600–2,000 a turn against 6,500). No supply unit was put down across water
+    (trace "supply put down Blue 0 Red 0"); transport planes carried supply as leaps.
+  - Objectives across water need absurd supply: `AICampaign` (lasting objectives) measures the gap by `map.LandSteps`
+    from the target; with no supplied ground on its land it falls back to `routeLength`, so "not taken on: Clear@-10,3
+    needs 32 supply units" (also Clear@2,1, Secure@-2,7). Objectives across water are refused for supply, not for force.
 
 ## 7. Open work, in the order I'd take it
 
