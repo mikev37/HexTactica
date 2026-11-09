@@ -6,6 +6,11 @@ Triggers are not in the map editor. You edit them in the Unity inspector.
 
 ## Editing triggers
 
+Every normal save writes a scenario's triggers, and every load reads them: the S key, the map editor's Save, and the
+in-game Save. The inspector's own Save button is for edits made in the inspector. Edits made outside play have no
+running game to save them, and edits made in play are lost when play stops. The button writes only the triggers into
+the file, as authored, without any game's progress.
+
 - **Outside play:** HexTactica ▸ Scenario Triggers ▸ Open Scenario File… opens a `.dat` file. It puts its triggers on a
   *Scenario Script (editing a file)* object in the open scene. That object is never saved with the scene. Select it,
   edit the triggers, then press **Save triggers into it**. Save writes only the file's `"script"` and leaves the rest
