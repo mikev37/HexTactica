@@ -15,6 +15,8 @@ public class GameSession : MonoBehaviour {
     public static GameSession Instance { get; private set; }
 
     bool menuOpen, postShown, ready;
+    bool fogShownWas = true;
+    GameController gc0;
     /// <summary>What this game scene was opened for (MatchSetup.Mode when it opened; Play once a set-up game starts).</summary>
     SessionMode mode;
 
@@ -51,6 +53,9 @@ public class GameSession : MonoBehaviour {
             case SessionMode.Setup:
                 GameController.Paused = true;
                 MatchSetup.LoadPreview();
+                // Who plays which side is not chosen yet: the board is shown whole, not through one side's fog.
+                gc0 = GameController.gc;
+                if (gc0 != null) { fogShownWas = gc0.fogShownOnScreen; gc0.fogShownOnScreen = false; FogOfWar.Changed(); }
                 Frame();
                 SceneManager.LoadScene(s.preGameScene, LoadSceneMode.Additive);
                 break;
@@ -87,8 +92,17 @@ public class GameSession : MonoBehaviour {
         if (playing && gc.gameOver && !postShown) {
             postShown = true;
             if (menuOpen) CloseMenu();
-            SceneManager.LoadScene(FrontEndSettings.Get.postGameScene, LoadSceneMode.Additive);
+            HexTactica.Harness.GameLog.EndIfOver();   // the log's last line, read by the report
+            StartCoroutine(PostGameAfterBanner());
         }
+    }
+
+    /// <summary>The post-game screen once the end-of-game banner ("Red wins") has played out.</summary>
+    IEnumerator PostGameAfterBanner() {
+        yield return null;   // the banner starts the frame after the game ends
+        TurnBanner banner = FindAnyObjectByType<TurnBanner>();
+        while (banner != null && banner.BannerShowing) yield return null;
+        SceneManager.LoadScene(FrontEndSettings.Get.postGameScene, LoadSceneMode.Additive);
     }
 
     /// <summary>The in-game menu over the game (the game is held while it is open).</summary>
@@ -116,6 +130,7 @@ public class GameSession : MonoBehaviour {
     /// <summary>The pre-game screen started the game: it goes, and the game plays.</summary>
     public void SetupDone() {
         postShown = false;
+        if (GameController.gc != null) { GameController.gc.fogShownOnScreen = fogShownWas; FogOfWar.Changed(); }
         mode = SessionMode.Play;
         ShowGamePanels(mode);
         Unload(FrontEndSettings.Get.preGameScene);

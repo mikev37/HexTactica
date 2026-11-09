@@ -31,6 +31,9 @@ public class TurnBanner : MonoBehaviour {
     [Tooltip("Seconds the end-of-game banner stays fully shown before fading.")]
     public float endHold = 4f;
 
+    /// <summary>Is a banner on screen now (fading in, held, or fading out)? The post-game screen waits for the end-of-game one.</summary>
+    public bool BannerShowing { get { return bannerText != null && Time.unscaledTime - bannerAt < fadeIn + bannerHold + fadeOut; } }
+
     Player lastPlayer;
     int lastDay = -1;
     bool wasOver;

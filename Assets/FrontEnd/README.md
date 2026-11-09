@@ -65,7 +65,8 @@ be chosen. A save keeps each side's profile by its profileName (`PlayerData.aiPr
 A terrain is drawn as a tile of it looks: its water, lower and upper sprites stacked as on the board, never the floor
 (`SpritePortrait.ComposeTerrain`, on a board tile's layout). A unit or building is drawn from its prefab's own sprites
 (`SpritePortrait.ComposePrefab`). The pick also shows in the HUD's unit or tile panel (`Hud.Pinned`); the HUD's turn
-controls are hidden in the editor. The **Look** tool shows the map's sides, name, width and rules in place of the
+controls are hidden in the editor. On the pre-game screen the board is shown whole, without fog, because who plays which side isn't chosen yet. Once
+the game starts, fog is drawn for the human side. The **Look** tool shows the map's sides, name, width and rules in place of the
 palette. **For** sets the side units and buildings are placed for, with **Neutral** for buildings. A base unit
 placed for a side with a faction becomes that faction's version (a Conscript for a Union side is the Union
 Conscript).
@@ -104,10 +105,14 @@ now records:
 - each side at the start of every turn: `state` (worth, units, cities, buildings, income, gold, front), `fields`
   (units by kind) and `can buy`;
 - purchases: `Blue buys Grunt at City (3,4) for 2500`;
-- every unit lost and how: `Blue Grunt (3,4) dies: combat|supply|fuel|aboard`. A combat death comes just before
+- every unit lost and how: `Blue Grunt (3,4) dies: combat|supply|fuel|aboard|eliminated`. A combat death comes just before
   the attack line that names the killer;
 - buildings changing hands: `City (3,4) changes hands: Red -> Blue`;
 - `side:` lines (id, faction, AI or human), the HQ-to-HQ `axis:`, and `-- saved as` / `-- resumed from` lines.
+
+The game's end is written the moment it happens (`GameController.GameEnded`), so the report always knows who won.
+The post-game screen opens once the end-of-game banner has played out. Its Units page is a table built from the
+**Unit Table Heading** and **Unit Table Row** prefabs.
 
 `GameRecord.Read(folder)` parses a game.log. `GameInsights` turns the result into findings, written for the human
 player ("you"):

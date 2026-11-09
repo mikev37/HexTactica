@@ -138,9 +138,9 @@ namespace HexTactica.Harness {
             }
 
             /// <summary>The ways a unit is lost.</summary>
-            public const string Combat = "combat", Supply = "supply", Fuel = "fuel", Aboard = "aboard";
+            public const string Combat = "combat", Supply = "supply", Fuel = "fuel", Aboard = "aboard", Eliminated = "eliminated";
 
-            /// <summary>A unit lost: "Blue Grunt (3,4) dies: supply". Combat deaths come just before the attack line that caused them (which says who killed it); cargo lost "aboard" went down with a transport killed in the next attack line.</summary>
+            /// <summary>A unit lost: "Blue Grunt (3,4) dies: supply" (eliminated: its side lost its HQ and every unit with it). Combat deaths come just before the attack line that caused them (which says who killed it); cargo lost "aboard" went down with a transport killed in the next attack line.</summary>
             public static string Dies(Unit u, string cause) { return Indent + Who(u) + " " + D(u.tile) + " dies: " + cause; }
             static readonly Regex dies = new Regex(@"^   (.+) " + Tile + @" dies: (\w+)$");
             public static bool ReadDies(string line, IEnumerable<string> sides, out string sideName, out string unit, out string cause) {

@@ -236,6 +236,7 @@ namespace UnityEngine {
         public int childCount { get { return 0; } }
         public Transform GetChild(int i) { return null; }
         public void SetSiblingIndex(int i) { }
+        public void SetAsLastSibling() { }
         public int GetSiblingIndex() { return 0; }
         public Matrix4x4 worldToLocalMatrix, localToWorldMatrix;
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
