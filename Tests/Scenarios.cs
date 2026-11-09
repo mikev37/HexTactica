@@ -4656,6 +4656,20 @@ public static class Scenarios {
         Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
                           + " | Red " + (Environment.GetEnvironmentVariable("SET_RED") ?? "defaults"));
         int startBlue = l.ai.units.Count, startRed = l.other.units.Count;
+        // Who held each building at the start, and the round each changed hands (printed at the end).
+        Dictionary<Building, Player> heldAtStart = new Dictionary<Building, Player>();
+        foreach (Building b in Building.all) if (b != null) heldAtStart[b] = b.owner;
+        Dictionary<Building, Player> heldNow = new Dictionary<Building, Player>(heldAtStart);
+        List<string> handsChanged = new List<string>();
+        Action<int> noteHands = round => {
+            foreach (Building b in Building.all) {
+                if (b == null || b.tile == null) continue;
+                Player was; heldNow.TryGetValue(b, out was);
+                if (was == b.owner) continue;
+                handsChanged.Add("r" + round + " " + b.name.Replace("(Clone)", "") + "(" + b.tile.x + "," + b.tile.y + ") " + (was != null ? (was == l.ai ? "Blue" : "Red") : "neutral") + "->" + (b.owner != null ? (b.owner == l.ai ? "Blue" : "Red") : "neutral"));
+                heldNow[b] = b.owner;
+            }
+        };
         int ditchBlue = 0, ditchRed = 0; int sorties = 0, landings = 0;
         Action<Unit> dh = u => { if (u.owner == l.ai) ditchBlue++; else ditchRed++; };
         Unit.Ditched += dh;
@@ -4692,6 +4706,7 @@ public static class Scenarios {
                 b.Sort(string.CompareOrdinal);
                 Console.WriteLine("  board after turn " + turn + ": " + string.Join(" | ", b.ToArray()));
             }
+            noteHands(gc.days);
             if (gc.activePlayer == l.ai || gc.gameOver)
                 Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6} | out of supply (unit-turns so far) Blue {5} Red {6}, lost to attrition Blue {7} Red {8}",
                     gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other),
@@ -4714,6 +4729,7 @@ public static class Scenarios {
                 l.ai.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.ai), bB, iB, l.ai.money,
                 l.other.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.other), bR, iR, l.other.money));
         }
+        Console.WriteLine("buildings that changed hands: " + (handsChanged.Count > 0 ? string.Join(", ", handsChanged.ToArray()) : "none"));
         Console.WriteLine(string.Format("transports: supply put down Blue {0} Red {1}; fighting units boarded Blue {2} Red {3}, put down Blue {4} Red {5}; unit-turns aboard Blue {6} Red {7}",
             supplyDrops[0], supplyDrops[1], boards[0], boards[1], drops[0], drops[1], aboardTurns[0], aboardTurns[1]));
         string folder = HexTactica.Harness.GameLog.Folder;

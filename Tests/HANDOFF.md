@@ -469,6 +469,18 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     attrition 2; 23 boarded, 13 put down; first transport bought round 8 (was 13). New Red 177,750 v 160,833, 23 to 16,
     out of supply 66 (was 75), attrition 0. Still only 3 supply units bought by Blue; "needs 1 supply units, 0 free" 7
     times. ForestClearing new Blue 85,583 v 39,583; Biomes new Blue 104,416 v 56,500.
+  - Duel summary now prints "buildings that changed hands: rN Building(x,y) from->to". Channel islands (owner's
+    question): new Blue took Red's north-west island's yard r13, cities (-6,9) r16 and (-6,8) r17, runway r17; city
+    (-2,6) still Red at r20. New Red took Blue's north island: yard r15, runway r18, cities (1,-6) r18, (2,-10) r19,
+    (3,-10) r20.
+  - Sea supply as the AI does it (not as the rules allow): the rules link a supply unit aboard a ship within a move of
+    supplied ground, or through another carrier ship (a convoy: `SupplyNetwork.CarriedLinked`), and a supply unit aboard
+    a transport aboard another (a truck in a ship) is legal. The AI: `AIAssault.SupplyTransports` leaves ships out of
+    supply duty ("a ship's supply goes with its troops"); `AIPlayer.SeaLiftShipFor/SeaLiftBoard/SeaLiftSupply` put a
+    supply unit on foot in a ship bound for an unsupplied landing, but the ship's goal is only `SeaLiftGoal` — the
+    campaign's one objective (the enemy HQ) — not each front across water; it picks a linked tile but never places ships
+    as a convoy. Nothing plans a supply unit in a truck in a ship, and the landing (assault rides) plans no supply for
+    going inland. Channel ch6/ch7: no supply unit boarded a ship on either side; planes made 73–75 "supply leap" turns.
 
 ## 7. Open work, in the order I'd take it
 
