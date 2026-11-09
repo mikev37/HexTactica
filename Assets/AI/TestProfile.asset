@@ -58,7 +58,7 @@ MonoBehaviour:
   campaignHubNeedSimple: 1
   campaignSupplyByTransport: 1
   seaSupplyChain: 1
-  supplyAskPerUnit: 1
+  supplyAskPerUnit: 0
   seaSupplyRideAlong: 0
   campaignHoldContested: 1
   campaignReserveShare: 0.33

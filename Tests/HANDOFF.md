@@ -511,6 +511,21 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
       every short front's; a sea supply ship's, every unit ashore without its ship. Channel new Blue 20 rounds: on
       185,916 v 178,166 (22 buildings; island: (-2,6) r13 only), off 160,500 v 165,833 (25 buildings; island (-6,9) r16,
       (-6,8) r17). New Red with both (ride-along on): 190,416 v 180,333, island city (1,-6) only (was all three).
+    - Read in the traces afterwards (owner asked): with `supplyAskPerUnit` on, Blue boarded 27 and put down only 13,
+      100 unit-turns aboard (off: 23, 13, 54) — the material gain is units sitting aboard, not better trades. Turned
+      OFF. With `seaSupplyRideAlong` on (30 rounds, cur30_ride_blue): the supply unit is told to board ships already
+      out at sea, walks to the yard nearest that ship (`NearYard`) while the ship takes on troops at another yard; a
+      different supply unit is picked every turn; from round 11 no troop ship is bound for land without supply and no
+      station ever gets a ship. 188,250 v 283,250.
+    - Baseline before procurement (0356ab5, worktree), Channel new Blue v old Red, traced: 20 rounds and 30 rounds,
+      no supply unit ever boarded a ship ("boards the ship to carry supply" 0; "goes to the ship" 1); supply put down 0.
+      So the sea lift's supply-with-troops (`SeaLiftShipFor`/`SeaLiftBoard`/`SeaLiftSupply`) did not happen on
+      Channel before today's work either; the 8 Nov note above ("ferries troops and supply") is not borne out by
+      these games.
+    - Design fault (mine): `AISeaSupply` is a second supply planner beside `AILogistics` (land chains), each
+      claiming supply units and transports by its own priorities. They should be one: the logistics' chains crossing
+      water with ship links (convoys), its own allocation of supply units and transports, the sea lift's ride-along
+      a chain link riding with the troops.
 
 ## 7. Open work, in the order I'd take it
 
