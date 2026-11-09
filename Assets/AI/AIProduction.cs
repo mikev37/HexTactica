@@ -880,8 +880,20 @@ namespace HexTactica.AI {
         static float Value(Unit t, HexTile at, AIMap map) { return ValueVs(t, at, allFoes ?? map.enemyUnits); }
 
         /// <summary>procBudgets: what each facility has saved, and what it is saving for, by side (kept from turn to turn).</summary>
-        class Budget { public readonly Dictionary<Building, float> acct = new Dictionary<Building, float>(); public readonly Dictionary<Building, Unit> target = new Dictionary<Building, Unit>(); }
+        class Budget { public readonly Dictionary<Building, float> acct = new Dictionary<Building, float>(), share = new Dictionary<Building, float>(); public readonly Dictionary<Building, Unit> target = new Dictionary<Building, Unit>(); }
         static readonly Dictionary<Player, Budget> budgets = new Dictionary<Player, Budget>();
+
+        /// <summary>
+        /// procBudgets: will <paramref name="b"/> build this turn, by what it chose last turn? Only if it was saving and its
+        /// savings plus its share cover what it saves for. (Bought last turn, buying nothing, or unknown: no.)
+        /// </summary>
+        public static bool WillBuild(Player p, Building b) {
+            Budget bg; lock (budgets) { if (p == null || b == null || !budgets.TryGetValue(p, out bg)) return false; }
+            Unit t; float a, sh;
+            if (!bg.target.TryGetValue(b, out t) || t == null || !bg.acct.TryGetValue(b, out a)) return false;
+            bg.share.TryGetValue(b, out sh);
+            return a + sh >= t.cost;
+        }
 
         /// <summary>procBudgets: a unit's value, waited for <paramref name="wait"/> turns.</summary>
         static float WaitDiscount(AIProfile pr, int wait) { return wait <= 0 ? 1f : Mathf.Pow(Mathf.Max(1.0001f, pr.procWaitBase), -pr.procWaitPower * Mathf.Pow(wait, Mathf.Max(0.1f, pr.procWaitExponent))); }
@@ -968,18 +980,19 @@ namespace HexTactica.AI {
             for (int round = 0; round <= live.Count && active.Count > 0; round++) {
                 split();
                 List<Slot> none = new List<Slot>();
-                foreach (Slot s in active) if (decide(s).Key == null) none.Add(s);
+                // (Its tile taken by our own unit — an aircraft or ship servicing there — it builds nothing this turn: the same.)
+                foreach (Slot s in active) if (!s.free || decide(s).Key == null) none.Add(s);
                 if (none.Count == 0) break;
                 foreach (Slot s in none) {
                     if (trace != null) gaveUp.Add(s.b.name.Replace("(Clone)", "") + " (" + s.tile.x + "," + s.tile.y + ") " + carry[s].ToString("0"));
                     carry[s] = 0f; active.Remove(s);
                 }
             }
-            if (trace != null && gaveUp.Count > 0) trace("   " + p.personal_name + " budget: buys nothing, gives up its savings: " + string.Join(", ", gaveUp.ToArray()));
+            if (trace != null && gaveUp.Count > 0) trace("   " + p.personal_name + " budget: builds nothing (nothing worth it, or its tile taken), gives up its savings: " + string.Join(", ", gaveUp.ToArray()));
             foreach (Slot s in live) if (!active.Contains(s)) { bg.acct.Remove(s.b); bg.target.Remove(s.b); }
             if (active.Count == 0) return money;
             split();
-            foreach (Slot s in active) bg.acct[s.b] = acct[s];
+            foreach (Slot s in active) { bg.acct[s.b] = acct[s]; bg.share[s.b] = share[s]; }
             for (int i = 0; i < active.Count; i++) {
                 Slot s = active[i];
                 Unit prev; was.TryGetValue(s.b, out prev);
@@ -1007,10 +1020,7 @@ namespace HexTactica.AI {
                     if (owe > 0.5f) acct[s] -= owe;   // (rounding)
                     s.pick = best; s.value = bv; s.why = bwhy; money -= best.cost; plan(best, s, 1);
                     bg.target.Remove(s.b);
-                    // Bought: it is not saving, so what is left goes to those still to choose (by weight), else back to be shared next turn.
-                    float left = Mathf.Max(0f, acct[s]), restW = 0f;
-                    for (int j = i + 1; j < active.Count; j++) restW += wgt[active[j]];
-                    if (restW > 0f) for (int j = i + 1; j < active.Count; j++) { acct[active[j]] += left * wgt[active[j]] / restW; bg.acct[active[j].b] = acct[active[j]]; }
+                    // Spent: it keeps nothing (what is left is shared by weight next turn).
                     acct[s] = 0f; bg.acct.Remove(s.b);
                     if (line != null) trace(line + "; buys " + GameController.UnitName(best) + " (" + bv.ToString("0") + ")" + (lenders.Count > 0 ? " with " + lenders.Count + " others' savings" : ""));
                 } else {

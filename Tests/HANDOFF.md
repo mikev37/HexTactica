@@ -427,6 +427,17 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   - Results, traced, single games (material, new AI first): ForestClearing new Blue 90,666 v 52,500 (12 buildings to 3);
     new Red 75,500 v 61,666. Channel (20 rounds) new Blue 186,583 v 145,583 (3 transport ships, 2 transport planes;
     5 units boarded); new Red 204,750 v 161,500 (23 buildings to 16). Biomes new Blue 94,750 v 44,250.
+  - Then (owner's rules): a facility that spends keeps nothing (its leftover is shared by weight next turn, not handed
+    to the others this turn); a saving one keeps its share, at most its target's cost. A facility whose tile our own unit
+    holds builds nothing that turn: it gives its savings up like one that buys nothing. Aircraft and ships may end on a
+    facility that services them only when it will not build this turn (`AIProduction.WillBuild`: last turn's target, its
+    savings plus its share short of it) or when they need service (fuel, ammunition, supplies or strength short).
+    Channel new Blue 180,583 v 151,000 (no unit boarded: the first transport ship came in round 18); ForestClearing new
+    Blue 90,666 v 52,500 (the same game as before).
+  - Sea crossing, why weak on Channel (traced): ships are bought late (rounds 16–18 in the last two games). The naval
+    yards save for gunboats instead: a gunboat is valued 10–15k (lifetime, front resistance, across water ×1.5, facility
+    bonus), a transport ship ~8k: `cargoGain` counts one load (4 riders) of the 45–53 land units waiting to cross, and
+    one trip. The one ship in round 16 went on medevac; the other moved up loaded in round 19.
 
 ## 7. Open work, in the order I'd take it
 
