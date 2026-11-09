@@ -343,6 +343,25 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
   reserve not committed); RiverCrossing new Red regression above; new Red loses ForestClearing.
 
+- **Procurement (9 Nov, `procurement` on):** `AIProduction.Proc`. Inputs: gold, income, our facilities, enemy and map
+  income, the campaign's fronts (logistics tasks) by priority and their expected resistance (`enemyPower`, seen and
+  unseen, plus a priority share of `fogUnplacedPower`). Each facility serves the front with the most priority for its
+  distance. Per kind at a facility: no resistance → infantry and troop transports ×`procNoResistance`, short of units →
+  cheapest ×(1 + `procCheapBonus`·cheapest/cost); resistance → + its own worth × r/(r + our power); across water → air,
+  ships, ranged ×`procAcrossWater`; water near → air, amphibious ×`procMixedWater`; cover near → infantry ×(1 + cover
+  share); tiers past `procTierRatio`:1 → next tier ×1.5; stealth ×`procStealth`; out of supply and its supplies cannot
+  reach ours → ×0.5; empty reserve and under `procReserveRich` gold → a troop transport; + `procFacilityBonus` per
+  facility not under fire that builds it (× our power/(our + resistance)); capturers + capturable buildings within two
+  turns (income × horizon, + `procCaptureProducerValue` for a producer); + a fixed jiggle ≤ `procJiggle`. Facilities the
+  known enemy would destroy a unit at next turn are skipped. Then `Proc.Choose`: one unit (or none) per facility, most
+  total value within the gold (knapsack in 100-gold steps). Saving (`Proc.SaveTarget`): only for supply (always
+  allowed), a gap (an enemy kind seen that nothing of ours hurts) or transit (sea lift), within the turns to save
+  `procSaveMost` at 70% of the map's income (measured on our income), and only if worth more than the whole plan buyable
+  now. Trace: "procurement:" and "procurement options:" lines. 14 rounds, new Blue v old Red: ForestClearing on 81,583 v
+  65,000 (off 77,083 v 58,250); Biomes on 116,833 v 64,666 (off 104,500 v 63,333). Not testable in the harness: faction
+  units (BushWar's ArmyBases build nothing without a faction there). Not done: fronts the campaign could not form (only
+  formed fronts reach production); the enemy's possible builds as resistance beyond the unplaced estimate.
+
 ## 7. Open work, in the order I'd take it
 
 **First, when there is budget: why fog screens and defensive narrows make the AI worse.** Both are off by default since

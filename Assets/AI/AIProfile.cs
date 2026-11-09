@@ -891,6 +891,30 @@ namespace HexTactica.AI {
         public bool productionPossibleFoes = true;
         [Tooltip("Production: a unit is not built on a tile where the enemy we see or remember would destroy it next turn.")]
         public bool productionAvoidFire = true;
+        [Tooltip("Procurement: one plan over every facility (the most value in all for the gold), fronts' pressure on what they want, a bonus per facility that can build a kind, saving only for supply, a gap or transit within a wait the map sets. Off: one unit at a time by value per gold.")]
+        public bool procurement = true;
+        [Tooltip("Procurement: added to a kind's value for each facility (not under fire) that can build it, pushed back by the resistance its front expects.")]
+        public float procFacilityBonus = 1000f;
+        [Tooltip("Procurement: the most a unit is saved for (the longest wait is the turns to save this much at 70% of the map's income).")]
+        public float procSaveMost = 15000f;
+        [Tooltip("Procurement: a front with no resistance multiplies infantry and troop transports by this.")]
+        public float procNoResistance = 1.5f;
+        [Tooltip("Procurement: a front short of its units with no resistance: the cheapest fighting unit gains up to this share (cheapest cost over its cost).")]
+        public float procCheapBonus = 1f;
+        [Tooltip("Procurement: across water from its facility, a front multiplies aircraft, ships and ranged units by this.")]
+        public float procAcrossWater = 1.5f;
+        [Tooltip("Procurement: a front with water mixed in (over a fifth of the ground near it) multiplies aircraft and amphibious units by this.")]
+        public float procMixedWater = 1.3f;
+        [Tooltip("Procurement: a stealthy unit's value is multiplied by this.")]
+        public float procStealth = 1.2f;
+        [Tooltip("Procurement: past this many lower-tier units to one of the next tier up, the next tier up gains half again.")]
+        public float procTierRatio = 5f;
+        [Tooltip("Procurement: a production building within two turns of a facility, capturable, adds this to what capturing units built there are worth (plus its income over objectiveHorizonTurns).")]
+        public float procCaptureProducerValue = 5000f;
+        [Tooltip("Procurement: below this much gold, an empty reserve asks for troop transports (to fill with infantry).")]
+        public int procReserveRich = 15000;
+        [Tooltip("Procurement: a fixed jiggle, up to this, added to a unit's value (by its kind, its facility and the day).")]
+        public int procJiggle = 2000;
         [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]
         [Range(0, 4)]
         public int scoutUnits = 0;

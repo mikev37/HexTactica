@@ -2110,7 +2110,7 @@ public static class Scenarios {
                 city.buildable = new List<Unit> { conscript };
                 hq.buildable = new List<Unit> { grunt };
                 Func<bool, string> buy = on => {
-                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.procurement = false;   // checks the time-to-fight rule on its own
                     prof.productionTimeToFront = on;
                     // (Valued by one exchange, as this was written for: under productionLifetime the Grunt is worth more
                     // over its life than the Conscript wherever it is built, so the contrast would not show.)

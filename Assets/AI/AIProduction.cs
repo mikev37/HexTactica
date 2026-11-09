@@ -288,7 +288,8 @@ namespace HexTactica.AI {
             int supplyPlanned = 0, trucksPlanned = 0;
             Dictionary<string, int> picked = new Dictionary<string, int>();
             // What a unit would add in this slot, given what is planned so far.
-            System.Func<Unit, Slot, KeyValuePair<float, string>> worth = (t, sl) => {
+            System.Func<Unit, Slot, KeyValuePair<float, string>> worth = null;
+            worth = (t, sl) => {
                 // Nothing to shoot at (productionPossibleFoes): anti-air where the enemy has and can build no aircraft.
                 if (!HurtsPossible(t, sl.tile)) return new KeyValuePair<float, string>(0f, "hurts nothing the enemy has or can build");
                 // Destroyed where it stands next turn (productionAvoidFire): the enemy we see or remember has the building in range.
@@ -419,8 +420,17 @@ namespace HexTactica.AI {
                 if (Kind(t) == 0) { if (d > 0) planned.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile)); else planned.RemoveAll(x => x.Key == t && x.Value == sl.tile); scarce = Scarcity(allFoes, map, profile); if (tierCount != null) tierCount[Tier(t)] += d; }
             };
 
+            // ===== Procurement (AIProfile.procurement): the inputs, the fronts' pressure, then one plan for every facility. =====
+            Proc proc = profile.procurement ? new Proc(p, map, profile, slots, logistics, ourPower) : null;
+            if (proc != null) {
+                System.Func<Unit, Slot, KeyValuePair<float, string>> baseWorth = worth;
+                worth = (t, sl) => proc.Worth(t, sl, baseWorth(t, sl));
+                if (trace != null) trace("   " + p.personal_name + " procurement: " + proc.Describe());
+            }
+
             // Saving for the reserve (reserveDemand): what was saved for, bought as soon as it can be paid for.
             string savingFor; lock (reserveSaving) reserveSaving.TryGetValue(p, out savingFor);
+            if (proc != null) savingFor = null;   // procurement saves only for gaps, transit and supply
             bool boughtSaved = false;
             if (savingFor != null) {
                 foreach (Slot sl in slots) {
@@ -452,17 +462,26 @@ namespace HexTactica.AI {
                         // The reserve's unit at its producer (reserveDemand): saved for the same way.
                         else if (profile.reserveDemand && sl.b == reserveProducer && Kind(t) == 0 && CanJoinReserve(t, profile) && w.Value != null && w.Value.StartsWith("the reserve") && r > bestSupply) { bestSupply = r; supplyPick = t; supplyAt = sl.b; }
                     }
-                bool forReserve = supplyPick != null && Kind(supplyPick) == 0;
+                if (proc != null) { supplyPick = null; proc.SaveTarget(slots, worth, money, ref supplyPick, ref supplyAt, ref bestSupply, ref bestAfford); }
+                bool forReserve = supplyPick != null && Kind(supplyPick) == 0 && proc == null;
                 if (forReserve) { string was; lock (reserveSaving) reserveSaving.TryGetValue(p, out was); if (was != null && was != GameController.UnitName(supplyPick)) forReserve = false; }
-                if (supplyPick != null && bestSupply > bestAfford && (Kind(supplyPick) != 0 || forReserve || !reserveSaving.ContainsKey(p))) {
-                    if (Kind(supplyPick) == 0) lock (reserveSaving) reserveSaving[p] = GameController.UnitName(supplyPick);
+                if (supplyPick != null && bestSupply > bestAfford && (proc != null || Kind(supplyPick) != 0 || forReserve || !reserveSaving.ContainsKey(p))) {
+                    if (Kind(supplyPick) == 0 && proc == null) lock (reserveSaving) reserveSaving[p] = GameController.UnitName(supplyPick);
                     if (trace != null) trace("   " + p.personal_name + " saves for " + GameController.UnitName(supplyPick) + (Kind(supplyPick) == 0 ? " (the reserve)" : "") + " at " + supplyAt.name.Replace("(Clone)", "") + " (" + (bestSupply * 1000f).ToString("0.0") + " a 1000 gold, against " + (bestAfford * 1000f).ToString("0.0") + "): " + money + " of " + supplyPick.cost);
                     planned = null;
                     return bought;
                 }
             }
+            // Procurement: the set of purchases, one per facility, with the most value in all for the gold (three infantry
+            // against one tank is compared whole, not unit by unit).
+            if (proc != null) {
+                List<Unit> picks; List<float> vals; List<string> whys;
+                proc.Choose(slots, worth, money, out picks, out vals, out whys);
+                for (int i = 0; i < slots.Count; i++) if (picks[i] != null) { slots[i].pick = picks[i]; slots[i].value = vals[i]; slots[i].why = whys[i]; money -= picks[i].cost; plan(picks[i], slots[i], 1); }
+                if (trace != null) trace("   " + p.personal_name + " procurement options: " + proc.ChooseNote);
+            }
             // First: each slot, in turn, the best value for its cost that can be paid for now.
-            for (int pass = 0; pass < slots.Count; pass++) {
+            for (int pass = 0; proc == null && pass < slots.Count; pass++) {
                 Slot best = null; Unit bu = null; float br = 0f, bv = 0f; string bw = null;
                 // productionAbsolute: the most value outright, as long as every other empty slot can still buy its cheapest; only
                 // when gold is short does value for its cost decide. (Value per gold bought infantry turn after turn.)
@@ -505,7 +524,7 @@ namespace HexTactica.AI {
                 }
             }
             // Then: gold left over goes to upgrades, the most value per extra gold first (AIProfile.productionSpendAll).
-            for (int guard = 0; profile.productionSpendAll && money > 0 && guard < 64; guard++) {
+            for (int guard = 0; proc == null && profile.productionSpendAll && money > 0 && guard < 64; guard++) {
                 Slot best = null; Unit bu = null; float br = 0f, bv = 0f; string bw = null;
                 foreach (Slot sl in slots) {
                     if (sl.pick == null) continue;
@@ -542,7 +561,7 @@ namespace HexTactica.AI {
                 if (made == null) continue;
                 bought.Add(made);
                 if (trace != null) trace("   " + p.personal_name + " buys " + GameController.UnitName(sl.pick) + " at " + sl.b.name.Replace("(Clone)", "") + " (" + made.tile.x + "," + made.tile.y + ")" + (sl.why != null ? " for " + sl.why : "") + " (worth " + sl.value.ToString("0") + ", " + (sl.value / sl.pick.cost * 1000f).ToString("0.0") + " a 1000 gold), money left " + p.money);
-                if (made != null && sl.why != null && sl.why.StartsWith("the reserve")) { if (ReserveBought == null) ReserveBought = new List<Unit>(); ReserveBought.Add(made); }
+                if (made != null && sl.why != null && (sl.why.StartsWith("the reserve") || sl.why.Contains("the reserve"))) { if (ReserveBought == null) ReserveBought = new List<Unit>(); ReserveBought.Add(made); }
             }
             planned = null;
             return bought;
@@ -652,5 +671,229 @@ namespace HexTactica.AI {
         static float defenceWeight { get { return defenceWeightNow > 0f ? defenceWeightNow : 0.5f; } }
 
         static float Value(Unit t, HexTile at, AIMap map) { return ValueVs(t, at, allFoes ?? map.enemyUnits); }
+
+        /// <summary>
+        /// Procurement (AIProfile.procurement). Inputs: our gold and income, our facilities, the enemy's income, the map's, the
+        /// campaign's fronts by priority and what each expects to meet (seen and unseen). Each facility serves the front it is
+        /// nearest by priority; the front's pressure scales what it can build; a unit gains procFacilityBonus for each facility
+        /// that can build it (pushed back by the resistance it faces), its stealth, the buildings it could take near its base,
+        /// and a small fixed jiggle. Then one plan picks a unit (or none) for every facility for the most value in all within the
+        /// gold. Saving: only for supply, a gap (an enemy kind nothing of ours can hurt) or transit (sea lift), within a wait the
+        /// map sets (the turns to save for a supply unit at 30% of the map's income, up to 15,000 at 70%), measured on our income.
+        /// </summary>
+        class Proc {
+            readonly Player p; readonly AIMap map; readonly AIProfile pr; readonly List<Slot> slots;
+            public int income, enemyIncome, mapIncome, minWait, maxWait;
+            readonly float ourPower;
+            readonly Dictionary<Slot, CampaignObjective> serves = new Dictionary<Slot, CampaignObjective>();
+            readonly Dictionary<Slot, bool> locked = new Dictionary<Slot, bool>();
+            readonly Dictionary<Slot, float> captureNear = new Dictionary<Slot, float>();
+            readonly Dictionary<CampaignObjective, float> resistance = new Dictionary<CampaignObjective, float>();
+            readonly Dictionary<CampaignObjective, float[]> ground = new Dictionary<CampaignObjective, float[]>();   // water share, cover share, across water from its facility
+            readonly int cheapest;
+            readonly int day;
+
+            public Proc(Player p, AIMap map, AIProfile pr, List<Slot> slots, AILogistics logistics, float ourPower) {
+                this.p = p; this.map = map; this.pr = pr; this.slots = slots; this.ourPower = Mathf.Max(1f, ourPower);
+                day = GameController.gc != null ? GameController.gc.days : 0;
+                foreach (Building b in Building.all) {
+                    if (b == null) continue;
+                    mapIncome += Mathf.Max(0, b.income);
+                    if (b.owner == p && b.Functioning) income += b.income;
+                    else if (b.owner != null && b.owner != p) enemyIncome += b.income;
+                }
+                int supplyCost = int.MaxValue; cheapest = int.MaxValue;
+                foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) {
+                    if (t.cost <= 0 || !t.CanEnter(sl.tile)) continue;
+                    if (Kind(t) == 1) supplyCost = Mathf.Min(supplyCost, t.cost);
+                    if (Kind(t) == 0) cheapest = Mathf.Min(cheapest, t.cost);
+                }
+                if (supplyCost == int.MaxValue) supplyCost = 6500;
+                minWait = Mathf.CeilToInt(supplyCost / Mathf.Max(1f, 0.3f * mapIncome));
+                maxWait = Mathf.Max(minWait, Mathf.CeilToInt(pr.procSaveMost / Mathf.Max(1f, 0.7f * mapIncome)));
+                // Fronts: the campaign's (the logistics' tasks), by priority.
+                List<CampaignObjective> fronts = new List<CampaignObjective>();
+                if (logistics != null) foreach (AILogistics.Task t in logistics.tasks) if (!t.ordinary && t.front != null && t.front.target != null && !fronts.Contains(t.front)) fronts.Add(t.front);
+                float prioSum = 0f; foreach (CampaignObjective o in fronts) prioSum += Mathf.Max(0.01f, o.priority);
+                foreach (CampaignObjective o in fronts) {
+                    // Expected resistance: what it expects there (seen and unseen), plus its share of the enemy we cannot place.
+                    float r = Mathf.Max(0f, o.enemyPower) + Mathf.Max(0f, map.fogUnplacedPower) * Mathf.Max(0.01f, o.priority) / Mathf.Max(0.01f, prioSum) * (o.enemyPower > 0f ? 1f : 0f);
+                    resistance[o] = r;
+                    int water = 0, cover = 0, n = 0;
+                    foreach (HexTile x in AIPath.TilesInRangeShared(o.target, 0, 3)) {
+                        if (x == null || x.terrain == null) continue;
+                        n++;
+                        if (LocomotionRules.IsWater(x)) water++;
+                        else if (x.terrain.cover > 0) cover++;
+                    }
+                    ground[o] = new float[] { n > 0 ? water / (float)n : 0f, n > 0 ? cover / (float)n : 0f };
+                }
+                foreach (Slot sl in slots) {
+                    // Locked down: the enemy we see or remember would destroy what is built there next turn.
+                    Unit cheap = null; foreach (Unit t in sl.b.Purchasable()) if (t.cost > 0 && t.CanEnter(sl.tile) && Kind(t) == 0 && (cheap == null || t.cost < cheap.cost)) cheap = t;
+                    locked[sl] = cheap != null && map.KnownLoss(cheap, sl.tile) >= 3f;
+                    // The front it serves: the most priority for the distance.
+                    CampaignObjective best = null; float bs = 0f;
+                    foreach (CampaignObjective o in fronts) {
+                        float sc = Mathf.Max(0.01f, o.priority) / (1f + sl.tile.Distance(o.target));
+                        if (sc > bs) { bs = sc; best = o; }
+                    }
+                    if (best != null) serves[sl] = best;
+                    // Buildings we could take within two turns of it (for those that capture).
+                    float cv = 0f;
+                    foreach (Building b in Building.all) {
+                        if (b == null || b.tile == null || !b.Capturable || b.owner == p) continue;
+                        if (cheap == null || map.Travel(cheap, sl.tile, b.tile) > 2 * Mathf.Max(1, cheap.moveRange)) continue;
+                        cv += b.income * pr.objectiveHorizonTurns + (b.CanProduce ? pr.procCaptureProducerValue : 0f);
+                    }
+                    captureNear[sl] = cv;
+                }
+            }
+
+            /// <summary>Facilities (not locked down) that can build a kind like <paramref name="t"/>.</summary>
+            int Builders(Unit t) {
+                int n = 0;
+                foreach (Slot sl in slots) { if (locked[sl]) continue; foreach (Unit u in sl.b.Purchasable()) if (u == t) { n++; break; } }
+                return n;
+            }
+
+            public KeyValuePair<float, string> Worth(Unit t, Slot sl, KeyValuePair<float, string> w) {
+                if (locked[sl]) return new KeyValuePair<float, string>(0f, "facility under fire");
+                float v = w.Key; string why = w.Value;
+                if (v <= 0f && Kind(t) != 0) return w;
+                if (Kind(t) == 0 && !HurtsPossible(t, sl.tile)) return new KeyValuePair<float, string>(0f, "hurts nothing the enemy has or can build");
+                CampaignObjective o; serves.TryGetValue(sl, out o);
+                float r = o != null ? resistance[o] : 0f;
+                bool fighter = Kind(t) == 0 && t.Firepower > 0 && !(Transporting.IsTransport(t) && t.Firepower <= 1);
+                bool troopTransport = Transporting.IsTransport(t) && t.Firepower <= 1 && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion);
+                bool air = LocomotionRules.IsAirborne(t.locomotion), sea = LocomotionRules.IsNaval(t.locomotion);
+                if (o != null) {
+                    float[] g = ground[o];
+                    if (r <= 0f) {
+                        // No resistance: infantry and transports; a front short of its units: the cheapest.
+                        if (t.locomotion == Locomotion.Boots || troopTransport) { v *= pr.procNoResistance; why = (why != null ? why + ", " : "") + o.Id + " unopposed"; }
+                        if (o.assignedPower < o.needPower && fighter) v *= 1f + pr.procCheapBonus * cheapest / Mathf.Max(1f, t.cost);
+                    } else if (fighter) {
+                        // Resistance: the most powerful, outright (its own worth, by how much resistance there is against us).
+                        v += AIScore.Worth(t) * 6f * r / (r + ourPower);
+                    }
+                    if (map.AcrossWater(sl.tile, o.target) && (air || sea || t.AttackRange > 1)) v *= pr.procAcrossWater;
+                    if (g[0] > 0.2f && (air || t.amphibious)) v *= pr.procMixedWater;
+                    if (t.locomotion == Locomotion.Boots && fighter) v *= 1f + g[1];
+                }
+                if (fighter) {
+                    // Screening tiers: infantry to mobile, mobile to expensive, past procTierRatio to one.
+                    int tr = Tier(t);
+                    if (tr == 1 && tierCount[0] > pr.procTierRatio * Mathf.Max(1, tierCount[1])) v *= 1.5f;
+                    if (tr == 2 && tierCount[1] > pr.procTierRatio * Mathf.Max(1, tierCount[2])) v *= 1.5f;
+                    if (t.stealthRange > 0 && v > 0f) v *= pr.procStealth;
+                    // Out of supply where it is built, and its own supplies do not carry it to ours: less.
+                    if (map.SupplyDepth(sl.tile) <= 0 && t.suppliesMax > 0) {
+                        int d = int.MaxValue;
+                        foreach (HexTile x in AIPath.TilesInRangeShared(sl.tile, 0, Mathf.Max(1, t.moveRange) * Mathf.Max(1, t.suppliesMax))) if (x != null && map.SupplyDepth(x) > 0) { d = Mathf.Min(d, sl.tile.Distance(x)); }
+                        if (d == int.MaxValue) v *= 0.5f;
+                    }
+                }
+                // The empty reserve, short of gold: a troop transport it fills with infantry.
+                if (troopTransport && ReserveShort > 0f && p.money < pr.procReserveRich) { v = Mathf.Max(v, AIScore.Worth(t) * 6f * (1f + ReserveShort)); why = "the reserve: a transport for infantry"; }
+                // Every facility that can build it: +procFacilityBonus, pushed back by the resistance its front expects.
+                if (v > 0f) {
+                    float push = r > 0f ? ourPower / (ourPower + r) : 1f;
+                    v += pr.procFacilityBonus * Builders(t) * push;
+                    if (fighter && Building.CanCapture(t)) v += captureNear[sl];
+                }
+                if (v > 0f && pr.procJiggle > 0) v += ((t.cost / 100) * 7 + t.moveRange * 13 + t.AttackRange * 29 + (sl.tile.x + 64) * 31 + (sl.tile.y + 64) * 17 + day * 11) % (pr.procJiggle + 1);
+                return new KeyValuePair<float, string>(v, why);
+            }
+
+            /// <summary>What to save for, if anything: supply, a gap or transit, reachable on our income within the wait the map allows.</summary>
+            public void SaveTarget(List<Slot> sls, System.Func<Unit, Slot, KeyValuePair<float, string>> worth, int money, ref Unit pick, ref Building at, ref float bestSave, ref float bestAfford) {
+                bestSave = 0f; bestAfford = 0f; pick = null; at = null;
+                foreach (Slot sl in sls) foreach (Unit t in sl.b.Purchasable()) {
+                    if (t.cost <= 0 || !t.CanEnter(sl.tile)) continue;
+                    KeyValuePair<float, string> w = worth(t, sl);
+                    if (w.Key <= 0f) continue;
+                    float r = w.Key / t.cost;
+                    if (t.cost <= money) { bestAfford = Mathf.Max(bestAfford, r); continue; }
+                    bool supply = Kind(t) != 0, transit = w.Value != null && w.Value.StartsWith("sea lift"), gap = Kind(t) == 0 && FillsGap(t, sl.tile);
+                    if (!supply && !transit && !gap) continue;
+                    int turns = Mathf.CeilToInt((t.cost - money) / (float)Mathf.Max(1, income));
+                    // (A supply unit may always be saved for: on a poor map a supply unit is the one thing worth waiting for.)
+                    if (turns > maxWait && Kind(t) != 1) continue;
+                    if (w.Key > bestSave) { bestSave = w.Key; pick = t; at = sl.b; }
+                }
+                // Saved for only if it is worth more than everything the gold buys now (the plan over every facility):
+                // waiting gives up this turn's units. (Compared by value per gold, the per-facility bonus made the cheapest
+                // unit always win.)
+                if (pick != null) {
+                    List<Unit> ps; List<float> vs; List<string> ws;
+                    Choose(sls, worth, money, out ps, out vs, out ws);
+                    float now = 0f; foreach (float v in vs) now += v;
+                    if (bestSave > now) { bestAfford = 0f; bestSave = Mathf.Max(bestSave, 1f); }
+                    else { pick = null; at = null; }
+                }
+            }
+
+            /// <summary>An enemy kind seen that nothing of ours can hurt, and this one can.</summary>
+            bool FillsGap(Unit t, HexTile at) {
+                foreach (Unit e in allFoes) {
+                    if (e == null || Unit.calculateDamage(t, e, at, 0) <= 0) continue;
+                    bool covered = false;
+                    foreach (Unit u in map.ownUnits) if (u != null && u.tile != null && u.Firepower > 0 && Unit.calculateDamage(u, e, at, 0) > 0) { covered = true; break; }
+                    if (!covered) return true;
+                }
+                return false;
+            }
+
+            /// <summary>One unit (or none) per facility, for the most value in all within the gold.</summary>
+            public void Choose(List<Slot> sls, System.Func<Unit, Slot, KeyValuePair<float, string>> worth, int money, out List<Unit> picks, out List<float> vals, out List<string> whys) {
+                const int step = 100;
+                int cap = Mathf.Max(0, money / step), n = sls.Count;
+                picks = new List<Unit>(); vals = new List<float>(); whys = new List<string>();
+                List<List<KeyValuePair<Unit, KeyValuePair<float, string>>>> opts = new List<List<KeyValuePair<Unit, KeyValuePair<float, string>>>>();
+                foreach (Slot sl in sls) {
+                    List<KeyValuePair<Unit, KeyValuePair<float, string>>> o = new List<KeyValuePair<Unit, KeyValuePair<float, string>>>();
+                    foreach (Unit t in sl.b.Purchasable()) {
+                        if (t.cost <= 0 || t.cost > money || !t.CanEnter(sl.tile)) continue;
+                        KeyValuePair<float, string> w = worth(t, sl);
+                        if (w.Key > 0f) o.Add(new KeyValuePair<Unit, KeyValuePair<float, string>>(t, w));
+                    }
+                    opts.Add(o);
+                }
+                System.Text.StringBuilder note = new System.Text.StringBuilder();
+                for (int i = 0; i < n; i++) {
+                    note.Append(i > 0 ? "; " : "").Append(sls[i].b.name.Replace("(Clone)", "")).Append(" (").Append(sls[i].tile.x).Append(',').Append(sls[i].tile.y).Append("): ");
+                    if (opts[i].Count == 0) { int all = 0, zero = 0; foreach (Unit t in sls[i].b.Purchasable()) { all++; if (t.cost <= money && t.CanEnter(sls[i].tile)) zero++; } note.Append("nothing worth it (" + zero + " of " + all + " affordable:"); foreach (Unit t in sls[i].b.Purchasable()) if (t.cost <= money && t.CanEnter(sls[i].tile)) { KeyValuePair<float, string> w = worth(t, sls[i]); note.Append(' ').Append(GameController.UnitName(t)).Append(' ').Append(w.Key.ToString("0")).Append(" ").Append(w.Value ?? "-"); } note.Append(")"); }
+                    foreach (KeyValuePair<Unit, KeyValuePair<float, string>> kv in opts[i]) note.Append(GameController.UnitName(kv.Key)).Append(' ').Append(kv.Value.Key.ToString("0")).Append(' ');
+                }
+                ChooseNote = note.ToString();
+                float[,] best = new float[n + 1, cap + 1];
+                int[,] choice = new int[n + 1, cap + 1];
+                for (int i = n - 1; i >= 0; i--)
+                    for (int m = 0; m <= cap; m++) {
+                        best[i, m] = best[i + 1, m]; choice[i, m] = -1;
+                        for (int k = 0; k < opts[i].Count; k++) {
+                            int c = Mathf.CeilToInt(opts[i][k].Key.cost / (float)step);
+                            if (c > m) continue;
+                            float v = opts[i][k].Value.Key + best[i + 1, m - c];
+                            if (v > best[i, m] + 0.001f) { best[i, m] = v; choice[i, m] = k; }
+                        }
+                    }
+                int left = cap;
+                for (int i = 0; i < n; i++) {
+                    int k = choice[i, left];
+                    if (k < 0) { picks.Add(null); vals.Add(0f); whys.Add(null); continue; }
+                    picks.Add(opts[i][k].Key); vals.Add(opts[i][k].Value.Key); whys.Add(opts[i][k].Value.Value);
+                    left -= Mathf.CeilToInt(opts[i][k].Key.cost / (float)step);
+                }
+            }
+
+            public string ChooseNote;
+            public string Describe() {
+                int lockedN = 0; foreach (bool b in locked.Values) if (b) lockedN++;
+                return "income " + income + " (enemy " + enemyIncome + ", map " + mapIncome + "), " + slots.Count + " facilities (" + lockedN + " under fire), "
+                       + serves.Count + " serving fronts, wait for savings " + minWait + "-" + maxWait + " turns";
+            }
+        }
     }
 }
