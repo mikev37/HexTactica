@@ -127,15 +127,13 @@ public static class SpritePortrait {
     public static string[] UnitSkips = { "shadow", "HealthCircles", "Veterancy", "SmokeStack" };
 
     /// <summary>
-    /// Nested effect prefabs left out by the start of their name, case kept: the muzzle flashes ("Cannon", "Cannon (1)",
-    /// "GunMuzzle") — not a gun's own sprite ("tank_cannon"), which is part of the unit.
+    /// Left out of a unit's picture: a part named like one of UnitSkips, or an effect — anything played by a
+    /// SpriteAnimator (muzzle flashes, bursts, rockets: "Cannon", "SmallBurst", ...), whatever it is called. A gun's
+    /// own sprite ("tank_cannon") is part of the unit.
     /// </summary>
-    public static string[] UnitSkipPrefixes = { "Cannon", "GunMuzzle" };
-
-    static bool Skipped(string name) {
-        foreach (string skip in UnitSkips) if (name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return true;
-        foreach (string p in UnitSkipPrefixes) if (name.StartsWith(p, StringComparison.Ordinal)) return true;
-        return false;
+    static bool Skipped(Transform t) {
+        foreach (string skip in UnitSkips) if (t.name.IndexOf(skip, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+        return t.GetComponent<OrbitalCombat.SpriteAnimator>() != null;
     }
 
     /// <summary>Sorting layers that are never the unit's body (pips and chevrons are on UI).</summary>
@@ -149,7 +147,7 @@ public static class SpritePortrait {
         string layer = SortingLayer.IDToName(r.sortingLayerID);
         foreach (string l in SkipLayers) if (layer == l) return false;
         for (Transform t = r.transform; t != null && t != u.transform; t = t.parent)
-            if (Skipped(t.name)) return false;
+            if (Skipped(t)) return false;
         return true;
     }
 
@@ -180,7 +178,7 @@ public static class SpritePortrait {
             if (!t.gameObject.activeSelf || t.GetComponent<Canvas>() != null) return false;
             if (t == root) return true;
             if (t.GetComponent<Unit>() != null) return false;   // a unit it carries
-            if (isUnit && Skipped(t.name)) return false;
+            if (isUnit && Skipped(t)) return false;
         }
         return false;
     }

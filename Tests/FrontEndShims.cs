@@ -84,3 +84,7 @@ namespace UnityEditor.Events {
         public static void AddPersistentListener(UnityEngine.Events.UnityEvent e, UnityEngine.Events.UnityAction call) { }
     }
 }
+namespace UnityEngine {
+    [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
+    public class RequireComponent : System.Attribute { public RequireComponent(System.Type t) { } }
+}
