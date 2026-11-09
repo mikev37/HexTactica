@@ -90,6 +90,25 @@ public class TransportPanel : MonoBehaviour {
                 Text txt = st.GetComponent<Text>();
                 if (txt != null) txt.text = cargo.Strength.ToString();
             }
+            // A transport aboard: what it carries, as small pictures along the top of its button (the slot's Cargo
+            // strip, one copy of its CargoIcon each). Empty, or not a transport: the strip is hidden.
+            Transform strip = b.transform.Find("Cargo");
+            if (strip != null) {
+                Transform mini = strip.Find("CargoIcon");
+                bool any = false;
+                if (mini != null)
+                    foreach (Unit inner in cargo.transported.ToArray()) {
+                        if (inner == null) continue;
+                        Transform m = GameObject.Instantiate(mini, strip);
+                        m.gameObject.SetActive(true);
+                        m.name = "Cargo " + inner.name.Replace("(Clone)", "").Trim();
+                        Image own = m.GetComponent<Image>();
+                        if (own != null) own.enabled = false;
+                        pictures.Add(new KeyValuePair<Unit, RectTransform>(inner, (RectTransform)m));
+                        any = true;
+                    }
+                strip.gameObject.SetActive(any);
+            }
             if (b.targetGraphic != null) b.targetGraphic.color = cargo == picked ? pickedColor : slotColor;
             Transform badge = b.transform.Find("Badge");
             if (badge != null && badge.GetComponent<Image>() != null && cargo.owner != null) badge.GetComponent<Image>().color = cargo.owner.displayColor;
