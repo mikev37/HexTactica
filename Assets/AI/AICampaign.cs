@@ -48,6 +48,8 @@ namespace HexTactica.AI {
         /// <summary>The way there that avoids the enemy's fire (down the middle or round the side), and the tile on it to gather on before going in.</summary>
         public HexTile staging;
         public int routeLength;
+        /// <summary>campaignHubNeedSimple: transport moves from our supplied ground to it, carried as supply goes (campaignSupplyByTransport: over water by ship or aircraft).</summary>
+        public int supplyMoves;
         /// <summary>The way in from the staging tile to the target (Reach).</summary>
         [System.NonSerialized] public List<HexTile> way;
         /// <summary>Beyond our supply with no supply of its own this turn (AILogistics): it stays within our supply.</summary>
@@ -785,9 +787,21 @@ namespace HexTactica.AI {
                 Dictionary<HexTile, int> plain = map.LandSteps(o.target);
                 int gap = 99;
                 if (plain != null) foreach (KeyValuePair<HexTile, int> kv in plain) if (map.SupplyDepth(kv.Key) > 0 && kv.Value < gap) gap = kv.Value;
-                if (gap >= 99) gap = o.routeLength;
+                int moves = gap < 99 ? Mathf.CeilToInt(gap / (float)Mathf.Max(1, TransportMove(map))) : -1;
+                // campaignSupplyByTransport: no supplied ground on its land — supply goes over the water as it can only go, in a
+                // ship or aircraft that carries a supply unit (ours, or one we can build): straight over, in its moves.
+                if (moves < 0 && p.campaignSupplyByTransport) {
+                    int lift = SupplyLiftMove(map);
+                    if (lift > 0) {
+                        int d = int.MaxValue; HexTile tg = o.target;
+                        HexGenerator.forAllTiles(t => { if (t != null && map.SupplyDepth(t) > 0) d = Mathf.Min(d, t.Distance(tg)); return 0; });
+                        if (d < int.MaxValue) moves = Mathf.CeilToInt(d / (float)lift);
+                    }
+                }
+                if (moves < 0) { gap = o.routeLength; moves = Mathf.CeilToInt(gap / (float)Mathf.Max(1, TransportMove(map))); }
+                o.supplyMoves = moves;
                 // One supply unit per transport move beyond the first from our supplied ground to it (campaignHubNeedSimple).
-                if (p.campaignHubNeedSimple) o.needHubs = Mathf.Max(0, Mathf.CeilToInt(gap / (float)Mathf.Max(1, TransportMove(map))) - 1);
+                if (p.campaignHubNeedSimple) o.needHubs = Mathf.Max(0, moves - 1);
                 else if (gap > 0) {
                     float avgWorth = average > 0f ? average : 1f;
                     float forceUnits = o.needPower / Mathf.Max(1f, avgWorth);
@@ -899,6 +913,28 @@ namespace HexTactica.AI {
             if (m.Count == 0) return TypicalMove(map);
             m.Sort();
             return Mathf.Max(1, m[m.Count / 2]);
+        }
+
+        /// <summary>
+        /// campaignSupplyByTransport: the longest move of a ship or aircraft that carries a supply unit — ours, or one a
+        /// building of ours can build; 0: none.
+        /// </summary>
+        static int SupplyLiftMove(AIMap map) {
+            List<Unit> supplies = new List<Unit>();
+            foreach (Unit u in map.ownUnits) if (u != null && u.Hub != null && !u.Hub.producer) { supplies.Add(u); break; }
+            List<Unit> lifts = new List<Unit>();
+            foreach (Unit u in map.ownUnits) if (u != null && Transporting.IsTransport(u) && (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion))) lifts.Add(u);
+            foreach (Building b in Building.all) {
+                if (b == null || b.owner != map.player) continue;
+                foreach (Unit t in b.Purchasable()) {
+                    if (t == null) continue;
+                    if (t.Hub != null && !t.Hub.producer && supplies.Count == 0) supplies.Add(t);
+                    if (Transporting.IsTransport(t) && (LocomotionRules.IsAirborne(t.locomotion) || LocomotionRules.IsNaval(t.locomotion))) lifts.Add(t);
+                }
+            }
+            int best = 0;
+            foreach (Unit l in lifts) foreach (Unit h in supplies) if (Transporting.CarriesKind(l, h)) { best = Mathf.Max(best, l.moveRange); break; }
+            return best;
         }
 
         static int HubRange(AIMap map) {
@@ -1243,7 +1279,7 @@ namespace HexTactica.AI {
                     CampaignObjective o = null; float most = -1f;
                     foreach (CampaignObjective x in far) {
                         // In transport moves beyond the first (campaignHubNeedSimple): a target one truck move from supplied ground wants none.
-                        float beyond = p.campaignHubNeedSimple ? Mathf.Max(0, Mathf.CeilToInt(x.routeLength / (float)Mathf.Max(1, TransportMove(map))) - 1) : x.routeLength;
+                        float beyond = p.campaignHubNeedSimple ? Mathf.Max(0, (x.supplyMoves > 0 ? x.supplyMoves : Mathf.CeilToInt(x.routeLength / (float)Mathf.Max(1, TransportMove(map)))) - 1) : x.routeLength;
                         if (beyond <= 0f) continue;
                         float want = beyond / (1 + x.hubs.Count);
                         if (want > most) { most = want; o = x; }

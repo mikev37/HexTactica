@@ -56,6 +56,7 @@ MonoBehaviour:
   campaignSurgeWithdrawTurns: 2
   productionValueByIncome: 1
   campaignHubNeedSimple: 1
+  campaignSupplyByTransport: 1
   campaignHoldContested: 1
   campaignReserveShare: 0.33
   campaignMinTaskForce: 0
@@ -353,6 +354,7 @@ MonoBehaviour:
   procWaitExponent: 1
   procStick: 1.25
   procWaitMapShare: 0.5
+  procDemandWeight: 1
   productionAmphibiousWater: 12
   offFacilities: 1
   scoutUnits: 0

@@ -129,6 +129,8 @@ namespace HexTactica.AI {
         public bool productionValueByIncome = true;
         [Tooltip("Campaign: a task force needs no supply unit within one transport move of our supplied ground, and one per transport move beyond that (instead of relays plus spread); spare supply units are no longer spread over task forces.")]
         public bool campaignHubNeedSimple = true;
+        [Tooltip("Campaign: an objective with none of our supplied ground on its land counts its supply need over the water, as supply goes there: straight over in the moves of a ship or aircraft that carries a supply unit (ours, or one we can build). Off: the whole route, in truck moves (an island wanted 32 supply units).")]
+        public bool campaignSupplyByTransport = true;
         [Tooltip("Campaign: a chokepoint or junction in our vision is held (achieved, released, like a building taken); out of sight it is a Hold objective again only once it has gone dark for fogUnknownTurns, or an enemy unit seen or remembered comes within fogStaleRadius of it.")]
         public bool campaignHoldContested = true;
         [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
@@ -939,6 +941,8 @@ namespace HexTactica.AI {
         public float procStick = 1.25f;
         [Tooltip("Procurement (procBudgets): a facility's longest wait is the turns to save procSaveMost on its share of this much of the map's income plus the rest of ours (0.5: half the map's, half ours); never less than the turns to save for a supply unit on its share of our income.")]
         public float procWaitMapShare = 0.5f;
+        [Tooltip("Procurement (procBudgets): a facility whose best option is worth more than the mean of every facility's best (what something failed for want of: supply for a front short of it, transports for units waiting to cross) gains this times (its best over the mean, less 1) in weight, beyond procPriorityShare. 0: off.")]
+        public float procDemandWeight = 1f;
         [Tooltip("Production: an amphibious unit (a marine) is not built at a facility with no water within this many tiles (as anti-air is not built against an enemy with no aircraft). 0: off.")]
         public int productionAmphibiousWater = 12;
         [Tooltip("Every move the AI makes (a walking supply unit, a transport, anyone): it does not end on one of our facilities that can build, while another tile on its way will do. Aircraft and ships the facility services are exempt (only there do they land, rearm or refuel).")]

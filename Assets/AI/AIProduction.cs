@@ -931,9 +931,13 @@ namespace HexTactica.AI {
                 foreach (Unit t in s.b.Purchasable()) { if (t.cost <= 0 || !t.CanEnter(s.tile)) continue; bw = Mathf.Max(bw, worth(t, s).Key); }
                 want[s] = bw; topWant = Mathf.Max(topWant, bw);
             }
+            float meanWant = 0f; foreach (Slot s in live) meanWant += want[s]; meanWant /= live.Count;
             foreach (Slot s in live) {
                 float prio = 0.5f * proc.FrontPriority(s) + 0.5f * (topWant > 0f ? want[s] / topWant : 0f);
                 wgt[s] = 1f + Mathf.Max(0f, pr.procPriorityShare) * prio;
+                // procDemandWeight: what is wanted far above the rest (supply for a front short of it, transports for units
+                // waiting to cross: what something failed for want of) takes more of the gold, by how far above the mean it is.
+                if (pr.procDemandWeight > 0f && meanWant > 0f) wgt[s] += pr.procDemandWeight * Mathf.Max(0f, want[s] / meanWant - 1f);
             }
             live.Sort((x, y) => { int c = wgt[y].CompareTo(wgt[x]); return c != 0 ? c : CombatMath.CompareTiles(x.tile, y.tile); });
             // What each carries over from last turn (gold spent elsewhere: every budget cut alike).
@@ -1001,7 +1005,7 @@ namespace HexTactica.AI {
                 KeyValuePair<Unit, object[]> d = decide(s);
                 Unit best = d.Key;
                 string line = null;
-                if (trace != null) line = "   " + p.personal_name + " budget " + s.b.name.Replace("(Clone)", "") + " (" + s.tile.x + "," + s.tile.y + ")" + (proc.FrontOf(s) != null ? " for " + proc.FrontOf(s) : "") + ": weight " + wgt[s].ToString("0.00") + ", share " + share[s].ToString("0") + ", has " + acct[s].ToString("0") + ", waits at most " + longest[s];
+                if (trace != null) line = "   " + p.personal_name + " budget " + s.b.name.Replace("(Clone)", "") + " (" + s.tile.x + "," + s.tile.y + ")" + (proc.FrontOf(s) != null ? " for " + proc.FrontOf(s) : "") + ": weight " + wgt[s].ToString("0.00") + " (best " + want[s].ToString("0") + ")" + ", share " + share[s].ToString("0") + ", has " + acct[s].ToString("0") + ", waits at most " + longest[s];
                 if (best == null) {
                     // (What was bought before it changed its mind: its savings to those still to choose, by weight.)
                     float rest = 0f; for (int j = i + 1; j < active.Count; j++) rest += wgt[active[j]];

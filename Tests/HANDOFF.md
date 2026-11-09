@@ -456,6 +456,19 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   - Objectives across water need absurd supply: `AICampaign` (lasting objectives) measures the gap by `map.LandSteps`
     from the target; with no supplied ground on its land it falls back to `routeLength`, so "not taken on: Clear@-10,3
     needs 32 supply units" (also Clear@2,1, Secure@-2,7). Objectives across water are refused for supply, not for force.
+  - Correction: no transport put supply down. The planes flew a supply unit out ("supply leap"), held it aboard two
+    turns, then flew home for fuel with it aboard ("bingo fuel") — supply in a plane that needs a runway cannot stay out.
+  - `campaignSupplyByTransport`: an objective with no supplied ground of ours on its land counts its supply over the
+    water: straight from our nearest supplied tile, in the moves of the longest-moving ship or aircraft that carries a
+    supply unit (ours or buildable; `AICampaign.SupplyLiftMove`), into `o.supplyMoves`; needHubs = moves − 1. The spread
+    uses it too. No such lift: the old route-length fallback.
+  - `procDemandWeight` (1): a facility's weight also gains (its best ÷ the mean of all facilities' best − 1) — what is
+    wanted far above the rest (supply for a short front, transports for waiting units) draws more gold. The HQ's weight
+    went to ~3 when supply was asked for (best 23–35k against a mean ~11k).
+  - Channel 20 rounds after both: new Blue 160,500 v 165,833, 25 buildings to 16, out of supply 66 unit-turns (was 118),
+    attrition 2; 23 boarded, 13 put down; first transport bought round 8 (was 13). New Red 177,750 v 160,833, 23 to 16,
+    out of supply 66 (was 75), attrition 0. Still only 3 supply units bought by Blue; "needs 1 supply units, 0 free" 7
+    times. ForestClearing new Blue 85,583 v 39,583; Biomes new Blue 104,416 v 56,500.
 
 ## 7. Open work, in the order I'd take it
 
