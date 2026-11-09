@@ -22,7 +22,7 @@ public class PlayerSetupRow : MonoBehaviour {
     public void Show(MatchSetup.Side side, Color color, List<string> controls, int controlPicked, List<string> factions, int factionPicked) {
         Side = side;
         if (sideName != null) sideName.text = side.name;
-        if (swatch != null) swatch.color = color;
+        if (swatch != null) swatch.color = new Color(color.r, color.g, color.b, 1f);   // (a side's colour may have no alpha: its sprites keep their own)
         if (control != null) {
             control.ClearOptions();
             control.AddOptions(controls);

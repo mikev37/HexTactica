@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Permafrost
   m_EditorClassIdentifier: 
   description: Churned Frost
+  inMapEditor: 0
   upper_normal: {fileID: 21300000, guid: 162fb6e52c291014d87f256ffb6e0619, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

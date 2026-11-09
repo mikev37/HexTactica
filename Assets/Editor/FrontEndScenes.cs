@@ -61,6 +61,56 @@ static class FrontEndScenes {
         CreateMissing(true);
     }
 
+    /// <summary>
+    /// Brings scenes made by an earlier version of this tool up to date, changing only what the update is about and
+    /// keeping everything else (your art, sounds, layout). Safe to run more than once: a step already done is skipped.
+    /// Today: the map editor's Look page (the sides, name, width and rules move onto it, off the palette's screen),
+    /// the palette's scroll view named for hiding, and Neutral moved into the For list (the Neutral checkbox removed).
+    /// </summary>
+    [MenuItem("HexTactica/Front End/Update Scenes")]
+    static void UpdateScenes() {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        FrontEndSettings s = Settings();
+        string path = SceneFolder + s.mapEditorScene + ".unity";
+        if (!File.Exists(path)) { Debug.Log("No " + path + ": nothing to update (Create Missing Scenes makes it new)."); return; }
+        Scene was = SceneManager.GetActiveScene();
+        bool open = false;
+        for (int i = 0; i < SceneManager.sceneCount; i++) if (SceneManager.GetSceneAt(i).path == path) open = true;
+        Scene scene = open ? SceneManager.GetSceneByPath(path) : EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
+        List<string> done = new List<string>();
+        try {
+            MapEditorPanel m = null;
+            foreach (GameObject root in scene.GetRootGameObjects()) { m = root.GetComponentInChildren<MapEditorPanel>(true); if (m != null) break; }
+            if (m == null) { Debug.LogWarning(path + " has no MapEditorPanel: not updated."); return; }
+            if (m.paletteView == null && m.palette != null) {
+                ScrollRect sr = m.palette.GetComponentInParent<ScrollRect>(true);
+                if (sr != null) { m.paletteView = sr.gameObject; done.Add("palette view linked"); }
+            }
+            if (m.lookPanel == null && m.paletteView != null) {
+                Transform panel = m.paletteView.transform.parent;
+                GameObject look = new GameObject("Look Panel", typeof(RectTransform));
+                look.layer = 5;
+                look.transform.SetParent(panel, false);
+                look.transform.SetSiblingIndex(m.paletteView.transform.GetSiblingIndex() + 1);
+                VLayout(look, 0, 14f);
+                Flexible(look, true);
+                foreach (string n in new[] { "Sides Heading", "Sides", "Name", "Width", "Rules" }) {
+                    Transform t = panel.Find(n);
+                    if (t != null) t.SetParent(look.transform, false);
+                }
+                m.lookPanel = look;
+                done.Add("Look page made (Sides, Name, Width, Rules moved onto it)");
+            }
+            Transform neutral = m.sideRow != null ? m.sideRow.transform.Find("Neutral") : null;
+            if (neutral != null) { Object.DestroyImmediate(neutral.gameObject); done.Add("Neutral checkbox removed (Neutral is in the For list)"); }
+            if (done.Count > 0) { EditorUtility.SetDirty(m); EditorSceneManager.MarkSceneDirty(scene); EditorSceneManager.SaveScene(scene); }
+        } finally {
+            if (!open) EditorSceneManager.CloseScene(scene, true);
+            if (was.IsValid()) SceneManager.SetActiveScene(was);
+        }
+        Debug.Log(done.Count > 0 ? "Updated " + path + ": " + string.Join("; ", done.ToArray()) + "." : path + " is up to date.");
+    }
+
     static FrontEndSettings Settings() {
         FrontEndSettings s = AssetDatabase.LoadAssetAtPath<FrontEndSettings>(SettingsPath);
         if (s == null) {
@@ -71,7 +121,8 @@ static class FrontEndScenes {
         }
         // The AI profiles a side can be played by: every AIProfile asset, if none is listed yet (a list you set is kept).
         if (s.aiProfiles.Count == 0) {
-            foreach (string guid in AssetDatabase.FindAssets("t:AIProfile")) {
+            // (By every ScriptableObject: "t:AIProfile" is ambiguous, the old AI has a class of that name too.)
+            foreach (string guid in AssetDatabase.FindAssets("t:ScriptableObject", new[] { "Assets" })) {
                 HexTactica.AI.AIProfile p = AssetDatabase.LoadAssetAtPath<HexTactica.AI.AIProfile>(AssetDatabase.GUIDToAssetPath(guid));
                 if (p != null && !s.aiProfiles.Contains(p)) s.aiProfiles.Add(p);
             }
@@ -362,8 +413,7 @@ static class FrontEndScenes {
         GameObject side = Row(panel.transform, "Side", 44f);
         m.sideRow = side;
         Text(side.transform, "Label", "For", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 60f, -1f));
-        m.side = Drop(side.transform, 220f);
-        m.neutral = Tog(side.transform, "Neutral", 22);
+        m.side = Drop(side.transform, 300f);
         GameObject filter = Row(panel.transform, "Unit Filter", 44f);
         m.unitFilterRow = filter;
         Text(filter.transform, "Label", "Show", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 60f, -1f));
@@ -371,8 +421,14 @@ static class FrontEndScenes {
         RectTransform pal = ScrollList(panel.transform, "Palette", -1f, -1f);
         Flexible(pal.GetComponentInParent<ScrollRect>().gameObject, true);
         m.palette = pal;
+        m.paletteView = pal.GetComponentInParent<ScrollRect>().gameObject;
         m.paletteTemplate = RowPrefab("Palette Entry", PaletteRow);
 
+        // The Look tool's page: the map's sides, name, width and rules.
+        GameObject look = Column(panel.transform, "Look Panel", -1f, -1f, Vector2.zero, false);
+        Flexible(look, true);
+        m.lookPanel = look;
+        panel = look;
         GameObject sidesHead = Row(panel.transform, "Sides Heading", 40f);
         Text(sidesHead.transform, "Label", "Sides", 24, TextAlignmentOptions.Left, FontStyles.Bold).gameObject.Let(g => Flexible(g));
         Btn(sidesHead.transform, "Add side", m.AddSide, 150f, 20);
@@ -394,6 +450,7 @@ static class FrontEndScenes {
         GameObject rules = Row(panel.transform, "Rules", 44f);
         m.fog = Tog(rules.transform, "Fog of war", 22);
         m.build = Tog(rules.transform, "Purchases", 22);
+        panel = m.lookPanel.transform.parent.gameObject;
         GameObject file = Row(panel.transform, "File", 50f);
         Btn(file.transform, "New", m.NewMap, -1f, 22);
         Btn(file.transform, "Load", m.ShowLoad, -1f, 22);

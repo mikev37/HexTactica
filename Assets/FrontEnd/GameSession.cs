@@ -40,8 +40,13 @@ public class GameSession : MonoBehaviour {
         yield return null;
         FrontEndSettings s = FrontEndSettings.Get;
         mode = MatchSetup.Mode;
-        // The game's own panels (gold, next unit, end turn; the turn banner) are for playing: not while setting up or editing.
-        ShowGamePanels(mode != SessionMode.Setup && mode != SessionMode.Editor);
+        ShowGamePanels(mode);
+        // The game scene keeps whatever editing switch it was saved with (SampleScene: terrain painting on): a game
+        // opened from the menus starts with every editing tool off (the map editor's tools turn them on).
+        if (mode != SessionMode.None && LevelEditor.singleton != null) {
+            LevelEditor le = LevelEditor.singleton;
+            le.editing = le.unit_placement = le.building_placement = le.mouseDown = false;
+        }
         switch (mode) {
             case SessionMode.Setup:
                 GameController.Paused = true;
@@ -112,14 +117,19 @@ public class GameSession : MonoBehaviour {
     public void SetupDone() {
         postShown = false;
         mode = SessionMode.Play;
-        ShowGamePanels(true);
+        ShowGamePanels(mode);
         Unload(FrontEndSettings.Get.preGameScene);
     }
 
-    /// <summary>The HUD and the turn banner shown or hidden.</summary>
-    static void ShowGamePanels(bool on) {
-        foreach (Hud h in Resources.FindObjectsOfTypeAll<Hud>()) if (h != null && h.gameObject.scene.IsValid()) h.gameObject.SetActive(on);
-        foreach (TurnBanner b in Resources.FindObjectsOfTypeAll<TurnBanner>()) if (b != null && b.gameObject.scene.IsValid()) b.gameObject.SetActive(on);
+    /// <summary>
+    /// The game's own panels for the mode: all of them in play; none while setting up; in the map editor the HUD's
+    /// unit and tile panels (they show the pick) without the turn controls (gold, next unit, end turn) or the banner.
+    /// </summary>
+    static void ShowGamePanels(SessionMode m) {
+        bool hud = m != SessionMode.Setup, turns = m != SessionMode.Setup && m != SessionMode.Editor;
+        foreach (Hud h in Resources.FindObjectsOfTypeAll<Hud>()) if (h != null && h.gameObject.scene.IsValid()) h.gameObject.SetActive(hud);
+        foreach (TurnControls c in Resources.FindObjectsOfTypeAll<TurnControls>()) if (c != null && c.gameObject.scene.IsValid()) c.gameObject.SetActive(turns);
+        foreach (TurnBanner b in Resources.FindObjectsOfTypeAll<TurnBanner>()) if (b != null && b.gameObject.scene.IsValid()) b.gameObject.SetActive(turns);
     }
 
     public static void Unload(string scene) {

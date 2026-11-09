@@ -24,10 +24,13 @@ public class MapEditorPanel : MonoBehaviour {
     public TMP_Text toolLabel;
     [Tooltip("The row with the side units and buildings are placed for: shown for the Units and Buildings tools.")]
     public GameObject sideRow;
-    [Tooltip("The side units and buildings are placed for.")]
+    [Tooltip("The side units and buildings are placed for (and, for buildings, Neutral: owned by nobody).")]
     public TMP_Dropdown side;
-    [Tooltip("Buildings are placed neutral (owned by nobody): shown for the Buildings tool.")]
-    public Toggle neutral;
+    public string neutralLabel = "Neutral";
+    [Tooltip("The palette (its scroll view): shown for the Terrain, Units and Buildings tools.")]
+    public GameObject paletteView;
+    [Tooltip("What the Look tool shows: the map's sides, name, width and rules.")]
+    public GameObject lookPanel;
     [Tooltip("The Units tool's filter: base units, one faction's units, or all.")]
     public GameObject unitFilterRow;
     public TMP_Dropdown unitFilter;
@@ -41,11 +44,19 @@ public class MapEditorPanel : MonoBehaviour {
     public RectTransform sides;
     [Tooltip("The faction list's first entry: the side's faction is chosen on the pre-game screen.")]
     public string anyFaction = "Any (chosen before the game)";
-    [Tooltip("The colours a side is given, in turn (a new side takes the first no side has).")]
-    public List<Color> sideColors = new List<Color> {
-        new Color(0.25f, 0.45f, 0.95f), new Color(0.9f, 0.25f, 0.25f), new Color(0.3f, 0.75f, 0.3f), new Color(0.95f, 0.8f, 0.2f),
-        new Color(0.65f, 0.35f, 0.85f), new Color(0.95f, 0.55f, 0.15f), new Color(0.2f, 0.8f, 0.8f), new Color(0.6f, 0.6f, 0.6f)
+    [Tooltip("The colours a new side is given (the first not near any side's), and the colours a side's swatch steps through. Blue and red are the scene's own sides'.")]
+    public List<Color> extraSideColors = new List<Color> {
+        new Color(0.2f, 0.75f, 0.25f, 1f),   // green
+        new Color(0.95f, 0.85f, 0.15f, 1f),  // yellow
+        new Color(0.6f, 0.3f, 0.85f, 1f),    // purple
+        new Color(1f, 0.55f, 0.1f, 1f),      // orange
+        new Color(0f, 0.85f, 0.75f, 1f),     // teal
+        new Color(1f, 0.45f, 0.75f, 1f),     // pink
+        new Color(0.55f, 0.35f, 0.15f, 1f),  // brown
+        new Color(0.85f, 0.85f, 0.85f, 1f),  // white
     };
+    [Tooltip("How far apart two colours must be (red, green and blue differences added) to count as different.")]
+    public float colourDistance = 0.6f;
     [Tooltip("A new side's name: {0} its number.")]
     public string newSideName = "Player {0}";
     [Tooltip("A map has at least this many sides.")]
@@ -81,7 +92,6 @@ public class MapEditorPanel : MonoBehaviour {
         TransportPanel.EnsureEventSystem();
         factions = GameAssets.AllFactions.Where(f => f != null).OrderBy(f => f.name).ToList();
         if (side != null) side.onValueChanged.AddListener(i => ApplySide());
-        if (neutral != null) neutral.onValueChanged.AddListener(v => { if (LevelEditor.singleton != null) LevelEditor.singleton.placeNeutral = v; });
         if (fog != null) fog.onValueChanged.AddListener(v => { if (GameController.gc != null) { GameController.gc.fogOfWar = v; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); } });
         if (build != null) build.onValueChanged.AddListener(v => { if (GameController.gc != null) GameController.gc.purchasesAllowed = v; });
         if (unitFilter != null) {
@@ -100,7 +110,7 @@ public class MapEditorPanel : MonoBehaviour {
         SetTool(Tool.Look);
     }
 
-    void OnDestroy() { SetFlags(Tool.Look); }
+    void OnDestroy() { SetFlags(Tool.Look); Hud.Pinned = null; }
 
     /// <summary>The scenario's settings and sides as the board has them now (after a load).</summary>
     void ReadBoard() {
@@ -111,7 +121,6 @@ public class MapEditorPanel : MonoBehaviour {
         firstToMove = gc.activePlayer;
         if (fog != null) fog.SetIsOnWithoutNotify(gc.fogOfWar);
         if (build != null) build.SetIsOnWithoutNotify(gc.purchasesAllowed);
-        if (neutral != null && LevelEditor.singleton != null) neutral.SetIsOnWithoutNotify(LevelEditor.singleton.placeNeutral);
         ShowSides();
     }
 
@@ -133,7 +142,7 @@ public class MapEditorPanel : MonoBehaviour {
                 row.Player = p;
                 Player me = p;
                 if (row.sideName != null) { row.sideName.text = p.personal_name; row.sideName.onEndEdit.AddListener(t => Rename(me, t)); }
-                if (row.swatch != null) row.swatch.color = p.displayColor;
+                if (row.swatch != null) row.swatch.color = Opaque(p.displayColor);
                 if (row.colour != null) row.colour.onClick.AddListener(() => NextColour(me));
                 if (row.faction != null) {
                     row.faction.ClearOptions();
@@ -146,13 +155,25 @@ public class MapEditorPanel : MonoBehaviour {
                 sideRows.Add(row);
             }
         }
-        if (side != null) {
-            side.ClearOptions();
-            side.AddOptions(ps.Select(p => p.personal_name).ToList());
-            GameController gc = GameController.gc;
-            side.SetValueWithoutNotify(Mathf.Max(0, gc != null ? ps.IndexOf(gc.activePlayer) : 0));
-        }
+        FillSideList();
     }
+
+    /// <summary>The For list: every side, and Neutral for the Buildings tool.</summary>
+    void FillSideList() {
+        if (side == null) return;
+        List<Player> ps = Players;
+        int was = side.value;
+        side.ClearOptions();
+        List<string> names = ps.Select(p => p.personal_name).ToList();
+        if (tool == Tool.Buildings) names.Add(neutralLabel);
+        side.AddOptions(names);
+        GameController gc = GameController.gc;
+        LevelEditor le = LevelEditor.singleton;
+        int at = tool == Tool.Buildings && le != null && le.placeNeutral ? ps.Count : Mathf.Max(0, gc != null ? ps.IndexOf(gc.activePlayer) : 0);
+        side.SetValueWithoutNotify(Mathf.Clamp(at, 0, names.Count - 1));
+    }
+
+    static Color Opaque(Color c) { c.a = 1f; return c; }
 
     void Rename(Player p, string name) {
         name = (name ?? "").Trim();
@@ -161,14 +182,20 @@ public class MapEditorPanel : MonoBehaviour {
         ShowSides();
     }
 
+    /// <summary>The next colour of the list that no other side is near (units and buildings take it at once: ColorObjectUnit).</summary>
     void NextColour(Player p) {
-        if (sideColors.Count == 0) return;
-        int i = sideColors.FindIndex(c => Same(c, p.displayColor));
-        p.displayColor = sideColors[(i + 1) % sideColors.Count];   // (units and buildings take it at once: ColorObjectUnit)
+        if (extraSideColors.Count == 0) return;
+        int i = extraSideColors.FindIndex(c => Near(c, p.displayColor));
+        for (int step = 1; step <= extraSideColors.Count; step++) {
+            Color c = extraSideColors[(i + step + extraSideColors.Count) % extraSideColors.Count];
+            if (Players.Exists(x => x != p && Near(x.displayColor, c))) continue;
+            p.displayColor = Opaque(c);
+            break;
+        }
         ShowSides();
     }
 
-    static bool Same(Color a, Color b) { return Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) < 0.02f; }
+    bool Near(Color a, Color b) { return Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) < colourDistance; }
 
     /// <summary>Option 0: any faction (chosen before the game); else the map makes the side that faction.</summary>
     void SetFaction(Player p, int option) {
@@ -188,8 +215,8 @@ public class MapEditorPanel : MonoBehaviour {
         Player made = new GameObject(string.Format(newSideName, n) + " (player)").AddComponent<Player>();
         made.id = id;
         made.personal_name = string.Format(newSideName, n);
-        Color free = sideColors.FirstOrDefault(c => !ps.Exists(p => Same(p.displayColor, c)));
-        made.displayColor = sideColors.Count > 0 && free.a > 0f ? free : Color.white;
+        Color free = extraSideColors.FirstOrDefault(c => !ps.Exists(p => Near(p.displayColor, c)));
+        made.displayColor = free.a > 0f ? free : Color.white;
         made.money = ps.Count > 0 ? ps[0].money : 0;
         gc.players.Add(made);
         ShowSides();
@@ -200,6 +227,7 @@ public class MapEditorPanel : MonoBehaviour {
     void RemoveSide(Player p) {
         GameController gc = GameController.gc;
         if (gc == null || Players.Count <= minSides) return;
+        
         foreach (Unit u in new List<Unit>(p.units)) if (u != null) u.Delete();
         foreach (Building b in Building.all) if (b != null && b.owner == p) b.owner = null;
         gc.players.Remove(p);
@@ -222,11 +250,14 @@ public class MapEditorPanel : MonoBehaviour {
         tool = t;
         pickedItem = null;
         if (sideRow != null) sideRow.SetActive(t == Tool.Units || t == Tool.Buildings);
-        if (neutral != null) neutral.gameObject.SetActive(t == Tool.Buildings);
         if (unitFilterRow != null) unitFilterRow.SetActive(t == Tool.Units);
+        if (paletteView != null) paletteView.SetActive(t != Tool.Look);
+        if (lookPanel != null) lookPanel.SetActive(t == Tool.Look);
+        if (t != Tool.Buildings && LevelEditor.singleton != null) LevelEditor.singleton.placeNeutral = false;
+        FillSideList();
         FillPalette();
         if (buttons.Count > 0) Pick(buttons[0]);
-        else { SetFlags(tool); ShowTool(); }
+        else { Hud.Pinned = null; SetFlags(tool); ShowTool(); }
     }
 
     /// <summary>The units the filter picks: base units, a faction's, or all.</summary>
@@ -264,11 +295,23 @@ public class MapEditorPanel : MonoBehaviour {
         LevelEditor le = LevelEditor.singleton;
         if (le != null) {
             if (pickedItem is TerrainData) le.td = (TerrainData)pickedItem;
-            if (pickedItem is Unit) le.ut = (Unit)pickedItem;
             if (pickedItem is Building) le.bt = (Building)pickedItem;
         }
+        Hud.Pinned = pickedItem;   // the HUD's panels show what is picked
         SetFlags(tool);
         ShowTool();
+    }
+
+    /// <summary>
+    /// The unit placed for the side: a base unit picked for a side with a faction is that faction's version of it
+    /// (a Conscript for a Union side is the Union Conscript); a faction's own unit, as picked.
+    /// </summary>
+    Unit ForSide(Unit picked) {
+        GameController gc = GameController.gc;
+        Faction f = gc != null && gc.activePlayer != null ? gc.activePlayer.faction : null;
+        if (picked == null || f == null || f.replacements == null || UnitCatalog.FactionOf(picked) != null) return picked;
+        foreach (Faction.Replacement r in f.replacements) if (r != null && r.original == picked && r.replacement != null) return r.replacement;
+        return picked;
     }
 
     /// <summary>What a click on the board does (LevelEditor's switches, read by HexTile).</summary>
@@ -282,11 +325,17 @@ public class MapEditorPanel : MonoBehaviour {
         ApplySide();
     }
 
+    /// <summary>The For list's pick: the side placed for (the game's active side), or neutral for buildings; and the unit for that side.</summary>
     void ApplySide() {
         GameController gc = GameController.gc;
+        LevelEditor le = LevelEditor.singleton;
         if (gc == null || side == null) return;
         List<Player> ps = Players;
         if (side.value >= 0 && side.value < ps.Count) gc.activePlayer = ps[side.value];
+        if (le != null) {
+            le.placeNeutral = tool == Tool.Buildings && side.value == ps.Count;
+            if (pickedItem is Unit) le.ut = ForSide((Unit)pickedItem);
+        }
     }
 
     void ShowTool() {

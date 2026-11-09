@@ -12,9 +12,10 @@ Open the project. `Editor/FrontEndScenes.cs` makes whatever is missing, once, an
   Palette Entry, Map Side Row). Edit a prefab to change every row of its kind;
 - the build settings: these scenes are added and MainMenu goes first, so a build starts there.
 
-Scenes made by an older version of the tool don't pick up later layout changes.
-**HexTactica ▸ Front End ▸ Rebuild Front End Scenes (overwrites)** asks first, then deletes and remakes the five
-scenes and the row prefabs. Any edits you made to them are lost; the settings asset is kept.
+Scenes made by an older version of the tool don't pick up later layout changes. **HexTactica ▸ Front End ▸ Update
+Scenes** applies them in place. It changes only what each update is about, keeps your art, sounds and layout, and
+skips steps already done. **Rebuild Front End Scenes (overwrites)** deletes and remakes everything. It is a last
+resort, for scenes with nothing of yours in them.
 
 If an untitled scene is open, it skips the scenes. Save that scene, then run **HexTactica ▸ Front End ▸ Create
 Missing Scenes**. **HexTactica ▸ Front End ▸ Open Main Menu Scene** opens the menu; press Play.
@@ -61,10 +62,17 @@ be chosen. A save keeps each side's profile by its profileName (`PlayerData.aiPr
 
 ## Map editor palette
 
-A terrain shows its top sprite. A unit or building is drawn from its prefab's sprites, the way the HUD draws one
-(`SpritePortrait`). The terrain palette lists only terrain with `TerrainData ▸ In Map Editor` on. It is off for what
-buildings put under themselves (Urban, City, Bunker) and for damaged forms (stumps, damaged roads, the
-collapsed bridge, broken ice).
+A terrain is drawn as a tile of it looks: its water, lower and upper sprites stacked as on the board, never the floor
+(`SpritePortrait.ComposeTerrain`, on a board tile's layout). A unit or building is drawn from its prefab's own sprites
+(`SpritePortrait.ComposePrefab`). The pick also shows in the HUD's unit or tile panel (`Hud.Pinned`); the HUD's turn
+controls are hidden in the editor. The **Look** tool shows the map's sides, name, width and rules in place of the
+palette. **For** sets the side units and buildings are placed for, with **Neutral** for buildings. A base unit
+placed for a side with a faction becomes that faction's version (a Conscript for a Union side is the Union
+Conscript).
+
+The terrain palette lists only terrain with `TerrainData ▸ In Map Editor` on. It is off for what buildings put
+under themselves (Urban, City, Bunker) and for destroyed or damaged forms (stumps, damaged roads, the collapsed
+bridge, broken ice, Tidal Mud, Permafrost, Badlands).
 
 ## Sides
 

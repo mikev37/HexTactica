@@ -95,9 +95,16 @@ public class Hud : MonoBehaviour {
         return true;
     }
 
+    /// <summary>
+    /// A terrain, unit or building (an asset, not one on the board) the HUD shows in place of the tile clicked: the
+    /// map editor's pick. Null: the tile clicked, as in play.
+    /// </summary>
+    public static UnityEngine.Object Pinned;
+
     void Update() {
         if (details != null && details.activeSelf != detailsOpen) details.SetActive(detailsOpen);
         if (detailsButtonText != null) detailsButtonText.text = detailsOpen ? "- Less" : "+ More";
+        if (Pinned != null) { ShowPinned(Pinned); return; }
         HexTile t = HexTile.lastClicked;
         // Under fog of war, only a unit the viewer sees (one it does not is not there for the HUD).
         Unit u = t != null ? FogOfWar.ApparentOccupier(t, FogOfWar.Viewer) : null;
@@ -105,12 +112,38 @@ public class Hud : MonoBehaviour {
         ShowTile(t);
     }
 
-    void ShowUnit(Unit u) {
+    /// <summary>The pinned asset: a unit prefab in the unit panel, a terrain or building in the tile panel.</summary>
+    void ShowPinned(UnityEngine.Object o) {
+        Unit u = o as Unit;
+        ShowUnit(u, true);
+        TerrainData td = o as TerrainData;
+        Building b = o as Building;
+        bool tile = td != null || b != null;
+        if (tilePanel != null && tilePanel.activeSelf != tile) tilePanel.SetActive(tile);
+        if (!tile) return;
+        if (td == null) td = b.ground;
+        if (tilePicture != null && Due(o, ref shownTile, ref tileDrawn)) {
+            tilePicture.enabled = false;
+            if (b != null) SpritePortrait.ComposePrefab(b.transform, tilePicture.rectTransform, false);
+            else SpritePortrait.ComposeTerrain(td, UnityEngine.Object.FindAnyObjectByType<HexTile>(), tilePicture.rectTransform);
+        }
+        if (tileName != null) tileName.text = b != null ? BuildingName(b) : TerrainName(td);
+        if (td != null) {
+            if (cover != null) cover.Set(td.cover, 3, false, this);
+            if (moveCost != null) { if (td.elevation >= 0) moveCost.Set(td.moveability, 5, true, this); else moveCost.Show(false); }
+        }
+        if (owner != null) owner.Show(false);
+        if (capture != null) capture.Show(false);
+        if (store != null) store.Show(false);
+    }
+
+    void ShowUnit(Unit u, bool prefab = false) {
         if (unitPanel != null && unitPanel.activeSelf != (u != null)) unitPanel.SetActive(u != null);
         if (u == null) return;
         if (unitPortrait != null && Due(u, ref shownUnit, ref unitDrawn)) {
             unitPortrait.enabled = false;   // the picture is the unit's own sprites, composed under it
-            SpritePortrait.Compose(u.transform, unitPortrait.rectTransform, r => SpritePortrait.UnitPart(u, r));
+            if (prefab) SpritePortrait.ComposePrefab(u.transform, unitPortrait.rectTransform, true);
+            else SpritePortrait.Compose(u.transform, unitPortrait.rectTransform, r => SpritePortrait.UnitPart(u, r));
         }
         if (unitBadge != null) unitBadge.color = u.owner != null ? u.owner.displayColor : empty;
         if (unitName != null) unitName.text = GameController.DisplayName(u, u.owner);   // a faction's version by the unit it stands in for ("Grunt")

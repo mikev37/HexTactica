@@ -71,7 +71,8 @@ namespace UnityEditor.SceneManagement {
     public enum OpenSceneMode { Single, Additive, AdditiveWithoutLoading }
     public static class EditorSceneManager {
         public static UnityEngine.SceneManagement.Scene NewScene(NewSceneSetup s, NewSceneMode m) { return new UnityEngine.SceneManagement.Scene(); }
-        public static bool SaveScene(UnityEngine.SceneManagement.Scene s, string path) { return true; }
+        public static bool SaveScene(UnityEngine.SceneManagement.Scene s, string path = "") { return true; }
+        public static bool MarkSceneDirty(UnityEngine.SceneManagement.Scene s) { return true; }
         public static bool CloseScene(UnityEngine.SceneManagement.Scene s, bool remove) { return true; }
         public static UnityEngine.SceneManagement.Scene OpenScene(string path, OpenSceneMode m) { return new UnityEngine.SceneManagement.Scene(); }
         public static bool SaveCurrentModifiedScenesIfUserWantsTo() { return true; }

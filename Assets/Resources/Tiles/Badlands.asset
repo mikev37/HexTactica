@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Badlands
   m_EditorClassIdentifier: 
   description: DestroyedGround
+  inMapEditor: 0
   upper_normal: {fileID: 21300000, guid: 99a6673976062114bb7473d2b0052e26, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}

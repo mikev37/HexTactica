@@ -19,8 +19,8 @@ public class UnitPreview : MonoBehaviour {
     public float minSize = 0.6f;
     [Tooltip("Scripts kept on the copy, by class name: those that only animate the unit's sprites. Every other script on it is game logic and is removed.")]
     public List<string> keepBehaviours = new List<string> { "SpriteAnimator", "BobUpDown", "ConstantRotate", "counterRotate", "AnimatedOffestDashedLine" };
-    [Tooltip("The order animations are shown in, by clip name (the first that matches comes first); any others follow, by name.")]
-    public List<string> animationOrder = new List<string> { "Wait", "Idle", "Move", "Fire", "Attack", "Die", "Death" };
+    [Tooltip("The animations shown, in this order, by clip name (others the unit's animator has are not shown).")]
+    public List<string> animations = new List<string> { "Wait", "Move", "Fire", "Die" };
     [Tooltip("Seconds of stillness between loops of an animation.")]
     public float loopPause = 0.4f;
 
@@ -42,10 +42,11 @@ public class UnitPreview : MonoBehaviour {
         index = 0;
         Rebuild();
         if (animator != null && animator.runtimeAnimatorController != null)
-            clips = animator.runtimeAnimatorController.animationClips.Where(c => c != null).Distinct()
-                .OrderBy(c => { int i = animationOrder.FindIndex(n => c.name.IndexOf(n, System.StringComparison.OrdinalIgnoreCase) >= 0); return i < 0 ? int.MaxValue : i; })
-                .ThenBy(c => c.name).ToArray();
+            clips = animator.runtimeAnimatorController.animationClips.Where(c => c != null && Listed(c) >= 0).Distinct()
+                .OrderBy(Listed).ToArray();
     }
+
+    int Listed(AnimationClip c) { return animations.FindIndex(n => string.Equals(n, c.name, System.StringComparison.OrdinalIgnoreCase)); }
 
     /// <summary>The next (+1) or previous (-1) animation. The unit is put up afresh, so nothing of the last clip stays on it.</summary>
     public void Step(int by) {
