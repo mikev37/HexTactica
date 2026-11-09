@@ -118,6 +118,9 @@ namespace HexTactica.AI {
 
         static int DistToSet(HexTile a, List<HexTile> set) { int d = int.MaxValue; foreach (HexTile x in set) if (x != null) d = Mathf.Min(d, a.Distance(x)); return d; }
 
+        /// <summary>procCargo: the room in transports each side bought last turn (the grace: not yet at work).</summary>
+        static readonly Dictionary<Player, int> carrierRoomBought = new Dictionary<Player, int>();
+
         /// <summary>A transport that does not fight (truck, APC, helicopter, plane, ship).</summary>
         static bool IsCarrier(Unit t) { return t != null && t.Hub == null && Transporting.IsTransport(t) && t.Firepower <= 1; }
         /// <summary>An air tanker or a supply ship: resupplies our aircraft or ships beside it.</summary>
@@ -369,7 +372,8 @@ namespace HexTactica.AI {
             // ===== procCargo: every transport by what it carries, on each one's own path. =====
             // Riders: our land units far from where they are going (or across water from it), with where (null: the fight).
             List<KeyValuePair<Unit, HexTile>> cargoRiders = new List<KeyValuePair<Unit, HexTile>>();
-            List<KeyValuePair<Unit, HexTile>> carriers = new List<KeyValuePair<Unit, HexTile>>();   // empty transports we have, and those planned this turn (at their facility)
+            List<KeyValuePair<Unit, HexTile>> carriers = new List<KeyValuePair<Unit, HexTile>>();   // empty transports we have (traced: they should be rare while riders wait)
+            int plannedRoom = 0;   // room in the transports planned this turn
             if (profile.procCargo) {
                 foreach (Unit u in map.ownUnits) {
                     if (u == null || u.tile == null) continue;
@@ -381,7 +385,12 @@ namespace HexTactica.AI {
                     if (g == null && fight.Count == 0) continue;
                     cargoRiders.Add(new KeyValuePair<Unit, HexTile>(u, g));
                 }
-                if (trace != null && cargoRiders.Count > 0) trace("   cargo: " + cargoRiders.Count + " land units far from where they are going, " + carriers.Count + " empty transports");
+                if (trace != null && (cargoRiders.Count > 0 || carriers.Count > 0)) {
+                    int riderWeight = 0; foreach (KeyValuePair<Unit, HexTile> r in cargoRiders) riderWeight += Mathf.Max(1, r.Key.weight);
+                    int empty = 0; foreach (KeyValuePair<Unit, HexTile> c in carriers) if (c.Key.transported.Count == 0) empty++;
+                    int graceWas; lock (carrierRoomBought) carrierRoomBought.TryGetValue(p, out graceWas);
+                    trace("   cargo: " + cargoRiders.Count + " land units waiting (weight " + riderWeight + "), " + empty + " empty transports" + (empty > 0 && cargoRiders.Count > 0 ? " WHILE UNITS WAIT" : "") + ", grace " + graceWas + " (room bought last turn)");
+                }
             }
             Dictionary<Unit, float> riderValue = new Dictionary<Unit, float>();
             System.Func<Unit, float> valueOf = u => { float v; if (!riderValue.TryGetValue(u, out v)) riderValue[u] = v = Value(u, u.tile, map); return v; };
@@ -398,10 +407,12 @@ namespace HexTactica.AI {
                 fetch = leg(from, r.tile);
                 return fetch + leg(r.tile, goal);
             };
-            // What the riders a carrier could serve gain from it: the riders the transports we have (and those planned) do
-            // not already serve, the best for it first, as many as it carries.
+            // What the riders a carrier could serve gain from it: every rider waiting that it can carry (a transport makes many
+            // trips: each one waiting pushes for it), each one's value times the turns it saves it. Not counted against the
+            // transports we have — if they did their job, fewer would be waiting — except a grace: the room of those bought
+            // last turn and planned this turn (not yet at work) takes the riders that gain most out of it.
+            int graceRoom; lock (carrierRoomBought) carrierRoomBought.TryGetValue(p, out graceRoom);
             System.Func<Unit, HexTile, KeyValuePair<float, int>> cargoGain = (t, at) => {
-                Dictionary<Unit, bool> served = new Dictionary<Unit, bool>();
                 System.Func<Unit, HexTile, Unit, HexTile, float> gainOf = (c, from, r, goal) => {
                     if (!Transporting.CarriesKind(c, r)) return 0f;
                     float walk = reach.Turns(r, r.tile, goal);
@@ -412,27 +423,18 @@ namespace HexTactica.AI {
                                                        * (profile.reserveDemand && ReserveShort > 0f ? (1f + ReserveShort) * profile.productionFrontWeight : 1f);
                     return profile.assaultTransportWeight * Mathf.Clamp01((walk - ride) / Mathf.Max(1f, profile.productionLifeRef));
                 };
-                // The transports we have, and those planned: each takes the riders it gains most for, as many as it carries.
-                foreach (KeyValuePair<Unit, HexTile> c in carriers) {
-                    int room = c.Key.tile != null ? Transporting.FreeWeight(c.Key) : Mathf.Max(1, c.Key.transportSlots);
-                    List<KeyValuePair<Unit, float>> mine = new List<KeyValuePair<Unit, float>>();
-                    foreach (KeyValuePair<Unit, HexTile> r in cargoRiders) {
-                        if (served.ContainsKey(r.Key)) continue;
-                        float gn = gainOf(c.Key, c.Value, r.Key, r.Value);
-                        if (gn > 0f) mine.Add(new KeyValuePair<Unit, float>(r.Key, gn * valueOf(r.Key)));
-                    }
-                    mine.Sort((a, b) => { int cc = b.Value.CompareTo(a.Value); return cc != 0 ? cc : CombatMath.CompareTiles(a.Key.tile, b.Key.tile); });
-                    foreach (KeyValuePair<Unit, float> m in mine) { int wgt = Mathf.Max(1, m.Key.weight); if (wgt > room) continue; room -= wgt; served[m.Key] = true; }
-                }
                 List<KeyValuePair<Unit, float>> gains = new List<KeyValuePair<Unit, float>>();
                 foreach (KeyValuePair<Unit, HexTile> r in cargoRiders) {
-                    if (served.ContainsKey(r.Key)) continue;
                     float gn = gainOf(t, at, r.Key, r.Value);
                     if (gn > 0f) gains.Add(new KeyValuePair<Unit, float>(r.Key, gn * valueOf(r.Key)));
                 }
                 gains.Sort((a, b) => { int cc = b.Value.CompareTo(a.Value); return cc != 0 ? cc : CombatMath.CompareTiles(a.Key.tile, b.Key.tile); });
-                int left = Mathf.Max(1, t.transportSlots), n = 0; float tv = 0f;
-                foreach (KeyValuePair<Unit, float> g in gains) { int wgt = Mathf.Max(1, g.Key.weight); if (wgt > left) continue; left -= wgt; tv += g.Value; n++; }
+                int grace = graceRoom + plannedRoom, n = 0; float tv = 0f;
+                foreach (KeyValuePair<Unit, float> g in gains) {
+                    int wgt = Mathf.Max(1, g.Key.weight);
+                    if (grace > 0) { grace -= wgt; continue; }
+                    tv += g.Value; n++;
+                }
                 return new KeyValuePair<float, int>(tv, n);
             };
             int resupPlannedAir = 0, resupPlannedSea = 0;
@@ -611,8 +613,7 @@ namespace HexTactica.AI {
                 count(t, d);
                 if (profile.procCargo && IsCarrier(t)) {
                     trucksPlanned += Kind(t) == 2 ? 0 : d;   // (count() has the ground ones)
-                    if (d > 0) carriers.Add(new KeyValuePair<Unit, HexTile>(t, sl.tile));
-                    else { int i = carriers.FindIndex(x => x.Key == t && x.Value == sl.tile); if (i >= 0) carriers.RemoveAt(i); }
+                    plannedRoom += d * Mathf.Max(1, t.transportSlots);
                 }
                 if (IsResupplier(t)) { if (t.airTanker) resupPlannedAir += d; else resupPlannedSea += d; }
                 if (Transporting.IsTransport(t) && t.Firepower <= 1) { int r0; roomAt.TryGetValue(sl.b, out r0); roomAt[sl.b] = r0 + d * Mathf.Max(1, t.transportSlots); }
@@ -756,6 +757,7 @@ namespace HexTactica.AI {
                 trace("   " + p.personal_name + " buys against " + allFoes.Count + " enemy units (" + map.enemyUnits.Count + " in sight): " + filled + " of " + slots.Count + " building slots, " + (p.money - money) + " of " + p.money + " gold; supply units " + hubsHave + " (at most " + supplyCap + ")");
             }
 
+            if (profile.procCargo) { int room = 0; foreach (Slot sl in slots) if (sl.pick != null && IsCarrier(sl.pick)) room += Mathf.Max(1, sl.pick.transportSlots); lock (carrierRoomBought) carrierRoomBought[p] = room; }
             foreach (Slot sl in slots) {
                 if (sl.pick == null) continue;
                 Unit made;

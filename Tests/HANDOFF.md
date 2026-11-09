@@ -438,6 +438,16 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     yards save for gunboats instead: a gunboat is valued 10–15k (lifetime, front resistance, across water ×1.5, facility
     bonus), a transport ship ~8k: `cargoGain` counts one load (4 riders) of the 45–53 land units waiting to cross, and
     one trip. The one ship in round 16 went on medevac; the other moved up loaded in round 19.
+  - `cargoGain` now (owner's rule): every rider waiting that a transport can carry and gains from it counts (a transport
+    makes many trips), not one load; transports we have are not counted against it (if they work, fewer wait), except a
+    grace: the room bought last turn (`carrierRoomBought`) and planned this turn takes out the riders that gain most.
+    Trace: "cargo: N land units waiting (weight W), E empty transports [WHILE UNITS WAIT], grace G". Channel 20 rounds:
+    new Blue 163,583 v 173,750 (23 buildings to 16; 11 boarded, 9 put down; was 0); new Red 158,833 v 147,500 (23 to
+    16; 22 boarded, 13 put down). ForestClearing new Blue unchanged (90,666 v 52,500); Biomes new Blue 106,833 v 59,999.
+    Ships now follow demand within a turn or two (Blue: 23 waiting in round 12 → first ship round 13, then one every two
+    rounds). What is still late is the demand: 2–4 units waiting across water until round 8, 14 at round 8, 23 at round 12
+    — the campaign sends few units to objectives across water early. Empty transports while units waited: Blue 3 turns,
+    Red 6.
 
 ## 7. Open work, in the order I'd take it
 
