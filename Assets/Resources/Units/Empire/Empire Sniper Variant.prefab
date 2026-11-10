@@ -23,7 +23,7 @@ PrefabInstance:
     - target: {fileID: 1404536959001453031, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 1337303943306184564, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
+      objectReference: {fileID: -1281864633108720434, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
     - target: {fileID: 1832455571810076206, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_Sprite
       value: 
@@ -38,11 +38,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2135285971195945096, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -18.450706
+      value: -32.400448
       objectReference: {fileID: 0}
     - target: {fileID: 2135285971195945096, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -25.969753
+      value: 4.653901
       objectReference: {fileID: 0}
     - target: {fileID: 2135285971195945096, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.z
@@ -85,8 +85,16 @@ PrefabInstance:
       value: Empire Sniper Variant
       objectReference: {fileID: 0}
     - target: {fileID: 3725035370873383095, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3725035370873383095, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3725035370873383095, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.01
+      value: 1.86
       objectReference: {fileID: 0}
     - target: {fileID: 3965666479072272507, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_Sprite
@@ -95,34 +103,42 @@ PrefabInstance:
     - target: {fileID: 4969277058479737524, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 7520435396284521915, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
+      objectReference: {fileID: -1696313332253732227, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
     - target: {fileID: 6279180718809513918, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0.08
       objectReference: {fileID: 0}
     - target: {fileID: 8016336743562798724, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.65
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 8992351249135585014, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.18
+      value: -0.17
       objectReference: {fileID: 0}
     - target: {fileID: 8992351249135585014, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.53
+      value: -0.1
       objectReference: {fileID: 0}
     - target: {fileID: 8992351249135585014, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9918926
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8992351249135585014, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8992351249135585014, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8992351249135585014, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.12707934
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8992351249135585014, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: -14.602
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: cost

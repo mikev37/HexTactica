@@ -6749,7 +6749,7 @@ GameObject:
   - component: {fileID: 4001031660951074760}
   - component: {fileID: 5993180873682028287}
   m_Layer: 0
-  m_Name: Recon Empire
+  m_Name: Recon Empire Variant
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
