@@ -92,6 +92,8 @@ public class LevelEditor : MonoBehaviour
             json += ",\n\"factionSpecialUnits\":\"" + GameController.gc.SpecialUnitsSetting + "\"";
             // The rules the map fixes (the pre-game screen shows them and cannot change them).
             json += ",\n\"fixedRules\":\"" + GameController.gc.FixedRulesSetting + "\"";
+            // The rule set (standard, attrition, sandbox: GameController inspector).
+            json += ",\n\"rules\":\"" + GameController.gc.rules.ToString().ToLowerInvariant() + "\"";
         }
         if (BuildingController.bc != null && BuildingController.bc.buildings.Count > 0) {
             json += ",\n";

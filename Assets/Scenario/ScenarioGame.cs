@@ -172,6 +172,69 @@ public static class ScenarioGame {
         return r;
     }
 
+    /// <summary>The living unit going by <paramref name="name"/> (its personal name), or null.</summary>
+    public static Unit Named(string name) {
+        if (string.IsNullOrEmpty(name) || UnitController.uc == null || UnitController.uc.units == null) return null;
+        foreach (Unit u in UnitController.uc.units)
+            if (u != null && u.RealStrength > 0 && string.Equals((u.personal_name ?? "").Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase)) return u;
+        return null;
+    }
+
+    /// <summary>The living unit of <paramref name="side"/> nearest <paramref name="from"/> (not itself), or null.</summary>
+    public static Unit NearestOf(Unit from, long side) {
+        if (from == null || from.RealTile == null) return null;
+        Unit best = null; int bestD = int.MaxValue;
+        foreach (Unit u in Units(new UnitFilter { side = side })) {
+            if (u == from || u.RealTile == null || u.owner == from.owner) continue;
+            int d = Distance(u.RealTile.x, u.RealTile.y, from.RealTile.x, from.RealTile.y);
+            if (d < bestD) { bestD = d; best = u; }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// A scripted order, as the player gives one with clicks: <paramref name="u"/> moves (this turn's reach, the way
+    /// the click-to-move flow does) to the nearest tile it can fire on <paramref name="target"/> from, and fires; if it
+    /// cannot reach one, it moves as near the target (or, with none, <paramref name="goal"/>) as it can. It has then
+    /// used its turn. False if it did nothing (it has used its turn already, or cannot get closer).
+    /// </summary>
+    public static bool Order(Unit u, Unit target, HexTile goal) {
+        if (u == null || u.tile == null || u.RealStrength <= 0 || !u.active) return false;
+        HexTile start = u.tile;
+        // (The tiles' search state only: a scripted order shows nothing on the board.)
+        Func<HexTile, int> clear = x => { x.G = 0; x.parent = null; return 0; };
+        HexGenerator.forAllTiles(clear);
+        List<HexTile> stops = start.CheckMovementRange(u);   // (leaves the path on the tiles for CompleteMove)
+        stops.RemoveAll(x => x == start || !x.CanEndTurnHere(u) || (x.occupier != null && x.occupier != u));
+        stops.Insert(0, start);
+        HexTile to = null;
+        bool fire = false;
+        if (target != null && target.tile != null && u.CanAttack(target)) {
+            foreach (HexTile s in stops) {
+                if (s != start && !u.moveAndAttack) continue;
+                if (u.CanAttackFrom(s, target) && (to == null || s.G < to.G)) to = s;
+            }
+            fire = to != null;
+        }
+        HexTile aim = target != null && target.tile != null ? target.tile : goal;
+        if (to == null && aim != null) {
+            int best = start.Distance(aim);
+            foreach (HexTile s in stops) { int d = s.Distance(aim); if (d < best || (d == best && to != null && s.G < to.G)) { best = d; to = s; } }
+        }
+        if (to == null) { HexGenerator.forAllTiles(clear); return false; }
+        bool arrived = true;
+        if (to != start) {
+            start.parent = null;
+            List<HexTile> path = to.buildpath();
+            HexGenerator.forAllTiles(clear);
+            arrived = u.MoveAlong(path, fire, true);   // walked on screen, as the player's and the AI's moves are
+        }
+        HexGenerator.forAllTiles(clear);
+        if (fire && arrived && u.RealStrength > 0 && target.RealStrength > 0 && target.tile != null) u.OrderAttack(target);
+        if (u.RealStrength > 0) u.FinishActive();
+        return true;
+    }
+
     public static int Money(long side) { Player p = Resolve(side); return p != null ? p.money : 0; }
 
     /// <summary>Out of supplies: a unit that carries them and has none left loses strength every turn.</summary>

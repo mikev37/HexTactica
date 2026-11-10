@@ -72,6 +72,8 @@ public class ScenarioScript : MonoBehaviour {
         BuildingController.Produced += OnProduced;
         GameController.TurnEnding += OnTurnEnding;
         GameController.TurnStarted += OnTurnStarted;
+        HexTile.UnitSelected += OnUnitSelected;
+        HexTile.BuildingOpened += OnBuildingOpened;
     }
 
     void OnDestroy() {
@@ -82,6 +84,8 @@ public class ScenarioScript : MonoBehaviour {
             BuildingController.Produced -= OnProduced;
             GameController.TurnEnding -= OnTurnEnding;
             GameController.TurnStarted -= OnTurnStarted;
+            HexTile.UnitSelected -= OnUnitSelected;
+            HexTile.BuildingOpened -= OnBuildingOpened;
             registered = false;
         }
         if (Instance == this) Instance = null;
@@ -107,9 +111,15 @@ public class ScenarioScript : MonoBehaviour {
     public void Tick(float dt) {
         if (!Playing) return;
         GameController gc = GameController.gc;
-        if (!started) { started = true; clock = 0f; }
+        if (!started) {
+            started = true; clock = 0f;
+            // The game opens in the first side's turn without a turn start: it is counted here, so turn numbers
+            // (Turn Started, Delay) count that first turn too.
+            if (gc.activePlayer != null) OnTurnStarted(gc.activePlayer);
+        }
         else clock += Mathf.Max(0f, dt);
         if (!snapshotTaken) Snapshot(); else Observe();
+        FollowMarkers();
         RunActions();
         if (gc.gameOver) return;
         Evaluate();
@@ -150,6 +160,8 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.BuildingCaptured:
             case TriggerCondition.BuildingDestroyed:
             case TriggerCondition.UnitBuilt:
+            case TriggerCondition.UnitSelected:
+            case TriggerCondition.BuildingSelected:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
             case TriggerCondition.TurnOver:
@@ -171,6 +183,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitCutOff: return ScenarioGame.CountUnits(uf, ScenarioGame.CutOff) >= count;
             case TriggerCondition.UnitsAtMost: return ScenarioGame.CountUnits(uf) <= t.Value;
             case TriggerCondition.UnitsAtLeast: return ScenarioGame.CountUnits(uf) >= t.Value;
+            case TriggerCondition.UnitSpent: return ScenarioGame.CountUnits(uf, u => !u.active) >= count;
             case TriggerCondition.BuildingOwned: {
                 BuildingFilter bf = BuildingFilter.Of(t);
                 int n = 0;
@@ -311,6 +324,16 @@ public class ScenarioScript : MonoBehaviour {
         Count(TriggerCondition.UnitBuilt, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
     }
 
+    void OnUnitSelected(Unit u) {
+        if (!Counting || u == null) return;
+        Count(TriggerCondition.UnitSelected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
+    }
+
+    void OnBuildingOpened(Building b) {
+        if (!Counting || b == null) return;
+        Count(TriggerCondition.BuildingSelected, t => ScenarioGame.SideIs(b.RealOwner, t.Side) && ScenarioGame.Matches(b, BuildingFilter.Of(t), false));
+    }
+
     void OnTurnEnding(Player p) {
         if (!Counting) return;
         Count(TriggerCondition.TurnOver, t => ScenarioGame.SideIs(p, t.Side));
@@ -324,6 +347,26 @@ public class ScenarioScript : MonoBehaviour {
             st.Count++;
         }
         Count(TriggerCondition.TurnStarted, t => ScenarioGame.SideIs(p, t.Side));
+    }
+
+    /// <summary>Markers on units: moved with them; hidden while the player cannot see the unit (it would give it away), and gone with it.</summary>
+    void FollowMarkers() {
+        for (int i = 0; i < markers.Count; i++) {
+            ShownMarker m = markers[i];
+            if (string.IsNullOrEmpty(m.Unit)) continue;
+            Unit u = ScenarioGame.Named(m.Unit);
+            if (u == null || u.RealTile == null) {
+                markers.RemoveAt(i--);
+                ScenarioGame.HideMarker(m.Id);
+                continue;
+            }
+            bool seen = FogOfWar.ShownToViewer(u);
+            if (!seen) { if (!m.hidden) { m.hidden = true; ScenarioGame.HideMarker(m.Id); } continue; }
+            if (m.hidden || m.TileX != u.RealTile.x || m.TileY != u.RealTile.y) {
+                m.hidden = false; m.TileX = u.RealTile.x; m.TileY = u.RealTile.y;
+                ScenarioGame.ShowMarker(m);
+            }
+        }
     }
 
     /// <summary>Turns begun in this game by every side; Delay and Repeat Every count them (TurnsOf).</summary>
@@ -343,12 +386,16 @@ public class ScenarioScript : MonoBehaviour {
 
     // ------------------------------------------------------------------ actions
 
-    /// <summary>Fire trigger <paramref name="index"/>: counted as fired, its counts start again, and its actions run (as far as the first that waits).</summary>
+    /// <summary>
+    /// Fire trigger <paramref name="index"/>: counted as fired, and its actions run (as far as the first that waits). A
+    /// repeating trigger's counts start again (so it fires on the next one); a trigger that fires once keeps its count, so
+    /// it still reads as met where another trigger uses it as a part ("None Of: the HQ was opened").
+    /// </summary>
     public void Fire(int index) {
         ScenarioTrigger t = triggers[index];
         t.TimesFired++;
         t.LastFiredTurn = TurnsOf(t.TurnsOf);
-        t.Events = 0;
+        if (t.Repeat) t.Events = 0;
         t.ConditionMetTurn = -1;
         if (t.Actions == null || t.Actions.Count == 0) { Warn(t, "it fired, but it has no actions."); return; }
         RunningActions r = new RunningActions { Trigger = index, Next = 0 };
@@ -390,15 +437,41 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.Wait:
                 if (a.Seconds > 0f) r.WaitUntil = clock + a.Seconds;
                 return;
-            case TriggerActionType.CameraFocus: ScenarioGame.FocusCamera(a.TileX, a.TileY, a.Zoom, a.Seconds); return;
+            case TriggerActionType.CameraFocus: {
+                int x = a.TileX, y = a.TileY;
+                if (!string.IsNullOrEmpty(a.AtUnit)) {
+                    Unit u = ScenarioGame.Named(a.AtUnit);
+                    if (u == null || u.RealTile == null) { Warn(t, "Camera Focus: no unit named '" + a.AtUnit + "' on the board."); return; }
+                    x = u.RealTile.x; y = u.RealTile.y;
+                }
+                ScenarioGame.FocusCamera(x, y, a.Zoom, a.Seconds);
+                return;
+            }
+            case TriggerActionType.OrderUnits: {
+                List<Unit> movers = UnitsFor(t, a);
+                foreach (Unit u in movers) {
+                    Unit target = null;
+                    if (!string.IsNullOrEmpty(a.Target)) {
+                        target = ScenarioGame.Named(a.Target);
+                        if (target == null) { Warn(t, "Order Units: no unit named '" + a.Target + "' to attack."); continue; }
+                    } else if (a.TargetSide != TriggerSide.Any) target = ScenarioGame.NearestOf(u, a.TargetSide);
+                    if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY)))
+                        Warn(t, "Order Units: " + u.name + " could not move or attack (it has used its turn, or nothing is in reach).");
+                }
+                BoardChanged();
+                return;
+            }
             case TriggerActionType.CameraFrameBoard: ScenarioGame.FrameBoard(); return;
             case TriggerActionType.ShowMarker: {
                 if (string.IsNullOrEmpty(a.Marker)) { Warn(t, "a Show Marker action names no marker prefab."); return; }
                 string id = string.IsNullOrEmpty(a.MarkerId) ? "#" + (++markerSerial) : a.MarkerId;
                 markers.RemoveAll(m => m.Id == id);
-                ShownMarker shown = new ShownMarker { Id = id, Marker = a.Marker, Text = a.Text, TileX = a.TileX, TileY = a.TileY };
+                ShownMarker shown = new ShownMarker { Id = id, Marker = a.Marker, Text = a.Text, TileX = a.TileX, TileY = a.TileY, Unit = a.AtUnit ?? "" };
+                if (!string.IsNullOrEmpty(shown.Unit) && ScenarioGame.Named(shown.Unit) == null) { Warn(t, "Show Marker: no unit named '" + shown.Unit + "' to put it on."); return; }
                 markers.Add(shown);
-                ScenarioGame.ShowMarker(shown);
+                shown.hidden = true;   // (FollowMarkers puts it on its unit, if the player can see it)
+                if (string.IsNullOrEmpty(shown.Unit)) { shown.hidden = false; ScenarioGame.ShowMarker(shown); }
+                else FollowMarkers();
                 return;
             }
             case TriggerActionType.HideMarker:
@@ -536,7 +609,7 @@ public class ScenarioScript : MonoBehaviour {
         ScenarioDialogue.Clear();
         ScenarioGame.HideMarker("");
         markers = d.Markers ?? new List<ShownMarker>();
-        foreach (ShownMarker m in markers) ScenarioGame.ShowMarker(m);
+        foreach (ShownMarker m in markers) { m.hidden = !string.IsNullOrEmpty(m.Unit); if (!m.hidden) ScenarioGame.ShowMarker(m); }
         // A conversation that was on screen when the game was saved: shown again, and what was waiting on it waits on it.
         int last = ScenarioDialogue.Enqueue(d.PendingLines);
         foreach (RunningActions r in running) if (r.WaitLine > 0) r.WaitLine = last;

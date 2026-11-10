@@ -232,7 +232,7 @@ namespace HexTactica.Harness {
 
             // Rules: the menu's choice, else the file's ("rules":"attrition"), else standard.
             string rules = RulesOverride;
-            if (string.IsNullOrEmpty(rules) && test != null && test.GetField("rules") != null) rules = test.GetField("rules").stringValue;
+            if (string.IsNullOrEmpty(rules)) rules = Setting(obj, test, "rules");
             GameController.gc.rules = GameController.ParseRules(rules);
             // Purchases: the menu's choice, else the file's, else the rule set's default; and the
             // units the scenario allows to be bought (all when it names none).

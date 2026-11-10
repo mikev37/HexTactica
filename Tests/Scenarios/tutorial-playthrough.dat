@@ -1,0 +1,1797 @@
+{
+ "width": 13,
+ "tiles": [
+  {
+   "x": -6,
+   "y": 0,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 1,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 2,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 3,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 4,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 5,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 6,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": -1,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 0,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 1,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 2,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 3,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 4,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 5,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 6,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": -2,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": -1,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 0,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 1,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 2,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 3,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 4,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 5,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 6,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": -3,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": -2,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": -1,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 0,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 1,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 2,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 3,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 4,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 5,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 6,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -4,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -3,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -2,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -1,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 0,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 1,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 2,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 3,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 4,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 5,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 6,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -5,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -4,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -3,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -2,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -1,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 0,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 1,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 2,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 3,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 4,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 5,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 6,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -6,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -5,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -4,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -3,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -2,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -1,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 1,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 2,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 3,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 4,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 5,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 6,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -6,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -5,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -4,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -3,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -2,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -1,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 0,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 4,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 5,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -6,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -5,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -4,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -3,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -2,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -1,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 0,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 4,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -6,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -5,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -4,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -3,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -2,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -1,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 0,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -6,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -5,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -4,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -3,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -2,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -1,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": 0,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": 1,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": 2,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -6,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -5,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -4,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -3,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -2,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -1,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": 0,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": 1,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -6,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -5,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -4,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -3,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -2,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -1,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": 0,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  }
+ ],
+ "players": [
+  {
+   "personal_name": "Recruits",
+   "id": 0,
+   "displayColor": {
+    "r": 0.2,
+    "g": 0.45,
+    "b": 1.0,
+    "a": 1.0
+   },
+   "factionName": "",
+   "AI": false,
+   "aiProfile": "",
+   "factionLocked": false,
+   "money": 9000,
+   "eliminated": false
+  },
+  {
+   "personal_name": "Raiders",
+   "id": 112,
+   "displayColor": {
+    "r": 0.85,
+    "g": 0.2,
+    "b": 0.15,
+    "a": 1.0
+   },
+   "factionName": "",
+   "AI": true,
+   "aiProfile": "",
+   "factionLocked": false,
+   "money": 0,
+   "eliminated": false
+  }
+ ],
+ "active": 0,
+ "day": 0,
+ "purchases": "on",
+ "allowedUnits": "Grunt,Supplies",
+ "fog": "on",
+ "factionSpecialUnits": "off",
+ "fixedRules": "fog,purchases,factionSpecialUnits",
+ "rules": "sandbox",
+ "buildings": [
+  {
+   "x": -4,
+   "y": 2,
+   "z": 2,
+   "gameobject_name": "HQ(Clone)",
+   "personal_name": "Headquarters",
+   "type": 0,
+   "owner_id": 0,
+   "income": 1000,
+   "producesSupply": true,
+   "supplyRange": 3,
+   "supplies": 0,
+   "suppliesMax": 0,
+   "damageLevel": 0,
+   "capturePoints": 0,
+   "capturingPlayerId": -1,
+   "hasHome": true,
+   "home_id": 0
+  }
+ ],
+ "units": [
+  {
+   "x": -3,
+   "y": 1,
+   "z": 2,
+   "Strength": 6,
+   "Veterancy": 0,
+   "personalName": "Recruit",
+   "active": true,
+   "owner_id": 0,
+   "supplies": 3,
+   "fuel": 30,
+   "ammo": 6,
+   "gameobject_name": "Grunt(Clone)",
+   "transporterIndexPlusOne": 0,
+   "suppressed": 0
+  }
+ ],
+ "script": {
+  "Version": 1,
+  "Triggers": [
+   {
+    "Name": "Welcome",
+    "Enabled": true,
+    "Condition": 0,
+    "Actions": [
+     {
+      "Type": 1,
+      "AtUnit": "Recruit",
+      "Zoom": 0,
+      "Seconds": 1.0
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Welcome to the front, recruit. Our scout will show you the ropes.",
+        "Sound": "",
+        "Portrait": 0
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "See this soldier? That's a grunt: our basic infantry.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Click on him to select him.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "recruit",
+      "Text": "Click me",
+      "AtUnit": "Recruit"
+     }
+    ]
+   },
+   {
+    "Name": "Recruit selected",
+    "Enabled": true,
+    "Condition": 26,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "recruit"
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "goal",
+      "Text": "Move here",
+      "TileX": 0,
+      "TileY": 0
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "The lit tiles show where he can go this turn.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Click a tile once to propose a move, then click it again to confirm. Try the marked tile.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     },
+     {
+      "Type": 17,
+      "Trigger": "Reached the mark"
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Recruit"
+   },
+   {
+    "Name": "Reached the mark",
+    "Enabled": false,
+    "Condition": 1,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "goal"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Good job!",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Recruit",
+    "TileX": 0,
+    "TileY": 0,
+    "Radius": 0
+   },
+   {
+    "Name": "Recruit spent",
+    "Enabled": true,
+    "Condition": 28,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "goal"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "He has used his actions for this turn.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "End your turn with the Space bar, or with the button in the middle of your screen.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Recruit"
+   },
+   {
+    "Name": "Ambush",
+    "Enabled": true,
+    "Condition": 21,
+    "Actions": [
+     {
+      "Type": 8,
+      "Side": 112,
+      "UnitKind": "Grunt",
+      "TileX": 4,
+      "TileY": -1,
+      "Count": 1,
+      "Value": 4,
+      "Veterancy": 0,
+      "UnitTag": "Raider",
+      "ReadyToAct": true
+     },
+     {
+      "Type": 26,
+      "UnitSide": 112,
+      "UnitTag": "Raider",
+      "Target": "Recruit"
+     }
+    ],
+    "Side": -3,
+    "Count": 1
+   },
+   {
+    "Name": "Under fire",
+    "Enabled": true,
+    "Condition": 10,
+    "Actions": [
+     {
+      "Type": 1,
+      "AtUnit": "Recruit",
+      "Zoom": 0,
+      "Seconds": 0.8
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Oh no! We took damage. An enemy was hiding in the fog.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Units heal at the start of our turn while they stand in supply. Move our grunt back into supply, near the HQ.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "raider",
+      "Text": "Enemy",
+      "AtUnit": "Raider"
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Recruit",
+    "Value": 5
+   },
+   {
+    "Name": "Opened the HQ",
+    "Enabled": true,
+    "Condition": 27,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "hq"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "This is the HQ's build list. Pick a unit to buy it with our gold: it appears at the HQ.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "BuildingKind": "HQ"
+   },
+   {
+    "Name": "HQ never opened",
+    "Enabled": false,
+    "Condition": 20,
+    "Actions": [],
+    "Parts": [
+     "Opened the HQ"
+    ]
+   },
+   {
+    "Name": "Player's third turn",
+    "Enabled": false,
+    "Condition": 21,
+    "Actions": [],
+    "Side": -2,
+    "Count": 3
+   },
+   {
+    "Name": "HQ hint",
+    "Enabled": true,
+    "Condition": 18,
+    "Actions": [
+     {
+      "Type": 1,
+      "TileX": -4,
+      "TileY": 2,
+      "Zoom": 0,
+      "Seconds": 0.8
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "hq",
+      "Text": "Click the HQ",
+      "TileX": -4,
+      "TileY": 2
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "You can click the HQ to make units!",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     }
+    ],
+    "Parts": [
+     "Player's third turn",
+     "HQ never opened"
+    ]
+   },
+   {
+    "Name": "Grunt bought",
+    "Enabled": true,
+    "Condition": 9,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "A new grunt! Units you buy can move from your next turn.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Grunts are cheap, and they can capture buildings.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "UnitKind": "Grunt"
+   },
+   {
+    "Name": "Supplies bought",
+    "Enabled": true,
+    "Condition": 9,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "A supply truck! Units near it are in supply, even far from the HQ: they get ammunition and fuel, and heal.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "UnitKind": "Supplies"
+   },
+   {
+    "Name": "Player's fourth turn",
+    "Enabled": false,
+    "Condition": 21,
+    "Actions": [],
+    "Side": -2,
+    "Count": 4
+   },
+   {
+    "Name": "Fight back",
+    "Enabled": true,
+    "Condition": 19,
+    "Actions": [
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "raider",
+      "Text": "Enemy",
+      "AtUnit": "Raider"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Time to deal with that raider.",
+        "Sound": "",
+        "Portrait": 0
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "To attack, select a unit, click any lit tile next to the enemy, then click the enemy.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "Parts": [
+     "Supplies bought",
+     "Player's fourth turn"
+    ]
+   },
+   {
+    "Name": "Raider down",
+    "Enabled": true,
+    "Condition": 2,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": ""
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Raider down! That's the basics: move, end your turn, buy units, stay in supply, and attack.",
+        "Sound": "",
+        "Portrait": 0
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "See you on the front!",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     },
+     {
+      "Type": 6,
+      "Side": -2
+     }
+    ],
+    "Side": -3,
+    "UnitTag": "Raider"
+   },
+   {
+    "Name": "All lost",
+    "Enabled": true,
+    "Condition": 22,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "We've lost our troops. Let's try that again.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     },
+     {
+      "Type": 7,
+      "Side": -2
+     }
+    ],
+    "Side": -2,
+    "Value": 0
+   }
+  ]
+ }
+,
+"test": {"name": "tutorial-playthrough", "kind": "rules", "opponent": "Human", "rounds": "8", "rules": "sandbox", "check": "scriptTutorial", "question": "The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt, move it to the mark, end the turn; the raider spawned in the fog is ordered at it and hits it; back into supply; the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order."}
+}
