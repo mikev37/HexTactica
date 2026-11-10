@@ -80,6 +80,9 @@ public static class GameFiles {
         try {
             JSONObject obj = new JSONObject(File.ReadAllText(path));
             StringBuilder sb = new StringBuilder();
+            // The scenario's own description first (Scenario Script ▸ Description).
+            JSONObject about = obj.GetField("description");
+            if (about != null && about.isString && about.stringValue.Length > 0) sb.Append(about.stringValue).Append("\n\n");
             JSONObject players = obj.GetField("players");
             if (players != null && players.list != null) {
                 List<string> sides = new List<string>();

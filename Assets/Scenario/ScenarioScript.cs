@@ -27,6 +27,14 @@ public class ScenarioScript : MonoBehaviour {
     [Tooltip("The scenario's triggers, evaluated in this order.")]
     public List<ScenarioTrigger> triggers = new List<ScenarioTrigger>();
 
+    [Header("The scenario's words")]
+    [Tooltip("What the scenario is about: shown when it is picked in the menus (saved in the file as \"description\").")]
+    [TextArea(2, 6)] public string description = "";
+    [Tooltip("Shown on the post-game screen, above the game's findings, when the player wins.")]
+    [TextArea(2, 6)] public string winText = "";
+    [Tooltip("Shown on the post-game screen, above the game's findings, when the player loses.")]
+    [TextArea(2, 6)] public string lossText = "";
+
     [HideInInspector, Tooltip("The scenario file these triggers were loaded from (for the log).")]
     public string scenarioPath = "";
 
@@ -128,8 +136,16 @@ public class ScenarioScript : MonoBehaviour {
     /// <summary>The level clock: seconds of play since the scenario started (not while a menu is open).</summary>
     public float Clock { get { return clock; } }
 
+    // The board has been animating since (level clock); -1: it is still.
+    float busySince = -1f;
+    bool busy;
+
     void Evaluate() {
         GameController gc = GameController.gc;
+        // Still animating? (Never for more than a few seconds: an animation that never ends must not hold the script.)
+        // (Headless, nothing plays: a unit's animation flags are never cleared, so they are not waited for.)
+        if (!gc.headless && Unit.AnyAnimating()) { if (busySince < 0f) busySince = clock; busy = clock - busySince < 6f; }
+        else { busySince = -1f; busy = false; }
         for (int i = 0; i < triggers.Count; i++) {
             ScenarioTrigger t = triggers[i];
             if (t == null || !t.Enabled) continue;
@@ -139,6 +155,7 @@ public class ScenarioScript : MonoBehaviour {
             if (!IsMet(t, 0)) { t.ConditionMetTurn = -1; continue; }                               // Delay counts unbroken holding
             if (t.ConditionMetTurn < 0) t.ConditionMetTurn = turns;
             if (turns - t.ConditionMetTurn < t.Delay) continue;
+            if (t.WaitForAnimations && busy) continue;                                            // after the shot lands, the retreat ends ...
             Fire(i);
             if (gc.gameOver) return;                                                              // a Win / Lose ends evaluation
         }
@@ -162,6 +179,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
             case TriggerCondition.BuildingSelected:
+            case TriggerCondition.UnitSpotted:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
             case TriggerCondition.TurnOver:
@@ -232,7 +250,8 @@ public class ScenarioScript : MonoBehaviour {
 
     // ------------------------------------------------------------------ facts as they happen (latched on each trigger)
 
-    struct Seen { public int strength; public HexTile tile; public int pass; }
+    /// <summary>A unit as the last frame saw it; <c>seenBy</c>: which players (by their place in GameController.players) had it in sight.</summary>
+    struct Seen { public int strength; public HexTile tile; public int pass; public long seenBy; }
     readonly Dictionary<Unit, Seen> seen = new Dictionary<Unit, Seen>();
     readonly List<Unit> gone = new List<Unit>();
     bool snapshotTaken;
@@ -253,7 +272,7 @@ public class ScenarioScript : MonoBehaviour {
         seen.Clear();
         pass++;
         if (UnitController.uc != null && UnitController.uc.units != null)
-            foreach (Unit u in UnitController.uc.units) if (u != null) seen[u] = new Seen { strength = u.RealStrength, tile = u.RealTile, pass = pass };
+            foreach (Unit u in UnitController.uc.units) if (u != null) seen[u] = new Seen { strength = u.RealStrength, tile = u.RealTile, pass = pass, seenBy = SeenBy(u, u.RealTile) };
         snapshotTaken = true;
     }
 
@@ -266,22 +285,51 @@ public class ScenarioScript : MonoBehaviour {
         if (UnitController.uc == null || UnitController.uc.units == null) return;
         pass++;
         List<Unit> all = UnitController.uc.units;
+        bool spotting = Uses(TriggerCondition.UnitSpotted);
         for (int i = 0; i < all.Count; i++) {
             Unit u = all[i];
             if (u == null) continue;
             int s = u.RealStrength;
             HexTile at = u.RealTile;
+            long sight = spotting ? SeenBy(u, at) : 0;
             Seen was;
             if (seen.TryGetValue(u, out was)) {
                 if (s < was.strength) Damaged(u, s, at);
                 else if (s > was.strength) Healed(u, s, at);
                 if (at != was.tile && at != null) Entered(u, was.tile, at);
-            } else if (at != null) Entered(u, null, at);
-            seen[u] = new Seen { strength = s, tile = at, pass = pass };
+                if (spotting) Spotted(u, at, sight & ~was.seenBy);
+            } else if (at != null) { Entered(u, null, at); if (spotting) Spotted(u, at, sight); }
+            seen[u] = new Seen { strength = s, tile = at, pass = pass, seenBy = sight };
         }
         gone.Clear();
         foreach (KeyValuePair<Unit, Seen> kv in seen) if (kv.Value.pass != pass) gone.Add(kv.Key);
         for (int i = 0; i < gone.Count; i++) seen.Remove(gone[i]);
+    }
+
+    bool Uses(TriggerCondition c) { for (int i = 0; i < triggers.Count; i++) if (triggers[i] != null && triggers[i].Condition == c) return true; return false; }
+
+    /// <summary>Which players (bits by their place in GameController.players; not its own side) have <paramref name="u"/> in sight on <paramref name="at"/>.</summary>
+    static long SeenBy(Unit u, HexTile at) {
+        GameController gc = GameController.gc;
+        if (gc == null || gc.players == null || at == null || u.RealStrength <= 0) return 0;
+        long bits = 0;
+        for (int i = 0; i < gc.players.Count && i < 63; i++) {
+            Player p = gc.players[i];
+            if (p == null || p == u.owner) continue;
+            if (FogOfWar.SeesAt(p, u, at)) bits |= 1L << i;
+        }
+        return bits;
+    }
+
+    /// <summary><paramref name="u"/> has come into sight of the players in <paramref name="newly"/> (Unit Spotted).</summary>
+    void Spotted(Unit u, HexTile at, long newly) {
+        if (newly == 0) return;
+        GameController gc = GameController.gc;
+        for (int i = 0; i < gc.players.Count && i < 63; i++) {
+            if ((newly & (1L << i)) == 0) continue;
+            Player p = gc.players[i];
+            Count(TriggerCondition.UnitSpotted, t => ScenarioGame.SideIs(p, t.SeenBy) && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)));
+        }
     }
 
     void Damaged(Unit u, int strength, HexTile at) {
@@ -360,7 +408,7 @@ public class ScenarioScript : MonoBehaviour {
                 ScenarioGame.HideMarker(m.Id);
                 continue;
             }
-            bool seen = FogOfWar.ShownToViewer(u);
+            bool seen = !m.HideInFog || FogOfWar.ShownToViewer(u);
             if (!seen) { if (!m.hidden) { m.hidden = true; ScenarioGame.HideMarker(m.Id); } continue; }
             if (m.hidden || m.TileX != u.RealTile.x || m.TileY != u.RealTile.y) {
                 m.hidden = false; m.TileX = u.RealTile.x; m.TileY = u.RealTile.y;
@@ -466,7 +514,7 @@ public class ScenarioScript : MonoBehaviour {
                 if (string.IsNullOrEmpty(a.Marker)) { Warn(t, "a Show Marker action names no marker prefab."); return; }
                 string id = string.IsNullOrEmpty(a.MarkerId) ? "#" + (++markerSerial) : a.MarkerId;
                 markers.RemoveAll(m => m.Id == id);
-                ShownMarker shown = new ShownMarker { Id = id, Marker = a.Marker, Text = a.Text, TileX = a.TileX, TileY = a.TileY, Unit = a.AtUnit ?? "" };
+                ShownMarker shown = new ShownMarker { Id = id, Marker = a.Marker, Text = a.Text, TileX = a.TileX, TileY = a.TileY, Unit = a.AtUnit ?? "", HideInFog = a.HideInFog };
                 if (!string.IsNullOrEmpty(shown.Unit) && ScenarioGame.Named(shown.Unit) == null) { Warn(t, "Show Marker: no unit named '" + shown.Unit + "' to put it on."); return; }
                 markers.Add(shown);
                 shown.hidden = true;   // (FollowMarkers puts it on its unit, if the player can see it)
@@ -482,6 +530,8 @@ public class ScenarioScript : MonoBehaviour {
                 if (!ScenarioGame.PlayMusic(a.Track, a.Loop)) Warn(t, "Play Music: no track " + (string.IsNullOrEmpty(a.Track) ? "at all" : "'" + a.Track + "'") + " in Resources/Music/Special.");
                 return;
             case TriggerActionType.StopMusic: ScenarioGame.StopMusic(); return;
+            case TriggerActionType.SetPurchases: ScenarioGame.SetPurchases(a.On); return;
+            case TriggerActionType.SetFog: ScenarioGame.SetFog(a.On); return;
             case TriggerActionType.PlaySound: ScenarioGame.PlaySound(a.Sound); return;
             case TriggerActionType.Win: {
                 Player p = ScenarioGame.Resolve(a.Side);
@@ -588,7 +638,25 @@ public class ScenarioScript : MonoBehaviour {
     }
 
     /// <summary>Anything to write? (A scenario with no triggers writes no "script".)</summary>
-    public bool HasContent { get { return triggers.Count > 0 || markers.Count > 0; } }
+    public bool HasContent { get { return triggers.Count > 0 || markers.Count > 0 || Words; } }
+
+    /// <summary>Has a description, win or loss text (written at the top of the file: WordsJson).</summary>
+    public bool Words { get { return !string.IsNullOrEmpty(description) || !string.IsNullOrEmpty(winText) || !string.IsNullOrEmpty(lossText); } }
+
+    /// <summary>The scenario's words as top-level fields of its file (",\n"key": "text"" each), for LevelEditor.BoardJson.</summary>
+    public string WordsJson() {
+        string s = "";
+        if (!string.IsNullOrEmpty(description)) s += ",\n\"description\":" + JSONObject.CreateStringObject(description).Print();
+        if (!string.IsNullOrEmpty(winText)) s += ",\n\"winText\":" + JSONObject.CreateStringObject(winText).Print();
+        if (!string.IsNullOrEmpty(lossText)) s += ",\n\"lossText\":" + JSONObject.CreateStringObject(lossText).Print();
+        return s;
+    }
+
+    /// <summary>The text the post-game screen shows above the findings for <paramref name="viewerWon"/>: the win or the loss text ("" if none).</summary>
+    public static string EndText(bool viewerWon) {
+        ScenarioScript s = Instance;
+        return s == null ? "" : viewerWon ? s.winText ?? "" : s.lossText ?? "";
+    }
 
     /// <summary>
     /// The script of a scenario file or save just loaded: <paramref name="script"/> is its "script" (null: none, and
@@ -620,7 +688,16 @@ public class ScenarioScript : MonoBehaviour {
 
     /// <summary>Load the script of the board just loaded from <paramref name="obj"/> (ScenarioLoader).</summary>
     public static void LoadFromBoard(JSONObject obj, string path) {
-        Current.Load(obj != null ? obj.GetField(FileKey) : null, path);
+        ScenarioScript s = Current;
+        s.Load(obj != null ? obj.GetField(FileKey) : null, path);
+        s.description = Text(obj, "description");
+        s.winText = Text(obj, "winText");
+        s.lossText = Text(obj, "lossText");
+    }
+
+    static string Text(JSONObject obj, string key) {
+        JSONObject f = obj != null ? obj.GetField(key) : null;
+        return f != null && f.isString ? f.stringValue : "";
     }
 
     /// <summary>The key a scenario file keeps its script under.</summary>

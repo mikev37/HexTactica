@@ -301,6 +301,11 @@ public static class ScenarioFile {
         // Fog of war: FOG=on|off, else the file's (test block or top level), else off.
         Rig.gc.fogOfWar = GameController.ParseFog(Environment.GetEnvironmentVariable("FOG") ?? l.meta.Get("fog", null) ?? top("fog"));
         FogOfWar.Reset();
+        // A side the scenario keeps in (Player.eliminable: false in its players entry).
+        foreach (Player side in new[] { l.ai, l.other }) {
+            Match e = Regex.Match(json, "\"id\"\\s*:\\s*" + side.id + "\\s*,[^\\]]*?\"eliminable\"\\s*:\\s*(true|false)");
+            if (e.Success) side.eliminable = e.Groups[1].Value == "true";
+        }
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
         // The scenario's script (its triggers), as the game loads it (ScenarioLoader); none: no triggers.

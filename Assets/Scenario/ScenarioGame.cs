@@ -393,5 +393,17 @@ public static class ScenarioGame {
         p.money = Mathf.Max(0, mode == ValueMode.Set ? value : p.money + value);
     }
 
+    /// <summary>Buying units at buildings on or off (a save keeps it: LevelEditor.BoardJson writes the game's setting).</summary>
+    public static void SetPurchases(bool on) { if (Game != null) Game.purchasesAllowed = on; }
+
+    /// <summary>Fog of war on or off, for everyone (a save keeps it), seen again at once.</summary>
+    public static void SetFog(bool on) {
+        if (Game == null || Game.fogOfWar == on) return;
+        Game.fogOfWar = on;
+        FogOfWar.Reset();
+        FogOfWar.Changed();
+        FogOfWar.Refresh();
+    }
+
     public static void ReadyUnits(List<Unit> units, bool ready) { foreach (Unit u in units) if (u != null) u.active = ready; }
 }

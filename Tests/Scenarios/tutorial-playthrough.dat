@@ -1287,7 +1287,8 @@
    "aiProfile": "",
    "factionLocked": false,
    "money": 9000,
-   "eliminated": false
+   "eliminated": false,
+   "eliminable": true
   },
   {
    "personal_name": "Raiders",
@@ -1303,7 +1304,8 @@
    "aiProfile": "",
    "factionLocked": false,
    "money": 0,
-   "eliminated": false
+   "eliminated": false,
+   "eliminable": false
   }
  ],
  "active": 0,
@@ -1313,7 +1315,10 @@
  "fog": "on",
  "factionSpecialUnits": "off",
  "fixedRules": "fog,purchases,factionSpecialUnits",
- "rules": "sandbox",
+ "rules": "standard",
+ "description": "Tutorial: your first command. The scout and the commander walk you through moving a grunt, ending your turn, staying in supply, buying units at the HQ, capturing a city and attacking.",
+ "winText": "Tutorial complete! You've learned to move, end your turn, stay in supply, buy units and attack. Try a full scenario next.",
+ "lossText": "We lost our troops this time. Play the tutorial again: keep your units in supply, and attack with more than one.",
  "buildings": [
   {
    "x": -4,
@@ -1333,6 +1338,23 @@
    "capturingPlayerId": -1,
    "hasHome": true,
    "home_id": 0
+  },
+  {
+   "x": -2,
+   "y": 3,
+   "z": -1,
+   "gameobject_name": "City(Clone)",
+   "personal_name": "City",
+   "type": 2,
+   "owner_id": -1,
+   "income": 1000,
+   "producesSupply": false,
+   "supplyRange": 0,
+   "supplies": 0,
+   "suppliesMax": 0,
+   "damageLevel": 0,
+   "capturePoints": 0,
+   "capturingPlayerId": -1
   }
  ],
  "units": [
@@ -1460,6 +1482,14 @@
         "Portrait": 0
        }
       ]
+     },
+     {
+      "Type": 17,
+      "Trigger": "Recruit spent"
+     },
+     {
+      "Type": 17,
+      "Trigger": "Ambush"
      }
     ],
     "Side": -2,
@@ -1470,13 +1500,9 @@
    },
    {
     "Name": "Recruit spent",
-    "Enabled": true,
+    "Enabled": false,
     "Condition": 28,
     "Actions": [
-     {
-      "Type": 3,
-      "MarkerId": "goal"
-     },
      {
       "Type": 0,
       "Lines": [
@@ -1500,7 +1526,7 @@
    },
    {
     "Name": "Ambush",
-    "Enabled": true,
+    "Enabled": false,
     "Condition": 21,
     "Actions": [
      {
@@ -1510,7 +1536,7 @@
       "TileX": 4,
       "TileY": -1,
       "Count": 1,
-      "Value": 4,
+      "Value": 6,
       "Veterancy": 0,
       "UnitTag": "Raider",
       "ReadyToAct": true
@@ -1520,10 +1546,67 @@
       "UnitSide": 112,
       "UnitTag": "Raider",
       "Target": "Recruit"
+     },
+     {
+      "Type": 17,
+      "Trigger": "Raider holds"
      }
     ],
     "Side": -3,
     "Count": 1
+   },
+   {
+    "Name": "Raider holds",
+    "Enabled": false,
+    "Condition": 21,
+    "Actions": [
+     {
+      "Type": 16,
+      "UnitSide": 112,
+      "UnitTag": "Raider",
+      "Stat": 3,
+      "Mode": 0,
+      "Value": 3
+     },
+     {
+      "Type": 16,
+      "UnitSide": 112,
+      "UnitTag": "Raider",
+      "Stat": 1,
+      "Mode": 0,
+      "Value": 6
+     },
+     {
+      "Type": 23,
+      "UnitSide": 112,
+      "UnitTag": "Raider",
+      "Value": 0
+     }
+    ],
+    "Repeat": true,
+    "Side": -3,
+    "Count": 1
+   },
+   {
+    "Name": "Raider spotted",
+    "Enabled": true,
+    "Condition": 29,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Enemy spotted! He was hiding in the fog.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "SeenBy": -2,
+    "Side": -3,
+    "UnitTag": "Raider"
    },
    {
     "Name": "Under fire",
@@ -1541,13 +1624,13 @@
       "Lines": [
        {
         "Character": "Placeholder Scout",
-        "Text": "Oh no! We took damage. An enemy was hiding in the fog.",
+        "Text": "Oh no! We took damage.",
         "Sound": "",
         "Portrait": 1
        },
        {
         "Character": "Placeholder Commander",
-        "Text": "Units heal at the start of our turn while they stand in supply. Move our grunt back into supply, near the HQ.",
+        "Text": "Units heal at the start of our turn while they stand in supply. Move our grunt back into supply, near the HQ: the marked tile is in supply.",
         "Sound": "",
         "Portrait": 0
        }
@@ -1556,14 +1639,71 @@
      {
       "Type": 2,
       "Marker": "Marker",
-      "MarkerId": "raider",
-      "Text": "Enemy",
-      "AtUnit": "Raider"
+      "MarkerId": "supply",
+      "Text": "Back to supply",
+      "TileX": -3,
+      "TileY": 1
+     },
+     {
+      "Type": 17,
+      "Trigger": "Back in supply"
      }
     ],
     "Side": -2,
     "UnitTag": "Recruit",
     "Value": 5
+   },
+   {
+    "Name": "Recruit cut off",
+    "Enabled": false,
+    "Condition": 24,
+    "Actions": [],
+    "Side": -2,
+    "UnitTag": "Recruit"
+   },
+   {
+    "Name": "Recruit in supply",
+    "Enabled": false,
+    "Condition": 20,
+    "Actions": [],
+    "Parts": [
+     "Recruit cut off"
+    ]
+   },
+   {
+    "Name": "Recruit alive",
+    "Enabled": false,
+    "Condition": 25,
+    "Actions": [],
+    "Side": -2,
+    "UnitTag": "Recruit",
+    "Value": 1
+   },
+   {
+    "Name": "Back in supply",
+    "Enabled": false,
+    "Condition": 18,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "supply"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Good, now end your turn. He'll heal at the start of the next one.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     }
+    ],
+    "Parts": [
+     "Recruit alive",
+     "Recruit in supply"
+    ]
    },
    {
     "Name": "Opened the HQ",
@@ -1649,6 +1789,14 @@
     "Condition": 9,
     "Actions": [
      {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "city",
+      "Text": "Capture",
+      "TileX": -2,
+      "TileY": 3
+     },
+     {
       "Type": 0,
       "Lines": [
        {
@@ -1659,7 +1807,7 @@
        },
        {
         "Character": "Placeholder Commander",
-        "Text": "Grunts are cheap, and they can capture buildings.",
+        "Text": "Grunts can capture buildings. Move one onto the marked city and keep it there: after two turns it's ours, and every city adds to our gold.",
         "Sound": "",
         "Portrait": 0
        }
@@ -1668,6 +1816,30 @@
     ],
     "Side": -2,
     "UnitKind": "Grunt"
+   },
+   {
+    "Name": "City captured",
+    "Enabled": true,
+    "Condition": 3,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "city"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "The city is ours! It adds to our gold every turn.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "BuildingKind": "City"
    },
    {
     "Name": "Supplies bought",
@@ -1706,7 +1878,7 @@
       "Type": 2,
       "Marker": "Marker",
       "MarkerId": "raider",
-      "Text": "Enemy",
+      "Text": "Attack",
       "AtUnit": "Raider"
      },
      {
@@ -1714,7 +1886,7 @@
       "Lines": [
        {
         "Character": "Placeholder Commander",
-        "Text": "Time to deal with that raider.",
+        "Text": "Time to deal with that raider. It's dug in and can't get away.",
         "Sound": "",
         "Portrait": 0
        },
@@ -1793,5 +1965,5 @@
   ]
  }
 ,
-"test": {"name": "tutorial-playthrough", "kind": "rules", "opponent": "Human", "rounds": "8", "rules": "sandbox", "check": "scriptTutorial", "question": "The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt, move it to the mark, end the turn; the raider spawned in the fog is ordered at it and hits it; back into supply; the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order."}
+"test": {"name": "tutorial-playthrough", "kind": "rules", "opponent": "Human", "rounds": "8", "rules": "standard", "check": "scriptTutorial", "question": "The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order."}
 }

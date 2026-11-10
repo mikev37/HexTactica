@@ -81,6 +81,7 @@ units or buildings must match at least.
 | Unit Cut Off (24) | now: matching units stand outside their side's supply | side, kind, name, in area |
 | Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
+| Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
 | Units At Least (25) | now: at least *Value* matching units are alive (as in "when you have 3 tanks"; with no kind, any units) | side, kind, name, in area |
 
@@ -108,6 +109,9 @@ Timing is counted in **turns**:
   given side's turn), or *After Trigger* to chain triggers in order.
 - The only thing measured in seconds is the **Wait** action. It paces a scene within one moment, for example a pause
   after the camera pans before the next line.
+- **Wait For Animations** (on by default): a trigger whose condition is met fires only once no unit is walking,
+  shooting, retreating or boarding, so "we took damage" comes after the shot has landed. It waits at most a few
+  seconds.
 - Turn numbers count the first turn too: the side that plays first is on its turn 1 when the level starts.
 - A trigger that fires once keeps its count, so another trigger can still use it as a part (None Of ["Opened the HQ"]
   stays false once the HQ was opened). A repeating trigger starts counting from 0 each time it fires.
@@ -124,7 +128,8 @@ Timing is counted in **turns**:
 |---|---|
 | Dialogue (0) | shows its lines one after another. The game is held until the last line is closed, and the trigger's next action waits until then. |
 | Camera Focus (1) / Camera Frame Board (25) | glides the camera to the tile, or to *On Unit* (*Zoom* sets the orthographic size; 0 keeps the zoom) / shows the whole board |
-| Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, and is hidden while the player can't see it / removes it (or every marker) |
+| Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, in the fog too unless *Hide In Fog* is on / removes it (or every marker) |
+| Set Purchases (27) / Set Fog (28) | switches buying units, or fog of war, on or off for the rest of the game (a save keeps it) |
 | Play Music (4) / Stop Music (5) | plays a track from `Resources/Music/Special` (empty: one at random), optionally looping / returns to the game's own music |
 | Win (6) / Lose (7) | ends the game now: *Side* wins / loses (the side left wins) |
 | Spawn Unit (8) | makes *Count* units of a kind for *Side* on the tile, each on the nearest free tile it can stand on if the tile is taken. Sets their strength, veterancy and name, and whether they can act this turn. |
@@ -198,15 +203,39 @@ the first time Unity opens the project, and every Show Marker action uses it unl
 `Assets/Resources/Scenarios/Tutorial.dat` is a complete example, and the test `tutorial-playthrough` plays it
 through:
 - **Turn 1:** the scout introduces the grunt, with a marker on him. Selecting him moves the marker to a target tile
-  and explains the two-click move. Reaching the tile gets "Good job!". When his turn is used up, the scout explains
-  ending the turn.
-- **Raiders' turn:** a raider spawns in the fog and is ordered to attack the grunt. Taking damage brings "move into
-  supply to heal".
+  and explains the two-click move. The lesson goes on only once he stands on that tile: "Good job!", then the
+  end-turn hint, and only then is the ambush armed.
+- **Raiders' turn:** a raider spawns in the fog and is ordered to attack the grunt. "Enemy spotted!" as it comes into
+  sight. Taking damage (after the shot has landed) brings "move into supply to heal", with a marker on a tile in
+  supply, and arriving there brings "Good, now end your turn". After that the raider holds its ground, resupplied
+  every turn so it never starves, until it is killed.
 - **Turn 3:** if the HQ was never opened, a hint points at it. Buying a grunt and a supply truck are each explained.
+  A bought grunt is pointed at the neutral city to capture.
 - **The end:** the attack hint comes once the truck is bought (or on turn 4), and killing the raider wins.
 
-The tutorial uses rules *sandbox* (`"rules"` in the file), so the raiders' side, which starts with nothing, isn't
-knocked out before the ambush. Losing every unit is the tutorial's own loss trigger.
+The raiders' side starts with nothing. It isn't knocked out because it isn't *eliminable* (below). Losing every unit is
+the tutorial's own loss trigger.
+
+## The scenario's words
+
+At the top of the Scenario Script's inspector:
+- **Description** is shown with the scenario when it is picked in the menus.
+- **Win Text** and **Loss Text** are shown on the post-game screen, above the game's findings.
+
+They are saved at the top of the scenario file (`"description"`, `"winText"`, `"lossText"`).
+
+## What can be bought
+
+The units a scenario lets the sides buy are the GameController's **Allowed Units** (`"allowedUnits"` in the file; empty
+means every unit). The map editor's "All units" list is what you can place on the map, not what can be bought. With
+purchases off, the HUD doesn't show gold.
+
+## Sides that can't be knocked out
+
+Each Player has **Eliminable**, on by default. Switch it off in the Player's inspector for a side the scenario keeps in
+the game whatever happens: losing its HQ or its last unit doesn't knock it out, as for an enemy that starts with
+nothing and is sent in by triggers. The scenario file saves the setting with the side (`"eliminable": false`). A side
+that can't be knocked out never loses on its own, so end such a game with a Win or Lose action.
 
 ## Worked example: a tutorial beat
 

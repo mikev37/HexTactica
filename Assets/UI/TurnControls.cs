@@ -23,6 +23,9 @@ public class TurnControls : MonoBehaviour {
         Player p = gc != null ? (FogOfWar.Viewer ?? gc.activePlayer) : null;
         int money = p != null ? p.money : 0;
         if (gold != null && money != shownGold) { shownGold = money; gold.text = goldPrefix + money; }
+        // No buying in this game (purchases off): gold means nothing, so it is not shown.
+        bool buying = gc == null || gc.purchasesAllowed;
+        if (gold != null && gold.gameObject.activeSelf != buying) gold.gameObject.SetActive(buying);
         bool ours = gc != null && !gc.gameOver && !gc.EndTurnPending && FogOfWar.IsHuman(gc.activePlayer);
         if (nextUnitButton != null && nextUnitButton.interactable != ours) nextUnitButton.interactable = ours;
         if (endTurnButton != null && endTurnButton.interactable != ours) endTurnButton.interactable = ours;

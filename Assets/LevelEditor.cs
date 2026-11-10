@@ -119,7 +119,7 @@ public class LevelEditor : MonoBehaviour
         }
         // The scenario's triggers, with how far they have got in this game (a scenario not yet played: nowhere).
         ScenarioScript script = ScenarioScript.Instance;
-        if (script != null && script.HasContent) json += ",\n\"" + ScenarioScript.FileKey + "\":" + script.ToJson(true).Print(true) + "\n";
+        if (script != null && script.HasContent) json += script.WordsJson() + ",\n\"" + ScenarioScript.FileKey + "\":" + script.ToJson(true).Print(true) + "\n";
         json += "}";
         return json;
     }

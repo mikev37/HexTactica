@@ -191,6 +191,7 @@
 			"AfterTrigger":"",
 			"Side":-1,
 			"UnitKind":"",
+			"SeenBy":-2,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
@@ -203,6 +204,7 @@
 			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
+			"WaitForAnimations":true,
 			"Actions":[
 				{
 					"Type":0,
@@ -221,6 +223,8 @@
 						}
 					],
 					"AtUnit":"",
+					"HideInFog":false,
+					"On":true,
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,
@@ -253,6 +257,8 @@
 					"Type":19,
 					"Lines":[],
 					"AtUnit":"",
+					"HideInFog":false,
+					"On":true,
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,
@@ -291,6 +297,7 @@
 			"AfterTrigger":"",
 			"Side":-1,
 			"UnitKind":"",
+			"SeenBy":-2,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
@@ -303,6 +310,7 @@
 			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
+			"WaitForAnimations":true,
 			"Actions":[
 				{
 					"Type":0,
@@ -315,6 +323,8 @@
 						}
 					],
 					"AtUnit":"",
+					"HideInFog":false,
+					"On":true,
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,
@@ -347,6 +357,8 @@
 					"Type":19,
 					"Lines":[],
 					"AtUnit":"",
+					"HideInFog":false,
+					"On":true,
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,

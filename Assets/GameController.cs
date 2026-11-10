@@ -447,7 +447,7 @@ public class GameController : MonoBehaviour
     }
 
     public void Eliminate(Player p) {
-        if (p == null || p.eliminated) return;
+        if (p == null || p.eliminated || !p.eliminable) return;   // (a side the scenario keeps in: Player.eliminable)
         p.eliminated = true;
         List<Unit> doomed = new List<Unit>(p.units);
         for (int i = 0; i < doomed.Count; i++) {

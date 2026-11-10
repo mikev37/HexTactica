@@ -69,6 +69,8 @@ public enum TriggerCondition {
     BuildingSelected = 27,
     /// <summary>At least Count units matching the unit filter have used their turn (moved, fired, or waited) (now).</summary>
     UnitSpent = 28,
+    /// <summary>A unit matching the unit filter comes into Seen By's sight (it was hidden by the fog, or new): Count times. With no fog, units are in sight as they appear.</summary>
+    UnitSpotted = 29,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -127,6 +129,10 @@ public enum TriggerActionType {
     CameraFrameBoard = 25,
     /// <summary>The units matching the unit filter move and attack as ordered: toward the unit named Target (or the nearest unit of Target Side), attacking it if they can reach it this turn; with no target, toward the tile. Each then has used its turn.</summary>
     OrderUnits = 26,
+    /// <summary>Buying units at buildings is switched on or off (On) for the rest of the game.</summary>
+    SetPurchases = 27,
+    /// <summary>Fog of war is switched on or off (On) for the rest of the game.</summary>
+    SetFog = 28,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>
@@ -176,8 +182,12 @@ public class TriggerAction {
     [Tooltip("Dialogue: the lines, shown one after the other; the next action of the trigger waits until the last is closed.")]
     public List<DialogueLine> Lines = new List<DialogueLine>();
 
-    [Tooltip("Camera Focus, Show Marker: on this unit instead of a tile (a marker follows it as it moves, and is hidden while the player cannot see it). Empty: the tile.")]
+    [Tooltip("Camera Focus, Show Marker: on this unit instead of a tile (a marker follows it as it moves). Empty: the tile.")]
     [UnitName] public string AtUnit = "";
+    [Tooltip("Show Marker on a unit: hidden while the player cannot see the unit (off: shown in the fog too, giving its place away, as a marker on an enemy to hunt down means to).")]
+    public bool HideInFog;
+    [Tooltip("Set Purchases, Set Fog: on or off.")]
+    public bool On = true;
 
     [Tooltip("Camera Focus, Show Marker, Spawn Unit, Order Units (with no target), Destroy Tile, Repair Tile, and the unit and building filters (with In Area): the tile, x (cube coordinates, as the HUD and the scenario file give them).")]
     [TileField] public int TileX;
@@ -303,6 +313,8 @@ public class ScenarioTrigger {
     [SideChoice(true)] public long Side = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this kind (the unit prefab's name: Grunt, Tank ...; a faction's version counts as its base unit). Empty: any kind.")]
     [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
+    [Tooltip("Unit Spotted: who spots the unit (the player, by default).")]
+    [SideChoice(false)] public long SeenBy = TriggerSide.Human;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
     [UnitName] public string UnitTag = "";
     [Tooltip("Building conditions: only buildings of this kind (the building prefab's name: City, HQ, ...). Empty: any. With In Area and Radius 0: the building on the tile.")]
@@ -331,6 +343,8 @@ public class ScenarioTrigger {
     public bool Repeat;
     [Tooltip("Repeat: at most once in this many turns (of the side in Turns Of). 0: no limit.")]
     public int RepeatEvery;
+    [Tooltip("Fire only once the board is still: no unit walking, shooting, retreating or boarding (so 'we took damage' comes after the shot has landed). Off: at once, mid-animation.")]
+    public bool WaitForAnimations = true;
 
     [Header("Actions (in order)")]
     public List<TriggerAction> Actions = new List<TriggerAction>();
@@ -350,6 +364,8 @@ public class ShownMarker {
     public string Id = "";
     /// <summary>The unit it follows (its name); empty: it stays on its tile.</summary>
     public string Unit = "";
+    /// <summary>Hidden while the unit it follows is out of the player's sight.</summary>
+    public bool HideInFog;
     /// <summary>Hidden for now: the unit it follows is out of the player's sight (not saved).</summary>
     internal bool hidden;
     public string Marker = "";

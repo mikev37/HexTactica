@@ -30,6 +30,7 @@ static class TriggerFields {
             case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value", "Count" };
             case TriggerCondition.UnitsAtMost:
             case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value" };
+            case TriggerCondition.UnitSpotted: return new[] { "SeenBy", "Side", "UnitKind", "UnitTag", "InArea", "Count" };
             case TriggerCondition.BuildingCaptured:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.BuildingOwned: return new[] { "Side", "BuildingKind", "InArea", "Count" };
@@ -88,7 +89,9 @@ static class TriggerFields {
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
             case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TileX", "TileY");
             case TriggerActionType.CameraFrameBoard: return new string[0];
-            case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "TileX", "TileY" };
+            case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
+            case TriggerActionType.SetPurchases:
+            case TriggerActionType.SetFog: return new[] { "On" };
             case TriggerActionType.HideMarker: return new[] { "MarkerId" };
             case TriggerActionType.PlayMusic: return new[] { "Track", "Loop" };
             case TriggerActionType.StopMusic: return new string[0];
@@ -182,6 +185,7 @@ static class TriggerFields {
             case TriggerCondition.UnitSelected: return "the player selects " + units + times;
             case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
             case TriggerCondition.UnitSpent: return units + " has used its turn";
+            case TriggerCondition.UnitSpotted: return Side(t.SeenBy) + " spots " + units + times;
             case TriggerCondition.BuildingOwned: return building + " held by " + Side(t.Side);
             case TriggerCondition.AfterTrigger: return "after '" + t.AfterTrigger + "'";
             case TriggerCondition.AllOf: return "all of " + Names(t.Parts);
@@ -212,6 +216,8 @@ static class TriggerFields {
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";
             case TriggerActionType.PlayMusic: return "Music: " + (string.IsNullOrEmpty(a.Track) ? "a special track" : a.Track) + (a.Loop ? " (loop)" : "");
             case TriggerActionType.StopMusic: return "Music back to normal";
+            case TriggerActionType.SetPurchases: return "Purchases " + (a.On ? "on" : "off");
+            case TriggerActionType.SetFog: return "Fog of war " + (a.On ? "on" : "off");
             case TriggerActionType.Win: return Side(a.Side) + " wins";
             case TriggerActionType.Lose: return Side(a.Side) + " loses";
             case TriggerActionType.SpawnUnit: return "Spawn " + Mathf.Max(1, a.Count) + " " + a.UnitKind + " for " + Side(a.Side) + " at " + at;
@@ -319,7 +325,7 @@ static class FieldList {
 [CustomPropertyDrawer(typeof(ScenarioTrigger))]
 class ScenarioTriggerDrawer : PropertyDrawer {
     static readonly string[] Head = { "Name", "Enabled", "Condition" };
-    static readonly string[] Timing = { "Delay", "Repeat", "RepeatEvery", "TurnsOf", "Actions" };
+    static readonly string[] Timing = { "Delay", "Repeat", "RepeatEvery", "TurnsOf", "WaitForAnimations", "Actions" };
     static string TimingLabel(string f) { return f == "Delay" ? "Delay (turns)" : f == "RepeatEvery" ? "Repeat Every (turns)" : f == "TurnsOf" ? "Turns Of" : null; }
 
     public override float GetPropertyHeight(SerializedProperty p, GUIContent label) {
@@ -731,6 +737,9 @@ class ScenarioScriptEditor : Editor {
             : "Triggers belong to a scenario file: open the scenario in the map editor (in play) to edit them, and save it there.", MessageType.Info);
         foreach (string problem in s.Validate(false)) EditorGUILayout.HelpBox(problem, MessageType.Warning);
         serializedObject.Update();
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), true);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("winText"), true);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("lossText"), true);
         EditorGUILayout.PropertyField(serializedObject.FindProperty("triggers"), true);
         serializedObject.ApplyModifiedProperties();
     }
