@@ -352,9 +352,9 @@ MonoBehaviour:
   procBudgets: 1
   procFrontShare: 1
   procWantShare: 1
-  procNothingWeight: 1
-  procNothingMargin: 1.5
   procBorrow: 1
+  procMinValuePerFacility: 500
+  procScaleBonuses: 1
   procNeedsLiftCut: 0.5
   procKindMorale: 1
   procMoraleDrop: 0.3

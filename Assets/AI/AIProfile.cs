@@ -937,12 +937,12 @@ namespace HexTactica.AI {
         public float procFrontShare = 1f;
         [Tooltip("Procurement (procBudgets): see procFrontShare.")]
         public float procWantShare = 1f;
-        [Tooltip("Procurement (procBudgets): buying nothing is an option worth this times what the facility has (at most what the other is short of) times the best value per gold of a facility that buys clearly more with it (procNothingMargin): the gold it gives buys that there. An option must be worth more to be chosen. 0: off.")]
-        public float procNothingWeight = 1f;
-        [Tooltip("Procurement (procNothingWeight): buying nothing counts only toward a facility whose best value per gold is more than this times the facility's own.")]
-        public float procNothingMargin = 1.5f;
-        [Tooltip("Procurement (procBudgets): the facilities that can buy now keep their savings; of those saving, the one whose best buy within its savings and the savers' together is worth most buys it now on the savings of the savers saving for least (each only while what it saves for is worth less than this buy), and owes them: while in debt it pays its share of the gold back each turn, and neither buys nor saves.")]
+        [Tooltip("Procurement (procBudgets): the facilities that can buy now keep their savings; those buying now keep what their unit costs and put the rest in a pool; of those saving, the one whose best buy within its savings, the pool and the savers' together is worth most buys it now, from the pool first, then on the savings of the savers saving for least (each only while what it saves for is worth less than this buy), and owes them: while in debt it pays its share of the gold back each turn, and neither buys nor saves.")]
         public bool procBorrow = true;
+        [Tooltip("Procurement (procBudgets): an option worth less than this times our number of facilities is not bought (the more facilities, the likelier another builds something good); a facility with none above it buys nothing and gives its gold up.")]
+        public float procMinValuePerFacility = 500f;
+        [Tooltip("Procurement: every factor that scales a unit's value (its time to the fight, no resistance, across water, cover, tiers, stealth, out of supply, a lift needed, its kind's morale) scales the facility bonus, the capture value and the jiggle added to it too. Off: they are added unscaled.")]
+        public bool procScaleBonuses = true;
         [Tooltip("Procurement: a land fighting unit whose front is across water from its facility (it cannot get there by itself; it needs a lift) is worth this much. 1: off.")]
         public float procNeedsLiftCut = 0.5f;
         [Tooltip("Procurement: each kind of fighting unit is worth its morale: each turn down by procMoraleDrop times the share of our units of that kind held up for want of supply or a lift (waiting to cross, out of supply and doing nothing), up toward 1 by procMoraleRise times the share that did something for the front (attacked, captured), and back toward 1 by procMoraleRecover; never under procMoraleFloor.")]

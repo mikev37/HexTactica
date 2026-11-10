@@ -574,6 +574,20 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     the differences are within what one game varies by; the supply shortage is untouched. Conscripts bought: 3–8, 21
     with buy-nothing off (30 before these changes). Borrowing bought 2 of the 4 supply units in the all-on game; the HQ
     then spent 13 turns paying back.
+  - Owner's corrections (10 Nov, later): the 9 accounts were Blue's HQ, 4 army bases (one taken r12), 3 naval yards (one
+    taken r13), airport. Borrowing halved the gold left after buying (mean 4,875 a turn, off 9,225). Done:
+    - `procScaleBonuses` (on): every factor on a unit (time to the fight, unopposed, across water, cover, tiers, stealth,
+      out of supply, lift, morale) scales the facility bonus, capture value, resistance term and jiggle too (Proc.Worth:
+      `m`, `times`; `timeFactor` = toFight). A Conscript at x0.43: 192 + 1,461 bonus + 988 jiggle = 2,863 (was ~4,700).
+    - Buy nothing = `procMinValuePerFacility` (500) x our facilities: options below it are not bought; none above it, the
+      facility gives its gold up. (Replaces `procNothingWeight/Margin`.)
+    - Borrowing: those buying now keep exactly their unit's cost, the rest goes to a pool lent first (owed to no one),
+      then the savers saving for least.
+  - Results (traced, one game each): Channel new Blue 164,583 v 190,000, 26 units, no unit crossed (Red's army on Blue's
+    island: resistance 23,063; 1–2 units wanted across water), 5 supply units, 14 borrowings, gold left after buying 4,050
+    a turn; new Red 122,500 v 115,250, 4 boarded. ForestClearing new Blue 93,416 v 48,166 (12 rounds before: 90,666 v
+    52,500); Biomes 100,166 v 50,583. Debt keeps facilities from buying for long stretches (Blue, Channel: army bases and
+    the HQ in debt for many turns).
 
 ## 7. Open work, in the order I'd take it
 
