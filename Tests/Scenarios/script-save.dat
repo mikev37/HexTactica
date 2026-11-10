@@ -206,6 +206,7 @@
 			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
+			"WaitForAnimations":true,
 			"Actions":[
 				{
 					"Type":19,
@@ -262,6 +263,7 @@
 			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
+			"WaitForAnimations":true,
 			"Actions":[
 				{
 					"Type":2,
@@ -318,6 +320,7 @@
 			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
+			"WaitForAnimations":true,
 			"Actions":[
 				{
 					"Type":0,
@@ -413,6 +416,7 @@
 			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
+			"WaitForAnimations":true,
 			"Actions":[
 				{
 					"Type":24,

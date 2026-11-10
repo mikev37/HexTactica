@@ -335,6 +335,8 @@ public class ScenarioTrigger {
     public bool Repeat;
     [Tooltip("Repeat: at most once in this many turns (of the side in Turns Of). 0: no limit.")]
     public int RepeatEvery;
+    [Tooltip("Fire only once the board is still: no unit walking, shooting, retreating or boarding (so 'we took damage' comes after the shot has landed). Off: at once, mid-animation.")]
+    public bool WaitForAnimations = true;
 
     [Header("Actions (in order)")]
     public List<TriggerAction> Actions = new List<TriggerAction>();

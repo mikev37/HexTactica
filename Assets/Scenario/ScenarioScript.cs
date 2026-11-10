@@ -27,6 +27,14 @@ public class ScenarioScript : MonoBehaviour {
     [Tooltip("The scenario's triggers, evaluated in this order.")]
     public List<ScenarioTrigger> triggers = new List<ScenarioTrigger>();
 
+    [Header("The scenario's words")]
+    [Tooltip("What the scenario is about: shown when it is picked in the menus (saved in the file as \"description\").")]
+    [TextArea(2, 6)] public string description = "";
+    [Tooltip("Shown on the post-game screen, above the game's findings, when the player wins.")]
+    [TextArea(2, 6)] public string winText = "";
+    [Tooltip("Shown on the post-game screen, above the game's findings, when the player loses.")]
+    [TextArea(2, 6)] public string lossText = "";
+
     [HideInInspector, Tooltip("The scenario file these triggers were loaded from (for the log).")]
     public string scenarioPath = "";
 
@@ -128,8 +136,16 @@ public class ScenarioScript : MonoBehaviour {
     /// <summary>The level clock: seconds of play since the scenario started (not while a menu is open).</summary>
     public float Clock { get { return clock; } }
 
+    // The board has been animating since (level clock); -1: it is still.
+    float busySince = -1f;
+    bool busy;
+
     void Evaluate() {
         GameController gc = GameController.gc;
+        // Still animating? (Never for more than a few seconds: an animation that never ends must not hold the script.)
+        // (Headless, nothing plays: a unit's animation flags are never cleared, so they are not waited for.)
+        if (!gc.headless && Unit.AnyAnimating()) { if (busySince < 0f) busySince = clock; busy = clock - busySince < 6f; }
+        else { busySince = -1f; busy = false; }
         for (int i = 0; i < triggers.Count; i++) {
             ScenarioTrigger t = triggers[i];
             if (t == null || !t.Enabled) continue;
@@ -139,6 +155,7 @@ public class ScenarioScript : MonoBehaviour {
             if (!IsMet(t, 0)) { t.ConditionMetTurn = -1; continue; }                               // Delay counts unbroken holding
             if (t.ConditionMetTurn < 0) t.ConditionMetTurn = turns;
             if (turns - t.ConditionMetTurn < t.Delay) continue;
+            if (t.WaitForAnimations && busy) continue;                                            // after the shot lands, the retreat ends ...
             Fire(i);
             if (gc.gameOver) return;                                                              // a Win / Lose ends evaluation
         }
@@ -619,7 +636,25 @@ public class ScenarioScript : MonoBehaviour {
     }
 
     /// <summary>Anything to write? (A scenario with no triggers writes no "script".)</summary>
-    public bool HasContent { get { return triggers.Count > 0 || markers.Count > 0; } }
+    public bool HasContent { get { return triggers.Count > 0 || markers.Count > 0 || Words; } }
+
+    /// <summary>Has a description, win or loss text (written at the top of the file: WordsJson).</summary>
+    public bool Words { get { return !string.IsNullOrEmpty(description) || !string.IsNullOrEmpty(winText) || !string.IsNullOrEmpty(lossText); } }
+
+    /// <summary>The scenario's words as top-level fields of its file (",\n"key": "text"" each), for LevelEditor.BoardJson.</summary>
+    public string WordsJson() {
+        string s = "";
+        if (!string.IsNullOrEmpty(description)) s += ",\n\"description\":" + JSONObject.CreateStringObject(description).Print();
+        if (!string.IsNullOrEmpty(winText)) s += ",\n\"winText\":" + JSONObject.CreateStringObject(winText).Print();
+        if (!string.IsNullOrEmpty(lossText)) s += ",\n\"lossText\":" + JSONObject.CreateStringObject(lossText).Print();
+        return s;
+    }
+
+    /// <summary>The text the post-game screen shows above the findings for <paramref name="viewerWon"/>: the win or the loss text ("" if none).</summary>
+    public static string EndText(bool viewerWon) {
+        ScenarioScript s = Instance;
+        return s == null ? "" : viewerWon ? s.winText ?? "" : s.lossText ?? "";
+    }
 
     /// <summary>
     /// The script of a scenario file or save just loaded: <paramref name="script"/> is its "script" (null: none, and
@@ -651,7 +686,16 @@ public class ScenarioScript : MonoBehaviour {
 
     /// <summary>Load the script of the board just loaded from <paramref name="obj"/> (ScenarioLoader).</summary>
     public static void LoadFromBoard(JSONObject obj, string path) {
-        Current.Load(obj != null ? obj.GetField(FileKey) : null, path);
+        ScenarioScript s = Current;
+        s.Load(obj != null ? obj.GetField(FileKey) : null, path);
+        s.description = Text(obj, "description");
+        s.winText = Text(obj, "winText");
+        s.lossText = Text(obj, "lossText");
+    }
+
+    static string Text(JSONObject obj, string key) {
+        JSONObject f = obj != null ? obj.GetField(key) : null;
+        return f != null && f.isString ? f.stringValue : "";
     }
 
     /// <summary>The key a scenario file keeps its script under.</summary>

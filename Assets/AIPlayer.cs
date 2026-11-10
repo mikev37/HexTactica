@@ -544,7 +544,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         scriptChanged = false;
         if (!turnPrepared) return true;   // the turn is not prepared yet: it will read the board as it is
         refreshPending = true;
-        queue.RemoveAll(u => u == null || u.owner != player);
+        // (Units the script ordered, or marked as having used their turn, are done too.)
+        queue.RemoveAll(u => u == null || u.owner != player || !u.active);
         if (putBack != null && putBack.owner == player && putBack.active && putBack.tile != null && putBack.Strength > 0 && !queue.Contains(putBack)) queue.Insert(0, putBack);
         foreach (Unit u in player.units) {
             if (u == null || !u.active || u.tile == null || u.Strength <= 0 || queue.Contains(u)) continue;

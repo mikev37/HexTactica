@@ -109,6 +109,9 @@ Timing is counted in **turns**:
   given side's turn), or *After Trigger* to chain triggers in order.
 - The only thing measured in seconds is the **Wait** action. It paces a scene within one moment, for example a pause
   after the camera pans before the next line.
+- **Wait For Animations** (on by default): a trigger whose condition is met fires only once no unit is walking,
+  shooting, retreating or boarding, so "we took damage" comes after the shot has landed. It waits at most a few
+  seconds.
 - Turn numbers count the first turn too: the side that plays first is on its turn 1 when the level starts.
 - A trigger that fires once keeps its count, so another trigger can still use it as a part (None Of ["Opened the HQ"]
   stays false once the HQ was opened). A repeating trigger starts counting from 0 each time it fires.
@@ -202,12 +205,29 @@ through:
   and explains the two-click move. The lesson goes on only once he stands on that tile: "Good job!", then the
   end-turn hint, and only then is the ambush armed.
 - **Raiders' turn:** a raider spawns in the fog and is ordered to attack the grunt. "Enemy spotted!" as it comes into
-  sight; taking damage brings "move into supply to heal".
+  sight. Taking damage (after the shot has landed) brings "move into supply to heal", with a marker on a tile in
+  supply, and arriving there brings "Good, now end your turn". After that the raider holds its ground, resupplied
+  every turn so it never starves, until it is killed.
 - **Turn 3:** if the HQ was never opened, a hint points at it. Buying a grunt and a supply truck are each explained.
+  A bought grunt is pointed at the neutral city to capture.
 - **The end:** the attack hint comes once the truck is bought (or on turn 4), and killing the raider wins.
 
 The raiders' side starts with nothing. It isn't knocked out because it isn't *eliminable* (below). Losing every unit is
 the tutorial's own loss trigger.
+
+## The scenario's words
+
+At the top of the Scenario Script's inspector:
+- **Description** is shown with the scenario when it is picked in the menus.
+- **Win Text** and **Loss Text** are shown on the post-game screen, above the game's findings.
+
+They are saved at the top of the scenario file (`"description"`, `"winText"`, `"lossText"`).
+
+## What can be bought
+
+The units a scenario lets the sides buy are the GameController's **Allowed Units** (`"allowedUnits"` in the file; empty
+means every unit). The map editor's "All units" list is what you can place on the map, not what can be bought. With
+purchases off, the HUD doesn't show gold.
 
 ## Sides that can't be knocked out
 

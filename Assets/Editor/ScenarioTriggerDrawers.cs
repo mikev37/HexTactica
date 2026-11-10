@@ -321,7 +321,7 @@ static class FieldList {
 [CustomPropertyDrawer(typeof(ScenarioTrigger))]
 class ScenarioTriggerDrawer : PropertyDrawer {
     static readonly string[] Head = { "Name", "Enabled", "Condition" };
-    static readonly string[] Timing = { "Delay", "Repeat", "RepeatEvery", "TurnsOf", "Actions" };
+    static readonly string[] Timing = { "Delay", "Repeat", "RepeatEvery", "TurnsOf", "WaitForAnimations", "Actions" };
     static string TimingLabel(string f) { return f == "Delay" ? "Delay (turns)" : f == "RepeatEvery" ? "Repeat Every (turns)" : f == "TurnsOf" ? "Turns Of" : null; }
 
     public override float GetPropertyHeight(SerializedProperty p, GUIContent label) {
@@ -733,6 +733,9 @@ class ScenarioScriptEditor : Editor {
             : "Triggers belong to a scenario file: open the scenario in the map editor (in play) to edit them, and save it there.", MessageType.Info);
         foreach (string problem in s.Validate(false)) EditorGUILayout.HelpBox(problem, MessageType.Warning);
         serializedObject.Update();
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), true);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("winText"), true);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("lossText"), true);
         EditorGUILayout.PropertyField(serializedObject.FindProperty("triggers"), true);
         serializedObject.ApplyModifiedProperties();
     }

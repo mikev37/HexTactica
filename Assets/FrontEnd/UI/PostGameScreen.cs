@@ -30,13 +30,19 @@ public class PostGameScreen : MonoBehaviour {
         GameRecord s = GameRecord.Read(HexTactica.Harness.GameLog.Folder);
         long viewer = GameInsights.ViewerId(s);
         if (headline != null) headline.text = s != null ? GameInsights.Headline(s, viewer) : noStatistics;
+        // The scenario's own words for how it went (its win or loss text), above the findings.
+        GameController gc = GameController.gc;
+        Player me = FogOfWar.Viewer;
+        if (me == null && gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) { me = p; break; }
+        string said = gc != null ? ScenarioScript.EndText(gc.winner != null && gc.winner == me) : "";
+        string top = string.IsNullOrEmpty(said) ? "" : said + "\n\n";
         if (findings != null) {
-            if (s == null) findings.text = noStatistics;
+            if (s == null) findings.text = top + noStatistics;
             else {
-                StringBuilder sb = new StringBuilder();
+                StringBuilder sb = new StringBuilder(top);
                 foreach (GameInsights.Finding f in GameInsights.Findings(s, viewer))
                     sb.Append(titleStart).Append(f.title).Append(titleEnd).Append('\n').Append(f.body).Append("\n\n");
-                findings.text = sb.Length > 0 ? sb.ToString() : noStatistics;
+                findings.text = sb.Length > top.Length ? sb.ToString() : top + noStatistics;
             }
         }
         ShowTables(s, viewer);

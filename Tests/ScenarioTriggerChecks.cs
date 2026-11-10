@@ -49,7 +49,7 @@ public static partial class Scenarios {
                         Trig("Every Blue turn", TriggerCondition.TurnOver, t => { t.Side = Blue; t.Repeat = true; }, Money(Red, 10)),
                         Trig("Second Blue turn", TriggerCondition.TurnOver, t => { t.Side = Blue; t.Count = 2; }, Money(Red, 1000)));
              },
-             "Scenario trigger timing (ScenarioScript): Level Start fires once however long the game runs; a trigger with Delay 2 (turns of Blue) fires only once its condition (a Blue unit on (0,0)) has held through two of Blue's turns starting, without a break, and the count starts again when it breaks; Turn Over with Repeat fires at the end of every Blue turn; with Count 2 (and no Repeat), once, at the end of the second.");
+             "Scenario trigger timing (ScenarioScript): triggers wait until no unit is animating (Wait For Animations); Level Start fires once however long the game runs; a trigger with Delay 2 (turns of Blue) fires only once its condition (a Blue unit on (0,0)) has held through two of Blue's turns starting, without a break, and the count starts again when it breaks; Turn Over with Repeat fires at the end of every Blue turn; with Count 2 (and no Repeat), once, at the end of the second.");
         n++;
         make("script-events", "scriptEvents", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0);
@@ -160,7 +160,7 @@ public static partial class Scenarios {
         if (File.Exists(tutorial)) {
             string text = File.ReadAllText(tutorial).TrimEnd();
             text = text.Substring(0, text.LastIndexOf('}')) + ",\n\"test\": {\"name\": \"tutorial-playthrough\", \"kind\": \"rules\", \"opponent\": \"Human\", \"rounds\": \"8\", \"rules\": \"standard\", \"check\": \"scriptTutorial\", "
-                 + "\"question\": \"The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it; back into supply; the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.\"}\n}\n";
+                 + "\"question\": \"The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.\"}\n}\n";
             File.WriteAllText(Path.Combine(Dir, "tutorial-playthrough.dat"), text);
             n++;
         }
@@ -196,8 +196,16 @@ public static partial class Scenarios {
             case "scriptTiming": {
                 a.money = 0; o.money = 0;
                 Unit g = Rig.At(-2, 0).occupier;
+                // A unit still walking (an animation): triggers wait until the board is still (Wait For Animations).
+                // (Headless boards are not waited on, as nothing plays there: played as the game would be, for these two frames.)
+                g.path.Add(g.tile);
+                gc.headless = false;
+                s.Tick(0.1f); s.Tick(0.1f);
+                gc.headless = true;
+                bool waitsForAnimation = Fired(s, "Start") == 0;
+                g.path.Clear();
                 for (int i = 0; i < 5; i++) s.Tick(0.1f);
-                bool once = a.money == 100 && Fired(s, "Start") == 1;
+                bool once = a.money == 100 && Fired(s, "Start") == 1 && waitsForAnimation;
                 MoveTo(g, 0, 0); s.Tick(0.1f);                                    // held from Blue's turn 0
                 gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // Blue's turn 1 starts: held 1 turn
                 bool notYet = Fired(s, "Hold") == 0;
@@ -207,7 +215,7 @@ public static partial class Scenarios {
                 gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // turn 3: 2 turns since
                 bool held = Fired(s, "Hold") == 1 && a.money == 101;
                 bool repeat = Fired(s, "Every Blue turn") == 3 && Fired(s, "Second Blue turn") == 1 && o.money == 1030;
-                detail = "Level Start once " + once + " (Blue " + a.money + "); Delay 2 turns: fired after 1 turn " + !notYet + ", count started over after a break " + restarted + ", fired once held 2 of Blue's turns " + held
+                detail = "waits while a unit animates " + waitsForAnimation + "; Level Start once " + once + " (Blue " + a.money + "); Delay 2 turns: fired after 1 turn " + !notYet + ", count started over after a break " + restarted + ", fired once held 2 of Blue's turns " + held
                        + "; three Blue turn ends: every Blue turn " + Fired(s, "Every Blue turn") + "x, second Blue turn " + Fired(s, "Second Blue turn") + "x (Red " + o.money + ")";
                 return once && notYet && restarted && held && repeat;
             }
@@ -395,11 +403,14 @@ public static partial class Scenarios {
                 aiTurn();
                 // Turn 2: back into supply beside the HQ.
                 HexTile.NotifyUnitSelected(recruit); ScenarioGame.Order(recruit, null, Rig.At(-3, 1)); settle(); said();
-                bool back = recruit.tile == Rig.At(-3, 1);
+                bool back = recruit.tile == Rig.At(-3, 1) && everSaid("Good, now end your turn") && !s.markers.Exists(m => m.Id == "supply");
+                HexTile raiderAt = raider != null ? raider.tile : null;
                 int before = recruit.Strength;
                 gc.EndTurn(); settle(); aiTurn();
                 // Turn 3: healed in supply, and the HQ hint (it was never opened).
                 string third = said();
+                raider = ScenarioGame.Named("Raider");
+                bool holds = raider != null && raider.tile == raiderAt && raider.supplies > 0;   // the raiders' turn 2: it stayed, fed
                 bool healed = recruit.Strength > before || recruit.Strength == 6;
                 bool step5 = back && everSaid("click the HQ") && Fired(s, "HQ hint") == 1 && s.markers.Exists(m => m.Id == "hq");
                 Building hq = Rig.At(-4, 2).building;
@@ -408,7 +419,7 @@ public static partial class Scenarios {
                 Func<string, Unit> buy = kind => { Unit pick = hq.buildable.Find(x => x != null && GameController.UnitName(x) == kind); return pick != null ? Rig.bc.Produce(hq, pick) : null; };
                 string offered = string.Join(",", hq.buildable.ConvertAll(x => x != null ? GameController.UnitName(x) : "?").ToArray());
                 Unit grunt = buy("Grunt"); settle();
-                string g1 = said(); bool step7 = grunt != null && g1.Contains("A new grunt");
+                string g1 = said(); bool step7 = grunt != null && g1.Contains("A new grunt") && g1.Contains("capture") && s.markers.Exists(m => m.Id == "city");
                 gc.EndTurn(); settle(); aiTurn();
                 // Turn 4: the new grunt steps off the HQ, a supply truck is bought; the attack hint (turn 4, and the truck).
                 if (grunt != null && grunt.Strength > 0) ScenarioGame.Order(grunt, null, Rig.At(-5, 2));
@@ -419,7 +430,7 @@ public static partial class Scenarios {
                 // The raider dies (the player's attacks, as many as it takes: ordered here as the clicks would).
                 raider = ScenarioGame.Named("Raider");
                 int rounds = 0;
-                while (raider != null && raider.Strength > 0 && !gc.gameOver && rounds++ < 6) {
+                while (raider != null && raider.Strength > 0 && !gc.gameOver && rounds++ < 10) {
                     foreach (Unit u in new List<Unit>(human.units)) if (u != null && u.Strength > 0 && u.active && raider != null && raider.Strength > 0 && u.CanAttack(raider)) ScenarioGame.Order(u, raider, null);
                     settle();
                     raider = ScenarioGame.Named("Raider");
@@ -428,13 +439,14 @@ public static partial class Scenarios {
                 }
                 string end = said();
                 bool won = gc.gameOver && gc.winner == human && end.Contains("Raider down");
+                bool words = s.description.StartsWith("Tutorial") && ScenarioScript.EndText(true).StartsWith("Tutorial complete") && ScenarioScript.EndText(false).Length > 0;
                 detail = "start " + ok + ", raiders kept in, player eliminable " + keptIn + "; welcome and marker " + step1 + "; selected: move hint, marker moved " + step2
                        + "; parked elsewhere: no end-turn hint, marker stays " + waits + ", no ambush, raiders still in " + noAmbush + "; moved to the mark: Good job, end-turn hint " + step3
                        + "; ambush: raider spawned in the fog " + spawned + ", next to the grunt and hit it (to " + hitTo + ") " + hit + ", lines " + step4
-                       + "; back into supply " + back + ", healed " + healed + ", HQ hint on turn 3 " + step5 + "; HQ opened " + step6 + "; grunt bought " + step7 + (step7 ? "" : " (HQ offers " + offered + "; gold " + human.money + ")") + "; truck bought and attack hint " + step8
-                       + "; raider killed in " + rounds + " round(s), player wins " + won + (won ? "" : " [last lines: " + end + "]");
+                       + "; back into supply, told to end the turn " + back + ", raider held its ground, fed " + holds + ", healed " + healed + ", HQ hint on turn 3 " + step5 + "; HQ opened " + step6 + "; grunt bought " + step7 + (step7 ? "" : " (HQ offers " + offered + "; gold " + human.money + ")") + "; truck bought and attack hint " + step8
+                       + "; raider killed in " + rounds + " round(s), player wins " + won + "; description, win and loss text " + words + (won ? "" : " [last lines: " + end + "]");
                 ScenarioDialogue.Presenter = null;
-                return ok && keptIn && waits && noAmbush && step1 && step2 && step3 && step4 && back && healed && step5 && step6 && step7 && step8 && won;
+                return ok && words && holds && keptIn && waits && noAmbush && step1 && step2 && step3 && step4 && back && healed && step5 && step6 && step7 && step8 && won;
             }
             case "scriptSave": {
                 bool fromFile = s.triggers.Count == 4 && s.Find("Two kills") != null && s.Find("Two kills").Count == 2 && !s.Find("In area").Enabled;

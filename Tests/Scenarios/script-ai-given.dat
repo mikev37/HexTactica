@@ -207,6 +207,7 @@
 			"TurnsOf":-2,
 			"Repeat":false,
 			"RepeatEvery":0,
+			"WaitForAnimations":true,
 			"Actions":[
 				{
 					"Type":9,
