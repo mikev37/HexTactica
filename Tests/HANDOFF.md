@@ -599,6 +599,23 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     borrowed or paid back). New Red 140,500 v 151,666, nothing crossed. ForestClearing new Blue 87,083 v 38,166; Biomes
     100,583 v 58,166. On Channel infantry is cut by the lift (x0.5), its time to the fight and the scaling of its bonuses,
     then refused by the minimum (500 x 7 facilities = 3,500): no troops to carry over, no captures across water.
+  - Fixed (10 Nov, afternoon):
+    - Time to the fight across water (`procLiftTime`, `AIProduction.LiftField`): a land unit with no land way to the fight
+      counts walks at its own speed, the crossing at our transport ship's speed (the same for every land unit), getting in
+      at a naval yard; and its factor is divided by its weight (ship's room). Before, the whole sea route was divided by
+      the unit's own move (a Recon crossed three times as fast as a Grunt). `procNeedsLiftCut` now 1 (replaced).
+    - Fronts ask (`procFrontAsks`): a capturer when a front wants buildings (within 2 tiles of its target) and has none
+      of its own (worth income x objectiveHorizonTurns, + producer value; one planned is enough: `Proc.OnPlan`), the
+      fighting power it is short of (needPower − assignedPower, up to a unit's own), supply when its chain falls short, a
+      ship when across water with none free. A facility serves only a front asking it for something it can build. (There
+      was never a capture pressure in production: not at 0356ab5 either.)
+    - Enemy arrival (`campaignArrivalByLand`): enemy land units on other land than an objective arrive only within the room
+      of the enemy's seen transports (strongest first, within their move plus a ship's); remembered ones there take room too;
+      unseen ground on land not known to hold an enemy counts a quarter. Before, `CanArrive` used `map.Travel`, whose sea
+      route goes through our own naval yards (`SeaTravel`): Red's army counted as able to cross to Blue's objectives.
+  - Results, traced, one game each (material, new AI first): Channel new Blue 164,000 v 107,833 (20 buildings to 16;
+    north-west yard r17; 7 supply units; 12 boarded, 9 put down); new Red 175,583 v 131,750 (21 to 17; north island cities
+    (2,-10) r18, (1,-6) r19, yard r20; 6 supply units). ForestClearing new Blue 94,666 v 40,750; Biomes 95,833 v 51,583.
 
 ## 7. Open work, in the order I'd take it
 

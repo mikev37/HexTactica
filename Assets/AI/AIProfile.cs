@@ -131,6 +131,8 @@ namespace HexTactica.AI {
         public bool campaignHubNeedSimple = true;
         [Tooltip("Campaign: an objective with none of our supplied ground on its land counts its supply need over the water, as supply goes there: straight over in the moves of a ship or aircraft that carries a supply unit (ours, or one we can build). Off: the whole route, in truck moves (an island wanted 32 supply units).")]
         public bool campaignSupplyByTransport = true;
+        [Tooltip("Campaign: enemy land units on other land than an objective count toward it only as the enemy's seen transports (ships, aircraft) can carry them — their room, the strongest first, within their move plus a ship's over the turns; never by our ships or ones they might build. Unseen ground on land not known to hold an enemy counts a quarter. Off: by the travel time, sea included through our own naval yards.")]
+        public bool campaignArrivalByLand = true;
         [Tooltip("One logistics chain over land, sea and air (AILogistics, AISupplyChain). A front whose land holds no ground our supply buildings reach measures 'forward' over land and water (AIMap.SupplySteps), so its chain links ride ships (or aircraft that need no runway) to stand linked off its shore, in a convoy if far; its rides and its links' transports may be ships; its own supply waits at the naval yard it embarks from and rides along in a troop ship bound for land without our supply, staying aboard as a link once the troops are ashore. Aircraft that must return to a runway never hold supply. Off: the chain is over land only (the sea lift's own supply ride, AIPlayer.SeaLift*).")]
         public bool unifiedLogistics = true;
         [Tooltip("Production: a supply unit is worth every unit of ours out of supply (each one's value, as every rider waiting asks for a transport) and every front whose supply is short; a transport ship for supply over water, every unit ashore without its supply ship.")]
@@ -944,9 +946,13 @@ namespace HexTactica.AI {
         [Tooltip("Procurement: every factor that scales a unit's value (its time to the fight, no resistance, across water, cover, tiers, stealth, out of supply, a lift needed, its kind's morale) scales the facility bonus, the capture value and the jiggle added to it too. Off: they are added unscaled.")]
         public bool procScaleBonuses = true;
         [Tooltip("Procurement: a land fighting unit whose front is across water from its facility (it cannot get there by itself; it needs a lift) is worth this much. 1: off.")]
-        public float procNeedsLiftCut = 0.5f;
+        public float procNeedsLiftCut = 1f;
         [Tooltip("Procurement: each kind of fighting unit is worth its morale: each turn down by procMoraleDrop times the share of our units of that kind held up for want of supply or a lift (waiting to cross, out of supply and doing nothing), up toward 1 by procMoraleRise times the share that did something for the front (attacked, captured), and back toward 1 by procMoraleRecover; never under procMoraleFloor.")]
         public bool procKindMorale = true;
+        [Tooltip("Production: a land unit with no way to the fight over land counts its turns there going by ship: its walks at its own speed, the crossing at our transport ship's (the same for every land unit), getting in at a naval yard (seaLiftBoardSteps); and it is worth its weight less (the ship's room it takes: a tank two seats, a grunt one). Off: the whole way, sea included, at its own speed (a tank crossed twice as fast as a grunt).")]
+        public bool procLiftTime = true;
+        [Tooltip("Procurement: each front asks for what it needs — a unit that can capture when it wants a building and has none of its own (worth the buildings within 2 tiles of it: income x objectiveHorizonTurns, + procCaptureProducerValue for a producer), the fighting power it is short of (up to a unit's own), supply when its chain falls short, a ship when across water with none free; a facility serves only a front asking it for something it can build (none: it serves none, no front bonus).")]
+        public bool procFrontAsks = true;
         [Tooltip("Procurement (procKindMorale): see there.")]
         public float procMoraleDrop = 0.3f;
         [Tooltip("Procurement (procKindMorale): see there.")]

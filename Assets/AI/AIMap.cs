@@ -908,6 +908,31 @@ namespace HexTactica.AI {
         readonly Dictionary<HexTile, bool> acrossWater = new Dictionary<HexTile, bool>();
         SupplyNetwork.Result staticForLogistics;
 
+        /// <summary>The land mass a tile is on (bridges join them; water parts them); -1: water. Computed once a turn.</summary>
+        public int LandOf(HexTile t) {
+            if (t == null || t.terrain == null || t.terrain.elevation < 0) return -1;
+            lock (cacheLock) {
+                if (landOf == null) {
+                    landOf = new Dictionary<HexTile, int>();
+                    List<HexTile> all = new List<HexTile>();
+                    HexGenerator.forAllTiles(x => { if (x != null) all.Add(x); return 0; });
+                    all.Sort(CombatMath.CompareTiles);
+                    int n = 0;
+                    foreach (HexTile x in all) {
+                        if (x.terrain == null || x.terrain.elevation < 0 || landOf.ContainsKey(x)) continue;
+                        Stack<HexTile> st = new Stack<HexTile>(); st.Push(x); landOf[x] = n;
+                        while (st.Count > 0) {
+                            HexTile c = st.Pop();
+                            foreach (HexTile y in c.neighbors) if (y != null && y.terrain != null && y.terrain.elevation >= 0 && !landOf.ContainsKey(y)) { landOf[y] = n; st.Push(y); }
+                        }
+                        n++;
+                    }
+                }
+                int l; return landOf.TryGetValue(t, out l) ? l : -1;
+            }
+        }
+        Dictionary<HexTile, int> landOf;
+
         public bool AcrossWater(HexTile from, HexTile to) {
             if (from == null || to == null || from == to) return false;
             Dictionary<HexTile, int> d = LandSteps(to);

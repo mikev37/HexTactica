@@ -673,13 +673,36 @@ namespace HexTactica.AI {
                     at = next;
                 }
             }
+            // campaignArrivalByLand: an enemy land unit on other land than this comes only as the enemy's seen transports can
+            // carry it — their room, the strongest first — and only within its move plus a ship's over the turns. Not by our
+            // ships, and not by ships it might build.
+            int targetLand = p.campaignArrivalByLand ? map.LandOf(o.target) : -2;
+            int room = 0, enemyShip = 0;
+            List<Unit> crossers = p.campaignArrivalByLand ? new List<Unit>() : null;
+            if (p.campaignArrivalByLand)
+                foreach (Unit e in map.enemyUnits) {
+                    if (e == null || e.tile == null || !Transporting.IsTransport(e) || e.Firepower > 1 || e.Hub != null) continue;
+                    if (!LocomotionRules.IsNaval(e.locomotion) && !LocomotionRules.IsAirborne(e.locomotion)) continue;
+                    room += Mathf.Max(0, e.transportSlots); enemyShip = Mathf.Max(enemyShip, e.moveRange);
+                }
             if (o.kind != CampaignKind.DefendHQ)
                 foreach (Unit e in map.enemyUnits) {
                     if (e == null || e.tile == null || o.enemies.Contains(e) || Power(e) <= 0f) continue;
+                    if (crossers != null && targetLand >= 0 && !LocomotionRules.IsAirborne(e.locomotion) && !LocomotionRules.IsNaval(e.locomotion)) {
+                        HexTile on = e.trasnporter != null && e.trasnporter.tile != null ? e.trasnporter.tile : e.tile;
+                        if (map.LandOf(on) != targetLand) {
+                            if (enemyShip > 0 && on.Distance(o.target) <= (e.moveRange + enemyShip) * turns + e.AttackRange) crossers.Add(e);
+                            continue;
+                        }
+                    }
                     bool comes = CanArrive(e, o.target, turns, map);
                     for (int i = 0; i < way.Count && !comes; i += 2) comes = CanArrive(e, way[i], turns, map);
                     if (comes) o.arriving[e] = Power(e);
                 }
+            if (crossers != null && crossers.Count > 0) {
+                crossers.Sort((a, b) => { int c = Power(b).CompareTo(Power(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+                foreach (Unit e in crossers) { int w = Mathf.Max(1, e.weight); if (w > room) continue; room -= w; o.arriving[e] = Power(e); }
+            }
             FogOfWar.Knowledge k = FogOfWar.current;
             if (k != null && map.sigint != null) {
                 int move = 0, n = 0;
@@ -687,14 +710,28 @@ namespace HexTactica.AI {
                 int far = n > 0 ? move / n * turns : 0;
                 // How much of the ground around it we cannot see (what scouting narrows): the unseen enemy is
                 // priced at that share, none when all of it is in view (then what we see is what is there).
-                int all = 0, dark = 0;
-                foreach (HexTile t in AIPath.TilesInRangeShared(o.target, 0, far)) { if (t == null || t.terrain == null || t.terrain.elevation < 0) continue; all++; if (map.sigint.Unknown(t)) dark++; }
-                o.hiddenReach = dark > 0;
-                o.hiddenShare = all > 0 ? dark / (float)all : 0f;
+                // (campaignArrivalByLand: unseen ground on land not known to hold an enemy counts a quarter)
+                HashSet<int> enemyLand = null;
+                if (p.campaignArrivalByLand) {
+                    enemyLand = new HashSet<int>();
+                    foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) enemyLand.Add(map.LandOf(e.tile));
+                    foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null) enemyLand.Add(map.LandOf(ph.last));
+                    foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != null && b.owner != map.player) enemyLand.Add(map.LandOf(b.tile));
+                }
+                int all = 0; float dark = 0f;
+                foreach (HexTile t in AIPath.TilesInRangeShared(o.target, 0, far)) {
+                    if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
+                    all++;
+                    if (map.sigint.Unknown(t)) dark += enemyLand == null || enemyLand.Contains(map.LandOf(t)) ? 1f : 0.25f;
+                }
+                o.hiddenReach = dark > 0f;
+                o.hiddenShare = all > 0 ? dark / all : 0f;
             }
             if (k != null && map.sigint != null)
                 foreach (FogOfWar.Phantom ph in k.phantoms) {
                     if (ph.kind == null || ph.last == null || ph.moves > p.sigintMoves) continue;
+                    // (campaignArrivalByLand: one remembered on other land comes only as there is room left in their seen transports)
+                    if (crossers != null && targetLand >= 0 && map.LandOf(ph.last) >= 0 && map.LandOf(ph.last) != targetLand) { if (room <= 0) continue; room--; }
                     int reach = ph.kind.moveRange * (turns + ph.moves) + ph.kind.attackRange;
                     if (ph.last.Distance(o.target) <= reach)
                         o.owned += Mathf.Pow(p.sigintDecay, ph.moves - 1) * Mathf.Max(1f, ph.kind.cost / 6f) * ph.strength;

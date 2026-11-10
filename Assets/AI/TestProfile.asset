@@ -57,6 +57,7 @@ MonoBehaviour:
   productionValueByIncome: 1
   campaignHubNeedSimple: 1
   campaignSupplyByTransport: 1
+  campaignArrivalByLand: 1
   unifiedLogistics: 1
   supplyAskPerUnit: 0
   campaignHoldContested: 1
@@ -355,8 +356,10 @@ MonoBehaviour:
   procBorrow: 1
   procMinValuePerFacility: 500
   procScaleBonuses: 1
-  procNeedsLiftCut: 0.5
+  procNeedsLiftCut: 1
   procKindMorale: 1
+  procLiftTime: 1
+  procFrontAsks: 1
   procMoraleDrop: 0.3
   procMoraleRise: 0.5
   procMoraleRecover: 0.05
