@@ -350,8 +350,8 @@ MonoBehaviour:
   procTerrainReach: 1
   productionRetaliation: 1
   procBudgets: 1
-  procFrontShare: 1
-  procWantShare: 1
+  procFrontShare: 2
+  procWantShare: 2
   procBorrow: 1
   procMinValuePerFacility: 500
   procScaleBonuses: 1

@@ -588,6 +588,17 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
     a turn; new Red 122,500 v 115,250, 4 boarded. ForestClearing new Blue 93,416 v 48,166 (12 rounds before: 90,666 v
     52,500); Biomes 100,166 v 50,583. Debt keeps facilities from buying for long stretches (Blue, Channel: army bases and
     the HQ in debt for many turns).
+  - Correction: no Red unit ever stood on Blue's home island in that game; the 23,063 "resistance" for Secure@3,6 is
+    the campaign's enemy power near the objective, which counts Red's army across the strait by distance. The HQ in that
+    game borrowed 4 times (all supply) and paid back 10 turns from its share (675–2,400); its weight on the 2 turns it chose
+    was 2.2 and 4.5. Debt moves who spends, not how much: gold spent a turn 10,275 with borrowing, 10,225 without.
+  - Weights 1+2+2 (`procFrontShare`, `procWantShare` 2) with the front term times `Proc.Helps` (the best option's own
+    factors: time to the fight, a lift needed, morale). Channel new Blue 169,500 v 170,416, 21 units bought in 20 rounds,
+    no infantry at all (Gunner AA 5, transport ships 3, supply 3, Recon 2, Gunboats 2, Bombers 2 ...), 1 unit boarded, no
+    island taken; army bases' mean weight 2.87 (the want term, not the front term); the HQ chose on 3 turns (the rest it
+    borrowed or paid back). New Red 140,500 v 151,666, nothing crossed. ForestClearing new Blue 87,083 v 38,166; Biomes
+    100,583 v 58,166. On Channel infantry is cut by the lift (x0.5), its time to the fight and the scaling of its bonuses,
+    then refused by the minimum (500 x 7 facilities = 3,500): no troops to carry over, no captures across water.
 
 ## 7. Open work, in the order I'd take it
 

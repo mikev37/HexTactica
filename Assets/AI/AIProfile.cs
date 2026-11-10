@@ -933,10 +933,10 @@ namespace HexTactica.AI {
         public bool productionRetaliation = true;
         [Tooltip("Procurement: each facility has its own budget — the income split evenly, a facility serving a high-priority front or offering what is wanted most getting more by procFrontShare and procWantShare — kept from turn to turn. Each buys now, or saves for something better within the longest wait, its value cut by procWaitBase^-(procWaitPower x turns waited). Facilities saving for the same unit pool their savings and the highest-priority one builds it. A facility the enemy holds or can destroy a new unit on gives its savings to the others. Off: one plan over all the gold.")]
         public bool procBudgets = true;
-        [Tooltip("Procurement (procBudgets): a facility's weight in the split of the gold is 1, plus this times its front's priority (over the top front's), plus procWantShare times its best option's value (over the best anywhere).")]
-        public float procFrontShare = 1f;
+        [Tooltip("Procurement (procBudgets): a facility's weight in the split of the gold is 1, plus this times its front's priority (over the top front's) times how much its best unit helps that front (its factors: time to the fight, a lift needed, morale), plus procWantShare times its best option's value (over the best anywhere).")]
+        public float procFrontShare = 2f;
         [Tooltip("Procurement (procBudgets): see procFrontShare.")]
-        public float procWantShare = 1f;
+        public float procWantShare = 2f;
         [Tooltip("Procurement (procBudgets): the facilities that can buy now keep their savings; those buying now keep what their unit costs and put the rest in a pool; of those saving, the one whose best buy within its savings, the pool and the savers' together is worth most buys it now, from the pool first, then on the savings of the savers saving for least (each only while what it saves for is worth less than this buy), and owes them: while in debt it pays its share of the gold back each turn, and neither buys nor saves.")]
         public bool procBorrow = true;
         [Tooltip("Procurement (procBudgets): an option worth less than this times our number of facilities is not bought (the more facilities, the likelier another builds something good); a facility with none above it buys nothing and gives its gold up.")]

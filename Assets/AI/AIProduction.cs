@@ -997,17 +997,20 @@ namespace HexTactica.AI {
             if (live.Count == 0) return money;
             // Weights: the front's priority, and what it is wanted for (its best, against the best anywhere).
             Dictionary<Slot, float> want = new Dictionary<Slot, float>(), wgt = new Dictionary<Slot, float>(), perGold = new Dictionary<Slot, float>(), bestCost = new Dictionary<Slot, float>();
+            Dictionary<Slot, Unit> bestUnit = new Dictionary<Slot, Unit>();
             float topWant = 0f;
             foreach (Slot s in live) {
                 float bw = 0f;
-                float bpg = 0f; int bc = 0;
-                foreach (Unit t in s.b.Purchasable()) { if (t.cost <= 0 || !t.CanEnter(s.tile)) continue; float wv = worth(t, s).Key; if (wv > bw) { bw = wv; bc = t.cost; } if (wv > 0f) bpg = Mathf.Max(bpg, wv / t.cost); }
-                want[s] = bw; topWant = Mathf.Max(topWant, bw); perGold[s] = bpg; bestCost[s] = bc;
+                float bpg = 0f; int bc = 0; Unit bu = null;
+                foreach (Unit t in s.b.Purchasable()) { if (t.cost <= 0 || !t.CanEnter(s.tile)) continue; float wv = worth(t, s).Key; if (wv > bw) { bw = wv; bc = t.cost; bu = t; } if (wv > 0f) bpg = Mathf.Max(bpg, wv / t.cost); }
+                want[s] = bw; topWant = Mathf.Max(topWant, bw); perGold[s] = bpg; bestCost[s] = bc; bestUnit[s] = bu;
             }
             float meanWant = 0f; foreach (Slot s in live) meanWant += want[s]; meanWant /= live.Count;
             foreach (Slot s in live) {
                 // 1, plus procFrontShare for its front's priority and procWantShare for its best against the best anywhere.
-                wgt[s] = 1f + Mathf.Max(0f, pr.procFrontShare) * proc.FrontPriority(s) + Mathf.Max(0f, pr.procWantShare) * (topWant > 0f ? want[s] / topWant : 0f);
+                // (the front's share only as far as its best unit helps that front: its factors — time to the fight, a lift
+                // needed, its kind's morale; infantry that cannot get there give its army base next to none)
+                wgt[s] = 1f + Mathf.Max(0f, pr.procFrontShare) * proc.FrontPriority(s) * proc.Helps(s, bestUnit[s]) + Mathf.Max(0f, pr.procWantShare) * (topWant > 0f ? want[s] / topWant : 0f);
                 // procDemandWeight: what is wanted far above the rest (supply for a front short of it, transports for units
                 // waiting to cross: what something failed for want of) takes more of the gold, by how far above the mean it is.
                 if (pr.procDemandWeight > 0f && meanWant > 0f) wgt[s] += pr.procDemandWeight * Mathf.Max(0f, want[s] / meanWant - 1f);
@@ -1296,6 +1299,10 @@ namespace HexTactica.AI {
                 return n;
             }
 
+            /// <summary>What each option's factors came to (time to the fight, a lift needed, morale ...), last valued: how much it helps its front.</summary>
+            readonly Dictionary<KeyValuePair<Slot, Unit>, float> factorOf = new Dictionary<KeyValuePair<Slot, Unit>, float>();
+            public float Helps(Slot sl, Unit t) { float f; return t != null && factorOf.TryGetValue(new KeyValuePair<Slot, Unit>(sl, t), out f) ? Mathf.Clamp01(f) : 1f; }
+
             /// <summary>Its time-to-the-fight factor (AIProduction's toFight), for the added terms (procScaleBonuses).</summary>
             public System.Func<Unit, HexTile, float> timeFactor;
 
@@ -1349,6 +1356,7 @@ namespace HexTactica.AI {
                 if (fighter && o != null && !air && !sea && pr.procNeedsLiftCut < 1f && map.AcrossWater(sl.tile, o.target)) { times(pr.procNeedsLiftCut); why = (why != null ? why + ", " : "") + "needs a lift to " + o.Id; }
                 // procKindMorale: what our units of its kind managed lately (held up for want of supply or a lift: less).
                 if (fighter && pr.procKindMorale) { float km = KindMorale(p, t); if (km < 1f) { times(km); why = (why != null ? why + ", " : "") + "x" + km.ToString("0.00") + " for what its kind managed lately"; } }
+                factorOf[new KeyValuePair<Slot, Unit>(sl, t)] = m;
                 float scale = pr.procScaleBonuses ? m : 1f;
                 // Every facility that can build it: +procFacilityBonus, pushed back by the resistance its front expects.
                 float bonus = 0f, capture = 0f, jig = 0f;
