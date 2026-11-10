@@ -2491,7 +2491,7 @@ public static partial class Scenarios {
             }
             case "uiOverlays": {
                 Unit art = Rig.At(-3, 0).occupier, friend = Rig.At(-1, 0).occupier, enemy = Rig.At(0, 0).occupier, tank = Rig.At(2, -2).occupier;
-                HexTileUIData ui = HexTileUIData.instance;
+                HexTileUIData ui = ScriptableObject.CreateInstance<HexTileUIData>();
                 ui.move_possible = new Sprite(); ui.move_confirm = new Sprite(); ui.selected = new Sprite(); ui.attack_possible = new Sprite(); ui.move_arrow = new Sprite();
                 foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
                 foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
@@ -2769,7 +2769,7 @@ public static partial class Scenarios {
                 LevelEditor.singleton = ed;
                 try {
                     // What a tile needs to be loaded into headless: its pictures, overlay and roads.
-                    HexTileUIData ui = HexTileUIData.instance;
+                    HexTileUIData ui = ScriptableObject.CreateInstance<HexTileUIData>();
                     foreach (HexTile t in Rig.hg.tiles) {
                         t.upper = Rig.New<SpriteRenderer>(); t.lower = Rig.New<SpriteRenderer>(); t.water = Rig.New<SpriteRenderer>(); t.floor = Rig.New<SpriteRenderer>();
                         t.road_up = Rig.New<SpriteRenderer>(); t.road_dn = Rig.New<SpriteRenderer>(); t.road_ru = Rig.New<SpriteRenderer>();
@@ -2884,7 +2884,7 @@ public static partial class Scenarios {
                 Unit red = Rig.At(0, 0).occupier, blue = Rig.At(2, 0).occupier;
                 red.visionRange = 1;
                 // What the board needs to be clicked on headless: overlays, the UI pictures, the level editor (closed), damage text.
-                HexTileUIData ui = HexTileUIData.instance;
+                HexTileUIData ui = ScriptableObject.CreateInstance<HexTileUIData>();
                 ui.move_possible = new Sprite(); ui.move_confirm = new Sprite(); ui.selected = new Sprite(); ui.attack_possible = new Sprite(); ui.move_arrow = new Sprite();
                 foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
                 foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
@@ -3564,7 +3564,7 @@ public static partial class Scenarios {
                 return before.defenderFiresFirst && !after.defenderFiresFirst && coverDmg < openDmg && ignoringDmg == openDmg && after.damageToDefender >= before.damageToDefender;
             }
             case "nextUnit": {
-                HexTileUIData ui = HexTileUIData.instance;
+                HexTileUIData ui = ScriptableObject.CreateInstance<HexTileUIData>();
                 foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
                 foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
                 Unit g1 = Rig.At(0, 0).occupier, g2 = Rig.At(2, 0).occupier, tk = Rig.At(0, 2).occupier;

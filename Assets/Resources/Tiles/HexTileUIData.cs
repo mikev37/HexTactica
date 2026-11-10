@@ -1,9 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 [CreateAssetMenu(menuName = "HexTileUI")]
-public class HexTileUIData : ScriptableSingleton<HexTileUIData> {
+/// <summary>
+/// The sprites and colours a tile shows for its UI states. An ordinary asset (Resources/Tiles), set on each tile's
+/// uiData: a ScriptableSingleton is editor-only and broke the player build.
+/// </summary>
+public class HexTileUIData : ScriptableObject {
 
     public Sprite selected;
     public Sprite move_possible;
