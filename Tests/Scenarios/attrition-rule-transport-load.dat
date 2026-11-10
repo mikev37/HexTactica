@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"attrition-rule-transport-load","kind":"rules","opponent":"Human","rounds":"4","check":"transportLoad","question":"What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1) or one supply unit (weight 2), never a tank (Treads) or a fighter. A grunt cannot board a transport ship on open water beside the shore, but can at the naval yard (the ship on the yard's tile). A loaded APC can itself board the ship there (it takes its own weight, 3 of the ship's 4), and everything aboard goes where the ship goes.","rules":"standard"},
+"test":{"name":"attrition-rule-transport-load","kind":"rules","opponent":"Human","rounds":"4","check":"transportLoad","question":"What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1 each) and then has no room for a supply unit; emptied, it takes the supply unit. Never a tank (Treads) or a fighter. A grunt on the shore boards a hauler on the open water beside it (any coastal tile), as it does at the naval yard. A loaded APC can itself board the hauler (it takes its own weight of the hauler's slots), and everything aboard goes where the ship goes.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
@@ -185,7 +185,7 @@
 {"x":-5,"y":0,"z":5,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0},
 {"x":-3,"y":-1,"z":4,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0},
 {"x":-6,"y":0,"z":6,"Strength":6,"Veterancy":0,"personalName":"Fighter","active":true,"owner_id":112,"supplies":3,"fuel":36,"ammo":6,"gameobject_name":"Fighter","transporterIndexPlusOne":0},
-{"x":3,"y":0,"z":-3,"Strength":6,"Veterancy":0,"personalName":"TransportShip","active":true,"owner_id":112,"supplies":15,"fuel":70,"ammo":6,"gameobject_name":"TransportShip","transporterIndexPlusOne":0},
+{"x":3,"y":0,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Hauler","active":true,"owner_id":112,"supplies":15,"fuel":70,"ammo":6,"gameobject_name":"Hauler","transporterIndexPlusOne":0},
 {"x":6,"y":-3,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
 ]
 }

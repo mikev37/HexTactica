@@ -668,8 +668,8 @@ public static partial class Scenarios {
                  water(-1, 7, -7, 7);
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
                  Put("APC", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", a, -5, 1); Put("Supplies", a, -5, 0); Put("Tank", a, -3, -1); Put("Fighter", a, -6, 0);
-                 Put("TransportShip", a, 3, 0); Put("Grunt", o, 6, -3); },
-             "What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1) or one supply unit (weight 2), never a tank (Treads) or a fighter. A grunt cannot board a transport ship on open water beside the shore, but can at the naval yard (the ship on the yard's tile). A loaded APC can itself board the ship there (it takes its own weight, 3 of the ship's 4), and everything aboard goes where the ship goes.");
+                 Put("Hauler", a, 3, 0); Put("Grunt", o, 6, -3); },
+             "What fits where. An APC (2 slots, carries Boots) takes two grunts (weight 1 each) and then has no room for a supply unit; emptied, it takes the supply unit. Never a tank (Treads) or a fighter. A grunt on the shore boards a hauler on the open water beside it (any coastal tile), as it does at the naval yard. A loaded APC can itself board the hauler (it takes its own weight of the hauler's slots), and everything aboard goes where the ship goes.");
         make("attrition-rule-suppression", "suppression", (a, o) => {
                  Put("Artillery", a, -4, 0); Put("Artillery", a, -4, 2); Put("Grunt", a, -1, 1); Put("Tank", a, -3, -2);
                  Put("Tank", o, 0, 0); Put("Tank", o, 0, 3); Put("Tank", o, -1, -2); Put("Grunt", o, 2, -2); },
@@ -707,7 +707,7 @@ public static partial class Scenarios {
              "A supply ship refuels and restocks the ships beside it at the start of the turn, as an air tanker does aircraft: the Gunboat beside it (fuel 10, 1 supply) is full after a turn; one away from it is not; a supply ship beside it is not tended by it (a tender is never tended by another).");
         make("attrition-rule-ship-carried-supply", "shipCarriedSupply", (a, o) => {
                  water(-4, 5, -7, 7);
-                 Put("TransportShip", a, -1, 0); Put("TransportShip", a, 3, 0); Put("TransportShip", a, 5, 0);
+                 Put("Hauler", a, -1, 0); Put("Hauler", a, 3, 0); Put("Hauler", a, 5, 0);
                  Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3); Put("Supplies", a, -6, 4); Put("Supplies", a, -5, 4);
                  Put("Transport Helo", a, -5, 3);
                  Put("Grunt", a, 6, -1); Put("Grunt", o, 7, -2); },
@@ -715,7 +715,7 @@ public static partial class Scenarios {
         make("attrition-rule-ship-line-on-water", "shipLineOnWater", (a, o) => {
                  water(-4, 5, -7, 7);
                  for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
-                 Put("TransportShip", a, -1, 0); Put("TransportShip", a, 3, 0);
+                 Put("Hauler", a, -1, 0); Put("Hauler", a, 3, 0);
                  Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
                  Put("Grunt", o, 7, -6); },
              "Ten tiles of sea off Blue's shore with a strip of island (x 0..4) in it; TS A (supplies aboard) within a move of Blue's shore and beside the island, TS B (supplies aboard) beside the island too, within a move of A only. B links through A (a ship tries its convoy first), and every line between them keeps to the water: B's line to the HQ, and the faint line of B hanging on A when A is selected. A selected at sea, or moved out to sea in a preview, still shows its line to Blue's shore.");
@@ -728,14 +728,14 @@ public static partial class Scenarios {
         make("attrition-ai-sea-supply", "attritionSeaSupply", (a, o) => {
                  for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
-                 Put("TransportShip", a, -2, 0); Put("Supplies", a, -3, 1);
+                 Put("Hauler", a, -2, 0); Put("Supplies", a, -3, 1);
                  Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
                  Put("Grunt", o, 6, -5); },
              "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
         make("ai-sea-convoy", "seaConvoy", (a, o) => {
                  for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
-                 Put("TransportShip", a, -2, 0); Put("Supplies", a, -3, 1); Put("Tank", a, -3, 0); Put("Grunt", a, -2, 1);
+                 Put("Hauler", a, -2, 0); Put("Supplies", a, -3, 1); Put("Tank", a, -3, 0); Put("Grunt", a, -2, 1);
                  Put("Grunt", o, 6, -5); },
              "One ship takes troops and their supply together: a transport ship (4 slots) at Blue's naval yard with a grunt (1) aboard, a supply unit (weight 1) and a tank (2) beside it, Red's HQ across the channel and nothing of Blue's supply over there. Loaded, the ship acts first in Blue's turn, but it does not sail while either of them can still get aboard: in Blue's first turn all three get in; it sails full, and the supply aboard is linked off Red's shore, where the troops are put down (the troops' landing ground beside the ship is supplied; with unifiedLogistics the ship then holds there as that shore's supply link).");
         make("ai-turn-order", "turnOrder", (a, o) => {
@@ -758,7 +758,7 @@ public static partial class Scenarios {
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board and unparented. Getting off costs nothing: having boarded this turn it is still spent; aboard at the start of a turn, it is still free to act once unloaded.");
         make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
-                 Put("TransportShip", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
+                 Put("Hauler", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
              "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; a marine that boards a transport ship from the shore (it can step into water beside land) neither heals nor uses its supplies while the ship has supplies, and starves once the ship's are gone.");
         n += ExportScriptChecks(make);
         make("attrition-rule-amphibious", "attritionAmphibious", (a, o) => { water(-1, 2, -7, 7); Put("Marine", a, -2, 1); Put("Grunt", a, -2, 2); Put("Grunt", o, 5, 0); },
@@ -3253,7 +3253,7 @@ public static partial class Scenarios {
                 Unit tankBeside = tank; tank.TeleportTo(Rig.At(-3, 0), 0);
                 bool c1 = !Transporting.CanCarry(apc, tankBeside) && !Transporting.CanCarry(apc, fighter);
                 r.Add("tank and fighter refused " + c1);
-                // The ship beside the shore on open water: a grunt cannot board; at the dock it can.
+                // The ship beside the shore on open water: a grunt boards it from the shore (any coastal tile), and at the dock.
                 Building yard = Rig.At(-2, 0).building;
                 HexTile dock = yard.tile;   // ships come in to the yard itself (no dock tiles)
                 HexTile beach = null, shore = null;
@@ -3263,18 +3263,18 @@ public static partial class Scenarios {
                     if (beach != null) break;
                 }
                 ship.TeleportTo(beach, 0); g1.TeleportTo(shore, 0);
-                bool d1 = !Transporting.CanBoardFrom(ship, g1);
+                bool d1 = Transporting.CanBoardFrom(ship, g1);
                 HexTile quay = null;
                 foreach (HexTile n in dock.neighbors) if (n != null && n.terrain.elevation >= 0 && n.occupier == null && n.building == null) { quay = n; break; }
                 ship.TeleportTo(dock, 0); g1.TeleportTo(quay, 0);
                 bool d2 = Transporting.CanBoardFrom(ship, g1);
-                r.Add("grunt boards at sea " + !d1 + ", at the dock " + d2);
+                r.Add("grunt boards from the shore " + d1 + ", at the dock " + d2);
                 apc.TeleportTo(quay == null ? null : quay, 0);
                 g1.TeleportTo(Rig.At(-6, 2), 0);
                 bool e1 = Transporting.Load(ship, apc);
                 HexTile sea = Rig.At(4, 1);
                 ship.TeleportTo(sea, 0);
-                bool e2 = apc.tile == sea && sup.tile == sea && Transporting.FreeWeight(ship) == 1;
+                bool e2 = apc.tile == sea && sup.tile == sea && Transporting.FreeWeight(ship) == ship.transportSlots - Mathf.Max(1, apc.weight);
                 r.Add("loaded APC boards at the dock " + e1 + ", rides with its cargo " + e2);
                 detail = string.Join("; ", r.ToArray());
                 return a1 && a2 && a3 && b1 && b2 && c1 && d1 && d2 && e1 && e2;
