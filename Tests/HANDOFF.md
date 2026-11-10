@@ -343,6 +343,280 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
   apart: overbuilt; natural ArmyBases taken late, turn 27 for (13,-13); whole army moved across the map between FOBs;
   reserve not committed); RiverCrossing new Red regression above; new Red loses ForestClearing.
 
+- **Procurement (9 Nov, `procurement` on):** `AIProduction.Proc`. Inputs: gold, income, our facilities, enemy and map
+  income, the campaign's fronts (logistics tasks) by priority and their expected resistance (`enemyPower`, seen and
+  unseen, plus a priority share of `fogUnplacedPower`). Each facility serves the front with the most priority for its
+  distance. Per kind at a facility: no resistance → infantry and troop transports ×`procNoResistance`, short of units →
+  cheapest ×(1 + `procCheapBonus`·cheapest/cost); resistance → + its own worth × r/(r + our power); across water → air,
+  ships, ranged ×`procAcrossWater`; water near → air, amphibious ×`procMixedWater`; cover near → infantry ×(1 + cover
+  share); tiers past `procTierRatio`:1 → next tier ×1.5; stealth ×`procStealth`; out of supply and its supplies cannot
+  reach ours → ×0.5; empty reserve and under `procReserveRich` gold → a troop transport; + `procFacilityBonus` per
+  facility not under fire that builds it (× our power/(our + resistance)); capturers + capturable buildings within two
+  turns (income × horizon, + `procCaptureProducerValue` for a producer); + a fixed jiggle ≤ `procJiggle`. Facilities the
+  known enemy would destroy a unit at next turn are skipped. Then `Proc.Choose`: one unit (or none) per facility, most
+  total value within the gold (knapsack in 100-gold steps). Saving (`Proc.SaveTarget`): only for supply (always
+  allowed), a gap (an enemy kind seen that nothing of ours hurts) or transit (sea lift), within the turns to save
+  `procSaveMost` at 70% of the map's income (measured on our income), and only if worth more than the whole plan buyable
+  now. Trace: "procurement:" and "procurement options:" lines. 14 rounds, new Blue v old Red: ForestClearing on 81,583 v
+  65,000 (off 77,083 v 58,250); Biomes on 116,833 v 64,666 (off 104,500 v 63,333). Not testable in the harness: faction
+  units (BushWar's ArmyBases build nothing without a faction there). Not done: fronts the campaign could not form (only
+  formed fronts reach production); the enemy's possible builds as resistance beyond the unplaced estimate.
+
+- **Facility budgets, cargo, tankers, terrain reach, retaliation (9 Nov, all on):**
+  - `procBudgets` (`AIProduction.Budgets`): each facility keeps its own account (static, by side, kept across turns).
+    Weight 1 + `procPriorityShare` × (½ its front's priority over the top + ½ its best option over the best anywhere), so
+    the split is near even and at most 2×. Gold no account holds (income, savings given up) is split by weight; gold spent
+    elsewhere cuts every account alike. A facility with the enemy on it, or where the known enemy would destroy a new
+    unit outright (`KnownLoss` ≥ its strength; with budgets off the old ≥ 3), is locked: no value, its account released.
+    Highest weight first, each takes the option with most value × `procWaitBase`^-(`procWaitPower` × wait) — wait = turns
+    for its account, plus the accounts of facilities that were saving for the same unit last turn, on their income shares,
+    to pay (≥ 1 if its tile is taken); options past `Proc.maxWait` skipped except supply; last turn's target ×`procStick`.
+    Wait 0 and tile free: bought, from its own account first, then the others saving for it (most saved first). Else it
+    saves. Replaces `SaveTarget`/`Choose` and the reserve's saving. Discount table (wait 1..4): 1.1^-4w .68 .47 .32 .22;
+    power 1/(1+w/3) .75 .60 .50 .43; 1.1^-2w² .83 .47 .18 .05 (fits "one turn not bad, more prohibitive" closest; not tried).
+  - `procCargo`: any transport that does not fight is valued by cargo (`cargoGain`): our land units far from contact
+    (beyond `assaultBoardTurns`) or across water from their ground, not already served by an empty transport we have or
+    one planned; per rider value × gain, gain = `assaultTransportWeight` × (walk − ride turns)/`productionLifeRef`, or
+    across water `seaLiftWeight`/(1 + ride/horizon) × reserve shortfall pull. Walk on the rider's own terrain path; ride =
+    fetch + carry, ground transports over terrain, aircraft and ships by the tile; a plane needing a runway loads at its
+    airport. Plus, with no truck free, a short front's supply for a transport that carries a supply unit. Replaces the
+    sea-lift, riders and truck rules; no-resistance ×1.5 now applies to any such transport.
+  - `procResupply`: tanker (supply ship) = Σ value × (1 − level) of our aircraft (ships) below `procResupplyLow` of fuel or
+    supplies, ÷ (1 + tankers we have or plan).
+  - `procTerrainReach` (`Reach`): turns to the fight in move points by the unit's own movement (`AIPath.StepCost`, CanEnter;
+    aircraft 1 a tile), falling back to `Travel` where it cannot get there.
+  - `productionRetaliation`: in the lifetime value, what it takes in a turn adds the return fire from each enemy it would
+    attack from beside it (range 1 only; enemy that retaliates and can target it).
+  - Trace: "budget <facility>: weight, share, has; buys / saves for X (value, turns: discounted)", "cargo:" lines; with
+    DebugValues, "for cargo:".
+  - 14 rounds, traced, single games: ForestClearing new Blue v old Red 75,416 v 50,583 (budgets off/procurement v1:
+    81,583 v 65,000); Biomes new Blue 102,000 v 53,250 (v1 116,833 v 64,666); ForestClearing new Red v old Blue 72,500 v
+    75,750, ending with 20,500 gold unspent (airport on 10,765 saving for a gunship, its tile taken by a gunship at rest).
+    `maxWait` on ForestClearing is 2 turns (15,000 at 70% of 18,000): the airport shows "nothing worth it" until its account
+    is within two turns of a gunship, then saves for it. Mixed; not yet run on the no-build maps (production only).
+  - Correction: the unit on the airport there was a supply unit, not a gunship. `AITransportPlanner.NextAction`'s walking
+    step (`StepToward`) does not check `AITactical.BlocksProduction`, which only filters `Tiered` move options.
+  - `procWaitExponent` (default 1): the discount is procWaitBase^-(procWaitPower × wait^exponent). ForestClearing new
+    Blue with 1.1^-2w² (`procWaitPower=2,procWaitExponent=2`): 75,583 v 56,500 (default 75,416 v 50,583).
+  - Known faults, found in the traces (not yet fixed):
+    - `Proc.maxWait` = ceil(`procSaveMost` / (0.7 × the whole map's income)): 2 turns on ForestClearing, 1 on Channel,
+      while waits are counted on one facility's share of our income. On Channel (20 rounds, new Blue v old Red, 153,583
+      v 164,333) neither naval yard ever bought a transport ship (4+ turns away), with 18–41 land units wanting across
+      water; they showed "nothing worth it" and kept their accounts — Blue ended on 30,000 gold.
+    - Supply is exempt from `maxWait` (meant: the minimum wait is the turns to save for a supply unit, and supersedes
+      the maximum).
+    - A facility with nothing worth it keeps its account (gold piles up).
+    - The budget choice ignores price except through the wait: a Marine (a grunt that swims, +1,000) beat a grunt on
+      ForestClearing, which has no water, on the jiggle.
+  - Fixed (9 Nov, afternoon):
+    - Longest wait per facility: turns to save `procSaveMost` on its weight share of (`procWaitMapShare` 0.5 × map income
+      + 0.5 × ours); never less than the turns to save the cheapest supply unit on its share of our income. Supply has no
+      free pass. (`Proc.maxWait` is now only used with budgets off.) ForestClearing 2–5 turns, Channel 6–8.
+    - Only buying or saving collects gold. A facility with nothing worth it gives up its savings and share at once; the
+      rest choose again with it. A facility that buys keeps nothing: what is left goes to the facilities still to choose
+      this turn (by weight). A saving facility keeps no more than its target costs (the rest is shared next turn). Before
+      this the HQ, the last facility choosing, collected everything released (18,000 on ForestClearing) and bought one
+      grunt a turn with it.
+    - `productionAmphibiousWater` (12): amphibious units are worth 0 at a facility with no water within 12 tiles (like
+      anti-air with no enemy aircraft).
+    - `offFacilities`: no move ends on our facility that can build (purchases on), the threat exception gone:
+      `AIAir.BlocksBuildSlot` (so `MayEndOn`, every planner that uses it) for any unit; `AITactical.BlocksProduction`;
+      and `AIPlayer.OffFacilities`, the last word on every Move (the walking supply unit's step included): the tile it can
+      reach this turn nearest the one it wanted. Exempt: aircraft and ships the facility services (they rearm, refuel and
+      land only there — ai-ship-refit failed without it). A unit already standing on one is not moved off by this.
+  - Results, traced, single games (material, new AI first): ForestClearing new Blue 90,666 v 52,500 (12 buildings to 3);
+    new Red 75,500 v 61,666. Channel (20 rounds) new Blue 186,583 v 145,583 (3 transport ships, 2 transport planes;
+    5 units boarded); new Red 204,750 v 161,500 (23 buildings to 16). Biomes new Blue 94,750 v 44,250.
+  - Then (owner's rules): a facility that spends keeps nothing (its leftover is shared by weight next turn, not handed
+    to the others this turn); a saving one keeps its share, at most its target's cost. A facility whose tile our own unit
+    holds builds nothing that turn: it gives its savings up like one that buys nothing. Aircraft and ships may end on a
+    facility that services them only when it will not build this turn (`AIProduction.WillBuild`: last turn's target, its
+    savings plus its share short of it) or when they need service (fuel, ammunition, supplies or strength short).
+    Channel new Blue 180,583 v 151,000 (no unit boarded: the first transport ship came in round 18); ForestClearing new
+    Blue 90,666 v 52,500 (the same game as before).
+  - Sea crossing, why weak on Channel (traced): ships are bought late (rounds 16–18 in the last two games). The naval
+    yards save for gunboats instead: a gunboat is valued 10–15k (lifetime, front resistance, across water ×1.5, facility
+    bonus), a transport ship ~8k: `cargoGain` counts one load (4 riders) of the 45–53 land units waiting to cross, and
+    one trip. The one ship in round 16 went on medevac; the other moved up loaded in round 19.
+  - `cargoGain` now (owner's rule): every rider waiting that a transport can carry and gains from it counts (a transport
+    makes many trips), not one load; transports we have are not counted against it (if they work, fewer wait), except a
+    grace: the room bought last turn (`carrierRoomBought`) and planned this turn takes out the riders that gain most.
+    Trace: "cargo: N land units waiting (weight W), E empty transports [WHILE UNITS WAIT], grace G". Channel 20 rounds:
+    new Blue 163,583 v 173,750 (23 buildings to 16; 11 boarded, 9 put down; was 0); new Red 158,833 v 147,500 (23 to
+    16; 22 boarded, 13 put down). ForestClearing new Blue unchanged (90,666 v 52,500); Biomes new Blue 106,833 v 59,999.
+    Ships now follow demand within a turn or two (Blue: 23 waiting in round 12 → first ship round 13, then one every two
+    rounds). What is still late is the demand: 2–4 units waiting across water until round 8, 14 at round 8, 23 at round 12
+    — the campaign sends few units to objectives across water early. Empty transports while units waited: Blue 3 turns,
+    Red 6.
+  - Channel supply (ch5 traces): new Blue 118 unit-turns out of supply, 3 lost to attrition (old Red 12, 0); new Red 75
+    (old Blue 26). Out of supply from round 5, steep from round 13. Blue's big task force (Clear@-2,6, 24–29 units) ran
+    "chain 0, its own 0, chain short, nothing spare". Only 4 supply units bought in 20 rounds: the HQ is the only facility
+    that builds them, on its weight share (~1,600–2,000 a turn against 6,500). No supply unit was put down across water
+    (trace "supply put down Blue 0 Red 0"); transport planes carried supply as leaps.
+  - Objectives across water need absurd supply: `AICampaign` (lasting objectives) measures the gap by `map.LandSteps`
+    from the target; with no supplied ground on its land it falls back to `routeLength`, so "not taken on: Clear@-10,3
+    needs 32 supply units" (also Clear@2,1, Secure@-2,7). Objectives across water are refused for supply, not for force.
+  - Correction: no transport put supply down. The planes flew a supply unit out ("supply leap"), held it aboard two
+    turns, then flew home for fuel with it aboard ("bingo fuel") — supply in a plane that needs a runway cannot stay out.
+  - `campaignSupplyByTransport`: an objective with no supplied ground of ours on its land counts its supply over the
+    water: straight from our nearest supplied tile, in the moves of the longest-moving ship or aircraft that carries a
+    supply unit (ours or buildable; `AICampaign.SupplyLiftMove`), into `o.supplyMoves`; needHubs = moves − 1. The spread
+    uses it too. No such lift: the old route-length fallback.
+  - `procDemandWeight` (1): a facility's weight also gains (its best ÷ the mean of all facilities' best − 1) — what is
+    wanted far above the rest (supply for a short front, transports for waiting units) draws more gold. The HQ's weight
+    went to ~3 when supply was asked for (best 23–35k against a mean ~11k).
+  - Channel 20 rounds after both: new Blue 160,500 v 165,833, 25 buildings to 16, out of supply 66 unit-turns (was 118),
+    attrition 2; 23 boarded, 13 put down; first transport bought round 8 (was 13). New Red 177,750 v 160,833, 23 to 16,
+    out of supply 66 (was 75), attrition 0. Still only 3 supply units bought by Blue; "needs 1 supply units, 0 free" 7
+    times. ForestClearing new Blue 85,583 v 39,583; Biomes new Blue 104,416 v 56,500.
+  - Duel summary now prints "buildings that changed hands: rN Building(x,y) from->to". Channel islands (owner's
+    question): new Blue took Red's north-west island's yard r13, cities (-6,9) r16 and (-6,8) r17, runway r17; city
+    (-2,6) still Red at r20. New Red took Blue's north island: yard r15, runway r18, cities (1,-6) r18, (2,-10) r19,
+    (3,-10) r20.
+  - Sea supply as the AI does it (not as the rules allow): the rules link a supply unit aboard a ship within a move of
+    supplied ground, or through another carrier ship (a convoy: `SupplyNetwork.CarriedLinked`), and a supply unit aboard
+    a transport aboard another (a truck in a ship) is legal. The AI: `AIAssault.SupplyTransports` leaves ships out of
+    supply duty ("a ship's supply goes with its troops"); `AIPlayer.SeaLiftShipFor/SeaLiftBoard/SeaLiftSupply` put a
+    supply unit on foot in a ship bound for an unsupplied landing, but the ship's goal is only `SeaLiftGoal` — the
+    campaign's one objective (the enemy HQ) — not each front across water; it picks a linked tile but never places ships
+    as a convoy. Nothing plans a supply unit in a truck in a ship, and the landing (assault rides) plans no supply for
+    going inland. Channel ch6/ch7: no supply unit boarded a ship on either side; planes made 73–75 "supply leap" turns.
+  - `seaSupplyChain` (`AISeaSupply`, planned in AIPlayer after the supply transports; its ships and supply units decide
+    first in `DecideFor`): land masses with no static supplied ground (`SupplyNetwork.SolveStatic`) where our fighting
+    units stand are posts; the post's shore is the water beside that land nearest its units in all; a convoy of stations
+    a ship's move apart along the water back to water beside home supplied ground (`WaterPath`). Stations take laden ships
+    at sea first, then an empty transport ship (no troops aboard) and a free supply unit (not a chain link): the ship
+    waits on the supply unit's nearest naval yard (`Loading`: exempt from `offFacilities`), the supply unit walks there
+    and boards, the ship sails to its station through linked tiles. Short ships, supply units, trucks (a post whose
+    units are beyond a supply unit's range from the shore with no ground transport on that land) go to production as
+    `AISeaSupply.Demand` (worth the power ashore × `productionSupplyWeight`). Troops waiting to cross keep the empty
+    ships they need (sea invasion first). Not done: the matryoshka (truck with supply in a ship) — only asked for.
+    `attrition-ai-sea-supply` passes through it (a bug sent the ship the wrong way along its path first: fixed).
+  - Channel, 20 rounds: first version (empty ships taken for supply whatever): new Red's troop ship was taken to fetch
+    a supply unit from a far yard and the north island was never taken (new Red 178,833 v 150,666, 19 buildings each).
+    With troops first: both games the same as without it (no station ever got a ship: troops always waiting; 2–3
+    ships per post for the convoy, demand 4–5 ships at 7,500–13,000, below the troop transports' cargo value).
+  - Owner's rules (9 Nov, evening): a troop ship bound for land without supply carries a supply unit too and, once
+    the troops are ashore, is that shore's supply ship for good (never back for more troops; moves only when relieved);
+    a second wave to supplied land stays a troop ship. Supply's ask counts every unit out of supply and every short front.
+    - `seaSupplyRideAlong` (OFF): troop ships bound for land without supply (riders' ground on land with no supply of
+      ours, or empty while troops wait to cross there) go in `supplyTransports` so riders leave a seat
+      (`AIAssault.SpareSlot`); a free supply unit is told to board it (`BoardTroopShip`), and one waits at each yard where
+      such troops gather (`staged`, kept from turn to turn). Laden ships take shore stations before convoy ones
+      (`Stationed`: no troops board them, `AIAssault.Board`). Channel new Blue with it: 118,000 v 188,833 (much worse);
+      no supply unit ever rode along (the trace never shows "rides along"; staged supply units got stuck or were taken
+      by the logistics for trucks). Putting empty troop ships in `supplyTransports` likely changed how they move — the
+      first thing to read in a traced game before turning it on.
+    - `supplyAskPerUnit` (on): a supply unit's worth is at least the value of every unit of ours out of supply plus
+      every short front's; a sea supply ship's, every unit ashore without its ship. Channel new Blue 20 rounds: on
+      185,916 v 178,166 (22 buildings; island: (-2,6) r13 only), off 160,500 v 165,833 (25 buildings; island (-6,9) r16,
+      (-6,8) r17). New Red with both (ride-along on): 190,416 v 180,333, island city (1,-6) only (was all three).
+    - Read in the traces afterwards (owner asked): with `supplyAskPerUnit` on, Blue boarded 27 and put down only 13,
+      100 unit-turns aboard (off: 23, 13, 54) — the material gain is units sitting aboard, not better trades. Turned
+      OFF. With `seaSupplyRideAlong` on (30 rounds, cur30_ride_blue): the supply unit is told to board ships already
+      out at sea, walks to the yard nearest that ship (`NearYard`) while the ship takes on troops at another yard; a
+      different supply unit is picked every turn; from round 11 no troop ship is bound for land without supply and no
+      station ever gets a ship. 188,250 v 283,250.
+    - Baseline before procurement (0356ab5, worktree), Channel new Blue v old Red, traced: 20 rounds and 30 rounds,
+      no supply unit ever boarded a ship ("boards the ship to carry supply" 0; "goes to the ship" 1); supply put down 0.
+      So the sea lift's supply-with-troops (`SeaLiftShipFor`/`SeaLiftBoard`/`SeaLiftSupply`) did not happen on
+      Channel before today's work either; the 8 Nov note above ("ferries troops and supply") is not borne out by
+      these games.
+    - Design fault (mine): `AISeaSupply` is a second supply planner beside `AILogistics` (land chains), each
+      claiming supply units and transports by its own priorities. They should be one: the logistics' chains crossing
+      water with ship links (convoys), its own allocation of supply units and transports, the sea lift's ride-along
+      a chain link riding with the troops.
+  - Done (10 Nov): one chain (`unifiedLogistics`, on). `AISeaSupply` deleted with its flags. The sea lift's own supply
+    path (`AIPlayer.SeaLiftShipFor/SeaLiftBoard/SeaLiftSupply`) is off under the flag (kept for flag-off).
+    - `AIMap.SupplySteps(goal)`: LandSteps when the goal's land holds static supply of ours, else steps over land and
+      water (`SupplyAcrossWater`). `AISupplyChain.MakeOne` measures forward and reach by it (reach counts land tiles only),
+      so a link aboard a ship is placed on the water where its supply reaches the far shore, linked (convoys by the rules'
+      own check). `IsTruck` (the chain's transports) leaves out aircraft that must go back to a runway.
+    - `AILogistics`: `Task.acrossWater/bare/yard`; ships (and aircraft that hold) are a front's transports when it is
+      across water (`IsCarrierFor`: rides, chain trucks); a front's own supply on our side goes to its embarkation yard
+      (`DropNear`); a supply unit aboard a ship is always in the pool and always a chain link of the nearest front across
+      water (never put ashore as a front's own); `RideAlong`: a transport ship at a bare front's yard gets one of that
+      front's own supply units that can get in this turn (`alongs`; the ship joins `supplyTransports` so riders leave the
+      seat). `AIPlayer.LogisticsAction` boards it; the chain branch no longer counts the link's own ship as busy, so it
+      gets in and sails the same turn. Production: a front across water whose chain falls short with no free ship
+      values transport ships ("no ship for its supply"); `freeShips`.
+    - Checks 135/135. `ai-sea-convoy` restated: the old code passed it only because an assault move on turn 3 carried the
+      ship (supply still aboard) down the coast beside the grunt; now the ship holds as the shore's link and the troops go
+      on out of its range, so the check asks that their landing ground beside the ship is supplied.
+    - Channel 20 rounds, traced (u1_*): new Red 184,416 v 165,583, all three north-island cities r18 (yard r17), out of
+      supply 69, attrition 4; new Blue 153,666 v 170,250, one north-west city r18, out of supply 79. Ride-along never
+      happened: Blue bought 3 supply units in 20 rounds against 49 infantry; its fronts across water (13–35 units) show
+      "chain 0, its own 0, nothing spare"; Blue ended on 29,000 gold. The HQ (the only supply builder) got 1,000–3,900 a
+      turn; supply was asked for only from round ~10 (values 25–72k).
+    - `procDemandWeight=3` (u2_*): new Blue took all three north-west cities r20, 157,500 v 171,000, still 3 supply units,
+      33,000 gold left; new Red all three north cities r14–18, 181,583 v 161,416. Not made the default.
+  - Values, read with the new `VALUES=<name part>` trace (duel probe and ai-buy-transports): on Channel round ~11 a
+    Conscript at an army base was base 134 (its combat value, x0.30 for its time to the fight) + facility bonus 2,837
+    (1,000 x 3 bases) + jiggle ~1,580 = 4,700: the additive bonuses are nearly all of it. Transport ships: each yard's own
+    cargo value (16,598 v 14,743, by distance to the riders); they pool gold, not value. Army bases with 1,660 bought a
+    1,500 Conscript and gave the 160 back. The end-of-game "29,000" was ~21,000 in nine accounts (1,400–3,000 each toward
+    2,500–9,000) plus the next income.
+  - Owner's changes (10 Nov), all on: weights 1 + `procFrontShare` x front priority + `procWantShare` x best/top (both 1,
+    was 0.5/0.5 through `procPriorityShare`, removed) + `procDemandWeight`; `procNothingWeight`/`procNothingMargin` (buy
+    nothing, worth the gold's value per gold at a facility that buys clearly more with it — at most what that one is short
+    of; the first version, the average of all the others, had every facility give its gold away and new Blue ended with 7
+    units and 71,500 gold); `procBorrow` (savers' gold lent to the saver with the most valuable buy it could make now,
+    from the savers saving for least; the borrower pays its share back each turn, buying and saving nothing until clear);
+    `procNeedsLiftCut` 0.5 (a land fighter whose front is across water from its facility); `procKindMorale` (per kind of
+    unit, `KindKey` by stats: down by 0.3 x the share of its units held up — across water from their ground and not
+    aboard, or out of supply — and not attacking/capturing, up by 0.5 x the share that attacked or captured, back toward 1
+    by 0.05 a turn, floor 0.2; noted in `AIPlayer.Run`, settled at the start of `Buy`).
+  - Channel 20 rounds, new Blue v old Red, one traced game each (material, island cities of Red's north-west island):
+    all on 163,750 v 192,166, none; weights 1+2+2 158,333 v 180,333, none; jiggle 500 166,833 v 203,166, none; borrow off
+    146,250 v 213,333, all three r19–20; buy-nothing off 166,750 v 178,333, two r17; lift cut off 170,500 v 178,250, two
+    r20; morale off 188,416 v 194,166, all three r19–20. New Red, all on: 200,416 v 164,000, one north city r20. Supply
+    units bought: 1–4 in every game; ride-along never (no front across water had its own supply unit). Single games:
+    the differences are within what one game varies by; the supply shortage is untouched. Conscripts bought: 3–8, 21
+    with buy-nothing off (30 before these changes). Borrowing bought 2 of the 4 supply units in the all-on game; the HQ
+    then spent 13 turns paying back.
+  - Owner's corrections (10 Nov, later): the 9 accounts were Blue's HQ, 4 army bases (one taken r12), 3 naval yards (one
+    taken r13), airport. Borrowing halved the gold left after buying (mean 4,875 a turn, off 9,225). Done:
+    - `procScaleBonuses` (on): every factor on a unit (time to the fight, unopposed, across water, cover, tiers, stealth,
+      out of supply, lift, morale) scales the facility bonus, capture value, resistance term and jiggle too (Proc.Worth:
+      `m`, `times`; `timeFactor` = toFight). A Conscript at x0.43: 192 + 1,461 bonus + 988 jiggle = 2,863 (was ~4,700).
+    - Buy nothing = `procMinValuePerFacility` (500) x our facilities: options below it are not bought; none above it, the
+      facility gives its gold up. (Replaces `procNothingWeight/Margin`.)
+    - Borrowing: those buying now keep exactly their unit's cost, the rest goes to a pool lent first (owed to no one),
+      then the savers saving for least.
+  - Results (traced, one game each): Channel new Blue 164,583 v 190,000, 26 units, no unit crossed (Red's army on Blue's
+    island: resistance 23,063; 1–2 units wanted across water), 5 supply units, 14 borrowings, gold left after buying 4,050
+    a turn; new Red 122,500 v 115,250, 4 boarded. ForestClearing new Blue 93,416 v 48,166 (12 rounds before: 90,666 v
+    52,500); Biomes 100,166 v 50,583. Debt keeps facilities from buying for long stretches (Blue, Channel: army bases and
+    the HQ in debt for many turns).
+  - Correction: no Red unit ever stood on Blue's home island in that game; the 23,063 "resistance" for Secure@3,6 is
+    the campaign's enemy power near the objective, which counts Red's army across the strait by distance. The HQ in that
+    game borrowed 4 times (all supply) and paid back 10 turns from its share (675–2,400); its weight on the 2 turns it chose
+    was 2.2 and 4.5. Debt moves who spends, not how much: gold spent a turn 10,275 with borrowing, 10,225 without.
+  - Weights 1+2+2 (`procFrontShare`, `procWantShare` 2) with the front term times `Proc.Helps` (the best option's own
+    factors: time to the fight, a lift needed, morale). Channel new Blue 169,500 v 170,416, 21 units bought in 20 rounds,
+    no infantry at all (Gunner AA 5, transport ships 3, supply 3, Recon 2, Gunboats 2, Bombers 2 ...), 1 unit boarded, no
+    island taken; army bases' mean weight 2.87 (the want term, not the front term); the HQ chose on 3 turns (the rest it
+    borrowed or paid back). New Red 140,500 v 151,666, nothing crossed. ForestClearing new Blue 87,083 v 38,166; Biomes
+    100,583 v 58,166. On Channel infantry is cut by the lift (x0.5), its time to the fight and the scaling of its bonuses,
+    then refused by the minimum (500 x 7 facilities = 3,500): no troops to carry over, no captures across water.
+  - Fixed (10 Nov, afternoon):
+    - Time to the fight across water (`procLiftTime`, `AIProduction.LiftField`): a land unit with no land way to the fight
+      counts walks at its own speed, the crossing at our transport ship's speed (the same for every land unit), getting in
+      at a naval yard; and its factor is divided by its weight (ship's room). Before, the whole sea route was divided by
+      the unit's own move (a Recon crossed three times as fast as a Grunt). `procNeedsLiftCut` now 1 (replaced).
+    - Fronts ask (`procFrontAsks`): a capturer when a front wants buildings (within 2 tiles of its target) and has none
+      of its own (worth income x objectiveHorizonTurns, + producer value; one planned is enough: `Proc.OnPlan`), the
+      fighting power it is short of (needPower − assignedPower, up to a unit's own), supply when its chain falls short, a
+      ship when across water with none free. A facility serves only a front asking it for something it can build. (There
+      was never a capture pressure in production: not at 0356ab5 either.)
+    - Enemy arrival (`campaignArrivalByLand`): enemy land units on other land than an objective arrive only within the room
+      of the enemy's seen transports (strongest first, within their move plus a ship's); remembered ones there take room too;
+      unseen ground on land not known to hold an enemy counts a quarter. Before, `CanArrive` used `map.Travel`, whose sea
+      route goes through our own naval yards (`SeaTravel`): Red's army counted as able to cross to Blue's objectives.
+  - Results, traced, one game each (material, new AI first): Channel new Blue 164,000 v 107,833 (20 buildings to 16;
+    north-west yard r17; 7 supply units; 12 boarded, 9 put down); new Red 175,583 v 131,750 (21 to 17; north island cities
+    (2,-10) r18, (1,-6) r19, yard r20; 6 supply units). ForestClearing new Blue 94,666 v 40,750; Biomes 95,833 v 51,583.
+
 ## 7. Open work, in the order I'd take it
 
 **First, when there is budget: why fog screens and defensive narrows make the AI worse.** Both are off by default since

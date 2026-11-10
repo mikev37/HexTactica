@@ -737,7 +737,7 @@ public static partial class Scenarios {
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
                  Put("TransportShip", a, -2, 0); Put("Supplies", a, -3, 1); Put("Tank", a, -3, 0); Put("Grunt", a, -2, 1);
                  Put("Grunt", o, 6, -5); },
-             "One ship takes troops and their supply together: a transport ship (4 slots) at Blue's naval yard with a grunt (1) aboard, a supply unit (weight 1) and a tank (2) beside it, Red's HQ across the channel and nothing of Blue's supply over there. Loaded, the ship acts first in Blue's turn, but it does not sail while either of them can still get aboard: in Blue's first turn all three get in; it sails full, and the supply aboard is linked off Red's shore, where the troops are put down.");
+             "One ship takes troops and their supply together: a transport ship (4 slots) at Blue's naval yard with a grunt (1) aboard, a supply unit (weight 1) and a tank (2) beside it, Red's HQ across the channel and nothing of Blue's supply over there. Loaded, the ship acts first in Blue's turn, but it does not sail while either of them can still get aboard: in Blue's first turn all three get in; it sails full, and the supply aboard is linked off Red's shore, where the troops are put down (the troops' landing ground beside the ship is supplied; with unifiedLogistics the ship then holds there as that shore's supply link).");
         make("ai-turn-order", "turnOrder", (a, o) => {
                  Put("Artillery", a, -2, 0); Put("APC", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 3);
                  Put("APC", a, -4, -2); Put("Grunt", a, -3, -2); Put("Grunt", a, -4, 0);
@@ -1937,6 +1937,7 @@ public static partial class Scenarios {
                     AIPlayer ap = l.ai.GetComponent<AIPlayer>();
                     List<string> said = new List<string>();
                     if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIProduction.DebugValues = Console.WriteLine;
+                    if (Environment.GetEnvironmentVariable("VALUES") != null) { AIProduction.ValueTrace = Console.WriteLine; AIProduction.ValueFilter = Environment.GetEnvironmentVariable("VALUES"); }
                     List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, ap.Profile), ap.Profile, x => said.Add(x.Trim()));
                     foreach (Unit u in got) if (Transporting.IsTransport(u) && u.Firepower <= 1) boughtTransport = true;   // by what it does, not its name
                     string res = string.Join(", ", got.ConvertAll(u => GameController.UnitName(u) + " at " + Pos(u.tile)).ToArray());
@@ -2112,7 +2113,7 @@ public static partial class Scenarios {
                 city.buildable = new List<Unit> { conscript };
                 hq.buildable = new List<Unit> { grunt };
                 Func<bool, string> buy = on => {
-                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.procurement = false;   // checks the time-to-fight rule on its own
                     prof.productionTimeToFront = on;
                     // (Valued by one exchange, as this was written for: under productionLifetime the Grunt is worth more
                     // over its life than the Conscript wherever it is built, so the contrast would not show.)
@@ -3511,6 +3512,11 @@ public static partial class Scenarios {
                     if (ship.tile != before && sup.trasnporter == ship && Transporting.CarriedWeight(ship) == ship.transportSlots) sailedFull = true;
                     SupplyNetwork.Result net = SupplyNetwork.Solve(a, false);
                     foreach (Unit u in new[] { tank, g }) if (u != null && u.trasnporter == null && u.tile != null && u.tile.x >= 3 && net.IsSupplied(u.tile)) landedSupplied = true;
+                    // (unifiedLogistics: the ship with the supply aboard holds off the shore as that shore's supply link, the troops
+                    // free to go on from there: their landing ground, beside the ship, is supplied.)
+                    bool putDown = (tank.trasnporter == null && tank.tile != null && tank.tile.x >= 3) || (g.trasnporter == null && g.tile != null && g.tile.x >= 3);
+                    if (putDown && sup.trasnporter == ship && ship.tile != null)
+                        foreach (HexTile x in ship.tile.neighbors) if (x != null && x.terrain != null && x.terrain.elevation >= 0 && x.x >= 3 && net.IsSupplied(x)) landedSupplied = true;
                     r.Add("T" + blueTurns + ": ship " + Pos(ship.tile) + " carrying " + Transporting.CarriedWeight(ship) + "/" + ship.transportSlots + "; supplies " + (sup.trasnporter == ship ? "aboard" : Pos(sup.tile)) + ", tank " + (tank.trasnporter == ship ? "aboard" : Pos(tank.tile)) + ", grunt " + (g.trasnporter == ship ? "aboard" : Pos(g.tile)));
                     if (landedSupplied) break;
                 }
@@ -4658,6 +4664,20 @@ public static partial class Scenarios {
         Console.WriteLine("duel on " + name + ": Blue " + (Environment.GetEnvironmentVariable("SET_BLUE") ?? "defaults")
                           + " | Red " + (Environment.GetEnvironmentVariable("SET_RED") ?? "defaults"));
         int startBlue = l.ai.units.Count, startRed = l.other.units.Count;
+        // Who held each building at the start, and the round each changed hands (printed at the end).
+        Dictionary<Building, Player> heldAtStart = new Dictionary<Building, Player>();
+        foreach (Building b in Building.all) if (b != null) heldAtStart[b] = b.owner;
+        Dictionary<Building, Player> heldNow = new Dictionary<Building, Player>(heldAtStart);
+        List<string> handsChanged = new List<string>();
+        Action<int> noteHands = round => {
+            foreach (Building b in Building.all) {
+                if (b == null || b.tile == null) continue;
+                Player was; heldNow.TryGetValue(b, out was);
+                if (was == b.owner) continue;
+                handsChanged.Add("r" + round + " " + b.name.Replace("(Clone)", "") + "(" + b.tile.x + "," + b.tile.y + ") " + (was != null ? (was == l.ai ? "Blue" : "Red") : "neutral") + "->" + (b.owner != null ? (b.owner == l.ai ? "Blue" : "Red") : "neutral"));
+                heldNow[b] = b.owner;
+            }
+        };
         int ditchBlue = 0, ditchRed = 0; int sorties = 0, landings = 0;
         Action<Unit> dh = u => { if (u.owner == l.ai) ditchBlue++; else ditchRed++; };
         Unit.Ditched += dh;
@@ -4666,6 +4686,7 @@ public static partial class Scenarios {
         // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
         Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
         Unit.RanInto += rh; Unit.Attacking += sh;
+        if (Environment.GetEnvironmentVariable("VALUES") != null) { HexTactica.AI.AIProduction.ValueTrace = x => Console.WriteLine("   " + x); HexTactica.AI.AIProduction.ValueFilter = Environment.GetEnvironmentVariable("VALUES"); }
         if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIProduction.DebugValues = x => { if (x.Contains("sea lift")) Console.WriteLine("   value: " + x); }; HexTactica.OldAI.OldAIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; HexTactica.AI.AICampaign.Debug = x => { if (x.StartsWith("not taken on") || x.StartsWith("given up") || x.StartsWith("reserve drafts")) Console.WriteLine("   campaign: " + x); }; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
         double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
         // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.
@@ -4694,6 +4715,7 @@ public static partial class Scenarios {
                 b.Sort(string.CompareOrdinal);
                 Console.WriteLine("  board after turn " + turn + ": " + string.Join(" | ", b.ToArray()));
             }
+            noteHands(gc.days);
             if (gc.activePlayer == l.ai || gc.gameOver)
                 Console.WriteLine(string.Format("  round {0,2}: Blue {1,2} units, material {2,6} | Red {3,2} units, material {4,6} | out of supply (unit-turns so far) Blue {5} Red {6}, lost to attrition Blue {7} Red {8}",
                     gc.days, Alive(l.ai), ScenarioFile.Material(l.ai), Alive(l.other), ScenarioFile.Material(l.other),
@@ -4716,6 +4738,7 @@ public static partial class Scenarios {
                 l.ai.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.ai), bB, iB, l.ai.money,
                 l.other.units.FindAll(u => u != null && u.Strength > 0).Count, ScenarioFile.Material(l.other), bR, iR, l.other.money));
         }
+        Console.WriteLine("buildings that changed hands: " + (handsChanged.Count > 0 ? string.Join(", ", handsChanged.ToArray()) : "none"));
         Console.WriteLine(string.Format("transports: supply put down Blue {0} Red {1}; fighting units boarded Blue {2} Red {3}, put down Blue {4} Red {5}; unit-turns aboard Blue {6} Red {7}",
             supplyDrops[0], supplyDrops[1], boards[0], boards[1], drops[0], drops[1], aboardTurns[0], aboardTurns[1]));
         string folder = HexTactica.Harness.GameLog.Folder;

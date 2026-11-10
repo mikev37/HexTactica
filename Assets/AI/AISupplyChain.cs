@@ -75,7 +75,14 @@ namespace HexTactica.AI {
         /// <summary>Set (AILogistics): fighting units Harm counts too when they would lose supply — a campaign front's and any in contact.</summary>
         [System.ThreadStatic] public static HashSet<Unit> ProtectUnits;
 
-        static bool IsTruck(Unit t) { return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1; }
+        /// <summary>A transport that can hold supply where it stops: any but an aircraft that must go back to a runway (unifiedLogistics: it flew a supply unit out and home again for fuel with it aboard).</summary>
+        static bool IsTruck(Unit t) {
+            if (t == null || t.tile == null || !Transporting.IsTransport(t) || t.Firepower > 1) return false;
+            if (Unified && LocomotionRules.IsAirborne(t.locomotion) && LocomotionRules.NeedsBase(t.locomotion) && !LocomotionRules.ResuppliedInSupply(t.locomotion)) return false;
+            return true;
+        }
+        /// <summary>unifiedLogistics, for the chain being made.</summary>
+        [System.ThreadStatic] static bool Unified;
 
         /// <summary>
         /// A supply leap for <paramref name="h"/>: the truck it is aboard, or a free truck it can board
@@ -176,6 +183,7 @@ namespace HexTactica.AI {
         /// whole army's chain toward the nearest enemy HQ.
         /// </summary>
         public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
+            Unified = map.profile.unifiedLogistics;
             Plan plan = MakeOne(map, fixedHubs, objective, only, army, null);
             if (NoLeaps || !map.profile.supplyLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
             // Stretched, with trucks to hand: try each supply unit on foot that a truck could take now
@@ -244,7 +252,8 @@ namespace HexTactica.AI {
             Plan plan = new Plan();
             plan.objective = objective ?? Objective(map);
             if (plan.objective == null) return plan;
-            Dictionary<HexTile, int> toObj = map.LandSteps(plan.objective);
+            Unified = map.profile.unifiedLogistics;
+            Dictionary<HexTile, int> toObj = map.SupplySteps(plan.objective);
             System.Func<HexTile, int> steps = t => { int s; return t != null && toObj.TryGetValue(t, out s) ? s : int.MaxValue; };
 
             // The army's front: the fighting unit nearest the objective over land.
@@ -515,6 +524,7 @@ namespace HexTactica.AI {
             int best = int.MaxValue;
             foreach (KeyValuePair<HexTile, int> kv in net.depth) {
                 if (kv.Value <= 0) continue;
+                if (kv.Key.terrain != null && kv.Key.terrain.elevation < 0) continue;   // supply is for the land (steps over water: unifiedLogistics)
                 int s;
                 if (toObj.TryGetValue(kv.Key, out s) && s < best) best = s;
             }

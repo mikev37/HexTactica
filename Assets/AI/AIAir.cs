@@ -39,11 +39,27 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Would <paramref name="u"/>, a transport, ending its turn on <paramref name="t"/> take one of our building slots (keepBuildSlotsClear)? Its own tile counts too: it should leave.</summary>
+        /// <summary>Short of fuel, ammunition, supplies or strength: it needs a base's service.</summary>
+        static bool NeedsService(Unit u) {
+            return (u.fuelMax > 0 && u.fuel < u.fuelMax) || (u.ammoMax > 0 && u.ammo < u.ammoMax) || (u.suppliesMax > 0 && u.supplies < u.suppliesMax) || u.Strength < 6;
+        }
+
         public static bool BlocksBuildSlot(Unit u, HexTile t, AIMap map) {
-            if (u == null || t == null || map == null || map.profile == null || !map.profile.keepBuildSlotsClear) return false;
-            if (!Transporting.IsTransport(u) || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return false;
+            if (u == null || t == null || map == null || map.profile == null) return false;
             Building b = t.building;
-            return b != null && b.owner == u.owner && b.CanProduce;
+            if (b == null || b.owner != u.owner || !b.CanProduce) return false;
+            // offFacilities: nobody ends on it (purchases allowed), but an aircraft or ship it services.
+            if (map.profile.offFacilities && (GameController.gc == null || GameController.gc.purchasesAllowed)) {
+                if (u.tile == t) return false;   // (already there: standing still is not a move onto it)
+                // (Aircraft and ships it services: only there do they land, rearm or refuel — when it will not build this turn
+                // (saving, or buying nothing: it then gives its budget to the others), or when they need it now.)
+                if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u)
+                    && (!map.profile.procBudgets || !AIProduction.WillBuild(u.owner, b) || NeedsService(u))) return false;
+                return b.Purchasable().Count > 0;
+            }
+            if (!map.profile.keepBuildSlotsClear) return false;
+            if (!Transporting.IsTransport(u) || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return false;
+            return true;
         }
 
         /// <summary>Remove the stops another aircraft has reserved for landing this turn (any unit; an aircraft parked there must lift off).</summary>

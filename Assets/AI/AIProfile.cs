@@ -129,6 +129,14 @@ namespace HexTactica.AI {
         public bool productionValueByIncome = true;
         [Tooltip("Campaign: a task force needs no supply unit within one transport move of our supplied ground, and one per transport move beyond that (instead of relays plus spread); spare supply units are no longer spread over task forces.")]
         public bool campaignHubNeedSimple = true;
+        [Tooltip("Campaign: an objective with none of our supplied ground on its land counts its supply need over the water, as supply goes there: straight over in the moves of a ship or aircraft that carries a supply unit (ours, or one we can build). Off: the whole route, in truck moves (an island wanted 32 supply units).")]
+        public bool campaignSupplyByTransport = true;
+        [Tooltip("Campaign: enemy land units on other land than an objective count toward it only as the enemy's seen transports (ships, aircraft) can carry them — their room, the strongest first, within their move plus a ship's over the turns; never by our ships or ones they might build. Unseen ground on land not known to hold an enemy counts a quarter. Off: by the travel time, sea included through our own naval yards.")]
+        public bool campaignArrivalByLand = true;
+        [Tooltip("One logistics chain over land, sea and air (AILogistics, AISupplyChain). A front whose land holds no ground our supply buildings reach measures 'forward' over land and water (AIMap.SupplySteps), so its chain links ride ships (or aircraft that need no runway) to stand linked off its shore, in a convoy if far; its rides and its links' transports may be ships; its own supply waits at the naval yard it embarks from and rides along in a troop ship bound for land without our supply, staying aboard as a link once the troops are ashore. Aircraft that must return to a runway never hold supply. Off: the chain is over land only (the sea lift's own supply ride, AIPlayer.SeaLift*).")]
+        public bool unifiedLogistics = true;
+        [Tooltip("Production: a supply unit is worth every unit of ours out of supply (each one's value, as every rider waiting asks for a transport) and every front whose supply is short; a transport ship for supply over water, every unit ashore without its supply ship.")]
+        public bool supplyAskPerUnit = false;
         [Tooltip("Campaign: a chokepoint or junction in our vision is held (achieved, released, like a building taken); out of sight it is a Hold objective again only once it has gone dark for fogUnknownTurns, or an enemy unit seen or remembered comes within fogStaleRadius of it.")]
         public bool campaignHoldContested = true;
         [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
@@ -891,6 +899,84 @@ namespace HexTactica.AI {
         public bool productionPossibleFoes = true;
         [Tooltip("Production: a unit is not built on a tile where the enemy we see or remember would destroy it next turn.")]
         public bool productionAvoidFire = true;
+        [Tooltip("Procurement: one plan over every facility (the most value in all for the gold), fronts' pressure on what they want, a bonus per facility that can build a kind, saving only for supply, a gap or transit within a wait the map sets. Off: one unit at a time by value per gold.")]
+        public bool procurement = true;
+        [Tooltip("Procurement: added to a kind's value for each facility (not under fire) that can build it, pushed back by the resistance its front expects.")]
+        public float procFacilityBonus = 1000f;
+        [Tooltip("Procurement: the most a unit is saved for (the longest wait is the turns to save this much at 70% of the map's income).")]
+        public float procSaveMost = 15000f;
+        [Tooltip("Procurement: a front with no resistance multiplies infantry and troop transports by this.")]
+        public float procNoResistance = 1.5f;
+        [Tooltip("Procurement: a front short of its units with no resistance: the cheapest fighting unit gains up to this share (cheapest cost over its cost).")]
+        public float procCheapBonus = 1f;
+        [Tooltip("Procurement: across water from its facility, a front multiplies aircraft, ships and ranged units by this.")]
+        public float procAcrossWater = 1.5f;
+        [Tooltip("Procurement: a front with water mixed in (over a fifth of the ground near it) multiplies aircraft and amphibious units by this.")]
+        public float procMixedWater = 1.3f;
+        [Tooltip("Procurement: a stealthy unit's value is multiplied by this.")]
+        public float procStealth = 1.2f;
+        [Tooltip("Procurement: past this many lower-tier units to one of the next tier up, the next tier up gains half again.")]
+        public float procTierRatio = 5f;
+        [Tooltip("Procurement: a production building within two turns of a facility, capturable, adds this to what capturing units built there are worth (plus its income over objectiveHorizonTurns).")]
+        public float procCaptureProducerValue = 5000f;
+        [Tooltip("Procurement: below this much gold, an empty reserve asks for troop transports (to fill with infantry).")]
+        public int procReserveRich = 15000;
+        [Tooltip("Procurement: a fixed jiggle, up to this, added to a unit's value (by its kind, its facility and the day).")]
+        public int procJiggle = 2000;
+        [Tooltip("Procurement: every transport that does not fight (truck, APC, helicopter, plane, ship) is worth what it carries: our units it can carry that are far from where they are going (or across water), each one's value times the turns sooner it gets them there than they get there themselves, on each one's own path over the terrain; and a supply unit waiting for a ride. Off: ground trucks for riders and supply, ships for the sea lift, aircraft only for riders.")]
+        public bool procCargo = true;
+        [Tooltip("Procurement: an air tanker (or supply ship) is worth our aircraft (or ships) running low on fuel or supplies (below procResupplyLow of their most): each one's value times how low it is, shared with the tankers we have.")]
+        public bool procResupply = true;
+        [Tooltip("Procurement (procResupply): fuel or supplies below this share of the most count as running low.")]
+        public float procResupplyLow = 0.5f;
+        [Tooltip("Production: the turns to the fight are counted over the terrain by each unit's own movement (scramble, roads, what it can enter; aircraft ignore terrain), not in tiles.")]
+        public bool procTerrainReach = true;
+        [Tooltip("Production (productionLifetime): what a unit takes in a turn includes the return fire from each enemy it would attack from beside it (none for one that fires from range, or at one that cannot fire back at it).")]
+        public bool productionRetaliation = true;
+        [Tooltip("Procurement: each facility has its own budget — the income split evenly, a facility serving a high-priority front or offering what is wanted most getting more by procFrontShare and procWantShare — kept from turn to turn. Each buys now, or saves for something better within the longest wait, its value cut by procWaitBase^-(procWaitPower x turns waited). Facilities saving for the same unit pool their savings and the highest-priority one builds it. A facility the enemy holds or can destroy a new unit on gives its savings to the others. Off: one plan over all the gold.")]
+        public bool procBudgets = true;
+        [Tooltip("Procurement (procBudgets): a facility's weight in the split of the gold is 1, plus this times its front's priority (over the top front's) times how much its best unit helps that front (its factors: time to the fight, a lift needed, morale), plus procWantShare times its best option's value (over the best anywhere).")]
+        public float procFrontShare = 2f;
+        [Tooltip("Procurement (procBudgets): see procFrontShare.")]
+        public float procWantShare = 2f;
+        [Tooltip("Procurement (procBudgets): the facilities that can buy now keep their savings; those buying now keep what their unit costs and put the rest in a pool; of those saving, the one whose best buy within its savings, the pool and the savers' together is worth most buys it now, from the pool first, then on the savings of the savers saving for least (each only while what it saves for is worth less than this buy), and owes them: while in debt it pays its share of the gold back each turn, and neither buys nor saves.")]
+        public bool procBorrow = true;
+        [Tooltip("Procurement (procBudgets): an option worth less than this times our number of facilities is not bought (the more facilities, the likelier another builds something good); a facility with none above it buys nothing and gives its gold up.")]
+        public float procMinValuePerFacility = 500f;
+        [Tooltip("Procurement: every factor that scales a unit's value (its time to the fight, no resistance, across water, cover, tiers, stealth, out of supply, a lift needed, its kind's morale) scales the facility bonus, the capture value and the jiggle added to it too. Off: they are added unscaled.")]
+        public bool procScaleBonuses = true;
+        [Tooltip("Procurement: a land fighting unit whose front is across water from its facility (it cannot get there by itself; it needs a lift) is worth this much. 1: off.")]
+        public float procNeedsLiftCut = 1f;
+        [Tooltip("Procurement: each kind of fighting unit is worth its morale: each turn down by procMoraleDrop times the share of our units of that kind held up for want of supply or a lift (waiting to cross, out of supply and doing nothing), up toward 1 by procMoraleRise times the share that did something for the front (attacked, captured), and back toward 1 by procMoraleRecover; never under procMoraleFloor.")]
+        public bool procKindMorale = true;
+        [Tooltip("Production: a land unit with no way to the fight over land counts its turns there going by ship: its walks at its own speed, the crossing at our transport ship's (the same for every land unit), getting in at a naval yard (seaLiftBoardSteps); and it is worth its weight less (the ship's room it takes: a tank two seats, a grunt one). Off: the whole way, sea included, at its own speed (a tank crossed twice as fast as a grunt).")]
+        public bool procLiftTime = true;
+        [Tooltip("Procurement: each front asks for what it needs — a unit that can capture when it wants a building and has none of its own (worth the buildings within 2 tiles of it: income x objectiveHorizonTurns, + procCaptureProducerValue for a producer), the fighting power it is short of (up to a unit's own), supply when its chain falls short, a ship when across water with none free; a facility serves only a front asking it for something it can build (none: it serves none, no front bonus).")]
+        public bool procFrontAsks = true;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleDrop = 0.3f;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleRise = 0.5f;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleRecover = 0.05f;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleFloor = 0.2f;
+        [Tooltip("Procurement (procBudgets): a unit saved for is worth its value times procWaitBase^-(procWaitPower x turns to wait ^ procWaitExponent).")]
+        public float procWaitBase = 1.1f;
+        [Tooltip("Procurement (procBudgets): see procWaitBase.")]
+        public float procWaitPower = 4f;
+        [Tooltip("Procurement (procBudgets): the turns waited are raised to this power in the discount (1: procWaitBase^-(procWaitPower x turns); 2: the first turn costs little, each more far more).")]
+        public float procWaitExponent = 1f;
+        [Tooltip("Procurement (procBudgets): what a facility was saving for last turn is worth this much more (the choice holds).")]
+        public float procStick = 1.25f;
+        [Tooltip("Procurement (procBudgets): a facility's longest wait is the turns to save procSaveMost on its share of this much of the map's income plus the rest of ours (0.5: half the map's, half ours); never less than the turns to save for a supply unit on its share of our income.")]
+        public float procWaitMapShare = 0.5f;
+        [Tooltip("Procurement (procBudgets): a facility whose best option is worth more than the mean of every facility's best (what something failed for want of: supply for a front short of it, transports for units waiting to cross) gains this times (its best over the mean, less 1) in weight, beyond procFrontShare and procWantShare. 0: off.")]
+        public float procDemandWeight = 1f;
+        [Tooltip("Production: an amphibious unit (a marine) is not built at a facility with no water within this many tiles (as anti-air is not built against an enemy with no aircraft). 0: off.")]
+        public int productionAmphibiousWater = 12;
+        [Tooltip("Every move the AI makes (a walking supply unit, a transport, anyone): it does not end on one of our facilities that can build, while another tile on its way will do. Aircraft and ships the facility services are exempt (only there do they land, rearm or refuel).")]
+        public bool offFacilities = true;
         [Tooltip("Units sent scouting (fogThreat): those that see the most for the least, each toward where it would see most of what the fog may hide (AIObjectives.AssignScouts). 0: none.")]
         [Range(0, 4)]
         public int scoutUnits = 0;
