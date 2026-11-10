@@ -219,8 +219,9 @@ public static class SupplyNetwork {
                     // Planned aboard a transport at that tile (a supply leap).
                     if (!CarriedLinked(PlannedAboard[hub], at, hub, hubs, result, activated, movedHub, hypotheticalTile, moved)) continue;
                 } else if (hub.myUnit != null && hub.myUnit.trasnporter != null) {
-                    // Aboard: linked as its carrier links (CarriedLinked: ground in a move, or a convoy).
-                    if (!CarriedLinked(hub.myUnit.trasnporter, at, hub, hubs, result, activated, movedHub, hypotheticalTile, moved)) continue;
+                    // Aboard: linked as its carrier links (CarriedLinked: ground in a move, or a convoy) — the outermost
+                    // carrier, for supply aboard a transport aboard another (CarrierOf).
+                    if (!CarriedLinked(carrier, at, hub, hubs, result, activated, movedHub, hypotheticalTile, moved)) continue;
                 } else if (!result.IsSupplied(at)) continue;
 
                 activated.Add(hub);
@@ -241,6 +242,11 @@ public static class SupplyNetwork {
             }
         }
 
+        // Water is never supplied ground (a harbor is: it stands on bridge ground). A ship carrying supply covers the
+        // water it floats on as it spreads (its flood starts there), but neither it nor anything else takes supply from
+        // the sea: a ship is in supply only in harbor, and lives on its own stock at sea (Player.Aloft). Linking never
+        // read the sea (a carrier links by its own move, a supply boat through the boats linked before it).
+        StripWater(result);
         if (RecordLinked) result.linked = new Dictionary<HexTile, int>(result.depth);
         // Supply from the HQ's network, before any store is drawn on (for StoreOnlyWhenNeeded).
         Dictionary<HexTile, int> fromNetwork = applyDrain && StoreOnlyWhenNeeded ? new Dictionary<HexTile, int>(result.depth) : null;
@@ -382,6 +388,17 @@ public static class SupplyNetwork {
         return hub.myUnit != null ? hub.myUnit.tile : null;
     }
 
+    static readonly List<HexTile> wet = new List<HexTile>();
+    /// <summary>Drop the water from <paramref name="r"/>: no sea tile is supplied (see Solve).</summary>
+    static void StripWater(Result r) {
+        lock (wet) {
+            wet.Clear();
+            foreach (HexTile t in r.depth.Keys) if (t != null && t.terrain != null && t.terrain.elevation < 0) wet.Add(t);
+            foreach (HexTile t in wet) r.depth.Remove(t);
+            wet.Clear();
+        }
+    }
+
     static int StableId(SupplyPoint sp) {
         if (sp == null || sp.myUnit == null || sp.myUnit.tile == null) return int.MaxValue;
         HexTile t = sp.myUnit.tile;
@@ -449,7 +466,7 @@ public static class SupplyNetwork {
     }
 
     static void FloodFromHub(SupplyPoint hub, HexTile origin, Result result) {
-        FloodFromHub(hub, origin, result, hub != null && hub.myUnit != null ? hub.myUnit.trasnporter : null);
+        FloodFromHub(hub, origin, result, hub != null && hub.myUnit != null ? Outermost(hub.myUnit.trasnporter) : null);
     }
 
     /// <summary>
@@ -483,8 +500,19 @@ public static class SupplyNetwork {
     static Unit CarrierOf(SupplyPoint hub, Dictionary<SupplyPoint, HexTile> moved) {
         if (hub == null || hub.myUnit == null) return null;
         Unit t;
-        if (PlannedAboard != null && moved != null && moved.ContainsKey(hub) && PlannedAboard.TryGetValue(hub, out t)) return t;
-        return hub.myUnit.trasnporter;
+        if (PlannedAboard != null && moved != null && moved.ContainsKey(hub) && PlannedAboard.TryGetValue(hub, out t)) return Outermost(t);
+        return Outermost(hub.myUnit.trasnporter);
+    }
+
+    /// <summary>
+    /// What carries <paramref name="t"/> and everything in it: <paramref name="t"/> itself, or what <paramref name="t"/>
+    /// rides in, and so on out. Supply in a truck in a ship is carried by the ship: it links and spreads as the
+    /// ship's does (ship rules), not the truck's (which cannot move at sea).
+    /// </summary>
+    public static Unit Outermost(Unit t) {
+        int guard = 0;
+        while (t != null && t.trasnporter != null && guard++ < 8) t = t.trasnporter;
+        return t;
     }
 
     /// <summary>
@@ -573,13 +601,14 @@ public static class SupplyNetwork {
         int range = hub.range + u.moveRange;
         int scramble = u.terrainScramble;
         Locomotion loco = u.locomotion;
-        if (u.trasnporter != null) {
+        Unit carrier = Outermost(u.trasnporter);
+        if (carrier != null) {
             // Carried a move, then spreading its own range.
-            range = hub.range + u.trasnporter.moveRange;
-            scramble = Mathf.Max(scramble, u.trasnporter.terrainScramble);
-            loco = u.trasnporter.locomotion;
+            range = hub.range + carrier.moveRange;
+            scramble = Mathf.Max(scramble, carrier.terrainScramble);
+            loco = carrier.locomotion;
         }
-        HexTile origin = u.trasnporter != null && u.trasnporter.tile != null ? u.trasnporter.tile : u.tile;
+        HexTile origin = carrier != null && carrier.tile != null ? carrier.tile : u.tile;
         Flood(origin, range, scramble, u.owner, loco, r);
         return r;
     }

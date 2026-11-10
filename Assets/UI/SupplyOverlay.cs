@@ -183,6 +183,17 @@ public class SupplyOverlay : MonoBehaviour {
                 top = Climb(at, f, points);
                 // Several supply units can share a tile (all aboard one transport): each in turn.
                 source = HubOn(p, top, preview, seen);
+                // Up on the shore with nothing there: the supply came from a ship beside it (the sea is never supplied,
+                // so the field's top is the land it borders, not the water it floats on).
+                if (source == null && top != null) {
+                    HexTile ship = null; SupplyPoint aboard = null;
+                    foreach (HexTile n in top.neighbors) {
+                        if (n == null || n.terrain == null || n.terrain.elevation >= 0) continue;
+                        SupplyPoint h = Carried(HubOn(p, n, preview, seen));
+                        if (h != null && (ship == null || CombatMath.Precedes(n, ship))) { ship = n; aboard = h; }
+                    }
+                    if (ship != null) { points.Add(ship); top = ship; source = aboard; }
+                }
             }
             if (source == null || source.producer) break;   // a building or the HQ: the root
             seen.Add(source);

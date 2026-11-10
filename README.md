@@ -27,5 +27,12 @@ A supply unit aboard something links to its side's network through what carries 
   aircraft; an aircraft links through a linked ship that lies beside land. A ship tries its convoy first, so its supply
   line follows the water.
 - What a carried supply unit then gives: its own range around its carrier; a ship only while beside land, an aircraft
-  only over land. Water is never supplied ground.
+  only over land. Water is never supplied ground: no sea tile is in anyone's supply, not even the one a ship carrying
+  supply floats on. A ship is in supply only in harbor; at sea it lives on its own supplies (and mends while it has
+  them).
+- Supply aboard a transport aboard another (a truck in a ship) is carried by the outermost: it links and spreads by the
+  ship's rules.
+- What a ship carries is resupplied at the start of the turn as on supplied ground (healed, rearmed, refuelled,
+  restocked) while the ship has supplies of its own or a supply ship beside it restocks it, or in harbor; once the
+  ship's supplies are gone, its cargo starves.
 - An HQ supplies only the side it began with: a captured HQ supplies nobody until it is retaken.

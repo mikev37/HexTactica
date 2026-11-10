@@ -92,7 +92,8 @@ public class Player : MonoBehaviour
             c.attackedThisTurn = false;
             if (fed == Fed.Resupplied) Resupplied(c, true);
             else if (fed == Fed.Starved || (u.suppliesMax > 0 && u.supplies <= 0)) Starve(c);
-            // Aloft or at sea with supplies aboard: carried along, neither fed nor starving.
+            // Aloft (an aircraft away from base): carried along, neither fed nor starving. (A ship with supplies is
+            // Resupplied for its cargo: UpkeepOne.)
             CargoUpkeep(c, fed);
         }
     }
@@ -118,7 +119,14 @@ public class Player : MonoBehaviour
             // them at the start of the turn fills them instead); out of fuel, they are ditched.
             // Helicopters are also resupplied on any tile in supply, like ground units.
             if (LocomotionRules.ResuppliedInSupply(u.locomotion) && u.tile.isSupplied(this)) { Resupplied(u, true); return Fed.Resupplied; }
-            if (LocomotionRules.NeedsBase(u.locomotion)) { Aloft(u, roster); return Fed.Aloft; }
+            if (LocomotionRules.NeedsBase(u.locomotion)) {
+                // A ship at sea is supplied while it has supplies of its own, or a supply ship beside it restocks it:
+                // what it carries is then resupplied as on supplied ground (healed, rearmed, refuelled, restocked),
+                // as a land transport's cargo is on supplied ground. (The ship itself only mends: Aloft.)
+                bool stocked = LocomotionRules.IsNaval(u.locomotion) && (u.supplies > 0 || TankerBeside(u, roster) != null);
+                Aloft(u, roster);
+                return stocked && u.Strength > 0 ? Fed.Resupplied : Fed.Aloft;
+            }
 
             if (u.tile.isSupplied(this)) {
                 Resupplied(u, !selfSupplying.Contains(u));
