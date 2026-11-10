@@ -652,11 +652,13 @@ public class AIPlayer : MonoBehaviour, IAIController {
             if (h == null || h.producer) continue;
             Unit t = null;
             HexTactica.AI.AILogistics.Ride ride;
-            if (u.trasnporter != null && !AIAssault.SeaLiftShip(u.trasnporter, map)) t = u.trasnporter;
+            Unit alongShip;
+            if (u.trasnporter != null && (Profile.unifiedLogistics || !AIAssault.SeaLiftShip(u.trasnporter, map))) t = u.trasnporter;
+            else if (u.trasnporter == null && logistics != null && logistics.alongs.TryGetValue(h, out alongShip) && alongShip != null) t = alongShip;
             else if (logistics != null && logistics.chainTrucks.TryGetValue(h, out t) && t != null) { }
             else if (logistics != null && logistics.rides.TryGetValue(h, out ride) && ride.truck != null) t = ride.truck;
             else if (u.trasnporter == null && ghostRides.TryGetValue(u, out t) && t != null) { }
-            else if (u.trasnporter == null && Profile.seaLift) t = SeaLiftShipFor(u);
+            else if (u.trasnporter == null && Profile.seaLift && !Profile.unifiedLogistics) t = SeaLiftShipFor(u);
             if (t != null && queue.Contains(t) && !forSupply.Contains(t)) { truckOf[u] = t; forSupply.Add(t); }
         }
         // Chosen for supply: riders may take only a seat the supply unit leaves free (AIAssault.Board, SpareSlot).
@@ -977,18 +979,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (logistics != null) foreach (Unit tr in logistics.chainTrucks.Values) reservedTransports.Add(tr);
         // Transports earmarked for supply this turn (by what they carry, AIAssault.SupplyTransports): supply first, troops after.
         supplyTransports = Profile.assaultRides ? AIAssault.SupplyTransports(player, map, reservedTransports) : new HashSet<Unit>();
-        // Supply over water (seaSupplyChain): laden ships off the shores of land our supply does not reach, in convoys back
-        // to our supplied shore; empty ships and supply units claimed to make them. Theirs before anyone else's.
-        seaSupply = null;
-        if (Profile.seaSupplyChain) {
-            HashSet<SupplyPoint> links = new HashSet<SupplyPoint>();
-            if (logistics != null) foreach (SupplyPoint h in logistics.chainOf.Keys) links.Add(h);
-            AISeaSupply.Debug = Trace;
-            seaSupply = AISeaSupply.Plan(player, map, Profile, reservedTransports, links, Profile.seaLift ? (System.Func<Unit, HexTile>)GroundOf : null);
-            AISeaSupply.Debug = null;
-            foreach (Unit sh in seaSupply.shipOf.Keys) { reservedTransports.Add(sh); supplyTransports.Add(sh); }
-            foreach (Unit sh in seaSupply.troopShipHub.Keys) supplyTransports.Add(sh);   // a seat kept for the supply unit riding along (AIAssault.SpareSlot)
-        }
+        // Riding along (unifiedLogistics): the troop ship keeps a seat for its supply unit (AIAssault.SpareSlot).
+        if (logistics != null) foreach (Unit sh in logistics.alongs.Values) if (sh != null) supplyTransports.Add(sh);
         if (Trace != null && Profile.assaultRides) {
             List<string> st = new List<string>(); foreach (Unit t in supplyTransports) st.Add(t.name.Replace("(Clone)", "") + D(t.tile));
             st.Sort(string.CompareOrdinal);
@@ -1049,7 +1041,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             foreach (KeyValuePair<SupplyPoint, HexTile> kv in chainPlan.links) if (kv.Value != kv.Key.myUnit.tile) map.chainTiles[kv.Value] = kv.Key.myUnit;
             // Supply units move after everyone else, rearmost first: the army clears the road and
             // goes ahead, and each link moves up into the supply of the links behind it.
-            Dictionary<HexTile, int> toObj = chainPlan.objective != null ? map.LandSteps(chainPlan.objective) : null;
+            Dictionary<HexTile, int> toObj = chainPlan.objective != null ? map.SupplySteps(chainPlan.objective) : null;
             List<Unit> hubsLast = new List<Unit>();
             foreach (Unit u in queue) { SupplyPoint sp = u.Hub; if (sp != null && !sp.producer) hubsLast.Add(u); }
             System.Func<Unit, int> st = u => { int s; return toObj != null && u.tile != null && toObj.TryGetValue(u.tile, out s) ? s : int.MaxValue; };
@@ -1206,11 +1198,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// Pick an action for one unit. Supply hubs and transports get the joint planner;
     /// everything else goes to its role-specific tactical decider.
     /// </summary>
-    AISeaSupply seaSupply;
-
     public AIAction DecideFor(Unit unit) {
-        // Supply over water (seaSupplyChain): its ships and supply units do what its plan says.
-        if (seaSupply != null) { AIAction? sea = seaSupply.Decide(unit); if (sea.HasValue) return sea.Value; }
         // A supply unit cut off from the network (cutOffSeeksSupply) first heads back toward supplied ground or a transport.
         if (Profile.cutOffSeeksSupply && map != null && unit.Hub != null && !unit.Hub.producer && unit.trasnporter == null && unit.tile != null) {
             AIAction? back = SeekSupply(unit);
@@ -1494,7 +1482,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (Profile.seaLift && LocomotionRules.IsNaval(truck.locomotion)) {
             // Troops aboard too (a convoy): it goes as their ride goes (the assault ride), its supply aboard throughout.
             if (AIAssault.Riders(truck).Count > 0) return false;
-            AIAction? sl = SeaLiftSupply(truck, hub);
+            // (unifiedLogistics: the logistics chain places it, as any link aboard a transport.)
+            AIAction? sl = Profile.unifiedLogistics ? null : SeaLiftSupply(truck, hub);
             if (sl.HasValue) { action = sl.Value; return true; }
         }
         // Relieved (Relieve): the step it was relieved to make.
@@ -1662,11 +1651,12 @@ public class AIPlayer : MonoBehaviour, IAIController {
 
             // Sea lift: the objective across water. Aboard a ship it rides it (the ship takes it to the landing,
             // SeaLiftSupply); on the shore, it gets into a ship with room for it.
-            if (Profile.seaLift && unit.trasnporter == null && !LocomotionRules.IsNaval(unit.locomotion)) {
+            // (unifiedLogistics: the logistics decides — riding along, a link at sea.)
+            if (Profile.seaLift && !Profile.unifiedLogistics && unit.trasnporter == null && !LocomotionRules.IsNaval(unit.locomotion)) {
                 AIAction? sb = SeaLiftBoard(unit);
                 if (sb.HasValue) return sb.Value;
             }
-            if (Profile.seaLift && AIAssault.SeaLiftShip(unit.trasnporter, map))
+            if (Profile.seaLift && !Profile.unifiedLogistics && AIAssault.SeaLiftShip(unit.trasnporter, map))
                 return AIAction.Wait(unit, "sea lift: rides its ship to the landing");
 
             // A link of the supply backbone (supplyBackbone): aboard its transport, on the way to its place or holding it.
@@ -2454,6 +2444,21 @@ public class AIPlayer : MonoBehaviour, IAIController {
     bool LogisticsAction(SupplyPoint hub, out AIAction action) {
         action = default(AIAction);
         Unit unit = hub.myUnit;
+        // Riding along (unifiedLogistics): a troop ship at its front's yard bound for land without our supply — in it.
+        Unit along;
+        if (logistics != null && logistics.alongs.TryGetValue(hub, out along) && along != null && along.tile != null) {
+            if (unit.trasnporter == along) { action = AIAction.Wait(unit, "logistics: rides along with the troops to land without our supply"); return true; }
+            if (unit.trasnporter == null) {
+                if (Transporting.CanBoardFrom(along, unit)) { action = AIAction.Board(unit, along, unit.tile, "logistics: gets into the troop ship to ride along to land without our supply"); return true; }
+                MoveField walk = map.ReachThisTurn(unit);
+                HexTile beside = null;
+                foreach (HexTile n in along.tile.neighbors) {
+                    if (n == null || !walk.ReachableThisTurn(n) || (n.occupier != null && n.occupier != unit) || !Transporting.CanBoardFromTile(along, unit, n)) continue;
+                    if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
+                }
+                if (beside != null) { action = AIAction.Board(unit, along, beside, "logistics: gets into the troop ship to ride along to land without our supply"); return true; }
+            }
+        }
         // A rider got in this turn for the ride planned when the turn began (supplySpareSeat): that ride is kept, not re-planned
         // into a hold (the rider was let out again having gone nowhere).
         if (Profile.supplySpareSeat && unit.trasnporter != null && unit.trasnporter.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) {
@@ -2478,6 +2483,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
             foreach (SupplyPoint h in t.chain) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
             HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
             foreach (Unit tr in transportAssignments.Keys) busy.Add(tr);
+            // (unifiedLogistics: its own ship is not busy for it — it gets in and the ship sails this turn, as the chain planned,
+            // rather than getting in and holding at the yard a turn.)
+            Unit ownShip;
+            if (Profile.unifiedLogistics && unit.trasnporter == null && logistics.chainTrucks.TryGetValue(hub, out ownShip) && ownShip != null && LocomotionRules.IsNaval(ownShip.locomotion)
+                && !transportAssignments.ContainsKey(ownShip)) busy.Remove(ownShip);
             AISupplyChain.Plan now = HexTactica.AI.AILogistics.Chain(map, t, t.chain, moved, busy, new HashSet<SupplyPoint>(t.chain));
             AISupplyChain.Leap ride;
             // A rider took this transport's spare seat this turn (supplySpareSeat): it is not used to hold where it stands
@@ -2571,7 +2581,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (t.gap && unit.trasnporter == null && t.chain.Count > 0) {
             // Only a middle link is relieved (one with a link nearer the front beyond it: HQ > link > link > end):
             // the chain's end is joined, by going on past it to supply the front's units as the new end.
-            Dictionary<HexTile, int> toGoal = t.goal != null ? map.LandSteps(t.goal) : null;
+            Dictionary<HexTile, int> toGoal = t.goal != null ? map.SupplySteps(t.goal) : null;
             System.Func<SupplyPoint, HexTile> at = x => x.myUnit.trasnporter != null ? x.myUnit.trasnporter.tile : x.myUnit.tile;
             System.Func<SupplyPoint, int> ahead = x => { int v; return toGoal != null && toGoal.TryGetValue(at(x), out v) ? v : int.MaxValue; };
             List<SupplyPoint> links = new List<SupplyPoint>();

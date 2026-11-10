@@ -51,7 +51,6 @@ namespace HexTactica.AI {
             // offFacilities: nobody ends on it (purchases allowed), but an aircraft or ship it services.
             if (map.profile.offFacilities && (GameController.gc == null || GameController.gc.purchasesAllowed)) {
                 if (u.tile == t) return false;   // (already there: standing still is not a move onto it)
-                if (AISeaSupply.Loading != null && AISeaSupply.Loading.Contains(u)) return false;   // a ship waiting there for its supply unit
                 // (Aircraft and ships it services: only there do they land, rearm or refuel — when it will not build this turn
                 // (saving, or buying nothing: it then gives its budget to the others), or when they need it now.)
                 if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u)

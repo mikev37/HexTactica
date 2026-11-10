@@ -862,6 +862,52 @@ namespace HexTactica.AI {
         /// No way over land from <paramref name="from"/> to <paramref name="to"/> (water between them: LandSteps does
         /// not reach it). Across water only a ship (or an aircraft) gets a land unit there.
         /// </summary>
+        /// <summary>
+        /// unifiedLogistics: "forward" for supply toward <paramref name="to"/>. Over land (LandSteps) when the land it
+        /// stands on holds ground our supply buildings reach (a road around water is followed, not cut across); else —
+        /// an island, a far shore — over land and water alike, one a tile, so supply carried by ship (or aircraft that
+        /// hold where they stop) goes the way it can only go. Cached for the turn.
+        /// </summary>
+        public Dictionary<HexTile, int> SupplySteps(HexTile to) {
+            if (to == null) return null;
+            if (!profile.unifiedLogistics || !SupplyAcrossWater(to)) return LandSteps(to);
+            lock (cacheLock) {
+                Dictionary<HexTile, int> d;
+                if (mixedSteps.TryGetValue(to, out d)) return d;
+                d = new Dictionary<HexTile, int>();
+                Queue<HexTile> q = new Queue<HexTile>();
+                d[to] = 0; q.Enqueue(to);
+                while (q.Count > 0) {
+                    HexTile t = q.Dequeue();
+                    foreach (HexTile n in t.neighbors) {
+                        if (n == null || n.terrain == null || d.ContainsKey(n)) continue;
+                        if (t.terrain.elevation >= 0 && n.terrain.elevation >= 0 && !LocomotionRules.BridgeStep(t, n, Locomotion.Wheels)) continue;
+                        d[n] = d[t] + 1;
+                        q.Enqueue(n);
+                    }
+                }
+                mixedSteps[to] = d;
+                return d;
+            }
+        }
+        readonly Dictionary<HexTile, Dictionary<HexTile, int>> mixedSteps = new Dictionary<HexTile, Dictionary<HexTile, int>>();
+
+        /// <summary>The land <paramref name="to"/> stands on holds no ground our supply buildings reach: supply gets there over water.</summary>
+        public bool SupplyAcrossWater(HexTile to) {
+            if (to == null) return false;
+            lock (cacheLock) {
+                bool r;
+                if (acrossWater.TryGetValue(to, out r)) return r;
+                if (staticForLogistics == null) staticForLogistics = SupplyNetwork.SolveStatic(player);
+                r = true;
+                foreach (KeyValuePair<HexTile, int> kv in LandStepsLocked(to)) if (staticForLogistics.DepthAt(kv.Key) > 0) { r = false; break; }
+                acrossWater[to] = r;
+                return r;
+            }
+        }
+        readonly Dictionary<HexTile, bool> acrossWater = new Dictionary<HexTile, bool>();
+        SupplyNetwork.Result staticForLogistics;
+
         public bool AcrossWater(HexTile from, HexTile to) {
             if (from == null || to == null || from == to) return false;
             Dictionary<HexTile, int> d = LandSteps(to);

@@ -526,6 +526,30 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
       claiming supply units and transports by its own priorities. They should be one: the logistics' chains crossing
       water with ship links (convoys), its own allocation of supply units and transports, the sea lift's ride-along
       a chain link riding with the troops.
+  - Done (10 Nov): one chain (`unifiedLogistics`, on). `AISeaSupply` deleted with its flags. The sea lift's own supply
+    path (`AIPlayer.SeaLiftShipFor/SeaLiftBoard/SeaLiftSupply`) is off under the flag (kept for flag-off).
+    - `AIMap.SupplySteps(goal)`: LandSteps when the goal's land holds static supply of ours, else steps over land and
+      water (`SupplyAcrossWater`). `AISupplyChain.MakeOne` measures forward and reach by it (reach counts land tiles only),
+      so a link aboard a ship is placed on the water where its supply reaches the far shore, linked (convoys by the rules'
+      own check). `IsTruck` (the chain's transports) leaves out aircraft that must go back to a runway.
+    - `AILogistics`: `Task.acrossWater/bare/yard`; ships (and aircraft that hold) are a front's transports when it is
+      across water (`IsCarrierFor`: rides, chain trucks); a front's own supply on our side goes to its embarkation yard
+      (`DropNear`); a supply unit aboard a ship is always in the pool and always a chain link of the nearest front across
+      water (never put ashore as a front's own); `RideAlong`: a transport ship at a bare front's yard gets one of that
+      front's own supply units that can get in this turn (`alongs`; the ship joins `supplyTransports` so riders leave the
+      seat). `AIPlayer.LogisticsAction` boards it; the chain branch no longer counts the link's own ship as busy, so it
+      gets in and sails the same turn. Production: a front across water whose chain falls short with no free ship
+      values transport ships ("no ship for its supply"); `freeShips`.
+    - Checks 135/135. `ai-sea-convoy` restated: the old code passed it only because an assault move on turn 3 carried the
+      ship (supply still aboard) down the coast beside the grunt; now the ship holds as the shore's link and the troops go
+      on out of its range, so the check asks that their landing ground beside the ship is supplied.
+    - Channel 20 rounds, traced (u1_*): new Red 184,416 v 165,583, all three north-island cities r18 (yard r17), out of
+      supply 69, attrition 4; new Blue 153,666 v 170,250, one north-west city r18, out of supply 79. Ride-along never
+      happened: Blue bought 3 supply units in 20 rounds against 49 infantry; its fronts across water (13–35 units) show
+      "chain 0, its own 0, nothing spare"; Blue ended on 29,000 gold. The HQ (the only supply builder) got 1,000–3,900 a
+      turn; supply was asked for only from round ~10 (values 25–72k).
+    - `procDemandWeight=3` (u2_*): new Blue took all three north-west cities r20, 157,500 v 171,000, still 3 supply units,
+      33,000 gold left; new Red all three north cities r14–18, 181,583 v 161,416. Not made the default.
 
 ## 7. Open work, in the order I'd take it
 

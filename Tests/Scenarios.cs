@@ -737,7 +737,7 @@ public static class Scenarios {
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
                  Put("TransportShip", a, -2, 0); Put("Supplies", a, -3, 1); Put("Tank", a, -3, 0); Put("Grunt", a, -2, 1);
                  Put("Grunt", o, 6, -5); },
-             "One ship takes troops and their supply together: a transport ship (4 slots) at Blue's naval yard with a grunt (1) aboard, a supply unit (weight 1) and a tank (2) beside it, Red's HQ across the channel and nothing of Blue's supply over there. Loaded, the ship acts first in Blue's turn, but it does not sail while either of them can still get aboard: in Blue's first turn all three get in; it sails full, and the supply aboard is linked off Red's shore, where the troops are put down.");
+             "One ship takes troops and their supply together: a transport ship (4 slots) at Blue's naval yard with a grunt (1) aboard, a supply unit (weight 1) and a tank (2) beside it, Red's HQ across the channel and nothing of Blue's supply over there. Loaded, the ship acts first in Blue's turn, but it does not sail while either of them can still get aboard: in Blue's first turn all three get in; it sails full, and the supply aboard is linked off Red's shore, where the troops are put down (the troops' landing ground beside the ship is supplied; with unifiedLogistics the ship then holds there as that shore's supply link).");
         make("ai-turn-order", "turnOrder", (a, o) => {
                  Put("Artillery", a, -2, 0); Put("APC", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 3);
                  Put("APC", a, -4, -2); Put("Grunt", a, -3, -2); Put("Grunt", a, -4, 0);
@@ -3509,6 +3509,11 @@ public static class Scenarios {
                     if (ship.tile != before && sup.trasnporter == ship && Transporting.CarriedWeight(ship) == ship.transportSlots) sailedFull = true;
                     SupplyNetwork.Result net = SupplyNetwork.Solve(a, false);
                     foreach (Unit u in new[] { tank, g }) if (u != null && u.trasnporter == null && u.tile != null && u.tile.x >= 3 && net.IsSupplied(u.tile)) landedSupplied = true;
+                    // (unifiedLogistics: the ship with the supply aboard holds off the shore as that shore's supply link, the troops
+                    // free to go on from there: their landing ground, beside the ship, is supplied.)
+                    bool putDown = (tank.trasnporter == null && tank.tile != null && tank.tile.x >= 3) || (g.trasnporter == null && g.tile != null && g.tile.x >= 3);
+                    if (putDown && sup.trasnporter == ship && ship.tile != null)
+                        foreach (HexTile x in ship.tile.neighbors) if (x != null && x.terrain != null && x.terrain.elevation >= 0 && x.x >= 3 && net.IsSupplied(x)) landedSupplied = true;
                     r.Add("T" + blueTurns + ": ship " + Pos(ship.tile) + " carrying " + Transporting.CarriedWeight(ship) + "/" + ship.transportSlots + "; supplies " + (sup.trasnporter == ship ? "aboard" : Pos(sup.tile)) + ", tank " + (tank.trasnporter == ship ? "aboard" : Pos(tank.tile)) + ", grunt " + (g.trasnporter == ship ? "aboard" : Pos(g.tile)));
                     if (landedSupplied) break;
                 }

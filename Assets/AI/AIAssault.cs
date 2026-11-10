@@ -595,7 +595,6 @@ namespace HexTactica.AI {
             Unit best = null; HexTile bestAt = null; int bestLoad = -1;
             foreach (Unit t in Transporting.AvailableFor(c.owner, c)) {
                 if (t == null || t.tile == null) continue;
-                if (AISeaSupply.Stationed != null && AISeaSupply.Stationed.Contains(t)) continue;   // a supply ship holding its station
                 // Earmarked for supply: only a spare slot, and only once its supply unit is aboard (it goes where the supply goes).
                 // A ship taking this unit across water to its ground (sea lift): a troop ship, its supply or not.
                 bool overWater = SeaLiftShip(t, map) && ground != null && map.AcrossWater(c.tile, ground);
