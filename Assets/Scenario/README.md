@@ -81,6 +81,7 @@ units or buildings must match at least.
 | Unit Cut Off (24) | now: matching units stand outside their side's supply | side, kind, name, in area |
 | Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
+| Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
 | Units At Least (25) | now: at least *Value* matching units are alive (as in "when you have 3 tanks"; with no kind, any units) | side, kind, name, in area |
 
@@ -198,15 +199,22 @@ the first time Unity opens the project, and every Show Marker action uses it unl
 `Assets/Resources/Scenarios/Tutorial.dat` is a complete example, and the test `tutorial-playthrough` plays it
 through:
 - **Turn 1:** the scout introduces the grunt, with a marker on him. Selecting him moves the marker to a target tile
-  and explains the two-click move. Reaching the tile gets "Good job!". When his turn is used up, the scout explains
-  ending the turn.
-- **Raiders' turn:** a raider spawns in the fog and is ordered to attack the grunt. Taking damage brings "move into
-  supply to heal".
+  and explains the two-click move. The lesson goes on only once he stands on that tile: "Good job!", then the
+  end-turn hint, and only then is the ambush armed.
+- **Raiders' turn:** a raider spawns in the fog and is ordered to attack the grunt. "Enemy spotted!" as it comes into
+  sight; taking damage brings "move into supply to heal".
 - **Turn 3:** if the HQ was never opened, a hint points at it. Buying a grunt and a supply truck are each explained.
 - **The end:** the attack hint comes once the truck is bought (or on turn 4), and killing the raider wins.
 
-The tutorial uses rules *sandbox* (`"rules"` in the file), so the raiders' side, which starts with nothing, isn't
-knocked out before the ambush. Losing every unit is the tutorial's own loss trigger.
+The raiders' side starts with nothing. It isn't knocked out because it isn't *eliminable* (below). Losing every unit is
+the tutorial's own loss trigger.
+
+## Sides that can't be knocked out
+
+Each Player has **Eliminable**, on by default. Switch it off in the Player's inspector for a side the scenario keeps in
+the game whatever happens: losing its HQ or its last unit doesn't knock it out, as for an enemy that starts with
+nothing and is sent in by triggers. The scenario file saves the setting with the side (`"eliminable": false`). A side
+that can't be knocked out never loses on its own, so end such a game with a Win or Lose action.
 
 ## Worked example: a tutorial beat
 

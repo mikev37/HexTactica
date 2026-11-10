@@ -105,6 +105,9 @@ namespace HexTactica.Harness {
                 JSONObjectEnumerator players = obj.GetField("players").GetEnumerator();
                 while (players.MoveNext()) {
                     PlayerData pd = JsonUtility.FromJson<PlayerData>(players.Current.Print());
+                    // Eliminable unless the file says not (older files do not say).
+                    JSONObject elim = players.Current.GetField("eliminable");
+                    pd.eliminable = elim == null || elim.type != JSONObject.Type.Bool || elim.boolValue;
                     fileAI[pd.id] = pd.AI;
                     fileProfile[pd.id] = pd.aiProfile ?? "";
                     inFile.Add(pd.id);

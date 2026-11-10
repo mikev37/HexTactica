@@ -30,6 +30,7 @@ static class TriggerFields {
             case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value", "Count" };
             case TriggerCondition.UnitsAtMost:
             case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value" };
+            case TriggerCondition.UnitSpotted: return new[] { "SeenBy", "Side", "UnitKind", "UnitTag", "InArea", "Count" };
             case TriggerCondition.BuildingCaptured:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.BuildingOwned: return new[] { "Side", "BuildingKind", "InArea", "Count" };
@@ -182,6 +183,7 @@ static class TriggerFields {
             case TriggerCondition.UnitSelected: return "the player selects " + units + times;
             case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
             case TriggerCondition.UnitSpent: return units + " has used its turn";
+            case TriggerCondition.UnitSpotted: return Side(t.SeenBy) + " spots " + units + times;
             case TriggerCondition.BuildingOwned: return building + " held by " + Side(t.Side);
             case TriggerCondition.AfterTrigger: return "after '" + t.AfterTrigger + "'";
             case TriggerCondition.AllOf: return "all of " + Names(t.Parts);

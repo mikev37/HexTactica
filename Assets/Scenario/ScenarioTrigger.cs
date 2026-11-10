@@ -69,6 +69,8 @@ public enum TriggerCondition {
     BuildingSelected = 27,
     /// <summary>At least Count units matching the unit filter have used their turn (moved, fired, or waited) (now).</summary>
     UnitSpent = 28,
+    /// <summary>A unit matching the unit filter comes into Seen By's sight (it was hidden by the fog, or new): Count times. With no fog, units are in sight as they appear.</summary>
+    UnitSpotted = 29,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -303,6 +305,8 @@ public class ScenarioTrigger {
     [SideChoice(true)] public long Side = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this kind (the unit prefab's name: Grunt, Tank ...; a faction's version counts as its base unit). Empty: any kind.")]
     [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
+    [Tooltip("Unit Spotted: who spots the unit (the player, by default).")]
+    [SideChoice(false)] public long SeenBy = TriggerSide.Human;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
     [UnitName] public string UnitTag = "";
     [Tooltip("Building conditions: only buildings of this kind (the building prefab's name: City, HQ, ...). Empty: any. With In Area and Radius 0: the building on the tile.")]

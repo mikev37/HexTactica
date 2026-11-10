@@ -152,12 +152,15 @@ public static partial class Scenarios {
              },
              "Units an AI gets in the middle of its turn play that turn: after Blue's AI (this AI) has made its first move, a trigger gives it a Red grunt and spawns a grunt for it, ready to act; both are taken into its turn (each decides, as every unit does).");
         n++;
+        make("script-not-eliminable", "scriptEliminable", (a, o) => { Put("Grunt", o, 0, 0); },
+             "A side that is not eliminable (Player.eliminable off, as a scenario's enemy that starts with nothing) is not knocked out by losing its HQ and every unit, and the game goes on; the same side eliminable is knocked out, and the game ends.");
+        n++;
         // The tutorial mission itself (Assets/Resources/Scenarios/Tutorial.dat), with a test block: played through below.
         string tutorial = Path.Combine(PrefabLoader.Root("Scenarios"), "Tutorial.dat");
         if (File.Exists(tutorial)) {
             string text = File.ReadAllText(tutorial).TrimEnd();
-            text = text.Substring(0, text.LastIndexOf('}')) + ",\n\"test\": {\"name\": \"tutorial-playthrough\", \"kind\": \"rules\", \"opponent\": \"Human\", \"rounds\": \"8\", \"rules\": \"sandbox\", \"check\": \"scriptTutorial\", "
-                 + "\"question\": \"The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt, move it to the mark, end the turn; the raider spawned in the fog is ordered at it and hits it; back into supply; the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.\"}\n}\n";
+            text = text.Substring(0, text.LastIndexOf('}')) + ",\n\"test\": {\"name\": \"tutorial-playthrough\", \"kind\": \"rules\", \"opponent\": \"Human\", \"rounds\": \"8\", \"rules\": \"standard\", \"check\": \"scriptTutorial\", "
+                 + "\"question\": \"The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it; back into supply; the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.\"}\n}\n";
             File.WriteAllText(Path.Combine(Dir, "tutorial-playthrough.dat"), text);
             n++;
         }
@@ -339,16 +342,30 @@ public static partial class Scenarios {
                 detail = "given and spawned mid-turn, still to act " + given + "; decided in Blue's turn (taken into it): defector " + decided.Contains(defector) + ", spawned " + (arrived != null && decided.Contains(arrived));
                 return given && played;
             }
+            case "scriptEliminable": {
+                a.eliminable = false;
+                Building hq = null; foreach (Building b in Building.all) if (b != null && b.IsHQ && b.owner == a) hq = b;
+                hq.ChangeOwner(o);   // Blue's HQ taken
+                gc.CheckVictory();
+                bool kept = !a.eliminated && !gc.gameOver && a.units.Count == 0 && !a.HasHQ;
+                a.eliminable = true;
+                gc.CheckVictory();
+                bool out_ = a.eliminated && gc.gameOver && gc.winner == o;
+                detail = "not eliminable, without HQ or units: still in, game on " + kept + "; eliminable: knocked out, Red wins " + out_;
+                return kept && out_;
+            }
             case "scriptTutorial": {
-                Rig.gc.rules = RuleSet.Sandbox;
                 Player human = o, raiders = a;
+                bool keptIn = !raiders.eliminable && human.eliminable;
                 human.money = 9000;
                 FakeBox box = new FakeBox();
                 ScenarioDialogue.Presenter = box;
                 foreach (MonoBehaviour m in raiders.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
                 AIPlayer ai = raiders.GetComponent<AIPlayer>();
                 List<string> log = new List<string>();
-                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); box.shown.Clear(); return r; };
+                List<string> transcript = new List<string>();
+                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
+                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
                 Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
                 Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == raiders && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == raiders) gc.EndTurn(); settle(); };
                 Unit recruit = ScenarioGame.Named("Recruit");
@@ -359,6 +376,11 @@ public static partial class Scenarios {
                 // (The board's click flow needs the tiles' overlays, which the headless board lacks: the clicks' effects are
                 // made as ClickBoard makes them: selection notified, the move walked as CompleteMove walks it.)
                 HexTile.NotifyUnitSelected(recruit); settle();
+                // Parked somewhere else first (a step off the path, by hand): the lesson waits for the marked tile.
+                ScenarioGame.Order(recruit, null, Rig.At(-3, 2)); settle();
+                bool waits = Fired(s, "Recruit spent") == 0 && s.markers.Exists(m => m.Id == "goal");
+                gc.EndTurn(); settle(); aiTurn();
+                bool noAmbush = ScenarioGame.Named("Raider") == null && !gc.gameOver && !raiders.eliminated;
                 string selected = said(); bool step2 = selected.Contains("propose a move") && s.markers.Exists(m => m.Id == "goal") && !s.markers.Exists(m => m.Id == "recruit");
                 ScenarioGame.Order(recruit, null, Rig.At(0, 0)); settle();
                 string moved = said(); bool step3 = recruit.tile == Rig.At(0, 0) && moved.StartsWith("Good job!") && moved.Contains("End your turn") && !s.markers.Exists(m => m.Id == "goal");
@@ -369,7 +391,7 @@ public static partial class Scenarios {
                 bool spawned = raider != null && raider.owner == raiders && fogged;
                 int hitTo = recruit.Strength;
                 bool hit = recruit.Strength < 6 && raider != null && raider.tile != null && raider.tile.Distance(recruit.tile) == 1;
-                string hurt = said(); bool step4 = spawned && hit && hurt.Contains("We took damage");
+                string hurt = said(); bool step4 = spawned && hit && hurt.Contains("Enemy spotted") && hurt.Contains("We took damage") && hurt.IndexOf("Enemy spotted") < hurt.IndexOf("We took damage");
                 aiTurn();
                 // Turn 2: back into supply beside the HQ.
                 HexTile.NotifyUnitSelected(recruit); ScenarioGame.Order(recruit, null, Rig.At(-3, 1)); settle(); said();
@@ -379,7 +401,7 @@ public static partial class Scenarios {
                 // Turn 3: healed in supply, and the HQ hint (it was never opened).
                 string third = said();
                 bool healed = recruit.Strength > before || recruit.Strength == 6;
-                bool step5 = back && third.Contains("click the HQ") && s.markers.Exists(m => m.Id == "hq");
+                bool step5 = back && everSaid("click the HQ") && Fired(s, "HQ hint") == 1 && s.markers.Exists(m => m.Id == "hq");
                 Building hq = Rig.At(-4, 2).building;
                 HexTile.NotifyBuildingOpened(hq); settle();
                 string opened = said(); bool step6 = opened.Contains("build list") && !s.markers.Exists(m => m.Id == "hq");
@@ -393,7 +415,7 @@ public static partial class Scenarios {
                 settle();
                 Unit truck = buy("Supplies"); settle();
                 string fourth = said();
-                bool step8 = truck != null && fourth.Contains("supply truck") && fourth.Contains("To attack") && Fired(s, "Fight back") == 1;
+                bool step8 = truck != null && everSaid("supply truck") && everSaid("To attack") && Fired(s, "Fight back") == 1;
                 // The raider dies (the player's attacks, as many as it takes: ordered here as the clicks would).
                 raider = ScenarioGame.Named("Raider");
                 int rounds = 0;
@@ -406,12 +428,13 @@ public static partial class Scenarios {
                 }
                 string end = said();
                 bool won = gc.gameOver && gc.winner == human && end.Contains("Raider down");
-                detail = "start " + ok + "; welcome and marker " + step1 + "; selected: move hint, marker moved " + step2 + "; moved to the mark: Good job, end-turn hint " + step3
+                detail = "start " + ok + ", raiders kept in, player eliminable " + keptIn + "; welcome and marker " + step1 + "; selected: move hint, marker moved " + step2
+                       + "; parked elsewhere: no end-turn hint, marker stays " + waits + ", no ambush, raiders still in " + noAmbush + "; moved to the mark: Good job, end-turn hint " + step3
                        + "; ambush: raider spawned in the fog " + spawned + ", next to the grunt and hit it (to " + hitTo + ") " + hit + ", lines " + step4
                        + "; back into supply " + back + ", healed " + healed + ", HQ hint on turn 3 " + step5 + "; HQ opened " + step6 + "; grunt bought " + step7 + (step7 ? "" : " (HQ offers " + offered + "; gold " + human.money + ")") + "; truck bought and attack hint " + step8
                        + "; raider killed in " + rounds + " round(s), player wins " + won + (won ? "" : " [last lines: " + end + "]");
                 ScenarioDialogue.Presenter = null;
-                return ok && step1 && step2 && step3 && step4 && back && healed && step5 && step6 && step7 && step8 && won;
+                return ok && keptIn && waits && noAmbush && step1 && step2 && step3 && step4 && back && healed && step5 && step6 && step7 && step8 && won;
             }
             case "scriptSave": {
                 bool fromFile = s.triggers.Count == 4 && s.Find("Two kills") != null && s.Find("Two kills").Count == 2 && !s.Find("In area").Enabled;

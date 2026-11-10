@@ -194,6 +194,7 @@
 			"AfterTrigger":"",
 			"Side":112,
 			"UnitKind":"",
+			"SeenBy":-2,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,

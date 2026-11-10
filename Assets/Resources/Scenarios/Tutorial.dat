@@ -1287,7 +1287,8 @@
    "aiProfile": "",
    "factionLocked": false,
    "money": 9000,
-   "eliminated": false
+   "eliminated": false,
+   "eliminable": true
   },
   {
    "personal_name": "Raiders",
@@ -1303,7 +1304,8 @@
    "aiProfile": "",
    "factionLocked": false,
    "money": 0,
-   "eliminated": false
+   "eliminated": false,
+   "eliminable": false
   }
  ],
  "active": 0,
@@ -1313,7 +1315,7 @@
  "fog": "on",
  "factionSpecialUnits": "off",
  "fixedRules": "fog,purchases,factionSpecialUnits",
- "rules": "sandbox",
+ "rules": "standard",
  "buildings": [
   {
    "x": -4,
@@ -1460,6 +1462,14 @@
         "Portrait": 0
        }
       ]
+     },
+     {
+      "Type": 17,
+      "Trigger": "Recruit spent"
+     },
+     {
+      "Type": 17,
+      "Trigger": "Ambush"
      }
     ],
     "Side": -2,
@@ -1470,13 +1480,9 @@
    },
    {
     "Name": "Recruit spent",
-    "Enabled": true,
+    "Enabled": false,
     "Condition": 28,
     "Actions": [
-     {
-      "Type": 3,
-      "MarkerId": "goal"
-     },
      {
       "Type": 0,
       "Lines": [
@@ -1500,7 +1506,7 @@
    },
    {
     "Name": "Ambush",
-    "Enabled": true,
+    "Enabled": false,
     "Condition": 21,
     "Actions": [
      {
@@ -1526,6 +1532,27 @@
     "Count": 1
    },
    {
+    "Name": "Raider spotted",
+    "Enabled": true,
+    "Condition": 29,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Enemy spotted! He was hiding in the fog.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "SeenBy": -2,
+    "Side": -3,
+    "UnitTag": "Raider"
+   },
+   {
     "Name": "Under fire",
     "Enabled": true,
     "Condition": 10,
@@ -1541,7 +1568,7 @@
       "Lines": [
        {
         "Character": "Placeholder Scout",
-        "Text": "Oh no! We took damage. An enemy was hiding in the fog.",
+        "Text": "Oh no! We took damage.",
         "Sound": "",
         "Portrait": 1
        },

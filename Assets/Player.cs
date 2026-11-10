@@ -18,6 +18,8 @@ public class Player : MonoBehaviour
 
     [Header("State")]
     public bool eliminated;
+    [Tooltip("Off: this side is never knocked out (losing its HQ or its last unit does not end it), as a scenario's enemy that starts with nothing and is sent in by triggers. Saved with the scenario.")]
+    public bool eliminable = true;
 
     [Header("Turn telemetry (read by the harness)")]
     public int unitTurnsOutOfSupply;
@@ -313,6 +315,8 @@ public struct PlayerData {
     public bool factionLocked;
     public int money;
     public bool eliminated;
+    /// <summary>The side can be knocked out (Player.eliminable). A file without it: true (ScenarioLoader reads it so).</summary>
+    public bool eliminable;
     public PlayerData(Player t) {
         personal_name = t.personal_name;
         id = t.id;
@@ -324,6 +328,7 @@ public struct PlayerData {
         factionLocked = t.factionLocked;
         money = t.money;
         eliminated = t.eliminated;
+        eliminable = t.eliminable;
     }
 
     public Player load() {
@@ -349,6 +354,7 @@ public struct PlayerData {
         if (!string.IsNullOrEmpty(that.factionName)) output.faction = LevelEditor.FindFaction(that.factionName);
         output.money = that.money;
         output.eliminated = that.eliminated;
+        output.eliminable = that.eliminable;
         if (AI && AIControl.Of(output) == null) {
             output.gameObject.AddComponent<AIPlayer>();
         }
