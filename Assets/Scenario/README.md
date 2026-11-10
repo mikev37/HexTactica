@@ -128,7 +128,8 @@ Timing is counted in **turns**:
 |---|---|
 | Dialogue (0) | shows its lines one after another. The game is held until the last line is closed, and the trigger's next action waits until then. |
 | Camera Focus (1) / Camera Frame Board (25) | glides the camera to the tile, or to *On Unit* (*Zoom* sets the orthographic size; 0 keeps the zoom) / shows the whole board |
-| Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, and is hidden while the player can't see it / removes it (or every marker) |
+| Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, in the fog too unless *Hide In Fog* is on / removes it (or every marker) |
+| Set Purchases (27) / Set Fog (28) | switches buying units, or fog of war, on or off for the rest of the game (a save keeps it) |
 | Play Music (4) / Stop Music (5) | plays a track from `Resources/Music/Special` (empty: one at random), optionally looping / returns to the game's own music |
 | Win (6) / Lose (7) | ends the game now: *Side* wins / loses (the side left wins) |
 | Spawn Unit (8) | makes *Count* units of a kind for *Side* on the tile, each on the nearest free tile it can stand on if the tile is taken. Sets their strength, veterancy and name, and whether they can act this turn. |

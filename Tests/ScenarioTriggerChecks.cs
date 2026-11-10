@@ -106,7 +106,9 @@ public static partial class Scenarios {
                             Act(TriggerActionType.SetVeterancy, x => { x.UnitSide = Blue; x.UnitTag = "Reinforcement"; x.Mode = ValueMode.Add; x.Value = 1; }),
                             Act(TriggerActionType.SetStat, x => { x.UnitSide = Blue; x.UnitTag = "Reinforcement"; x.Stat = UnitStat.Health; x.Mode = ValueMode.Add; x.Value = -1; }),
                             Act(TriggerActionType.SetStat, x => { x.UnitSide = Blue; x.UnitKind = "Tank"; x.Stat = UnitStat.Ammo; x.Mode = ValueMode.Set; x.Value = 0; }),
-                            Act(TriggerActionType.ShowMarker, x => { x.Marker = "Marker"; x.MarkerId = "goal"; x.Text = "Take it"; x.TileX = 5; x.TileY = 0; })),
+                            Act(TriggerActionType.ShowMarker, x => { x.Marker = "Marker"; x.MarkerId = "goal"; x.Text = "Take it"; x.TileX = 5; x.TileY = 0; }),
+                            Act(TriggerActionType.SetPurchases, x => x.On = false),
+                            Act(TriggerActionType.SetFog, x => x.On = true)),
                         Trig("Then", TriggerCondition.AfterTrigger, t => { t.AfterTrigger = "Do it"; },
                             Act(TriggerActionType.Wait, x => x.Seconds = 1.5f),
                             Act(TriggerActionType.RepairTile, x => { x.TileX = 2; x.TileY = 2; }),
@@ -117,7 +119,7 @@ public static partial class Scenarios {
                             Act(TriggerActionType.Wait, x => x.Seconds = 2.5f),
                             Act(TriggerActionType.Win, x => x.Side = Blue)));
              },
-             "Every board action, in order: two tagged Blue grunts spawned (strength 4, veterancy 1, spent this turn) beside a taken tile; Red's tank given to Blue; the neutral city given to Blue; a forest destroyed; Red's city destroyed; the spawned grunts' veterancy raised by 1 and strength lowered by 1; the tank's ammunition set to 0; a marker shown. After a 1.5 s Wait (pacing, as in a cutscene) the forest and the city are repaired, the grunt on (0,0) destroyed and the marker hidden; at 2.5 s Blue wins.");
+             "Every board action, in order: two tagged Blue grunts spawned (strength 4, veterancy 1, spent this turn) beside a taken tile; Red's tank given to Blue; the neutral city given to Blue; a forest destroyed; Red's city destroyed; the spawned grunts' veterancy raised by 1 and strength lowered by 1; the tank's ammunition set to 0; a marker shown; purchases switched off and fog of war on. After a 1.5 s Wait (pacing, as in a cutscene) the forest and the city are repaired, the grunt on (0,0) destroyed and the marker hidden; at 2.5 s Blue wins.");
         n++;
         make("script-dialogue", "scriptDialogue", (a, o) => {
                  Put("Grunt", a, 0, 0);
@@ -300,6 +302,7 @@ public static partial class Scenarios {
                 bool ground = Rig.At(2, 2).terrain != null && Rig.At(2, 2).terrain.name != "Forest";
                 bool cityDown = redCity.Destroyed;
                 bool marker = s.markers.Count == 1 && s.markers[0].Id == "goal";
+                bool rules = !gc.purchasesAllowed && gc.fogOfWar;
                 s.Tick(1f); s.Tick(0.6f);   // "Then": After "Do it", held 1.5 s
                 bool repaired = Rig.At(2, 2).terrain.name == "Forest" && !redCity.Destroyed && grunt.Strength <= 0 && Rig.At(0, 0).occupier == null && s.markers.Count == 0;
                 bool notYet = !gc.gameOver;
@@ -307,9 +310,9 @@ public static partial class Scenarios {
                 s.Tick(0.6f);
                 bool won = gc.gameOver && gc.winner == a;
                 detail = "spawned " + spawned.Count + " tagged grunts (strength 3, veterancy 2, spent, beside the taken tile) " + spawn + "; tank and neutral city given, tank out of ammunition " + given
-                       + "; forest destroyed " + ground + " (now " + Rig.At(2, 2).terrain.name + "); Red's city destroyed " + cityDown + "; marker shown " + marker + "; after 1.5 s repaired, grunt destroyed, marker hidden " + repaired
+                       + "; forest destroyed " + ground + " (now " + Rig.At(2, 2).terrain.name + "); Red's city destroyed " + cityDown + "; marker shown " + marker + "; purchases off, fog on " + rules + "; after 1.5 s repaired, grunt destroyed, marker hidden " + repaired
                        + "; Win waits its Wait " + (notYet && stillWaiting) + ", then Blue wins " + won;
-                return spawn && given && ground && cityDown && marker && repaired && notYet && stillWaiting && won;
+                return spawn && given && ground && cityDown && marker && rules && repaired && notYet && stillWaiting && won;
             }
             case "scriptDialogue": {
                 FakeBox box = new FakeBox();

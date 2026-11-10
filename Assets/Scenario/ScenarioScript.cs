@@ -408,7 +408,7 @@ public class ScenarioScript : MonoBehaviour {
                 ScenarioGame.HideMarker(m.Id);
                 continue;
             }
-            bool seen = FogOfWar.ShownToViewer(u);
+            bool seen = !m.HideInFog || FogOfWar.ShownToViewer(u);
             if (!seen) { if (!m.hidden) { m.hidden = true; ScenarioGame.HideMarker(m.Id); } continue; }
             if (m.hidden || m.TileX != u.RealTile.x || m.TileY != u.RealTile.y) {
                 m.hidden = false; m.TileX = u.RealTile.x; m.TileY = u.RealTile.y;
@@ -514,7 +514,7 @@ public class ScenarioScript : MonoBehaviour {
                 if (string.IsNullOrEmpty(a.Marker)) { Warn(t, "a Show Marker action names no marker prefab."); return; }
                 string id = string.IsNullOrEmpty(a.MarkerId) ? "#" + (++markerSerial) : a.MarkerId;
                 markers.RemoveAll(m => m.Id == id);
-                ShownMarker shown = new ShownMarker { Id = id, Marker = a.Marker, Text = a.Text, TileX = a.TileX, TileY = a.TileY, Unit = a.AtUnit ?? "" };
+                ShownMarker shown = new ShownMarker { Id = id, Marker = a.Marker, Text = a.Text, TileX = a.TileX, TileY = a.TileY, Unit = a.AtUnit ?? "", HideInFog = a.HideInFog };
                 if (!string.IsNullOrEmpty(shown.Unit) && ScenarioGame.Named(shown.Unit) == null) { Warn(t, "Show Marker: no unit named '" + shown.Unit + "' to put it on."); return; }
                 markers.Add(shown);
                 shown.hidden = true;   // (FollowMarkers puts it on its unit, if the player can see it)
@@ -530,6 +530,8 @@ public class ScenarioScript : MonoBehaviour {
                 if (!ScenarioGame.PlayMusic(a.Track, a.Loop)) Warn(t, "Play Music: no track " + (string.IsNullOrEmpty(a.Track) ? "at all" : "'" + a.Track + "'") + " in Resources/Music/Special.");
                 return;
             case TriggerActionType.StopMusic: ScenarioGame.StopMusic(); return;
+            case TriggerActionType.SetPurchases: ScenarioGame.SetPurchases(a.On); return;
+            case TriggerActionType.SetFog: ScenarioGame.SetFog(a.On); return;
             case TriggerActionType.PlaySound: ScenarioGame.PlaySound(a.Sound); return;
             case TriggerActionType.Win: {
                 Player p = ScenarioGame.Resolve(a.Side);

@@ -89,7 +89,9 @@ static class TriggerFields {
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
             case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TileX", "TileY");
             case TriggerActionType.CameraFrameBoard: return new string[0];
-            case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "TileX", "TileY" };
+            case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
+            case TriggerActionType.SetPurchases:
+            case TriggerActionType.SetFog: return new[] { "On" };
             case TriggerActionType.HideMarker: return new[] { "MarkerId" };
             case TriggerActionType.PlayMusic: return new[] { "Track", "Loop" };
             case TriggerActionType.StopMusic: return new string[0];
@@ -214,6 +216,8 @@ static class TriggerFields {
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";
             case TriggerActionType.PlayMusic: return "Music: " + (string.IsNullOrEmpty(a.Track) ? "a special track" : a.Track) + (a.Loop ? " (loop)" : "");
             case TriggerActionType.StopMusic: return "Music back to normal";
+            case TriggerActionType.SetPurchases: return "Purchases " + (a.On ? "on" : "off");
+            case TriggerActionType.SetFog: return "Fog of war " + (a.On ? "on" : "off");
             case TriggerActionType.Win: return Side(a.Side) + " wins";
             case TriggerActionType.Lose: return Side(a.Side) + " loses";
             case TriggerActionType.SpawnUnit: return "Spawn " + Mathf.Max(1, a.Count) + " " + a.UnitKind + " for " + Side(a.Side) + " at " + at;
