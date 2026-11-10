@@ -53,9 +53,7 @@ public static class Transporting {
     }
 
     /// <summary>
-    /// Could <paramref name="cargo"/> step onto <paramref name="t"/> to board a transport there: a
-    /// tile it can stand on (by road onto a bridge), or a friendly building's tile that serves the
-    /// transport (a dock, a runway).
+    /// Could <paramref name="cargo"/> step onto <paramref name="t"/> to board a transport there: for aircraft only on runway, otherwise anywhere
     /// </summary>
     public static bool CanBoardOnto(Unit cargo, HexTile from, HexTile t, Unit transport) {
         if (cargo == null || t == null) return false;
@@ -64,10 +62,8 @@ public static class Transporting {
         // An aircraft that needs a base (a transport plane, not a helicopter) takes on cargo only standing on
         // one of our buildings that services it (a runway).
         if (transport != null && LocomotionRules.IsAirborne(transport.locomotion) && LocomotionRules.NeedsBase(transport.locomotion) && !LocomotionRules.ResuppliedInSupply(transport.locomotion)) return servicing;
-        if (from == t) return true;
+
         return true;
-        //if (cargo.CanEnter(t)) return true; //&& LocomotionRules..BridgeStep(from, t, cargo.locomotion)
-        //return servicing;
     }
 
     /// <summary>Boarding: the cargo beside (or on) the transport, and able to step onto its tile (see CanBoardOnto).</summary>
