@@ -586,13 +586,6 @@ namespace UnityEngine.UI {
     public class Button : Selectable { public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
 }
 
-namespace UnityEditor {
-    public class ScriptableSingleton<T> : UnityEngine.ScriptableObject where T : UnityEngine.ScriptableObject {
-        static T inst;
-        public static T instance { get { if (inst == null) inst = System.Activator.CreateInstance<T>(); return inst; } }
-    }
-}
-
 namespace UnityEngine.Rendering {
     public class SortingGroup : Behaviour { public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
 }

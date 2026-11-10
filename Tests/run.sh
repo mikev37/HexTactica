@@ -16,6 +16,26 @@ UNITS="$ASSETS/Resources/Units"; [ -d "$UNITS" ] || UNITS="$ASSETS/Units"
 for p in Supplies Grunt Tank Artillery; do
   [ -f "$UNITS/$p.prefab" ] || { echo "Missing $UNITS/$p.prefab — run against your project's Assets folder."; exit 2; }
 done
+# A player build has no UnityEditor: a game script (outside an Editor folder) may use it only inside #if UNITY_EDITOR.
+python3 - "$ASSETS" <<'PYEOF' || exit 1
+import os, re, sys
+bad = []
+for root, dirs, files in os.walk(sys.argv[1]):
+    if os.sep + "Editor" in root + os.sep and (os.sep + "Editor" + os.sep) in (root + os.sep): continue
+    for f in files:
+        if not f.endswith(".cs"): continue
+        p = os.path.join(root, f); depth = 0; guard = []
+        for i, line in enumerate(open(p, encoding="utf-8", errors="replace"), 1):
+            t = line.strip()
+            if t.startswith("#if"): guard.append("UNITY_EDITOR" in t and "!UNITY_EDITOR" not in t)
+            elif t.startswith("#endif") and guard: guard.pop()
+            elif t.startswith("#else") and guard: guard[-1] = False
+            elif "UnityEditor" in line and not t.startswith("//") and not any(guard):
+                bad.append("%s:%d: %s" % (os.path.relpath(p, sys.argv[1]), i, t))
+if bad:
+    print("UnityEditor used outside #if UNITY_EDITOR in game scripts (breaks the player build):")
+    print("\n".join(bad)); sys.exit(1)
+PYEOF
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 cp -r "$ASSETS" "$WORK/Assets"
