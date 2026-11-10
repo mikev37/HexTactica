@@ -63,6 +63,12 @@ public enum TriggerCondition {
     UnitCutOff = 24,
     /// <summary>At least Value units matching the unit filter are alive (now): "when you have 3 tanks".</summary>
     UnitsAtLeast = 25,
+    /// <summary>The player has selected a unit matching the unit filter (clicked it): Count times.</summary>
+    UnitSelected = 26,
+    /// <summary>The player has opened the build list of a building matching the building filter, held by Side (clicked it): Count times.</summary>
+    BuildingSelected = 27,
+    /// <summary>At least Count units matching the unit filter have used their turn (moved, fired, or waited) (now).</summary>
+    UnitSpent = 28,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -119,6 +125,8 @@ public enum TriggerActionType {
     Wait = 24,
     /// <summary>The camera shows the whole board.</summary>
     CameraFrameBoard = 25,
+    /// <summary>The units matching the unit filter move and attack as ordered: toward the unit named Target (or the nearest unit of Target Side), attacking it if they can reach it this turn; with no target, toward the tile. Each then has used its turn.</summary>
+    OrderUnits = 26,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>
@@ -168,7 +176,10 @@ public class TriggerAction {
     [Tooltip("Dialogue: the lines, shown one after the other; the next action of the trigger waits until the last is closed.")]
     public List<DialogueLine> Lines = new List<DialogueLine>();
 
-    [Tooltip("Camera Focus, Show Marker, Spawn Unit, Destroy Tile, Repair Tile, and the unit and building filters (with In Area): the tile, x (cube coordinates, as the HUD and the scenario file give them).")]
+    [Tooltip("Camera Focus, Show Marker: on this unit instead of a tile (a marker follows it as it moves, and is hidden while the player cannot see it). Empty: the tile.")]
+    [UnitName] public string AtUnit = "";
+
+    [Tooltip("Camera Focus, Show Marker, Spawn Unit, Order Units (with no target), Destroy Tile, Repair Tile, and the unit and building filters (with In Area): the tile, x (cube coordinates, as the HUD and the scenario file give them).")]
     [TileField] public int TileX;
     [Tooltip("Camera Focus, Show Marker, Spawn Unit, Destroy Tile, Repair Tile, and the unit and building filters (with In Area): the tile, y (z is -x-y).")]
     public int TileY;
@@ -210,6 +221,12 @@ public class TriggerAction {
     [SideChoice(true)] public long BuildingSide = TriggerSide.Any;
     [Tooltip("Building filter: only buildings of this kind (the building prefab's name: City, HQ, ...; empty: any). With In Area and Radius 0: the building on the tile.")]
     [ResourceName("Buildings", typeof(Building), ResourceKind.Building)] public string BuildingKind = "";
+
+    [Header("Order Units: what to attack")]
+    [Tooltip("Order Units: the unit to go for and attack. Empty: the nearest unit of Target Side.")]
+    [UnitName] public string Target = "";
+    [Tooltip("Order Units: with no Target unit, the nearest unit of this side is attacked (Any side: no target; they head for the tile).")]
+    [SideChoice(false)] public long TargetSide = TriggerSide.Any;
 
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
     public int Count = 1;
@@ -331,6 +348,10 @@ public class ScenarioTrigger {
 [Serializable]
 public class ShownMarker {
     public string Id = "";
+    /// <summary>The unit it follows (its name); empty: it stays on its tile.</summary>
+    public string Unit = "";
+    /// <summary>Hidden for now: the unit it follows is out of the player's sight (not saved).</summary>
+    internal bool hidden;
     public string Marker = "";
     public string Text = "";
     public int TileX, TileY;

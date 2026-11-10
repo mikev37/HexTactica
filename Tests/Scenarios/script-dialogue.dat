@@ -220,6 +220,7 @@
 							"Portrait":1
 						}
 					],
+					"AtUnit":"",
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,
@@ -237,6 +238,8 @@
 					"InArea":false,
 					"BuildingSide":-1,
 					"BuildingKind":"",
+					"Target":"",
+					"TargetSide":-1,
 					"Count":1,
 					"Value":6,
 					"Veterancy":0,
@@ -249,6 +252,7 @@
 				{
 					"Type":19,
 					"Lines":[],
+					"AtUnit":"",
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,
@@ -266,6 +270,8 @@
 					"InArea":false,
 					"BuildingSide":-1,
 					"BuildingKind":"",
+					"Target":"",
+					"TargetSide":-1,
 					"Count":1,
 					"Value":5,
 					"Veterancy":0,
@@ -308,6 +314,7 @@
 							"Portrait":0
 						}
 					],
+					"AtUnit":"",
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,
@@ -325,6 +332,8 @@
 					"InArea":false,
 					"BuildingSide":-1,
 					"BuildingKind":"",
+					"Target":"",
+					"TargetSide":-1,
 					"Count":1,
 					"Value":6,
 					"Veterancy":0,
@@ -337,6 +346,7 @@
 				{
 					"Type":19,
 					"Lines":[],
+					"AtUnit":"",
 					"TileX":0,
 					"TileY":0,
 					"Radius":0,
@@ -354,6 +364,8 @@
 					"InArea":false,
 					"BuildingSide":-1,
 					"BuildingKind":"",
+					"Target":"",
+					"TargetSide":-1,
 					"Count":1,
 					"Value":7,
 					"Veterancy":0,

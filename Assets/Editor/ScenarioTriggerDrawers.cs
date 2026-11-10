@@ -19,6 +19,8 @@ static class TriggerFields {
             case TriggerCondition.UnitsInArea: return new[] { "Side", "UnitKind", "UnitTag", "Area", "Count" };
             case TriggerCondition.UnitKilled:
             case TriggerCondition.UnitBuilt:
+            case TriggerCondition.UnitSelected:
+            case TriggerCondition.UnitSpent:
             case TriggerCondition.UnitStarving:
             case TriggerCondition.UnitOutOfAmmo:
             case TriggerCondition.UnitOutOfFuel:
@@ -29,6 +31,7 @@ static class TriggerFields {
             case TriggerCondition.UnitsAtMost:
             case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value" };
             case TriggerCondition.BuildingCaptured:
+            case TriggerCondition.BuildingSelected:
             case TriggerCondition.BuildingOwned: return new[] { "Side", "BuildingKind", "InArea", "Count" };
             case TriggerCondition.BuildingDestroyed: return new[] { "BuildingKind", "InArea", "Count" };
             case TriggerCondition.DayReached: return new[] { "Value", "Side" };
@@ -49,7 +52,7 @@ static class TriggerFields {
         switch (field) {
             case "Side":
                 if (c == TriggerCondition.BuildingCaptured) return "Taken By";
-                if (c == TriggerCondition.BuildingOwned) return "Held By";
+                if (c == TriggerCondition.BuildingOwned || c == TriggerCondition.BuildingSelected) return "Held By";
                 if (c == TriggerCondition.MoneyAtLeast || c == TriggerCondition.MoneyAtMost) return "Whose";
                 if (c == TriggerCondition.TurnOver || c == TriggerCondition.TurnStarted || c == TriggerCondition.DayReached) return "On Whose Turn";
                 return "Whose Units";
@@ -69,7 +72,7 @@ static class TriggerFields {
                 switch (c) {
                     case TriggerCondition.UnitsInArea: case TriggerCondition.UnitStarving: case TriggerCondition.UnitOutOfAmmo:
                     case TriggerCondition.UnitOutOfFuel: case TriggerCondition.UnitLowOnFuel: case TriggerCondition.UnitCutOff:
-                    case TriggerCondition.BuildingOwned: return "At Least";
+                    case TriggerCondition.BuildingOwned: case TriggerCondition.UnitSpent: return "At Least";
                     case TriggerCondition.TurnStarted: case TriggerCondition.TurnOver: return "Their Turn Number";
                 }
                 return "Times";
@@ -82,9 +85,10 @@ static class TriggerFields {
         string[] buildings = { "BuildingSide", "BuildingKind", "InArea" };
         switch (a) {
             case TriggerActionType.Dialogue: return new[] { "Lines" };
-            case TriggerActionType.CameraFocus: return new[] { "TileX", "TileY", "Zoom", "Seconds" };
+            case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
+            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TileX", "TileY");
             case TriggerActionType.CameraFrameBoard: return new string[0];
-            case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "TileX", "TileY" };
+            case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "TileX", "TileY" };
             case TriggerActionType.HideMarker: return new[] { "MarkerId" };
             case TriggerActionType.PlayMusic: return new[] { "Track", "Loop" };
             case TriggerActionType.StopMusic: return new string[0];
@@ -119,7 +123,10 @@ static class TriggerFields {
                 if (a == TriggerActionType.SpawnUnit) return "For";
                 if (a == TriggerActionType.GiveMoney) return "To";
                 return "New Owner";
-            case "UnitSide": return "Whose Units";
+            case "UnitSide": return a == TriggerActionType.OrderUnits ? "Whose Units Move" : "Whose Units";
+            case "AtUnit": return a == TriggerActionType.ShowMarker ? "On Unit (Follows It)" : "On Unit";
+            case "Target": return "Attack Unit";
+            case "TargetSide": return "Or Nearest Of";
             case "BuildingSide": return "Whose Buildings";
             case "Value":
                 if (a == TriggerActionType.SpawnUnit) return "Strength";
@@ -172,6 +179,9 @@ static class TriggerFields {
             case TriggerCondition.UnitCutOff: return units + " cut off from supply";
             case TriggerCondition.UnitsAtMost: return t.Value + " or fewer " + units + " left";
             case TriggerCondition.UnitsAtLeast: return t.Value + " or more " + units;
+            case TriggerCondition.UnitSelected: return "the player selects " + units + times;
+            case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
+            case TriggerCondition.UnitSpent: return units + " has used its turn";
             case TriggerCondition.BuildingOwned: return building + " held by " + Side(t.Side);
             case TriggerCondition.AfterTrigger: return "after '" + t.AfterTrigger + "'";
             case TriggerCondition.AllOf: return "all of " + Names(t.Parts);
@@ -195,9 +205,10 @@ static class TriggerFields {
                 string first = n > 0 && a.Lines[0] != null ? (string.IsNullOrEmpty(a.Lines[0].Character) ? "" : a.Lines[0].Character + ": ") + Short(a.Lines[0].Text) : "";
                 return "Dialogue, " + n + " line" + (n == 1 ? "" : "s") + (first.Length > 0 ? " — " + first : "");
             }
-            case TriggerActionType.CameraFocus: return "Camera to " + at + (a.Zoom > 0 ? ", zoom " + a.Zoom : "");
+            case TriggerActionType.CameraFocus: return "Camera to " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (a.Zoom > 0 ? ", zoom " + a.Zoom : "");
+            case TriggerActionType.OrderUnits: return units + (string.IsNullOrEmpty(a.Target) ? (a.TargetSide != TriggerSide.Any ? " attack the nearest of " + Side(a.TargetSide) + "'s units" : " move toward " + at) : " attack '" + a.Target + "'");
             case TriggerActionType.CameraFrameBoard: return "Camera on the whole board";
-            case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + at + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
+            case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";
             case TriggerActionType.PlayMusic: return "Music: " + (string.IsNullOrEmpty(a.Track) ? "a special track" : a.Track) + (a.Loop ? " (loop)" : "");
             case TriggerActionType.StopMusic: return "Music back to normal";
@@ -327,7 +338,13 @@ class ScenarioTriggerDrawer : PropertyDrawer {
             + (t.Actions != null ? t.Actions.Count : 0) + " action" + (t.Actions != null && t.Actions.Count == 1 ? "" : "s")
             + (Application.isPlaying && t.TimesFired > 0 ? "  [fired " + t.TimesFired + "×]" : "")
             + (Application.isPlaying && t.Events > 0 ? "  [" + t.Events + " so far]" : "");
-        p.isExpanded = EditorGUI.Foldout(new Rect(r.x, r.y, r.width, EditorGUIUtility.singleLineHeight), p.isExpanded, new GUIContent(summary, "Fold out to edit."), true);
+        ScenarioScript owner = ScenarioEditing.Script(p);
+        bool canFire = Application.isPlaying && owner != null && t != null && owner.triggers.IndexOf(t) >= 0;
+        Rect head = new Rect(r.x, r.y, r.width - (canFire ? 48f : 0f), EditorGUIUtility.singleLineHeight);
+        p.isExpanded = EditorGUI.Foldout(head, p.isExpanded, new GUIContent(summary, "Fold out to edit."), true);
+        // In play: fire it now, whatever its condition (to try its actions without playing up to it).
+        if (canFire && GUI.Button(new Rect(r.xMax - 44f, r.y, 44f, EditorGUIUtility.singleLineHeight), new GUIContent("Fire", "Run this trigger's actions now, whatever its condition (counts as fired).")))
+            owner.Fire(owner.triggers.IndexOf(t));
         if (p.isExpanded) {
             EditorGUI.indentLevel++;
             TriggerCondition c = (TriggerCondition)p.FindPropertyRelative("Condition").intValue;
@@ -571,7 +588,7 @@ class UnitNameDrawer : PropertyDrawer {
     public override void OnGUI(Rect r, SerializedProperty p, GUIContent label) {
         if (p.propertyType != SerializedPropertyType.String) { EditorGUI.PropertyField(r, p, label); return; }
         SerializedProperty type = Fields.Sibling(p, "Type");
-        bool naming = p.propertyPath.Contains("Actions") && type != null && type.intValue == (int)TriggerActionType.SpawnUnit;
+        bool naming = p.name == "UnitTag" && p.propertyPath.Contains("Actions") && type != null && type.intValue == (int)TriggerActionType.SpawnUnit;
         EditorGUI.BeginProperty(r, label, p);
         if (naming) { p.stringValue = EditorGUI.TextField(r, new GUIContent(label.text, "The name the new units go by: later triggers pick them out by it (their Unit Name)."), p.stringValue); EditorGUI.EndProperty(); return; }
 

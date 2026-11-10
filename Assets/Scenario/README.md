@@ -79,6 +79,9 @@ units or buildings must match at least.
 | Units At Most (22) | now: at most *Value* matching units are alive (0: all gone, as in "destroy every enemy tank") | side, kind, name, in area |
 | Building Owned (23) | now: at least *Count* matching buildings are held by *Side* | held by, kind, in area |
 | Unit Cut Off (24) | now: matching units stand outside their side's supply | side, kind, name, in area |
+| Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |
+| Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
+| Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
 | Units At Least (25) | now: at least *Value* matching units are alive (as in "when you have 3 tanks"; with no kind, any units) | side, kind, name, in area |
 
 A **kind** is a unit or building prefab's name (Grunt, Tank, City, HQ…). A faction's version of a unit counts as its
@@ -105,6 +108,11 @@ Timing is counted in **turns**:
   given side's turn), or *After Trigger* to chain triggers in order.
 - The only thing measured in seconds is the **Wait** action. It paces a scene within one moment, for example a pause
   after the camera pans before the next line.
+- Turn numbers count the first turn too: the side that plays first is on its turn 1 when the level starts.
+- A trigger that fires once keeps its count, so another trigger can still use it as a part (None Of ["Opened the HQ"]
+  stays false once the HQ was opened). A repeating trigger starts counting from 0 each time it fires.
+- **Fire** (on each trigger, while playing) runs its actions at once, whatever its condition: try a scene without
+  playing up to it.
 - Triggers are checked continuously, in list order, while the game plays. They are not checked during the pre-game
   screen, the map editor, the in-game menu, or a replay.
 - An **Enable Trigger** action switches a trigger on. Its counts start from then, so "after the briefing, the next
@@ -115,8 +123,8 @@ Timing is counted in **turns**:
 | Action | Does |
 |---|---|
 | Dialogue (0) | shows its lines one after another. The game is held until the last line is closed, and the trigger's next action waits until then. |
-| Camera Focus (1) / Camera Frame Board (25) | glides the camera to the tile (*Zoom* sets the orthographic size; 0 keeps the zoom) / shows the whole board |
-| Show Marker (2) / Hide Marker (3) | puts a marker prefab from `Resources/ScenarioMarkers` on the tile, with *Text*, known by *Marker Id* / removes it (empty id: every marker) |
+| Camera Focus (1) / Camera Frame Board (25) | glides the camera to the tile, or to *On Unit* (*Zoom* sets the orthographic size; 0 keeps the zoom) / shows the whole board |
+| Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, and is hidden while the player can't see it / removes it (or every marker) |
 | Play Music (4) / Stop Music (5) | plays a track from `Resources/Music/Special` (empty: one at random), optionally looping / returns to the game's own music |
 | Win (6) / Lose (7) | ends the game now: *Side* wins / loses (the side left wins) |
 | Spawn Unit (8) | makes *Count* units of a kind for *Side* on the tile, each on the nearest free tile it can stand on if the tile is taken. Sets their strength, veterancy and name, and whether they can act this turn. |
@@ -130,6 +138,7 @@ Timing is counted in **turns**:
 | Destroy Units (20) | the matching units die |
 | Play Sound (21) | plays a sound from `Resources/Dialogue` once |
 | Ready Units (23) | the matching units can act again this turn (Value 1), or have used their turn (Value 0) |
+| Order Units (26) | the matching units move and attack as if ordered: toward the unit in *Attack Unit*, or the nearest unit of *Or Nearest Of*, attacking it if they reach it this turn; with no target, toward the tile. They have then used their turn. (For scripted ambushes: "the raider goes for our grunt".) |
 | Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |
 
 If an action matches nothing, it says so once in the console: no unit to give, no side by that name, no such marker
@@ -183,6 +192,21 @@ the first time Unity opens the project, and every Show Marker action uses it unl
 - Conditions, actions and every other enum are saved **by number** (shown in the tables above). New values always go
   at the end. A number is never reordered, renumbered or reused (see `ScenarioTrigger.cs`). Renaming a field drops
   its value from existing files, so keep field names.
+
+## The tutorial mission
+
+`Assets/Resources/Scenarios/Tutorial.dat` is a complete example, and the test `tutorial-playthrough` plays it
+through:
+- **Turn 1:** the scout introduces the grunt, with a marker on him. Selecting him moves the marker to a target tile
+  and explains the two-click move. Reaching the tile gets "Good job!". When his turn is used up, the scout explains
+  ending the turn.
+- **Raiders' turn:** a raider spawns in the fog and is ordered to attack the grunt. Taking damage brings "move into
+  supply to heal".
+- **Turn 3:** if the HQ was never opened, a hint points at it. Buying a grunt and a supply truck are each explained.
+- **The end:** the attack hint comes once the truck is bought (or on turn 4), and killing the raider wins.
+
+The tutorial uses rules *sandbox* (`"rules"` in the file), so the raiders' side, which starts with nothing, isn't
+knocked out before the ambush. Losing every unit is the tutorial's own loss trigger.
 
 ## Worked example: a tutorial beat
 

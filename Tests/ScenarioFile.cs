@@ -267,6 +267,7 @@ public static class ScenarioFile {
             if (u.ContainsKey("ammo") && int.TryParse(u["ammo"], out n)) unit.ammo = n;
             if (u.ContainsKey("fuel") && int.TryParse(u["fuel"], out n)) unit.fuel = n;
             if (u.ContainsKey("suppressed") && int.TryParse(u["suppressed"], out n)) unit.suppressed = Math.Min(n, unit.Strength);
+            if (u.ContainsKey("personalName")) unit.personal_name = u["personalName"];
         }
         foreach (KeyValuePair<Unit, int> kv in aboard) {
             Unit transport = kv.Value >= 0 && kv.Value < byIndex.Count ? byIndex[kv.Value] : null;

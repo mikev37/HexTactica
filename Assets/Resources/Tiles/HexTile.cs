@@ -433,6 +433,16 @@ public class HexTile : MonoBehaviour
     /// <summary>The tile last clicked on the board (the HUD describes it and the unit on it).</summary>
     public static HexTile lastClicked;
 
+    /// <summary>The player selected a unit on the board (a click on it, or TurnControls' next unit, which clicks its tile).</summary>
+    public static event System.Action<Unit> UnitSelected;
+    /// <summary>The player opened a building's build list (a click on it).</summary>
+    public static event System.Action<Building> BuildingOpened;
+
+    /// <summary>Tell UnitSelected's listeners (ClickBoard does, as the player selects a unit).</summary>
+    public static void NotifyUnitSelected(Unit u) { if (UnitSelected != null) UnitSelected(u); }
+    /// <summary>Tell BuildingOpened's listeners (ClickBoard does, as the player opens a building).</summary>
+    public static void NotifyBuildingOpened(Building b) { if (BuildingOpened != null) BuildingOpened(b); }
+
 	public void OnMouseDown() {
         if (HexTactica.Harness.Replay.Active) return;   // a replay: the board is only watched
         if (OverUI()) return;   // the map editor's panel or a menu over the board
@@ -472,6 +482,7 @@ public class HexTile : MonoBehaviour
                  && building.owner != null && building.owner == GameController.gc.activePlayer && BuildingMenu.IsHumanTurn() && building.Purchasable().Count > 0) {
             // A building is clickable only with no unit on it: its build list.
             BuildingMenu.Open(building);
+            NotifyBuildingOpened(building);
         } else if (unloading) {
             // The tile picked for the unit being unloaded (the transport moves to its picked tile first, if it unloads from there).
             TransportMenu.UnloadOnto(this);
@@ -505,6 +516,7 @@ public class HexTile : MonoBehaviour
                 // Only what it can fire on now: enemies it sees in range (not its whole range, not friends or empty tiles).
                 CheckAttackRange(sel).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
                 changeState(UIState.SELECTED);
+                NotifyUnitSelected(sel);
                 // A human's order: the unit acknowledges (the AI selects its units without clicking, so never for them).
                 sel.PlayOrderSound();
                 // Our transports it can board: beside it now, or beside a tile it can get to (a friend's too: it
