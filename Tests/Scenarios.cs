@@ -1935,6 +1935,7 @@ public static class Scenarios {
                     AIPlayer ap = l.ai.GetComponent<AIPlayer>();
                     List<string> said = new List<string>();
                     if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIProduction.DebugValues = Console.WriteLine;
+                    if (Environment.GetEnvironmentVariable("VALUES") != null) { AIProduction.ValueTrace = Console.WriteLine; AIProduction.ValueFilter = Environment.GetEnvironmentVariable("VALUES"); }
                     List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, ap.Profile), ap.Profile, x => said.Add(x.Trim()));
                     foreach (Unit u in got) if (Transporting.IsTransport(u) && u.Firepower <= 1) boughtTransport = true;   // by what it does, not its name
                     string res = string.Join(", ", got.ConvertAll(u => GameController.UnitName(u) + " at " + Pos(u.tile)).ToArray());
@@ -4683,6 +4684,7 @@ public static class Scenarios {
         // A shot from where the side fired on did not see the firer (an ambush or a shot from the fog).
         Action<Unit, Unit, bool> sh = (att, def, surprise) => { if (gc.fogOfWar && (surprise || !FogOfWar.Sees(def.owner, att))) { if (att.owner == l.ai) hiddenShotsBlue++; else hiddenShotsRed++; } };
         Unit.RanInto += rh; Unit.Attacking += sh;
+        if (Environment.GetEnvironmentVariable("VALUES") != null) { HexTactica.AI.AIProduction.ValueTrace = x => Console.WriteLine("   " + x); HexTactica.AI.AIProduction.ValueFilter = Environment.GetEnvironmentVariable("VALUES"); }
         if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIProduction.DebugValues = x => { if (x.Contains("sea lift")) Console.WriteLine("   value: " + x); }; HexTactica.OldAI.OldAIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; HexTactica.AI.AICampaign.Debug = x => { if (x.StartsWith("not taken on") || x.StartsWith("given up") || x.StartsWith("reserve drafts")) Console.WriteLine("   campaign: " + x); }; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
         double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
         // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.

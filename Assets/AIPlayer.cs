@@ -442,6 +442,18 @@ public class AIPlayer : MonoBehaviour, IAIController {
             long __x = AIPerf.Begin();
             HexTile wasAt = unit.tile;
             bool did = HexTactica.AI.AIExecutor.Execute(action, map, headless);
+            // procKindMorale: a fighting unit's turn, for what its kind is worth to buy — held up for want of a lift or supply,
+            // or did something for the front.
+            if (Profile.procKindMorale && action.unit == unit && unit.Hub == null && unit.Firepower > 0 && !(Transporting.IsTransport(unit) && unit.Firepower <= 1)
+                && !LocomotionRules.IsAirborne(unit.locomotion) && !LocomotionRules.IsNaval(unit.locomotion) && unit.tile != null && moraleNoted.Add(unit)) {
+                bool helped = did && (action.kind == AIActionKind.Attack || action.kind == AIActionKind.MoveAndAttack || action.kind == AIActionKind.Capture);
+                bool stuck = false;
+                if (!helped && unit.trasnporter == null) {
+                    HexTile g = GroundOf(unit);
+                    stuck = (g != null && map.AcrossWater(unit.tile, g)) || map.SupplyDepth(unit.tile) <= 0;
+                }
+                HexTactica.AI.AIProduction.NoteTurn(player, unit, stuck, helped);
+            }
             // A rider that got off by itself (its transport had already moved): getting off costs nothing, it still acts.
             bool selfDrop = did && action.kind == AIActionKind.Unload && action.target == unit && action.unit != unit;
             AIPerf.End("act: execute", __x);
@@ -582,7 +594,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// <summary>Units put down from a transport this turn: they do not get back in until next turn.</summary>
     readonly HashSet<Unit> putDownThisTurn = new HashSet<Unit>();
     /// <summary>noHopOff: riders that got in this turn, transports that have moved this turn, and where each unit began it.</summary>
-    readonly HashSet<Unit> boardedThisTurn = new HashSet<Unit>(), transportMoved = new HashSet<Unit>();
+    readonly HashSet<Unit> boardedThisTurn = new HashSet<Unit>(), transportMoved = new HashSet<Unit>(), moraleNoted = new HashSet<Unit>();
     /// <summary>supplySpareSeat: where each supply transport was to go when a rider got into its spare seat this turn.</summary>
     readonly Dictionary<Unit, HexTile> riderRide = new Dictionary<Unit, HexTile>();
     /// <summary>The goal each rider got in for this turn (AIAssault.Board's ground): judged against it when let out.</summary>
@@ -966,7 +978,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         reservedTransports.Clear();
         soughtRiders.Clear();
         putDownThisTurn.Clear();
-        boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear(); riderRide.Clear(); riderGoal.Clear();
+        boardedThisTurn.Clear(); transportMoved.Clear(); turnStart.Clear(); riderRide.Clear(); riderGoal.Clear(); moraleNoted.Clear();
         foreach (Unit u in player.units) if (u != null && u.tile != null) turnStart[u] = u.tile;
         waitedOnce.Clear(); waitLater.Clear();
         foreach (Unit t in new List<Unit>(crossing.Keys)) if (t == null || t.tile == null || AIAssault.Riders(t).Count == 0) crossing.Remove(t);

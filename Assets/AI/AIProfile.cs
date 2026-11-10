@@ -931,10 +931,30 @@ namespace HexTactica.AI {
         public bool procTerrainReach = true;
         [Tooltip("Production (productionLifetime): what a unit takes in a turn includes the return fire from each enemy it would attack from beside it (none for one that fires from range, or at one that cannot fire back at it).")]
         public bool productionRetaliation = true;
-        [Tooltip("Procurement: each facility has its own budget — the income split evenly, a facility serving a high-priority front or offering what is wanted most getting up to 1 + procPriorityShare times as much — kept from turn to turn. Each buys now, or saves for something better within the longest wait, its value cut by procWaitBase^-(procWaitPower x turns waited). Facilities saving for the same unit pool their savings and the highest-priority one builds it. A facility the enemy holds or can destroy a new unit on gives its savings to the others. Off: one plan over all the gold.")]
+        [Tooltip("Procurement: each facility has its own budget — the income split evenly, a facility serving a high-priority front or offering what is wanted most getting more by procFrontShare and procWantShare — kept from turn to turn. Each buys now, or saves for something better within the longest wait, its value cut by procWaitBase^-(procWaitPower x turns waited). Facilities saving for the same unit pool their savings and the highest-priority one builds it. A facility the enemy holds or can destroy a new unit on gives its savings to the others. Off: one plan over all the gold.")]
         public bool procBudgets = true;
-        [Tooltip("Procurement (procBudgets): the most extra share of income a facility gets for its priority (1: up to twice as much).")]
-        public float procPriorityShare = 1f;
+        [Tooltip("Procurement (procBudgets): a facility's weight in the split of the gold is 1, plus this times its front's priority (over the top front's), plus procWantShare times its best option's value (over the best anywhere).")]
+        public float procFrontShare = 1f;
+        [Tooltip("Procurement (procBudgets): see procFrontShare.")]
+        public float procWantShare = 1f;
+        [Tooltip("Procurement (procBudgets): buying nothing is an option worth this times what the facility has (at most what the other is short of) times the best value per gold of a facility that buys clearly more with it (procNothingMargin): the gold it gives buys that there. An option must be worth more to be chosen. 0: off.")]
+        public float procNothingWeight = 1f;
+        [Tooltip("Procurement (procNothingWeight): buying nothing counts only toward a facility whose best value per gold is more than this times the facility's own.")]
+        public float procNothingMargin = 1.5f;
+        [Tooltip("Procurement (procBudgets): the facilities that can buy now keep their savings; of those saving, the one whose best buy within its savings and the savers' together is worth most buys it now on the savings of the savers saving for least (each only while what it saves for is worth less than this buy), and owes them: while in debt it pays its share of the gold back each turn, and neither buys nor saves.")]
+        public bool procBorrow = true;
+        [Tooltip("Procurement: a land fighting unit whose front is across water from its facility (it cannot get there by itself; it needs a lift) is worth this much. 1: off.")]
+        public float procNeedsLiftCut = 0.5f;
+        [Tooltip("Procurement: each kind of fighting unit is worth its morale: each turn down by procMoraleDrop times the share of our units of that kind held up for want of supply or a lift (waiting to cross, out of supply and doing nothing), up toward 1 by procMoraleRise times the share that did something for the front (attacked, captured), and back toward 1 by procMoraleRecover; never under procMoraleFloor.")]
+        public bool procKindMorale = true;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleDrop = 0.3f;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleRise = 0.5f;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleRecover = 0.05f;
+        [Tooltip("Procurement (procKindMorale): see there.")]
+        public float procMoraleFloor = 0.2f;
         [Tooltip("Procurement (procBudgets): a unit saved for is worth its value times procWaitBase^-(procWaitPower x turns to wait ^ procWaitExponent).")]
         public float procWaitBase = 1.1f;
         [Tooltip("Procurement (procBudgets): see procWaitBase.")]
@@ -945,7 +965,7 @@ namespace HexTactica.AI {
         public float procStick = 1.25f;
         [Tooltip("Procurement (procBudgets): a facility's longest wait is the turns to save procSaveMost on its share of this much of the map's income plus the rest of ours (0.5: half the map's, half ours); never less than the turns to save for a supply unit on its share of our income.")]
         public float procWaitMapShare = 0.5f;
-        [Tooltip("Procurement (procBudgets): a facility whose best option is worth more than the mean of every facility's best (what something failed for want of: supply for a front short of it, transports for units waiting to cross) gains this times (its best over the mean, less 1) in weight, beyond procPriorityShare. 0: off.")]
+        [Tooltip("Procurement (procBudgets): a facility whose best option is worth more than the mean of every facility's best (what something failed for want of: supply for a front short of it, transports for units waiting to cross) gains this times (its best over the mean, less 1) in weight, beyond procFrontShare and procWantShare. 0: off.")]
         public float procDemandWeight = 1f;
         [Tooltip("Production: an amphibious unit (a marine) is not built at a facility with no water within this many tiles (as anti-air is not built against an enemy with no aircraft). 0: off.")]
         public int productionAmphibiousWater = 12;

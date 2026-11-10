@@ -550,6 +550,30 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
       turn; supply was asked for only from round ~10 (values 25–72k).
     - `procDemandWeight=3` (u2_*): new Blue took all three north-west cities r20, 157,500 v 171,000, still 3 supply units,
       33,000 gold left; new Red all three north cities r14–18, 181,583 v 161,416. Not made the default.
+  - Values, read with the new `VALUES=<name part>` trace (duel probe and ai-buy-transports): on Channel round ~11 a
+    Conscript at an army base was base 134 (its combat value, x0.30 for its time to the fight) + facility bonus 2,837
+    (1,000 x 3 bases) + jiggle ~1,580 = 4,700: the additive bonuses are nearly all of it. Transport ships: each yard's own
+    cargo value (16,598 v 14,743, by distance to the riders); they pool gold, not value. Army bases with 1,660 bought a
+    1,500 Conscript and gave the 160 back. The end-of-game "29,000" was ~21,000 in nine accounts (1,400–3,000 each toward
+    2,500–9,000) plus the next income.
+  - Owner's changes (10 Nov), all on: weights 1 + `procFrontShare` x front priority + `procWantShare` x best/top (both 1,
+    was 0.5/0.5 through `procPriorityShare`, removed) + `procDemandWeight`; `procNothingWeight`/`procNothingMargin` (buy
+    nothing, worth the gold's value per gold at a facility that buys clearly more with it — at most what that one is short
+    of; the first version, the average of all the others, had every facility give its gold away and new Blue ended with 7
+    units and 71,500 gold); `procBorrow` (savers' gold lent to the saver with the most valuable buy it could make now,
+    from the savers saving for least; the borrower pays its share back each turn, buying and saving nothing until clear);
+    `procNeedsLiftCut` 0.5 (a land fighter whose front is across water from its facility); `procKindMorale` (per kind of
+    unit, `KindKey` by stats: down by 0.3 x the share of its units held up — across water from their ground and not
+    aboard, or out of supply — and not attacking/capturing, up by 0.5 x the share that attacked or captured, back toward 1
+    by 0.05 a turn, floor 0.2; noted in `AIPlayer.Run`, settled at the start of `Buy`).
+  - Channel 20 rounds, new Blue v old Red, one traced game each (material, island cities of Red's north-west island):
+    all on 163,750 v 192,166, none; weights 1+2+2 158,333 v 180,333, none; jiggle 500 166,833 v 203,166, none; borrow off
+    146,250 v 213,333, all three r19–20; buy-nothing off 166,750 v 178,333, two r17; lift cut off 170,500 v 178,250, two
+    r20; morale off 188,416 v 194,166, all three r19–20. New Red, all on: 200,416 v 164,000, one north city r20. Supply
+    units bought: 1–4 in every game; ride-along never (no front across water had its own supply unit). Single games:
+    the differences are within what one game varies by; the supply shortage is untouched. Conscripts bought: 3–8, 21
+    with buy-nothing off (30 before these changes). Borrowing bought 2 of the 4 supply units in the all-on game; the HQ
+    then spent 13 turns paying back.
 
 ## 7. Open work, in the order I'd take it
 

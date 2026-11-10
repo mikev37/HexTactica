@@ -350,7 +350,17 @@ MonoBehaviour:
   procTerrainReach: 1
   productionRetaliation: 1
   procBudgets: 1
-  procPriorityShare: 1
+  procFrontShare: 1
+  procWantShare: 1
+  procNothingWeight: 1
+  procNothingMargin: 1.5
+  procBorrow: 1
+  procNeedsLiftCut: 0.5
+  procKindMorale: 1
+  procMoraleDrop: 0.3
+  procMoraleRise: 0.5
+  procMoraleRecover: 0.05
+  procMoraleFloor: 0.2
   procWaitBase: 1.1
   procWaitPower: 4
   procWaitExponent: 1
