@@ -524,8 +524,8 @@ public class HexTile : MonoBehaviour
                 Unit cargo = sel;
                 foreach (Unit tr in cargo.owner.units) {
                     if (tr == null || tr == cargo || tr.tile == null || !Transporting.CanCarry(tr, cargo)) continue;
-                    bool reach = tr.tile.neighbors.Contains(this) && Transporting.CanBoardOnto(cargo, this, tr.tile, tr);
-                    foreach (HexTile n in tr.tile.neighbors) if (n != null && n.G != 0 && BoardableFrom(cargo, n, tr)) reach = true;
+                    bool reach = tr.tile.neighbors.Contains(this) && Transporting.CanBoardOnto(cargo, this, tr.tile, tr) && Transporting.StepInFits(cargo, this, 0, tr);
+                    foreach (HexTile n in tr.tile.neighbors) if (n != null && n.G != 0 && BoardableFrom(cargo, n, tr) && Transporting.StepInFits(cargo, n, n.G, tr)) reach = true;
                     if (reach) tr.tile.changeState(UIState.LOAD_CONFIRM);
                 }
             } else if (state == UIState.MOVE) {
@@ -666,13 +666,13 @@ public class HexTile : MonoBehaviour
     /// </summary>
     public static List<HexTile> BoardingPath(Unit cargo, Unit transport) {
         if (cargo == null || cargo.tile == null || transport == null || transport.tile == null || !Transporting.CanCarry(transport, cargo)) return null;
-        if ((cargo.tile == transport.tile || transport.tile.neighbors.Contains(cargo.tile)) && Transporting.CanBoardFromTile(transport, cargo, cargo.tile))
+        if ((cargo.tile == transport.tile || transport.tile.neighbors.Contains(cargo.tile)) && Transporting.CanBoardFromTile(transport, cargo, cargo.tile) && Transporting.StepInFits(cargo, cargo.tile, 0, transport))
             return new List<HexTile> { cargo.tile };
         HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
         List<HexTile> reach = cargo.tile.CheckMovementRange(cargo);
         HexTile beside = null;
         foreach (HexTile n in transport.tile.neighbors) {
-            if (n == null || n == cargo.tile || !reach.Contains(n) || !BoardableFrom(cargo, n, transport)) continue;
+            if (n == null || n == cargo.tile || !reach.Contains(n) || !BoardableFrom(cargo, n, transport) || !Transporting.StepInFits(cargo, n, n.G, transport)) continue;
             if (beside == null || n.G < beside.G || (n.G == beside.G && CombatMath.Precedes(n, beside))) beside = n;
         }
         List<HexTile> steps = beside != null ? beside.buildpath() : null;

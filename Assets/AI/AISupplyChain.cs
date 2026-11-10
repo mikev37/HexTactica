@@ -109,7 +109,7 @@ namespace HexTactica.AI {
                     HexTile b = null;
                     if (Transporting.CanBoardFrom(t, u)) b = u.tile;
                     else foreach (HexTile n in t.tile.neighbors) {
-                        if (n == null || taken.Contains(n) || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, u, n)) continue;
+                        if (n == null || taken.Contains(n) || !AIPath.BoardsFrom(walk, u, t, n)) continue;
                         if (b == null || CombatMath.Precedes(n, b)) b = n;
                     }
                     if (b == null) continue;

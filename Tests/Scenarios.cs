@@ -756,6 +756,10 @@ public static partial class Scenarios {
                  Put("Gunboat", a, 3, -2); Put("Gunboat", a, 4, 3); Put("SupplyBoat", a, 1, 4);
                  Put("Grunt", o, 6, -5); },
              "Ships go back for what they run out of: a gunboat out of ammunition five tiles from Blue's naval yard heads for the yard (only a yard rearms) and is rearmed there; a gunboat with one turn of supplies left, far from the yard, goes beside Blue's supply boat instead, and is restocked there at the start of its next turn.");
+        make("rule-board-reach", "boardReach", (a, o) => {
+                 water(0, 7, -7, 7);
+                 Put("Grunt", a, -4, 0); Put("APC", a, -1, 0); Put("APC", a, -1, 1); Put("Hauler", a, 0, -2); Put("Grunt", o, 6, -3); },
+             "Boarding reaches as far as a move: a grunt (3 moves, plains) gets into an APC 3 tiles off on land it could walk onto (the step in is the third), and not one 4 off; a hauler on the water, which it cannot enter, it boards from the shore beside it — 4 off, its 3 moves taking it to the shore and the step in free.");
         make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
              "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
         make("ui-next-unit", "nextUnit", (a, o) => { Put("Grunt", a, 0, 0); Put("Grunt", a, 2, 0); Put("Tank", a, 0, 2); Put("Grunt", o, 5, -2); },
@@ -1827,7 +1831,8 @@ public static partial class Scenarios {
                             landed++;
                             int nearest = int.MaxValue; foreach (Unit e in o.units) if (e != null && e.tile != null) nearest = Math.Min(nearest, u.tile.Distance(e.tile));
                             bool struck = attackedThisTurn.Contains(u);
-                            if (struck) struckOnLanding++; else if (nearest > 1) earlyDrops++;
+                            // (With no enemy left, putting troops down is no early drop: there is nothing to strike.)
+                            if (struck) struckOnLanding++; else if (nearest > 1 && nearest != int.MaxValue) earlyDrops++;
                             line += "; " + u.name.Replace("(Clone)", "") + " put down at " + Pos(u.tile) + (struck ? ", attacked the same turn" : ", did not attack (" + nearest + " from the nearest enemy)");
                         }
                         if (walker.trasnporter == apc2) walkerBoarded = true;
@@ -1838,7 +1843,7 @@ public static partial class Scenarios {
                 int rodeUp = 0, assaultDrops = 0, otherDrops = 0;
                 foreach (string w in why) {
                     if (w.Contains("assault ride: moves up")) rodeUp++;
-                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else if (!w.Contains("holds the line") && !w.Contains("at the front line") && !w.Contains("not its assault ride")) otherDrops++; }
+                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:") || w.Contains("to take it")) assaultDrops++; else if (!w.Contains("holds the line") && !w.Contains("at the front line") && !w.Contains("not its assault ride")) otherDrops++; }
                 }
                 detail = string.Join(" | ", r.ToArray()) + " || moved up with riders aboard " + rodeUp + " times; put down to strike " + assaultDrops + ", put down otherwise " + otherDrops + "; landed " + landed + " (attacked the turn they landed " + struckOnLanding + ": the rider's own call); walker boarded " + walkerBoarded;
                 return landed > 0 && assaultDrops >= 1 && otherDrops == 0;
@@ -3593,6 +3598,16 @@ public static partial class Scenarios {
                 }
                 detail = string.Join(" | ", r.ToArray()) + "; rearmed " + rearmed + ", restocked " + restocked + " without losing strength " + (hungry.Strength == 6);
                 return rearmed && restocked && hungry.Strength == 6;
+            }
+            case "boardReach": {
+                Unit g = Rig.At(-4, 0).occupier, near = Rig.At(-1, 0).occupier, far = Rig.At(-1, 1).occupier, ship = Rig.At(0, -2).occupier;
+                int dn = g.tile.Distance(near.tile), df = g.tile.Distance(far.tile), ds = g.tile.Distance(ship.tile);
+                List<HexTile> pn = HexTile.BoardingPath(g, near), pf = HexTile.BoardingPath(g, far), ps = HexTile.BoardingPath(g, ship);
+                bool atNear = pn != null && g.WalkAndBoard(pn, near, false);
+                if (atNear) { Transporting.Unload(near, g, Rig.At(-4, 0)); g.active = true; }
+                detail = "grunt move " + g.moveRange + "; APC " + dn + " off: path " + (pn == null ? "none" : (pn.Count - 1) + " steps") + ", boards " + atNear
+                       + "; APC " + df + " off: path " + (pf == null ? "none" : (pf.Count - 1) + " steps") + "; hauler " + ds + " off on the water: path " + (ps == null ? "none" : (ps.Count - 1) + " steps");
+                return dn == g.moveRange && df == g.moveRange + 1 && ds == g.moveRange + 1 && pn != null && atNear && pf == null && ps != null;
             }
             case "ignoresCover": {
                 Unit tank = Rig.At(0, 0).occupier, g = Rig.At(1, 0).occupier;

@@ -499,6 +499,7 @@ namespace HexTactica.AI {
                     if (SeaLiftShip(t, map)) continue;   // a ship's supply goes with its troops (AIPlayer: sea lift)
                     if (CarriesHub(t)) { s.Add(t); continue; }
                     if (t.Firepower > 1 || s.Contains(t)) continue;
+                    if (Riders(t).Count > 0) continue;   // carrying troops: on their ride, not held for supply (only empty ones)
                     free.Add(t);
                 }
                 free.Sort(AIMap.CompareUnits);
@@ -530,6 +531,7 @@ namespace HexTactica.AI {
                 if (SeaLiftShip(t, map)) continue;   // a ship's supply goes with its troops (AIPlayer: sea lift)
                 if (CarriesHub(t)) { s.Add(t); continue; }
                 if (t.Firepower > 1) continue;   // an armed one fights (and carries troops)
+                if (Riders(t).Count > 0) continue;   // carrying troops: on their ride, not held for supply
                 if (noBuild && SupplyCapable(t)) { s.Add(t); continue; }
                 foreach (Unit h in onFoot)
                     if (Transporting.FreeWeight(t) >= Mathf.Max(1, h.weight) && Fits(t, h) && map.Travel(t, t.tile, h.tile) <= Mathf.Max(1, t.moveRange) + 1) { s.Add(t); break; }
@@ -618,7 +620,7 @@ namespace HexTactica.AI {
                 else {
                     if (now == null) now = map.ReachThisTurn(c);
                     foreach (HexTile n in t.tile.neighbors) {
-                        if (n == null || n == c.tile || !now.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, c, n)) continue;
+                        if (n == null || n == c.tile || !AIPath.BoardsFrom(now, c, t, n)) continue;
                         if (at == null || CombatMath.Precedes(n, at)) at = n;
                     }
                 }
