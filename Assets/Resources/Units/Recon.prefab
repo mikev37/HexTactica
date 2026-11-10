@@ -956,7 +956,7 @@ MonoBehaviour:
   ammo: 6
   ammoMax: 6
   transportSlots: 1
-  maxWeight: 3
+  maxWeight: 1
   weight: 2
   carries: 00000000i
   transported: []
@@ -1624,6 +1624,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &3193534194042503796
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2115,6 +2116,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!4 &2294533820505843251 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -7552582706839291426, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}
@@ -2153,6 +2155,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &4796897189842535476 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5362103550743239641, guid: 2ea98b91f6a55d54c9af1212ceea9e68, type: 3}

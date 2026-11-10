@@ -1051,6 +1051,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &2020242040074351588
 GameObject:
   m_ObjectHideFlags: 0
@@ -1450,6 +1451,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &5158420019539355065
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1576,7 +1578,7 @@ MonoBehaviour:
   ammoMax: 2
   transportSlots: 0
   maxWeight: 0
-  weight: 1
+  weight: 2
   carries: 
   transported: []
   trasnporter: {fileID: 0}
@@ -2080,6 +2082,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &4937536656368473076
 GameObject:
   m_ObjectHideFlags: 0
@@ -2936,6 +2939,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &6601384750058236243
 GameObject:
   m_ObjectHideFlags: 0
@@ -3771,6 +3775,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &6723914991336944963
 MonoBehaviour:
   m_ObjectHideFlags: 0

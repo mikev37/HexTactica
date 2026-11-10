@@ -8,6 +8,7 @@ public class SpriteShadow : MonoBehaviour
     public Color color = Color.black;
     public float distance;
     public int renderQueue;
+    public bool maskRenderInside = false;
 
     private GameObject shadowGo;
     private GameObject southGo, northGo, eastGo, westGo;
@@ -20,14 +21,17 @@ public class SpriteShadow : MonoBehaviour
         if (!sprite)
             sprite = GetComponent<SpriteRenderer>().sprite;
         shadowGo = new GameObject("Shadow");
-        shadowGo.transform.localScale = transform.localScale;
-        shadowGo.transform.position = transform.position;
+        
+        
         shadowGo.transform.parent = transform;
+        shadowGo.transform.localScale = Vector3.one;
+        shadowGo.transform.localPosition = Vector3.zero;
         shadowGo.transform.localRotation = Quaternion.identity;
         southGo = new GameObject("ShadowSouthObj");
-        southGo.transform.localScale = transform.localScale;
+
         southGo.transform.position = shadowGo.transform.position;
         southGo.transform.parent = shadowGo.transform;
+        southGo.transform.localScale = Vector3.one;
         southGo.transform.position += (Vector3)Vector2.down * distance;
         southR = southGo.AddComponent<SpriteRenderer>();
         southR.sprite = sprite;
@@ -35,9 +39,10 @@ public class SpriteShadow : MonoBehaviour
         southR.sortingLayerName = "UnitShadow";
         southR.rendererPriority = renderQueue;
         northGo = new GameObject("ShadowNorthObj");
-        northGo.transform.localScale = transform.localScale;
+
         northGo.transform.position = shadowGo.transform.position;
         northGo.transform.parent = shadowGo.transform;
+        northGo.transform.localScale = Vector3.one;
         northGo.transform.position += (Vector3)Vector2.up * distance;
         northR = northGo.AddComponent<SpriteRenderer>();
         northR.sprite = sprite;
@@ -45,9 +50,10 @@ public class SpriteShadow : MonoBehaviour
         northR.color = color;
         northR.rendererPriority = renderQueue;
         westGo = new GameObject("ShadowWestObj");
-        westGo.transform.localScale = transform.localScale;
+
         westGo.transform.position = shadowGo.transform.position;
         westGo.transform.parent = shadowGo.transform;
+        westGo.transform.localScale = Vector3.one;
         westGo.transform.position += (Vector3)Vector2.left * distance;
         westR = westGo.AddComponent<SpriteRenderer>();
         westR.sprite = sprite;
@@ -55,15 +61,22 @@ public class SpriteShadow : MonoBehaviour
         westR.rendererPriority = renderQueue;
         westR.sortingLayerName = "UnitShadow";
         eastGo = new GameObject("ShadowEastObj");
-        eastGo.transform.localScale = transform.localScale;
+
         eastGo.transform.position = shadowGo.transform.position;
         eastGo.transform.parent = shadowGo.transform;
+        eastGo.transform.localScale = Vector3.one;
         eastGo.transform.position += (Vector3)Vector2.right * distance;
         eastR = eastGo.AddComponent<SpriteRenderer>();
         eastR.sprite = sprite;
         eastR.color = color;
         eastR.sortingLayerName = "UnitShadow";
         eastR.rendererPriority = renderQueue;
+        if (maskRenderInside) {
+            northR.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
+            southR.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
+            eastR.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
+            westR.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
+        }
 
     }
 

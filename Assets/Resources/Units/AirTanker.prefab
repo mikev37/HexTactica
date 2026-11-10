@@ -125,6 +125,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2571194577756201212
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -265,6 +266,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &5399060184240458698
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -498,7 +500,7 @@ MonoBehaviour:
   ammoMax: 6
   transportSlots: 0
   maxWeight: 0
-  weight: 1
+  weight: 3
   carries: 
   transported: []
   trasnporter: {fileID: 0}
@@ -873,6 +875,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &7072670015300527631
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1015,6 +1018,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &7229361076172174677
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1293,6 +1297,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2351709087232750739
 MonoBehaviour:
   m_ObjectHideFlags: 0

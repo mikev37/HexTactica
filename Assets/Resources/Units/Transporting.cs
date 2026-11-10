@@ -65,8 +65,9 @@ public static class Transporting {
         // one of our buildings that services it (a runway).
         if (transport != null && LocomotionRules.IsAirborne(transport.locomotion) && LocomotionRules.NeedsBase(transport.locomotion) && !LocomotionRules.ResuppliedInSupply(transport.locomotion)) return servicing;
         if (from == t) return true;
-        if (cargo.CanEnter(t) && LocomotionRules.BridgeStep(from, t, cargo.locomotion)) return true;
-        return servicing;
+        return true;
+        //if (cargo.CanEnter(t)) return true; //&& LocomotionRules..BridgeStep(from, t, cargo.locomotion)
+        //return servicing;
     }
 
     /// <summary>Boarding: the cargo beside (or on) the transport, and able to step onto its tile (see CanBoardOnto).</summary>
