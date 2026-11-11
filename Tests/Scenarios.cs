@@ -5138,8 +5138,6 @@ public static partial class Scenarios {
         foreach (string seedText in seeds)
         foreach (string fog in (Environment.GetEnvironmentVariable("FOGS") ?? "off,on").Split(',')) {
             int seed = int.Parse(seedText);
-            challenger = p => { if (chal0 != null) chal0(p); p.noiseSeed = seed; };
-            champion = p => { if (champ0 != null) champ0(p); p.noiseSeed = seed; };
             foreach (string map in maps) {
                 float[] lead = new float[2];
                 int[] ground = new int[2], held = new int[2];

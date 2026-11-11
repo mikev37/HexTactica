@@ -152,29 +152,6 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Choose this turn's move in tiers, the way the original AttackMove did, instead of adding
-        /// every consideration into one number. Attacking first is the biggest advantage in this
-        /// ruleset, and in a single sum any positional term — footwork, screens, an objective's
-        /// pull — could outbid a shot. Here nothing can:
-        ///
-        ///   0. Our HQ: drop every option that would leave it destroyable on the enemy's coming turn,
-        ///      if any option would not; if none would not, keep those leaving it least exposed
-        ///      (AIDenial.HQThreat). Losing the HQ loses everything.
-        ///   1. Damage dealt: every stop and the best attack from it. Keep the options whose attack
-        ///      is at least attackTie of the best (if anything can attack at all). Fuzzy, so that a
-        ///      slightly smaller hit from a much safer tile survives to tier 2.
-        ///   2. Damage received: expected loss tonight at that tile, plus any retaliation, in the
-        ///      acting unit's strength points. Keep those within receivedTie of the least.
-        ///   3. Everything else, in gold: enemy movement and supply denied by standing there
-        ///      (AIDenial — measured by moving the unit on the board and recomputing), plus the
-        ///      positional score (approach toward the best multi-turn destination, supply, cover,
-        ///      strategy, counterattack, commitment). Highest wins; exact ties on board position.
-        ///
-        /// When nothing is in reach, tier 1 keeps everything, tier 2 keeps the safe tiles, and tier
-        /// 3 picks among them — which is what puts units on chokepoints while the enemy is still
-        /// out of range, and walks them forward when it is not.
-        /// </summary>
-        /// <summary>
         /// Should <paramref name="unit"/> regroup? An expensive fighting unit (regroupExpensiveCost
         /// or more), at real risk where it stands (regroupRisk), on a front that is not on the offensive.
         /// </summary>
@@ -199,6 +176,10 @@ namespace HexTactica.AI {
             return true;
         }
 
+        /// <summary>
+        /// Every tile the unit can stop on, and from each every shot it could take there: the options the forecast
+        /// chooses among (ByWorld). A tile that would block one of our facilities is left out while there is another.
+        /// </summary>
         static AIAction Tiered(Unit unit, AIMap map, AIProfile profile, Posture posture,
                                Dictionary<HexTile, KeyValuePair<float, HexTile>> stops,
                                Func<HexTile, bool> canShootFrom, Func<AttackAppraisal, bool> shotAllowed,

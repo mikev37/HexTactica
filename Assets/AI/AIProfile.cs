@@ -159,8 +159,6 @@ namespace HexTactica.AI {
         public float productionLifeMax = 8f;
         [Tooltip("Buying (productionLifetime): turns of life a unit's worth is measured against (a unit expected to live this long keeps the worth of one exchange).")]
         public float productionLifeRef = 3f;
-        [Tooltip("Buying: the weight on what a unit would take (productionDefenceWeight) falls as our army grows — halved at this many fighting units — so attack counts for more than holding on. 0: off.")]
-        public float productionDefenceFade = 20f;
         [Tooltip("Buying: a front's want (the units that do most against its enemy, at its nearest producer) counts this much.")]
         public float productionFrontWeight = 1f;
         [Tooltip("Buying: a supply unit's (or truck's) value — the fighting units it would supply, or the force a front waiting on supply needs — counts this much.")]
@@ -183,13 +181,7 @@ namespace HexTactica.AI {
         [Tooltip("Floor on the tie margin, in gold, whatever the unit's worth.")]
         public float worldTieMin = 250f;
 
-        [Tooltip("Tier 1: keep every option whose attack value is at least this fraction of the best. 1 = only the best shot; 0.5 = anything doing half as much, which leaves room for the later tiers.")]
-        [Range(0f, 1f)]
-        public float attackTie = 0.5f;
 
-        [Tooltip("Tier 2: keep every option whose expected damage received is within this many of the acting unit's strength points of the least.")]
-        [Range(0f, 6f)]
-        public float receivedTie = 1f;
 
         [Tooltip("Tier 3: worth of each enemy-reachable tile (two turns, summed over enemy units) taken away, as a fraction of the acting unit's worth.")]
         public float denialTileWeight = 0.05f;
@@ -710,10 +702,6 @@ namespace HexTactica.AI {
         public float scoutThreatBonus = 1f;
 
         [Header("Debug")]
-        [Tooltip("Harness only: a seed for small deterministic noise in close choices (decisionNoise), so one map can be played many different ways. 0: none.")]
-        public int noiseSeed = 0;
-        [Tooltip("Harness only: the size of that noise, as a fraction of the acting unit's worth per strength point.")]
-        public float decisionNoise = 0.15f;
         [Tooltip("Write decision reasoning onto the tiles as text.")]
         public bool annotateBoard = true;
 
