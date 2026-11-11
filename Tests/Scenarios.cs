@@ -3156,6 +3156,16 @@ public static partial class Scenarios {
                 bool back = HexTactica.Harness.Replay.Index == turns.Count - 2 && Draw() == boards[turns.Count - 2];
                 HexTactica.Harness.Replay.Next(); HexTactica.Harness.Replay.Next();
                 bool clamp = HexTactica.Harness.Replay.Index == turns.Count - 1;
+                // Action by action: each turn's logged actions played on its board should leave the next turn's board.
+                int stepped = 0, sameAfter = 0, compared = 0; string firstOff = null;
+                for (int i = 0; i + 1 < turns.Count && i + 1 < boards.Count; i++) {
+                    HexTactica.Harness.Replay.Show(i);
+                    while (HexTactica.Harness.Replay.StepsLeft > 0) { HexTactica.Harness.Replay.NextAction(); stepped++; }
+                    compared++;
+                    if (Draw() == boards[i + 1]) sameAfter++; else if (firstOff == null) firstOff = "turn " + i;
+                }
+                HexTactica.Harness.Replay.Show(turns.Count - 1);
+                r.Add("actions played " + stepped + "; boards after a turn's actions equal to the next turn's " + sameAfter + "/" + compared + (firstOff != null ? " (first off: " + firstOff + ")" : ""));
                 r.Add("boards as recorded " + same + " of " + turns.Count + "; back " + back + ", stops at the last " + clamp + "; nobody plays " + frozen);
                 HexTile clickedWas = HexTile.lastClicked;
                 Rig.At(0, 0).OnMouseDown();
@@ -3174,7 +3184,7 @@ public static partial class Scenarios {
                 try { Directory.Delete(root, true); } catch (Exception) { }
                 HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
                 detail = string.Join("; ", r.ToArray());
-                return read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
+                return stepped > 0 && read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;

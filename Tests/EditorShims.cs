@@ -25,7 +25,13 @@ namespace UnityEditor {
     public struct AudioImporterSampleSettings { public UnityEngine.AudioClipLoadType loadType; public UnityEngine.AudioCompressionFormat compressionFormat; public float quality; }
     public class AudioImporter : AssetImporter { public bool importSettingsMissing, loadInBackground; public AudioImporterSampleSettings defaultSampleSettings; }
     public class TextureImporter : AssetImporter { public TextureImporterType textureType; public SpriteImportMode spriteImportMode; public bool mipmapEnabled, alphaIsTransparency; public UnityEngine.Vector4 spriteBorder; }
-    public static class PrefabUtility { public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject g, string path) { return g; } }
+    public enum InteractionMode { AutomatedAction, UserAction }
+    public static class PrefabUtility {
+        public static UnityEngine.GameObject SaveAsPrefabAsset(UnityEngine.GameObject g, string path) { return g; }
+        public static UnityEngine.GameObject SaveAsPrefabAssetAndConnect(UnityEngine.GameObject g, string path, InteractionMode m) { return g; }
+        public static UnityEngine.Object InstantiatePrefab(UnityEngine.Object o, UnityEngine.Transform parent) { return o; }
+        public static bool IsPartOfPrefabInstance(UnityEngine.Object o) { return false; }
+    }
     public static class EditorUtility {
         public static bool DisplayDialog(string t, string m, string ok, string cancel) { return false; }
         public static bool DisplayDialog(string t, string m, string ok) { return true; }

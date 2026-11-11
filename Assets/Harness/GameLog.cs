@@ -83,6 +83,7 @@ namespace HexTactica.Harness {
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
             GameController.GameEnded += GameOver;
+            GameController.Resigned += OnResigned;
             AIPlayer.Trace = Line;
             AITactical.DecisionLog = Line;
             AISupplyPlanner.DebugLog = Line;
@@ -172,6 +173,7 @@ namespace HexTactica.Harness {
             Unit.RanInto -= OnRanInto;
             GameController.TurnStarted -= OnTurnStarted;
             GameController.GameEnded -= GameOver;
+            GameController.Resigned -= OnResigned;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
             if (AITactical.DecisionLog == (Action<string>)Line) AITactical.DecisionLog = null;
             if (AISupplyPlanner.DebugLog == (Action<string>)Line) AISupplyPlanner.DebugLog = null;
@@ -219,7 +221,7 @@ namespace HexTactica.Harness {
             HexTile was;
             lastSeen.TryGetValue(u, out was);
             if (u.tile != null && was != null && was != u.tile)
-                Line("   " + Who(u) + " moved " + D(was) + " -> " + D(u.tile));
+                Line(Lines.Moved(u, was, u.tile));
             if (u.tile != null) lastSeen[u] = u.tile;
         }
 
@@ -269,6 +271,8 @@ namespace HexTactica.Harness {
             float len2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
             return len2 > 0f ? (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / len2 : 0f;
         }
+
+        static void OnResigned(Player p) { if (writer != null && p != null) Line(Lines.Resigns(p)); }
 
         static void OnProduced(Building b, Unit made) {
             if (writer == null || made == null) return;

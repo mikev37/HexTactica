@@ -12,7 +12,9 @@ public enum SessionMode {
     /// <summary>A saved game, played on from where it was saved.</summary>
     Play,
     /// <summary>The map editor: a scenario (or the scene's board) to edit.</summary>
-    Editor
+    Editor,
+    /// <summary>A recorded game (a game log folder), watched again.</summary>
+    Replay
 }
 
 /// <summary>
@@ -54,10 +56,13 @@ public static class MatchSetup {
     /// <summary>Open the game scene in the map editor, on a scenario (null: the scene's own board).</summary>
     public static void Edit(string scenarioPath) { Open(SessionMode.Editor, scenarioPath); }
 
+    /// <summary>Open the game scene on a recorded game (its game log folder) to watch it again.</summary>
+    public static void Watch(string logFolder) { Open(SessionMode.Replay, logFolder); }
+
     static void Open(SessionMode mode, string path) {
         Mode = mode;
         FilePath = path ?? "";
-        GameController.Paused = mode == SessionMode.Setup || mode == SessionMode.Editor;
+        GameController.Paused = mode != SessionMode.Play;
         SceneManager.LoadScene(FrontEndSettings.Get.gameScene, LoadSceneMode.Single);
     }
 
@@ -67,6 +72,8 @@ public static class MatchSetup {
         FilePath = "";
         GameController.Paused = false;
         GameLog.Stop();
+        Replay.Close();
+        Replay.BuiltInPanel = true;
         SceneManager.LoadScene(FrontEndSettings.Get.mainMenuScene, LoadSceneMode.Single);
     }
 

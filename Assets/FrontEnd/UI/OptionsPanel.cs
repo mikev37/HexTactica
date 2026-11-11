@@ -23,7 +23,16 @@ public class OptionsPanel : MonoBehaviour {
     public TMP_Dropdown quality;
     public Toggle vSync;
 
+    [Tooltip("What Close goes back to: the main menu's buttons, or the in-game menu's window.")]
+    public GameObject returnTo;
+
     readonly List<Vector2Int> resolutions = new List<Vector2Int>();
+
+    /// <summary>The Back button: this panel away, what it was opened from back.</summary>
+    public void Close() {
+        gameObject.SetActive(false);
+        if (returnTo != null) returnTo.SetActive(true);
+    }
 
     void Awake() {
         if (volume != null) volume.onValueChanged.AddListener(v => { GameOptions.Volume = v; ShowVolume(); });

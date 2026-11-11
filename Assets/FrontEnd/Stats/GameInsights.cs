@@ -71,7 +71,10 @@ public static class GameInsights {
         if (s == null) return "No statistics were recorded for this game.";
         Ctx c = new Ctx(s, viewer);
         int rounds = s.lastRound + 1;
-        if (s.over && s.winner >= 0) return Cap(c.Name(s.winner)) + " won in round " + s.lastRound + ".";
+        string gaveUp = "";
+        foreach (long id in s.resigned) gaveUp += " " + Cap(c.Name(id)) + " resigned.";
+        if (s.over && s.winner >= 0)
+            return (c.ViewerHuman && s.winner != c.Viewer ? "Defeat. " : c.ViewerHuman ? "Victory. " : "") + Cap(c.Name(s.winner)) + " won in round " + s.lastRound + "." + gaveUp;
         if (s.over) return "The game ended without a winner after " + rounds + " rounds.";
         return "Round " + s.lastRound + ": the game is still going.";
     }

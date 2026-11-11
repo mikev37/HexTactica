@@ -13,6 +13,12 @@ public class MainMenu : MonoBehaviour {
     public GameObject editorPanel;
     public GameObject unitsPanel;
     public GameObject optionsPanel;
+    public GameObject replayPanel;
+
+    [Header("Replay")]
+    [Tooltip("The recorded games (game logs) that can be watched again.")]
+    public FileList replayList;
+    public Button watchButton;
 
     [Header("Load Scenario")]
     [Tooltip("Scenarios or saved games, by the tabs.")]
@@ -30,6 +36,7 @@ public class MainMenu : MonoBehaviour {
     void Awake() {
         if (loadList != null) loadList.onPicked.AddListener(UpdateButtons);
         if (editorList != null) editorList.onPicked.AddListener(UpdateButtons);
+        if (replayList != null) replayList.onPicked.AddListener(UpdateButtons);
     }
 
     void Start() {
@@ -38,7 +45,7 @@ public class MainMenu : MonoBehaviour {
     }
 
     void Show(GameObject panel) {
-        foreach (GameObject p in new[] { mainPanel, loadPanel, editorPanel, unitsPanel, optionsPanel })
+        foreach (GameObject p in new[] { mainPanel, loadPanel, editorPanel, unitsPanel, optionsPanel, replayPanel })
             if (p != null) p.SetActive(p == panel);
         UpdateButtons();
     }
@@ -48,6 +55,10 @@ public class MainMenu : MonoBehaviour {
     public void ShowMapEditor() { Show(editorPanel); }
     public void ShowUnitExplorer() { Show(unitsPanel); }
     public void ShowOptions() { Show(optionsPanel); }
+    public void ShowReplays() { Show(replayPanel); if (replayList != null) replayList.ShowRecordings(); UpdateButtons(); }
+
+    /// <summary>Watch the picked recording.</summary>
+    public void Watch() { if (replayList != null && replayList.Selected != null) MatchSetup.Watch(replayList.Selected); }
 
     /// <summary>The Load panel's tabs.</summary>
     public void ListScenarios() { if (loadList != null) loadList.ShowScenarios(); UpdateButtons(); }
@@ -57,6 +68,7 @@ public class MainMenu : MonoBehaviour {
         if (playButton != null) playButton.interactable = loadList != null && loadList.Selected != null;
         if (playButtonLabel != null && loadList != null) playButtonLabel.text = loadList.source == FileList.Source.Saves ? playSaveLabel : playScenarioLabel;
         if (editButton != null) editButton.interactable = editorList != null && editorList.Selected != null;
+        if (watchButton != null) watchButton.interactable = replayList != null && replayList.Selected != null;
     }
 
     /// <summary>Set up the picked scenario, or play on the picked saved game.</summary>

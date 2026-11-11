@@ -53,6 +53,32 @@ building registry and camera rig now install only in a scene with a GameControll
 - The map editor saves to the player's folder. With `editorSavesInPlace` (off by default), it saves back over the
   file it loaded, in the editor only, and keeps that file's `test` block.
 
+## Replay
+
+**Main menu ▸ Replay** lists the recorded games (the game log folders in `GameLog.DefaultRoot`) and opens the game
+scene on one, with the **Replay** scene's controls (`ReplayControls`) over it. Nothing but the game log is read:
+each turn's board comes from its `turn-NNN-Side.dat`, and each action from that turn's lines in game.log, read by
+`GameLog.Lines` (which wrote them) and played by `Harness/Replay.cs`.
+
+- **Next action** plays the turn's next move, attack, purchase, loss, capture or resignation, with the result the
+  log gives. After the turn's last action it loads the next turn's board.
+- **Next turn** and **Previous turn** load that turn's board.
+- **Play** plays an action every `FrontEndSettings.replayStepSeconds` (0.5), counted from when the last action's
+  animation has finished. **Fast forward** does the same `replayFastForward` (5) times faster.
+- **Whose eyes** cycles through each side's fog and everything.
+
+Three log lines changed for this. A move is now written and read in `GameLog.Lines` (`Moved`). An attack that
+drives the defender back records where (`retreats to (x,y)`). A purchase records where the unit was put
+(`placed (x,y)`). Recordings made before this replay without those two details. Units getting into and out of
+transports aren't in the log, so they catch up when the next turn's board loads.
+
+## Resigning, and options in game
+
+The in-game menu has **Resign**: `GameController.Resign` takes the human side out (logged as `Blue resigns`), and
+with one side left the game ends on the post-game screen, headed "Defeat." It also has **Options**, which shows
+the same options panel as the main menu. That panel is the `Options Panel` prefab in `Assets/FrontEnd/Prefabs`,
+made from your main menu's panel as it is by **Update Scenes**.
+
 ## Options
 
 `GameOptions` keeps every option in PlayerPrefs. Each one is saved as it changes and applied when the game starts,

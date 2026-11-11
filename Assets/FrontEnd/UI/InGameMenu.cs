@@ -9,6 +9,12 @@ using UnityEngine.UI;
 /// so loading it goes on with the same log), Load (a saved game), Exit to the main menu.
 /// </summary>
 public class InGameMenu : MonoBehaviour {
+    [Tooltip("The menu's own window: hidden while the options are open.")]
+    public GameObject window;
+    [Tooltip("The options (the same panel as the main menu's): volume, display.")]
+    public OptionsPanel optionsPanel;
+    [Tooltip("Gives the game up for the human side: off when no human is playing or the game is over.")]
+    public Button resignButton;
     public TMP_InputField saveName;
     public FileList saves;
     public Button loadButton;
@@ -32,6 +38,32 @@ public class InGameMenu : MonoBehaviour {
         string scenario = string.IsNullOrEmpty(MatchSetup.FilePath) ? "game" : Path.GetFileNameWithoutExtension(MatchSetup.FilePath);
         if (saveName != null) saveName.text = string.Format(defaultName, scenario, gc != null ? gc.days : 0);
         if (status != null) status.text = "";
+        if (optionsPanel != null) { optionsPanel.returnTo = window; optionsPanel.gameObject.SetActive(false); }
+        if (resignButton != null) resignButton.interactable = Resigner() != null;
+    }
+
+    /// <summary>The options over the menu (their Back returns here).</summary>
+    public void ShowOptions() {
+        if (optionsPanel == null) return;
+        if (window != null) window.SetActive(false);
+        optionsPanel.gameObject.SetActive(true);
+    }
+
+    /// <summary>The human side that would resign: the side to move if a human plays it, else the first human side still in.</summary>
+    static Player Resigner() {
+        GameController gc = GameController.gc;
+        if (gc == null || gc.gameOver || gc.rules == RuleSet.Sandbox) return null;
+        if (gc.activePlayer != null && !gc.activePlayer.eliminated && FogOfWar.IsHuman(gc.activePlayer)) return gc.activePlayer;
+        foreach (Player p in gc.players) if (p != null && !p.eliminated && FogOfWar.IsHuman(p)) return p;
+        return null;
+    }
+
+    /// <summary>Give the game up: the human side is out, and (one side left) the game ends on the post-game screen.</summary>
+    public void Resign() {
+        Player p = Resigner();
+        if (p == null) return;
+        GameController.gc.Resign(p);
+        if (GameSession.Instance != null) GameSession.Instance.CloseMenu();
     }
 
     public void Resume() { if (GameSession.Instance != null) GameSession.Instance.CloseMenu(); }
