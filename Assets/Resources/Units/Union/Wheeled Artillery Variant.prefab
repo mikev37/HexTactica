@@ -129,6 +129,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &8582644145714320123
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -391,6 +392,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &3751745910043448789
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -514,6 +516,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &5776727684960818687
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -850,6 +853,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &1093986137644073207
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1141,7 +1145,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4887900234921728472, guid: 1466b380ec141594d8682189e4f98496, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 3.818893
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4887900234921728472, guid: 1466b380ec141594d8682189e4f98496, type: 3}
       propertyPath: m_LocalRotation.w

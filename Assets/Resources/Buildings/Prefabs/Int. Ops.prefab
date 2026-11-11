@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 2120000000000000001}
   - component: {fileID: 1140000000000000001}
   m_Layer: 0
-  m_Name: Stronghold
+  m_Name: Int. Ops
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -84,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: 5
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 6cdc0963190d48d41a9a2491b22b7e5b, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ae4aabd0fe8790c40a7807f12a46e8d0, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -107,18 +107,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd96e398d33e518f721e2f0349e1dbad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  personal_name: Stronghold
+  personal_name: Radar
   type: 1
   tile: {fileID: 0}
   _owner: {fileID: 0}
+  home: {fileID: 0}
   ground: {fileID: 11400000, guid: 738095669175cad40847e1af87bbef4f, type: 2}
   sprite: {fileID: 2120000000000000001}
-  visionRange: 1
-  visionOverTerrain: 0
-  detectRange: 0
-  holdsGround: 1
-  attackBonus: 1
-  defenseBonus: 1
+  visionRange: 6
+  visionOverTerrain: 1
+  detectRange: 5
+  holdsGround: 0
+  attackBonus: 0
+  defenseBonus: 0
   income: 0
   producesSupply: 0
   supplyRange: 0
@@ -136,8 +137,9 @@ MonoBehaviour:
   _capturingPlayer: {fileID: 0}
   health: 10
   damage: 0
-  damageStates: []
-  destroyedSprite: {fileID: 21300000, guid: b4d460b54fa8d3949a3c4e96de3116eb, type: 3}
+  damageStates:
+  - {fileID: 21300000, guid: 94c69c4a8f14a9245a3152f410e7f66a, type: 3}
+  destroyedSprite: {fileID: 21300000, guid: bc72a0271b3fc9540aadd49ab1343508, type: 3}
   buildable: []
 --- !u!1 &8428887425335908075
 GameObject:
@@ -151,7 +153,7 @@ GameObject:
   - component: {fileID: 3383502449281652406}
   - component: {fileID: 1984453361743469214}
   m_Layer: 0
-  m_Name: Stronghold_Color
+  m_Name: Radar_Color
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -221,7 +223,7 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: 13
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: df096d69751ce424796b2d5a27a1a7b0, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 5e57cce86f33364428ca750daa99fa9f, type: 3}
   m_Color: {r: 1, g: 0, b: 0, a: 0.5019608}
   m_FlipX: 0
   m_FlipY: 0
@@ -263,11 +265,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8266670836053472591, guid: 986b793450c2cf64180ab67ce51e6962, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 3.66
+      value: -2.36
       objectReference: {fileID: 0}
     - target: {fileID: 8266670836053472591, guid: 986b793450c2cf64180ab67ce51e6962, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.09
+      value: 3.11
       objectReference: {fileID: 0}
     - target: {fileID: 8266670836053472591, guid: 986b793450c2cf64180ab67ce51e6962, type: 3}
       propertyPath: m_LocalPosition.z
