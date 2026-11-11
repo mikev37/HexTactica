@@ -619,6 +619,15 @@ restore them). The old copy reads mission objectives through `OldAI/OldMission.c
 
 ## 7. Open work, in the order I'd take it
 
+**Carriers (10 Nov).** The owner's Carrier (a Hauler variant that carries jets and rotors) is in the game. The AI uses
+carriers it has (`AIAir`): they count as aircraft bases while they are afloat, have room, and are stocked; landings are
+reserved on a carrier and the carrier holds for them (`DecideCarrier`); an aircraft lands on one (`LandOn`) when its
+landing is due or it is short of fuel; an empty carrier sails toward our aircraft; an aircraft is never put back out the
+turn it landed (`KeepsUnrefuelledAboard`: refuelling happens at the start of the turn). Not done: the AI never *buys* a
+carrier (production values transports only for land riders); carriers with aircraft aboard sail with the assault logic
+(toward the fight, put aircraft down to strike) with no notion of keeping out of reach while holding the air wing.
+Checks: `attrition-rule-carrier`, `ai-carrier`, `ai-carrier-keeps-unrefuelled`.
+
 **First, when there is budget: why fog screens and defensive narrows make the AI worse.** Both are off by default since
 8 Nov (`fogScreenBelowCost` 0, `defensiveNarrows` false). With them on, new Blue on ChanceMeeting lost badly at round 11
 (136,416 v 153,000 on the merged rules; 79,750 v 181,583 before the attack-rule and release fixes), against 154,250 v

@@ -1603,6 +1603,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
 
     AIAction DecideForUnit(Unit unit) {
         if (unit == null) return AIAction.Wait(null, "null");
+        // A carrier: it holds for the aircraft landing on it, or (empty) sails toward ours (AIAir.DecideCarrier).
+        if (AIAir.IsCarrier(unit)) { AIAction? ca = AIAir.DecideCarrier(unit, map); if (ca.HasValue) return ca.Value; }
         AIWorld.NoAssist = noAssist.Count > 0 ? noAssist : null;
         AITactical.Intents = intents;
         AITactical.Assignments = assignments;
