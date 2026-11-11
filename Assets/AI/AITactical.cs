@@ -55,7 +55,7 @@ namespace HexTactica.AI {
             // Wounded: fighting on and withdrawing are weighed by the move score (AIProfile.woundedWorldCompare), so
             // what holding its ground is worth — a building it is taking, the enemy HQ — counts. (With withdrawal
             // by position alone, a wounded grunt walked off the enemy HQ it was taking.)
-            if (role == AIRole.Wounded && (profile.woundedNeedsSafety || profile.woundedWorldCompare)) return DecideWounded(unit, map, profile, posture, profile.woundedNeedsSafety && profile.woundedSafetyGate);
+            if (role == AIRole.Wounded) return DecideWounded(unit, map, profile, posture, profile.woundedNeedsSafety);
             if (role == AIRole.Line && ShouldRotate(unit, map, profile)) role = AIRole.Wounded;
 
             switch (role) {
@@ -211,7 +211,7 @@ namespace HexTactica.AI {
             if (b == null || b.owner != unit.owner || b.Purchasable().Count == 0) return false;
             if (GameController.gc != null && !GameController.gc.purchasesAllowed) return false;
             // offFacilities: never (not only where no enemy can strike it next turn).
-            return map.profile.offFacilities || map.EnemyStrikeTurns(t) > 1;
+            return true;
         }
 
         static AIAction Tiered(Unit unit, AIMap map, AIProfile profile, Posture posture,
@@ -291,7 +291,7 @@ namespace HexTactica.AI {
             // the enemy is two moves away from the start, and the task forces still gathered and held.)
             // (campaignReleaseOwnReach: by our reach to them. By theirs, a gunship that could reach the rear put grunts six
             // tiles behind the line "in the fight", with no lean toward the front, and they milled about at the back.)
-            if (profile.campaignReleaseTurns > 0 && (profile.campaignReleaseOwnReach ? map.TurnsToEngage(unit) : map.TurnsToContact(unit)) <= profile.campaignReleaseTurns) return 0f;
+            if (profile.campaignReleaseTurns > 0 && (map.TurnsToEngage(unit)) <= profile.campaignReleaseTurns) return 0f;
             bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
             HexTile goal = gathering ? f.stagingTile : f.objectiveTile;
             if (goal == null) return 0f;
@@ -330,12 +330,9 @@ namespace HexTactica.AI {
             // Every option's forecast, at once on worker threads (profile.parallelForecast, AIParallel): each is
             // independent of the others, and each lands on its own option.
             bool narrate = DecisionLog != null;
-            if (profile.parallelForecast) {
-                map.TheaterOf(unit);
-                AIParallel.For(options.Count, i => options[i].world = AIWorld.Evaluate(unit, options[i].stop, options[i].shot, map, cache, narrate, true));
-            }
+            map.TheaterOf(unit);
+            AIParallel.For(options.Count, i => options[i].world = AIWorld.Evaluate(unit, options[i].stop, options[i].shot, map, cache, narrate, true));
             foreach (Option o in options) {
-                if (!profile.parallelForecast) o.world = AIWorld.Evaluate(unit, o.stop, o.shot, map, cache, narrate, true);
                 o.extras = null;
                 float x;
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
@@ -357,7 +354,7 @@ namespace HexTactica.AI {
                 // and lost a point a turn).
                 // All out (AIKnowledge): going hungry is a price worth paying, the bolder the less it weighs.
                 float hunger = map.AllOut ? 1f - Mathf.Clamp01(map.knowledge.aggression) : 1f;
-                if (profile.worldStarvation) { x = -AIScore.StrandingCost(unit, o.stop, 0, map) * hunger; o.world.score += x; o.Extra("starve", x); }
+                x = -AIScore.StrandingCost(unit, o.stop, 0, map) * hunger; o.world.score += x; o.Extra("starve", x);
                 if (context.front != null && context.front.campaign) {
                     if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) { x = -AIScore.OutOfSupplyCost(unit, o.stop, map) * hunger; o.world.score += x; o.Extra("outOfSupply", x); }
                 }
@@ -388,7 +385,7 @@ namespace HexTactica.AI {
             // Within the tie, a shot that does damage beats standing off (tieFavorsShot): as good by the forecast, the fight is
             // taken on our terms. (Tied with an attack, a tank fell back five tiles by position, and the line never struck.)
             // (Full strength only, and from supplied ground: a wounded unit rotates out, and none chases a shot out of supply.)
-            if (profile.tieFavorsShot && unit.Strength >= 6 && !AIAssault.Wounded(unit, profile, map)) {
+            if (unit.Strength >= 6 && !AIAssault.Wounded(unit, profile, map)) {
                 List<Option> shots = kept.FindAll(o => o.shot.valid && o.shot.target != null && o.shot.target.tile != null && Unit.calculateDamage(unit, o.shot.target, o.shot.target.tile, 0) > 0
                                                        && (unit.suppliesMax <= 0 || map.SupplyDepth(o.stop) > 0));
                 if (shots.Count > 0) kept = shots;
@@ -923,7 +920,7 @@ namespace HexTactica.AI {
             // army's frontmost fighting unit and never past it — out of the way of the column behind and
             // where supply units and the army will want a ride. (Parked beside the supply units, the
             // trucks blocked a two-tile road and nothing behind them could move.)
-            HexTile objective = profile.supplyLeaps && profile.idleTrucksFollowArmy ? AISupplyChain.Objective(map) : null;
+            HexTile objective = AISupplyChain.Objective(map);
             Dictionary<HexTile, int> toObj = objective != null ? map.LandSteps(objective) : null;
             int front = int.MaxValue;
             if (toObj != null)
@@ -967,7 +964,7 @@ namespace HexTactica.AI {
                     }
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.2f;
                 return v;
-            }, true, 1.5f, 0.02f, "transport", profile.idleTransportScreens || (profile.regroup && profile.regroupTransportScreens));
+            }, true, 1.5f, 0.02f, "transport", profile.idleTransportScreens || (profile.regroup));
         }
 
     }

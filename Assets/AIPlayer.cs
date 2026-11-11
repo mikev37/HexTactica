@@ -275,7 +275,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 action = SupplyStaysAboard(unit, action);
                 action = OffFacilities(action);
                 // Never an attack that deals nothing (noZeroDamageAttacks): move to the tile it would fire from, or hold.
-                if (Profile.noZeroDamageAttacks && (action.kind == AIActionKind.Attack || action.kind == AIActionKind.MoveAndAttack) && action.target != null && action.target.tile != null) {
+                if ((action.kind == AIActionKind.Attack || action.kind == AIActionKind.MoveAndAttack) && action.target != null && action.target.tile != null) {
                     HexTile from = action.kind == AIActionKind.MoveAndAttack && action.destination != null ? action.destination : unit.tile;
                     if (Unit.calculateDamage(unit, action.target, action.target.tile, 0) <= 0)
                         action = from != unit.tile ? AIAction.Move(unit, from, action.score, "no damage to " + action.target.name.Replace("(Clone)", "") + ": moves, does not attack")
@@ -283,9 +283,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 }
                 // No hopping on and off (noHopOff): a transport that has not moved this turn does not put down a rider that got
                 // in this turn (a Grunt walked into a Recon and was put down beside it: a tile more than it could walk).
-                if (Profile.noHopOff && action.kind == AIActionKind.Unload && action.unit != null && action.unit != action.target && action.target != null
-                    && boardedThisTurn.Contains(action.target) && !transportMoved.Contains(action.unit) && turnStart.ContainsKey(action.unit) && turnStart[action.unit] == action.unit.tile
-                    && (action.destination == null || action.destination == action.unit.tile))
+                if (action.kind == AIActionKind.Unload && action.unit != null && action.unit != action.target && action.target != null && boardedThisTurn.Contains(action.target) && !transportMoved.Contains(action.unit) && turnStart.ContainsKey(action.unit) && turnStart[action.unit] == action.unit.tile && (action.destination == null || action.destination == action.unit.tile))
                     action = AIAction.Wait(action.unit, "no hop off: " + action.target.name.Replace("(Clone)", "") + " got in this turn and the transport has not moved");
                 // Aboard and nothing to do but ride: the turn is not spent. The unit is set aside,
                 // still fresh, and decides again if its transport puts it down this turn (Run).
@@ -296,15 +294,14 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 }
                 // Waiting (waitTwice): the first time, set aside to decide again once everything else has moved (what it
                 // waits on — a supply unit, a rider, a gap — may have come about); waiting again, it skips its turn.
-                if (Profile.waitTwice && action.kind == AIActionKind.Wait && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
+                if (action.kind == AIActionKind.Wait && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
                     waitedOnce.Add(unit); SetAside(unit);
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": would wait (" + action.reason + "): decides again after the rest");
                     continue;
                 }
                 // Artillery placed first to fire (artilleryFireOrDefer) that would do anything else: set aside, it decides
                 // again after the line has moved (it moved ahead of the line, onto ground the line had not yet taken).
-                if (Profile.artilleryFireOrDefer && firesFirst.Contains(unit) && action.kind != AIActionKind.Attack && action.kind != AIActionKind.MoveAndAttack
-                    && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
+                if (firesFirst.Contains(unit) && action.kind != AIActionKind.Attack && action.kind != AIActionKind.MoveAndAttack && unit.trasnporter == null && !waitedOnce.Contains(unit)) {
                     waitedOnce.Add(unit); SetAside(unit);
                     if (Trace != null) Trace("   " + player.personal_name + " " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": artillery first to fire would " + action.kind + " (" + action.reason + "): decides again after the rest");
                     continue;
@@ -333,7 +330,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// planner's) ends instead on the tile it can reach this turn nearest that one; if there is none, it stands as it was.
     /// </summary>
     AIAction OffFacilities(AIAction a) {
-        if (!Profile.offFacilities || a.kind != AIActionKind.Move || a.unit == null || a.unit.tile == null || a.destination == null) return a;
+        if (a.kind != AIActionKind.Move || a.unit == null || a.unit.tile == null || a.destination == null) return a;
         Unit u = a.unit;
         if (!AIAir.BlocksBuildSlot(u, a.destination, map)) return a;
         MoveField f = AIPath.ThisTurn(u);
@@ -449,8 +446,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             bool did = HexTactica.AI.AIExecutor.Execute(action, map, headless);
             // procKindMorale: a fighting unit's turn, for what its kind is worth to buy — held up for want of a lift or supply,
             // or did something for the front.
-            if (Profile.procKindMorale && action.unit == unit && unit.Hub == null && unit.Firepower > 0 && !(Transporting.IsTransport(unit) && unit.Firepower <= 1)
-                && !LocomotionRules.IsAirborne(unit.locomotion) && !LocomotionRules.IsNaval(unit.locomotion) && unit.tile != null && moraleNoted.Add(unit)) {
+            if (action.unit == unit && unit.Hub == null && unit.Firepower > 0 && !(Transporting.IsTransport(unit) && unit.Firepower <= 1) && !LocomotionRules.IsAirborne(unit.locomotion) && !LocomotionRules.IsNaval(unit.locomotion) && unit.tile != null && moraleNoted.Add(unit)) {
                 bool helped = did && (action.kind == AIActionKind.Attack || action.kind == AIActionKind.MoveAndAttack || action.kind == AIActionKind.Capture);
                 bool stuck = false;
                 if (!helped && unit.trasnporter == null) {
@@ -537,7 +533,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// one — never on a tile reserved for a landing.
     /// </summary>
     void BuySupply() {
-        bool stretched = Profile.supplyTree ? treePlan != null && treePlan.short_ : chainPlan != null && chainPlan.short_;
+        bool stretched = chainPlan != null && chainPlan.short_;
         if (!Profile.buySupply || !stretched || map == null) return;
         Building hq = GameController.HQOf(player);
         if (hq == null || BuildingController.bc == null || hq.buildable == null) return;
@@ -555,7 +551,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (made != null && made.tile != null) made.tile.occupier = made;
         if (made == null) { if (Trace != null) Trace("   no supply bought: no free tile at the HQ"); return; }
         if (onBuy != null) onBuy(made);
-        if (Trace != null) Trace("   " + player.personal_name + " buys " + pick.name.Replace("(Clone)", "") + " at the HQ: the supply chain is stretched (" + (Profile.supplyTree ? treePlan.ToString() : chainPlan.ToString()) + ")");
+        if (Trace != null) Trace("   " + player.personal_name + " buys " + pick.name.Replace("(Clone)", "") + " at the HQ: the supply chain is stretched (" + (chainPlan.ToString()) + ")");
     }
 
     /// <summary>
@@ -821,7 +817,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// carried by another (with a supply unit inside) may still be put down: only supply units themselves stay in.
     /// </summary>
     AIAction SupplyStaysAboard(Unit deciding, AIAction a) {
-        if (!Profile.supplyStaysAboard || a.kind != AIActionKind.Unload || a.target == null || a.target.Hub == null || a.target.Hub.producer) return a;
+        if (a.kind != AIActionKind.Unload || a.target == null || a.target.Hub == null || a.target.Hub.producer) return a;
         Unit transport = a.unit;
         if (transport == null || transport.tile == null) return a;
         HexTile stop = a.via ?? transport.tile;
@@ -850,7 +846,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// the turn comes is dropped, nothing waits for it; a newer still board starts a newer one.
     /// </summary>
     void MaybeSpeculate() {
-        if (!Profile.speculate || !Profile.keepCaches) return;
         GameController gc = GameController.gc;
         Player opponent = gc != null ? gc.activePlayer : null;
         if (opponent == null || opponent == player) return;
@@ -903,7 +898,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     }
 
     /// <summary>Harness: speculate now, in line, on the board as it stands (the opponent's turn is ending).</summary>
-    public void SpeculateNow() { if (Profile.speculate && Profile.keepCaches) StartSpeculation(1, true); }
+    public void SpeculateNow() { StartSpeculation(1, true); }
 
     readonly object speculationLock = new object();
     AIMap speculation;
@@ -920,7 +915,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
         if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);
         // How well we know the enemy, and how bold that lets us be (AIProfile.campaignKnowledge).
-        bool knows = Profile.campaign && Profile.campaignKnowledge;
+        bool knows = Profile.campaign;
         if (knows || Profile.fogUncertainty) {
             knowledge.Update(map, Profile);
             if (knows) map.knowledge = knowledge;
@@ -967,19 +962,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         backbone = null; backboneTurn = null; backbonePlanned = null;
         // Front first (supplyFrontFirst): for each group of the army, the supply unit nearest it.
         frontHubs.Clear();
-        if (Profile.supplyFrontFirst)
-            foreach (List<Unit> g in AISupplyBackbone.Groups(map)) {
-                SupplyPoint best = null; int bd = int.MaxValue;
-                foreach (SupplyPoint h in map.ownHubs) {
-                    if (h == null || h.producer || h.myUnit == null || h.myUnit.tile == null || frontHubs.Contains(h)) continue;
-                    if (LocomotionRules.IsNaval(h.myUnit.locomotion) || LocomotionRules.IsAirborne(h.myUnit.locomotion)) continue;
-                    foreach (Unit u in g) { int d = map.Travel(h.myUnit, h.myUnit.tile, u.tile); if (d < bd || (d == bd && best != null && AIMap.CompareUnits(h.myUnit, best.myUnit) < 0)) { bd = d; best = h; } }
-                }
-                if (best != null && bd < 99) frontHubs.Add(best);
-            }
-        if (Profile.supplyBackbone) backbonePlanned = AISupplyBackbone.Make(map, null);
         HexTactica.AI.AILogistics.PreviousChainTrucks = lastChainTrucks;
-        logistics = campaign != null && Profile.campaignLogistics && !Profile.supplyFrontFirst ? HexTactica.AI.AILogistics.Make(map, campaign, null, fronts) : null;
+        logistics = campaign != null && Profile.campaignLogistics ? HexTactica.AI.AILogistics.Make(map, campaign, null, fronts) : null;
         HexTactica.AI.AILogistics.PreviousChainTrucks = null;
         lastChainTrucks = logistics != null ? new Dictionary<SupplyPoint, Unit>(logistics.chainTrucks) : null;
         AITransportPlanner.ChainLinks = logistics != null ? new HashSet<SupplyPoint>(logistics.chainOf.Keys) : null;
@@ -997,7 +981,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         HashSet<Unit> onTaskForce = new HashSet<Unit>();
         if (campaign != null) foreach (CampaignObjective o in campaign.objectives) foreach (Unit u in o.units) if (u != null && !Released(u)) onTaskForce.Add(u);
         AIObjectives.Exclude = onTaskForce;
-        try { assignments = Profile.useObjectives ? AIObjectives.Assign(objectives, map, Profile) : new Dictionary<Unit, Objective>(); }
+        try { assignments = AIObjectives.Assign(objectives, map, Profile); }
         finally { AIObjectives.Exclude = null; }
         if (campaign != null) {
             // The campaign's scouts are pulled to the ground they are to look at.
@@ -1032,9 +1016,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // Riding along (unifiedLogistics): the troop ship keeps a seat for its supply unit (AIAssault.SpareSlot).
         if (logistics != null) foreach (Unit sh in logistics.alongs.Values) if (sh != null) supplyTransports.Add(sh);
         if (Trace != null && Profile.assaultRides) {
-            List<string> st = new List<string>(); foreach (Unit t in supplyTransports) st.Add(t.name.Replace("(Clone)", "") + D(t.tile));
-            st.Sort(string.CompareOrdinal);
-            Trace("   transports for supply: " + (st.Count == 0 ? "none" : string.Join(", ", st.ToArray())) + (AIAssault.NoBuildMap() ? " (nothing is built on this map: every one that can carry supply)" : ""));
+            List<string> names = new List<string>(); foreach (Unit t in supplyTransports) names.Add(t.name.Replace("(Clone)", "") + D(t.tile));
+            names.Sort(string.CompareOrdinal);
+            Trace("   transports for supply: " + (names.Count == 0 ? "none" : string.Join(", ", names.ToArray())) + (AIAssault.NoBuildMap() ? " (nothing is built on this map: every one that can carry supply)" : ""));
         }
 
         // Units riding a transport stay in the queue: a hub aboard is the one that tells
@@ -1070,34 +1054,20 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // (Clearing last turn's notes off the tiles is done on the main thread once this is done: Collect / StepOnce.)
         chainPlan = null;
         treePlan = null;
-        if (Profile.supplyTree) {
-            { long __p = AIPerf.Begin();
-            treePlan = AISupplyTree.Make(map, null);
-            AIPerf.End("prepare: supply tree", __p); }
-            if (Trace != null) Trace("   " + treePlan);
-            map.chainTiles.Clear();
-            foreach (KeyValuePair<SupplyPoint, HexTile> kv in treePlan.links) if (kv.Value != kv.Key.myUnit.tile) map.chainTiles[kv.Value] = kv.Key.myUnit;
-            // Supply units move after everyone else, the links in the order placed (each into the supply of those before it).
-            List<Unit> hubsLast = new List<Unit>();
-            foreach (SupplyPoint h in treePlan.order) if (queue.Contains(h.myUnit)) hubsLast.Add(h.myUnit);
-            foreach (Unit u in queue) { SupplyPoint sp = u.Hub; if (sp != null && !sp.producer && !hubsLast.Contains(u)) hubsLast.Add(u); }
-            foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
-        } else if (Profile.supplyChain) {
-            { long __p = AIPerf.Begin();
-            chainPlan = AISupplyChain.Make(map, null);
-            AIPerf.End("prepare: supply chain", __p); }
-            if (Trace != null) Trace("   " + chainPlan);
-            map.chainTiles.Clear();
-            foreach (KeyValuePair<SupplyPoint, HexTile> kv in chainPlan.links) if (kv.Value != kv.Key.myUnit.tile) map.chainTiles[kv.Value] = kv.Key.myUnit;
-            // Supply units move after everyone else, rearmost first: the army clears the road and
-            // goes ahead, and each link moves up into the supply of the links behind it.
-            Dictionary<HexTile, int> toObj = chainPlan.objective != null ? map.SupplySteps(chainPlan.objective) : null;
-            List<Unit> hubsLast = new List<Unit>();
-            foreach (Unit u in queue) { SupplyPoint sp = u.Hub; if (sp != null && !sp.producer) hubsLast.Add(u); }
-            System.Func<Unit, int> st = u => { int s; return toObj != null && u.tile != null && toObj.TryGetValue(u.tile, out s) ? s : int.MaxValue; };
-            hubsLast.Sort((a, b) => { int c = st(b).CompareTo(st(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
-            foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
-        }
+        { long __p = AIPerf.Begin();
+        chainPlan = AISupplyChain.Make(map, null);
+        AIPerf.End("prepare: supply chain", __p); }
+        if (Trace != null) Trace("   " + chainPlan);
+        map.chainTiles.Clear();
+        foreach (KeyValuePair<SupplyPoint, HexTile> kv in chainPlan.links) if (kv.Value != kv.Key.myUnit.tile) map.chainTiles[kv.Value] = kv.Key.myUnit;
+        // Supply units move after everyone else, rearmost first: the army clears the road and
+        // goes ahead, and each link moves up into the supply of the links behind it.
+        Dictionary<HexTile, int> toObj = chainPlan.objective != null ? map.SupplySteps(chainPlan.objective) : null;
+        List<Unit> hubsLast = new List<Unit>();
+        foreach (Unit u in queue) { SupplyPoint sp = u.Hub; if (sp != null && !sp.producer) hubsLast.Add(u); }
+        System.Func<Unit, int> st = u => { int s; return toObj != null && u.tile != null && toObj.TryGetValue(u.tile, out s) ? s : int.MaxValue; };
+        hubsLast.Sort((a, b) => { int c = st(b).CompareTo(st(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+        foreach (Unit u in hubsLast) { queue.Remove(u); queue.Add(u); }
         // Transports act after everyone else, so the units they carry (or are to pick up) have
         // decided first and handed them their plans: only when some fighting unit could ride this
         // turn, so with nobody to carry the turn order (and the game) is what it was without rides.
@@ -1112,7 +1082,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 if (AIAssault.Riders(u).Count > 0) loaded.Add(u);
                 else if (u.transported.Count == 0 && u.Firepower <= 1 && !supplyTransports.Contains(u)) empty.Add(u);   // (supply's trucks keep the supply's order)
             }
-            if (!Profile.assaultOrderWithLine) for (int i = loaded.Count - 1; i >= 0; i--) { queue.Remove(loaded[i]); queue.Insert(0, loaded[i]); }
             foreach (Unit u in empty) { queue.Remove(u); queue.Add(u); }
         }
         if (anyRider) {
@@ -1129,7 +1098,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 queue.Insert(queue.IndexOf(kv.Key.myUnit) + 1, kv.Value);
             }
         { long __p = AIPerf.Begin();
-        if (Profile.ghostSupply) PlanGhosts();
+        PlanGhosts();
         AIPerf.End("prepare: ghosts", __p); }
         // Aircraft reserve their landings before anyone moves.
         { long __p = AIPerf.Begin();
@@ -1171,7 +1140,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         AIPerf.End("prepare: coordinated plans", __c);
         if (Profile.turnOrderSteps) TurnOrder();
         else {
-        if (Profile.assaultRides && Profile.assaultOrderWithLine) OrderWithLine();
+        if (Profile.assaultRides) OrderWithLine();
         // Aircraft landing this turn act last (after any coordinated plan too), once whatever was on their tiles has left.
         List<Unit> landingNow = new List<Unit>();
         foreach (AIAir.Landing l in map.landings.Values) if (l.turn == 1 && queue.Contains(l.unit)) landingNow.Add(l.unit);
@@ -1250,7 +1219,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// </summary>
     public AIAction DecideFor(Unit unit) {
         // A supply unit cut off from the network (cutOffSeeksSupply) first heads back toward supplied ground or a transport.
-        if (Profile.cutOffSeeksSupply && map != null && unit.Hub != null && !unit.Hub.producer && unit.trasnporter == null && unit.tile != null) {
+        if (map != null && unit.Hub != null && !unit.Hub.producer && unit.trasnporter == null && unit.tile != null) {
             AIAction? back = SeekSupply(unit);
             if (back.HasValue) return back.Value;
         }
@@ -1274,10 +1243,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
             return map != null ? AIAir.Guard(unit, carried, map) : carried;
         }
         // Put down this turn to strike (assaultRides): it makes the strike its transport planned for it.
-        if (Profile.assaultRides && Profile.assaultCarryOut) { AIAction? done = AIAssault.CarryOut(unit, map); if (done.HasValue) return done.Value; }
+        if (Profile.assaultRides) { AIAction? done = AIAssault.CarryOut(unit, map); if (done.HasValue) return done.Value; }
         AIAction a = DecideForUnit(unit);
         // Riding to the assault: getting in a transport is weighed against what the unit would do on foot (assaultBoardWeighs).
-        if (Profile.assaultRides && Profile.assaultBoardWeighs) a = BoardOrNot(unit, a);
+        if (Profile.assaultRides) a = BoardOrNot(unit, a);
         // A decision path that does not go through the tactical choice (which already leaves out tiles
         // reserved for a landing this turn) chose one: the unit decides again the ordinary way, so an
         // aircraft parked there lifts off to whatever mission it would pick anyway.
@@ -1616,23 +1585,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // Riding with the supply (supplyBackbone): infantry out of contact beside a backbone truck that
         // is going forward, with room for it as well as its supply unit, gets in; the truck lets it out
         // where its link stops. The army and its supply move up together.
-        if (Profile.supplyBackbone && backbonePlanned != null && unit.Firepower > 0 && unit.Hub == null && unit.trasnporter == null
-            && unit.locomotion == Locomotion.Boots && map.TurnsToContact(unit) > Profile.objectiveContactTurns) {
-            HexTile goal = AISupplyChain.Objective(map);
-            Dictionary<HexTile, int> toObj = goal != null ? map.LandSteps(goal) : null;
-            int mine;
-            if (toObj != null && toObj.TryGetValue(unit.tile, out mine))
-                foreach (AISupplyBackbone.Link link in backbonePlanned.links.Values) {
-                    Unit truck = link.transport;
-                    int there;
-                    if (truck == null || truck.tile == null || !toObj.TryGetValue(link.tile, out there) || there > mine - 3) continue;
-                    if (!Transporting.CanBoardFrom(truck, unit)) continue;
-                    // Room for this unit and for its supply unit, if that is not aboard yet.
-                    int need = Mathf.Max(1, unit.weight) + (link.hub.myUnit.trasnporter == truck ? 0 : Mathf.Max(1, link.hub.myUnit.weight));
-                    if (Transporting.FreeWeight(truck) < need || truck.transported.Count + (link.hub.myUnit.trasnporter == truck ? 1 : 2) > truck.transportSlots) continue;
-                    return AIAction.Board(unit, truck, unit.tile, "rides with the supply to (" + link.tile.x + "," + link.tile.y + ")");
-                }
-        }
 
         // Riding along (campaignLogistics): a fighting unit out of contact beside a truck carrying one of
         // a front's own supply units to its front, or a chain link to its place (RidesAlong), with room for
@@ -1667,20 +1619,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile rground = rf == null ? null : rf.staging && rf.stagingTile != null ? rf.stagingTile : rf.objectiveTile;
                 AIAction? ra = AIAssault.RiderAction(unit, rf != null && rf.posture == Posture.Aggressive && !rf.staging, map, Profile, rf != null && (rf.posture != Posture.Aggressive || rf.staging) ? rground : null, GroundOf(unit));
                 if (ra.HasValue) return ra.Value;
-            } else if (unit.Firepower > 0 && !Profile.assaultBoardWeighs) {
-                HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
-                foreach (Unit t in transportAssignments.Keys) busy.Add(t);
-                if (logistics != null) foreach (Unit t in Transporting.AvailableFor(player, unit)) if (IsLogisticsTruck(t)) busy.Add(t);
-                // Into a transport when its front attacks, or when its front's ground is a long walk off.
-                Front bf = FrontOf(unit);
-                HexTile ground = bf == null ? null : bf.staging && bf.stagingTile != null ? bf.stagingTile : bf.objectiveTile;
-                bool goes = bf == null || (bf.posture == Posture.Aggressive && !bf.staging)
-                         || (ground != null && map.Travel(unit, unit.tile, ground) > Profile.assaultBoardTurns * Mathf.Max(1, unit.moveRange));
-                long __ab = AIPerf.Begin();
-                AIAction? ba = !putDownThisTurn.Contains(unit) && (goes || AIAssault.Wounded(unit, Profile, map)) ? AIAssault.Board(unit, map, Profile, busy, supplyTransports, SupplyGoing(), ground) : null;
-                if (ba.HasValue && ground != null) riderGoal[unit] = ground;
-                AIPerf.End("assault: boarding", __ab);
-                if (ba.HasValue) return ba.Value;
             }
         }
 
@@ -1717,56 +1655,9 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 return AIAction.Wait(unit, "sea lift: rides its ship to the landing");
 
             // A link of the supply backbone (supplyBackbone): aboard its transport, on the way to its place or holding it.
-            if (Profile.supplyBackbone) {
-                if (backboneTurn != map || backbone == null) {
-                    HashSet<Unit> busy = new HashSet<Unit>(reservedTransports);
-                    foreach (KeyValuePair<Unit, TransportPlan> kv in transportAssignments) if (kv.Value == null || kv.Value.cargo == null || kv.Value.cargo.Hub == null) busy.Add(kv.Key);
-                    AISupplyBackbone.DebugLog = Trace;
-                    backbone = AISupplyBackbone.Make(map, busy);
-                    AISupplyBackbone.DebugLog = null;
-                    backboneTurn = map;
-                }
-                AISupplyBackbone.Link link;
-                if (backbone.links.TryGetValue(hub, out link) && link.transport != null && link.transport.tile != null) {
-                    Unit truck = link.transport;
-                    reservedTransports.Add(truck);
-                    if (unit.trasnporter == truck) {
-                        transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = link.tile, destination = link.tile, stayAboard = true };
-                        return AIAction.Wait(unit, "supply backbone: rides to (" + link.tile.x + "," + link.tile.y + ")");
-                    }
-                    if (unit.trasnporter != null) {
-                        TransportPlan off = UnloadHere(unit);
-                        if (off != null) { transportAssignments[off.transport] = off; reservedTransports.Add(off.transport); }
-                        return AIAction.Wait(unit, "supply backbone: off this one first");
-                    }
-                    // Board now if it can (beside it, or a walk away), else wait for the truck to come.
-                    MoveField walk = map.ReachThisTurn(unit);
-                    HexTile beside = null;
-                    if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
-                    else foreach (HexTile n in truck.tile.neighbors) {
-                        if (n == null || !AIPath.BoardsFrom(walk, unit, truck, n)) continue;
-                        if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
-                    }
-                    if (beside != null) {
-                        transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = truck.tile, dropoff = link.tile, destination = link.tile, stayAboard = true };
-                        return AIAction.Board(unit, truck, beside, "supply backbone: boards for (" + link.tile.x + "," + link.tile.y + ")");
-                    }
-                    HexTile meet = null;
-                    foreach (HexTile n in unit.tile.neighbors) if (n != null && (n.occupier == null || n.occupier == truck) && truck.CanEnter(n) && (meet == null || map.Travel(truck, truck.tile, n) < map.Travel(truck, truck.tile, meet))) meet = n;
-                    if (meet != null) transportAssignments[truck] = new TransportPlan { cargo = unit, transport = truck, rendezvous = meet, dropoff = link.tile, destination = link.tile, stayAboard = true };
-                    return AIAction.Wait(unit, "supply backbone: waits for its transport");
-                }
-            }
 
             // A link of the supply tree: planned again now, with the supply units that have already
             // moved where they are and the army where it went.
-            if (Profile.supplyTree && unit.trasnporter == null) {
-                List<Unit> moved = new List<Unit>();
-                foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
-                AISupplyTree.Plan now = AISupplyTree.Make(map, moved);
-                HexTile link;
-                if (now.links.TryGetValue(hub, out link)) return AISupplyTree.Step(unit, link, map);
-            }
             // A link of the supply chain: planned again now, with the supply units that have
             // already moved where they are and the army where it went.
             // Supply front first serves the whole army, the campaign's task forces included.
@@ -1779,7 +1670,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     return la;
                 }
             }
-            CampaignObjective job = campaign != null && !Profile.supplyFrontFirst && logistics == null ? campaign.ObjectiveOf(hub) : null;
+            CampaignObjective job = campaign != null && logistics == null ? campaign.ObjectiveOf(hub) : null;
             if (job != null && unit.trasnporter == null) {
                 // A task force's supply: its own chain toward where it gathers, and once it has gone in, on
                 // toward its objective — never ahead of its army either way. (Aimed at the staging ground
@@ -1794,62 +1685,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     return AIAction.Move(unit, link, 0f, "supply for " + job.Id + ": link moves up (" + now.reachSteps + " steps short)");
                 }
             }
-            if (Profile.supplyFrontFirst && job == null) {
-                if (frontHubs.Contains(hub)) {
-                    // Front line: aboard a truck (its own, or a free one it can board now), the truck goes
-                    // where the supply unit supplies the army most for what it risks there (the world's
-                    // reply) — wherever the truck keeps it linked; the rest line up behind to link it.
-                    AIAction fa;
-                    if (FrontLineLeg(hub, out fa)) return fa;
-                    // No truck to hand: placed on foot as any supply unit is.
-                    TransportPlan walkPlan = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
-                    if (walkPlan != null) {
-                        if (walkPlan.transport != null) { transportAssignments[walkPlan.transport] = walkPlan; reservedTransports.Add(walkPlan.transport); }
-                        return AITransportPlanner.NextAction(walkPlan, map, Profile);
-                    }
-                    return AIAction.Wait(unit, "front-line supply: holds");
-                }
-                // Behind: a chain to the nearest front-line supply unit, of the others.
-                HexTile to = null; int td = int.MaxValue;
-                foreach (SupplyPoint f in frontHubs) if (f != null && f.myUnit != null && f.myUnit.tile != null) { int d = map.Travel(unit, unit.tile, f.myUnit.tile); if (d < td) { td = d; to = f.myUnit.tile; } }
-                if (to != null) {
-                    List<Unit> moved = new List<Unit>();
-                    foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
-                    List<SupplyPoint> rear = new List<SupplyPoint>();
-                    foreach (SupplyPoint h in map.ownHubs) if (h != null && !frontHubs.Contains(h)) rear.Add(h);
-                    AISupplyChain.ReservedTrucks = new HashSet<Unit>(reservedTransports);
-                    foreach (Unit t in transportAssignments.Keys) AISupplyChain.ReservedTrucks.Add(t);
-                    AISupplyChain.Plan now;
-                    try { now = AISupplyChain.Make(map, moved, to, rear, null); } finally { AISupplyChain.ReservedTrucks = null; }
-                    AISupplyChain.Leap ride;
-                    if (now.leaps.TryGetValue(hub, out ride)) {
-                        transportAssignments[ride.truck] = new TransportPlan { cargo = unit, transport = ride.truck, rendezvous = ride.truck.tile, dropoff = ride.tile, destination = ride.tile, stayAboard = true };
-                        reservedTransports.Add(ride.truck);
-                        if (unit.trasnporter == ride.truck) return AIAction.Wait(unit, "supply to the front line: rides its truck to (" + ride.tile.x + "," + ride.tile.y + ")");
-                        return AIAction.Board(unit, ride.truck, ride.board, "supply to the front line: boards a truck");
-                    }
-                    HexTile link;
-                    if (unit.trasnporter == null && now.links.TryGetValue(hub, out link)) {
-                        if (link == unit.tile) return AIAction.Wait(unit, "supply to the front line: holds this link");
-                        return AIAction.Move(unit, link, 0f, "supply to the front line: link moves up (" + now.reachSteps + " steps short)");
-                    }
-                }
-                // Not needed in the chain: another front-line supply unit.
-                AIAction xa;
-                if (FrontLineLeg(hub, out xa)) return xa;
-                TransportPlan extra = AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports);
-                if (extra != null) {
-                    if (extra.transport != null) { transportAssignments[extra.transport] = extra; reservedTransports.Add(extra.transport); }
-                    return AITransportPlanner.NextAction(extra, map, Profile);
-                }
-                return AIAction.Wait(unit, "supply: no better position");
-            }
-            if (Profile.supplyChain && !Profile.supplyTree && (unit.trasnporter == null || Profile.supplyLeaps) && job == null && logistics == null) {
+            if (job == null && logistics == null) {
                 List<Unit> moved = new List<Unit>();
                 foreach (SupplyPoint h in map.ownHubs) if (h != null && h.myUnit != null && !h.myUnit.active) moved.Add(h.myUnit);
                 List<SupplyPoint> free = null;
                 if (campaign != null) { free = new List<SupplyPoint>(); foreach (SupplyPoint h in map.ownHubs) if (campaign.ObjectiveOf(h) == null) free.Add(h); }
-                if (Profile.supplyBackbone && backbone != null) { List<SupplyPoint> rest = new List<SupplyPoint>(); foreach (SupplyPoint h in (IEnumerable<SupplyPoint>)free ?? map.ownHubs) if (!backbone.links.ContainsKey(h)) rest.Add(h); free = rest; }
                 AISupplyChain.ReservedTrucks = new HashSet<Unit>(reservedTransports);
                 foreach (Unit t in transportAssignments.Keys) AISupplyChain.ReservedTrucks.Add(t);
                 AISupplyChain.Plan now;
@@ -1871,7 +1711,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             }
 
             AIAction leap;
-            if (Profile.supplyLeaps && SupplyLeap(hub, out leap)) return leap;
+            if (SupplyLeap(hub, out leap)) return leap;
 
             TransportPlan plan = KeepAboard(AISupplyPlanner.PlanHub(hub, map, Profile, reservedTransports), unit);
             if (plan == null && unit.trasnporter != null) plan = UnloadHere(unit);
@@ -2011,8 +1851,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         AIAction early;
         if (firstLook.TryGetValue(unit, out early)) {
             firstLook.Remove(unit);
-            string why = !Profile.coordinationReuse ? "reuse off" : noAssist.Contains(unit) ? "deciding again without assist credit" : planned.ContainsKey(unit) ? "in a battle plan" : null;
-            if (Profile.coordinationReuse && !noAssist.Contains(unit) && !planned.ContainsKey(unit) && NothingNearChanged(unit, early, out why)) {
+            string why = noAssist.Contains(unit) ? "deciding again without assist credit" : planned.ContainsKey(unit) ? "in a battle plan" : null;
+            if (!noAssist.Contains(unit) && !planned.ContainsKey(unit) && NothingNearChanged(unit, early, out why)) {
                 if (VerifyReuse) {
                     AIAction fresh = AITactical.Decide(unit, map, Profile, posture, front, objective);
                     bool same = fresh.kind == early.kind && fresh.destination == early.destination && fresh.target == early.target;
@@ -2483,7 +2323,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// <summary>reserveDemand: how short the central reserve is of campaignReserveShare of the army, when no task force has engaged units.</summary>
     void SetReserveDemand() {
         AIProduction.ReserveRally = null; AIProduction.ReserveShort = 0f;
-        if (!Profile.reserveDemand || campaign == null) return;
+        if (campaign == null) return;
         foreach (HexTactica.AI.CampaignObjective o in campaign.objectives)
             if (o.kind != HexTactica.AI.CampaignKind.Scout && o.kind != HexTactica.AI.CampaignKind.DefendHQ && o.engaged.Count > 0) return;   // active opposition: the fronts come first
         if (logistics != null && logistics.tasks.Exists(x => x.short_)) return;   // a front short of supply comes first
@@ -2518,7 +2358,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         }
         // A rider got in this turn for the ride planned when the turn began (supplySpareSeat): that ride is kept, not re-planned
         // into a hold (the rider was let out again having gone nowhere).
-        if (Profile.supplySpareSeat && unit.trasnporter != null && unit.trasnporter.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) {
+        if (unit.trasnporter != null && unit.trasnporter.transported.Exists(c => c != null && c.Hub == null && boardedThisTurn.Contains(c))) {
             HexTile to;
             Unit truck = unit.trasnporter;
             if ((riderRide.TryGetValue(truck, out to) || SupplyGoing().TryGetValue(truck, out to)) && to != null && to != truck.tile) {

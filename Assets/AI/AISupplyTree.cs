@@ -151,11 +151,6 @@ namespace HexTactica.AI {
                 foreach (KeyValuePair<SupplyPoint, HexTile> tr in tries) {
                     Unit hu = tr.Key.myUnit;
                     if (map.ExpectedLoss(hu, tr.Value) > tolerance) continue;
-                    if (map.profile.supplyTreeReply) {
-                        float lost;
-                        if (!AIWorld.Evaluate(hu, tr.Value, new AttackAppraisal(), map, map.replyCache, false).lost.TryGetValue(hu, out lost)) lost = 0f;
-                        if (lost > tolerance) continue;
-                    }
                     placed[tr.Key] = tr.Value;
                     SupplyNetwork.Result a = SupplyNetwork.SolvePlanned(me, placed);
                     int g = Gap(a, toNeed);

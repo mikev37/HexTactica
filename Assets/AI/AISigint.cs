@@ -216,7 +216,7 @@ namespace HexTactica.AI {
                     float dmg = 0f;
                     foreach (FogOfWar.Kind kd in kinds) dmg += Mathf.Min(u.Strength, kd.Damage(6, u, at));
                     float uwc = UnknownWeight;
-                    loss += dmg / kinds.Count * (1f - (float)System.Math.Exp(-e)) * (profile.fogConcentrateCapped ? uwc : e / Mathf.Max(0.0001f, 1f - (float)System.Math.Exp(-e)));
+                    loss += dmg / kinds.Count * (1f - (float)System.Math.Exp(-e)) * (uwc);
                 }
                 return Mathf.Min(u.Strength, loss);
             }
@@ -240,7 +240,7 @@ namespace HexTactica.AI {
         readonly object massLock = new object();
 
         /// <summary>fogConcentrate, and this turn's unplaced power is known (AIMap.fogUnplacedPower).</summary>
-        bool Concentrated { get { return profile.fogConcentrate && map != null && map.fogUnplacedPower >= 0f; } }
+        bool Concentrated { get { return map != null && map.fogUnplacedPower >= 0f; } }
 
         /// <summary>
         /// fogConcentrate. The enemy we cannot place, in units (its power over an average enemy unit's), shared out among where

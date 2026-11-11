@@ -132,7 +132,7 @@ namespace HexTactica.AI {
             }
 
             // ---- pass 2: battle plans per target.
-            bool retreats = profile.coordinationRetreats;
+            bool retreats = true;
             float empty = float.NaN;
             Dictionary<string, float> single = new Dictionary<string, float>();
             Func<PlanStep, float> alone = st => {
@@ -215,7 +215,7 @@ namespace HexTactica.AI {
                     }
                     if (!ok) continue;
                     b.kills = left <= 0f;
-                    if (!b.kills && (profile.coordKillsOnly || mask != full)) continue;
+                    if (!b.kills) continue;
                     if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, retreats).score;
                     b.joint = AIPlan.Evaluate(b.steps, map, false, retreats).score - empty;
                     plansForecast++;
@@ -258,7 +258,7 @@ namespace HexTactica.AI {
 
             // ---- rule 5: no charging in on a promise nobody made.
             foreach (Menu m in menus) {
-                if (!profile.coordNoAssist || !m.favourite.assist || usedUnits.Contains(m.unit)) continue;
+                if (!m.favourite.assist || usedUnits.Contains(m.unit)) continue;
                 noAssist.Add(m.unit);
             }
             if (log != null) {

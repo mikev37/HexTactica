@@ -179,8 +179,7 @@ namespace HexTactica.AI {
             HashSet<HexTile> wasAssaulting = assaulting != null ? new HashSet<HexTile>(assaulting) : new HashSet<HexTile>();
             DecideStaging(fronts, map, profile, assaulting);
             foreach (Front f in fronts) if (f.campaignStaging != null) {
-                if (profile.campaignGather) GatherThenGo(f, map, profile, wasAssaulting);
-                else if (f.campaignReady) f.posture = Posture.Aggressive;   // as first built: goes once given what it needs
+                GatherThenGo(f, map, profile, wasAssaulting);   // as first built: goes once given what it needs
             }
             // A campaign task force on the move keeps together toward wherever it is going now.
             foreach (Front f in fronts) if (f.pullScale != 1f || f.campaignStaging != null) f.paceLimit = f.staging ? -1 : Pace(f, map);

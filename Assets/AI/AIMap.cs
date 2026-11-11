@@ -171,7 +171,7 @@ namespace HexTactica.AI {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
             this.speculative = speculative;
-            if (carry != null && carry.player == player && carry.profile == this.profile && this.profile.keepCaches) Adopt(carry);
+            if (carry != null && carry.player == player && carry.profile == this.profile) Adopt(carry);
             Rebuild(!speculative);
         }
         /// <summary>Read while the opponent plays, to warm caches only (see the constructor).</summary>
@@ -262,8 +262,7 @@ namespace HexTactica.AI {
         void Rebuild(bool recalculateThreat) {
             readCount++;
             // keepCaches: only what the board's changes since the last read could have changed (AIMapCache).
-            if (profile.keepCaches) { ReadDelta(); PruneUnitCaches(); }
-            else { replyCache.positions.Clear(); baseReach.Clear(); baseReachBlocked.Clear(); thisTurnFields.Clear(); horizonFields.Clear(); ourSpace.Clear(); everything = true; }
+            ReadDelta(); PruneUnitCaches();
             theaters.Clear();
             theaterRadius.Clear();
             space = null;
@@ -940,7 +939,7 @@ namespace HexTactica.AI {
 
         public int Travel(Unit u, HexTile from, HexTile to) {
             if (from == null || to == null) return 99;
-            if (!profile.travelDistance || (u != null && (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion))))
+            if ((u != null && (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion))))
                 return from.Distance(to);
             Dictionary<HexTile, int> d = LandSteps(to);
             int s;

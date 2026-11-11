@@ -133,7 +133,7 @@ namespace HexTactica.AI {
 
             for (int i = 0; i < transports.Count; i++) {
                 RideSolution ride = BuildRide(cargo, transports[i], walk, horizon, profile, map);
-                if (ride != null) { ride.freshUnload = profile.freshUnload; ride.walkAfterDrop = profile.freshUnload && profile.freshUnloadPlanning; }
+                if (ride != null) { ride.freshUnload = profile.freshUnload; ride.walkAfterDrop = profile.freshUnload; }
                 if (ride == null) continue;
                 if (bestRide == null || ride.IsBetterThan(bestRide)) bestRide = ride;
             }
@@ -164,7 +164,7 @@ namespace HexTactica.AI {
 
                 bool ride = rideEta < int.MaxValue
                          && (walkEta == int.MaxValue
-                             || rideEta + (cargo.Hub != null && profile.supplyPrefersRide ? 0 : profile.transportWorthwhileSaving) <= walkEta)
+                             || rideEta + (cargo.Hub != null ? 0 : profile.transportWorthwhileSaving) <= walkEta)
                          // In combat (a fighting unit within a turn of the enemy) it fights on foot.
                          && !(cargo.trasnporter == null && cargo.Hub == null && cargo.Firepower > 0 && map.TurnsToContact(cargo) <= 1);
 

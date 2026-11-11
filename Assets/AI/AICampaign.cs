@@ -87,7 +87,7 @@ namespace HexTactica.AI {
             staged.Clear(); enRoute.Clear(); engaged.Clear();
             foreach (Unit u in units) {
                 if (u == null || u.tile == null || u.Strength <= 0) continue;
-                if ((p.campaignReleaseOwnReach ? map.TurnsToEngage(u) : map.TurnsToContact(u)) <= p.campaignEngagedTurns) engaged.Add(u);
+                if ((map.TurnsToEngage(u)) <= p.campaignEngagedTurns) engaged.Add(u);
                 else if (staging != null && map.Travel(u, u.tile, staging) <= stagingRadius) staged.Add(u);
                 else enRoute.Add(u);
             }
@@ -284,23 +284,21 @@ namespace HexTactica.AI {
             // is nearest (within a turn of its nearest), and at any whose way in it stands across (within a
             // move of it), not at every objective it could reach in time. (Red's whole army, able to reach any
             // objective on ForestClearing, priced every one at all of it, and Blue fought one front at a time.)
-            if (p.campaignEnemyNearestOnly) {
-                List<CampaignObjective> real = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.target != null);
-                foreach (Unit e in map.enemyUnits) {
-                    if (e == null || e.tile == null || e.moveRange <= 0) continue;
-                    Dictionary<CampaignObjective, int> t = new Dictionary<CampaignObjective, int>();
-                    int nearest = int.MaxValue;
-                    foreach (CampaignObjective o in real) {
-                        if (!o.arriving.ContainsKey(e)) continue;
-                        int turns = Mathf.CeilToInt(Mathf.Max(0, map.Travel(e, e.tile, o.target) - e.AttackRange) / (float)e.moveRange);
-                        t[o] = turns; nearest = Mathf.Min(nearest, turns);
-                    }
-                    foreach (KeyValuePair<CampaignObjective, int> kv in t) {
-                        if (kv.Value <= nearest + 1) continue;
-                        bool across = false;
-                        if (kv.Key.way != null) foreach (HexTile w in kv.Key.way) if (CanArrive(e, w, 1, map)) { across = true; break; }
-                        if (!across) kv.Key.arriving.Remove(e);
-                    }
+            List<CampaignObjective> real = candidates.FindAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && o.kind != CampaignKind.Scout && o.target != null);
+            foreach (Unit e in map.enemyUnits) {
+                if (e == null || e.tile == null || e.moveRange <= 0) continue;
+                Dictionary<CampaignObjective, int> t = new Dictionary<CampaignObjective, int>();
+                int nearest = int.MaxValue;
+                foreach (CampaignObjective o in real) {
+                    if (!o.arriving.ContainsKey(e)) continue;
+                    int turns = Mathf.CeilToInt(Mathf.Max(0, map.Travel(e, e.tile, o.target) - e.AttackRange) / (float)e.moveRange);
+                    t[o] = turns; nearest = Mathf.Min(nearest, turns);
+                }
+                foreach (KeyValuePair<CampaignObjective, int> kv in t) {
+                    if (kv.Value <= nearest + 1) continue;
+                    bool across = false;
+                    if (kv.Key.way != null) foreach (HexTile w in kv.Key.way) if (CanArrive(e, w, 1, map)) { across = true; break; }
+                    if (!across) kv.Key.arriving.Remove(e);
                 }
             }
             Dictionary<Unit, int> reaches = new Dictionary<Unit, int>();
@@ -397,7 +395,7 @@ namespace HexTactica.AI {
                     if (o.fellBack || (o.formedPower > 0f && power < o.formedPower * p.objectiveReplanLoss)) { restart.Add(o.Id); continue; }
                     // Short of its need now (campaignBreakShort): the enemy there grew past what it has. (ChanceMeeting: Hold@-6,9
                     // was kept eight turns at 5-14k against a need of 33-48k, never below half the power it was formed with.)
-                    if (p.campaignBreakShort && o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout && !o.respond && !o.allIn) {
+                    if (o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout && !o.respond && !o.allIn) {
                         CampaignObjective now = candidates.Find(x => x.Id == o.Id);
                         if (now != null && now.needPower > 0f && power < now.needPower * p.campaignBreakShortRatio) {
                             restart.Add(o.Id);
@@ -405,7 +403,7 @@ namespace HexTactica.AI {
                         }
                     }
                 }
-            if (last != null && p.campaignSurgeAbort) c.StopOnSurge(last, candidates, map, p, afresh, restart);
+            if (last != null) c.StopOnSurge(last, candidates, map, p, afresh, restart);
             c.Allocate(candidates, map, p, afresh ? null : last, restart);
             return c;
         }
@@ -639,17 +637,15 @@ namespace HexTactica.AI {
             }
             o.routeLength = from != null ? best : 99;
             HexTile node = null;
-            if (p.campaignStageOnSupply) {
-                // The supply unit of ours on supplied ground nearest the target along the way: task forces near each other gather on the same node.
-                int nd = int.MaxValue;
-                foreach (SupplyPoint h in map.ownHubs) {
-                    if (h == null || h.producer || h.myUnit == null || h.myUnit.tile == null || map.SupplyDepth(h.myUnit.tile) <= 0) continue;
-                    int d; if (!route.TryGetValue(h.myUnit.tile, out d)) continue;
-                    if (d < nd || (d == nd && CombatMath.Precedes(h.myUnit.tile, node))) { nd = d; node = h.myUnit.tile; }
-                }
-                if (node == null) node = from;
+            // The supply unit of ours on supplied ground nearest the target along the way: task forces near each other gather on the same node.
+            int nd = int.MaxValue;
+            foreach (SupplyPoint h in map.ownHubs) {
+                if (h == null || h.producer || h.myUnit == null || h.myUnit.tile == null || map.SupplyDepth(h.myUnit.tile) <= 0) continue;
+                int d; if (!route.TryGetValue(h.myUnit.tile, out d)) continue;
+                if (d < nd || (d == nd && CombatMath.Precedes(h.myUnit.tile, node))) { nd = d; node = h.myUnit.tile; }
             }
-            o.staging = keepStaging ?? (from != null ? (p.campaignStageOnSupply ? node : Staging(route, map, o.target, p, free)) : null);
+            if (node == null) node = from;
+            o.staging = keepStaging ?? (from != null ? (node) : null);
             o.routeTurns = o.staging != null ? Mathf.CeilToInt(map.Travel(null, o.staging, o.target) / (float)Mathf.Max(1, TypicalMove(map))) : 0;
             // The enemy that matters is what can be there soon after we are (frontReachTurns and one
             // more), not the whole army that could converge in the turns it takes us to get there: that
@@ -676,11 +672,10 @@ namespace HexTactica.AI {
             // campaignArrivalByLand: an enemy land unit on other land than this comes only as the enemy's seen transports can
             // carry it — their room, the strongest first — and only within its move plus a ship's over the turns. Not by our
             // ships, and not by ships it might build.
-            int targetLand = p.campaignArrivalByLand ? map.LandOf(o.target) : -2;
+            int targetLand = map.LandOf(o.target);
             int room = 0, enemyShip = 0;
-            List<Unit> crossers = p.campaignArrivalByLand ? new List<Unit>() : null;
-            if (p.campaignArrivalByLand)
-                foreach (Unit e in map.enemyUnits) {
+            List<Unit> crossers = new List<Unit>();
+            foreach (Unit e in map.enemyUnits) {
                     if (e == null || e.tile == null || !Transporting.IsTransport(e) || e.Firepower > 1 || e.Hub != null) continue;
                     if (!LocomotionRules.IsNaval(e.locomotion) && !LocomotionRules.IsAirborne(e.locomotion)) continue;
                     room += Mathf.Max(0, e.transportSlots); enemyShip = Mathf.Max(enemyShip, e.moveRange);
@@ -712,12 +707,10 @@ namespace HexTactica.AI {
                 // priced at that share, none when all of it is in view (then what we see is what is there).
                 // (campaignArrivalByLand: unseen ground on land not known to hold an enemy counts a quarter)
                 HashSet<int> enemyLand = null;
-                if (p.campaignArrivalByLand) {
-                    enemyLand = new HashSet<int>();
-                    foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) enemyLand.Add(map.LandOf(e.tile));
-                    foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null) enemyLand.Add(map.LandOf(ph.last));
-                    foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != null && b.owner != map.player) enemyLand.Add(map.LandOf(b.tile));
-                }
+                enemyLand = new HashSet<int>();
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) enemyLand.Add(map.LandOf(e.tile));
+                foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null) enemyLand.Add(map.LandOf(ph.last));
+                foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != null && b.owner != map.player) enemyLand.Add(map.LandOf(b.tile));
                 int all = 0; float dark = 0f;
                 foreach (HexTile t in AIPath.TilesInRangeShared(o.target, 0, far)) {
                     if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
@@ -774,7 +767,7 @@ namespace HexTactica.AI {
                 case CampaignKind.Secure: {
                     Building b = o.building;
                     if (b.IsHQ) o.value = board;
-                    else if (p.productionValueByIncome && b.buildable != null && b.buildable.Count > 0) {
+                    else if (b.buildable != null && b.buildable.Count > 0) {
                         // A building that makes units (productionValueByIncome): its own income, plus our income per production
                         // building we already have, over objectiveHorizonTurns — what one more place to spend it is worth.
                         float ours = 0f; int makers = 0;
@@ -787,10 +780,8 @@ namespace HexTactica.AI {
                         if (b.producesSupply) o.value += average * 2f;
                         // What it does for the war (campaignBuildingTiers): a building that makes units,
                         // then one that makes supply, above cities and resupply points.
-                        if (p.campaignBuildingTiers) {
-                            bool produces = b.buildable != null && b.buildable.Count > 0;
-                            o.value *= produces ? p.productionBuildingWeight : b.producesSupply ? p.supplyBuildingWeight : 1f;
-                        }
+                        bool produces = b.buildable != null && b.buildable.Count > 0;
+                        o.value *= produces ? p.productionBuildingWeight : b.producesSupply ? p.supplyBuildingWeight : 1f;
                     }
                     // At least someone who can take it, at full strength.
                     float capturer = float.MaxValue;
@@ -835,7 +826,7 @@ namespace HexTactica.AI {
                 int moves = gap < 99 ? Mathf.CeilToInt(gap / (float)Mathf.Max(1, TransportMove(map))) : -1;
                 // campaignSupplyByTransport: no supplied ground on its land — supply goes over the water as it can only go, in a
                 // ship or aircraft that carries a supply unit (ours, or one we can build): straight over, in its moves.
-                if (moves < 0 && p.campaignSupplyByTransport) {
+                if (moves < 0) {
                     int lift = SupplyLiftMove(map);
                     if (lift > 0) {
                         int d = int.MaxValue; HexTile tg = o.target;
@@ -846,14 +837,7 @@ namespace HexTactica.AI {
                 if (moves < 0) { gap = o.routeLength; moves = Mathf.CeilToInt(gap / (float)Mathf.Max(1, TransportMove(map))); }
                 o.supplyMoves = moves;
                 // One supply unit per transport move beyond the first from our supplied ground to it (campaignHubNeedSimple).
-                if (p.campaignHubNeedSimple) o.needHubs = Mathf.Max(0, moves - 1);
-                else if (gap > 0) {
-                    float avgWorth = average > 0f ? average : 1f;
-                    float forceUnits = o.needPower / Mathf.Max(1f, avgWorth);
-                    int relay = Mathf.CeilToInt(Mathf.Max(0, gap - range) / (float)Mathf.Max(1, range));
-                    int spread = Mathf.CeilToInt(Mathf.Sqrt(Mathf.Max(1f, forceUnits)) / Mathf.Max(1, range));
-                    o.needHubs = relay + spread;
-                }
+                o.needHubs = Mathf.Max(0, moves - 1);
             }
 
             // Preference: worth over what it takes, the further the less.
@@ -1069,7 +1053,7 @@ namespace HexTactica.AI {
                 // Pulling back to a stopped task force's staging ground (campaignSurgeAbort): planned again once there.
                 if (withdrawals.Exists(w => w.units.Contains(u))) continue;
                 // Bought for the reserve: not for task forces, unless a front is under attack (taken from heldBack below).
-                if (p.reserveDemand && ReserveHeld.Contains(u)) { heldBack.Add(u); continue; }
+                if (ReserveHeld.Contains(u)) { heldBack.Add(u); continue; }
                 pool.Add(u);
             }
             List<SupplyPoint> hubPool = new List<SupplyPoint>();
@@ -1212,7 +1196,7 @@ namespace HexTactica.AI {
             // force's staging ground to join it forms a task force of its own — another one for an
             // objective already taken on if that is its best, staged near it. (One front per objective
             // left a second group of ours idle across the map, the other front short.)
-            if (p.campaignWings && pool.Count > 0) {
+            if (pool.Count > 0) {
                 int band = p.campaignMaxTurns > 0 ? p.campaignMaxTurns : 99;
                 foreach (List<Unit> g in Groups(pool, map, p)) {
                     if (pursued >= maxPursued) break;
@@ -1324,7 +1308,7 @@ namespace HexTactica.AI {
                     CampaignObjective o = null; float most = -1f;
                     foreach (CampaignObjective x in far) {
                         // In transport moves beyond the first (campaignHubNeedSimple): a target one truck move from supplied ground wants none.
-                        float beyond = p.campaignHubNeedSimple ? Mathf.Max(0, (x.supplyMoves > 0 ? x.supplyMoves : Mathf.CeilToInt(x.routeLength / (float)Mathf.Max(1, TransportMove(map)))) - 1) : x.routeLength;
+                        float beyond = Mathf.Max(0, (x.supplyMoves > 0 ? x.supplyMoves : Mathf.CeilToInt(x.routeLength / (float)Mathf.Max(1, TransportMove(map)))) - 1);
                         if (beyond <= 0f) continue;
                         float want = beyond / (1 + x.hubs.Count);
                         if (want > most) { most = want; o = x; }
@@ -1647,95 +1631,91 @@ namespace HexTactica.AI {
             // with the ordinary fronts as the active reserve. (Spare units spread over the ordinary AI's
             // captures and fights did not clump, with the enemy's whole army somewhere in the fog.)
             reserveFront = null;
-            if (p.campaignReserve) {
-                List<Unit> spare = new List<Unit>();
-                Dictionary<Unit, List<Unit>> aboard = new Dictionary<Unit, List<Unit>>();
-                foreach (Unit u in map.ownUnits) {
-                    if (u == null || u.tile == null || taken.Contains(u) || u.Hub != null || u.trasnporter != null) continue;
-                    if (!ReserveMember(u, p) && !(p.reserveDemand && ReserveHeld.Contains(u))) continue;
-                    List<Unit> riders = p.campaignMobileReserve && Transporting.IsTransport(u) ? u.transported.FindAll(c => c != null && c.Firepower > 0 && c.Hub == null) : null;
-                    if (riders != null && riders.Count > 0) aboard[u] = riders;
-                    spare.Add(u);
-                }
-                int release = Mathf.Max(1, p.campaignReleaseTurns);
-                // Drafted (reserveDraftsRiders): an idle transport on no task force, not held for supply, and enough infantry on no task
-                // force near it to fill it join the reserve together; they board once drafted.
-                if (p.reserveDraftsRiders) {
-                    HashSet<Unit> held = AIAssault.SupplyTransports(map.player, map, null);
-                    List<Unit> foot = new List<Unit>();
-                    foreach (Unit u in map.ownUnits)
-                        if (u != null && u.tile != null && !taken.Contains(u) && !spare.Contains(u) && u.Hub == null && u.trasnporter == null && u.Firepower > 0
-                            && u.locomotion == Locomotion.Boots && !Transporting.IsTransport(u) && map.TurnsToContact(u) > release) foot.Add(u);
-                    foreach (Unit t in map.ownUnits) {
-                        if (t == null || t.tile == null || taken.Contains(t) || spare.Contains(t) || held.Contains(t) || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
-                        int room = Transporting.FreeWeight(t);
-                        List<Unit> near = foot.FindAll(u => Transporting.CarriesKind(t, u) && t.tile.Distance(u.tile) <= Mathf.Max(1, u.moveRange) * 2);
-                        near.Sort((a, b) => { int c = a.tile.Distance(t.tile).CompareTo(b.tile.Distance(t.tile)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
-                        List<Unit> crew = new List<Unit>(); int w = 0;
-                        foreach (Unit u in near) { if (w + Mathf.Max(1, u.weight) > room) continue; crew.Add(u); w += Mathf.Max(1, u.weight); }
-                        if (crew.Count == 0 || w < room) continue;   // enough to fill it
-                        spare.Add(t); foreach (Unit u in crew) { spare.Add(u); foot.Remove(u); }
-                        if (Debug != null) Debug("reserve drafts " + t.name.Replace("(Clone)", "") + " (" + t.tile.x + "," + t.tile.y + ") with " + crew.Count + " riders");
-                    }
-                }
-                List<Unit> calm = spare.FindAll(u => map.TurnsToContact(u) > release);
-                int active = spare.Count - calm.Count;
-                int wantActive = Mathf.CeilToInt(spare.Count * Mathf.Clamp01(p.campaignActiveReserveShare));
-                calm.Sort((a, b) => { int c = map.TurnsToContact(a).CompareTo(map.TurnsToContact(b)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
-                while (active < wantActive && calm.Count > 0) { calm.RemoveAt(0); active++; }
-                HexTile rally = calm.Count > 0 ? RallyTile(map, fronts) : null;
-                // Committed (AIProfile.regroup): to the front most pressed — the enemy that can strike its units
-                // tonight more than regroupCommitRatio of their power — all of it, toward that front's units.
-                Front pressed = null; float worst = 0f;
-                // Released (AIKnowledge.releaseReserve): the enemy's forces are known well enough; the reserve goes where
-                // it is best suited — all out, the enemy HQ's task force; else the campaign front shortest of what it needs.
-                string released = null;
-                if (map.knowledge != null && map.knowledge.releaseReserve && calm.Count > 0) {
-                    Front to = null; float most = float.NegativeInfinity;
-                    foreach (Front f in fronts) {
-                        if (!f.campaign || f.reserve || f.objectiveTile == null || f.campaignObjective == null) continue;
-                        float shortBy = f.campaignObjective.needPower - f.campaignObjective.assignedPower;
-                        float v = (map.AllOut && f.objectiveIsHQ ? 1e6f : 0f) + shortBy;
-                        if (to == null || v > most) { to = f; most = v; }
-                    }
-                    if (to != null) {
-                        List<Unit> mine = new List<Unit>(); foreach (Unit u in to.assigned) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0) mine.Add(u);
-                        HexTile c = mine.Count > 0 ? Centre(mine) : to.objectiveTile;
-                        if (c != null) { rally = map.AllOut && to.objectiveIsHQ ? to.objectiveTile : c; pressed = to; released = to.campaignObjective.Id; }
-                    }
-                }
-                if (p.regroup && calm.Count > 0 && released == null)
-                    foreach (Front f in fronts) {
-                        float ours = 0f, theirs = 0f; HashSet<Unit> seenE = new HashSet<Unit>(); List<Unit> mine = new List<Unit>();
-                        foreach (Unit u in f.assigned) {
-                            if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
-                            ours += AIScore.Worth(u) * u.Strength; mine.Add(u);
-                            foreach (Unit e in map.FirersOf(u.tile)) if (e != null && seenE.Add(e)) theirs += AIScore.Worth(e) * e.Strength;
-                        }
-                        if (theirs <= ours * Mathf.Max(0f, p.regroupCommitRatio)) continue;
-                        float press = theirs - ours;
-                        HexTile c = Centre(mine);
-                        if (c != null && (pressed == null || press > worst)) { pressed = f; worst = press; rally = c; }
-                    }
-                if (rally != null) {
-                    Front r = new Front { center = rally, objectiveTile = rally, priority = 0.5f };
-                    // Released onto a building to take (all out, the enemy HQ): it is that building, so the rules for
-                    // units that cannot take it hold (CampaignStep, the objective's pull: beside it, not on it). (Aimed
-                    // at the HQ's tile as a bare tile, the released gunships were pulled onto it and stood there while
-                    // the grunt that would have taken it walked back to supply.)
-                    if (pressed != null && released != null && rally == pressed.objectiveTile && pressed.objective != null) { r.objective = pressed.objective; r.objectiveIsHQ = pressed.objectiveIsHQ; r.objectiveValue = pressed.objectiveValue; }
-                    r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
-                    r.reserve = true;
-                    r.assigned.AddRange(calm);
-                    foreach (Unit u in calm) taken.Add(u);
-                    // What a reserve transport carries goes with it.
-                    foreach (Unit u in calm) { List<Unit> rs; if (aboard.TryGetValue(u, out rs)) foreach (Unit c in rs) { r.assigned.Add(c); taken.Add(c); } }
-                    AIStrategic.Finish(new List<Front> { r }, map, p, memory, assaulting);
-                    fronts.Add(r);
-                    reserveFront = r;
-                }
-                reserveNote = "reserve" + (p.campaignMobileReserve ? " (mobile)" : "") + ": central " + calm.Count + (rally != null ? (released != null ? " released to " + released + " at (" : pressed != null ? " committed to the front at (" : " gathering at (") + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
+            List<Unit> spare = new List<Unit>();
+            Dictionary<Unit, List<Unit>> aboard = new Dictionary<Unit, List<Unit>>();
+            foreach (Unit u in map.ownUnits) {
+                if (u == null || u.tile == null || taken.Contains(u) || u.Hub != null || u.trasnporter != null) continue;
+                if (!ReserveMember(u, p) && !(ReserveHeld.Contains(u))) continue;
+                List<Unit> riders = p.campaignMobileReserve && Transporting.IsTransport(u) ? u.transported.FindAll(c => c != null && c.Firepower > 0 && c.Hub == null) : null;
+                if (riders != null && riders.Count > 0) aboard[u] = riders;
+                spare.Add(u);
             }
+            int release = Mathf.Max(1, p.campaignReleaseTurns);
+            // Drafted (reserveDraftsRiders): an idle transport on no task force, not held for supply, and enough infantry on no task
+            // force near it to fill it join the reserve together; they board once drafted.
+            HashSet<Unit> held = AIAssault.SupplyTransports(map.player, map, null);
+            List<Unit> foot = new List<Unit>();
+            foreach (Unit u in map.ownUnits)
+                if (u != null && u.tile != null && !taken.Contains(u) && !spare.Contains(u) && u.Hub == null && u.trasnporter == null && u.Firepower > 0
+                    && u.locomotion == Locomotion.Boots && !Transporting.IsTransport(u) && map.TurnsToContact(u) > release) foot.Add(u);
+            foreach (Unit t in map.ownUnits) {
+                if (t == null || t.tile == null || taken.Contains(t) || spare.Contains(t) || held.Contains(t) || !Transporting.IsTransport(t) || t.transported.Count > 0) continue;
+                int room = Transporting.FreeWeight(t);
+                List<Unit> near = foot.FindAll(u => Transporting.CarriesKind(t, u) && t.tile.Distance(u.tile) <= Mathf.Max(1, u.moveRange) * 2);
+                near.Sort((a, b) => { int c = a.tile.Distance(t.tile).CompareTo(b.tile.Distance(t.tile)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+                List<Unit> crew = new List<Unit>(); int w = 0;
+                foreach (Unit u in near) { if (w + Mathf.Max(1, u.weight) > room) continue; crew.Add(u); w += Mathf.Max(1, u.weight); }
+                if (crew.Count == 0 || w < room) continue;   // enough to fill it
+                spare.Add(t); foreach (Unit u in crew) { spare.Add(u); foot.Remove(u); }
+                if (Debug != null) Debug("reserve drafts " + t.name.Replace("(Clone)", "") + " (" + t.tile.x + "," + t.tile.y + ") with " + crew.Count + " riders");
+            }
+            List<Unit> calm = spare.FindAll(u => map.TurnsToContact(u) > release);
+            int active = spare.Count - calm.Count;
+            int wantActive = Mathf.CeilToInt(spare.Count * Mathf.Clamp01(p.campaignActiveReserveShare));
+            calm.Sort((a, b) => { int c = map.TurnsToContact(a).CompareTo(map.TurnsToContact(b)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
+            while (active < wantActive && calm.Count > 0) { calm.RemoveAt(0); active++; }
+            HexTile rally = calm.Count > 0 ? RallyTile(map, fronts) : null;
+            // Committed (AIProfile.regroup): to the front most pressed — the enemy that can strike its units
+            // tonight more than regroupCommitRatio of their power — all of it, toward that front's units.
+            Front pressed = null; float worst = 0f;
+            // Released (AIKnowledge.releaseReserve): the enemy's forces are known well enough; the reserve goes where
+            // it is best suited — all out, the enemy HQ's task force; else the campaign front shortest of what it needs.
+            string released = null;
+            if (map.knowledge != null && map.knowledge.releaseReserve && calm.Count > 0) {
+                Front to = null; float most = float.NegativeInfinity;
+                foreach (Front f in fronts) {
+                    if (!f.campaign || f.reserve || f.objectiveTile == null || f.campaignObjective == null) continue;
+                    float shortBy = f.campaignObjective.needPower - f.campaignObjective.assignedPower;
+                    float v = (map.AllOut && f.objectiveIsHQ ? 1e6f : 0f) + shortBy;
+                    if (to == null || v > most) { to = f; most = v; }
+                }
+                if (to != null) {
+                    List<Unit> mine = new List<Unit>(); foreach (Unit u in to.assigned) if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0) mine.Add(u);
+                    HexTile c = mine.Count > 0 ? Centre(mine) : to.objectiveTile;
+                    if (c != null) { rally = map.AllOut && to.objectiveIsHQ ? to.objectiveTile : c; pressed = to; released = to.campaignObjective.Id; }
+                }
+            }
+            if (p.regroup && calm.Count > 0 && released == null)
+                foreach (Front f in fronts) {
+                    float ours = 0f, theirs = 0f; HashSet<Unit> seenE = new HashSet<Unit>(); List<Unit> mine = new List<Unit>();
+                    foreach (Unit u in f.assigned) {
+                        if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
+                        ours += AIScore.Worth(u) * u.Strength; mine.Add(u);
+                        foreach (Unit e in map.FirersOf(u.tile)) if (e != null && seenE.Add(e)) theirs += AIScore.Worth(e) * e.Strength;
+                    }
+                    if (theirs <= ours * Mathf.Max(0f, p.regroupCommitRatio)) continue;
+                    float press = theirs - ours;
+                    HexTile c = Centre(mine);
+                    if (c != null && (pressed == null || press > worst)) { pressed = f; worst = press; rally = c; }
+                }
+            if (rally != null) {
+                Front r = new Front { center = rally, objectiveTile = rally, priority = 0.5f };
+                // Released onto a building to take (all out, the enemy HQ): it is that building, so the rules for
+                // units that cannot take it hold (CampaignStep, the objective's pull: beside it, not on it). (Aimed
+                // at the HQ's tile as a bare tile, the released gunships were pulled onto it and stood there while
+                // the grunt that would have taken it walked back to supply.)
+                if (pressed != null && released != null && rally == pressed.objectiveTile && pressed.objective != null) { r.objective = pressed.objective; r.objectiveIsHQ = pressed.objectiveIsHQ; r.objectiveValue = pressed.objectiveValue; }
+                r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                r.reserve = true;
+                r.assigned.AddRange(calm);
+                foreach (Unit u in calm) taken.Add(u);
+                // What a reserve transport carries goes with it.
+                foreach (Unit u in calm) { List<Unit> rs; if (aboard.TryGetValue(u, out rs)) foreach (Unit c in rs) { r.assigned.Add(c); taken.Add(c); } }
+                AIStrategic.Finish(new List<Front> { r }, map, p, memory, assaulting);
+                fronts.Add(r);
+                reserveFront = r;
+            }
+            reserveNote = "reserve" + (p.campaignMobileReserve ? " (mobile)" : "") + ": central " + calm.Count + (rally != null ? (released != null ? " released to " + released + " at (" : pressed != null ? " committed to the front at (" : " gathering at (") + rally.x + "," + rally.y + ")" : "") + ", active " + active + " (of " + spare.Count + " on no task force)";
             HashSet<Unit> was = AIStrategic.Exclude;
             AIStrategic.Exclude = taken;
             List<Front> ordinary;

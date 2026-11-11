@@ -114,7 +114,7 @@ namespace HexTactica.AI {
             foreach (Unit x in map.enemyUnits) if (x != null && x.tile != null) { hp[x] = x.Strength; at[x] = x.tile; }
             Board board = new Board();
             Dictionary<Unit, HexTile> endsAt = new Dictionary<Unit, HexTile>();
-            bool breakpoints = prof.replyBreakpoints;
+            bool breakpoints = true;
             Dictionary<Unit, float> hpCertain = null;
             // Suppressed pips as the forecast plays out. Ours: their fire suppresses in their reply.
             // Theirs: what our indirect fire has suppressed this turn (and what it will in the steps
@@ -145,7 +145,7 @@ namespace HexTactica.AI {
                         if (CombatMath.Suppresses(x)) { }   // indirect fire: suppresses (below), never drives back or pins
                         else if (dmg > 0 && dmg < hp[t] && dmg - t.Veterancy > back - x.Veterancy && t.moveRange > 0) {
                             retreat = RetreatTile(t, at[t], at[x], hp, null);
-                            if (retreat == null && prof.forecastPins) { dmg += 1; pinned = true; }
+                            if (retreat == null) { dmg += 1; pinned = true; }
                         }
                     }
                     float dealt = Mathf.Min(hp[t], dmg);
@@ -194,7 +194,7 @@ namespace HexTactica.AI {
                     if (ownSideBlocks || firesInPlace || e.moveRange <= 0) taken.Add(at[e]);
                 }
 
-                bool weighs = prof.enemyWeighsRisk;
+                bool weighs = true;
                 Func<Unit, HexTile> ourPos = x => at.ContainsKey(x) ? at[x] : x.tile;
                 for (int ei = 0; ei < enemies.Count; ei++) {
                     Unit e = enemies[ei];
@@ -212,7 +212,7 @@ namespace HexTactica.AI {
                         CombatMath.Exchange(e, AIWorld.Hp(hp[e]), fire, d, AIWorld.Hp(hp[d]), dAt, supOf(d), out dmg, out back);
                         if (dmg <= 0) continue;
                         bool pinned = false;
-                        if (prof.forecastPins && !CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !AIWorld.CanFallBack(d, dAt, fire, null, null, hp, taken)) {
+                        if (!CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !AIWorld.CanFallBack(d, dAt, fire, null, null, hp, taken)) {
                             dmg += 1;
                             pinned = true;
                         }
@@ -461,7 +461,7 @@ namespace HexTactica.AI {
             List<PlanStep> result = new List<PlanStep>();
             foreach (List<Unit> g in Groups(map)) {
                 List<GroupPlan> plans = new List<GroupPlan> { Stay(g, map), Strike(g, map), Withdraw(g, map) };
-                foreach (GroupPlan p in plans) p.world = Evaluate(p.steps, map, log != null, profile.coordinationRetreats);
+                foreach (GroupPlan p in plans) p.world = Evaluate(p.steps, map, log != null, true);
                 GroupPlan stay = plans[0], best = stay;
                 foreach (GroupPlan p in plans) if (p.steps.Count > 0 && p.world.score > best.world.score) best = p;
                 bool adopt = best != stay && best.world.score >= stay.world.score + profile.coordinationMargin;

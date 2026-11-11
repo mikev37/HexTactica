@@ -50,15 +50,13 @@ namespace HexTactica.AI {
             Building b = t.building;
             if (b == null || b.owner != u.owner || !b.CanProduce) return false;
             // offFacilities: nobody ends on it (purchases allowed), but an aircraft or ship it services.
-            if (map.profile.offFacilities && (GameController.gc == null || GameController.gc.purchasesAllowed)) {
+            if ((GameController.gc == null || GameController.gc.purchasesAllowed)) {
                 if (u.tile == t) return false;   // (already there: standing still is not a move onto it)
                 // (Aircraft and ships it services: only there do they land, rearm or refuel — when it will not build this turn
                 // (saving, or buying nothing: it then gives its budget to the others), or when they need it now.)
-                if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u)
-                    && (!map.profile.procBudgets || !AIProduction.WillBuild(u.owner, b) || NeedsService(u))) return false;
+                if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u) && (!AIProduction.WillBuild(u.owner, b) || NeedsService(u))) return false;
                 return b.Purchasable().Count > 0;
             }
-            if (!map.profile.keepBuildSlotsClear) return false;
             if (!Transporting.IsTransport(u) || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return false;
             return true;
         }

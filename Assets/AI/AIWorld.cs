@@ -165,8 +165,7 @@ namespace HexTactica.AI {
                 // proportion — so a hit that sets up a kill beats a hit that does not.
                 if (hp[shot.target] > 0f && map.profile.assistWeight > 0f && (NoAssist == null || !NoAssist.Contains(u))) {
                     string by;
-                    bool can = map.profile.assistNeedsReach ? CanFinish(shot.target, hp[shot.target], u, uAt, map, out by)
-                                                            : CanFinishByDistance(shot.target, hp[shot.target], u, map, out by);
+                    bool can = CanFinish(shot.target, hp[shot.target], u, uAt, map, out by);
                     if (can) {
                         w.assist = true;
                         hp[shot.target] *= 1f - map.profile.assistWeight;
@@ -221,7 +220,7 @@ namespace HexTactica.AI {
                 // Our unit leaving its tile is the same for every option of this decision: where the enemy could go with
                 // that tile free is worked out once (per board read, unit and tile). Our unit standing on its new tile
                 // changes it only if that tile is one of them (it would block it). (vacatedReach; AIVERIFY checks it.)
-                if (moving && knocked == null && goneHere.Count == 0 && map.profile.vacatedReach) {
+                if (moving && knocked == null && goneHere.Count == 0) {
                     HashSet<HexTile> r1 = VacatedReach(e, u, from, map);
                     if (!r1.Contains(uAt) && uAt != e.tile) {
                         if (AIMap.Verify) {
@@ -249,7 +248,7 @@ namespace HexTactica.AI {
             AIProfile sp0 = map.profile;
             if (sp0.selfPreservationWeight > 0f && hp[u] > 0f && GameController.Targetable(u) && (!sp0.selfPreservationShieldless || !Shields(u))) {
                 List<float> blows = new List<float>();
-                float k0 = sp0.replyBreakpoints && sp0.selfPreservationDiscount ? 1f - sp0.replyDiscount : 1f;
+                float k0 = sp0.selfPreservationDiscount ? 1f - sp0.replyDiscount : 1f;
                 foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in positions) {
                     Unit e = kv.Key;
                     if (hp[e] <= 0f) continue;
@@ -289,8 +288,8 @@ namespace HexTactica.AI {
                 if (ownSideBlocks || firesInPlace || e.moveRange <= 0) taken.Add(e.tile);
             }
 
-            bool weighs = map.profile.enemyWeighsRisk;
-            bool breakpoints = map.profile.replyBreakpoints;
+            bool weighs = true;
+            bool breakpoints = true;
             // With replyBreakpoints, the reply is played at full damage (kills where they really
             // happen) and the discount is applied afterwards to what it cost us; unanswered ranged
             // fire (artillery) is certain and not discounted, so it is also tracked on its own.
@@ -329,7 +328,7 @@ namespace HexTactica.AI {
                     if (dmg <= 0) continue;
                     bool pinned = false;
                     // (Indirect fire never pins: it suppresses.)
-                    if (map.profile.forecastPins && !CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !CanFallBack(d, dAt, fire, u, uAt, hp, taken)) {
+                    if (!CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !CanFallBack(d, dAt, fire, u, uAt, hp, taken)) {
                         dmg += 1;
                         pinned = true;
                     }
@@ -869,7 +868,7 @@ namespace HexTactica.AI {
                     foreach (HexTile t in s[1]) { List<Unit> l; if (!o.coverers.TryGetValue(t, out l)) o.coverers[t] = l = new List<Unit>(); l.Add(x); }
             }
             for (int k = 0; k < 2; k++)
-                foreach (HexTile t in o.count[k].Keys) if (!prof.spaceContestedOnly || map.EnemyStrikeTurns(t) <= prof.enemyReachTurns) o.union++;
+                foreach (HexTile t in o.count[k].Keys) if (map.EnemyStrikeTurns(t) <= prof.enemyReachTurns) o.union++;
             ownSpace = o;
             return o;
         }
@@ -884,12 +883,12 @@ namespace HexTactica.AI {
             Dictionary<Unit, HashSet<HexTile>> fireOf = scratchFireOf;
             fireOf.Clear();
             // spaceIncremental: the same counts from a per-board tally of everyone else, adjusted for this option.
-            OwnSpace inc = prof.spaceIncremental ? OwnSpaceFor(u, map) : null;
+            OwnSpace inc = OwnSpaceFor(u, map);
             int ourCount = 0;
             HashSet<HexTile>[] uSpace = null;
             Dictionary<Unit, HashSet<HexTile>[]> freshSpace = null;
             if (inc != null) {
-                Func<HexTile, bool> counts = t => !prof.spaceContestedOnly || map.EnemyStrikeTurns(t) <= prof.enemyReachTurns;
+                Func<HexTile, bool> counts = t => map.EnemyStrikeTurns(t) <= prof.enemyReachTurns;
                 // Out of this option: units of the tally killed in the forecast, and those near a unit driven back (re-read).
                 List<KeyValuePair<HashSet<HexTile>[], int>> changes = scratchChanges ?? (scratchChanges = new List<KeyValuePair<HashSet<HexTile>[], int>>());
                 changes.Clear();
@@ -1003,10 +1002,8 @@ namespace HexTactica.AI {
             }
             if (inc != null) w.ourSpace = ourCount;
             else {
-                if (prof.spaceContestedOnly) {
-                    ourMove.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
-                    ourStrike.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
-                }
+                ourMove.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
+                ourStrike.RemoveWhere(t => map.EnemyStrikeTurns(t) > prof.enemyReachTurns);
                 w.ourSpace = ourMove.Count + ourStrike.Count;
             }
             w.theirSpace = theirMove.Count + theirStrike.Count;

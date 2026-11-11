@@ -105,7 +105,7 @@ namespace HexTactica.AI {
         /// going; the chain works out its own links. Off (or no units): Goal(o).
         /// </summary>
         public static HexTile Goal(CampaignObjective o, AIMap map) {
-            if (!map.profile.campaignChainToUnits || o.target == null) return Goal(o);
+            if (o.target == null) return Goal(o);
             Unit need = null, lead = null; int nd = int.MaxValue, ld = int.MaxValue;
             foreach (Unit u in o.units) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null || u.trasnporter != null) continue;

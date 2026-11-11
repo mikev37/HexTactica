@@ -51,7 +51,7 @@ namespace HexTactica.AI {
         /// it (TurnsToTake, with <paramref name="map"/>; without one, as if it does).
         /// </summary>
         public static bool Wounded(Unit u, AIProfile profile, AIMap map = null) {
-            if (u == null || profile.assaultMedevacStrength <= 0 || u.Strength > profile.assaultMedevacStrength || u.Hub == null == false || u.tile == null) return false;
+            if (u == null || profile.assaultMedevacStrength <= 0 || u.Strength > profile.assaultMedevacStrength || u.Hub != null || u.tile == null) return false;
             if (Building.ServicingUnder(u) != null) return false;
             if (Building.CanCapture(u)) {
                 Building on = u.tile.building;
@@ -503,7 +503,7 @@ namespace HexTactica.AI {
             // One per supply unit (supplyTransportCap): beyond those carrying one or on a duty, each supply unit on foot holds
             // the nearest empty transport that could carry it (within a move and a step; any distance on a no-build map), and
             // no more. (RiverCrossing: all 12 transports held for 10 supply units, 7 idle all turn while the infantry walked.)
-            if (map.profile != null && map.profile.supplyTransportCap) {
+            if (map.profile != null) {
                 List<Unit> free = new List<Unit>();
                 foreach (Unit t in p.units) {
                     if (t == null || t.tile == null || !Transporting.IsTransport(t)) continue;
@@ -567,7 +567,7 @@ namespace HexTactica.AI {
             string who = near.name.Replace("(Clone)", "") + " (" + near.tile.x + "," + near.tile.y + ")";
             if (nd <= Mathf.Max(1, t.moveRange)) {
                 // Beside it (supplyRideBeside): next turn the supply unit steps aboard without walking and still rides a full move.
-                if (map.profile.supplyRideBeside && t.tile.Distance(near.tile) > 1) {
+                if (t.tile.Distance(near.tile) > 1) {
                     MoveField f = map.ReachThisTurn(t);
                     HexTile at = null;
                     foreach (HexTile n in near.tile.neighbors)
@@ -617,7 +617,7 @@ namespace HexTactica.AI {
                 bool forSupply = !overWater && ((supply != null && supply.Contains(t)) || busy.Contains(t) || CarriesHub(t));
                 // A supply transport's spare seat (supplySpareSeat): a rider may take it before its supply unit is aboard, as long as
                 // the supply unit still fits beside it (supply units move last: waiting for them, no infantry ever got the seat).
-                bool early = profile.supplySpareSeat && forSupply && !CarriesHub(t);
+                bool early = forSupply && !CarriesHub(t);
                 if (forSupply && (hurt || (!CarriesHub(t) && !early) || !SpareSlot(t, c))) continue;
                 // ... and only where the supply's ride takes it at least a move nearer its ground (an early seat too: six riders on
                 // RiverCrossing got into supply trucks that held their links, and were let out again having gone nowhere).
