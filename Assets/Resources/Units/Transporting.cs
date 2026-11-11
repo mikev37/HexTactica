@@ -71,7 +71,8 @@ public static class Transporting {
         if (!CanCarry(transport, cargo)) return false;
         if (transport.tile == null || cargo.tile == null) return false;
         if (cargo.tile != transport.tile && !transport.tile.neighbors.Contains(cargo.tile)) return false;
-        return CanBoardOnto(cargo, cargo.tile, transport.tile, transport);
+        // From where it stands, its whole move ahead of it: the step in must fit it (StepInFits).
+        return CanBoardOnto(cargo, cargo.tile, transport.tile, transport) && StepInFits(cargo, cargo.tile, 0, transport);
     }
 
     public static bool Load(Unit transport, Unit cargo) {
@@ -89,6 +90,31 @@ public static class Transporting {
         Unit o = from.occupier;
         if (o != null && o != cargo && o != transport && o.owner != cargo.owner) return false;
         return CanBoardOnto(cargo, from, transport.tile, transport);
+    }
+
+    /// <summary>
+    /// Does the step in fit <paramref name="cargo"/>'s move, having spent <paramref name="usedAtFrom"/> getting to
+    /// <paramref name="from"/>? A transport on a tile the cargo could walk onto is boarded by moving onto it: that step
+    /// costs what the move would (so boarding reaches no further than a move does). One on a tile the cargo cannot enter
+    /// (a ship on the water, an aircraft over ground it cannot cross) is boarded from beside it, for nothing.
+    /// </summary>
+    public static bool StepInFits(Unit cargo, HexTile from, int usedAtFrom, Unit transport) {
+        return transport != null && StepInFits(cargo, from, usedAtFrom, transport.tile);
+    }
+
+    /// <summary>As above, for a transport that will be standing on <paramref name="t"/> (a rendezvous being planned).</summary>
+    public static bool StepInFits(Unit cargo, HexTile from, int usedAtFrom, HexTile t) {
+        if (cargo == null || t == null || from == null) return false;
+        if (from == t || !cargo.CanEnter(t)) return true;
+        int c = HexTactica.AI.AIPath.StepCost(cargo, from, t);
+        return c != int.MaxValue && usedAtFrom + c <= HexTactica.AI.AIPath.RangeThisTurn(cargo);
+    }
+
+    /// <summary>Movement <paramref name="cargo"/> spends walking <paramref name="steps"/> (its own tile first).</summary>
+    public static int WalkCost(Unit cargo, List<HexTile> steps) {
+        int c = 0;
+        for (int i = 1; steps != null && i < steps.Count; i++) { int s = HexTactica.AI.AIPath.StepCost(cargo, steps[i - 1], steps[i]); if (s == int.MaxValue) return int.MaxValue; c += s; }
+        return c;
     }
 
     /// <summary>Board <paramref name="transport"/> from <paramref name="from"/> (see CanBoardFromTile): the cargo leaves its own tile for the transport's.</summary>

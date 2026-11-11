@@ -182,6 +182,16 @@ namespace HexTactica.AI {
         }
 
         /// <summary>Movement points available on the current turn, after fuel.</summary>
+        /// <summary>
+        /// <paramref name="cargo"/> can board <paramref name="transport"/> this turn from <paramref name="n"/>: it reaches
+        /// <paramref name="n"/> in <paramref name="walk"/> (its move field), may step in from there
+        /// (Transporting.CanBoardFromTile), and the step in fits its move (Transporting.StepInFits) — as the game boards.
+        /// </summary>
+        public static bool BoardsFrom(MoveField walk, Unit cargo, Unit transport, HexTile n) {
+            if (walk == null || n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(transport, cargo, n)) return false;
+            return Transporting.StepInFits(cargo, n, walk.Get(n).used, transport);
+        }
+
         public static int RangeThisTurn(Unit mover) {
             // "Once out of fuel the unit will not be able to move." Partial fuel is
             // enforced per tile by StepBudget, not by shrinking movement points.

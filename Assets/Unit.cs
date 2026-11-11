@@ -754,6 +754,18 @@ public class Unit : MonoBehaviour
         return arrived;
     }
 
+    /// <summary>
+    /// Carried this turn: aboard a transport (or a transport inside one) that moved. A unit that must move or
+    /// attack (not moveAndAttack: artillery) cannot attack after that (CanAttack). Cleared at the end of its turn (Player.EndTurn).
+    /// </summary>
+    [System.NonSerialized] public bool carriedThisTurn;
+
+    /// <summary>Everything aboard <paramref name="t"/>, and aboard what it carries, marked carriedThisTurn.</summary>
+    static void MarkCarried(Unit t) {
+        if (t == null || t.transported == null) return;
+        foreach (Unit c in t.transported) if (c != null && c != t && !c.carriedThisTurn) { c.carriedThisTurn = true; MarkCarried(c); }
+    }
+
     /// <summary>The enemy that stopped this unit's last move (fog of war), if any. For logs and tests.</summary>
     [System.NonSerialized] public Unit ambushedBy;
 
@@ -788,6 +800,7 @@ public class Unit : MonoBehaviour
         if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
 
         if (dest != start) {
+            MarkCarried(this);
             if (spriteTile == null) spriteTile = start;
             if (tile.occupier == this) tile.occupier = null;
             tile = dest;
@@ -966,6 +979,8 @@ public class Unit : MonoBehaviour
     /// </summary>
     internal bool CanAttack(HexTile position) {
         if (Strength <= 0) return false;
+        // Move or attack: a unit that cannot do both, carried somewhere this turn, has had its move.
+        if (!moveAndAttack && carriedThisTurn) return false;
         if (ammoMax > 0 && ammo <= 0) return false;
         if (Firepower <= 0) return false;
         return true;

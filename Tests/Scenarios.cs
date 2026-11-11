@@ -712,6 +712,13 @@ public static partial class Scenarios {
                  Put("Transport Helo", a, -5, 3);
                  Put("Grunt", a, 6, -1); Put("Grunt", o, 7, -2); },
              "Convoys: a ship with a supply unit aboard is a link if within one move (its own path) of supplied ground or of another linked carrier, to any length, and gives supply to land only beside it. Ten tiles of sea between Blue's shore and an island, ships moving 3: TS A within a move of Blue's shore, TS B within a move of A only, TS C within a move of B only and beside the island. C is linked through B through A, the Blue grunt on the island is supplied, A and B out at sea give nothing, and the supply line runs from the grunt through C, B and A to the HQ. Without A, B and C are cut off. A helicopter with supplies aboard in A's place over the water (linked by Blue's shore, giving nothing over water) links B in turn: a ship links through an aircraft.");
+        make("attrition-rule-ship-supply-upkeep", "shipSupplyUpkeep", (a, o) => {
+                 water(-4, 5, -7, 7);
+                 for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
+                 Put("Hauler", a, -1, 0); Put("APC", a, -6, 1); Put("Supplies", a, -6, 2); Put("Grunt", a, -6, 3);
+                 Put("SupplyBoat", a, 2, 0); Put("Gunboat", a, 0, 0);
+                 Put("Grunt", o, 7, -6); },
+             "Supply at sea, and what it gives: a hauler within a move of Blue's shore, beside a strip of island, carrying an APC with a supply unit inside it and a weakened grunt. (1) The supply two transports deep links and supplies the island, as supply aboard the hauler itself would (ship rules). (2) The grunt aboard, the hauler having supplies, is resupplied at the start of Blue's turn as on supplied ground: healed a strength, rearmed, refuelled. (3) The hauler itself only mends from its own supplies (+1): the water its own supply covers is not supplied ground for it. (4) When the hauler sails away, the water and the island it supplied are no longer supplied.");
         make("attrition-rule-ship-line-on-water", "shipLineOnWater", (a, o) => {
                  water(-4, 5, -7, 7);
                  for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
@@ -732,6 +739,17 @@ public static partial class Scenarios {
                  Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
                  Put("Grunt", o, 6, -5); },
              "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
+        make("ai-ship-without-base", "seaMeeting", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Put("Hauler", a, 1, -6); Put("Grunt", a, -5, 3); Put("Grunt", a, -4, 3);
+                 Put("Grunt", o, 5, -2); },
+             "As ai-sea-meeting, but Blue has no naval yard and no supply ship: nowhere to refuel. The hauler still acts (it does not hold for want of a base it cannot get back to): it meets the grunts and takes them across.");
+        make("ai-sea-meeting", "seaMeeting", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.At(-1, -5).terrain = T("Grassland"); Rig.PlaceBuilding("NavalYard", a, -1, -5);
+                 Put("Hauler", a, 1, -6); Put("Grunt", a, -5, 3); Put("Grunt", a, -4, 3);
+                 Put("Grunt", o, 5, -2); },
+             "An empty hauler beside Blue's naval yard at the north end of the channel, far from Blue's two grunts, Red's HQ across. The sea-travel estimate counts the trip from the grunts' own shore. The hauler sails south to meet the grunts off the shore nearest them (not to a harbor), they walk to that shore and board from it, and it takes them over: a grunt lands on Red's side.");
         make("ai-sea-convoy", "seaConvoy", (a, o) => {
                  for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
@@ -749,6 +767,14 @@ public static partial class Scenarios {
                  Put("Gunboat", a, 3, -2); Put("Gunboat", a, 4, 3); Put("SupplyBoat", a, 1, 4);
                  Put("Grunt", o, 6, -5); },
              "Ships go back for what they run out of: a gunboat out of ammunition five tiles from Blue's naval yard heads for the yard (only a yard rearms) and is rearmed there; a gunboat with one turn of supplies left, far from the yard, goes beside Blue's supply boat instead, and is restocked there at the start of its next turn.");
+        make("rule-artillery-after-ride", "artilleryRide", (a, o) => {
+                 water(-3, -1, -7, 7);
+                 Put("Artillery", a, -4, 0); Put("Grunt", a, -4, 1); Put("Hauler", a, -3, 0); Put("Grunt", o, 3, 0); },
+             "Move or attack: artillery carried somewhere this turn has had its move. Put down from a hauler that has not moved it can still fire; put down after the hauler sailed it, it cannot fire until its next turn (a grunt riding with it, which moves and attacks, still can).");
+        make("rule-board-reach", "boardReach", (a, o) => {
+                 water(0, 7, -7, 7);
+                 Put("Grunt", a, -4, 0); Put("APC", a, -1, 0); Put("APC", a, -1, 1); Put("Hauler", a, 0, -2); Put("Grunt", o, 6, -3); },
+             "Boarding reaches as far as a move: a grunt (3 moves, plains) gets into an APC 3 tiles off on land it could walk onto (the step in is the third), and not one 4 off; a hauler on the water, which it cannot enter, it boards from the shore beside it — 4 off, its 3 moves taking it to the shore and the step in free.");
         make("rule-ignores-cover", "ignoresCover", (a, o) => { Rig.At(1, 0).terrain = T("Forest"); Put("Tank", a, 0, 0); Put("Grunt", o, 1, 0); Put("Grunt", o, 6, -3); },
              "An attacker that ignores cover (Unit.ignoresCover: napalm, flamethrowers): a grunt in a forest ambushes a tank attacking it (fires first) and takes less from it for the cover; with the tank set to ignore cover, the grunt cannot fire first and takes full damage, as on open ground. The AI's forecast (CombatMath.Resolve) agrees.");
         make("ui-next-unit", "nextUnit", (a, o) => { Put("Grunt", a, 0, 0); Put("Grunt", a, 2, 0); Put("Tank", a, 0, 2); Put("Grunt", o, 5, -2); },
@@ -758,8 +784,8 @@ public static partial class Scenarios {
         make("attrition-rule-transport", "attritionTransport", (a, o) => { Put("APC", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 5, 0); },
              "A Grunt boards the APC beside it: off the board, riding the APC's tile and moving with it, parented to the APC's slot; unloaded beside it, it is back on the board and unparented. Getting off costs nothing: having boarded this turn it is still spent; aboard at the start of a turn, it is still free to act once unloaded.");
         make("attrition-rule-cargo-supply", "attritionCargoSupply", (a, o) => { water(-1, 7, -7, 7); Put("APC", a, -4, 0); Unit g = Put("Grunt", a, -4, 1); g.Strength = 4;
-                 Put("Hauler", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; Put("Grunt", o, 4, 3); },
-             "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; a marine that boards a transport ship from the shore (it can step into water beside land) neither heals nor uses its supplies while the ship has supplies, and starves once the ship's are gone.");
+                 Put("Hauler", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; m.Strength = 4; Put("Grunt", o, 4, 3); },
+             "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; a marine (strength 4, 2 supplies) aboard a hauler at sea is resupplied as on supplied ground while the ship has supplies of its own (healed a strength, restocked), and starves once the ship's are gone.");
         n += ExportScriptChecks(make);
         make("attrition-rule-amphibious", "attritionAmphibious", (a, o) => { water(-1, 2, -7, 7); Put("Marine", a, -2, 1); Put("Grunt", a, -2, 2); Put("Grunt", o, 5, 0); },
              "A Marine can enter water beside land but not open water away from it; a Grunt cannot enter water.");
@@ -1820,7 +1846,8 @@ public static partial class Scenarios {
                             landed++;
                             int nearest = int.MaxValue; foreach (Unit e in o.units) if (e != null && e.tile != null) nearest = Math.Min(nearest, u.tile.Distance(e.tile));
                             bool struck = attackedThisTurn.Contains(u);
-                            if (struck) struckOnLanding++; else if (nearest > 1) earlyDrops++;
+                            // (With no enemy left, putting troops down is no early drop: there is nothing to strike.)
+                            if (struck) struckOnLanding++; else if (nearest > 1 && nearest != int.MaxValue) earlyDrops++;
                             line += "; " + u.name.Replace("(Clone)", "") + " put down at " + Pos(u.tile) + (struck ? ", attacked the same turn" : ", did not attack (" + nearest + " from the nearest enemy)");
                         }
                         if (walker.trasnporter == apc2) walkerBoarded = true;
@@ -1831,7 +1858,7 @@ public static partial class Scenarios {
                 int rodeUp = 0, assaultDrops = 0, otherDrops = 0;
                 foreach (string w in why) {
                     if (w.Contains("assault ride: moves up")) rodeUp++;
-                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:")) assaultDrops++; else if (!w.Contains("holds the line") && !w.Contains("at the front line") && !w.Contains("not its assault ride")) otherDrops++; }
+                    if (w.StartsWith("APC Unload") || w.Contains(" Unload ")) { if (w.Contains("assault:") || w.Contains("to take it")) assaultDrops++; else if (!w.Contains("holds the line") && !w.Contains("at the front line") && !w.Contains("not its assault ride")) otherDrops++; }
                 }
                 detail = string.Join(" | ", r.ToArray()) + " || moved up with riders aboard " + rodeUp + " times; put down to strike " + assaultDrops + ", put down otherwise " + otherDrops + "; landed " + landed + " (attacked the turn they landed " + struckOnLanding + ": the rider's own call); walker boarded " + walkerBoarded;
                 return landed > 0 && assaultDrops >= 1 && otherDrops == 0;
@@ -3420,6 +3447,35 @@ public static partial class Scenarios {
                        + "; line through C, B, A to the HQ " + drawn + " (" + line.Count + " tiles); without A cut off " + cutOff + "; through a helicopter over the water " + air;
                 return chain && through && atSeaNothing && drawn && cutOff && air;
             }
+            case "shipSupplyUpkeep": {
+                Unit ship = Rig.At(-1, 0).occupier, apc = Rig.At(-6, 1).occupier, sup = Rig.At(-6, 2).occupier, g = Rig.At(-6, 3).occupier;
+                ship.moveRange = 3;
+                Action<Unit, Unit> aboard = (t, c) => { c.tile.occupier = null; c.tile = t.tile; c.trasnporter = t; t.transported.Add(c); c.transform.SetParent(t.transform); };
+                aboard(apc, sup); aboard(ship, apc); sup.tile = ship.tile; aboard(ship, g);
+                bool loaded = sup.trasnporter == apc && apc.trasnporter == ship && g.trasnporter == ship && sup.tile == ship.tile;
+                g.Strength = 3; g.ammo = 0; g.fuel = 5; ship.Strength = 3; ship.supplies = 10;
+                Unit boat = Rig.At(2, 0).occupier, gun = Rig.At(0, 0).occupier;
+                boat.Strength = 3; boat.supplies = 10; gun.Strength = 3; gun.supplies = 10;
+                SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                HexTile island = Rig.At(0, -1);
+                bool nested = r.connectedHubs.Contains(sup.Hub) && r.IsSupplied(island);
+                int shipTile = r.DepthAt(ship.tile);
+                endTurn(); endTurn();   // Blue's next turn starts: upkeep
+                bool cargo = g.Strength == 4 && g.ammo == g.ammoMax && g.fuel == g.fuelMax;
+                bool shipOnce = ship.Strength == 4;
+                // Away from the island and the shore, out of reach of Blue's supply: what it supplied is not any more.
+                HexTile far = Rig.At(4, 5);
+                List<HexTile> was = new List<HexTile>();
+                foreach (HexTile t in HexGenerator.hg.tiles) if (t.isSupplied(a) && t.Distance(ship.tile) <= 3 && t.Distance(Rig.At(-6, 0)) > 6) was.Add(t);
+                ship.TeleportTo(far, 0);
+                a.Resupply();
+                int still = 0; foreach (HexTile t in was) if (t.isSupplied(a)) still++;
+                detail = "loaded " + loaded + "; supply two deep linked, island supplied " + nested + "; the hauler's own tile depth " + shipTile
+                       + "; after upkeep: grunt aboard strength " + g.Strength + " ammo " + g.ammo + "/" + g.ammoMax + " fuel " + g.fuel + "/" + g.fuelMax + " (resupplied " + cargo + "), hauler 3 -> " + ship.Strength
+                       + "; supply boat 3 -> " + boat.Strength + " (its tile supplied " + r.IsSupplied(boat.tile) + "), gunboat in the zone 3 -> " + gun.Strength + " (its tile supplied " + r.IsSupplied(gun.tile) + ")"
+                       + "; tiles it supplied " + was.Count + ", still supplied after it left " + still;
+                return loaded && nested && shipTile == 0 && cargo && shipOnce && was.Count > 0 && still == 0;
+            }
             case "shipLineOnWater": {
                 Unit ta = Rig.At(-1, 0).occupier, tb = Rig.At(3, 0).occupier;
                 Unit sa = Rig.At(-6, 2).occupier, sb = Rig.At(-6, 3).occupier;
@@ -3493,6 +3549,28 @@ public static partial class Scenarios {
                 detail = string.Join(" | ", r.ToArray());
                 return supplied > 0 && supplied <= 3;
             }
+            case "seaMeeting": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit ship = Rig.At(1, -6).occupier, g1 = Rig.At(-5, 3).occupier, g2 = Rig.At(-4, 3).occupier;
+                HexTile hq = GameController.HQOf(o).tile;
+                AIMap m = new AIMap(a, a.GetComponent<AIPlayer>().Profile);
+                int sea = m.SeaTravel(g1.tile, hq);
+                int shipStart = ship.tile.Distance(g1.tile);
+                List<string> r = new List<string>();
+                int boarded = -1, landed = -1, blueTurns = 0; int closest = shipStart;
+                for (int turn = 0; turn < 16 && !gc.gameOver && landed < 0; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    if (ship.tile != null) closest = Math.Min(closest, ship.tile.Distance(g1.tile.Distance(g2.tile) >= 0 && g1.trasnporter == null ? g1.tile : ship.tile));
+                    if (boarded < 0 && (g1.trasnporter == ship || g2.trasnporter == ship)) boarded = blueTurns;
+                    foreach (Unit g in new[] { g1, g2 }) if (landed < 0 && g.trasnporter == null && g.tile != null && g.tile.x >= 3) landed = blueTurns;
+                    r.Add("T" + blueTurns + ": ship " + Pos(ship.tile) + " carrying " + ship.transported.Count + ", grunts " + (g1.trasnporter != null ? "aboard" : Pos(g1.tile)) + " " + (g2.trasnporter != null ? "aboard" : Pos(g2.tile)));
+                }
+                detail = "sea travel from the grunt to Red's HQ " + (sea == int.MaxValue ? "none" : sea.ToString()) + "; " + string.Join(" | ", r.ToArray()) + "; boarded on Blue turn " + boarded + ", landed on turn " + landed;
+                return sea < int.MaxValue && boarded > 0 && landed > 0;
+            }
             case "seaConvoy": {
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
                 Unit ship = Rig.At(-2, 0).occupier, sup = Rig.At(-3, 1).occupier, tank = Rig.At(-3, 0).occupier, g = Rig.At(-2, 1).occupier;
@@ -3557,6 +3635,33 @@ public static partial class Scenarios {
                 }
                 detail = string.Join(" | ", r.ToArray()) + "; rearmed " + rearmed + ", restocked " + restocked + " without losing strength " + (hungry.Strength == 6);
                 return rearmed && restocked && hungry.Strength == 6;
+            }
+            case "artilleryRide": {
+                Unit art = Rig.At(-4, 0).occupier, g = Rig.At(-4, 1).occupier, apc = Rig.At(-3, 0).occupier, e = Rig.At(3, 0).occupier;
+                Func<Unit, bool> board = c => { if (!Transporting.CanCarry(apc, c)) return false; Transporting.Load(apc, c); c.FinishBoarding(); c.active = true; return true; };
+                // Not moved: put down beside it, it fires.
+                bool loaded = board(art);
+                Transporting.Unload(apc, art, Rig.At(-4, 0));
+                bool firesUnmoved = art.CanAttack(e) && art.tile.AllInAttackRange(art).Count > 0;
+                // Driven two tiles, then put down: it does not; the grunt that rode along does.
+                bool both = board(art) && board(g);
+                apc.MoveAlong(new List<HexTile> { Rig.At(-3, 0), Rig.At(-2, 0), Rig.At(-1, 0) }, false, false);
+                Transporting.Unload(apc, art, Rig.At(0, 0)); Transporting.Unload(apc, g, Rig.At(0, -1));
+                bool firesRidden = art.CanAttack(e) || art.tile.AllInAttackRange(art).Count > 0, gruntFires = g.CanAttack(e);
+                a.EndTurn();
+                bool firesNextTurn = art.CanAttack(e);
+                detail = "loaded " + loaded + "/" + both + "; artillery put down unmoved fires " + firesUnmoved + "; after the ride fires " + firesRidden + ", the grunt that rode fires " + gruntFires + "; next turn the artillery fires " + firesNextTurn;
+                return loaded && both && art.trasnporter == null && art.tile == Rig.At(0, 0) && g.trasnporter == null && firesUnmoved && !firesRidden && gruntFires && firesNextTurn;
+            }
+            case "boardReach": {
+                Unit g = Rig.At(-4, 0).occupier, near = Rig.At(-1, 0).occupier, far = Rig.At(-1, 1).occupier, ship = Rig.At(0, -2).occupier;
+                int dn = g.tile.Distance(near.tile), df = g.tile.Distance(far.tile), ds = g.tile.Distance(ship.tile);
+                List<HexTile> pn = HexTile.BoardingPath(g, near), pf = HexTile.BoardingPath(g, far), ps = HexTile.BoardingPath(g, ship);
+                bool atNear = pn != null && g.WalkAndBoard(pn, near, false);
+                if (atNear) { Transporting.Unload(near, g, Rig.At(-4, 0)); g.active = true; }
+                detail = "grunt move " + g.moveRange + "; APC " + dn + " off: path " + (pn == null ? "none" : (pn.Count - 1) + " steps") + ", boards " + atNear
+                       + "; APC " + df + " off: path " + (pf == null ? "none" : (pf.Count - 1) + " steps") + "; hauler " + ds + " off on the water: path " + (ps == null ? "none" : (ps.Count - 1) + " steps");
+                return dn == g.moveRange && df == g.moveRange + 1 && ds == g.moveRange + 1 && pn != null && atNear && pf == null && ps != null;
             }
             case "ignoresCover": {
                 Unit tank = Rig.At(0, 0).occupier, g = Rig.At(1, 0).occupier;
@@ -3633,11 +3738,11 @@ public static partial class Scenarios {
                 bool l2 = Transporting.Load(ship, m);
                 endTurn(); endTurn();
                 string first = "loaded " + l1 + "/" + l2 + "; APC cargo strength " + g.Strength + "; ship cargo supplies " + m.supplies + ", strength " + m.Strength;
-                bool ok1 = l1 && l2 && g.Strength == 5 && m.supplies == 2 && m.Strength == 6;
+                bool ok1 = l1 && l2 && g.Strength == 5 && m.supplies == m.suppliesMax && m.Strength == 5;
                 ship.supplies = 0;
                 endTurn(); endTurn();
-                detail = "after a turn " + first + "; with the ship's supplies gone, ship cargo supplies " + m.supplies;
-                return ok1 && m.supplies == 1;
+                detail = "after a turn " + first + "; with the ship's supplies gone, ship cargo supplies " + m.supplies + " (of " + m.suppliesMax + ")";
+                return ok1 && m.supplies == m.suppliesMax - 1;
             }
             case "attritionAmphibious": {
                 Unit m = Rig.At(-2, 1).occupier, g = Rig.At(-2, 2).occupier;
@@ -3960,7 +4065,9 @@ public static partial class Scenarios {
             List<HexTile> road = windingRoad();
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, road[0].x, road[0].y);
-            Put("APC", ai, road[1].x, road[1].y);
+            // (The APC on road[2]: from road[1] the supply unit at road[4] could only board it through the free extra step
+            // boarding used to give, which this does not test.)
+            Put("APC", ai, road[2].x, road[2].y);
             Put("Supplies", ai, road[4].x, road[4].y); Put("Supplies", ai, road[7].x, road[7].y); Put("Supplies", ai, road[10].x, road[10].y); Put("Tank", ai, road[12].x, road[12].y);
             HexTile end = road[road.Count - 1];
             Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);

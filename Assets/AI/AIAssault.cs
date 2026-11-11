@@ -128,7 +128,7 @@ namespace HexTactica.AI {
 
         /// <summary>Can <paramref name="c"/>, put down on <paramref name="n"/> with its whole turn ahead, strike this turn: hit an enemy it can hurt, or reach a building to take?</summary>
         public static bool Strikes(Unit c, HexTile n, AIMap map, out string what) {
-            Strike k = StrikeFrom(c, n, map);
+            Strike k = StrikeFrom(c, n, map, c.carriedThisTurn);
             what = k != null ? k.what : null;
             return k != null;
         }
@@ -138,7 +138,10 @@ namespace HexTactica.AI {
         /// take (stand on it), else the hit worth most (what it does to the target, less what it stands to lose where it
         /// fires from), from a tile where it would not be destroyed tonight. Null: none.
         /// </summary>
-        public static Strike StrikeFrom(Unit c, HexTile n, AIMap map) {
+        /// <param name="carried">It gets there by riding (its transport moves this turn, or has): a unit that must move or
+        /// attack (artillery) can then only take a building, not fire (Unit.carriedThisTurn).</param>
+        public static Strike StrikeFrom(Unit c, HexTile n, AIMap map, bool carried) {
+            bool fires = c.moveAndAttack || !carried;
             // Nothing within its walk and fire, or a building's walk, as the crow flies: no strike (no field to work out).
             int reach = (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange);
             bool near = false;
@@ -158,7 +161,7 @@ namespace HexTactica.AI {
                     }
                 Strike best = null;
                 float worth = AIScore.Worth(c);
-                foreach (Unit e in map.enemyUnits) {
+                if (fires) foreach (Unit e in map.enemyUnits) {
                     if (e == null || e.tile == null || e.Strength <= 0) continue;
                     if (!c.CanTarget(e)) continue;
                     float dmg = Unit.calculateDamage(c, e, e.tile, 0);
@@ -254,7 +257,9 @@ namespace HexTactica.AI {
                         if (taken.Contains(n)) continue;
                         Strike k;
                         long key = ((long)riders.IndexOf(c) << 32) | (uint)(n.viewId >= 0 ? n.viewId : (n.x + 512) * 2048 + (n.y + 512));
-                        if (!strikeAt.TryGetValue(key, out k)) { k = StrikeFrom(c, n, map); strikeAt[key] = k; }
+                        bool carried = via != t.tile || c.carriedThisTurn;
+                        if (carried) key |= 1L << 62;   // (artillery: fires from n only if it did not ride there)
+                        if (!strikeAt.TryGetValue(key, out k)) { k = StrikeFrom(c, n, map, carried); strikeAt[key] = k; }
                         if (k == null) continue;
                         taken.Add(n); count++;
                         if (first == null) { first = c; firstDrop = n; firstStrike = k; }
@@ -354,7 +359,7 @@ namespace HexTactica.AI {
             if (t.active) return AIAction.Wait(c, "rides to the assault");   // its transport moves first
             if (profile.assaultMedevacStrength > 0 && c.Strength <= profile.assaultMedevacStrength) return AIAction.Wait(c, "wounded: rides on to mend");
             foreach (HexTile n in Transporting.UnloadOptions(t, c)) {
-                Strike k = StrikeFrom(c, n, map);
+                Strike k = StrikeFrom(c, n, map, c.carriedThisTurn);
                 if (k == null) continue;
                 if (!WaveGoesIn(t.tile, 1, frontAttacks, map, profile)) break;
                 Planned[c] = k;
@@ -499,6 +504,7 @@ namespace HexTactica.AI {
                     if (SeaLiftShip(t, map)) continue;   // a ship's supply goes with its troops (AIPlayer: sea lift)
                     if (CarriesHub(t)) { s.Add(t); continue; }
                     if (t.Firepower > 1 || s.Contains(t)) continue;
+                    if (Riders(t).Count > 0) continue;   // carrying troops: on their ride, not held for supply (only empty ones)
                     free.Add(t);
                 }
                 free.Sort(AIMap.CompareUnits);
@@ -530,6 +536,7 @@ namespace HexTactica.AI {
                 if (SeaLiftShip(t, map)) continue;   // a ship's supply goes with its troops (AIPlayer: sea lift)
                 if (CarriesHub(t)) { s.Add(t); continue; }
                 if (t.Firepower > 1) continue;   // an armed one fights (and carries troops)
+                if (Riders(t).Count > 0) continue;   // carrying troops: on their ride, not held for supply
                 if (noBuild && SupplyCapable(t)) { s.Add(t); continue; }
                 foreach (Unit h in onFoot)
                     if (Transporting.FreeWeight(t) >= Mathf.Max(1, h.weight) && Fits(t, h) && map.Travel(t, t.tile, h.tile) <= Mathf.Max(1, t.moveRange) + 1) { s.Add(t); break; }
@@ -618,7 +625,7 @@ namespace HexTactica.AI {
                 else {
                     if (now == null) now = map.ReachThisTurn(c);
                     foreach (HexTile n in t.tile.neighbors) {
-                        if (n == null || n == c.tile || !now.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, c, n)) continue;
+                        if (n == null || n == c.tile || !AIPath.BoardsFrom(now, c, t, n)) continue;
                         if (at == null || CombatMath.Precedes(n, at)) at = n;
                     }
                 }
@@ -675,12 +682,14 @@ namespace HexTactica.AI {
             }
             HexTile goal = null; string why = null;
             if (pick != null && ship) {
-                // A ship takes troops on only at a naval yard: it goes to the yard its rider walks to, and waits there.
+                // An empty ship sails to meet the troops waiting to cross (AIMap.Meeting: off the shore of their land where
+                // they and it get soonest), and waits there; they board from the shore beside it.
                 sought.Add(pick);
-                Building yard = NearestYard(pick, map);
-                if (yard == null) return null;
-                if (t.tile == yard.tile) return AIAction.Wait(t, "sea lift: waits at the yard for " + pick.name.Replace("(Clone)", "") + " (" + pick.tile.x + "," + pick.tile.y + ")");
-                goal = yard.tile; why = "sea lift: goes to the yard (" + yard.tile.x + "," + yard.tile.y + ") for " + pick.name.Replace("(Clone)", "");
+                HexTile water, shore;
+                if (!map.Meeting(t, pick, out water, out shore)) return null;
+                string whom = pick.name.Replace("(Clone)", "") + " (" + pick.tile.x + "," + pick.tile.y + ")";
+                if (t.tile == water) return AIAction.Wait(t, "sea lift: waits off (" + shore.x + "," + shore.y + ") for " + whom);
+                goal = water; why = "sea lift: sails to meet " + whom + " off (" + shore.x + "," + shore.y + ")";
             } else if (pick != null) {
                 sought.Add(pick);
                 if (t.tile.Distance(pick.tile) <= 1) return AIAction.Wait(t, "assault ride: waits for " + pick.name.Replace("(Clone)", "") + " to get in");
@@ -699,7 +708,7 @@ namespace HexTactica.AI {
                 why = "assault ride: back to a base for riders";
             }
             HexTile step = AITransportPlanner.SafeStepToward(t, goal, map.ReachHorizon(t), map, false);
-            if (step == null || step == t.tile || step == goal || !AIAir.MayEndOn(t, step, map)) return AIAction.Wait(t, why);
+            if (step == null || step == t.tile || (step == goal && goal.occupier != null) || !AIAir.MayEndOn(t, step, map)) return AIAction.Wait(t, why);
             return AIAction.Move(t, step, 0f, why);
         }
     }

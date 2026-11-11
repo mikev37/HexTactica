@@ -952,20 +952,48 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// Across water (AIProfile.seaLift), while we have a transport ship or a naval yard that builds one: the walk from
-        /// <paramref name="from"/> to one of our naval yards on its land, the crossing (a step a tile of water), the walk from
-        /// where it lands to <paramref name="to"/>, and seaLiftBoardSteps for getting in and out; the best of our yards.
-        /// int.MaxValue: no way by sea either.
+        /// <paramref name="from"/> to its shore, the crossing (a step a tile of water), the walk from where it lands to
+        /// <paramref name="to"/>, and seaLiftBoardSteps for getting in and out. Troops board from any shore
+        /// (Transporting.CanBoardOnto), so the trip starts at whichever is best, not at a yard. int.MaxValue: no way by
+        /// sea either.
         /// </summary>
         public int SeaTravel(HexTile from, HexTile to) {
             if (!profile.seaLift || from == null || to == null || !SeaLiftPossible()) return int.MaxValue;
-            Dictionary<HexTile, int> yards = SeaToYards(to);
-            int best = int.MaxValue;
-            foreach (KeyValuePair<HexTile, int> kv in yards) {
-                int walk;
-                if (!LandSteps(kv.Key).TryGetValue(from, out walk)) continue;
-                best = Mathf.Min(best, walk + kv.Value + Mathf.Max(0, profile.seaLiftBoardSteps));
+            int c;
+            if (!SeaSteps(to).TryGetValue(from, out c)) return int.MaxValue;
+            return c + Mathf.Max(0, profile.seaLiftBoardSteps);
+        }
+
+        /// <summary>
+        /// Where <paramref name="ship"/> and <paramref name="rider"/> (a land unit to take over the water) meet soonest:
+        /// a water tile <paramref name="water"/> the ship can lie on, beside a tile <paramref name="shore"/> on the rider's
+        /// land it walks to; the rider boards from the shore (Transporting: onto a ship on the water, from beside). Soonest:
+        /// the later of the ship's turns and the rider's walk in turns, then the shorter walk, then the ship's nearer.
+        /// False: no shore of the rider's land the ship reaches.
+        /// </summary>
+        public bool Meeting(Unit ship, Unit rider, out HexTile water, out HexTile shore) {
+            water = null; shore = null;
+            if (ship == null || rider == null || ship.tile == null || rider.tile == null) return false;
+            Dictionary<HexTile, int> walk = LandSteps(rider.tile);
+            MoveField sail = ReachHorizon(ship);
+            int riderMove = Mathf.Max(1, rider.moveRange);
+            int best = int.MaxValue, bestWalk = int.MaxValue, bestSail = int.MaxValue;
+            foreach (HexTile w in sail.Tiles) {
+                if (w.terrain == null || w.terrain.elevation >= 0) continue;   // off the shore, on the water
+                if (w != ship.tile && !AIPath.CanFinishTurnOn(ship, w)) continue;
+                int sailTurns = w == ship.tile ? 0 : sail.Get(w).turns;
+                foreach (HexTile l in w.neighbors) {
+                    int steps;
+                    if (l == null || l.terrain == null || l.terrain.elevation < 0 || !walk.TryGetValue(l, out steps)) continue;
+                    if (!rider.CanEnter(l)) continue;
+                    int when = Mathf.Max(sailTurns, (steps + riderMove - 1) / riderMove);
+                    int sd = ship.tile.Distance(w);
+                    if (when < best || (when == best && (steps < bestWalk || (steps == bestWalk && (sd < bestSail || (sd == bestSail && CombatMath.Precedes(w, water))))))) {
+                        best = when; bestWalk = steps; bestSail = sd; water = w; shore = l;
+                    }
+                }
             }
-            return best;
+            return water != null;
         }
 
         bool? seaLiftPossible;
@@ -986,43 +1014,38 @@ namespace HexTactica.AI {
             }
         }
 
-        readonly Dictionary<HexTile, Dictionary<HexTile, int>> seaToYards = new Dictionary<HexTile, Dictionary<HexTile, int>>();
+        readonly Dictionary<HexTile, Dictionary<HexTile, int>> seaSteps = new Dictionary<HexTile, Dictionary<HexTile, int>>();
         /// <summary>
-        /// For each of our naval yards not on <paramref name="to"/>'s land: the steps from it to <paramref name="to"/> by sea —
-        /// over water to the shore of that land, then over land. Cached for the turn.
+        /// The steps to <paramref name="to"/> by sea from every tile not on its land: out from its land over the water,
+        /// ashore on any other land, and over that land (a step a tile, bridges by road). Cached for the turn.
         /// </summary>
-        Dictionary<HexTile, int> SeaToYards(HexTile to) {
+        Dictionary<HexTile, int> SeaSteps(HexTile to) {
             lock (cacheLock) {
                 Dictionary<HexTile, int> r;
-                if (seaToYards.TryGetValue(to, out r)) return r;
+                if (seaSteps.TryGetValue(to, out r)) return r;
                 r = new Dictionary<HexTile, int>();
                 Dictionary<HexTile, int> land = LandSteps(to);
                 Dictionary<HexTile, int> cost = new Dictionary<HexTile, int>();
                 AIHeap<HexTile> open = new AIHeap<HexTile>();
-                // From the land 'to' stands on, out over the water.
                 foreach (KeyValuePair<HexTile, int> kv in land) { cost[kv.Key] = kv.Value; open.Push(kv.Key, kv.Value); }
                 while (open.Count > 0) {
                     HexTile t = open.Pop();
                     int c = cost[t];
-                    bool onLand = t.terrain != null && t.terrain.elevation >= 0;
-                    Building yb = t.building;
-                    bool yard = yb != null && yb.tile == t && AIAssault.ServesShips(yb);
-                    if (yard && yb.owner == player && !land.ContainsKey(t)) {
-                        int had; if (!r.TryGetValue(t, out had) || c < had) r[t] = c;
-                        continue;   // ashore on our side: the walk from here is LandSteps'
-                    }
-                    if (onLand && !land.ContainsKey(t)) continue;
+                    bool home = land.ContainsKey(t);
+                    bool wet = t.terrain != null && t.terrain.elevation < 0;
+                    if (!home) { int had; if (!r.TryGetValue(t, out had) || c < had) r[t] = c; }
                     foreach (HexTile n in t.neighbors) {
-                        if (n == null || n.terrain == null) continue;
-                        Building nb = n.building;
-                        bool nYard = nb != null && nb.tile == n && AIAssault.ServesShips(nb);
-                        if (n.terrain.elevation >= 0 && !nYard) continue;   // the water, and yards on its shores
+                        if (n == null || n.terrain == null || land.ContainsKey(n)) continue;
+                        bool nWet = n.terrain.elevation < 0;
+                        // From its land only out onto the water; on the water anywhere; ashore anywhere; over land by land's rules.
+                        if (home && !nWet) continue;
+                        if (!wet && !nWet && !LocomotionRules.BridgeStep(t, n, Locomotion.Boots)) continue;
                         int nc = c + 1, prev;
                         if (cost.TryGetValue(n, out prev) && prev <= nc) continue;
                         cost[n] = nc; open.Push(n, nc);
                     }
                 }
-                seaToYards[to] = r;
+                seaSteps[to] = r;
                 return r;
             }
         }

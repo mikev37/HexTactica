@@ -708,6 +708,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             else if (logistics != null && logistics.rides.TryGetValue(h, out ride) && ride.truck != null) t = ride.truck;
             else if (u.trasnporter == null && ghostRides.TryGetValue(u, out t) && t != null) { }
             else if (u.trasnporter == null && Profile.seaLift && !Profile.unifiedLogistics) t = SeaLiftShipFor(u);
+            // (One with troops aboard is on their ride: the supply unit may take a spare seat, but it does not make it its own.)
             if (t != null && queue.Contains(t) && !forSupply.Contains(t)) { truckOf[u] = t; forSupply.Add(t); }
         }
         // Chosen for supply: riders may take only a seat the supply unit leaves free (AIAssault.Board, SpareSlot).
@@ -1405,14 +1406,19 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// walks to soonest, while we have a ship to take it over (or one being built). Null: beside the yard already, or no ship.
     /// </summary>
     AIAction? SeaLiftWalk(Unit unit) {
-        bool ships = false;
-        foreach (Unit t in map.ownUnits) if (AIAssault.SeaLiftShip(t, map) && Transporting.CanCarry(t, unit)) { ships = true; break; }
-        if (!ships) return null;
-        Building yard = AIAssault.NearestYard(unit, map);
-        if (yard == null || unit.tile.Distance(yard.tile) <= 1) return null;
-        HexTile step = AITransportPlanner.SafeStepToward(unit, yard.tile, map.ReachHorizon(unit), map, false);
-        if (step == null || step == unit.tile || step == yard.tile) return null;
-        return AIAction.Move(unit, step, 0f, "sea lift: walks to the naval yard (" + yard.tile.x + "," + yard.tile.y + ") to cross");
+        // The ship coming for it: of ours with room for it, the one it meets soonest (AIMap.Meeting, as the ship reckons it).
+        Unit ship = null; HexTile shore = null; int best = int.MaxValue;
+        foreach (Unit t in map.ownUnits) {
+            if (!AIAssault.SeaLiftShip(t, map) || !Transporting.CanCarry(t, unit)) continue;
+            HexTile w, l;
+            if (!map.Meeting(t, unit, out w, out l)) continue;
+            int d = map.Travel(unit, unit.tile, l) + t.tile.Distance(w);
+            if (d < best || (d == best && CombatMath.Precedes(t.tile, ship.tile))) { best = d; ship = t; shore = l; }
+        }
+        if (ship == null || shore == null || unit.tile == shore || unit.tile.Distance(ship.tile) <= 1) return null;
+        HexTile step = AITransportPlanner.SafeStepToward(unit, shore, map.ReachHorizon(unit), map, false);
+        if (step == null || step == unit.tile) return null;
+        return AIAction.Move(unit, step, 0f, "sea lift: walks to the shore (" + shore.x + "," + shore.y + ") to meet " + ship.name.Replace("(Clone)", "") + " (" + ship.tile.x + "," + ship.tile.y + ")");
     }
 
     /// <summary>Our supply already reaches the land <paramref name="ground"/> stands on (a landing made before, a building taken there).</summary>
@@ -1471,7 +1477,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         else {
             MoveField now = map.ReachThisTurn(unit);
             foreach (HexTile n in ship.tile.neighbors)
-                if (n != null && now.ReachableThisTurn(n) && (n.occupier == null || n.occupier == unit) && Transporting.CanBoardFromTile(ship, unit, n) && (at == null || CombatMath.Precedes(n, at))) at = n;
+                if (n != null && AIPath.BoardsFrom(now, unit, ship, n) && (n.occupier == null || n.occupier == unit) && (at == null || CombatMath.Precedes(n, at))) at = n;
         }
         if (at != null) return AIAction.Board(unit, ship, at, "sea lift: boards the ship to carry supply over with its troops");
         HexTile step = AITransportPlanner.SafeStepToward(unit, ship.tile, map.ReachHorizon(unit), map, true);
@@ -1736,7 +1742,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     HexTile beside = null;
                     if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
                     else foreach (HexTile n in truck.tile.neighbors) {
-                        if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(truck, unit, n)) continue;
+                        if (n == null || !AIPath.BoardsFrom(walk, unit, truck, n)) continue;
                         if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                     }
                     if (beside != null) {
@@ -2116,7 +2122,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile b = null;
                 if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
                 else foreach (HexTile n in t.tile.neighbors) {
-                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
+                    if (n == null || !AIPath.BoardsFrom(walk, unit, t, n)) continue;
                     if (b == null || CombatMath.Precedes(n, b)) b = n;
                 }
                 if (b == null) continue;
@@ -2184,7 +2190,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile b = null;
                 if (Transporting.CanBoardFrom(t, unit)) b = unit.tile;
                 else foreach (HexTile n in t.tile.neighbors) {
-                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
+                    if (n == null || !AIPath.BoardsFrom(walk, unit, t, n)) continue;
                     if (b == null || CombatMath.Precedes(n, b)) b = n;
                 }
                 if (b == null) continue;
@@ -2375,7 +2381,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             HexTile at = null;
             if (Transporting.CanBoardFrom(t, unit)) at = unit.tile;
             else foreach (HexTile n in t.tile.neighbors) {
-                if (n == null || !reach.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(t, unit, n)) continue;
+                if (n == null || !AIPath.BoardsFrom(reach, unit, t, n)) continue;
                 if (at == null || CombatMath.Precedes(n, at)) at = n;
             }
             if (at == null) continue;
@@ -2502,7 +2508,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 MoveField walk = map.ReachThisTurn(unit);
                 HexTile beside = null;
                 foreach (HexTile n in along.tile.neighbors) {
-                    if (n == null || !walk.ReachableThisTurn(n) || (n.occupier != null && n.occupier != unit) || !Transporting.CanBoardFromTile(along, unit, n)) continue;
+                    if (n == null || !AIPath.BoardsFrom(walk, unit, along, n) || (n.occupier != null && n.occupier != unit)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) { action = AIAction.Board(unit, along, beside, "logistics: gets into the troop ship to ride along to land without our supply"); return true; }
@@ -2561,7 +2567,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile beside = null;
                 if (Transporting.CanBoardFrom(mine, unit)) beside = unit.tile;
                 else foreach (HexTile n in mine.tile.neighbors) {
-                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(mine, unit, n)) continue;
+                    if (n == null || !AIPath.BoardsFrom(walk, unit, mine, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 HexTile drop0 = isLink && link != unit.tile && mine.CanEnter(link) && link.occupier == null ? link : mine.tile;
@@ -2613,7 +2619,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile beside = null;
                 if (Transporting.CanBoardFrom(truck, unit)) beside = unit.tile;
                 else foreach (HexTile n in truck.tile.neighbors) {
-                    if (n == null || !walk.ReachableThisTurn(n) || !Transporting.CanBoardFromTile(truck, unit, n)) continue;
+                    if (n == null || !AIPath.BoardsFrom(walk, unit, truck, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) { transportAssignments[truck] = go; action = AIAction.Board(unit, truck, beside, "logistics for " + t.front.Id + ": boards a truck to (" + claim.to.x + "," + claim.to.y + ")"); return true; }

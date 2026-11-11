@@ -296,9 +296,10 @@ namespace HexTactica.AI {
             Dictionary<HexTile, int> loadTurnOf = new Dictionary<HexTile, int>();
             if (alreadyAboard) {
                 // The rendezvous already happened; the ride starts here and now.
-                seeds.Add(new KeyValuePair<HexTile, Eta>(transport.tile, Eta.Origin));
+                // (A transport that has already had its turn drives on the next.)
+                seeds.Add(new KeyValuePair<HexTile, Eta>(transport.tile, transport.active ? Eta.Origin : new Eta { turns = 1, used = 0, steps = 0 }));
                 seedOf[transport.tile] = transport.tile;
-                bestLoadTurn = 0;
+                bestLoadTurn = transport.active ? 0 : 1;
                 loadTurnOf = null;   // aboard already: fresh if it has not acted this turn
             } else {
                 if (cargoWalk == null) return null;
@@ -308,6 +309,8 @@ namespace HexTactica.AI {
                     if (!AIPath.CanFinishTurnOn(transport, r)) continue;
 
                     int transportReady = Ready(drive.Get(r));
+                    // Already had its turn: it is where it is until the next, and takes on riders now to carry them then.
+                    if (!transport.active) transportReady = r == transport.tile ? 1 : transportReady + 1;
 
                     // The cargo boards from a neighbour of r.
                     int cargoReady = int.MaxValue;
@@ -317,6 +320,7 @@ namespace HexTactica.AI {
                         if (n == null || !cargoWalk.Reachable(n)) continue;
                         if (n != cargo.tile && !AIPath.CanFinishTurnOn(cargo, n)) continue;
                         if (!Transporting.CanBoardOnto(cargo, n, r, transport)) continue;   // able to step aboard there (or at a dock)
+                        if (!Transporting.StepInFits(cargo, n, cargoWalk.Get(n).used, r)) continue;   // and the step in fits that turn's move
                         cargoReady = Mathf.Min(cargoReady, Ready(cargoWalk.Get(n)));
                     }
                     if (cargoReady == int.MaxValue) continue;
@@ -385,7 +389,7 @@ namespace HexTactica.AI {
             }
 
             // --- Not aboard yet: converge on the rendezvous, and board when adjacent.
-            if (Transporting.CanBoardFrom(transport, cargo)) {
+            if (Transporting.CanBoardFrom(transport, cargo) && Transporting.StepInFits(cargo, cargo.tile, 0, transport)) {
                 return AIAction.Board(cargo, transport, transport.tile, "board: " + plan.ToString());
             }
 
@@ -395,8 +399,7 @@ namespace HexTactica.AI {
                 MoveField now = map.ReachThisTurn(cargo);
                 HexTile beside = null;
                 foreach (HexTile n in transport.tile.neighbors) {
-                    if (n == null || n == cargo.tile || !now.ReachableThisTurn(n)) continue;
-                    if (!Transporting.CanBoardFromTile(transport, cargo, n)) continue;
+                    if (n == null || n == cargo.tile || !AIPath.BoardsFrom(now, cargo, transport, n)) continue;
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) return AIAction.Board(cargo, transport, beside, "walk and board: " + plan.ToString());
