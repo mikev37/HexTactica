@@ -218,6 +218,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &8611597561764449340
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -340,6 +341,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2856526658723673612
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -667,6 +669,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2506115559324179900
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -994,6 +997,10 @@ PrefabInstance:
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: minFuelPerTile
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
+      propertyPath: moveBurstSound
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: carries.Array.size

@@ -531,6 +531,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &3408508801997961497
 GameObject:
   m_ObjectHideFlags: 0
@@ -689,6 +690,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &4252133603987002690
 GameObject:
   m_ObjectHideFlags: 0
@@ -988,6 +990,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &6280426862399511024
 GameObject:
   m_ObjectHideFlags: 0
@@ -1733,6 +1736,7 @@ MonoBehaviour:
   color: {r: 0.12941177, g: 0.14117648, b: 0.12941177, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1001 &1272418038802855169
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1839,6 +1843,10 @@ PrefabInstance:
       propertyPath: Targeting
       value: 6
       objectReference: {fileID: 0}
+    - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 7f60c2e8183eb524ca83f5d800cc93fb, type: 3}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: AttackRange
       value: 7

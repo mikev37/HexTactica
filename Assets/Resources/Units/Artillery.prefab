@@ -165,7 +165,7 @@ MonoBehaviour:
   orderSound: {fileID: 0}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 8300000, guid: ee0601ce645845047a841abf966c5814, type: 3}
-  fireSound: {fileID: 0}
+  fireSound: {fileID: 8300000, guid: 9e2366ba9382dba4fbe2a837e1eef53e, type: 3}
   dieSound: {fileID: 8300000, guid: 34e2b69fe32887a4589eaee49c28da99, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6
@@ -458,6 +458,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &4608789089507999371
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -599,6 +600,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &3095994360971644407
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -822,6 +824,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &3892705393042848508
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1055,6 +1058,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &7528337218164245085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1179,6 +1183,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &5411743221211274060
 MonoBehaviour:
   m_ObjectHideFlags: 0

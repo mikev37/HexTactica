@@ -456,7 +456,7 @@ MonoBehaviour:
   orderSound: {fileID: 0}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 8300000, guid: 081f115199875ba41b437c67555b24de, type: 3}
-  fireSound: {fileID: 0}
+  fireSound: {fileID: 8300000, guid: 326599adbd6c0164f90be5f2758139f7, type: 3}
   dieSound: {fileID: 8300000, guid: c520ae0e1c435444bae002c133bdfe45, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6
@@ -669,6 +669,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &4825506195608741420
 GameObject:
   m_ObjectHideFlags: 0
@@ -791,6 +792,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &4953837287708223852
 GameObject:
   m_ObjectHideFlags: 0
@@ -1037,6 +1039,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &7596106574630055884
 GameObject:
   m_ObjectHideFlags: 0
@@ -1160,6 +1163,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &7813393872732772569
 GameObject:
   m_ObjectHideFlags: 0
@@ -1349,6 +1353,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &8335884519936790111
 GameObject:
   m_ObjectHideFlags: 0

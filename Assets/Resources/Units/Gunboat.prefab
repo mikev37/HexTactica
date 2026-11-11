@@ -377,7 +377,7 @@ MonoBehaviour:
   moveLoopEndPitch: 0.6
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
-  cost: 8000
+  cost: 13000
   description: 
   personal_name: 
   active: 1
