@@ -739,6 +739,12 @@ public static partial class Scenarios {
                  Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
                  Put("Grunt", o, 6, -5); },
              "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
+        make("ai-sea-meeting", "seaMeeting", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.At(-1, -5).terrain = T("Grassland"); Rig.PlaceBuilding("NavalYard", a, -1, -5);
+                 Put("Hauler", a, 1, -6); Put("Grunt", a, -5, 3); Put("Grunt", a, -4, 3);
+                 Put("Grunt", o, 5, -2); },
+             "An empty hauler beside Blue's naval yard at the north end of the channel, far from Blue's two grunts, Red's HQ across. The sea-travel estimate counts the trip from the grunts' own shore. The hauler sails south to meet the grunts off the shore nearest them (not to a harbor), they walk to that shore and board from it, and it takes them over: a grunt lands on Red's side.");
         make("ai-sea-convoy", "seaConvoy", (a, o) => {
                  for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
@@ -3533,6 +3539,28 @@ public static partial class Scenarios {
                 }
                 detail = string.Join(" | ", r.ToArray());
                 return supplied > 0 && supplied <= 3;
+            }
+            case "seaMeeting": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit ship = Rig.At(1, -6).occupier, g1 = Rig.At(-5, 3).occupier, g2 = Rig.At(-4, 3).occupier;
+                HexTile hq = GameController.HQOf(o).tile;
+                AIMap m = new AIMap(a, a.GetComponent<AIPlayer>().Profile);
+                int sea = m.SeaTravel(g1.tile, hq);
+                int shipStart = ship.tile.Distance(g1.tile);
+                List<string> r = new List<string>();
+                int boarded = -1, landed = -1, blueTurns = 0; int closest = shipStart;
+                for (int turn = 0; turn < 16 && !gc.gameOver && landed < 0; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    if (ship.tile != null) closest = Math.Min(closest, ship.tile.Distance(g1.tile.Distance(g2.tile) >= 0 && g1.trasnporter == null ? g1.tile : ship.tile));
+                    if (boarded < 0 && (g1.trasnporter == ship || g2.trasnporter == ship)) boarded = blueTurns;
+                    foreach (Unit g in new[] { g1, g2 }) if (landed < 0 && g.trasnporter == null && g.tile != null && g.tile.x >= 3) landed = blueTurns;
+                    r.Add("T" + blueTurns + ": ship " + Pos(ship.tile) + " carrying " + ship.transported.Count + ", grunts " + (g1.trasnporter != null ? "aboard" : Pos(g1.tile)) + " " + (g2.trasnporter != null ? "aboard" : Pos(g2.tile)));
+                }
+                detail = "sea travel from the grunt to Red's HQ " + (sea == int.MaxValue ? "none" : sea.ToString()) + "; " + string.Join(" | ", r.ToArray()) + "; boarded on Blue turn " + boarded + ", landed on turn " + landed;
+                return sea < int.MaxValue && boarded > 0 && landed > 0;
             }
             case "seaConvoy": {
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;

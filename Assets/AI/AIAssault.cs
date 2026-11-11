@@ -677,12 +677,14 @@ namespace HexTactica.AI {
             }
             HexTile goal = null; string why = null;
             if (pick != null && ship) {
-                // A ship takes troops on only at a naval yard: it goes to the yard its rider walks to, and waits there.
+                // An empty ship sails to meet the troops waiting to cross (AIMap.Meeting: off the shore of their land where
+                // they and it get soonest), and waits there; they board from the shore beside it.
                 sought.Add(pick);
-                Building yard = NearestYard(pick, map);
-                if (yard == null) return null;
-                if (t.tile == yard.tile) return AIAction.Wait(t, "sea lift: waits at the yard for " + pick.name.Replace("(Clone)", "") + " (" + pick.tile.x + "," + pick.tile.y + ")");
-                goal = yard.tile; why = "sea lift: goes to the yard (" + yard.tile.x + "," + yard.tile.y + ") for " + pick.name.Replace("(Clone)", "");
+                HexTile water, shore;
+                if (!map.Meeting(t, pick, out water, out shore)) return null;
+                string whom = pick.name.Replace("(Clone)", "") + " (" + pick.tile.x + "," + pick.tile.y + ")";
+                if (t.tile == water) return AIAction.Wait(t, "sea lift: waits off (" + shore.x + "," + shore.y + ") for " + whom);
+                goal = water; why = "sea lift: sails to meet " + whom + " off (" + shore.x + "," + shore.y + ")";
             } else if (pick != null) {
                 sought.Add(pick);
                 if (t.tile.Distance(pick.tile) <= 1) return AIAction.Wait(t, "assault ride: waits for " + pick.name.Replace("(Clone)", "") + " to get in");
@@ -701,7 +703,7 @@ namespace HexTactica.AI {
                 why = "assault ride: back to a base for riders";
             }
             HexTile step = AITransportPlanner.SafeStepToward(t, goal, map.ReachHorizon(t), map, false);
-            if (step == null || step == t.tile || step == goal || !AIAir.MayEndOn(t, step, map)) return AIAction.Wait(t, why);
+            if (step == null || step == t.tile || (step == goal && goal.occupier != null) || !AIAir.MayEndOn(t, step, map)) return AIAction.Wait(t, why);
             return AIAction.Move(t, step, 0f, why);
         }
     }

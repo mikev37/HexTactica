@@ -1406,14 +1406,19 @@ public class AIPlayer : MonoBehaviour, IAIController {
     /// walks to soonest, while we have a ship to take it over (or one being built). Null: beside the yard already, or no ship.
     /// </summary>
     AIAction? SeaLiftWalk(Unit unit) {
-        bool ships = false;
-        foreach (Unit t in map.ownUnits) if (AIAssault.SeaLiftShip(t, map) && Transporting.CanCarry(t, unit)) { ships = true; break; }
-        if (!ships) return null;
-        Building yard = AIAssault.NearestYard(unit, map);
-        if (yard == null || unit.tile.Distance(yard.tile) <= 1) return null;
-        HexTile step = AITransportPlanner.SafeStepToward(unit, yard.tile, map.ReachHorizon(unit), map, false);
-        if (step == null || step == unit.tile || step == yard.tile) return null;
-        return AIAction.Move(unit, step, 0f, "sea lift: walks to the naval yard (" + yard.tile.x + "," + yard.tile.y + ") to cross");
+        // The ship coming for it: of ours with room for it, the one it meets soonest (AIMap.Meeting, as the ship reckons it).
+        Unit ship = null; HexTile shore = null; int best = int.MaxValue;
+        foreach (Unit t in map.ownUnits) {
+            if (!AIAssault.SeaLiftShip(t, map) || !Transporting.CanCarry(t, unit)) continue;
+            HexTile w, l;
+            if (!map.Meeting(t, unit, out w, out l)) continue;
+            int d = map.Travel(unit, unit.tile, l) + t.tile.Distance(w);
+            if (d < best || (d == best && CombatMath.Precedes(t.tile, ship.tile))) { best = d; ship = t; shore = l; }
+        }
+        if (ship == null || shore == null || unit.tile == shore || unit.tile.Distance(ship.tile) <= 1) return null;
+        HexTile step = AITransportPlanner.SafeStepToward(unit, shore, map.ReachHorizon(unit), map, false);
+        if (step == null || step == unit.tile) return null;
+        return AIAction.Move(unit, step, 0f, "sea lift: walks to the shore (" + shore.x + "," + shore.y + ") to meet " + ship.name.Replace("(Clone)", "") + " (" + ship.tile.x + "," + ship.tile.y + ")");
     }
 
     /// <summary>Our supply already reaches the land <paramref name="ground"/> stands on (a landing made before, a building taken there).</summary>
