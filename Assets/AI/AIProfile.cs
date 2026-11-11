@@ -33,12 +33,7 @@ namespace HexTactica.AI {
         }
 
         [Header("Tile choice")]
-        [Tooltip("Choose tiles in tiers, as the original AttackMove did: damage dealt, then damage received, then enemy movement and supply denied plus everything positional. Off: everything is added in gold.")]
-        public bool tieredChoice = true;
 
-        [Tooltip("How tiered choice orders its tiers. 0: damage dealt, then damage received, then denial. 1: damage received first, then damage dealt. 2: simulate each option against the enemy's reply and keep the best resulting worlds (AIWorld), then denial and position.")]
-        [Range(0, 2)]
-        public int choiceMode = 2;
 
         [Header("Campaign (objectives and task forces)")]
         [Tooltip("Plan the war as objectives read from the map — defend our HQ, secure a building, clear an enemy group, scout what the fog hides — each with a task force and supply fit to achieve it, and fight fronts made from them (AICampaign). Off: fronts where the fighting is (AIStrategic).")]
