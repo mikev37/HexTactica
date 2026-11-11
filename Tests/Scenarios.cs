@@ -526,8 +526,8 @@ public static partial class Scenarios {
              "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off. Exactly: with as many moves as it takes to drive onto supplied ground it links, with one fewer it does not (beside supplied ground is not enough for a land transport).");
         make("attrition-rule-supply-line", "attritionSupplyLine", (a, o) => { Put("Supplies", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 6, -3); },
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
-        make("rule-stronghold", "stronghold", (a, o) => { Rig.PlaceBuilding("Stronghold", a, 0, 0); Put("Grunt", a, 0, 0); Put("Tank", o, 1, 0); Put("Grunt", o, -1, 0); },
-             "A Blue grunt on a Blue stronghold (the Stronghold prefab: holdsGround, attack and defence bonuses), attacked by a Red tank beside it (made hard-hitting, firepower +4), is not driven back (off a stronghold of its own, the same attack drives it back); it takes less damage than without the stronghold, and hits a Red grunt beside it harder (bonuses of 3 here, to be sure to show). A Red unit on a Blue stronghold gets none of it.");
+        make("rule-bunker", "bunker", (a, o) => { Rig.PlaceBuilding("Bunker", a, 0, 0); Put("Grunt", a, 0, 0); Put("Tank", o, 1, 0); Put("Grunt", o, -1, 0); Put("Gunship", a, -3, 3); },
+             "A Blue grunt in a Blue bunker (the Bunker prefab: holdsGround, attack and defence bonuses), attacked by a Red tank beside it (made hard-hitting): it is not driven back, takes less and hits a Red grunt beside it harder than on a bunker that is not its side's. A Blue gunship over the bunker has none of it: the garrison is land units only.");
         make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
              "A Red grunt attacked by a Blue tank beside it retreats straight back, to one of the three tiles on its far side; with those three taken it is pinned, never sliding sideways (still beside the tank).");
         make("ai-land-steps-layout", "landStepsLayout", (a, o) => {
@@ -612,11 +612,11 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
-        makeFog("fog-rule-radar", "fogRadar", (a, o) => {
-                 Rig.PlaceBuilding("Radar", a, -4, 0); Put("Grunt", a, -7, 3);
+        makeFog("fog-rule-int-ops", "fogIntOps", (a, o) => {
+                 Rig.PlaceBuilding("Int. Ops", a, -4, 0); Put("Grunt", a, -7, 3);
                  Rig.At(-3, 0).terrain = T("Mountains");
-                 Put("Recon", o, -1, 0); },
-             "A radar (the Radar prefab: detectRange 3, vision 5 over terrain): a stealthy Red recon three tiles from it is seen, which no land observer three tiles off would see (stealth 3), and four tiles off it is not; with the radar's detection off it is unseen at three too. The tile four beyond a mountain beside it is seen; with visionOverTerrain off it is not (the mountain blocks the line).", "Human");
+                 Put("Recon", o, 1, 0); },
+             "Int. Ops (the prefab: detectRange 5, vision 6 over terrain): a stealthy Red recon five tiles from it is seen, which no observer that far off would see (stealth 3), and six tiles off it is not; with its detection off it is unseen at five too. The tile four beyond a mountain beside it is seen; with visionOverTerrain off it is not (the mountain blocks the line).", "Human");
         makeFog("fog-rule-vision", "fogVision", (a, o) => {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
@@ -1104,7 +1104,7 @@ public static partial class Scenarios {
                 return viaHub && path.Count > 2 && path[0] == g.tile && path.Contains(sup.tile) && path[path.Count - 1] == hq
                        && path.IndexOf(sup.tile) < path.Count - 1;
             }
-            case "stronghold": {
+            case "bunker": {
                 Unit g = Rig.At(0, 0).occupier, tank = Rig.At(1, 0).occupier, rg = Rig.At(-1, 0).occupier;
                 Building sh = Rig.At(0, 0).building;
                 bool prefab = sh != null && sh.holdsGround && sh.attackBonus > 0 && sh.defenseBonus > 0;
@@ -1116,9 +1116,11 @@ public static partial class Scenarios {
                 CombatOutcome off = CombatMath.Resolve(tank, g, tank.tile);
                 int hitOff = Unit.calculateDamage(tank, g, g.tile, 0), backOff = Unit.calculateDamage(g, rg, rg.tile, 0, g.tile);
                 sh.owner = l.ai;
-                detail = "prefab holds ground with bonuses " + prefab + "; on its stronghold: retreats " + on.defenderRetreats + " (pinned " + on.defenderPinned + "), takes " + hitOn + ", hits a Red grunt for " + backOn
+                Unit heli = Rig.At(-3, 3).occupier;
+                bool airOut = heli != null && Building.GarrisonFor(heli, g.tile) == null && Building.GarrisonFor(g, g.tile) == sh;
+                detail = "prefab holds ground with bonuses " + prefab + "; a gunship over it has no garrison " + airOut + "; in its bunker: retreats " + on.defenderRetreats + " (pinned " + on.defenderPinned + "), takes " + hitOn + ", hits a Red grunt for " + backOn
                        + "; on the enemy's: retreats " + off.defenderRetreats + ", takes " + hitOff + ", hits a Red grunt for " + backOff;
-                return prefab && !on.defenderRetreats && !on.defenderPinned && off.defenderRetreats && hitOn < hitOff && backOn > backOff;
+                return prefab && airOut && !on.defenderRetreats && !on.defenderPinned && off.defenderRetreats && hitOn < hitOff && backOn > backOff;
             }
             case "retreatAway": {
                 Unit tank = Rig.At(1, 0).occupier, g = Rig.At(0, 0).occupier;
@@ -2342,28 +2344,28 @@ public static partial class Scenarios {
                        + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
                 return hull && turret && flag && none;
             }
-            case "fogRadar": {
+            case "fogIntOps": {
                 PinVision();
-                Unit rc = Rig.At(-1, 0).occupier;
+                Unit rc = Rig.At(1, 0).occupier;
                 Building radar = Rig.At(-4, 0).building;
-                bool prefab = radar != null && radar.detectRange == 3 && radar.visionOverTerrain && radar.visionRange >= 5;
+                bool prefab = radar != null && radar.detectRange == 5 && radar.visionOverTerrain && radar.visionRange >= 6;
                 rc.stealthRange = 3;
                 Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
                 moved();
                 bool at3 = FogOfWar.Sees(a, rc);
-                rc.TeleportTo(Rig.At(0, 0), 0); moved();
+                rc.TeleportTo(Rig.At(2, 0), 0); moved();
                 bool at4 = FogOfWar.Sees(a, rc);
-                rc.TeleportTo(Rig.At(-1, 0), 0);
+                rc.TeleportTo(Rig.At(1, 0), 0);
                 radar.detectRange = 0; moved();
                 bool noDetect = FogOfWar.Sees(a, rc);
-                radar.detectRange = 3;
+                radar.detectRange = 5;
                 HexTile beyond = Rig.At(0, 0);
                 rc.TeleportTo(Rig.At(-1, 2), 0); moved();
                 bool over = FogOfWar.TileVisible(a, beyond);
                 radar.visionOverTerrain = false; moved();
                 bool blocked = !FogOfWar.TileVisible(a, beyond);
                 radar.visionOverTerrain = true; moved();
-                detail = "prefab detect 3, vision 5 over terrain " + prefab + "; stealthy recon 3 off seen " + at3 + ", 4 off seen " + at4 + ", 3 off without detection seen " + noDetect
+                detail = "prefab detect 5, vision 6 over terrain " + prefab + "; stealthy recon 5 off seen " + at3 + ", 6 off seen " + at4 + ", 5 off without detection seen " + noDetect
                        + "; (0,0) behind the mountain seen " + over + ", without seeing over terrain hidden " + blocked;
                 return prefab && at3 && !at4 && !noDetect && over && blocked;
             }

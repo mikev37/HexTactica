@@ -76,6 +76,17 @@ namespace HexTactica.Testing {
         }
 
         /// <summary>A fresh archetype built from the prefab. Throws if the prefab is missing.</summary>
+        /// <summary>
+        /// The one object a building's list holds for a unit it builds: as in Unity, where every building's list points at
+        /// the same prefab. (Each building had its own copy here, so "the same unit at another facility" never matched.)
+        /// </summary>
+        static readonly Dictionary<string, Unit> archetypes = new Dictionary<string, Unit>();
+        public static Unit Archetype(string name) {
+            Unit a;
+            if (!archetypes.TryGetValue(name, out a)) { a = Load(name); AttachHubIfAny(name, a); archetypes[name] = a; }
+            return a;
+        }
+
         public static Unit Load(string name) {
             Unit cached;
             if (!cache.TryGetValue(name, out cached)) {
@@ -364,7 +375,7 @@ namespace HexTactica.Testing {
                     for (int j = i + 1; j < lines.Count && lines[j].StartsWith("  - "); j++) {
                         string g = GuidIn(lines[j]);
                         string unit = g != null ? AssetByGuid(Path.Combine(Root("Units")), "*.prefab.meta", g) : null;
-                        if (unit != null && Has(unit)) { Unit arch = Load(unit); AttachHubIfAny(unit, arch); b.buildable.Add(arch); }   // as in Unity: the prefab carries its SupplyPoint
+                        if (unit != null && Has(unit)) b.buildable.Add(Archetype(unit));   // as in Unity: the prefab carries its SupplyPoint
                     }
                 } else if (l.StartsWith("  ground:")) {
                     string g = GuidIn(l);

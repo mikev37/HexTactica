@@ -109,6 +109,9 @@ public class Building : MonoBehaviour {
     /// <summary>The building on <paramref name="at"/> whose garrison bonuses (holdsGround, attackBonus, defenseBonus) <paramref name="u"/> has there: one of its owner's, standing. Null: none.</summary>
     public static Building GarrisonFor(Unit u, HexTile at) {
         if (u == null || at == null) return null;
+        // Land units only: an aircraft over a bunker, or a ship in a harbour, is not in it. (Any unit of the owner's on
+        // the tile had the bonuses: a helicopter over a bunker held its ground and hit harder.)
+        if (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return null;
         Building b = at.building;
         return b != null && b.owner != null && b.owner == u.owner && b.Functioning ? b : null;
     }
