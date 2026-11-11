@@ -405,7 +405,7 @@ namespace HexTactica.Harness {
                 int next = t.actions.IndexOf(e) + 1;
                 bool fires = next < t.actions.Count && GameLog.Lines.ReadAttack(t.events[t.actions[next]], sides, out then)
                              && then.side == side && then.unit == unit && then.fromX == x2 && then.fromY == y2;
-                Move(UnitAt(side, unit, x1, y1), Tile(x2, y2), fires);
+                MoveOrCargo(t, e, side, unit, x1, y1, Tile(x2, y2), fires);
             } else if (GameLog.Lines.ReadAttack(line, sides, out at)) {
                 Unit attacker = UnitAt(at.side, at.unit, at.fromX, at.fromY);
                 if (attacker == null) {
@@ -443,12 +443,7 @@ namespace HexTactica.Harness {
                 if (cargo.boards) {
                     Unit rider = UnitAt(cargo.side, cargo.unit, cargo.x, cargo.y);
                     if (rider == null) return;
-                    // Walks up and gets in, as ordered in play; if the game will not have it, put aboard as the log says.
-                    List<HexTile> steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile);
-                    bool headless = GameController.gc != null && GameController.gc.headless;
-                    if (steps == null || !rider.WalkAndBoard(steps, transport, !headless) || rider.trasnporter != transport) {
-                        if (rider.trasnporter != transport) Transporting.Embark(transport, rider);
-                    }
+                    Board(rider, transport);
                 } else {
                     Unit rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, true));
                     if (rider == null) rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, false));
@@ -460,7 +455,10 @@ namespace HexTactica.Harness {
                 if (p != null) p.money -= cost;
                 if (p != null && prefab != null && GameLog.Lines.ReadBuyPlace(line, out x1, out y1)) {
                     HexTile where = Tile(x1, y1);
-                    if (where != null && where.occupier == null && UnitController.uc != null) UnitController.uc.CreateUnit(p, prefab, where);
+                    if (where != null && where.occupier == null && UnitController.uc != null) {
+                        Unit made = UnitController.uc.CreateUnit(p, prefab, where);
+                        if (made != null) made.active = false;   // (a unit does nothing the turn it is bought)
+                    } else Warn("the unit bought could not be put at (" + x1 + "," + y1 + ")");
                 }
             } else if (GameLog.Lines.ReadDies(line, sides, out side, out unit, out cause)) {
                 if (GameLog.Lines.ReadTile(line, out x1, out y1)) {
@@ -475,6 +473,65 @@ namespace HexTactica.Harness {
             }
             FogOfWar.Changed();
             FogOfWar.Refresh();
+        }
+
+        /// <summary>
+        /// A "moved" line. Usually the unit of that kind on the first tile, walking to the second. In a recording made
+        /// before boarding and getting off had lines of their own, it may also be: a unit walking into its transport
+        /// (the second tile holds a friendly unit that carries it), or a unit getting off one (the first tile is where its
+        /// transport stood at the start of the turn; the transport's own move, if any, is played first).
+        /// </summary>
+        static void MoveOrCargo(Turn t, int e, string side, string kind, int x1, int y1, HexTile to, bool fires) {
+            if (to == null) return;
+            HexTile from = Tile(x1, y1);
+            Unit u = from != null ? from.occupier : null;
+            Player owner = Side(side);
+            if (u != null && u.owner == owner && u.Strength > 0 && GameLog.Lines.UnitName(u) == kind) {
+                Unit carrier = to.occupier;
+                if (carrier != null && carrier != u && carrier.owner == owner && Transporting.CanCarry(carrier, u)) { Board(u, carrier); return; }
+                Move(u, to, fires);
+                return;
+            }
+            // Getting off: the transport is the unit standing where the cargo was at the start of the turn...
+            Unit transport = u != null && u.owner == owner ? u : null;
+            Unit rider = transport != null ? transport.transported.Find(c => c != null && GameLog.Lines.UnitName(c) == kind) : null;
+            if (rider != null && transport.tile != to && !transport.tile.neighbors.Contains(to)) {
+                // ... which drives up first: its own move is later in the log (it finished after its cargo).
+                string s2, k2; int a1, b1, a2, b2;
+                for (int j = t.actions.IndexOf(e) + 1; j < t.actions.Count; j++) {
+                    int k = t.actions[j];
+                    if (played.Contains(k)) continue;
+                    if (GameLog.Lines.ReadMoved(t.events[k], sides, out s2, out k2, out a1, out b1, out a2, out b2)
+                        && s2 == side && a1 == x1 && b1 == y1 && k2 == GameLog.Lines.UnitName(transport)) {
+                        Move(transport, Tile(a2, b2), false);
+                        played.Add(k);
+                        break;
+                    }
+                }
+            }
+            if (rider == null && UnitController.uc != null) {
+                // ... or one that has already moved: a transport of the side's beside the tile, carrying one.
+                foreach (Unit x in UnitController.uc.units) {
+                    if (x == null || x.owner != owner || x.tile == null || x.Strength <= 0) continue;
+                    if (x.tile != to && !x.tile.neighbors.Contains(to)) continue;
+                    Unit c = x.transported.Find(q => q != null && GameLog.Lines.UnitName(q) == kind);
+                    if (c != null) { transport = x; rider = c; break; }
+                }
+            }
+            if (rider != null) {
+                if (!Transporting.Unload(transport, rider, to)) Warn(kind + " could not get off at (" + to.x + "," + to.y + ")");
+                return;
+            }
+            Warn("no " + side + " " + kind + " at (" + x1 + "," + y1 + ") or aboard a transport there");
+        }
+
+        /// <summary>The unit walks up to the transport and gets in, as ordered in play; if the game will not have it, it is put aboard as the log says.</summary>
+        static void Board(Unit rider, Unit transport) {
+            List<HexTile> steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile);
+            bool headless = GameController.gc != null && GameController.gc.headless;
+            if (steps == null || !rider.WalkAndBoard(steps, transport, !headless) || rider.trasnporter != transport) {
+                if (rider.trasnporter != transport) Transporting.Embark(transport, rider);
+            }
         }
 
         static void Warn(string what) { Debug.LogWarning("Replay: " + what + " (\"" + LastAction + "\")"); }
