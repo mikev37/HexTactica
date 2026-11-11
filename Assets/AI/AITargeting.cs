@@ -213,8 +213,6 @@ namespace HexTactica.AI {
             return all;
         }
 
-        public static bool IsHQUnit(Unit u) { return IsHQ(u); }
-
         static bool IsHQ(Unit u) {
             SupplyPoint sp = u != null ? u.Hub : null;
             return sp != null && sp.producer;

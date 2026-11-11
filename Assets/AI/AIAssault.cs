@@ -129,13 +129,6 @@ namespace HexTactica.AI {
             public HexTile stand; public Unit target; public Building take; public string what; public float score;
         }
 
-        /// <summary>Can <paramref name="c"/>, put down on <paramref name="n"/> with its whole turn ahead, strike this turn: hit an enemy it can hurt, or reach a building to take?</summary>
-        public static bool Strikes(Unit c, HexTile n, AIMap map, out string what) {
-            Strike k = StrikeFrom(c, n, map, c.carriedThisTurn);
-            what = k != null ? k.what : null;
-            return k != null;
-        }
-
         /// <summary>
         /// The best strike for <paramref name="c"/> put down on <paramref name="n"/>, its whole turn ahead: a building to
         /// take (stand on it), else the hit worth most (what it does to the target, less what it stands to lose where it
@@ -413,22 +406,6 @@ namespace HexTactica.AI {
         /// <summary>A ship under the sea lift (AIProfile.seaLift): never held for supply duty; it takes troops and their supply together.</summary>
         public static bool SeaLiftShip(Unit t, AIMap map) {
             return t != null && map != null && map.profile != null && map.profile.seaLift && LocomotionRules.IsNaval(t.locomotion) && Transporting.IsTransport(t) && !AIAir.IsCarrier(t);
-        }
-
-        /// <summary>
-        /// Our naval yard <paramref name="u"/> walks to soonest (troops get into a ship only at one: Transporting.CanBoardOnto).
-        /// Null: none on its land.
-        /// </summary>
-        public static Building NearestYard(Unit u, AIMap map) {
-            if (u == null || u.tile == null) return null;
-            Building best = null; int bd = int.MaxValue;
-            foreach (Building b in Building.all) {
-                if (b == null || b.tile == null || b.owner != u.owner || !b.Functioning || !ServesShips(b)) continue;
-                if (map.AcrossWater(u.tile, b.tile)) continue;
-                int d = map.Travel(u, u.tile, b.tile);
-                if (d < bd || (d == bd && CombatMath.Precedes(b.tile, best.tile))) { bd = d; best = b; }
-            }
-            return best;
         }
 
         /// <summary>

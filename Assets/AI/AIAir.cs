@@ -297,14 +297,6 @@ namespace HexTactica.AI {
         /// <summary>May a unit be built on <paramref name="t"/> this turn? Not on a tile reserved for a landing this turn.</summary>
         public static bool MayBuildOn(HexTile t, AIMap map) { return MayEndOn(null, t, map); }
 
-        public static bool RoomForAircraft(Building b, AIMap map, int turns) {
-            if (b == null) return false;
-            HashSet<HexTile> reserved = new HashSet<HexTile>();
-            if (map.landings != null) foreach (Landing l in map.landings.Values) if (l.turn <= turns) reserved.Add(l.tile);
-            if (b.tile != null && b.tile.occupier == null && !reserved.Contains(b.tile)) return true;
-            return false;
-        }
-
         /// <summary>Fuel steps from every tile to the nearest of <paramref name="bases"/>, moving as <paramref name="u"/> moves (air: any tile, one each; ships: water only).</summary>
         public static Dictionary<HexTile, int> DistanceToBase(Unit u, List<HexTile> bases) {
             Dictionary<HexTile, int> d = new Dictionary<HexTile, int>();

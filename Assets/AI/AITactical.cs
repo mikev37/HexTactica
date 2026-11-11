@@ -191,19 +191,6 @@ namespace HexTactica.AI {
             return map.ExpectedLoss(unit, unit.tile, null) >= Mathf.Max(0f, profile.regroupRisk);
         }
 
-        /// <summary>Is <paramref name="e"/> standing on a building of <paramref name="us"/>'s (and able to take it)?</summary>
-        static bool OnOurBuilding(Unit e, Player us) {
-            return e != null && e.tile != null && e.tile.building != null && e.tile.building.owner == us && Building.CanCapture(e);
-        }
-
-        /// <summary>A shot from <paramref name="s"/> at an enemy taking one of our buildings, if there is one in reach.</summary>
-        static AttackAppraisal OurBuildingShot(Unit unit, HexTile s, AIMap map, AIProfile profile, Posture posture) {
-            AttackAppraisal best = new AttackAppraisal();
-            foreach (AttackAppraisal a in AITargeting.AllFrom(unit, s, map, profile, posture, true))
-                if (OnOurBuilding(a.target, unit.owner) && (!best.valid || a.value > best.value)) best = a;
-            return best;
-        }
-
         /// <summary>Would <paramref name="unit"/> ending on <paramref name="t"/> stand on one of our producing buildings that no enemy can strike next turn?</summary>
         public static bool BlocksProduction(Unit unit, HexTile t, AIMap map) {
             if (t == null || unit == null) return false;
@@ -469,21 +456,6 @@ namespace HexTactica.AI {
                 if (map.Travel(c, c.tile, stop) <= 2 * c.moveRange) return 0.5f * AIWorld.BuildingWorth(b, map);
             }
             return 0f;
-        }
-
-        /// <summary>
-        /// A deterministic number in [-1, 1) for this seed, unit (by where it stands and whose it
-        /// is), stop and day (AIProfile.noiseSeed): the same game every time for one seed, a
-        /// different one for another, so the harness can measure over many games on a few maps.
-        /// </summary>
-        static float Noise(int seed, Unit unit, HexTile stop) {
-            unchecked {
-                uint h = 2166136261u;
-                int[] parts = { seed, unit.tile != null ? unit.tile.x : 99, unit.tile != null ? unit.tile.y : 99, stop != null ? stop.x : 99, stop != null ? stop.y : 99,
-                                GameController.gc != null ? GameController.gc.days : 0, unit.owner != null ? (int)unit.owner.id : 0, unit.Strength };
-                foreach (int p in parts) { h ^= (uint)p; h *= 16777619u; h ^= h >> 13; }
-                return (h & 0xFFFFFF) / (float)0x800000 - 1f;
-            }
         }
 
 

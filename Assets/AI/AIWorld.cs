@@ -1061,32 +1061,6 @@ namespace HexTactica.AI {
             return CanFinish(target, left, except, except != null ? except.tile : null, map, out by);
         }
 
-        /// <summary>The old assist check: hex distance (move + range), no paths, no free firing tile.</summary>
-        static bool CanFinishByDistance(Unit target, float left, Unit except, AIMap map, out string by) {
-            by = "";
-            List<float> blows = new List<float>();
-            List<string> names = new List<string>();
-            foreach (Unit x in map.ownUnits) {
-                if (x == null || x == except || x.tile == null || !x.active || x.Firepower <= 0) continue;
-                if (x.Hub != null || x.trasnporter != null) continue;
-                int reach = (x.moveAndAttack ? x.moveRange : 0) + x.AttackRange;
-                if (x.tile.Distance(target.tile) > reach) continue;
-                if (!x.moveAndAttack && x.tile.Distance(target.tile) <= x.MinRange) continue;
-                float dmg = Unit.calculateDamage(x, target, target.tile, 0);
-                if (dmg <= 0f) continue;
-                int at = 0;
-                while (at < blows.Count && blows[at] >= dmg) at++;
-                blows.Insert(at, dmg); names.Insert(at, x.name);
-            }
-            float sum = 0f;
-            for (int i = 0; i < blows.Count; i++) {
-                sum += blows[i];
-                by += (i > 0 ? "+" : "") + names[i];
-                if (sum >= left) return true;
-            }
-            return false;
-        }
-
         /// <summary>
         /// Can our units still to act this turn finish <paramref name="target"/> at <paramref name="left"/>?
         /// Each needs a real attack: a firing tile it can reach this turn by its own movement, free

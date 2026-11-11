@@ -465,25 +465,5 @@ namespace HexTactica.AI {
             return plan;
         }
 
-        /// <summary>
-        /// Tiles that would restore a stranded hub's connection to HQ, for the case
-        /// where the AI needs to prioritise reconnection over coverage.
-        /// </summary>
-        public static List<HexTile> ReconnectionTiles(SupplyPoint hub, AIMap map) {
-            List<HexTile> result = new List<HexTile>();
-            if (hub == null || hub.myUnit == null) return result;
-
-            MoveField reach = map.ReachHorizon(hub.myUnit);
-            foreach (HexTile t in reach.Tiles) {
-                if (!AIPath.CanFinishTurnOn(hub.myUnit, t)) continue;
-                if (map.SupplyDepth(t) > 0) result.Add(t);
-            }
-            result.Sort((a, b) => {
-                int da = reach.Get(a).turns, db = reach.Get(b).turns;
-                if (da != db) return da.CompareTo(db);
-                return CombatMath.CompareTiles(a, b);
-            });
-            return result;
-        }
     }
 }

@@ -224,19 +224,6 @@ namespace HexTactica.AI {
             return Compute(mover, Single(mover.tile), maxTurns, false);
         }
 
-        public static MoveField MultiTurnFrom(Unit mover, HexTile origin, int maxTurns) {
-            return Compute(mover, Single(origin), maxTurns, false);
-        }
-
-        /// <summary>
-        /// Reachability ignoring enemy blocking — used for threat projection, where
-        /// the question is "where could this unit shoot if unopposed", not "where can
-        /// it actually walk".
-        /// </summary>
-        public static MoveField Unopposed(Unit mover, int maxTurns) {
-            return Compute(mover, Single(mover.tile), maxTurns, true);
-        }
-
         static IEnumerable<KeyValuePair<HexTile, Eta>> Single(HexTile origin) {
             yield return new KeyValuePair<HexTile, Eta>(origin, Eta.Origin);
         }

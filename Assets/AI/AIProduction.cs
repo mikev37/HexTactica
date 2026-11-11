@@ -869,12 +869,6 @@ namespace HexTactica.AI {
             return r;
         }
 
-        /// <summary>The tile of <paramref name="b"/>, if <paramref name="t"/> could be built there now.</summary>
-        static HexTile FreeTile(Building b, Unit t, AIMap map) {
-            HexTile x = b.tile;
-            return x != null && x.occupier == null && t.CanEnter(x) && AIAir.MayBuildOn(x, map) ? x : null;
-        }
-
         /// <summary>
         /// Gold: what a fresh <paramref name="t"/> would do to the enemy on the board (each unit hit
         /// where it stands), less half what they would do to it on <paramref name="at"/>. With no

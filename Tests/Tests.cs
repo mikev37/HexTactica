@@ -133,7 +133,6 @@ public static class Tests {
                             Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
             return 0;
         }
-        if (probe == "tree") { Scenarios.Tree(Environment.GetEnvironmentVariable("FILE"), Environment.GetEnvironmentVariable("SIDE") ?? "Blue"); return 0; }
         if (probe == "analyze") {
             Scenarios.Analyze(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"));
             return 0;

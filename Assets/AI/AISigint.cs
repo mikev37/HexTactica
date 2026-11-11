@@ -171,21 +171,6 @@ namespace HexTactica.AI {
             return result;
         }
 
-        /// <summary>Every tile within <paramref name="range"/> steps of any of <paramref name="from"/>.</summary>
-        static HashSet<HexTile> Grow(HashSet<HexTile> from, int range) {
-            HashSet<HexTile> result = new HashSet<HexTile>(from);
-            List<HexTile> frontier = new List<HexTile>(from);
-            for (int i = 0; i < range && frontier.Count > 0; i++) {
-                List<HexTile> next = new List<HexTile>();
-                foreach (HexTile t in frontier) {
-                    if (t.neighbors == null) continue;
-                    foreach (HexTile n in t.neighbors) if (n != null && result.Add(n)) next.Add(n);
-                }
-                frontier = next;
-            }
-            return result;
-        }
-
         /// <summary>Strength <paramref name="u"/> should expect to lose tonight on <paramref name="at"/> to what the fog may hide.</summary>
         public float Loss(Unit u, HexTile at) { return Loss(u, at, true); }
 

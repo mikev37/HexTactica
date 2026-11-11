@@ -5246,25 +5246,6 @@ public static partial class Scenarios {
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none") + "; material Blue " + ScenarioFile.Material(l.ai) + " Red " + ScenarioFile.Material(l.other));
     }
 
-    /// <summary>PROBE=tree FILE=&lt;board&gt; [SIDE=Red]: the supply tree that side would plan on that board, link by link, and the supply around each fighting unit left out.</summary>
-    public static void Tree(string name, string side) {
-        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", null, null);
-        Player p = side == "Red" ? l.other : l.ai;
-        AIProfile prof = p.GetComponent<AIPlayer>().Profile;
-        AIMap m = new AIMap(p, prof);
-        AISupplyTree.DebugLog = Console.WriteLine;
-        AISupplyTree.Plan plan;
-        try { plan = AISupplyTree.Make(m, null); } finally { AISupplyTree.DebugLog = null; }
-        Console.WriteLine(plan);
-        SupplyNetwork.Result net = SupplyNetwork.SolvePlanned(p, plan.links);
-        foreach (Unit u in m.ownUnits) {
-            if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0 || net.DepthAt(u.tile) > 0) continue;
-            List<string> around = new List<string>();
-            foreach (HexTile n in u.tile.neighbors) if (n != null) around.Add(Pos(n) + n.terrain.name.Substring(0, 3) + "d" + net.DepthAt(n) + (n.occupier != null ? "[" + n.occupier.name.Substring(0, 3) + (n.occupier.owner == p ? "" : "!") + "]" : ""));
-            Console.WriteLine("  out: " + u.name + Pos(u.tile) + " on " + u.tile.terrain.name + " | " + string.Join(" ", around.ToArray()));
-        }
-    }
-
     /// <summary>
     /// PROBE=bench SET_A=... [SET_B=...] [MAPS=a.dat,b.dat] [FOGS=off,on] [ROUNDS=r]: the challenger (A)
     /// against the champion (B) on bigger maps, each played from both sides, with fog off and on; and

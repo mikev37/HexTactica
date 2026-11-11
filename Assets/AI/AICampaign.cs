@@ -872,41 +872,6 @@ namespace HexTactica.AI {
             return d;
         }
 
-        /// <summary>
-        /// The staging tile: on ground we hold (supplied, and out of the enemy's reach next turn), no
-        /// nearer the target than one move of our army, and close to where our free units already are
-        /// (not in a fight, not on a task force): of the tiles with nearly the most of their power
-        /// within campaignDrawTurns of it (four fifths of the best), the one nearest the target. Null
-        /// when there is no such ground — better none than one in the firing line. (It was the supplied
-        /// tile nearest the target, wherever the army was: often in the enemy's reach, and often too
-        /// far from the units for them to gather on it.)
-        /// </summary>
-        static HexTile Staging(Dictionary<HexTile, int> route, AIMap map, HexTile target, AIProfile p, List<Unit> free) {
-            int bound = TypicalMove(map), draw = DrawTurns(p);
-            List<HexTile> safe = new List<HexTile>();
-            foreach (KeyValuePair<HexTile, int> kv in route) {
-                HexTile t = kv.Key;
-                if (t == null || map.SupplyDepth(t) <= 0 || map.EnemyStrikeTurns(t) <= 1) continue;
-                if (target != null && t.Distance(target) < bound) continue;
-                safe.Add(t);
-            }
-            if (safe.Count == 0) return null;
-            Dictionary<HexTile, float> near = new Dictionary<HexTile, float>();
-            float most = 0f;
-            foreach (HexTile t in safe) {
-                float v = 0f;
-                if (free != null) foreach (Unit u in free) if (u.tile.Distance(t) <= u.moveRange * draw) v += Power(u);
-                near[t] = v; most = Mathf.Max(most, v);
-            }
-            HexTile best = null; int bestD = int.MaxValue;
-            foreach (HexTile t in safe) {
-                if (near[t] < most * 0.8f) continue;
-                int d = route[t];
-                if (d < bestD || (d == bestD && CombatMath.Precedes(t, best))) { bestD = d; best = t; }
-            }
-            return best;
-        }
-
         static int DrawTurns(AIProfile p) { return p.campaignDrawTurns > 0 ? p.campaignDrawTurns : Mathf.Max(1, p.frontReachTurns); }
 
         /// <summary>Whether the healthy power on the task force's staging ground (or past it) is campaignGatherShare of its need, as AIStrategic.GatherThenGo counts it.</summary>
