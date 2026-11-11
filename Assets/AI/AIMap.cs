@@ -171,7 +171,6 @@ namespace HexTactica.AI {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
             this.speculative = speculative;
-            AIScore.Use(this.profile);
             if (carry != null && carry.player == player && carry.profile == this.profile && this.profile.keepCaches) Adopt(carry);
             Rebuild(!speculative);
         }

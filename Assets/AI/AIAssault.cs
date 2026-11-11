@@ -27,6 +27,9 @@ namespace HexTactica.AI {
         public static AIAction? CarryOut(Unit c, AIMap map) {
             Strike k;
             if (c == null || c.tile == null || !c.active || !Planned.TryGetValue(c, out k)) return null;
+            // Still aboard (another rider got off first, onto its tile or not): it cannot walk from inside the transport.
+            // Its plan waits until it is put down. (It was ordered to move while aboard: refused, its turn lost.)
+            if (c.trasnporter != null && c.trasnporter != c) return null;
             Planned.Remove(c);
             if (k.stand == null || (k.stand.occupier != null && k.stand.occupier != c)) return null;
             if (k.stand != c.tile) { MoveField w = map.ReachThisTurn(c); bool ok = w.ReachableThisTurn(k.stand); if (!ok) return null; }

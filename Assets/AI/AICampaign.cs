@@ -744,6 +744,14 @@ namespace HexTactica.AI {
         /// unit that could fight at k of them counts 1/k^objectiveSpread at each — in full when all in
         /// (as if the whole enemy will be wherever we go), shared out when spread (it must split too).
         /// </summary>
+        /// <summary>What one of our supply units costs (the mean of those we have; with none, of all our units).</summary>
+        static float SupplyUnitCost(AIMap map) {
+            float sum = 0f; int n = 0;
+            foreach (SupplyPoint h in map.ownHubs) if (h != null && !h.producer && h.myUnit != null) { sum += h.myUnit.cost; n++; }
+            if (n == 0) foreach (Unit u in map.ownUnits) if (u != null) { sum += u.cost; n++; }
+            return n > 0 ? sum / n : 0f;
+        }
+
         static void Price(CampaignObjective o, AIMap map, AIProfile p, Dictionary<Unit, int> reaches) {
             float board = map.BoardStake;
             int units = map.ownUnits.Count + map.enemyUnits.Count;
@@ -849,7 +857,7 @@ namespace HexTactica.AI {
             }
 
             // Preference: worth over what it takes, the further the less.
-            float cost = Mathf.Max(1f, o.needPower) + o.needHubs * AIScore.supplyWorth * 0.5f;
+            float cost = Mathf.Max(1f, o.needPower) + o.needHubs * SupplyUnitCost(map) * 0.5f;
             o.priority = o.value / cost;   // per turn to achieve it: Plan
         }
 
