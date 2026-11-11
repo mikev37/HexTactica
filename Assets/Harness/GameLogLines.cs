@@ -128,11 +128,13 @@ namespace HexTactica.Harness {
             public static bool ReadBuyPlace(string line, out int x, out int y) {
                 Match m = placed.Match(line);
                 x = y = 0;
+                if (!m.Success) m = boughtAt.Match(line);   // (a log from before the place was written: a unit is made on its building's tile)
                 if (!m.Success) return false;
                 x = int.Parse(m.Groups[1].Value, Inv); y = int.Parse(m.Groups[2].Value, Inv);
                 return true;
             }
             static readonly Regex placed = new Regex(@", placed \((-?\d+),(-?\d+)\)$");
+            static readonly Regex boughtAt = new Regex(@" \((-?\d+),(-?\d+)\) for \d+$");
 
             /// <summary>A unit ended its action somewhere else: "Blue Tank moved (1,2) -> (3,2)".</summary>
             public static string Moved(Unit u, HexTile from, HexTile to) { return Indent + Who(u) + " moved " + D(from) + " -> " + D(to); }
