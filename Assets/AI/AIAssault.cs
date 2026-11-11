@@ -406,7 +406,7 @@ namespace HexTactica.AI {
         /// <summary>Does <paramref name="t"/> carry a supply unit?</summary>
         /// <summary>A ship under the sea lift (AIProfile.seaLift): never held for supply duty; it takes troops and their supply together.</summary>
         public static bool SeaLiftShip(Unit t, AIMap map) {
-            return t != null && map != null && map.profile != null && map.profile.seaLift && LocomotionRules.IsNaval(t.locomotion) && Transporting.IsTransport(t);
+            return t != null && map != null && map.profile != null && map.profile.seaLift && LocomotionRules.IsNaval(t.locomotion) && Transporting.IsTransport(t) && !AIAir.IsCarrier(t);
         }
 
         /// <summary>
@@ -589,6 +589,8 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction? Board(Unit c, AIMap map, AIProfile profile, HashSet<Unit> busy, HashSet<Unit> supply = null, Dictionary<Unit, HexTile> supplyGoing = null, HexTile ground = null) {
             if (c.trasnporter != null || c.tile == null || c.Hub != null || c.Firepower <= 0) return null;
+            // Aircraft fly: they get aboard a carrier only to land on it (AIAir: their landing, or short of fuel).
+            if (LocomotionRules.IsAirborne(c.locomotion)) return null;
             if (Capturing(c)) return null;   // taking a building: it stays on it
             bool hurt = Wounded(c, profile, map);
             // Its ground across water: only a ship gets it there, however near the fight looks by sea (AIMap.SeaTravel).

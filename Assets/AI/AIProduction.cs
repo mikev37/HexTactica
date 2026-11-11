@@ -321,6 +321,7 @@ namespace HexTactica.AI {
                 foreach (Unit u in map.ownUnits) {
                     if (u == null || u.tile == null) continue;
                     if (Transporting.IsTransport(u) && u.Firepower <= 1) {
+                        if (AIAir.IsCarrier(u)) continue;   // (room for aircraft, not troops)
                         if (groundOf != null && LocomotionRules.IsNaval(u.locomotion)) seaRoom += Transporting.FreeWeight(u);
                         else if (!forSupply.Contains(u)) troopRoom += Transporting.FreeWeight(u);
                         continue;
