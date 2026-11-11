@@ -599,6 +599,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &4446230840592031393
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -828,6 +829,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2913374061629795785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1160,6 +1162,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &3488116233813292795
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1625,6 +1628,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &460451016371393333
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1765,6 +1769,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &8891935750821999724
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1979,6 +1984,10 @@ PrefabInstance:
       propertyPath: Firepower
       value: 5
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 9e2366ba9382dba4fbe2a837e1eef53e, type: 3}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: moveRange
       value: 5

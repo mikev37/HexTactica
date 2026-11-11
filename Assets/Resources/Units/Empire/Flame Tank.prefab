@@ -266,6 +266,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &3712409234012554738
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -416,6 +417,10 @@ PrefabInstance:
       propertyPath: Firepower
       value: 8
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: f7a1f7b14c8e6d641b150c54e8e2da4b, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: ignoresCover
       value: 1

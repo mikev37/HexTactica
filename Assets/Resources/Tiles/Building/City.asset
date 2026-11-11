@@ -15,13 +15,13 @@ MonoBehaviour:
   description: The City provides protection and Funding
   inMapEditor: 0
   paletteGroup: Building
-  upper_normal: {fileID: 21300000, guid: 3557a23bfa58e1c41bd2fac44fda1058, type: 3}
+  upper_normal: {fileID: 21300000, guid: 85f6a9da40d71414e82e3619799f31a1, type: 3}
   upper_damaged: {fileID: 0}
   upper_destroyed: {fileID: 0}
-  lower: {fileID: 21300000, guid: 412f6f764fc74204eae9205489b1b8df, type: 3}
-  floor: {fileID: 21300000, guid: f9258ac41365d4d4e8fef28a4aeb8d79, type: 3}
+  lower: {fileID: 0}
+  floor: {fileID: 21300000, guid: 93bc9b6555669514d9085c93d1bf6cdb, type: 3}
   water: {fileID: 0}
-  cover: 3
+  cover: 2
   moveability: 2
   elevation: 1
   road: 1

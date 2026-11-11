@@ -165,7 +165,7 @@ MonoBehaviour:
   orderSound: {fileID: 0}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 8300000, guid: ee0601ce645845047a841abf966c5814, type: 3}
-  fireSound: {fileID: 8300000, guid: 9e2366ba9382dba4fbe2a837e1eef53e, type: 3}
+  fireSound: {fileID: 8300000, guid: 7957535870c561d40976e3a0ffa19295, type: 3}
   dieSound: {fileID: 8300000, guid: 34e2b69fe32887a4589eaee49c28da99, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6

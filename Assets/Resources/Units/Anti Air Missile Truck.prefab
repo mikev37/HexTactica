@@ -1846,7 +1846,11 @@ PrefabInstance:
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: fireSound
       value: 
-      objectReference: {fileID: 8300000, guid: 7f60c2e8183eb524ca83f5d800cc93fb, type: 3}
+      objectReference: {fileID: 8300000, guid: 982693644ad68544e9d2c37872ee2bdd, type: 3}
+    - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: b8d9971f78d65fa4098d0e25a6aa8d81, type: 3}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: AttackRange
       value: 7

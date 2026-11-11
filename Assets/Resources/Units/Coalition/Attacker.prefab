@@ -358,6 +358,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &5634959030478117264
 GameObject:
   m_ObjectHideFlags: 0
@@ -816,6 +817,10 @@ PrefabInstance:
       propertyPath: MinRange
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8332758219216537460, guid: 2c783bd31ab76594580704c8a784d545, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 3563de985e7acf94fa0b75044b3f539f, type: 3}
     - target: {fileID: 8332758219216537460, guid: 2c783bd31ab76594580704c8a784d545, type: 3}
       propertyPath: AttackRange
       value: 2

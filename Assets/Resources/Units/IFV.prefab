@@ -124,6 +124,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &699410466538912294
 GameObject:
   m_ObjectHideFlags: 0
@@ -495,6 +496,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &2655482192787780666
 GameObject:
   m_ObjectHideFlags: 0
@@ -724,6 +726,7 @@ MonoBehaviour:
   color: {r: 0.09411766, g: 0.12941177, b: 0.14901961, a: 1}
   distance: 0.3
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &7232171062428524773
 GameObject:
   m_ObjectHideFlags: 0
@@ -1209,6 +1212,10 @@ PrefabInstance:
       propertyPath: Targeting
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: c2ebed0a0f9dc4e429754b1dd9c5c9c7, type: 3}
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: maxWeight
       value: 1

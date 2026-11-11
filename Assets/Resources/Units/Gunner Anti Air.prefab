@@ -219,6 +219,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &7845121110725840861
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -531,6 +532,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &7176681851943774769
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -667,6 +669,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1001 &3335139603527638747
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -747,6 +750,10 @@ PrefabInstance:
       propertyPath: Targeting
       value: 5
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 742968bd4dd95d74ca8ae9e8d797cda4, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: AttackRange
       value: 2

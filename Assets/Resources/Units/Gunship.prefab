@@ -114,6 +114,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &5895569434439758663
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1211,6 +1212,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &3381686128377177289
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1342,7 +1344,7 @@ PrefabInstance:
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: fireSound
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 8300000, guid: c2ebed0a0f9dc4e429754b1dd9c5c9c7, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: locomotion
       value: 3
@@ -1379,6 +1381,10 @@ PrefabInstance:
       propertyPath: minFuelPerTurn
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: moveBurstSound
+      value: 
+      objectReference: {fileID: 8300000, guid: b30e654a5c277ca43a6e33cb0fe9dc93, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: terrainScramble
       value: 0
