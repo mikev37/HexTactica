@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 970299335936698322, guid: 4a73ea100d2e8544abdb09b3e4f03d87, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: b2b6a3f0ef21ed741ac029820e92c968, type: 3}
     - target: {fileID: 2479104871868787622, guid: 4a73ea100d2e8544abdb09b3e4f03d87, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0.16

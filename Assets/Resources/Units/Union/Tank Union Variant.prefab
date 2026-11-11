@@ -65,6 +65,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 21300000, guid: 14f49c612ea8b55428cf36ceaa1a639d, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 54d9e28b4b7ec444f915372f63362f8e, type: 3}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: moveLoopSound
       value: 
       objectReference: {fileID: 8300000, guid: 22a2a89339fb7554cb5a0d9438b100e1, type: 3}

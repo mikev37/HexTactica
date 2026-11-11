@@ -378,6 +378,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &3614983160561928606
 GameObject:
   m_ObjectHideFlags: 0
@@ -639,6 +640,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &4925265630089818104
 GameObject:
   m_ObjectHideFlags: 0
@@ -1108,6 +1110,10 @@ PrefabInstance:
       propertyPath: maxWeight
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 14063e2568b287a468071b2824815e8e, type: 3}
     - target: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
       propertyPath: AttackRange
       value: 0

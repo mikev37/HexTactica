@@ -64,6 +64,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: marine_head
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 4d641e95ad46ad84c8887746d6cb9732, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

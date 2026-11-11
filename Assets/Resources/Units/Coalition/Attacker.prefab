@@ -822,6 +822,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: 3563de985e7acf94fa0b75044b3f539f, type: 3}
     - target: {fileID: 8332758219216537460, guid: 2c783bd31ab76594580704c8a784d545, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: fc0d26c8100c121488d64eb7f9cd6a74, type: 3}
+    - target: {fileID: 8332758219216537460, guid: 2c783bd31ab76594580704c8a784d545, type: 3}
       propertyPath: AttackRange
       value: 2
       objectReference: {fileID: 0}

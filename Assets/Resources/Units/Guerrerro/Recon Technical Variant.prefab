@@ -73,6 +73,10 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 90cc38a58d7682847ad21ea6a7f2d12b, type: 3}
+    - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
       propertyPath: Vulnerability
       value: 1
       objectReference: {fileID: 0}
