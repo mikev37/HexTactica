@@ -213,8 +213,8 @@ namespace HexTactica.AI {
             public Dictionary<HexTile, HexTile> seedOf;      // ride tile -> rendezvous that reached it
             public Dictionary<HexTile, int> loadTurnOf;      // rendezvous -> turn the cargo is aboard there
             public bool freshAboard;                         // aboard already, and has not acted this turn
-            public bool freshUnload = true;                  // profile.freshUnload
-            public bool walkAfterDrop = true;                // profile.freshUnloadPlanning
+            public bool freshUnload = true;                  
+            public bool walkAfterDrop = true;                
             public int bestLoadTurn = int.MaxValue;
 
             /// <summary>

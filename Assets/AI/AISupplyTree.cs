@@ -4,7 +4,7 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// Supply units as a tree grown from the HQ out to wherever the army is (profile.supplyTree).
+    /// Supply units as a tree grown from the HQ out to wherever the army is.
     ///
     /// The chain (AISupplyChain) runs one line toward the enemy HQ, and only a supply unit already
     /// inside the network can join it: one cut off, or still on its way, is spare, and the planner
@@ -108,7 +108,7 @@ namespace HexTactica.AI {
                 // Candidate places, best first: a supply unit already standing at the edge of the network
                 // (a step back at most) keeps its place; otherwise the edge tiles nearest the unit, least
                 // exposed first, each taken by the supply unit that can get there soonest. The first that
-                // little can hit tonight (the expected share of fire, and with supplyTreeReply the enemy's
+                // little can hit tonight (the expected share of fire, and the enemy's
                 // reply played out, each within supplyTreeRisk) and that brings supply nearer the unit is
                 // the link.
                 List<KeyValuePair<SupplyPoint, HexTile>> tries = new List<KeyValuePair<SupplyPoint, HexTile>>();

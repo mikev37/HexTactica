@@ -63,7 +63,7 @@ namespace HexTactica.AI {
     ///   - Mass: an enemy group our nearby forces outmatch by objectiveRatio, counting everything
     ///     that could support it — where reserves should gather. Defeat in detail at the scale
     ///     of the map; the fighting itself is tactical.
-    ///   - Capture (captureObjectives): every building we do not hold, the enemy HQ too where the
+    ///   - Capture: every building we do not hold, the enemy HQ too where the
     ///     rules let it be taken — the nearest unit that can capture it, and an escort as strong
     ///     as objectiveRatio times what could defend it. Without these the army had one target,
     ///     the building nearest its front, and drifted toward it by tie-break: unopposed on

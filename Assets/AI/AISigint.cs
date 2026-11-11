@@ -192,7 +192,7 @@ namespace HexTactica.AI {
             // Screens (fogScreenBelowCost): a cheap unit does not fear what the fog may hide: finding it is its job.
             if (unknownGround && profile.fogScreenBelowCost > 0 && u.cost > 0 && u.cost < profile.fogScreenBelowCost) unknownGround = false;
             if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && Concentrated) {
-                // fogConcentrate: the chance that one of the unplaced enemy is within reach of this tile (1 - e^-expected),
+                // The chance that one of the unplaced enemy is within reach of this tile (1 - e^-expected),
                 // firing its kind's average, times the share of the enemy we cannot place. At most one unit's fire: the
                 // enemy we can see or remember is priced already. (Was every expected unit firing in full, uncapped: near
                 // the front a stop read as certain death, and the whole army fell back from the contact line.)
@@ -224,11 +224,11 @@ namespace HexTactica.AI {
         readonly Dictionary<HexTile, float> nearMass = new Dictionary<HexTile, float>();
         readonly object massLock = new object();
 
-        /// <summary>fogConcentrate, and this turn's unplaced power is known (AIMap.fogUnplacedPower).</summary>
+        /// <summary>And this turn's unplaced power is known (AIMap.fogUnplacedPower).</summary>
         bool Concentrated { get { return map != null && map.fogUnplacedPower >= 0f; } }
 
         /// <summary>
-        /// fogConcentrate. The enemy we cannot place, in units (its power over an average enemy unit's), shared out among where
+        /// The enemy we cannot place, in units (its power over an average enemy unit's), shared out among where
         /// the enemy is known to be — each of its units seen or remembered (1), its HQ (fogHQWeight), its production sites
         /// (fogProductionWeight, purchases on) — and each share spread over unknown ground falling off by e every fogAnchorFalloff
         /// tiles. Before anything is seen, the HQ (and production sites) hold it all; the far side of the map holds none.
@@ -282,14 +282,14 @@ namespace HexTactica.AI {
             }
         }
 
-        /// <summary>fogConcentrate: share out the unplaced enemy now, on the turn's own thread, once its power is known; the line for the trace (null: not used).</summary>
+        /// <summary>Share out the unplaced enemy now, on the turn's own thread, once its power is known; the line for the trace (null: not used).</summary>
         public string Prime() {
             if (!Concentrated || kinds.Count == 0 || unknown.Count == 0) return null;
             Mass();
             return massNote;
         }
 
-        /// <summary>fogConcentrate: unplaced enemy units expected on unknown ground within their usual reach of <paramref name="at"/>.</summary>
+        /// <summary>Unplaced enemy units expected on unknown ground within their usual reach of <paramref name="at"/>.</summary>
         float UnplacedNear(HexTile at) {
             float v;
             lock (nearMass) if (nearMass.TryGetValue(at, out v)) return v;

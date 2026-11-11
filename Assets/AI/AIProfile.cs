@@ -36,8 +36,6 @@ namespace HexTactica.AI {
 
 
         [Header("Campaign (objectives and task forces)")]
-        [Tooltip("Plan the war as objectives read from the map — defend our HQ, secure a building, clear an enemy group, scout what the fog hides — each with a task force and supply fit to achieve it, and fight fronts made from them (AICampaign). Off: fronts where the fighting is (AIStrategic).")]
-        public bool campaign = true;
         [Tooltip("How evenly the campaign spreads the army. 0: all in — enough at home not to be overrun, everything else on the single best objective. 1: every objective it can meet, and what is left spread over all of them.")]
         [Range(0f, 1f)]
         public float objectiveSpread = 0.5f;
@@ -78,8 +76,6 @@ namespace HexTactica.AI {
         public int campaignMaxTurns = 3;
         [Tooltip("A task force that has gone in and whose main body has got no nearer its objective for this many turns in a row is dissolved (its objective given up a while). 0: never.")]
         public int campaignStallTurns = 0;
-        [Tooltip("Also give up a task force that has not achieved its objective in campaignTimeBox turns (plus a turn for every turn its target is beyond campaignDrawTurns of its staging tile). Off: only the staging time box applies.")]
-        public bool campaignTransitTimeBox = false;
         [Tooltip("A task force given up by a time box leaves its objective alone for this many turns. 0: not at all — its task force is dissolved and the objective formed again from the units best placed for it now.")]
         public int campaignGiveUpTurns = 0;
         [Tooltip("Cohesion: a task force's unit more than this many of its own turns from the task force's centre drops out of it. 0: no limit.")]
@@ -94,16 +90,12 @@ namespace HexTactica.AI {
         public float campaignSurgeRatio = 1.5f;
         [Tooltip("Campaign: turns at most that a stopped task force's units pull back to its staging ground before they are planned afresh (campaignSurgeAbort).")]
         public int campaignSurgeWithdrawTurns = 2;
-        [Tooltip("Campaign: a chokepoint or junction in our vision is held (achieved, released, like a building taken); out of sight it is a Hold objective again only once it has gone dark for fogUnknownTurns, or an enemy unit seen or remembered comes within fogStaleRadius of it.")]
-        public bool campaignHoldContested = true;
         [Tooltip("Campaign: this share of the army's power stays in the reserve: a new task force is taken on only while what is committed stays within the rest.")]
         public float campaignReserveShare = 0.33f;
         [Tooltip("Campaign: at most one task force per this many fighting units (after the reserve share), scouting not counted (0: off).")]
         public int campaignMinTaskForce = 0;
         [Tooltip("Campaign: the share of its need now below which a task force is broken (campaignBreakShort).")]
         public float campaignBreakShortRatio = 0.5f;
-        [Tooltip("Campaign: the central reserve is mobile — aircraft, combat ships, loaded transports (with what they carry) and fast ground units (campaignReserveMinMove or more); infantry on foot and other slow units stay with the ordinary fronts. Off: every spare fighting unit on the ground, as before.")]
-        public bool campaignMobileReserve = true;
         [Tooltip("Campaign, mobile reserve: the least movement a ground unit needs to be in the reserve (a tank: 6, a recon: 8; a grunt: 3).")]
         public int campaignReserveMinMove = 5;
         [Tooltip("All out (campaignKnowledge): our fighting strength at least this many times what the enemy could have.")]
@@ -147,8 +139,6 @@ namespace HexTactica.AI {
         [Tooltip("Buying: each unit of a kind we already have (or have planned this turn) makes another worth this much (1: no variety rule; what we lack against the enemy, AIProduction.Scarcity, already gives diminishing returns).")]
         [Range(0f, 1f)]
         public float productionVariety = 0.97f;
-        [Tooltip("Production: a fighting unit is worth less the longer it would take to reach the fight from where it is built — 1 / (1 + turns to the nearest known enemy / productionTimeHorizon), by its own movement — relative to the quickest fighting unit we could build anywhere (that one keeps its full worth, so fighting units as a whole lose nothing against supply). A slow unit built far from the front (a conscript at a distant city) no longer outbids one that gets there. Off: where it is built does not matter.")]
-        public bool productionTimeToFront = true;
         [Tooltip("Production, productionTimeToFront: turns to the fight that halve a unit's worth.")]
         public float productionTimeHorizon = 3f;
         [Tooltip("Buying: a fighting unit is worth at least this share of its own full worth, so a slot is filled when gold allows even if nothing scores against the enemy.")]
@@ -157,16 +147,12 @@ namespace HexTactica.AI {
         public float productionPresence = 0.25f;
         [Tooltip("Buying: what a unit would take from the enemy counts this much against what it would do to them.")]
         public float productionDefenceWeight = 0.5f;
-        [Tooltip("Buying: what a unit does to an enemy is counted over its whole life — the kills it makes at each strength from 6 down to 1 (damage falls with strength) — so firepower beyond a kill (a bomber, rockets) counts: they still kill when worn down. Off: only at full strength, capped at a kill.")]
-        public bool productionOverkill = true;
         [Tooltip("Buying: a unit of a higher tier (productionTierCosts) is hit less the more lower-tier units we have to screen it: what it would take from the enemy is cut by up to productionShieldCut (all of it for a unit that fires from range or flies, half for one that must close), in proportion to how many of its tier productionShieldRatio lower-tier units could each cover. Infantry screens tanks, AA and gunships; those screen bombers, rockets, missiles and fighters. 0: off.")]
         public float productionShieldCut = 0.6f;
         [Tooltip("Buying (productionShieldCut): lower-tier units it takes to screen one unit of a tier.")]
         public float productionShieldRatio = 2f;
         [Tooltip("Buying (productionShieldCut): the costs from which a unit is tier 1, and tier 2.")]
         public Vector2 productionTierCosts = new Vector2(5000f, 11000f);
-        [Tooltip("Buying: a fighting unit is worth what it does in a shot times the turns it expects to live — 6 strength over what it would take a turn (each enemy's shot, cut by our screen, productionShieldCut), between 1 and productionLifeMax — over productionLifeRef turns: a rocket behind a screen keeps firing, a grunt in front trades and dies. Replaces the one exchange (what it does less productionDefenceWeight of what it takes) and productionDefenceFade. Off: the one exchange.")]
-        public bool productionLifetime = true;
         [Tooltip("Buying (productionLifetime): how often a unit gets a shot: its reach (attack range, plus its move for one that moves and fires in a turn) over this many tiles, at most 1 — rockets reach six tiles from where they stand every turn, a grunt has to walk up first. 0: off.")]
         public float productionReachRef = 6f;
         [Tooltip("Buying (productionLifetime): the most turns a unit is expected to live.")]
@@ -494,10 +480,6 @@ namespace HexTactica.AI {
         [Tooltip("A group plan must beat 'stay' by this much (gold) in the forecast to be adopted.")]
         public float coordinationMargin = 500f;
 
-        [Tooltip("Coordinated strikes in passes (AICoordinator): each unit's best attacks, a survive move and a retreat; battle plans of two or more units on one target from non-conflicting tiles, forecast as one board; best plans act first.")]
-        public bool coordinationPasses = true;
-        [Tooltip("A unit that cannot take buildings pays half a building's worth for ending its turn on one that is not ours while a unit of ours that can take it is within two turns of it: it keeps out of the way (AITactical.CaptureBlockCost). Off (the default): only a task force's own objective building is kept clear, by CampaignStep and the objective's pull.")]
-        public bool captureBlockCost = false;
 
         [Tooltip("Attack options each unit keeps for battle plans.")]
         public int coordOffensiveOptions = 3;
@@ -511,8 +493,6 @@ namespace HexTactica.AI {
 
 
 
-        [Tooltip("Riding to the assault (AIAssault), as a player uses transports: a fighting unit far from the fight gets into a transport with room (one carrying no supply unit, not on supply duty) and stays aboard while it moves up with the army, out of the enemy's reach; riders are put down only where they can strike this turn (getting off costs nothing: they still move and fight) and when the wave goes in; empty transports (not trucks, which carry the supply) go back for more. Replaces combatRides' hop to supplied ground for fighting units.")]
-        public bool assaultRides = true;
 
         [Tooltip("Sea lift: how much a transport ship is worth to buy, times the land units waiting to cross that it would take over (their value, discounted for the turns to get them there). Above 1: the AI puts a ship ahead of a fighting unit of the same value, since without one the units across the water do nothing.")]
         public float seaLiftWeight = 3f;
@@ -566,8 +546,6 @@ namespace HexTactica.AI {
         [Tooltip("Self-preservation: the acting unit counts every enemy blow that could reach its tile (biggest first, weights 1, 1/2, 1/4 ...), beyond what the forecast reply already takes from it, at this weight. 0 = off.")]
         [Range(0f, 2f)]
         public float selfPreservationWeight = 0f;
-        [Tooltip("Self-preservation prices each blow as the reply does: unanswerable fire from range in full, the rest discounted by replyDiscount (and what the reply took from the unit likewise). Off: every possible blow in full, while the blows the reply landed counted at the discount.")]
-        public bool selfPreservationDiscount = true;
 
         [Tooltip("A unit destroyed costs this many more of its strength points' worth than the points themselves: alive, it would heal back, hold ground and fire again.")]
         [Range(0f, 6f)]
@@ -590,8 +568,6 @@ namespace HexTactica.AI {
         [Tooltip("Artillery: gold per tile the enemy could move to next turn that the gun covers from where it ends its turn (its zone of control).")]
         public float artilleryCoverValue = 25f;
 
-        [Tooltip("A gun's zone of control (artilleryCoverValue) and mutual cover count a tile only for the enemies the gun can fire on (its attacksLocomotion): an anti-air battery no longer holds ground it cannot shoot.")]
-        public bool coverByTarget = true;
         [Tooltip("A decision made in the coordination pass (and a supply unit's turn-start plan, reuseGhostPlans) is reused when nothing within this many tiles of the unit changed: the unit's own reach plus one, at most this. 0: the full radius (its reach plus the farthest enemy reach: the same answers). Faster, not the same answers.")]
         [Range(0, 20)]
         public int reuseRadiusCap = 0;
@@ -600,8 +576,6 @@ namespace HexTactica.AI {
         [Range(1, 600)]
         public int speculateQuietFrames = 20;
 
-        [Tooltip("The forecast prices each unit by its role, not its price alone (AIWorld.RoleWorth): what it does against the other side's units, weighted by how little else can hurt them, against its side's average, as a multiplier from roleWorthMin to roleWorthMax (kills still count double on top). The enemy's reply then goes for what we can least spare.")]
-        public bool forecastRoleWorth = false;
         public float roleWorthMin = 0.5f;
         public float roleWorthMax = 2f;
 
@@ -673,8 +647,6 @@ namespace HexTactica.AI {
         public int fogScreenBelowCost = 0;
         [Tooltip("Fog: the weight of what the fog may hide in a move's score (AIFog.FogRisk), against the forecast of the enemy we see or remember (1: as much).")]
         public float fogRiskWeight = 1f;
-        [Tooltip("Procurement: one plan over every facility (the most value in all for the gold), fronts' pressure on what they want, a bonus per facility that can build a kind, saving only for supply, a gap or transit within a wait the map sets. Off: one unit at a time by value per gold.")]
-        public bool procurement = true;
         [Tooltip("Procurement: added to a kind's value for each facility (not under fire) that can build it, pushed back by the resistance its front expects.")]
         public float procFacilityBonus = 1000f;
         [Tooltip("Procurement: the most a unit is saved for (the longest wait is the turns to save this much at 70% of the map's income).")]

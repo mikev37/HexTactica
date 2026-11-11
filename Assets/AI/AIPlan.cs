@@ -28,7 +28,7 @@ namespace HexTactica.AI {
     }
 
     /// <summary>
-    /// Coordinated plans for groups of units in contact (AIProfile.coordination).
+    /// Coordinated plans for groups of units in contact.
     ///
     /// Units still decide one at a time — but before they do, each group of units the enemy can
     /// strike next turn (or that can strike now) is given three whole-group plans, each forecast as
@@ -168,7 +168,6 @@ namespace HexTactica.AI {
                     return c != 0 ? c : AIMap.CompareUnits(a, b);
                 });
                 bool ownSideBlocks = false;
-                // Our units destroyed by retaliation are off the board (the single-move forecast does the same).
 
                 Dictionary<Unit, HashSet<HexTile>> positions = new Dictionary<Unit, HashSet<HexTile>>();
                 foreach (Unit e in enemies) {

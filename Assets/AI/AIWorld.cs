@@ -219,7 +219,7 @@ namespace HexTactica.AI {
                 }
                 // Our unit leaving its tile is the same for every option of this decision: where the enemy could go with
                 // that tile free is worked out once (per board read, unit and tile). Our unit standing on its new tile
-                // changes it only if that tile is one of them (it would block it). (vacatedReach; AIVERIFY checks it.)
+                // changes it only if that tile is one of them (it would block it). (AIVERIFY checks it.)
                 if (moving && knocked == null && goneHere.Count == 0) {
                     HashSet<HexTile> r1 = VacatedReach(e, u, from, map);
                     if (!r1.Contains(uAt) && uAt != e.tile) {
@@ -248,7 +248,7 @@ namespace HexTactica.AI {
             AIProfile sp0 = map.profile;
             if (sp0.selfPreservationWeight > 0f && hp[u] > 0f && GameController.Targetable(u) && (!Shields(u))) {
                 List<float> blows = new List<float>();
-                float k0 = sp0.selfPreservationDiscount ? 1f - sp0.replyDiscount : 1f;
+                float k0 = 1f - sp0.replyDiscount;
                 foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in positions) {
                     Unit e = kv.Key;
                     if (hp[e] <= 0f) continue;
@@ -256,7 +256,7 @@ namespace HexTactica.AI {
                     if (fire == null) continue;
                     int dmg, back;
                     CombatMath.Exchange(e, Hp(hp[e]), fire, u, Hp(hp[u]), uAt, out dmg, out back);
-                    // (selfPreservationDiscount: priced as the reply prices a blow — fire that cannot be answered
+                    // (Priced as the reply prices a blow — fire that cannot be answered
                     // from range is certain, the rest discounted by replyDiscount. Undiscounted, a blow that only
                     // could land cost twice one the forecast landed, and a unit was better off being shot.)
                     if (dmg > 0) blows.Add(dmg * (back == 0 && fire.Distance(uAt) > 1 ? 1f : k0));
@@ -290,11 +290,11 @@ namespace HexTactica.AI {
 
             bool weighs = true;
             bool breakpoints = true;
-            // With replyBreakpoints, the reply is played at full damage (kills where they really
+            // The reply is played at full damage (kills where they really
             // happen) and the discount is applied afterwards to what it cost us; unanswered ranged
             // fire (artillery) is certain and not discounted, so it is also tracked on its own.
             Dictionary<Unit, float> hpCertain = breakpoints ? new Dictionary<Unit, float>(hp) : null;
-            // Where each of ours stands as the reply plays out (forecastRetreatChain moves those driven back).
+            // Where each of ours stands as the reply plays out.
             Dictionary<Unit, HexTile> displaced = new Dictionary<Unit, HexTile>();
             // Our pips their indirect fire suppresses as the reply plays out: they do not fire back at
             // the blows that follow. (Everything of ours starts their turn unsuppressed: suppression
@@ -404,7 +404,7 @@ namespace HexTactica.AI {
             // The self-preservation term, net of what the reply already took from this unit.
             if (selfExposure > 0f) {
                 float already = (hpBeforeReply - Mathf.Max(0f, hp[u])) * Value(u) + (hp[u] <= 0f ? sp0.deathPremium * Value(u) : 0f);
-                if (breakpoints && sp0.selfPreservationDiscount) {
+                if (breakpoints) {
                     // What the reply took from it as the world counts it: the certain part in full, the rest discounted.
                     float k1 = 1f - sp0.replyDiscount, hc = Mathf.Max(0f, hpCertain[u]), hf = Mathf.Max(0f, hp[u]);
                     already = ((hpBeforeReply - hc) + k1 * (hc - hf)) * Value(u)
@@ -413,7 +413,7 @@ namespace HexTactica.AI {
                 w.selfRisk = Mathf.Max(0f, selfExposure - already) * sp0.selfPreservationWeight;
             }
 
-            // What is left. With replyBreakpoints: valued at full damage and with only the certain
+            // What is left. Valued at full damage and with only the certain
             // fire, and the uncertain part of the difference discounted.
             AIPerf.End("forecast: self risk", __t); __t = AIPerf.Begin();
             float valued = Valuate(hp, u, uAt, endsAt, map, w);
@@ -821,8 +821,8 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Everyone of ours but the acting unit, as the board stands (spaceIncremental): each unit's move and strike tiles
-        /// (AIMap.SpaceOf), how many of them reach each tile, how many tiles count (spaceContestedOnly), and which units
+        /// Everyone of ours but the acting unit, as the board stands: each unit's move and strike tiles
+        /// (AIMap.SpaceOf), how many of them reach each tile, how many tiles count, and which units
         /// strike each tile (mutual cover). Worked out once per acting unit and board read, not once per option: an option
         /// only moves the acting unit, kills some of ours in the forecast, or re-reads those near a unit driven back.
         /// </summary>
@@ -868,7 +868,7 @@ namespace HexTactica.AI {
             ourMove.Clear(); ourStrike.Clear();
             Dictionary<Unit, HashSet<HexTile>> fireOf = scratchFireOf;
             fireOf.Clear();
-            // spaceIncremental: the same counts from a per-board tally of everyone else, adjusted for this option.
+            // The same counts from a per-board tally of everyone else, adjusted for this option.
             OwnSpace inc = OwnSpaceFor(u, map);
             int ourCount = 0;
             HashSet<HexTile>[] uSpace = null;
@@ -922,8 +922,8 @@ namespace HexTactica.AI {
             }
             HashSet<HexTile> theirMove = scratchTheirMove, theirStrike = scratchTheirStrike;
             theirMove.Clear(); theirStrike.Clear();
-            // (coverByTarget: which kinds of enemy could move onto each tile, as locomotion bits.)
-            bool byTarget = prof.coverByTarget;
+            // (Which kinds of enemy could move onto each tile, as locomotion bits.)
+            bool byTarget = true;
             Dictionary<HexTile, int> moveKinds = scratchMoveKinds;
             moveKinds.Clear();
             foreach (Unit e in map.enemyUnits) {
@@ -1103,7 +1103,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// forecastRoleWorth: each unit's worth in the forecast times what it does for its side against the other
+        /// Each unit's worth in the forecast times what it does for its side against the other
         /// (RoleWorth), set for the turn by AIPlayer (null: price alone). Every Think may run on its own thread.
         /// </summary>
         [ThreadStatic] public static Dictionary<Unit, float> Roles;
@@ -1151,7 +1151,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Does <paramref name="u"/> shield anything by standing in reach (selfPreservationShieldless)? A unit that fires back
+        /// Does <paramref name="u"/> shield anything by standing in reach? A unit that fires back
         /// at ground attackers beside it does: the blows it takes would land on someone else if it stepped back. Artillery,
         /// anti-air, aircraft that cannot answer the ground, supply units: every blow they draw is lost for nothing.
         /// </summary>

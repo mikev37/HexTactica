@@ -162,7 +162,7 @@ namespace HexTactica.AI {
         public static bool Ghost;
         static readonly Dictionary<HexTile, string> breakdown = new Dictionary<HexTile, string>();
 
-        /// <summary>Set (per thread) while placing a front-line supply unit (supplyFrontFirst): it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
+        /// <summary>Set (per thread) while placing a front-line supply unit: it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
         [System.ThreadStatic] public static bool FrontLine;
 
         public static float ExactValue(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
@@ -383,7 +383,7 @@ namespace HexTactica.AI {
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(map.player, hub);
             AIPerf.End("supply plan: network without it", __s); __s = AIPerf.Begin();
             Dictionary<HexTile, float> proxy = new Dictionary<HexTile, float>();
-            // Each tile's value on its own: at once on worker threads (profile.parallelForecast, AIParallel).
+            // Each tile's value on its own: at once on worker threads (AIParallel).
             float[] pv = new float[candidates.Count];
             AIParallel.For(candidates.Count, i => pv[i] = ProxyValue(hub, candidates[i], map, without));
             for (int i = 0; i < candidates.Count; i++) proxy[candidates[i]] = pv[i];
@@ -456,7 +456,7 @@ namespace HexTactica.AI {
             };
 
             TransportPlan plan = AITransportPlanner.Plan(unit, map, profile, valueOf, shortlist, reserved);
-            // A ride for a supply unit ends with it still aboard (supplyStaysAboard): the transport parks on the tile
+            // A ride for a supply unit ends with it still aboard: the transport parks on the tile
             // chosen for the supply, if it can stand there, and the supply spreads from it.
             if (plan != null && plan.usesTransport && plan.transport != null) {
                 plan.stayAboard = true;

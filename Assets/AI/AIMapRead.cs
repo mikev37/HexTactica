@@ -87,7 +87,7 @@ namespace HexTactica.AI {
             foreach (KeyValuePair<SupplyPoint, HexTile> kv in ghost)
                 if (kv.Key == null || kv.Key.myUnit == null || kv.Key.myUnit.Strength <= 0 || kv.Key.myUnit.tile == null) gone.Add(kv.Key);
             foreach (SupplyPoint g in gone) ghost.Remove(g);
-            // keepCaches: kept while our supply units, the buildings and the terrain are as they were, the planned
+            // Kept while our supply units, the buildings and the terrain are as they were, the planned
             // (ghost) moves are the same and nothing changed on or beside the network (an enemy there cuts it; one gone,
             // or a supply unit killed, retreated or carried off, is a change of marks or tiles and solves it afresh).
             string ghosts = GhostKey();

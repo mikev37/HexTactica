@@ -50,7 +50,7 @@ namespace HexTactica.AI {
             Building onHQ = unit.tile.building;
             if (unit.airTanker) return AIAir.DecideTanker(unit, map);
             AIRole role = AIRoles.Classify(unit, profile);
-            // Wounded: fighting on and withdrawing are weighed by the move score (AIProfile.woundedWorldCompare), so
+            // Wounded: fighting on and withdrawing are weighed by the move score, so
             // what holding its ground is worth — a building it is taking, the enemy HQ — counts. (With withdrawal
             // by position alone, a wounded grunt walked off the enemy HQ it was taking.)
             if (role == AIRole.Wounded) return DecideWounded(unit, map, profile, posture, false);
@@ -175,7 +175,7 @@ namespace HexTactica.AI {
         /// out of range, and walks them forward when it is not.
         /// </summary>
         /// <summary>
-        /// Should <paramref name="unit"/> regroup (AIProfile.regroup)? An expensive fighting unit (regroupExpensiveCost
+        /// Should <paramref name="unit"/> regroup? An expensive fighting unit (regroupExpensiveCost
         /// or more), at real risk where it stands (regroupRisk), on a front that is not on the offensive.
         /// </summary>
         public static bool Regrouping(Unit unit, AIMap map, AIProfile profile, Posture posture) {
@@ -195,7 +195,7 @@ namespace HexTactica.AI {
             Building b = t.building;
             if (b == null || b.owner != unit.owner || b.Purchasable().Count == 0) return false;
             if (GameController.gc != null && !GameController.gc.purchasesAllowed) return false;
-            // offFacilities: never (not only where no enemy can strike it next turn).
+            // Never (not only where no enemy can strike it next turn).
             return true;
         }
 
@@ -210,7 +210,7 @@ namespace HexTactica.AI {
             // tile reserved for an aircraft's landing this turn.
             AIAir.FilterSafe(unit, map, stops);
             AIAir.FilterReserved(unit, map, stops);
-            // Regrouping (AIProfile.regroup): an expensive unit at risk on a front not on the offensive pulls back
+            // Regrouping: an expensive unit at risk on a front not on the offensive pulls back
             // to where nothing can strike it tonight — keeping sight and reach as the move score values them —
             // while the cheap units fight and the reserve comes up. It engages when its front is on the offensive,
             // or when there is no such tile left (the enemy is through, or there is no room behind).
@@ -250,7 +250,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Choice by simulated outcome (choiceMode 2): every option is played out against the
+        /// Choice by simulated outcome: every option is played out against the
         /// enemy's reply (AIWorld) and scored by what is left on both sides. Options within
         /// worldTie of this unit's strength points of the best world survive; among them the
         /// highest denial + positional score wins (approach, supply, strategy, commitment).
@@ -274,7 +274,7 @@ namespace HexTactica.AI {
             // In the fight (AIProfile.campaignReleaseTurns): the campaign has set the stage, and the unit
             // fights as it will — no lean toward staging or objective, no pace, no dip rule. (On BridgeCrossing
             // the enemy is two moves away from the start, and the task forces still gathered and held.)
-            // (campaignReleaseOwnReach: by our reach to them. By theirs, a gunship that could reach the rear put grunts six
+            // (By our reach to them. By theirs, a gunship that could reach the rear put grunts six
             // tiles behind the line "in the fight", with no lean toward the front, and they milled about at the back.)
             if (profile.campaignReleaseTurns > 0 && (map.TurnsToEngage(unit)) <= profile.campaignReleaseTurns) return 0f;
             bool gathering = f.staging && f.campaignStaging != null && f.stagingTile != null;
@@ -312,7 +312,7 @@ namespace HexTactica.AI {
             float worth = AIScore.Worth(unit);
             AIWorld.Cache cache = map.replyCache;
             float bestWorld = float.NegativeInfinity;
-            // Every option's forecast, at once on worker threads (profile.parallelForecast, AIParallel): each is
+            // Every option's forecast, at once on worker threads (AIParallel): each is
             // independent of the others, and each lands on its own option.
             bool narrate = DecisionLog != null;
             map.TheaterOf(unit);
@@ -323,7 +323,7 @@ namespace HexTactica.AI {
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
                 // Runways and docks are kept clear for the aircraft and ships that land there.
                 x = -AIAir.RunwayBlockCost(unit, o.stop, map); o.world.score += x; o.Extra("runway", x);
-                // A building to take is kept clear for those who can take it (AIProfile.captureBlockCost).
+                // A building to take is kept clear for those who can take it.
                 x = -CaptureBlockCost(unit, o.stop, map); o.world.score += x; o.Extra("blocksCapture", x);
                 // Fog of war (played by): seeing from there, and not being seen there.
                 x = AIFog.StopValue(unit, o.stop, map, profile); o.world.score += x; o.Extra("sight", x);
@@ -344,7 +344,7 @@ namespace HexTactica.AI {
                     if (map.TurnsToContact(unit) > profile.objectiveContactTurns && map.SupplyDepth(o.stop) <= 0 && map.TurnsToSupply(unit, o.stop) > profile.campaignDipTurns) { x = -AIScore.OutOfSupplyCost(unit, o.stop, map) * hunger; o.world.score += x; o.Extra("outOfSupply", x); }
                 }
             }
-            // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
+            // A unit that could fight does not go capturing instead: with
             // an attack open to it, standing on a building to take it earns it nothing.
             // (A capture move is held below the best attack; anything else — falling back, say — is judged as usual.)
             if (options.Exists(o => o.shot.valid)) {
@@ -367,7 +367,7 @@ namespace HexTactica.AI {
             // tiny ones decided everything.
             float tie = Mathf.Max(profile.worldTieMin, profile.worldTie * worth);
             List<Option> kept = options.FindAll(o => o.world.score >= bestWorld - tie);
-            // Within the tie, a shot that does damage beats standing off (tieFavorsShot): as good by the forecast, the fight is
+            // Within the tie, a shot that does damage beats standing off: as good by the forecast, the fight is
             // taken on our terms. (Tied with an attack, a tank fell back five tiles by position, and the line never struck.)
             // (Full strength only, and from supplied ground: a wounded unit rotates out, and none chases a shot out of supply.)
             if (unit.Strength >= 6 && !AIAssault.Wounded(unit, profile, map)) {
@@ -442,11 +442,11 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// A unit that cannot take buildings, ending its turn on one that is not ours while a unit of ours that can take
-        /// it could get there within two turns, is in its way: half the building's worth (AIProfile.captureBlockCost).
+        /// it could get there within two turns, is in its way: half the building's worth.
         /// (A gunship stood on the enemy's empty HQ while the grunt that would have taken it walked back to supply.)
         /// </summary>
         public static float CaptureBlockCost(Unit unit, HexTile stop, AIMap map) {
-            if (!map.profile.captureBlockCost || unit == null || stop == null || Building.CanCapture(unit)) return 0f;
+            return 0f;
             Building b = stop.building;
             if (b == null || !b.Capturable || b.owner == unit.owner) return 0f;
             foreach (Unit c in map.ownUnits) {
@@ -810,7 +810,7 @@ namespace HexTactica.AI {
         /// by threat alone walks a unit into a quiet corner outside supply where it starves.
         /// </summary>
         /// <summary>
-        /// A unit at or below withdrawStrength (woundedNeedsSafety on). It falls back only when the
+        /// A unit at or below withdrawStrength. It falls back only when the
         /// withdraw tile both heals it (friendly supply) and is out of the enemy's reach next turn,
         /// and fighting on is not worth more than that (the forecast's world score of its best
         /// fighting move against that of the withdraw tile). Otherwise it fights as its type does.
@@ -886,7 +886,7 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction DecideIdleTransport(Unit unit, AIMap map, AIProfile profile) {
             float worth = AIScore.Worth(unit);
-            // An idle truck follows the army (supplyLeaps): each step toward the enemy HQ counts, up to the
+            // An idle truck follows the army: each step toward the enemy HQ counts, up to the
             // army's frontmost fighting unit and never past it — out of the way of the column behind and
             // where supply units and the army will want a ride. (Parked beside the supply units, the
             // trucks blocked a two-tile road and nothing behind them could move.)

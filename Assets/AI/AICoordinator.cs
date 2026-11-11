@@ -6,7 +6,7 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// Coordinated strikes (AIProfile.coordinationPasses): a correction on top of the units' own
+    /// Coordinated strikes: a correction on top of the units' own
     /// decisions, not a replacement for them.
     ///
     ///   1. Every combat unit in contact runs its normal decision without acting. What it chose is
@@ -253,8 +253,6 @@ namespace HexTactica.AI {
                 foreach (PlanStep s in b.steps) { s.group = group; usedUnits.Add(s.unit); usedTiles.Add(s.stop); result.Add(s); }
             }
 
-            // ---- cover swaps: a unit standing guard over a friend, or the friend stepping aside.
-
             // ---- rule 5: no charging in on a promise nobody made.
             foreach (Menu m in menus) {
                 if (!m.favourite.assist || usedUnits.Contains(m.unit)) continue;
@@ -272,73 +270,6 @@ namespace HexTactica.AI {
             public Candidate guardAlt, wardAlt;
             public List<PlanStep> steps;
             public float joint, synergy, sacrifice, surplus;
-        }
-
-        /// <summary>
-        /// Cover swaps, after the kill plans (whose units are excused: they had to be where they are).
-        /// A unit whose favourite is a move with no shot near a friend (it is guarding an approach)
-        /// is paired with that friend: instead of the guard holding the tile, the friend steps to a
-        /// safer tile and the guard does its next best thing. Both pairs of moves are forecast
-        /// together (AIPlan.Evaluate). As with kill plans, the swap is taken only for what acting
-        /// together adds (its synergy: the joint difference minus each move's own difference) beyond
-        /// what the two give up by their own evaluations (sacrifice). A friend that wanted to shoot
-        /// from where it stands loses that shot in the sacrifice, so it is rarely asked to move.
-        /// </summary>
-        static void CoverSwaps(List<Menu> menus, AIMap map, AIProfile profile, Func<PlanStep, float> alone, bool retreats,
-                               HashSet<Unit> usedUnits, HashSet<HexTile> usedTiles, List<PlanStep> result, Action<string> log) {
-            List<Swap> swaps = new List<Swap>();
-            Func<List<PlanStep>, float> joint = steps => AIPlan.Evaluate(steps, map, false, retreats).score;
-            foreach (Menu g in menus) {
-                if (usedUnits.Contains(g.unit) || g.favourite.shot.valid) continue;
-                foreach (Menu w in menus) {
-                    if (w == g || usedUnits.Contains(w.unit)) continue;
-                    HexTile wAt = w.favourite.stop;
-                    if (g.favourite.stop.Distance(wAt) > 2) continue;
-                    float wLoss = map.ExpectedLoss(w.unit, wAt);
-                    if (wLoss <= 0f) continue;   // the friend is not under threat where it means to stand
-                    // The friend's safer alternatives, best by its own evaluation first.
-                    List<Candidate> wAlts = w.all.FindAll(c => c != w.favourite && !usedTiles.Contains(c.stop) && map.ExpectedLoss(w.unit, c.stop) < wLoss);
-                    if (wAlts.Count > 3) wAlts = wAlts.GetRange(0, 3);
-                    List<Candidate> gAlts = g.all.FindAll(c => c != g.favourite && !usedTiles.Contains(c.stop));
-                    if (gAlts.Count > 3) gAlts = gAlts.GetRange(0, 3);
-                    if (wAlts.Count == 0 || gAlts.Count == 0) continue;
-                    PlanStep wFav = Step(w.favourite), gFav = Step(g.favourite);
-                    float before = joint(new List<PlanStep> { wFav, gFav });
-                    float singlesBefore = alone(wFav) + alone(gFav);
-                    foreach (Candidate wa in wAlts) {
-                        foreach (Candidate ga in gAlts) {
-                            if (ga.stop == wa.stop) continue;
-                            PlanStep ws = Step(wa), gs = Step(ga);
-                            ws.kind = "cover swap"; gs.kind = "cover swap";
-                            Swap sw = new Swap { guard = g, ward = w, guardAlt = ga, wardAlt = wa, steps = new List<PlanStep> { ws, gs } };
-                            float after = joint(sw.steps);
-                            sw.joint = after - before;
-                            sw.synergy = sw.joint - ((alone(ws) + alone(gs)) - singlesBefore);
-                            sw.sacrifice = Mathf.Max(0f, w.favourite.world - wa.world) + Mathf.Max(0f, g.favourite.world - ga.world);
-                            sw.surplus = sw.synergy - sw.sacrifice;
-                            swaps.Add(sw);
-                        }
-                    }
-                }
-            }
-            swaps.Sort((a, b) => b.surplus.CompareTo(a.surplus));
-            int shown = 0, group = 1000;
-            foreach (Swap sw in swaps) {
-                // The pair's joint forecast must itself be better than the favourites', as well as the
-                // surplus counting both units' own evaluations.
-                bool adopt = sw.surplus > profile.coordinationPassMargin && sw.joint > 0f;
-                foreach (PlanStep st in sw.steps) if (usedUnits.Contains(st.unit) || usedTiles.Contains(st.stop)) adopt = false;
-                if (log != null && (adopt || shown < 3)) {
-                    shown++;
-                    log("     " + (adopt ? "> " : "  ") + "cover swap: " + N(sw.guard.unit) + D(sw.guard.unit.tile) + " was to guard " + N(sw.ward.unit) + D(sw.ward.unit.tile)
-                        + " from " + D(sw.guard.favourite.stop) + "; instead " + string.Join("; ", sw.steps.ConvertAll(x => x.ToString()).ToArray())
-                        + ": together " + sw.joint.ToString("+0;-0") + ", synergy " + sw.synergy.ToString("+0;-0") + ", sacrifice " + sw.sacrifice.ToString("0")
-                        + " = " + sw.surplus.ToString("+0;-0"));
-                }
-                if (!adopt) continue;
-                group++;
-                foreach (PlanStep st in sw.steps) { st.group = group; usedUnits.Add(st.unit); usedTiles.Add(st.stop); result.Add(st); }
-            }
         }
 
         /// <summary>A tile <paramref name="u"/> can reach this turn and fire on <paramref name="at"/> from: free, not claimed, least exposed.</summary>

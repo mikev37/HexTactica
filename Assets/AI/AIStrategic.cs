@@ -461,7 +461,7 @@ namespace HexTactica.AI {
             int radius = Mathf.Max(1, f.campaignStagingRadius);
             // Gathered: healthy, on the staging ground (within its radius of the staging tile) or already past it.
             float gathered = 0f, committed = 0f, force = 0f;
-            // Past the staging ground counts only with the body (campaignGatherWithBody): within the radius of the task
+            // Past the staging ground counts only with the body: within the radius of the task
             // force's centre too. (A lone unit up front counted as gathered: two grunts, one at the staging ground and one
             // far ahead by the target, made the need and the front went in on its first turn.)
             HexTile body = AICampaign.Centre(f.assigned.FindAll(x => x != null && x.tile != null && x.Firepower > 0 && x.Hub == null && x.Strength >= healthy));

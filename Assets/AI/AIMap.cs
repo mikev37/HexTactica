@@ -157,7 +157,7 @@ namespace HexTactica.AI {
         public AIMap(Player player, AIProfile profile) : this(player, profile, null) { }
 
         /// <summary>
-        /// With <paramref name="carry"/> (keepCaches: last turn's map for the same side), the caches it ended with that
+        /// With <paramref name="carry"/> (last turn's map for the same side), the caches it ended with that
         /// what happened since leaves standing are kept (AIMapCache).
         /// </summary>
         public AIMap(Player player, AIProfile profile, AIMap carry) : this(player, profile, carry, false) { }
@@ -179,7 +179,7 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// Speculation: work out now what the turn's own map will most likely ask for (every enemy's reach, every
-        /// unit's move field and space), so the turn's map takes it over (keepCaches keeps what still stands).
+        /// unit's move field and space), so the turn's map takes it over (what still stands is kept).
         /// </summary>
         public void Warm() {
             foreach (Unit e in enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) BaseReach(e, false);
@@ -261,7 +261,7 @@ namespace HexTactica.AI {
 
         void Rebuild(bool recalculateThreat) {
             readCount++;
-            // keepCaches: only what the board's changes since the last read could have changed (AIMapCache).
+            // Only what the board's changes since the last read could have changed (AIMapCache).
             ReadDelta(); PruneUnitCaches();
             theaters.Clear();
             theaterRadius.Clear();
@@ -310,11 +310,11 @@ namespace HexTactica.AI {
 
         /// <summary>What the fog may hide (AISigint), or null: nothing to price.</summary>
         public AISigint sigint;
-        /// <summary>How well we know the enemy's forces and how they compare (AIProfile.campaignKnowledge); null when off.</summary>
+        /// <summary>How well we know the enemy's forces and how they compare; null when off.</summary>
         public AIKnowledge knowledge;
         /// <summary>fogUncertainty: the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge); -1 unset.</summary>
         public float fogUncertainty = -1f;
-        /// <summary>fogConcentrate: the enemy's power we cannot place this turn (estimate - known, AIKnowledge); -1 unset.</summary>
+        /// <summary>The enemy's power we cannot place this turn (estimate - known, AIKnowledge); -1 unset.</summary>
         public float fogUnplacedPower = -1f;
         /// <summary>The enemy units we knew of when fogUnplacedPower was set: one seen later in the turn is taken out of the unplaced (not counted twice).</summary>
         public HashSet<Unit> fogKnownAtStart;
@@ -853,7 +853,7 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// How far <paramref name="from"/> is from <paramref name="to"/> for strategy. With
-        /// profile.travelDistance and a unit that walks: steps over land (hex distance plus the
+        /// A unit that walks: steps over land (hex distance plus the
         /// map's width when there is no land route). Otherwise, and for aircraft and ships, hex distance.
         /// </summary>
         /// <summary>
@@ -861,7 +861,7 @@ namespace HexTactica.AI {
         /// not reach it). Across water only a ship (or an aircraft) gets a land unit there.
         /// </summary>
         /// <summary>
-        /// unifiedLogistics: "forward" for supply toward <paramref name="to"/>. Over land (LandSteps) when the land it
+        /// "Forward" for supply toward <paramref name="to"/>. Over land (LandSteps) when the land it
         /// stands on holds ground our supply buildings reach (a road around water is followed, not cut across); else —
         /// an island, a far shore — over land and water alike, one a tile, so supply carried by ship (or aircraft that
         /// hold where they stop) goes the way it can only go. Cached for the turn.
@@ -949,7 +949,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Across water (AIProfile.seaLift), while we have a transport ship or a naval yard that builds one: the walk from
+        /// Across water, while we have a transport ship or a naval yard that builds one: the walk from
         /// <paramref name="from"/> to its shore, the crossing (a step a tile of water), the walk from where it lands to
         /// <paramref name="to"/>, and seaLiftBoardSteps for getting in and out. Troops board from any shore
         /// (Transporting.CanBoardOnto), so the trip starts at whichever is best, not at a yard. int.MaxValue: no way by

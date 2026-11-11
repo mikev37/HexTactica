@@ -4,7 +4,7 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// Supply for the campaign's fronts (AIProfile.campaignLogistics), planned at the start of each turn.
+    /// Supply for the campaign's fronts, planned at the start of each turn.
     ///
     /// The fronts (task forces with units) in order of their size, largest first. For each, the
     /// logistics chain comes first: from the static network (HQ and our buildings) toward the front
@@ -40,7 +40,7 @@ namespace HexTactica.AI {
             public bool short_;
             /// <summary>Power (worth times strength, the scale AIProduction values fighting units on) of the front's fighting units standing outside supply.</summary>
             public float unsupplied;
-            /// <summary>unifiedLogistics: its goal's land holds no ground our supply buildings reach (AIMap.SupplyAcrossWater): its supply goes by ship.</summary>
+            /// <summary>Its goal's land holds no ground our supply buildings reach (AIMap.SupplyAcrossWater): its supply goes by ship.</summary>
             public bool acrossWater;
             /// <summary>... and none of our supply reaches that land now: troop ships bound there carry a supply unit along.</summary>
             public bool bare;
@@ -56,12 +56,12 @@ namespace HexTactica.AI {
         public readonly Dictionary<SupplyPoint, Task> tacticalOf = new Dictionary<SupplyPoint, Task>();
         public readonly Dictionary<SupplyPoint, Ride> rides = new Dictionary<SupplyPoint, Ride>();
         /// <summary>
-        /// unifiedLogistics: a front's own supply unit riding along in a troop ship bound for land without our supply (the
+        /// A front's own supply unit riding along in a troop ship bound for land without our supply (the
         /// ship at the front's naval yard, taking on troops or about to): it gets in; once the troops are ashore it is a
         /// chain link aboard, and the ship holds off that shore for it (the chain places it, linked).
         /// </summary>
         public readonly Dictionary<SupplyPoint, Unit> alongs = new Dictionary<SupplyPoint, Unit>();
-        /// <summary>Free ships (unifiedLogistics): empty transport ships claimed by no one.</summary>
+        /// <summary>Free ships: empty transport ships claimed by no one.</summary>
         public int freeShips;
         /// <summary>
         /// Each chain link's own truck (claimed before any front's supply unit gets a ride): the truck it is
@@ -100,7 +100,7 @@ namespace HexTactica.AI {
         public static HexTile Goal(CampaignObjective o) { return o.went || o.staging == null ? o.target : o.staging; }
 
         /// <summary>
-        /// Where the front tells its chain it needs supply (AIProfile.campaignChainToUnits): its unit out of our
+        /// Where the front tells its chain it needs supply: its unit out of our
         /// supply nearest its target, else its unit nearest its target — where its units are, not where it is
         /// going; the chain works out its own links. Off (or no units): Goal(o).
         /// </summary>
@@ -129,7 +129,7 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// A transport that can carry supply for <paramref name="t"/>: on its land, a ground one; across water
-        /// (unifiedLogistics), a ship too, or an aircraft that holds where it stops (not one that must go back to a runway).
+        ///, a ship too, or an aircraft that holds where it stops (not one that must go back to a runway).
         /// </summary>
         public static bool IsCarrierFor(Unit c, Task t) {
             if (IsCarrier(c)) return true;
@@ -229,7 +229,7 @@ namespace HexTactica.AI {
                 t.gap = p.reachSteps > 0 && t.unsupplied > 0f;
             }
 
-            // unifiedLogistics: a supply unit aboard a ship is a link at sea, never a front's own to be put ashore: the chain of
+            // A supply unit aboard a ship is a link at sea, never a front's own to be put ashore: the chain of
             // the front across water nearest it keeps it (aboard, linked where the ship can be: AISupplyChain).
             foreach (SupplyPoint h in new List<SupplyPoint>(pool)) {
                 Unit c = h.myUnit.trasnporter;
@@ -396,7 +396,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// unifiedLogistics: troop ships bound for land without our supply (Task.bare) carry a supply unit along. A transport
+        /// Troop ships bound for land without our supply (Task.bare) carry a supply unit along. A transport
         /// ship (no supply aboard, room for one) at or beside the naval yard a bare front embarks from — taking on troops or
         /// about to — gets the nearest of that front's own supply units on our side that can get in this turn (it waits
         /// at that yard for the ship otherwise: DropNear). Not a second wave: a front whose land our supply already reaches.
@@ -467,7 +467,7 @@ namespace HexTactica.AI {
         /// its goal) not ahead of it. Either way, one the enemy we know of cannot hit tonight.
         /// </summary>
         public static HexTile DropNear(Task t, Unit truck, AIMap map) {
-            // Across water (unifiedLogistics): a supply unit still on our side waits at the naval yard the front embarks from.
+            // Across water: a supply unit still on our side waits at the naval yard the front embarks from.
             HexTile standsOn = truck != null ? (truck.trasnporter != null ? truck.trasnporter.tile : truck.tile) : null;
             if (t.acrossWater && t.yard != null && standsOn != null && standsOn.terrain != null && standsOn.terrain.elevation >= 0 && !map.SupplyAcrossWater(standsOn)) {
                 HexTile atYard = null; int yd = int.MaxValue;
