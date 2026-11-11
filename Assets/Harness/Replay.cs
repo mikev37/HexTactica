@@ -169,6 +169,8 @@ namespace HexTactica.Harness {
             if (GameLog.Lines.ReadBuy(line, sides, out a, out b, out n)) return true;
             if (GameLog.Lines.ReadDies(line, sides, out a, out b, out c)) return c != GameLog.Lines.Combat && c != GameLog.Lines.Aboard;
             if (GameLog.Lines.ReadChangesHands(line, out a, out b, out c)) return true;
+            GameLog.Lines.CargoLine cargo;
+            if (GameLog.Lines.ReadCargo(line, sides, out cargo)) return true;
             return GameLog.Lines.ReadResigns(line, sides, out a);
         }
 
@@ -211,22 +213,27 @@ namespace HexTactica.Harness {
             return null;
         }
 
-        /// <summary>The unit of this side and kind on the tile (else whatever unit stands there, else null).</summary>
+        /// <summary>The unit of this side and kind standing on the tile, or null.</summary>
         static Unit UnitAt(string side, string kind, int x, int y) {
             HexTile t = Tile(x, y);
             Unit u = t != null ? t.occupier : null;
-            return u != null && u.Strength > 0 ? u : null;
+            return u != null && u.Strength > 0 && Is(u, side, kind) ? u : null;
+        }
+
+        static bool Is(Unit u, string side, string kind) {
+            return u.owner != null && u.owner.personal_name == side && GameLog.Lines.UnitName(u) == kind;
         }
 
         static void Apply(Turn t, int e) {
             string line = t.events[e];
             string side, unit, cause, a, b; int x1, y1, x2, y2, cost;
             GameLog.Lines.AttackLine at;
+            GameLog.Lines.CargoLine cargo;
             if (GameLog.Lines.ReadMoved(line, sides, out side, out unit, out x1, out y1, out x2, out y2)) {
                 Move(UnitAt(side, unit, x1, y1), Tile(x2, y2));
             } else if (GameLog.Lines.ReadAttack(line, sides, out at)) {
                 Unit attacker = UnitAt(at.side, at.unit, at.fromX, at.fromY);
-                if (attacker == null || attacker.owner == null || attacker.owner.personal_name != at.side) {
+                if (attacker == null) {
                     // It moved and then fired: its move is logged after (when it finished). Play that move first.
                     for (int j = t.actions.IndexOf(e) + 1; j < t.actions.Count; j++) {
                         int k = t.actions[j];
@@ -245,6 +252,16 @@ namespace HexTactica.Harness {
                 HexTile back = at.retreated ? Tile(at.retreatX, at.retreatY) : null;
                 if (attacker != null && attacker != defender) attacker.ReplayAttack(defender, at.dealt, at.taken, back);
                 else { defender.Strength = Mathf.Max(0, defender.Strength - at.dealt); if (defender.Strength <= 0) defender.ReplayLoss(); }
+            } else if (GameLog.Lines.ReadCargo(line, sides, out cargo)) {
+                Unit transport = UnitAt(cargo.transportSide, cargo.transportUnit, cargo.transportX, cargo.transportY);
+                if (transport == null) return;
+                if (cargo.boards) {
+                    Unit rider = UnitAt(cargo.side, cargo.unit, cargo.x, cargo.y);
+                    if (rider != null) Transporting.Embark(transport, rider);
+                } else {
+                    Unit rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit));
+                    if (rider != null) Transporting.Unload(transport, rider, Tile(cargo.x, cargo.y));
+                }
             } else if (GameLog.Lines.ReadBuy(line, sides, out side, out unit, out cost)) {
                 Player p = Side(side);
                 Unit prefab = GameAssets.Unit(unit);
@@ -256,7 +273,7 @@ namespace HexTactica.Harness {
             } else if (GameLog.Lines.ReadDies(line, sides, out side, out unit, out cause)) {
                 if (GameLog.Lines.ReadTile(line, out x1, out y1)) {
                     Unit u = UnitAt(side, unit, x1, y1);
-                    if (u != null && u.owner != null && u.owner.personal_name == side) u.ReplayLoss();
+                    if (u != null) u.ReplayLoss();
                 }
             } else if (GameLog.Lines.ReadChangesHands(line, out unit, out a, out b)) {
                 if (GameLog.Lines.ReadTile(line, out x1, out y1)) {

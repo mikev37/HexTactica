@@ -146,6 +146,35 @@ namespace HexTactica.Harness {
                 return true;
             }
 
+            /// <summary>A unit got into a transport: "Blue Grunt (1,2) boards Blue APC (2,2)" (the tile it stood on, the transport's).</summary>
+            public static string Boards(Unit transport, Unit cargo, HexTile from) { return Indent + Who(cargo) + " " + D(from) + " boards " + Who(transport) + " " + D(transport.tile); }
+            static readonly Regex boards = new Regex(@"^   (.+) \((-?\d+),(-?\d+)\) boards (.+) \((-?\d+),(-?\d+)\)$");
+            /// <summary>A unit got out of a transport: "Blue Grunt gets off Blue APC (2,2) onto (3,2)".</summary>
+            public static string GetsOff(Unit transport, Unit cargo, HexTile onto) { return Indent + Who(cargo) + " gets off " + Who(transport) + " " + D(transport.tile) + " onto " + D(onto); }
+            static readonly Regex getsOff = new Regex(@"^   (.+) gets off (.+) \((-?\d+),(-?\d+)\) onto \((-?\d+),(-?\d+)\)$");
+
+            /// <summary>A boards or gets-off line read back: who, which transport and where it stood, and the cargo's tile (stood on before boarding, or put down on).</summary>
+            public class CargoLine { public bool boards; public string side, unit, transportSide, transportUnit; public int x, y, transportX, transportY; }
+            public static bool ReadCargo(string line, IEnumerable<string> sides, out CargoLine c) {
+                c = null;
+                CargoLine r = new CargoLine();
+                Match m = boards.Match(line);
+                if (m.Success) {
+                    r.boards = true;
+                    if (!SplitWho(m.Groups[1].Value, sides, out r.side, out r.unit) || !SplitWho(m.Groups[4].Value, sides, out r.transportSide, out r.transportUnit)) return false;
+                    r.x = int.Parse(m.Groups[2].Value, Inv); r.y = int.Parse(m.Groups[3].Value, Inv);
+                    r.transportX = int.Parse(m.Groups[5].Value, Inv); r.transportY = int.Parse(m.Groups[6].Value, Inv);
+                } else {
+                    m = getsOff.Match(line);
+                    if (!m.Success) return false;
+                    if (!SplitWho(m.Groups[1].Value, sides, out r.side, out r.unit) || !SplitWho(m.Groups[2].Value, sides, out r.transportSide, out r.transportUnit)) return false;
+                    r.transportX = int.Parse(m.Groups[3].Value, Inv); r.transportY = int.Parse(m.Groups[4].Value, Inv);
+                    r.x = int.Parse(m.Groups[5].Value, Inv); r.y = int.Parse(m.Groups[6].Value, Inv);
+                }
+                c = r;
+                return true;
+            }
+
             /// <summary>A side gave the game up: "Blue resigns".</summary>
             public static string Resigns(Player p) { return Indent + Name(p) + " resigns"; }
             public static bool ReadResigns(string line, IEnumerable<string> sides, out string sideName) {

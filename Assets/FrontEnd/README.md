@@ -69,8 +69,9 @@ each turn's board comes from its `turn-NNN-Side.dat`, and each action from that 
 
 Three log lines changed for this. A move is now written and read in `GameLog.Lines` (`Moved`). An attack that
 drives the defender back records where (`retreats to (x,y)`). A purchase records where the unit was put
-(`placed (x,y)`). Recordings made before this replay without those two details. Units getting into and out of
-transports aren't in the log, so they catch up when the next turn's board loads.
+(`placed (x,y)`). Getting into and out of a transport is logged too (`Blue Grunt (1,2) boards Blue APC (2,2)`, `Blue Grunt gets
+off Blue APC (2,2) onto (3,2)`; `Transporting.Boarded`, `Unloaded`), with the transport's own move written first.
+Recordings made before these lines existed replay without them, and catch up when the next turn's board loads.
 
 ## Resigning, and options in game
 
