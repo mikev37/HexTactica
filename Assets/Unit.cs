@@ -1333,26 +1333,6 @@ public class Unit : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// A recorded attack played again (a replay, a turn received): this unit fired at <paramref name="defender"/> and
-    /// the result is the one given, not worked out — <paramref name="dealt"/> off the defender, <paramref name="taken"/>
-    /// off this unit, the defender driven back to <paramref name="retreatTo"/> if any. On screen as any attack is.
-    /// </summary>
-    internal void ReplayAttack(Unit defender, int dealt, int taken, HexTile retreatTo) {
-        if (defender == null) return;
-        defender.Strength = Mathf.Max(0, defender.Strength - dealt);
-        Strength = Mathf.Max(0, Strength - taken);
-        if (defender.Strength > 0 && retreatTo != null && retreatTo.occupier == null) defender.RetreatTo(retreatTo);
-        answeredBy = taken > 0 ? defender : null;
-        bool both = defender.Strength <= 0 && Strength <= 0;
-        if (defender.Strength <= 0) defender.DieActual();
-        if (Strength <= 0) DieActual();
-        if (GameController.gc != null && GameController.gc.headless) return;
-        if (animator != null) Fire(defender, true);   // the shot lands (AttackResolve): the impact, the answer, the deaths
-        else { defender.StrengthDisplay = defender.Strength; if (defender.Strength <= 0) defender.Die(); }
-        if (both || (Strength <= 0 && taken > 0 && defender.Strength <= 0)) Die();
-    }
-
     /// <summary>Lost outside combat in a recorded game played again (starved, out of fuel, its side out): as Perish.</summary>
     internal void ReplayLoss() { Perish(); }
 

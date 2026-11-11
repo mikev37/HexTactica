@@ -110,7 +110,7 @@ public static class MatchSetup {
 
     /// <summary>A saved game: every side played as it was (the file's "AI" per side), its game log going on from where it was saved.</summary>
     public static bool LoadSave(string path) {
-        bool ok = Load(path, () => { ScenarioLoader.ControlFromFile = true; });
+        bool ok = Load(path, () => { ScenarioLoader.ControlFromFile = true; ScenarioLoader.SidesAsFiled = true; });
         if (ok) FilePath = path;
         return ok;
     }
@@ -147,6 +147,7 @@ public static class MatchSetup {
             ScenarioLoader.FogOverride = fog; ScenarioLoader.SpecialUnitsOverride = special;
             ScenarioLoader.ControlOverride = control; ScenarioLoader.FactionOverride = factions; ScenarioLoader.ControlFromFile = fromFile;
             ScenarioLoader.ProfileOverride = profilesWere;
+            ScenarioLoader.SidesAsFiled = false;
             ScenarioLoader.RecordGames = recording;
         }
     }
