@@ -51,6 +51,7 @@ namespace HexTactica.Harness {
         /// <summary>Start a new recording (closing any open one). <paramref name="root"/> null = DefaultRoot.</summary>
         public static void Start(string from, string red, string root) {
             Stop();
+            if (Replay.Active) return;   // a recording being watched is not a game to record
             source = from ?? "";
             redKind = string.IsNullOrEmpty(red) ? "?" : red;
             Folder = Path.Combine(root ?? DefaultRoot, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture));

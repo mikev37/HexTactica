@@ -60,8 +60,10 @@ scene on one, with the **Replay** scene's controls (`ReplayControls`) over it. N
 each turn's board comes from its `turn-NNN-Side.dat`, and each action from that turn's lines in game.log, read by
 `GameLog.Lines` (which wrote them) and played by `Harness/Replay.cs`.
 
-- **Next action** plays the turn's next move, attack, purchase, loss, capture or resignation, with the result the
-  log gives. After the turn's last action it loads the next turn's board.
+- **Next action** gives the turn's next logged order to the game as a player or the AI would. A move walks the
+  path the game finds (`Unit.MoveAlong`). An attack is `Unit.OrderAttack`, after which each unit's strength is held
+  to the log's (a warning in the console if the game worked it out differently). Boarding is `Unit.WalkAndBoard`.
+  After the turn's last action it loads the next turn's board.
 - **Next turn** and **Previous turn** load that turn's board.
 - **Play** plays an action every `FrontEndSettings.replayStepSeconds` (0.5), counted from when the last action's
   animation has finished. **Fast forward** does the same `replayFastForward` (5) times faster.
@@ -72,6 +74,11 @@ drives the defender back records where (`retreats to (x,y)`). A purchase records
 (`placed (x,y)`). Getting into and out of a transport is logged too (`Blue Grunt (1,2) boards Blue APC (2,2)`, `Blue Grunt gets
 off Blue APC (2,2) onto (3,2)`; `Transporting.Boarded`, `Unloaded`), with the transport's own move written first.
 Recordings made before these lines existed replay without them, and catch up when the next turn's board loads.
+
+The sides are read from the log's own `side:` lines (name and id), not from the board. A side the recording gives
+no faction has none (`ScenarioLoader.SidesAsFiled`; the same for a saved game), where a scenario opened in the scene
+keeps the scene's. Nothing is recorded while a recording is watched, and the scene's own board is no longer recorded
+when it opens under a menu (pre-game, map editor, replay).
 
 ## Resigning, and options in game
 

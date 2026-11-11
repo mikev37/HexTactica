@@ -237,6 +237,9 @@ public class GameController : MonoBehaviour
     System.Collections.IEnumerator RecordFromStart() {
         yield return null;
         if (HexTactica.Harness.GameLog.Recording) yield break;
+        // Not a game being played: a recording watched, or a board held under a menu (the pre-game screen, the map
+        // editor) — the game the menu starts records itself.
+        if (HexTactica.Harness.Replay.Active || MenuHeld) yield break;
         HexTactica.Harness.GameLog.Start("board in the scene", null, null);
         Debug.Log("Recording this game to " + HexTactica.Harness.GameLog.Folder);
     }

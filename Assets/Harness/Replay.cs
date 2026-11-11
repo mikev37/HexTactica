@@ -52,6 +52,8 @@ namespace HexTactica.Harness {
         static readonly Dictionary<long, HexTile> tileAt = new Dictionary<long, HexTile>();
         static readonly HashSet<int> played = new HashSet<int>();
         static readonly List<string> sides = new List<string>();
+        /// <summary>The log's sides by name, with their ids (its "side:" lines).</summary>
+        static readonly Dictionary<string, long> logSides = new Dictionary<string, long>();
 
         public static readonly List<Turn> turns = new List<Turn>();
         public static int Index { get; private set; }
@@ -70,7 +72,7 @@ namespace HexTactica.Harness {
 
         /// <summary>Read the recording in <paramref name="folder"/>: its boards in order, each with its part of the log. False if it has none.</summary>
         public static bool Read(string folder) {
-            turns.Clear(); Ending = null;
+            turns.Clear(); Ending = null; logSides.Clear();
             if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return false;
             List<string> files = new List<string>(Directory.GetFiles(folder, "turn-*.dat"));
             files.Sort(StringComparer.Ordinal);
@@ -85,6 +87,8 @@ namespace HexTactica.Harness {
                 Turn at = null; int round = -1; bool board = false;
                 foreach (string raw in File.ReadAllLines(log)) {
                     string line = raw.TrimEnd();
+                    long sideId; string sideName, sideFaction; bool sideAI;
+                    if (round < 0 && GameLog.Lines.ReadSide(line, out sideId, out sideName, out sideFaction, out sideAI)) { logSides[sideName] = sideId; continue; }
                     if (line.StartsWith("== round ", StringComparison.Ordinal)) {
                         at = null; board = true;
                         int.TryParse(line.Substring(9).Split(':')[0], out round);
@@ -116,8 +120,8 @@ namespace HexTactica.Harness {
         public static bool Open(string folder) {
             if (!Read(folder)) { Debug.LogError("Replay: no recorded turns in " + folder); return false; }
             GameController gc = GameController.gc;
+            GameLog.Stop();   // nothing is recorded while a recording is watched
             if (!Active) {
-                GameLog.Stop();
                 recordWas = ScenarioLoader.RecordGames;
                 fogWas = gc != null && gc.fogOfWar;
                 viewerWas = gc != null ? gc.fogViewer : -1;
@@ -136,8 +140,10 @@ namespace HexTactica.Harness {
             if (!Active || turns.Count == 0) return;
             i = Mathf.Clamp(i, 0, turns.Count - 1);
             ScenarioLoader.RecordGames = false;
+            bool exactWas = ScenarioLoader.SidesAsFiled;
+            ScenarioLoader.SidesAsFiled = true;   // each side's faction exactly as recorded (none means none)
             try { Loader(turns[i].file); }
-            finally { ScenarioLoader.RecordGames = recordWas; }
+            finally { ScenarioLoader.RecordGames = recordWas; ScenarioLoader.SidesAsFiled = exactWas; }
             Index = i;
             Freeze();
             ApplyView();
@@ -155,11 +161,15 @@ namespace HexTactica.Harness {
             Step = 0; LastAction = ""; played.Clear();
             tileAt.Clear();
             HexGenerator.forAllTiles(x => { if (x != null) tileAt[Key(x.x, x.y)] = x; return 0; });
+            // The sides as the log names them (its "side:" lines), and as the board does.
             sides.Clear();
+            foreach (string name in logSides.Keys) sides.Add(name);
             GameController gc = GameController.gc;
-            if (gc != null) foreach (Player p in gc.players) if (p != null) sides.Add(p.personal_name);
+            if (gc != null) foreach (Player p in gc.players) if (p != null && !sides.Contains(p.personal_name)) sides.Add(p.personal_name);
             t.actions.Clear();
             for (int i = 0; i < t.events.Count; i++) if (IsAction(t.events[i])) t.actions.Add(i);
+            if (t.actions.Count == 0 && t.events.Exists(x => x.Contains(" moved (") || x.Contains(" attacks ")))
+                Debug.LogWarning("Replay: turn " + (Index + 1) + " has moves or attacks in its log but none could be read (sides known: " + string.Join(", ", sides.ToArray()) + ").");
         }
 
         static bool IsAction(string line) {
@@ -207,21 +217,25 @@ namespace HexTactica.Harness {
             return true;
         }
 
+        /// <summary>The player a side of the log is: by the id its "side:" line gives, else by name.</summary>
         static Player Side(string name) {
             GameController gc = GameController.gc;
-            if (gc != null) foreach (Player p in gc.players) if (p != null && p.personal_name == name) return p;
+            if (gc == null) return null;
+            long id;
+            if (logSides.TryGetValue(name, out id)) foreach (Player p in gc.players) if (p != null && p.id == id) return p;
+            foreach (Player p in gc.players) if (p != null && p.personal_name == name) return p;
             return null;
         }
 
-        /// <summary>The unit of this side and kind standing on the tile, or null.</summary>
+        /// <summary>The unit of this side standing on the tile (of this kind; the side's unit there whatever its kind, should the board name it otherwise), or null.</summary>
         static Unit UnitAt(string side, string kind, int x, int y) {
             HexTile t = Tile(x, y);
             Unit u = t != null ? t.occupier : null;
-            return u != null && u.Strength > 0 && Is(u, side, kind) ? u : null;
+            return u != null && u.Strength > 0 && Is(u, side, kind, false) ? u : null;
         }
 
-        static bool Is(Unit u, string side, string kind) {
-            return u.owner != null && u.owner.personal_name == side && GameLog.Lines.UnitName(u) == kind;
+        static bool Is(Unit u, string side, string kind, bool exactKind) {
+            return u.owner != null && u.owner == Side(side) && (!exactKind || GameLog.Lines.UnitName(u) == kind);
         }
 
         static void Apply(Turn t, int e) {
@@ -230,17 +244,22 @@ namespace HexTactica.Harness {
             GameLog.Lines.AttackLine at;
             GameLog.Lines.CargoLine cargo;
             if (GameLog.Lines.ReadMoved(line, sides, out side, out unit, out x1, out y1, out x2, out y2)) {
-                Move(UnitAt(side, unit, x1, y1), Tile(x2, y2));
+                // Ordered as a player or the AI orders it: the unit walks its path (and fires after, if its next line is its attack from there).
+                GameLog.Lines.AttackLine then;
+                int next = t.actions.IndexOf(e) + 1;
+                bool fires = next < t.actions.Count && GameLog.Lines.ReadAttack(t.events[t.actions[next]], sides, out then)
+                             && then.side == side && then.unit == unit && then.fromX == x2 && then.fromY == y2;
+                Move(UnitAt(side, unit, x1, y1), Tile(x2, y2), fires);
             } else if (GameLog.Lines.ReadAttack(line, sides, out at)) {
                 Unit attacker = UnitAt(at.side, at.unit, at.fromX, at.fromY);
                 if (attacker == null) {
-                    // It moved and then fired: its move is logged after (when it finished). Play that move first.
+                    // (An older log: a move-and-attack's move written after the attack.) Play that move first.
                     for (int j = t.actions.IndexOf(e) + 1; j < t.actions.Count; j++) {
                         int k = t.actions[j];
                         if (played.Contains(k)) continue;
                         if (GameLog.Lines.ReadMoved(t.events[k], sides, out side, out unit, out x1, out y1, out x2, out y2)
                             && side == at.side && unit == at.unit && x2 == at.fromX && y2 == at.fromY) {
-                            Move(UnitAt(side, unit, x1, y1), Tile(x2, y2));
+                            Move(UnitAt(side, unit, x1, y1), Tile(x2, y2), true);
                             played.Add(k);
                             break;
                         }
@@ -248,18 +267,35 @@ namespace HexTactica.Harness {
                     attacker = UnitAt(at.side, at.unit, at.fromX, at.fromY);
                 }
                 Unit defender = UnitAt(at.targetSide, at.targetUnit, at.atX, at.atY);
-                if (defender == null) return;
+                if (defender == null) { Warn("no " + at.targetSide + " " + at.targetUnit + " at (" + at.atX + "," + at.atY + ") to be attacked"); return; }
                 HexTile back = at.retreated ? Tile(at.retreatX, at.retreatY) : null;
-                if (attacker != null && attacker != defender) attacker.ReplayAttack(defender, at.dealt, at.taken, back);
-                else { defender.Strength = Mathf.Max(0, defender.Strength - at.dealt); if (defender.Strength <= 0) defender.ReplayLoss(); }
+                if (attacker == null || attacker == defender) {
+                    Warn("no " + at.side + " " + at.unit + " at (" + at.fromX + "," + at.fromY + ") to attack: only the result is shown");
+                    defender.Strength = Mathf.Max(0, at.targetStrengthAfter);
+                    if (defender.Strength <= 0) defender.ReplayLoss();
+                    return;
+                }
+                // The attack is ordered as in play (the shot, the answer, the sounds, a retreat); then the board is held
+                // to what the log says came of it, should the game work it out otherwise (fog is not as it was).
+                attacker.OrderAttack(defender);
+                Hold(attacker, at.strengthAfter);
+                Hold(defender, at.targetStrengthAfter);
+                if (back != null && defender.Strength > 0 && defender.tile != back && back.occupier == null) defender.RetreatTo(back);
             } else if (GameLog.Lines.ReadCargo(line, sides, out cargo)) {
                 Unit transport = UnitAt(cargo.transportSide, cargo.transportUnit, cargo.transportX, cargo.transportY);
-                if (transport == null) return;
+                if (transport == null) { Warn("no " + cargo.transportSide + " " + cargo.transportUnit + " at (" + cargo.transportX + "," + cargo.transportY + ")"); return; }
                 if (cargo.boards) {
                     Unit rider = UnitAt(cargo.side, cargo.unit, cargo.x, cargo.y);
-                    if (rider != null) Transporting.Embark(transport, rider);
+                    if (rider == null) return;
+                    // Walks up and gets in, as ordered in play; if the game will not have it, put aboard as the log says.
+                    List<HexTile> steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile);
+                    bool headless = GameController.gc != null && GameController.gc.headless;
+                    if (steps == null || !rider.WalkAndBoard(steps, transport, !headless) || rider.trasnporter != transport) {
+                        if (rider.trasnporter != transport) Transporting.Embark(transport, rider);
+                    }
                 } else {
-                    Unit rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit));
+                    Unit rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, true));
+                    if (rider == null) rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, false));
                     if (rider != null) Transporting.Unload(transport, rider, Tile(cargo.x, cargo.y));
                 }
             } else if (GameLog.Lines.ReadBuy(line, sides, out side, out unit, out cost)) {
@@ -285,10 +321,47 @@ namespace HexTactica.Harness {
             FogOfWar.Refresh();
         }
 
-        static void Move(Unit u, HexTile to) {
+        static void Warn(string what) { Debug.LogWarning("Replay: " + what + " (\"" + LastAction + "\")"); }
+
+        /// <summary>The unit's strength as the log has it after the action (it is lost if that is none).</summary>
+        static void Hold(Unit u, int strength) {
+            if (u == null || u.Strength <= 0) return;   // (already lost in the attack as played)
+            if (u.Strength == strength) return;
+            Warn(GameLog.Lines.Who(u) + " came out at " + u.Strength + ", the log says " + strength + ": set to the log's");
+            u.Strength = Mathf.Max(0, strength);
+            if (u.Strength <= 0) u.ReplayLoss();
+        }
+
+        /// <summary>
+        /// The move, ordered as in play: the unit walks the path the game finds for it to <paramref name="to"/> (its
+        /// animation and sounds with it). Only when the game finds none (the board is not as it was) is it set there.
+        /// </summary>
+        static void Move(Unit u, HexTile to, bool thenAttacks) {
             if (u == null || to == null || u.tile == to) return;
-            if (to.occupier != null && to.occupier != u) return;   // (into a transport, or out of step with the log: the next turn's board puts it right)
-            u.TeleportTo(to, 0);
+            if (to.occupier != null && to.occupier != u) { Warn("(" + to.x + "," + to.y + ") is taken: the move is left out"); return; }
+            List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathTo(u, to) : null;
+            if (steps != null) u.MoveAlong(steps, thenAttacks, true);
+            else u.TeleportTo(to, u.tile.Distance(to), thenAttacks);
+        }
+
+        /// <summary>The path the game's own search gives the unit to <paramref name="to"/> this turn (its tile first), as a player's click follows; null if it does not reach.</summary>
+        static List<HexTile> PathTo(Unit u, HexTile to) {
+            HexGenerator.forAllTiles(x => { x.G = 0; x.parent = null; return 0; });
+            List<HexTile> reach = u.tile.CheckMovementRange(u);
+            List<HexTile> steps = reach.Contains(to) ? to.buildpath() : null;
+            HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+            return steps != null && steps.Count >= 2 && steps[0] == u.tile ? steps : null;
+        }
+
+        /// <summary>A path for the unit to a tile beside <paramref name="target"/> (to board what stands there), or null.</summary>
+        static List<HexTile> PathBeside(Unit u, HexTile target) {
+            if (GameController.gc == null || GameController.gc.headless) return null;
+            foreach (HexTile n in target.neighbors) {
+                if (n == null) continue;
+                List<HexTile> steps = PathTo(u, n);
+                if (steps != null) return steps;
+            }
+            return null;
         }
 
         public static void Next() { Show(Index + 1); }

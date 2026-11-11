@@ -68,9 +68,14 @@ public class ReplayControls : MonoBehaviour {
         if (fastLabel != null) fastLabel.text = fast ? fastOnText : fastText;
         if (log == null) return;
         Replay.Turn t = Replay.Current;
-        if (t == null || t.actions.Count == 0) { log.text = noActions; return; }
         StringBuilder sb = new StringBuilder();
         int max = FrontEndSettings.Get.replayLinesShown;
+        if (t == null || t.actions.Count == 0) {
+            // No action could be read: the turn's log as it is, so what happened can still be seen.
+            if (t != null) for (int i = 0; i < t.events.Count && i < max; i++) sb.Append(t.events[i].Trim()).Append('\n');
+            log.text = sb.Length > 0 ? sb.ToString() : noActions;
+            return;
+        }
         // Around the action in hand, when the turn has more than fit.
         int first = Mathf.Clamp(Replay.Step - max / 2, 0, Mathf.Max(0, t.actions.Count - max));
         for (int i = first; i < t.actions.Count && i < first + max; i++) {
