@@ -6,8 +6,8 @@ using UnityEngine;
 /// <summary>
 /// The replay's controls (the Replay scene, over the game scene held still): the turn on screen and the action just
 /// played, the turn's actions listed (those still to come dimmed), and buttons — Next action, Next turn, Previous
-/// turn, Play (an action every FrontEndSettings.replayStepSeconds, once the last one's animation is done), Fast
-/// forward (the same, replayFastForward times faster), whose eyes (a side's fog, or everything), Exit.
+/// turn, Play (the next action replayPlayPause after the last one's animation is done), Fast forward (an action
+/// every replayFastInterval without waiting, units moving replayFastMoveSpeed times faster), whose eyes (a side's fog, or everything), Exit.
 /// </summary>
 public class ReplayControls : MonoBehaviour {
     public TMP_Text title;
@@ -50,15 +50,25 @@ public class ReplayControls : MonoBehaviour {
     void Pause() { playing = false; }
 
     void Update() {
-        if (!playing || !Replay.Active) return;
-        if (Unit.AnyAnimating()) { nextAt = 0f; return; }   // the step's wait starts when the board is still
         FrontEndSettings s = FrontEndSettings.Get;
-        float wait = s.replayStepSeconds / (fast ? Mathf.Max(1f, s.replayFastForward) : 1f);
-        if (nextAt <= 0f) { nextAt = Time.unscaledTime + wait; return; }
-        if (Time.unscaledTime < nextAt) return;
-        nextAt = 0f;
+        // Fast forward: units move faster on screen (and only while it is on).
+        Unit.MoveSpeedScale = playing && fast && Replay.Active ? Mathf.Max(1f, s.replayFastMoveSpeed) : 1f;
+        if (!playing || !Replay.Active) return;
+        if (fast) {
+            // An action every interval, whether or not the last has finished playing. (A turn still ends only when
+            // the board is still: Replay.NextAction waits there.)
+            if (Time.unscaledTime < nextAt) return;
+            nextAt = Time.unscaledTime + s.replayFastInterval;
+        } else {
+            if (Unit.AnyAnimating()) { nextAt = 0f; return; }   // the pause starts when the board is still
+            if (nextAt <= 0f) { nextAt = Time.unscaledTime + s.replayPlayPause; return; }
+            if (Time.unscaledTime < nextAt) return;
+            nextAt = 0f;
+        }
         if (!Replay.NextAction()) { playing = false; fast = false; Show(); }
     }
+
+    void OnDestroy() { Unit.MoveSpeedScale = 1f; }
 
     void Show() {
         if (title != null) title.text = Replay.Title();

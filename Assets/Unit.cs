@@ -165,6 +165,8 @@ public class Unit : MonoBehaviour
 
     [Tooltip("Just for animation - for movement edit moveRange")]
     [LooksOnly] public int moveSpeed = 10;
+    /// <summary>Every unit's move speed on screen is multiplied by this (a replay's fast forward); 1 in play.</summary>
+    public static float MoveSpeedScale = 1f;
     [Tooltip("How much health the unit appears to have (for animations so the unit doesn't die before the shot is fired)")]
     [LooksOnly] public int StrengthDisplay;
 
@@ -308,7 +310,7 @@ public class Unit : MonoBehaviour
                     if (animator != null) animator.SetBool("Moving", true);
                     if (!driving || Vector2.Distance(transform.position, there) > .1f) {
                         transform.rotation = there.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
-                        transform.position = Vector2.MoveTowards(transform.position, there, Time.deltaTime * moveSpeed);
+                        transform.position = Vector2.MoveTowards(transform.position, there, Time.deltaTime * moveSpeed * MoveSpeedScale);
                     }
                     return;
                 }
@@ -318,7 +320,7 @@ public class Unit : MonoBehaviour
                 if (animator != null) animator.SetBool("Moving", true);
                 Vector3 to = next.unitPlacement != null ? next.unitPlacement.position : next.transform.position;
                 transform.rotation = to.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
-                if (Vector2.Distance(transform.position, to) > .1f) transform.position = Vector2.MoveTowards(transform.position, to, Time.deltaTime * moveSpeed);
+                if (Vector2.Distance(transform.position, to) > .1f) transform.position = Vector2.MoveTowards(transform.position, to, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 else { spriteTile = next; boardingWalk.RemoveAt(0); }
                 return;
             }
@@ -327,7 +329,7 @@ public class Unit : MonoBehaviour
         // stopped, then gets off and walks to its tile.
         if (disembarkFrom != null) {
             if (disembarkFrom.Strength > 0 && disembarkFrom.path != null && disembarkFrom.path.Count > 0) {
-                transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
+                transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 return;
             }
             FinishDisembark();
@@ -335,7 +337,7 @@ public class Unit : MonoBehaviour
         // Aboard: shrink into the transport's slot; nothing else moves this sprite.
         if (trasnporter != null) {
             if (!Finite(transform.localPosition)) transform.localPosition = Vector3.zero;
-            transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
+            transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed * MoveSpeedScale);
             transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale * cargoScale, Time.deltaTime * 2f);
             return;
         }
@@ -373,7 +375,7 @@ public class Unit : MonoBehaviour
             } else transform.rotation = Quaternion.identity;
 
             if(Vector2.Distance(transform.position, ht.unitPlacement.position) > .1f) {
-                transform.position = Vector2.MoveTowards(transform.position, ht.unitPlacement.position, Time.deltaTime * moveSpeed);
+                transform.position = Vector2.MoveTowards(transform.position, ht.unitPlacement.position, Time.deltaTime * moveSpeed * MoveSpeedScale);
             } else {
                 spriteTile = ht;
                 path.RemoveAt(0);
@@ -393,12 +395,12 @@ public class Unit : MonoBehaviour
             // first, so the shot that waits on it (see the ambush/attack check below) has a sprite
             // to aim at, and the new retreat starts from where the unit really was.
             if (slideFirst.HasValue) {
-                transform.position = Vector2.MoveTowards(transform.position, slideFirst.Value, Time.deltaTime * moveSpeed);
+                transform.position = Vector2.MoveTowards(transform.position, slideFirst.Value, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 if (Vector2.Distance(transform.position, slideFirst.Value) <= 0.05f) slideFirst = null;
             }
             else if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
             else if(tile && retreatHold <= 0f) {
-                transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed);
+                transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 if (Vector2.Distance(transform.position, tile.unitPlacement.position) <= 0.2f) spriteTile = tile;
             }
             else {
