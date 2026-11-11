@@ -41,6 +41,22 @@ public static class Tests {
         if (args.Length > 1) Scenarios.Dir = args[1];
         ApplySet();
         UnityEngine.Resources.Provider = PrefabLoader.ResourcesProvider;
+        // Every action the AI carries out is held to what a player could order (AIExecutor.WhyIllegal): counted,
+        // the first of each kind shown, the total printed when the run ends. LEGAL=off: no check.
+        if (Environment.GetEnvironmentVariable("LEGAL") != "off") {
+            var illegal = new System.Collections.Generic.Dictionary<string, int>();
+            int illegalAll = 0;
+            HexTactica.AI.AIExecutor.OnIllegal = (act, why) => {
+                illegalAll++;
+                string kind = act.kind + ": " + System.Text.RegularExpressions.Regex.Replace(why, @"\(-?\d+,-?\d+\)|^\S+ (?=is )", "_");
+                int n; illegal.TryGetValue(kind, out n); illegal[kind] = n + 1;
+                if (n < 3) Console.WriteLine("ILLEGAL AI ACTION: " + (act.unit != null ? act.unit.name : "?") + (act.unit != null && act.unit.tile != null ? " at (" + act.unit.tile.x + "," + act.unit.tile.y + ")" : "") + " " + act.kind + ": " + why + "   [" + act.reason + "]");
+            };
+            AppDomain.CurrentDomain.ProcessExit += (o, e) => {
+                Console.WriteLine("AI legality: " + illegalAll + " actions a player could not order");
+                foreach (var kv in illegal) Console.WriteLine("   " + kv.Value + " x " + kv.Key);
+            };
+        }
         // SUPPLYOFF=death,cargo,flags: switch off the board-supply refresh fixes (for comparing play).
         string supplyOff = Environment.GetEnvironmentVariable("SUPPLYOFF") ?? "";
         if (supplyOff.Contains("death")) Unit.ResupplyOnAnyDeath = false;

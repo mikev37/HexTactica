@@ -31,6 +31,21 @@ namespace HexTactica.AI {
     public static class AITargeting {
 
         /// <summary>Score a specific attack, delivered from a specific tile.</summary>
+        /// <summary>
+        /// Could a player order <paramref name="attacker"/>, standing on <paramref name="from"/>, to fire on
+        /// <paramref name="defender"/>: the click flow's own checks (HexTile.CheckAttackRange, Unit.validTarget). The
+        /// enemy is what stands on its tile (not cargo aboard a transport), may be fired on (seen; not protected by the
+        /// rules), is a kind the attacker fires on, and is in range and line of fire from there. Every place that
+        /// picks a target by going through the enemy's units, rather than the tiles in range, asks this.
+        /// </summary>
+        public static bool CanOrder(Unit attacker, HexTile from, Unit defender) {
+            if (attacker == null || from == null || defender == null || defender.tile == null) return false;
+            if (defender.owner == attacker.owner || defender.tile.occupier != defender) return false;
+            if (!attacker.CanAttack(from) || !attacker.CanTarget(defender)) return false;
+            if (!GameController.Targetable(defender) || !FogOfWar.CanTarget(attacker.owner, defender)) return false;
+            return CombatMath.InFireRange(attacker, from, defender.tile, defender);
+        }
+
         public static AttackAppraisal Appraise(Unit attacker, Unit defender, HexTile from,
                                                AIMap map, AIProfile profile, Posture posture,
                                                bool imminent) {

@@ -442,7 +442,10 @@ namespace HexTactica.AI {
                         return AIAction.Wait(transport, "supply leap: holds, carrying supply");
                     }
                     MoveField reach = map.ReachThisTurn(transport);
-                    if (reach.ReachableThisTurn(plan.dropoff)) {
+                    // (Free to stop on, too: a friend's tile is within its move, as it can pass through, but another
+                    // carrier sent to the same drop-off may have taken it this turn. The order was then refused and the
+                    // carrier lost its move; it now goes as far along the way as it can, below.)
+                    if (reach.ReachableThisTurn(plan.dropoff) && plan.dropoff.CanEndTurnHere(transport)) {
                         HexTile off = rider != null && map.profile.freshUnload ? DropTile(transport, rider, plan.dropoff, null) : null;
                         if (off != null) return AIAction.MoveAndDisembark(transport, plan.dropoff, rider, off, "supply link: arrives and lets its rider out");
                         return AIAction.Move(transport, plan.dropoff, plan.score, "supply leap: " + plan.ToString());

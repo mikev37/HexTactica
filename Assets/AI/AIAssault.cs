@@ -32,7 +32,7 @@ namespace HexTactica.AI {
             if (k.stand != c.tile) { MoveField w = map.ReachThisTurn(c); bool ok = w.ReachableThisTurn(k.stand); if (!ok) return null; }
             string why = "assault: put down to " + k.what + ", does it";
             if (k.take != null) return k.stand == c.tile ? AIAction.Wait(c, why) : AIAction.Move(c, k.stand, 0f, why);
-            if (k.target == null || k.target.Strength <= 0 || k.target.tile == null || k.stand.Distance(k.target.tile) > c.AttackRange) return null;
+            if (k.target == null || k.target.Strength <= 0 || k.target.tile == null || !AITargeting.CanOrder(c, k.stand, k.target)) return null;
             return k.stand == c.tile ? AIAction.Strike(c, k.target, 0f, why) : AIAction.MoveStrike(c, k.stand, k.target, 0f, why);
         }
 
@@ -171,6 +171,8 @@ namespace HexTactica.AI {
                         if (Claimed(f, c)) continue;   // another rider was put down to fire from there
                         int d = f.Distance(e.tile);
                         if (d > c.AttackRange || d <= c.MinRange) continue;
+                        // What a player could order from there (it went for cargo aboard a transport, and through hills).
+                        if (!AITargeting.CanOrder(c, f, e)) continue;
                         float loss = map.ExpectedLoss(c, f);
                         if (loss >= c.Strength - 0.01f) continue;   // it would be destroyed there tonight
                         float score = Mathf.Min(dmg, e.Strength) * AIScore.Worth(e) - loss * worth;
@@ -330,6 +332,7 @@ namespace HexTactica.AI {
                 if (e == null || e.tile == null || e.Strength <= 0 || !t.CanTarget(e)) continue;
                 int d = via.Distance(e.tile);
                 if (d > t.AttackRange || d <= t.MinRange) continue;
+                if (!AITargeting.CanOrder(t, via, e)) continue;   // what a player could order from there
                 CombatOutcome o = CombatMath.Resolve(t, e, via);
                 if (o.damageToDefender <= 0 || o.attackerDies || o.damageToAttacker >= t.Strength) continue;
                 float sc = o.damageToDefender * AIScore.Worth(e) - o.damageToAttacker * AIScore.Worth(t);
