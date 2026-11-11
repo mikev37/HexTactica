@@ -47,8 +47,9 @@ namespace HexTactica.AI {
         public static float Worth(Unit u) {
             if (u == null) return 1f;
             float baseCost = u.cost;
-            if (gruntWorth > 0f && u.name.StartsWith("Grunt")) baseCost = gruntWorth;
-            else if (supplyWorth > 0f && u.name.StartsWith("Supplies")) baseCost = supplyWorth;
+            // (Ordinal: the culture-aware StartsWith was a quarter of the forecast's managed time; same answer for these names.)
+            if (gruntWorth > 0f && u.name.StartsWith("Grunt", System.StringComparison.Ordinal)) baseCost = gruntWorth;
+            else if (supplyWorth > 0f && u.name.StartsWith("Supplies", System.StringComparison.Ordinal)) baseCost = supplyWorth;
             float material = baseCost + u.Veterancy * baseCost * 0.2f;
             return Mathf.Max(1f, material / 6f);
         }
