@@ -233,7 +233,7 @@ namespace HexTactica.AI {
                         continue;
                     }
                 }
-                p = PositionsOnBoard(e, u, from, uAt, moving, stopWas, goneHere, ownSideBlocks: map.profile.forecastOwnSideBlocks);
+                p = ReachAfter(e, u, from, uAt, moving, stopWas, goneHere, map);
                 positions[e] = p;
                 if (!near && mayCache) lock (map.cacheLock) cache.positions[e] = p;
             }
@@ -303,6 +303,8 @@ namespace HexTactica.AI {
             Dictionary<Unit, int> sup = new Dictionary<Unit, int>();
             Func<Unit, int> supOf = x => { int v; return sup.TryGetValue(x, out v) ? v : 0; };
             string chainNote = null;
+            // Enemy units whose reach has not been worked out again for a tile one of ours freed (see the end of the loop).
+            HashSet<Unit> behind = null;
             Func<Unit, HexTile> ourPos = x => { HexTile t; return displaced.TryGetValue(x, out t) ? t : x == u ? uAt : x.tile; };
             for (int ei = 0; ei < enemies.Count; ei++) {
                 Unit e = enemies[ei];
@@ -395,10 +397,20 @@ namespace HexTactica.AI {
                     HexTile freed = ourPos(bestTarget);
                     taken.Remove(freed);
                     gone.Add(bestTarget);
+                    if (e.moveAndAttack && Touches(positions[e], e, freed)) (behind ?? (behind = new HashSet<Unit>())).Add(e);
                     foreach (Unit later in enemies) {
                         if (later == e || !positions.ContainsKey(later) || hp[later] <= 0f || !later.moveAndAttack) continue;
                         if (later.tile.Distance(freed) > later.moveRange + 1) continue;
-                        positions[later] = PositionsOnBoard(later, u, from, uAt, moving, stopWas, gone, ownSideBlocks: map.profile.forecastOwnSideBlocks);
+                        // The freed tile neither in nor beside where it could already go: it cannot step into it, so
+                        // where it could go is as it was (the rule Unaffected uses; AIVERIFY checks it). Only for a unit
+                        // whose reach is up to date with every tile freed before (the unit that made a kill is not
+                        // worked out again for its own kill, so it is behind until the next one near it).
+                        if ((behind == null || !behind.Contains(later)) && !Touches(positions[later], later, freed)) {
+                            if (AIMap.Verify) AIMap.CountCheck("freed tile out of reach", !PositionsOnBoard(later, u, from, uAt, moving, stopWas, gone, ownSideBlocks: map.profile.forecastOwnSideBlocks).SetEquals(positions[later]));
+                            continue;
+                        }
+                        positions[later] = ReachAfter(later, u, from, uAt, moving, stopWas, gone, map);
+                        if (behind != null) behind.Remove(later);
                     }
                 }
             }
@@ -1284,6 +1296,88 @@ namespace HexTactica.AI {
         struct VacatedKey { public AIMap map; public int version; public Unit u; public HexTile from; }
         [ThreadStatic] static VacatedKey vacatedKey;
         [ThreadStatic] static Dictionary<Unit, HashSet<HexTile>> vacated;
+
+        /// <summary>
+        /// PositionsOnBoard, remembered for the board read (per thread): where <paramref name="e"/> could go depends only
+        /// on the tiles emptied near it (the one our unit leaves, those of our units destroyed) and on the tile our unit
+        /// takes, if that is one it could stand on. The same few of our units fall in most options of a decision, so most
+        /// forecasts ask for a reach already worked out. (AIVERIFY checks every remembered one against a fresh one.)
+        /// </summary>
+        static HashSet<HexTile> ReachAfter(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, AIMap map) {
+            bool blocks = map.profile.forecastOwnSideBlocks;
+            // A unit driven back stands elsewhere for this option only: nothing remembered from or for that board.
+            if (knocked != null) return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks);
+            if (reachMemo == null || reachMemoMap != map || reachMemoVersion != map.SpaceVersion) {
+                reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>();
+                reachMemoMap = map; reachMemoVersion = map.SpaceVersion;
+            }
+            // The board PositionsOnBoard makes: tiles emptied, and the tile our unit fills (unless it is destroyed there).
+            int near = e.moveRange + 1;
+            ReachKey k = new ReachKey { e = e };
+            HexTile filled = moving ? uAt : null;
+            if (moving && e.tile.Distance(from) <= near) k.Add(from);
+            foreach (Unit g in gone) {
+                HexTile t = g == u ? uAt : g.tile;
+                if (t == null) continue;
+                Unit occ = moving && t == from ? null : moving && t == uAt ? u : t.occupier;
+                if (occ != g) continue;
+                if (moving && t == uAt) filled = null;
+                if (e.tile.Distance(t) <= near) k.Add(t);
+            }
+            if (k.overflow) return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks);
+            // With nothing of ours on the tile it takes: enough unless that tile is one the enemy could stand on.
+            HashSet<HexTile> r0;
+            if (!reachMemo.TryGetValue(k, out r0)) {
+                if (filled == null) r0 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks);
+                else {
+                    // (Our unit off the board for this one: it has left its tile and stands on no other.)
+                    HashSet<Unit> g2 = new HashSet<Unit>(gone); g2.Add(u);
+                    r0 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, g2, blocks);
+                }
+                reachMemo[k] = r0;
+            } else if (AIMap.Verify && filled == null) AIMap.CountCheck("reach after losses", !PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks).SetEquals(r0));
+            if (filled == null || (!r0.Contains(filled) && filled != e.tile)) {
+                if (AIMap.Verify && filled != null) AIMap.CountCheck("reach after losses", !PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks).SetEquals(r0));
+                return r0;
+            }
+            k.filled = filled;
+            HashSet<HexTile> r1;
+            if (!reachMemo.TryGetValue(k, out r1)) { r1 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks); reachMemo[k] = r1; }
+            else if (AIMap.Verify) AIMap.CountCheck("reach after losses", !PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks).SetEquals(r1));
+            return r1;
+        }
+        /// <summary>An enemy unit, up to four emptied tiles near it (in board order) and the tile filled, if it matters.</summary>
+        struct ReachKey : IEquatable<ReachKey> {
+            public Unit e; public HexTile a, b, c, d, filled; public bool overflow;
+            public void Add(HexTile t) {
+                if (ReferenceEquals(t, a) || ReferenceEquals(t, b) || ReferenceEquals(t, c) || ReferenceEquals(t, d)) return;
+                // Kept in board order, so the same tiles in any order make the same key.
+                if ((object)a == null || CombatMath.CompareTiles(t, a) < 0) { HexTile x = a; a = t; t = x; }
+                if ((object)t == null) return;
+                if ((object)b == null || CombatMath.CompareTiles(t, b) < 0) { HexTile x = b; b = t; t = x; }
+                if ((object)t == null) return;
+                if ((object)c == null || CombatMath.CompareTiles(t, c) < 0) { HexTile x = c; c = t; t = x; }
+                if ((object)t == null) return;
+                if ((object)d == null || CombatMath.CompareTiles(t, d) < 0) { HexTile x = d; d = t; t = x; }
+                if ((object)t != null) overflow = true;
+            }
+            public bool Equals(ReachKey o) { return ReferenceEquals(e, o.e) && ReferenceEquals(a, o.a) && ReferenceEquals(b, o.b) && ReferenceEquals(c, o.c) && ReferenceEquals(d, o.d) && ReferenceEquals(filled, o.filled); }
+            public override bool Equals(object o) { return o is ReachKey && Equals((ReachKey)o); }
+            public override int GetHashCode() {
+                unchecked {
+                    int h = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(e);
+                    h = h * 31 + ((object)a != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(a) : 0);
+                    h = h * 31 + ((object)b != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(b) : 0);
+                    h = h * 31 + ((object)c != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(c) : 0);
+                    h = h * 31 + ((object)d != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(d) : 0);
+                    h = h * 31 + ((object)filled != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(filled) : 0);
+                    return h;
+                }
+            }
+        }
+        [ThreadStatic] static Dictionary<ReachKey, HashSet<HexTile>> reachMemo;
+        [ThreadStatic] static AIMap reachMemoMap;
+        [ThreadStatic] static int reachMemoVersion;
 
         static HashSet<HexTile> PositionsOnBoard(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, bool ownSideBlocks = false) {
             Dictionary<HexTile, Unit> restore = new Dictionary<HexTile, Unit>();
