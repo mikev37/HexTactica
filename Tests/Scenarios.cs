@@ -462,6 +462,28 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, "ai-buy-transports.dat"), test, ai, other, ai);
             n++;
         }
+        // Buying infantry where infantry is what is wanted: one board each, the whole AI playing (so the campaign's fronts
+        // exist when it buys), nothing of Blue's that can capture on the board, 6000 gold, a lone Red grunt far off.
+        //   near:  buildings to take two or three tiles from the army base.
+        //   front: buildings to take at the far end of the board (not near any facility), a Blue tank already there.
+        //   plain: only buildings that earn nothing and build nothing (a bunker, Int. Ops) beside the base.
+        Action<string, Action<Player, Player>, string> infantry = (name, setup, question) => {
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
+            Put("Grunt", other, 5, 0);
+            setup(ai, other);
+            Dictionary<string, string> test = Test(name, "rules", "Human", 4, "buyInfantry", question);
+            test["purchases"] = "on";
+            ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
+            n++;
+        };
+        infantry("ai-buy-infantry-near", (a, o) => { Rig.PlaceBuilding("ArmyBase", a, -4, 0); Rig.PlaceBuilding("City", null, -3, 2); Rig.PlaceBuilding("Village", null, -3, -2); Rig.PlaceBuilding("City", null, -2, 0); },
+                 "Buying infantry for buildings near a facility: three neutral buildings two or three tiles from Blue's army base, nothing of Blue's that can capture: within three turns it buys a unit that can.");
+        infantry("ai-buy-infantry-front", (a, o) => { Rig.PlaceBuilding("ArmyBase", a, -5, 1); Put("Tank", a, 1, 0); Rig.PlaceBuilding("City", null, 3, -3); Rig.PlaceBuilding("City", null, 3, 3); },
+                 "Buying infantry for buildings at the front: two neutral cities at the far end of the board (near no facility), a Blue tank there that cannot take them: within three turns it buys a unit that can.");
+        infantry("ai-buy-infantry-plain", (a, o) => { Rig.PlaceBuilding("ArmyBase", a, -4, 0); Rig.PlaceBuilding("Bunker", null, -3, 2); Rig.PlaceBuilding("Int. Ops", null, -3, -2); },
+                 "Buying infantry for buildings that earn and build nothing: a neutral bunker and Int. Ops beside Blue's army base: within three turns it buys a unit that can take them.");
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
@@ -1970,6 +1992,34 @@ public static partial class Scenarios {
                 }
                 detail = string.Join(" | ", r.ToArray()) + "; on a building that mends it from Blue turn " + reachedTurn + (leftHurt ? ", but RODE OFF while still wounded" : ", and did not ride off while wounded (whether it stays on the building is its own call)");
                 return reachedTurn > 0 && reachedTurn <= 3 && !leftHurt;
+            }
+            case "buyInfantry": {
+                // The whole AI plays three Blue turns from 6000 gold; what it buys, turn by turn.
+                List<string> said = new List<string>(), r = new List<string>();
+                Action<string> was = AIPlayer.Trace;
+                bool showAll = Environment.GetEnvironmentVariable("CHECKTRACE") != null;
+                AIPlayer.Trace = x => { if (showAll) Console.WriteLine(x); if (x.Contains(" buys ") || x.Contains("budget") || x.Contains("objective ")) said.Add(x.Trim()); };
+                if (Environment.GetEnvironmentVariable("VALUES") != null) { AIProduction.ValueTrace = Console.WriteLine; AIProduction.ValueFilter = Environment.GetEnvironmentVariable("VALUES"); }
+                l.ai.money = 6000;
+                HashSet<Unit> had = new HashSet<Unit>(l.ai.units);
+                int capturers = 0, blueTurns = 0;
+                try {
+                    for (int turn = 0; turn < 8 && blueTurns < 3 && !gc.gameOver; turn++) {
+                        bool blue = gc.activePlayer == l.ai;
+                        int before = l.ai.money;
+                        said.Clear();
+                        ScenarioFile.PlayTurn();
+                        if (!blue) continue;
+                        blueTurns++;
+                        List<string> got = new List<string>();
+                        foreach (Unit u in l.ai.units) if (u != null && !had.Contains(u)) { had.Add(u); got.Add(GameController.UnitName(u)); if (Building.CanCapture(u)) capturers++; }
+                        r.Add("turn " + blueTurns + " (" + before + " gold): " + (got.Count > 0 ? string.Join(", ", got.ToArray()) : "nothing")
+                              + " [" + string.Join(" / ", said.FindAll(x => x.Contains(" buys ") || x.Contains("builds nothing")).ToArray()) + "]");
+                    }
+                } finally { AIPlayer.Trace = was; AIProduction.ValueTrace = null; }
+                int held = 0; foreach (Building bb in Building.all) if (bb != null && bb.owner == l.ai) held++;
+                detail = string.Join(" | ", r.ToArray()) + "; units that can capture bought: " + capturers + "; buildings held after: " + held;
+                return capturers > 0;
             }
             case "buyTransports": {
                 Building bas = Rig.At(-11, 0).building;
