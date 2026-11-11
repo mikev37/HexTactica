@@ -177,29 +177,25 @@ namespace HexTactica.AI {
             });
             foreach (Task t in l.tasks)
                 foreach (Unit u in t.front.units) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && map.SupplyDepth(u.tile) <= 0) t.unsupplied += AIScore.Worth(u) * u.Strength;
-            if (map.profile.unifiedLogistics)
-                foreach (Task t in l.tasks) {
-                    t.acrossWater = map.SupplyAcrossWater(t.front.target);
-                    if (!t.acrossWater) continue;
-                    t.bare = true;
-                    foreach (KeyValuePair<HexTile, int> kv in map.LandSteps(t.front.target)) if (map.SupplyDepth(kv.Key) > 0) { t.bare = false; break; }
-                    int yd = int.MaxValue;
-                    foreach (Building b in Building.all) {
-                        if (b == null || b.tile == null || b.owner != map.player || !b.Functioning || !ServesShips(b)) continue;
-                        if (map.SupplyDepth(b.tile) <= 0) continue;   // embarks inside our supply
-                        int d = b.tile.Distance(t.front.target);
-                        if (d < yd || (d == yd && t.yard != null && CombatMath.CompareTiles(b.tile, t.yard.tile) < 0)) { yd = d; t.yard = b; }
-                    }
+            foreach (Task t in l.tasks) {
+                t.acrossWater = map.SupplyAcrossWater(t.front.target);
+                if (!t.acrossWater) continue;
+                t.bare = true;
+                foreach (KeyValuePair<HexTile, int> kv in map.LandSteps(t.front.target)) if (map.SupplyDepth(kv.Key) > 0) { t.bare = false; break; }
+                int yd = int.MaxValue;
+                foreach (Building b in Building.all) {
+                    if (b == null || b.tile == null || b.owner != map.player || !b.Functioning || !ServesShips(b)) continue;
+                    if (map.SupplyDepth(b.tile) <= 0) continue;   // embarks inside our supply
+                    int d = b.tile.Distance(t.front.target);
+                    if (d < yd || (d == yd && t.yard != null && CombatMath.CompareTiles(b.tile, t.yard.tile) < 0)) { yd = d; t.yard = b; }
                 }
+            }
             // Only supply units joined to the network now: one cut off moves as a unit (AISupplyPlanner),
             // which brings it back to our supply first.
             SupplyNetwork.Result now = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
             List<SupplyPoint> pool = new List<SupplyPoint>();
             foreach (SupplyPoint h in map.ownHubs)
-                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion)
-                    && (now.connectedHubs.Contains(h)
-                        // (unifiedLogistics: aboard a ship, linked or not — a link at sea; the chain keeps it aboard and brings it back into touch)
-                        || (map.profile.unifiedLogistics && h.myUnit.trasnporter != null && LocomotionRules.IsNaval(h.myUnit.trasnporter.locomotion)))) pool.Add(h);
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion) && (now.connectedHubs.Contains(h) || (h.myUnit.trasnporter != null && LocomotionRules.IsNaval(h.myUnit.trasnporter.locomotion)))) pool.Add(h);
             if (l.tasks.Count == 0) return l;
 
             // A supply building of ours cut off from the network — a FOB — that would carry supply nearer
@@ -235,15 +231,14 @@ namespace HexTactica.AI {
 
             // unifiedLogistics: a supply unit aboard a ship is a link at sea, never a front's own to be put ashore: the chain of
             // the front across water nearest it keeps it (aboard, linked where the ship can be: AISupplyChain).
-            if (map.profile.unifiedLogistics)
-                foreach (SupplyPoint h in new List<SupplyPoint>(pool)) {
-                    Unit c = h.myUnit.trasnporter;
-                    if (c == null || !LocomotionRules.IsNaval(c.locomotion)) continue;
-                    Task near = null; int nd = int.MaxValue;
-                    foreach (Task t in l.tasks) { if (!t.acrossWater) continue; int d = c.tile.Distance(t.front.target); if (d < nd) { nd = d; near = t; } }
-                    if (near == null) continue;
-                    near.chain.Add(h); l.chainOf[h] = near; l.linkTiles[h] = c.tile; pool.Remove(h);
-                }
+            foreach (SupplyPoint h in new List<SupplyPoint>(pool)) {
+                Unit c = h.myUnit.trasnporter;
+                if (c == null || !LocomotionRules.IsNaval(c.locomotion)) continue;
+                Task near = null; int nd = int.MaxValue;
+                foreach (Task t in l.tasks) { if (!t.acrossWater) continue; int d = c.tile.Distance(t.front.target); if (d < nd) { nd = d; near = t; } }
+                if (near == null) continue;
+                near.chain.Add(h); l.chainOf[h] = near; l.linkTiles[h] = c.tile; pool.Remove(h);
+            }
 
             // The rest: the fronts' own, by their number of units, the largest first taking any remainder.
             // First what each needs — one for every campaignUnitsPerSupply of its units, the largest front
@@ -354,7 +349,7 @@ namespace HexTactica.AI {
             // Free: empty and claimed by no one (a loaded truck, or one claimed for a link, is not).
             l.freeTrucks = 0; foreach (Unit tr in trucks) if (tr.transported.Count == 0 && IsCarrier(tr)) l.freeTrucks++;
             l.freeShips = 0; foreach (Unit tr in trucks) if (tr.transported.Count == 0 && LocomotionRules.IsNaval(tr.locomotion)) l.freeShips++;
-            if (map.profile.unifiedLogistics) RideAlong(l, map, reservedTrucks);
+            RideAlong(l, map, reservedTrucks);
             return l;
         }
 

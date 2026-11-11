@@ -233,7 +233,7 @@ namespace HexTactica.AI {
             foreach (HexTile x in reach.Tiles) if (x != t.tile && reach.ReachableThisTurn(x) && x.occupier == null && t.CanEnter(x) && AIAir.MayEndOn(t, x, map)) stops.Add(x);
             HexTile bestVia = null, bestDrop = null; Unit bestRider = null; int bestCount = 0; float bestRisk = float.MaxValue; Strike bestStrike = null;
             Unit bestShot = null; int bestTook = 0;
-            bool firesFirst = profile.assaultFireThenUnload && t.Firepower > 1;
+            bool firesFirst = t.Firepower > 1;
             // Riders' longest strike reach from a stop (a tile beside it, then their walk and fire, or a building's walk).
             int strikeReach = 1;
             foreach (Unit c in riders) strikeReach = Mathf.Max(strikeReach, 1 + (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange));
@@ -364,32 +364,30 @@ namespace HexTactica.AI {
                 Planned[c] = k;
                 return AIAction.Disembark(t, c, n, "assault: gets off to " + k.what);
             }
-            if (profile.turnOrderSteps) {
-                List<HexTile> off = Transporting.UnloadOptions(t, c);
-                // Its goal within reach this turn from where it can get off (getting off costs nothing): out, to go there.
-                if (goal != null && goal != t.tile) {
-                    HexTile via = null;
-                    foreach (HexTile n in off) {
-                        bool there = n == goal;
-                        if (!there) { MoveField f = AIPath.ThisTurnFrom(c, n, AIPath.RangeThisTurn(c)); there = f.ReachableThisTurn(goal) && AIPath.CanFinishTurnOn(c, goal); AIPath.Release(f); }
-                        if (there && (via == null || CombatMath.Precedes(n, via))) via = n;
-                    }
-                    if (via != null) return AIAction.Disembark(t, c, via, "gets off at (" + via.x + "," + via.y + ") to reach its goal (" + goal.x + "," + goal.y + ") this turn");
+            List<HexTile> off = Transporting.UnloadOptions(t, c);
+            // Its goal within reach this turn from where it can get off (getting off costs nothing): out, to go there.
+            if (goal != null && goal != t.tile) {
+                HexTile via = null;
+                foreach (HexTile n in off) {
+                    bool there = n == goal;
+                    if (!there) { MoveField f = AIPath.ThisTurnFrom(c, n, AIPath.RangeThisTurn(c)); there = f.ReachableThisTurn(goal) && AIPath.CanFinishTurnOn(c, goal); AIPath.Release(f); }
+                    if (there && (via == null || CombatMath.Precedes(n, via))) via = n;
                 }
-                // Its transport threatened where it stopped: out, onto the safest tile beside it, if it is safer there than aboard.
-                float aboard = map.ExpectedLoss(t, t.tile);
-                if (aboard > 0f) {
-                    HexTile best = null; float bl = float.MaxValue;
-                    foreach (HexTile n in off) { float l = map.ExpectedLoss(c, n); if (l < bl - 0.01f || (Mathf.Abs(l - bl) <= 0.01f && CombatMath.Precedes(n, best))) { bl = l; best = n; } }
-                    // Aboard it goes down with the transport: its loss there is the transport's, as a share of the transport's strength.
-                    float riskAboard = aboard / Mathf.Max(1f, t.Strength) * Mathf.Max(1, c.Strength);
-                    if (best != null && bl < riskAboard) return AIAction.Disembark(t, c, best, "its transport is threatened (" + aboard.ToString("0.0") + " strength): gets off at (" + best.x + "," + best.y + "), safer");
-                }
+                if (via != null) return AIAction.Disembark(t, c, via, "gets off at (" + via.x + "," + via.y + ") to reach its goal (" + goal.x + "," + goal.y + ") this turn");
+            }
+            // Its transport threatened where it stopped: out, onto the safest tile beside it, if it is safer there than aboard.
+            float aboard = map.ExpectedLoss(t, t.tile);
+            if (aboard > 0f) {
+                HexTile best = null; float bl = float.MaxValue;
+                foreach (HexTile n in off) { float l = map.ExpectedLoss(c, n); if (l < bl - 0.01f || (Mathf.Abs(l - bl) <= 0.01f && CombatMath.Precedes(n, best))) { bl = l; best = n; } }
+                // Aboard it goes down with the transport: its loss there is the transport's, as a share of the transport's strength.
+                float riskAboard = aboard / Mathf.Max(1f, t.Strength) * Mathf.Max(1, c.Strength);
+                if (best != null && bl < riskAboard) return AIAction.Disembark(t, c, best, "its transport is threatened (" + aboard.ToString("0.0") + " strength): gets off at (" + best.x + "," + best.y + "), safer");
             }
             // Its transport fell back to its ordinary move, or it has reached the front line (in contact next turn): out,
             // and it thinks for itself (assaultFrontlineOut) — the transport's plan no longer speaks for it.
             bool fellBack = FellBack.Contains(t);
-            if (fellBack || (profile.assaultFrontlineOut && map.TurnsToContact(t) <= 1)) {
+            if (fellBack || (map.TurnsToContact(t) <= 1)) {
                 HexTile best = null; float bl = float.MaxValue;
                 foreach (HexTile n in Transporting.UnloadOptions(t, c)) { float l = map.ExpectedLoss(c, n); if (l < bl - 0.01f || (Mathf.Abs(l - bl) <= 0.01f && CombatMath.Precedes(n, best))) { bl = l; best = n; } }
                 if (best != null) return AIAction.Disembark(t, c, best, fellBack ? "its transport's move was not its assault ride: gets off at (" + best.x + "," + best.y + ") to decide for itself" : "at the front line: gets off at (" + best.x + "," + best.y + ") to decide for itself");
@@ -405,7 +403,7 @@ namespace HexTactica.AI {
         /// <summary>Does <paramref name="t"/> carry a supply unit?</summary>
         /// <summary>A ship under the sea lift (AIProfile.seaLift): never held for supply duty; it takes troops and their supply together.</summary>
         public static bool SeaLiftShip(Unit t, AIMap map) {
-            return t != null && map != null && map.profile != null && map.profile.seaLift && LocomotionRules.IsNaval(t.locomotion) && Transporting.IsTransport(t) && !AIAir.IsCarrier(t);
+            return t != null && map != null && map.profile != null && LocomotionRules.IsNaval(t.locomotion) && Transporting.IsTransport(t) && !AIAir.IsCarrier(t);
         }
 
         /// <summary>
@@ -577,7 +575,7 @@ namespace HexTactica.AI {
             if (Capturing(c)) return null;   // taking a building: it stays on it
             bool hurt = Wounded(c, profile, map);
             // Its ground across water: only a ship gets it there, however near the fight looks by sea (AIMap.SeaTravel).
-            bool crossing = profile.seaLift && ground != null && map.AcrossWater(c.tile, ground);
+            bool crossing = ground != null && map.AcrossWater(c.tile, ground);
             if (!hurt) {
                 if (map.TurnsToContact(c) <= profile.assaultBoardTurns && !crossing) return null;
                 // Mending on a building of ours: it stays until it is healthy.

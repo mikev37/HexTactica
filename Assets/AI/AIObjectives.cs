@@ -202,8 +202,6 @@ namespace HexTactica.AI {
                     int t = Eta(u, o.tile, map);
                     if (t > profile.objectiveReachTurns) continue;
                     // Not a trip it would starve on: out there and back must fit in what it carries.
-                    if (profile.objectivesNeedForce && u.suppliesMax > 0 && map.SupplyDepth(o.tile) <= 0 &&
-                        t + map.TurnsToSupply(u, o.tile) > u.supplies + 1) continue;
                     // A building is taken by someone who can capture it; others only escort it against a defence.
                     if (o.kind == ObjectiveKind.Capture) { if (!Building.CanCapture(u) && o.defence <= 0f) continue; }
                     else if (Damage(u, o) <= 0f) continue;
@@ -235,7 +233,7 @@ namespace HexTactica.AI {
                 // default it gives direction to the army even without the force to take it. (Requiring
                 // 2.5x the defenders, and no trip a unit couldn't get back into supply from, meant
                 // objectives never applied in an even game.)
-                if (!o.committed && (profile.objectivesNeedForce || o.units.Count == 0)) { o.units.Clear(); o.assignedPower = 0f; o.assignedVolley = 0f; continue; }
+                if (!o.committed && (o.units.Count == 0)) { o.units.Clear(); o.assignedPower = 0f; o.assignedVolley = 0f; continue; }
                 foreach (Unit u in o.units) {
                     used.Add(u);
                     // Structure, not tactics: a unit near the enemy keeps its place in the count

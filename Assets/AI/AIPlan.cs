@@ -167,9 +167,8 @@ namespace HexTactica.AI {
                     int c = (b.Firepower * b.Strength).CompareTo(a.Firepower * a.Strength);
                     return c != 0 ? c : AIMap.CompareUnits(a, b);
                 });
-                bool ownSideBlocks = prof.forecastOwnSideBlocks;
+                bool ownSideBlocks = false;
                 // Our units destroyed by retaliation are off the board (the single-move forecast does the same).
-                if (prof.forecastDeadBlock) foreach (Unit x in map.ownUnits) if (hp.ContainsKey(x) && hp[x] <= 0f && x.tile != null) board.Move(x, null, at[x]);
 
                 Dictionary<Unit, HashSet<HexTile>> positions = new Dictionary<Unit, HashSet<HexTile>>();
                 foreach (Unit e in enemies) {
@@ -246,7 +245,7 @@ namespace HexTactica.AI {
                     if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + dealt.ToString("0.#") + (bestPinned ? " pinned" : "") + (bestBack > 0 ? "/" + bestBack : "") + (certain ? " certain" : ""));
 
                     HexTile freed = null;
-                    if (hp[bestTarget] <= 0f && !prof.forecastDeadBlock) {
+                    if (hp[bestTarget] <= 0f) {
                         freed = at[bestTarget];
                         taken.Remove(freed);
                         board.Clear(freed, bestTarget);

@@ -157,7 +157,7 @@ namespace HexTactica.AI {
                 if (Verify) {
                     Count(Checked, kind);
                     HashSet<HexTile> f = AIWorld.Positions(e, d == baseReachBlocked);
-                    if (d == replyCache.positions) f = AIWorld.Positions(e, profile.forecastOwnSideBlocks);
+                    if (d == replyCache.positions) f = AIWorld.Positions(e, false);
                     if (!f.SetEquals(kv.Value)) Count(Mismatches, kind);
                 }
             }

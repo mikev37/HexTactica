@@ -275,7 +275,7 @@ namespace HexTactica.AI {
             foreach (Unit u in map.ownUnits) { if (u == null || u.tile == null) continue; if (u.Hub != null && !u.Hub.producer) hubsHave++; else if (u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1)) fighters++; }
             int shortFronts = 0; if (logistics != null) foreach (AILogistics.Task t in logistics.tasks) if (!t.ordinary && t.short_) shortFronts++;
             int supplyCap = Mathf.CeilToInt(fighters / (float)Mathf.Max(1, profile.campaignUnitsPerSupply)) + Mathf.Min(Mathf.Max(0, profile.productionSupplyExtra), shortFronts + (logistics != null && logistics.supplyDemand > 0f ? 1 : 0));
-            if (!profile.productionSupplyCap) supplyCap = int.MaxValue;
+            supplyCap = int.MaxValue;
             // How far our army outmatches what we know of theirs (AIProfile.productionSupplySuperiority): supply
             // counts for more the more we outmatch them (the fight is won; reach is what is short), less when we
             // are outmatched. (Twenty to one up, every front asking for supply, and it bought tanks.)
@@ -502,14 +502,6 @@ namespace HexTactica.AI {
             // supplyAskPerUnit: what supply is asked for — every unit of ours out of supply (each one's value, as each rider
             // waiting asks for a transport), and every front whose supply is short.
             float supplyAsk = 0f; int outOfSupply = 0;
-            if (profile.supplyAskPerUnit) {
-                foreach (Unit u in map.ownUnits) {
-                    if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || u.Firepower <= 0 || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) continue;
-                    if (map.SupplyDepth(u.tile) > 0) continue;
-                    supplyAsk += Value(u, u.tile, map); outOfSupply++;
-                }
-                if (logistics != null) foreach (AILogistics.Task task in logistics.tasks) if (!task.ordinary && task.short_) supplyAsk += task.unsupplied * profile.productionSupplyWeight * supplyScale;
-            }
             Dictionary<string, int> picked = new Dictionary<string, int>();
             // What a unit would add in this slot, given what is planned so far.
             System.Func<Unit, Slot, KeyValuePair<float, string>> worth = null;
@@ -660,7 +652,6 @@ namespace HexTactica.AI {
                     }
                 } else if (kindOf == 1) {
                     if (hubsHave + supplyPlanned >= supplyCap) return new KeyValuePair<float, string>(-1f, null);
-                    if (profile.supplyAskPerUnit && supplyAsk > 0f && supplyAsk * mix > v) { v = supplyAsk * mix; tag = "supply asked: " + outOfSupply + " units out of supply"; }
                     foreach (KeyValuePair<AILogistics.Task, Building> kv in nearest[1]) {
                         if (kv.Value != sl.b || !kv.Key.short_) continue;
                         float fv = kv.Key.unsupplied * profile.productionSupplyWeight * supplyScale * mix;
@@ -772,28 +763,16 @@ namespace HexTactica.AI {
             // First: each slot, in turn, the best value for its cost that can be paid for now.
             for (int pass = 0; proc == null && pass < slots.Count; pass++) {
                 Slot best = null; Unit bu = null; float br = 0f, bv = 0f; string bw = null;
-                // productionAbsolute: the most value outright, as long as every other empty slot can still buy its cheapest; only
-                // when gold is short does value for its cost decide. (Value per gold bought infantry turn after turn.)
-                int keep = 0;
-                if (profile.productionAbsolute) {
-                    int empty = 0, cheapest = int.MaxValue;
-                    foreach (Slot sl in slots) if (sl.pick == null) { empty++; foreach (Unit t in sl.b.Purchasable()) if (t.cost > 0 && t.CanEnter(sl.tile)) cheapest = Mathf.Min(cheapest, t.cost); }
-                    if (cheapest < int.MaxValue) keep = Mathf.Max(0, empty - 1) * cheapest;
-                }
-                bool outright = profile.productionAbsolute && money - keep > 0;
-                for (int tryOutright = outright ? 0 : 1; tryOutright < 2 && best == null; tryOutright++) {
-                outright = tryOutright == 0;
                 foreach (Slot sl in slots) {
                     if (sl.pick != null) continue;
                     foreach (Unit t in sl.b.Purchasable()) {
-                        if (t.cost > money || (outright && t.cost > money - keep)) continue;
+                        if (t.cost > money) continue;
                         KeyValuePair<float, string> w = worth(t, sl);
                         if (w.Key <= 0f) continue;
-                        float r = outright ? w.Key : w.Key / t.cost;
+                        float r = w.Key / t.cost;
                         if (r > br || (r == br && bu != null && string.CompareOrdinal(t.name, bu.name) < 0)) { br = r; best = sl; bu = t; bv = w.Key; bw = w.Value; }
                     }
                 }
-                }   // nothing worth it outright within the gold kept for the other slots: value for its cost, as before
                 if (best == null) break;
                 best.pick = bu; best.value = bv; best.why = bw; money -= bu.cost; plan(bu, best, 1);
             }

@@ -254,7 +254,6 @@ namespace HexTactica.AI {
             }
 
             // ---- cover swaps: a unit standing guard over a friend, or the friend stepping aside.
-            if (profile.coordCoverSwaps) CoverSwaps(menus, map, profile, alone, retreats, usedUnits, usedTiles, result, log);
 
             // ---- rule 5: no charging in on a promise nobody made.
             foreach (Menu m in menus) {

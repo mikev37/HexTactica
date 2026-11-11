@@ -133,7 +133,7 @@ namespace HexTactica.AI {
                 if (every == null && (sx > bestSteps || (sx == bestSteps && !CombatMath.Precedes(x, best)))) continue;
                 // Supply serves the army: never ahead of it. (Carried out in front where nothing could strike
                 // it yet, it fed itself to the enemy and left the army behind a gap it would not cross.)
-                if (sx < front && !(map.profile.leapsAheadWhenClear && map.EnemyStrikeTurns(x) > 2)) { nAhead++; continue; }
+                if (sx < front) { nAhead++; continue; }
                 float loss = map.KnownLoss(truck, x);
                 if (loss * caution >= truck.Strength || loss > tolerance) { nRisk++; continue; }
                 if (!SupplyNetwork.WithinMoveOfSupply(truck, x, net)) { nUnlinked++; continue; }
@@ -183,7 +183,7 @@ namespace HexTactica.AI {
         /// whole army's chain toward the nearest enemy HQ.
         /// </summary>
         public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
-            Unified = map.profile.unifiedLogistics;
+            Unified = true;
             Plan plan = MakeOne(map, fixedHubs, objective, only, army, null);
             if (NoLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
             // Stretched, with trucks to hand: try each supply unit on foot that a truck could take now
@@ -252,7 +252,7 @@ namespace HexTactica.AI {
             Plan plan = new Plan();
             plan.objective = objective ?? Objective(map);
             if (plan.objective == null) return plan;
-            Unified = map.profile.unifiedLogistics;
+            Unified = true;
             Dictionary<HexTile, int> toObj = map.SupplySteps(plan.objective);
             System.Func<HexTile, int> steps = t => { int s; return t != null && toObj.TryGetValue(t, out s) ? s : int.MaxValue; };
 
@@ -343,12 +343,12 @@ namespace HexTactica.AI {
                     if (net.DepthAt(t) <= 0) { nUnsupplied++; continue; }       // a link must be supplied by the links behind it
                     int s = steps(t);
                     if (s == int.MaxValue) continue;
-                    if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) nAhead++;
+                    if (s < plan.frontSteps) nAhead++;
                     // Not ahead of the army — unless no enemy can strike there for more than two
                     // turns (profile.chainLeadsWhenClear): a link behind which the army stands
                     // would otherwise hold in the road and the army, behind it on a narrow road,
                     // never get past (zigzag: Red's chain stood in front of its army all game).
-                    if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) { cappedOut = true; continue; }
+                    if (s < plan.frontSteps) { cappedOut = true; continue; }
                     // Little or nothing can hit it tonight (profile.chainRiskTolerance strength at most)...
                     float tolerance = Mathf.Max(0f, map.profile.chainRiskTolerance);
                     float expected = map.KnownLoss(u, t);
@@ -389,7 +389,7 @@ namespace HexTactica.AI {
                         if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
                         if (map.KnownLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
                         int ahead = steps(t);
-                        if (ahead < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) continue;   // not ahead of the army
+                        if (ahead < plan.frontSteps) continue;   // not ahead of the army
                         Dictionary<SupplyPoint, HexTile> tr = new Dictionary<SupplyPoint, HexTile>(placed);
                         tr[h] = t;
                         int c = Cut(tr, map);

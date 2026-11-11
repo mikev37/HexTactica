@@ -1430,7 +1430,7 @@ public static partial class Scenarios {
                 Unit apc = Rig.At(-4, 2).occupier, rider = Rig.At(-6, 2).occupier, tank = Rig.At(-5, -1).occupier, recon = Rig.At(-5, 2).occupier, gun = Rig.At(-6, 1).occupier, foot = Rig.At(-4, -2).occupier;
                 rider.TeleportTo(Rig.At(-4, 1), 0);
                 Transporting.Load(apc, rider);
-                Func<bool, Unit, bool> member = (mobile, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.campaignMobileReserve = mobile; prof.reserveTakesSpare = false; return AICampaign.ReserveMember(u, prof); };
+                Func<bool, Unit, bool> member = (mobile, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.campaignMobileReserve = mobile; return AICampaign.ReserveMember(u, prof); };
                 Func<bool, string> list = mobile => string.Join(", ", new[] { tank, recon, gun, apc, foot }.Where(u => member(mobile, u)).Select(u => GameController.UnitName(u)).ToArray());
                 string on = list(true), off = list(false);
                 detail = "rider aboard the APC " + (rider.trasnporter == apc) + "; mobile reserve may hold: " + on + " || off: " + off;
@@ -1909,7 +1909,7 @@ public static partial class Scenarios {
                 Unit g = rc.transported.Count > 0 ? rc.transported[0] : null;
                 g.active = true;
                 // The transport's own choice (no coordinated plan, which may also send the recon in and set its ride aside).
-                AIProfile ap0 = a.GetComponent<AIPlayer>().Profile; ap0.coordination = false; ap0.coordinationPasses = false;
+                AIProfile ap0 = a.GetComponent<AIPlayer>().Profile; ap0.coordinationPasses = false;
                 List<string> events = new List<string>();
                 Action<Unit, Unit, bool> att = (x, d, sur) => { if (x.owner == a) events.Add(GameController.UnitName(x) + " fires" + (x == g ? (g.trasnporter == null ? " (off)" : " (aboard)") : "")); };
                 Unit.Attacking += att;
@@ -2226,7 +2226,6 @@ public static partial class Scenarios {
             }
             case "aiBuys": {
                 l.ai.money = 10000;
-                l.ai.GetComponent<AIPlayer>().Profile.buyUnits = true;
                 List<Unit> had = new List<Unit>(l.ai.units);
                 int before = l.ai.units.Count;
                 ScenarioFile.PlayTurn();
@@ -4407,7 +4406,6 @@ public static partial class Scenarios {
             case "combatRide": {
                 // (combatRides, which this documents: under assaultRides grunts take a free transport and ride it to the assault.)
                 l.ai.GetComponent<AIPlayer>().Profile.assaultRides = false;
-                if (Environment.GetEnvironmentVariable("SET") == null) l.ai.GetComponent<AIPlayer>().Profile.combatRides = true;
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
                 HexTile home = GameController.HQOf(l.ai).tile;
                 Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);

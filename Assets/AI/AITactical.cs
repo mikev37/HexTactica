@@ -48,14 +48,12 @@ namespace HexTactica.AI {
             // starving or about to be attacked. Standing there is worth it for the chance of winning.
             // (A grunt down to strength 2 out of supply walked off the enemy HQ at 3/10 to find supply.)
             Building onHQ = unit.tile.building;
-            if (profile.holdEnemyHQRule && onHQ != null && onHQ.IsHQ && onHQ.owner != unit.owner && Building.CanCapture(unit))
-                return AIAction.Seize(unit, onHQ, 0f, "on the enemy HQ: holds it to take it");
             if (unit.airTanker) return AIAir.DecideTanker(unit, map);
             AIRole role = AIRoles.Classify(unit, profile);
             // Wounded: fighting on and withdrawing are weighed by the move score (AIProfile.woundedWorldCompare), so
             // what holding its ground is worth — a building it is taking, the enemy HQ — counts. (With withdrawal
             // by position alone, a wounded grunt walked off the enemy HQ it was taking.)
-            if (role == AIRole.Wounded) return DecideWounded(unit, map, profile, posture, profile.woundedNeedsSafety);
+            if (role == AIRole.Wounded) return DecideWounded(unit, map, profile, posture, false);
             if (role == AIRole.Line && ShouldRotate(unit, map, profile)) role = AIRole.Wounded;
 
             switch (role) {
@@ -181,7 +179,7 @@ namespace HexTactica.AI {
         /// or more), at real risk where it stands (regroupRisk), on a front that is not on the offensive.
         /// </summary>
         public static bool Regrouping(Unit unit, AIMap map, AIProfile profile, Posture posture) {
-            if (!profile.regroup || unit == null || unit.tile == null || unit.Hub != null || unit.Firepower <= 0) return false;
+            if (unit == null || unit.tile == null || unit.Hub != null || unit.Firepower <= 0) return false;
             if (unit.cost < profile.regroupExpensiveCost || (Transporting.IsTransport(unit) && unit.Firepower <= 1)) return false;
             // The front's opinion (its force ratio, and what we could replace: AIStrategic.StrategicNeed):
             // on the offensive it engages; on the defensive it does not.
@@ -349,7 +347,7 @@ namespace HexTactica.AI {
             // A unit that could fight does not go capturing instead (profile.fightBeforeCapture): with
             // an attack open to it, standing on a building to take it earns it nothing.
             // (A capture move is held below the best attack; anything else — falling back, say — is judged as usual.)
-            if (profile.fightBeforeCapture && options.Exists(o => o.shot.valid)) {
+            if (options.Exists(o => o.shot.valid)) {
                 float bestShot = float.NegativeInfinity;
                 foreach (Option o in options) if (o.shot.valid) bestShot = Mathf.Max(bestShot, o.world.score);
                 // (Not the enemy HQ: taking it ends the game.)
@@ -936,7 +934,7 @@ namespace HexTactica.AI {
                     }
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.2f;
                 return v;
-            }, true, 1.5f, 0.02f, "transport", profile.idleTransportScreens || (profile.regroup));
+            }, true, 1.5f, 0.02f, "transport", true);
         }
 
     }

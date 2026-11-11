@@ -133,7 +133,7 @@ namespace HexTactica.AI {
 
             for (int i = 0; i < transports.Count; i++) {
                 RideSolution ride = BuildRide(cargo, transports[i], walk, horizon, profile, map);
-                if (ride != null) { ride.freshUnload = profile.freshUnload; ride.walkAfterDrop = profile.freshUnload; }
+                if (ride != null) { ride.freshUnload = true; ride.walkAfterDrop = true; }
                 if (ride == null) continue;
                 if (bestRide == null || ride.IsBetterThan(bestRide)) bestRide = ride;
             }
@@ -446,7 +446,7 @@ namespace HexTactica.AI {
                     // carrier sent to the same drop-off may have taken it this turn. The order was then refused and the
                     // carrier lost its move; it now goes as far along the way as it can, below.)
                     if (reach.ReachableThisTurn(plan.dropoff) && plan.dropoff.CanEndTurnHere(transport)) {
-                        HexTile off = rider != null && map.profile.freshUnload ? DropTile(transport, rider, plan.dropoff, null) : null;
+                        HexTile off = rider != null ? DropTile(transport, rider, plan.dropoff, null) : null;
                         if (off != null) return AIAction.MoveAndDisembark(transport, plan.dropoff, rider, off, "supply link: arrives and lets its rider out");
                         return AIAction.Move(transport, plan.dropoff, plan.score, "supply leap: " + plan.ToString());
                     }
@@ -473,7 +473,7 @@ namespace HexTactica.AI {
             // The drop-off is in reach this turn: drive there and put the cargo down in the same
             // action. Getting off costs nothing, so a passenger that has not acted yet this turn
             // still moves and fights from where it lands (it decides again once it is down).
-            if (aboard && step == goal && map.profile.freshUnload) {
+            if (aboard && step == goal) {
                 HexTile onto = DropTile(transport, cargo, goal, plan.destination);
                 if (onto != null) return AIAction.MoveAndDisembark(transport, goal, cargo, onto, "carry and drop off: " + plan.ToString());
             }

@@ -209,12 +209,12 @@ namespace HexTactica.AI {
                 bool cached;
                 lock (map.cacheLock) cached = !near && cache.positions.TryGetValue(e, out p);
                 if (cached) { positions[e] = p; continue; }
-                HashSet<Unit> goneHere = map.profile.forecastDeadBlock ? NoneGone : gone;
+                HashSet<Unit> goneHere = gone;
                 // Near, but nothing this option changes on the board (the tile our unit leaves, the
                 // one it takes, units it kills) lies in or beside where the enemy could go: that is
                 // exactly where it could go on the board as it stands, worked out once per board.
                 if (knocked == null) {
-                    HashSet<HexTile> b = map.BaseReach(e, map.profile.forecastOwnSideBlocks);
+                    HashSet<HexTile> b = map.BaseReach(e, false);
                     if (Unaffected(b, e, moving ? from : null, moving ? uAt : null, goneHere, u, uAt)) { positions[e] = b; if (!near) lock (map.cacheLock) cache.positions[e] = b; continue; }
                 }
                 // Our unit leaving its tile is the same for every option of this decision: where the enemy could go with
@@ -224,7 +224,7 @@ namespace HexTactica.AI {
                     HashSet<HexTile> r1 = VacatedReach(e, u, from, map);
                     if (!r1.Contains(uAt) && uAt != e.tile) {
                         if (AIMap.Verify) {
-                            HashSet<HexTile> full = PositionsOnBoard(e, u, from, uAt, moving, stopWas, goneHere, ownSideBlocks: map.profile.forecastOwnSideBlocks);
+                            HashSet<HexTile> full = PositionsOnBoard(e, u, from, uAt, moving, stopWas, goneHere, ownSideBlocks: false);
                             AIMap.CountCheck("vacated reach", !full.SetEquals(r1));
                         }
                         positions[e] = r1;
@@ -246,7 +246,7 @@ namespace HexTactica.AI {
             // already removed or weakened the enemies in hp.
             float selfExposure = 0f;
             AIProfile sp0 = map.profile;
-            if (sp0.selfPreservationWeight > 0f && hp[u] > 0f && GameController.Targetable(u) && (!sp0.selfPreservationShieldless || !Shields(u))) {
+            if (sp0.selfPreservationWeight > 0f && hp[u] > 0f && GameController.Targetable(u) && (!Shields(u))) {
                 List<float> blows = new List<float>();
                 float k0 = sp0.selfPreservationDiscount ? 1f - sp0.replyDiscount : 1f;
                 foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in positions) {
@@ -281,7 +281,7 @@ namespace HexTactica.AI {
             // Only units that fire from where they stand (artillery able to fire this turn) or
             // cannot move at all keep their tiles. Everything else on their side — supply units,
             // units with nothing to shoot — can step aside for a unit that wants the tile.
-            bool ownSideBlocks = map.profile.forecastOwnSideBlocks;
+            bool ownSideBlocks = false;
             foreach (Unit e in enemies) {
                 if (e == null || e.tile == null) continue;
                 bool firesInPlace = !e.moveAndAttack && e.Firepower > 0 && positions.ContainsKey(e);
@@ -370,20 +370,6 @@ namespace HexTactica.AI {
                 // Driven back: for the blows still to come it stands on its retreat tile, and the tile
                 // it left is open to anyone who could step into it. (A tank knocked back by artillery,
                 // followed into the tile it left by a tank that knocks it back again, then finished.)
-                if (map.profile.forecastRetreatChain && !CombatMath.Suppresses(e) && hp[bestTarget] > 0f && !bestPinned && bestDamage - bestTarget.Veterancy > bestBack - e.Veterancy) {
-                    HexTile left = ourPos(bestTarget);
-                    HexTile back = AIPlan.RetreatTile(bestTarget, left, bestTile, hp, taken);
-                    if (back != null) {
-                        displaced[bestTarget] = back;
-                        taken.Remove(left); taken.Add(back);
-                        foreach (Unit later in enemies) {
-                            HashSet<HexTile> lp;
-                            if (later == e || !later.moveAndAttack || hp.ContainsKey(later) && hp[later] <= 0f || !positions.TryGetValue(later, out lp) || lp.Contains(left)) continue;
-                            foreach (HexTile n in left.neighbors) if (n != null && lp.Contains(n) && later.CanEnter(left)) { lp = new HashSet<HexTile>(lp); lp.Add(left); positions[later] = lp; break; }
-                        }
-                        chainNote = bestTarget.name + " driven back to (" + back.x + "," + back.y + ")";
-                    }
-                }
                 float sofar;
                 w.lost[bestTarget] = (w.lost.TryGetValue(bestTarget, out sofar) ? sofar : 0f) + dealt;
                 hp[e] = Mathf.Max(0f, hp[e] - bestBack);
@@ -391,7 +377,7 @@ namespace HexTactica.AI {
                                            + (certain ? " certain" : "") + (breakpoints && hp[bestTarget] <= 0f ? " kill" : ""));
                 if (narrate && chainNote != null) w.replies.Add(chainNote);
                 chainNote = null;
-                if (hp[bestTarget] <= 0f && !map.profile.forecastDeadBlock) {
+                if (hp[bestTarget] <= 0f) {
                     // Destroyed: it no longer holds its tile or blocks anyone still to act.
                     HexTile freed = ourPos(bestTarget);
                     taken.Remove(freed);
@@ -405,7 +391,7 @@ namespace HexTactica.AI {
                         // whose reach is up to date with every tile freed before (the unit that made a kill is not
                         // worked out again for its own kill, so it is behind until the next one near it).
                         if ((behind == null || !behind.Contains(later)) && !Touches(positions[later], later, freed)) {
-                            if (AIMap.Verify) AIMap.CountCheck("freed tile out of reach", !PositionsOnBoard(later, u, from, uAt, moving, stopWas, gone, ownSideBlocks: map.profile.forecastOwnSideBlocks).SetEquals(positions[later]));
+                            if (AIMap.Verify) AIMap.CountCheck("freed tile out of reach", !PositionsOnBoard(later, u, from, uAt, moving, stopWas, gone, ownSideBlocks: false).SetEquals(positions[later]));
                             continue;
                         }
                         positions[later] = ReachAfter(later, u, from, uAt, moving, stopWas, gone, map);
@@ -1298,7 +1284,7 @@ namespace HexTactica.AI {
             HashSet<HexTile> r;
             if (vacated.TryGetValue(e, out r)) return r;
             Unit was = from.occupier;
-            try { if (was == u) from.occupier = null; r = Positions(e, map.profile.forecastOwnSideBlocks); }
+            try { if (was == u) from.occupier = null; r = Positions(e, false); }
             finally { from.occupier = was; }
             vacated[e] = r;
             return r;
@@ -1314,7 +1300,7 @@ namespace HexTactica.AI {
         /// forecasts ask for a reach already worked out. (AIVERIFY checks every remembered one against a fresh one.)
         /// </summary>
         static HashSet<HexTile> ReachAfter(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, AIMap map) {
-            bool blocks = map.profile.forecastOwnSideBlocks;
+            bool blocks = false;
             // A unit driven back stands elsewhere for this option only: nothing remembered from or for that board.
             if (knocked != null) return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, blocks);
             if (reachMemo == null || reachMemoMap != map || reachMemoVersion != map.SpaceVersion) {

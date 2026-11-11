@@ -416,13 +416,6 @@ namespace HexTactica.AI {
             bool attrition = GameController.gc != null && GameController.gc.rules == RuleSet.Attrition;
 
             // Our HQ, when anything can reach it (campaignDefendHQ; off: the move score defends it).
-            if (p.campaignDefendHQ && home != null && home.tile != null) {
-                CampaignObjective d = new CampaignObjective { kind = CampaignKind.DefendHQ, target = home.tile, building = home };
-                // Only what can strike or reach it on its next turn: a threat two turns off is met
-                // by the campaign's fighting, not by units held back at home.
-                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && Power(e) > 0f && CanArrive(e, home.tile, 1, map)) d.enemies.Add(e);
-                if (d.enemies.Count > 0) list.Add(d);
-            }
 
             // Buildings not ours (as this side last saw them).
             foreach (Building b in Building.all) {
@@ -457,17 +450,6 @@ namespace HexTactica.AI {
                 }
                 // On the defensive (defensiveNarrows): the narrows (passages three tiles wide or less, flanked by ground an army
                 // cannot cross) between us and an enemy we see or remember are held, ours or not, in sight or not.
-                if (p.defensiveNarrows && map.knowledge != null && map.knowledge.aggression < 0.25f) {
-                    int near = Mathf.Max(1, p.fogStaleRadius) * 2;
-                    foreach (HexTile t in Narrows()) {
-                        if (places.Exists(x => x.target == t)) continue;
-                        bool enemy = false;
-                        foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.tile.Distance(t) <= near) { enemy = true; break; }
-                        if (!enemy && FogOfWar.current != null) foreach (FogOfWar.Phantom ph in FogOfWar.current.phantoms) if (ph.last != null && ph.last.Distance(t) <= near) { enemy = true; break; }
-                        if (!enemy || NearestOwn(t, map) > near) continue;
-                        places.Add(new CampaignObjective { kind = CampaignKind.Hold, target = t, lasting = true, placeKind = "narrows" });
-                    }
-                }
                 // The nearest to our units only (each costs a route to plan).
                 places.Sort((a, b) => { int c = NearestOwn(a.target, map).CompareTo(NearestOwn(b.target, map)); return c != 0 ? c : CombatMath.CompareTiles(a.target, b.target); });
                 if (places.Count > p.campaignPlaces) places.RemoveRange(p.campaignPlaces, places.Count - p.campaignPlaces);
@@ -882,7 +864,7 @@ namespace HexTactica.AI {
             int stagingToGo = map.Travel(null, o.staging, o.target);
             float gathered = 0f;
             // Past the staging ground counts only with the body (campaignGatherWithBody), as AIStrategic.GatherThenGo.
-            HexTile body = p.campaignGatherWithBody ? Centre(o.units.FindAll(x => x != null && x.tile != null && x.Strength >= healthy)) : null;
+            HexTile body = Centre(o.units.FindAll(x => x != null && x.tile != null && x.Strength >= healthy));
             foreach (Unit u in o.units) {
                 if (u == null || u.tile == null || u.Strength < healthy) continue;
                 if (map.Travel(u, u.tile, o.staging) <= radius
@@ -1148,8 +1130,7 @@ namespace HexTactica.AI {
                         continue;
                     }
                 }
-                if (p.capturerLives && o.kind == CampaignKind.Secure && o.building != null && !kept
-                    && !o.units.Exists(u => Takes(u, o, map, p)) && !pool.Exists(u => Takes(u, o, map, p) && CanJoin(u, o, map, p))) {
+                if (o.kind == CampaignKind.Secure && o.building != null && !kept && !o.units.Exists(u => Takes(u, o, map, p)) && !pool.Exists(u => Takes(u, o, map, p) && CanJoin(u, o, map, p))) {
                     if (Debug != null) Debug("not taken on: " + o.Id + ": none free would live to take it");
                     continue;
                 }
@@ -1208,7 +1189,7 @@ namespace HexTactica.AI {
                 CampaignObjective top = null; int topShort = int.MaxValue;
                 foreach (CampaignObjective o in candidates) {
                     if (o.kind == CampaignKind.DefendHQ || o.respond || o.kind == CampaignKind.Scout) continue;
-                    if (p.capturerLives && o.kind == CampaignKind.Secure && o.building != null && !pool.Exists(u => Takes(u, o, map, p))) continue;   // nobody would live to take it
+                    if (o.kind == CampaignKind.Secure && o.building != null && !pool.Exists(u => Takes(u, o, map, p))) continue;   // nobody would live to take it
                     int shortBy = o.lasting ? Mathf.Max(0, o.needHubs - Mathf.Max(0, hubsLeft)) : 0;
                     if (shortBy < topShort) { topShort = shortBy; top = o; }
                 }
@@ -1224,30 +1205,6 @@ namespace HexTactica.AI {
             // fight and push on better than a task force does. Given to the task forces, a city that needed
             // three units got twenty-four, and the crowd jammed the one bridge on the way.)
             List<CampaignObjective> active = objectives.FindAll(o => o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout);
-            if (p.campaignLeftoverToFronts && active.Count > 0 && pool.Count > 0) {
-                float leftover = 0f; foreach (Unit u in pool) leftover += Power(u);
-                float needSum = 0f; foreach (CampaignObjective o in active) needSum += Mathf.Max(1f, o.needPower);
-                Dictionary<CampaignObjective, float> target = new Dictionary<CampaignObjective, float>();
-                for (int i = 0; i < active.Count; i++) {
-                    float share = Mathf.Max(1f, active[i].needPower) / needSum;
-                    target[active[i]] = leftover * (spread * share + (i == 0 ? 1f - spread : 0f));
-                }
-                Dictionary<CampaignObjective, float> got = new Dictionary<CampaignObjective, float>();
-                foreach (CampaignObjective o in active) got[o] = 0f;
-                pool.Sort((a, b) => AIMap.CompareUnits(a, b));
-                foreach (Unit u in pool) {
-                    CampaignObjective best = null; float bestScore = float.NegativeInfinity;
-                    foreach (CampaignObjective o in active) {
-                        if (!CanJoin(u, o, map, p)) continue;
-                        float deficit = target[o] - got[o];
-                        float s = deficit / Mathf.Max(1f, Power(u)) - Turns(u, o, map) * 0.1f;
-                        if (s > bestScore) { bestScore = s; best = o; }
-                    }
-                    if (best == null) continue;
-                    Give(best, u); got[best] += Power(u);
-                }
-                pool.Clear();
-            }
 
             // Supply: to each lasting objective what it needs, nearest first.
             foreach (CampaignObjective o in objectives) {
@@ -1346,7 +1303,7 @@ namespace HexTactica.AI {
         /// </summary>
         static bool Takes(Unit u, CampaignObjective o, AIMap map, AIProfile p) {
             if (!Building.CanCapture(u)) return false;
-            if (!p.capturerLives || o.building == null) return true;
+            if (o.building == null) return true;
             return TakeTurns(u, o, map) >= 0;
         }
 
@@ -1538,7 +1495,7 @@ namespace HexTactica.AI {
                 f.objectiveValue = o.value;
                 f.ownStrength = o.assignedPower;
                 f.enemyStrength = o.enemyPower;
-                f.armyRatio = p.useArmyRatio ? army : 0f;
+                f.armyRatio = 0f;
                 f.campaignStaging = o.kind == CampaignKind.DefendHQ ? null : o.staging;
                 f.campaignReady = o.assignedPower >= o.needPower && o.kind != CampaignKind.DefendHQ;
                 f.campaignNeed = o.needPower;
@@ -1572,7 +1529,6 @@ namespace HexTactica.AI {
             AIStrategic.Finish(fronts, map, p, memory, assaulting);
             // No holding and waiting (AIProfile.regroup): a task force strikes first; its expensive units pull
             // back when they lack the superiority (AITactical.Regrouping), and the reserve comes up.
-            if (p.regroup && p.campaignStrikeFirst) foreach (Front f in fronts) if (f.campaign) f.posture = Posture.Aggressive;
             // All out (AIKnowledge): every front attacks.
             if (map.AllOut) foreach (Front f in fronts) f.posture = Posture.Aggressive;
             // Stopped task forces (campaignSurgeAbort): their units on the way pull back to the staging ground, defensively.
@@ -1650,7 +1606,7 @@ namespace HexTactica.AI {
                     if (c != null) { rally = map.AllOut && to.objectiveIsHQ ? to.objectiveTile : c; pressed = to; released = to.campaignObjective.Id; }
                 }
             }
-            if (p.regroup && calm.Count > 0 && released == null)
+            if (calm.Count > 0 && released == null)
                 foreach (Front f in fronts) {
                     float ours = 0f, theirs = 0f; HashSet<Unit> seenE = new HashSet<Unit>(); List<Unit> mine = new List<Unit>();
                     foreach (Unit u in f.assigned) {
@@ -1718,7 +1674,6 @@ namespace HexTactica.AI {
             bool unarmedTransport = Transporting.IsTransport(u) && u.Firepower <= 1;
             if (!p.campaignMobileReserve) return u.Firepower > 0 && !unarmedTransport && !air && !sea;
             // Every spare fighting unit (reserveTakesSpare): the reserve is a share of the army, not of its fast units.
-            if (p.reserveTakesSpare) return (u.Firepower > 0 && !unarmedTransport) || (Transporting.IsTransport(u) && u.transported.Exists(c => c != null && c.Firepower > 0 && c.Hub == null));
             if ((air || sea) && u.Firepower > 0) return true;
             if (Transporting.IsTransport(u) && u.transported.Exists(c => c != null && c.Firepower > 0 && c.Hub == null)) return true;
             return !air && !sea && !unarmedTransport && u.Firepower > 0 && u.moveRange >= p.campaignReserveMinMove;

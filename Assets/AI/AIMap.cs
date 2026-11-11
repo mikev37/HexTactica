@@ -182,7 +182,7 @@ namespace HexTactica.AI {
         /// unit's move field and space), so the turn's map takes it over (keepCaches keeps what still stands).
         /// </summary>
         public void Warm() {
-            foreach (Unit e in enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) BaseReach(e, profile.forecastOwnSideBlocks);
+            foreach (Unit e in enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) BaseReach(e, false);
             foreach (Unit u in ownUnits) if (u != null && u.tile != null) { ReachThisTurn(u); SpaceOf(u); }
             foreach (Unit e in enemyUnits) if (e != null && e.tile != null) ReachThisTurn(e);
         }
@@ -868,7 +868,7 @@ namespace HexTactica.AI {
         /// </summary>
         public Dictionary<HexTile, int> SupplySteps(HexTile to) {
             if (to == null) return null;
-            if (!profile.unifiedLogistics || !SupplyAcrossWater(to)) return LandSteps(to);
+            if (!SupplyAcrossWater(to)) return LandSteps(to);
             lock (cacheLock) {
                 Dictionary<HexTile, int> d;
                 if (mixedSteps.TryGetValue(to, out d)) return d;
@@ -956,7 +956,7 @@ namespace HexTactica.AI {
         /// sea either.
         /// </summary>
         public int SeaTravel(HexTile from, HexTile to) {
-            if (!profile.seaLift || from == null || to == null || !SeaLiftPossible()) return int.MaxValue;
+            if (from == null || to == null || !SeaLiftPossible()) return int.MaxValue;
             int c;
             if (!SeaSteps(to).TryGetValue(from, out c)) return int.MaxValue;
             return c + Mathf.Max(0, profile.seaLiftBoardSteps);
