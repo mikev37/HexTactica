@@ -157,7 +157,7 @@ namespace HexTactica.AI {
         public AIMap(Player player, AIProfile profile) : this(player, profile, null) { }
 
         /// <summary>
-        /// With <paramref name="carry"/> (keepCaches: last turn's map for the same side), the caches it ended with that
+        /// With <paramref name="carry"/> (last turn's map for the same side), the caches it ended with that
         /// what happened since leaves standing are kept (AIMapCache).
         /// </summary>
         public AIMap(Player player, AIProfile profile, AIMap carry) : this(player, profile, carry, false) { }
@@ -171,8 +171,7 @@ namespace HexTactica.AI {
             this.player = player;
             this.profile = profile != null ? profile : AIProfile.Default;
             this.speculative = speculative;
-            AIScore.Use(this.profile);
-            if (carry != null && carry.player == player && carry.profile == this.profile && this.profile.keepCaches) Adopt(carry);
+            if (carry != null && carry.player == player && carry.profile == this.profile) Adopt(carry);
             Rebuild(!speculative);
         }
         /// <summary>Read while the opponent plays, to warm caches only (see the constructor).</summary>
@@ -180,10 +179,10 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// Speculation: work out now what the turn's own map will most likely ask for (every enemy's reach, every
-        /// unit's move field and space), so the turn's map takes it over (keepCaches keeps what still stands).
+        /// unit's move field and space), so the turn's map takes it over (what still stands is kept).
         /// </summary>
         public void Warm() {
-            foreach (Unit e in enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) BaseReach(e, profile.forecastOwnSideBlocks);
+            foreach (Unit e in enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) BaseReach(e, false);
             foreach (Unit u in ownUnits) if (u != null && u.tile != null) { ReachThisTurn(u); SpaceOf(u); }
             foreach (Unit e in enemyUnits) if (e != null && e.tile != null) ReachThisTurn(e);
         }
@@ -262,9 +261,8 @@ namespace HexTactica.AI {
 
         void Rebuild(bool recalculateThreat) {
             readCount++;
-            // keepCaches: only what the board's changes since the last read could have changed (AIMapCache).
-            if (profile.keepCaches) { ReadDelta(); PruneUnitCaches(); }
-            else { replyCache.positions.Clear(); baseReach.Clear(); baseReachBlocked.Clear(); thisTurnFields.Clear(); horizonFields.Clear(); ourSpace.Clear(); everything = true; }
+            // Only what the board's changes since the last read could have changed (AIMapCache).
+            ReadDelta(); PruneUnitCaches();
             theaters.Clear();
             theaterRadius.Clear();
             space = null;
@@ -312,11 +310,11 @@ namespace HexTactica.AI {
 
         /// <summary>What the fog may hide (AISigint), or null: nothing to price.</summary>
         public AISigint sigint;
-        /// <summary>How well we know the enemy's forces and how they compare (AIProfile.campaignKnowledge); null when off.</summary>
+        /// <summary>How well we know the enemy's forces and how they compare; null when off.</summary>
         public AIKnowledge knowledge;
         /// <summary>fogUncertainty: the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge); -1 unset.</summary>
         public float fogUncertainty = -1f;
-        /// <summary>fogConcentrate: the enemy's power we cannot place this turn (estimate - known, AIKnowledge); -1 unset.</summary>
+        /// <summary>The enemy's power we cannot place this turn (estimate - known, AIKnowledge); -1 unset.</summary>
         public float fogUnplacedPower = -1f;
         /// <summary>The enemy units we knew of when fogUnplacedPower was set: one seen later in the turn is taken out of the unplaced (not counted twice).</summary>
         public HashSet<Unit> fogKnownAtStart;
@@ -855,7 +853,7 @@ namespace HexTactica.AI {
 
         /// <summary>
         /// How far <paramref name="from"/> is from <paramref name="to"/> for strategy. With
-        /// profile.travelDistance and a unit that walks: steps over land (hex distance plus the
+        /// A unit that walks: steps over land (hex distance plus the
         /// map's width when there is no land route). Otherwise, and for aircraft and ships, hex distance.
         /// </summary>
         /// <summary>
@@ -863,14 +861,14 @@ namespace HexTactica.AI {
         /// not reach it). Across water only a ship (or an aircraft) gets a land unit there.
         /// </summary>
         /// <summary>
-        /// unifiedLogistics: "forward" for supply toward <paramref name="to"/>. Over land (LandSteps) when the land it
+        /// "Forward" for supply toward <paramref name="to"/>. Over land (LandSteps) when the land it
         /// stands on holds ground our supply buildings reach (a road around water is followed, not cut across); else —
         /// an island, a far shore — over land and water alike, one a tile, so supply carried by ship (or aircraft that
         /// hold where they stop) goes the way it can only go. Cached for the turn.
         /// </summary>
         public Dictionary<HexTile, int> SupplySteps(HexTile to) {
             if (to == null) return null;
-            if (!profile.unifiedLogistics || !SupplyAcrossWater(to)) return LandSteps(to);
+            if (!SupplyAcrossWater(to)) return LandSteps(to);
             lock (cacheLock) {
                 Dictionary<HexTile, int> d;
                 if (mixedSteps.TryGetValue(to, out d)) return d;
@@ -941,7 +939,7 @@ namespace HexTactica.AI {
 
         public int Travel(Unit u, HexTile from, HexTile to) {
             if (from == null || to == null) return 99;
-            if (!profile.travelDistance || (u != null && (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion))))
+            if ((u != null && (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion))))
                 return from.Distance(to);
             Dictionary<HexTile, int> d = LandSteps(to);
             int s;
@@ -951,14 +949,14 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Across water (AIProfile.seaLift), while we have a transport ship or a naval yard that builds one: the walk from
+        /// Across water, while we have a transport ship or a naval yard that builds one: the walk from
         /// <paramref name="from"/> to its shore, the crossing (a step a tile of water), the walk from where it lands to
         /// <paramref name="to"/>, and seaLiftBoardSteps for getting in and out. Troops board from any shore
         /// (Transporting.CanBoardOnto), so the trip starts at whichever is best, not at a yard. int.MaxValue: no way by
         /// sea either.
         /// </summary>
         public int SeaTravel(HexTile from, HexTile to) {
-            if (!profile.seaLift || from == null || to == null || !SeaLiftPossible()) return int.MaxValue;
+            if (from == null || to == null || !SeaLiftPossible()) return int.MaxValue;
             int c;
             if (!SeaSteps(to).TryGetValue(from, out c)) return int.MaxValue;
             return c + Mathf.Max(0, profile.seaLiftBoardSteps);

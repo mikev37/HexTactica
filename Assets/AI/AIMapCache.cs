@@ -5,7 +5,7 @@ namespace HexTactica.AI {
 
     /// <summary>
     /// What changed on the board since the map last read it, and which of its caches that leaves standing
-    /// (AIProfile.keepCaches). The map used to throw every cache away after every action; most of them only depend on
+    ///. The map used to throw every cache away after every action; most of them only depend on
     /// the ground near one unit, and one action changes the board in a few places.
     ///
     ///   - A unit's mark: its tile, strength, the transport it rides, whether it has acted, fuel, ammunition,
@@ -32,7 +32,7 @@ namespace HexTactica.AI {
         }
         Dictionary<Unit, Mark> marks;
         long terrainSig;
-        /// <summary>Tiles whose occupant changed since the last read (keepCaches).</summary>
+        /// <summary>Tiles whose occupant changed since the last read.</summary>
         readonly HashSet<HexTile> changedTiles = new HashSet<HexTile>();
         /// <summary>Units whose mark changed (or that appeared or went) since the last read.</summary>
         readonly HashSet<Unit> changedUnits = new HashSet<Unit>();
@@ -127,7 +127,7 @@ namespace HexTactica.AI {
             return true;
         }
 
-        /// <summary>Drop the per-unit caches the last actions could have changed (keepCaches); everything when terrain or buildings changed.</summary>
+        /// <summary>Drop the per-unit caches the last actions could have changed; everything when terrain or buildings changed.</summary>
         void PruneUnitCaches() {
             if (everything) {
                 baseReach.Clear(); baseReachBlocked.Clear(); replyCache.positions.Clear(); thisTurnFields.Clear(); horizonFields.Clear(); ourSpace.Clear();
@@ -157,7 +157,7 @@ namespace HexTactica.AI {
                 if (Verify) {
                     Count(Checked, kind);
                     HashSet<HexTile> f = AIWorld.Positions(e, d == baseReachBlocked);
-                    if (d == replyCache.positions) f = AIWorld.Positions(e, profile.forecastOwnSideBlocks);
+                    if (d == replyCache.positions) f = AIWorld.Positions(e, false);
                     if (!f.SetEquals(kv.Value)) Count(Mismatches, kind);
                 }
             }
@@ -180,7 +180,7 @@ namespace HexTactica.AI {
             foreach (Unit u in drop) d.Remove(u);
         }
 
-        /// <summary>Take over last turn's caches (keepCaches): the first read prunes what changed since.</summary>
+        /// <summary>Take over last turn's caches: the first read prunes what changed since.</summary>
         void Adopt(AIMap c) {
             marks = c.marks; terrainSig = c.terrainSig; supplySig = c.supplySig;
             foreach (KeyValuePair<Unit, HashSet<HexTile>> kv in c.baseReach) baseReach[kv.Key] = kv.Value;

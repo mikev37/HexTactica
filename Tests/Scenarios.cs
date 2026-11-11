@@ -351,14 +351,14 @@ public static partial class Scenarios {
                  for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(0, y); if (w != null && Math.Abs(y) != 4 && y != 0) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("City", null, -1, -5); Rig.PlaceBuilding("City", null, 2, 3);
                  foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
-                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
+                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Tank", a, -4, -3); Put("Grunt", a, -3, -4); Put("Grunt", a, -2, -5); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
                  Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
              "The campaign (AIProfile.campaign) on a board cut by a river with three crossings, the middle one held by Red tanks: objectives are read from the map — each city, Red's HQ, the Red group by the middle crossing (it can reach our HQ next turn, so dealing with it is defending the HQ); each with a force need (what can fight there, times objectiveForceRatio; a building needs someone who can take it, and gets one) and, beyond our supply, supply units to carry supply there; its staging tile is out of the enemy's reach next turn and short of the objective, and a task force gathers there until campaignGatherShare of it (or what its objective needs) has arrived, then goes in together. Nothing is held back at home while the enemy cannot reach our HQ next turn. An objective is taken on only if what is left can give it all it needs: none is left short. All in (objectiveSpread 0) pursues one objective besides our HQ; spread (1) pursues several. Planned again with the same board, the same units stay on the same objectives; with the Red group gone, it is planned afresh. Fronts come one per task force, with the rest at home.");
         make("ai-campaign-logistics", "campaignLogistics", (a, o) => {
                  for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(0, y); if (w != null && Math.Abs(y) != 4 && y != 0) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("City", null, -1, -5); Rig.PlaceBuilding("City", null, 2, 3);
                  foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
-                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
+                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Tank", a, -4, -3); Put("Grunt", a, -3, -4); Put("Grunt", a, -2, -5); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
                  Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
              "The ai-campaign-objectives board with the task forces spread (objectiveSpread 1): the campaign's supply by logistics (AIProfile.campaignLogistics). Fronts in order of their number of units, largest first; each front's chain takes only supply units that bring supply nearer it, the largest front's first; every supply unit left is one front's own, shared by number of units; no supply unit has two jobs, and none is left without one.");
         make("ai-chain-link-rides-its-truck", "chainTruck", (a, o) => {
@@ -371,7 +371,7 @@ public static partial class Scenarios {
                  for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(0, y); if (w != null && Math.Abs(y) != 4 && y != 0) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("City", null, -1, -5); Rig.PlaceBuilding("City", null, 2, 3);
                  foreach (int[] u in new[] { new[] { -5, -1 }, new[] { -5, 1 }, new[] { -4, -1 }, new[] { -4, 0 }, new[] { -4, 1 }, new[] { -5, 2 }, new[] { -6, 2 }, new[] { -5, -2 }, new[] { -4, 2 }, new[] { -4, -2 } }) Put("Grunt", a, u[0], u[1]);
-                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
+                 Put("Tank", a, -3, 0); Put("Tank", a, -3, -1); Put("Tank", a, -3, 1); Put("Tank", a, -3, -2); Put("Tank", a, -2, 0); Put("Tank", a, -4, -3); Put("Grunt", a, -3, -4); Put("Grunt", a, -2, -5); Put("Supplies", a, -5, 0); Put("Supplies", a, -6, 1); Put("Supplies", a, -6, -1);
                  Put("Tank", o, 2, 0); Put("Tank", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 5, 0); },
              "The ai-campaign-objectives board, spread (objectiveSpread 1): the campaign is planned, then all but one of Blue's supply units are lost and it is planned again from the first plan. The objectives it holds never need more supply units, beyond those they have, than we have free: those least by priority are given up until they fit (AICampaign.Allocate).");
         make("profile-asset-matches-code", "profileAsset", (a, o) => { Put("Grunt", o, 4, 0); },
@@ -380,8 +380,6 @@ public static partial class Scenarios {
              "How well Blue knows Red's forces (AIKnowledge): without fog everything is known (confidence 1), and three tanks and a grunt against one grunt is far more than knowledgeAllOutRatio: all out, the reserve released, no fear of the fog. With fog on and Red's grunt unseen, confidence is low: not all out, the reserve held.");
         make("ai-mobile-reserve", "mobileReserve", (a, o) => { Put("Tank", a, -5, -1); Put("Recon", a, -5, 2); Unit apc = Put("APC", a, -4, 2); Unit rider = Put("Grunt", a, -6, 2); Put("Grunt", a, -4, -2); Put("Grunt", a, -5, 1); Put("Gunship Variant", a, -6, 1); Put("Grunt", o, 6, -3); },
              "Who can be in the campaign's central reserve (AICampaign.ReserveMember). Mobile (campaignMobileReserve): the tank, the recon, the gunship and the APC carrying a grunt (the grunt goes with it); a grunt on foot cannot. Off: the tank, the recon and the grunt on foot; not the gunship or the APC.");
-        make("ai-keep-hq-clear", "keepHQClear", (a, o) => { Put("Gunship Variant", a, 5, 0); Put("Grunt", a, 1, 0); Put("Grunt", o, -3, 6); },
-             "The cost of standing in the way of a capture (AITactical.CaptureBlockCost): Blue's gunship, which cannot take buildings, ending its turn on Red's HQ while a Blue grunt is two turns from it pays half the HQ's worth; the grunt does not; nothing with captureBlockCost off, or with no unit that can take it within two turns. (In RiverCrossing a gunship stood on Red's empty HQ while the grunt that would have taken it walked back to supply.)");
         make("ui-transport-cargo", "transportCargo", (a, o) => { Put("APC", a, 0, 0); Put("Grunt", a, 1, 0); Put("Grunt", a, -1, 0); Put("Grunt", a, 0, 1); Rig.PlaceAirfield(a, -3, 2); Put("Transport Plane", a, -3, 3); Put("Grunt", a, -2, 3); Put("Grunt", o, 5, 0); },
              "Transport visuals. Cargo slots: two grunts board an APC (slots 0 and 1); the first gets off and a third boards: it takes the free slot 0, not the second's slot 1. A unit that dies aboard (its transport destroyed) stays the size it rode at (it does not grow back to full size). A unit put down from a transport plane appears dropHeight above its tile and comes down onto it.");
         make("rule-faction-roster", "factionRoster", (a, o) => { Rig.PlaceBuilding("HQ", a, -4, 0); Rig.PlaceBuilding("ArmyBase", a, -2, 2); Put("Grunt", o, 5, 0); },
@@ -462,10 +460,30 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, "ai-buy-transports.dat"), test, ai, other, ai);
             n++;
         }
+        // Buying infantry where infantry is what is wanted: one board each, the whole AI playing (so the campaign's fronts
+        // exist when it buys), nothing of Blue's that can capture on the board, 6000 gold, a lone Red grunt far off.
+        //   near:  buildings to take two or three tiles from the army base.
+        //   front: buildings to take at the far end of the board (not near any facility), a Blue tank already there.
+        //   plain: only buildings that earn nothing and build nothing (a bunker, Int. Ops) beside the base.
+        Action<string, Action<Player, Player>, string> infantry = (name, setup, question) => {
+            Blank(7);
+            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
+            Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
+            Put("Grunt", other, 5, 0);
+            setup(ai, other);
+            Dictionary<string, string> test = Test(name, "rules", "Human", 4, "buyInfantry", question);
+            test["purchases"] = "on";
+            ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
+            n++;
+        };
+        infantry("ai-buy-infantry-near", (a, o) => { Rig.PlaceBuilding("ArmyBase", a, -4, 0); Rig.PlaceBuilding("City", null, -3, 2); Rig.PlaceBuilding("Village", null, -3, -2); Rig.PlaceBuilding("City", null, -2, 0); },
+                 "Buying infantry for buildings near a facility: three neutral buildings two or three tiles from Blue's army base, nothing of Blue's that can capture: within three turns it buys a unit that can.");
+        infantry("ai-buy-infantry-front", (a, o) => { Rig.PlaceBuilding("ArmyBase", a, -5, 1); Put("Tank", a, 1, 0); Rig.PlaceBuilding("City", null, 3, -3); Rig.PlaceBuilding("City", null, 3, 3); },
+                 "Buying infantry for buildings at the front: two neutral cities at the far end of the board (near no facility), a Blue tank there that cannot take them: within three turns it buys a unit that can.");
+        infantry("ai-buy-infantry-plain", (a, o) => { Rig.PlaceBuilding("ArmyBase", a, -4, 0); Rig.PlaceBuilding("Bunker", null, -3, 2); Rig.PlaceBuilding("Int. Ops", null, -3, -2); },
+                 "Buying infantry for buildings that earn and build nothing: a neutral bunker and Int. Ops beside Blue's army base: within three turns it buys a unit that can take them.");
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
-        make("ai-role-worth", "roleWorth", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -5, 1); Put("Supplies", a, -6, 1); Put("Gunship", o, 3, 0); Put("Bomber", o, 3, 2); Put("Grunt", o, 4, 1); },
-             "What each unit does for its side (AIWorld.RoleWorth, forecastRoleWorth): the damage it can do to each enemy unit, in that unit's worth, weighted by how little else on its side can hurt it, per point of its own worth, against its side's average, kept within roleWorthMin..roleWorthMax. Blue's only anti-air (the missile truck) against Red's gunship and bomber is worth more than its price, more than a grunt; the supply unit counts at its price (1); every multiplier is within 0.5..2. The forecast prices the truck by it (AIWorld.Value).");
         make("ai-self-preservation-scope", "selfPreservationScope", (a, o) => { Put("Grunt", a, -4, 0); Put("Tank", a, -4, 2); Put("Artillery", a, -5, 2); Put("Anti Air Missile Truck", a, -5, 1); Put("Supplies", a, -6, 1); Put("Tank", o, 0, 0); Put("Tank", o, 0, 2); },
              "Which units shield anything by standing in reach (AIWorld.Shields, selfPreservationShieldless): those that fire back at ground attackers beside them (the grunt, the tank); not the artillery, the anti-air truck or the supply unit. With self-preservation on, the truck standing where both Red tanks could reach pays for it; priced as the reply prices blows (selfPreservationDiscount) it pays no more than undiscounted.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
@@ -504,8 +522,8 @@ public static partial class Scenarios {
              "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off. Exactly: with as many moves as it takes to drive onto supplied ground it links, with one fewer it does not (beside supplied ground is not enough for a land transport).");
         make("attrition-rule-supply-line", "attritionSupplyLine", (a, o) => { Put("Supplies", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 6, -3); },
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
-        make("rule-stronghold", "stronghold", (a, o) => { Rig.PlaceBuilding("Stronghold", a, 0, 0); Put("Grunt", a, 0, 0); Put("Tank", o, 1, 0); Put("Grunt", o, -1, 0); },
-             "A Blue grunt on a Blue stronghold (the Stronghold prefab: holdsGround, attack and defence bonuses), attacked by a Red tank beside it (made hard-hitting, firepower +4), is not driven back (off a stronghold of its own, the same attack drives it back); it takes less damage than without the stronghold, and hits a Red grunt beside it harder (bonuses of 3 here, to be sure to show). A Red unit on a Blue stronghold gets none of it.");
+        make("rule-bunker", "bunker", (a, o) => { Rig.PlaceBuilding("Bunker", a, 0, 0); Put("Grunt", a, 0, 0); Put("Tank", o, 1, 0); Put("Grunt", o, -1, 0); Put("Gunship", a, -3, 3); },
+             "A Blue grunt in a Blue bunker (the Bunker prefab: holdsGround, attack and defence bonuses), attacked by a Red tank beside it (made hard-hitting): it is not driven back, takes less and hits a Red grunt beside it harder than on a bunker that is not its side's. A Blue gunship over the bunker has none of it: the garrison is land units only.");
         make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
              "A Red grunt attacked by a Blue tank beside it retreats straight back, to one of the three tiles on its far side; with those three taken it is pinned, never sliding sideways (still beside the tank).");
         make("ai-land-steps-layout", "landStepsLayout", (a, o) => {
@@ -543,9 +561,6 @@ public static partial class Scenarios {
         make("ai-campaign-clear-the-building", "aiCampaignClear", (a, o) => {
                  Rig.PlaceBuilding("City", null, -2, 0); Put("Tank", a, -2, 0); Put("Grunt", a, -3, 1); Put("Grunt", o, 5, -3); },
              "Campaign on: a neutral city near Blue's HQ, a Blue tank standing on it and a Blue grunt beside it, Red far away. The city is the campaign's objective; the tank cannot capture, so it steps off on Blue's first turn, and by Blue's second the grunt is on the city taking it. (A gunship parked on a city a whole game long kept Blue's army round it for 30 rounds on RiverCrossing.)");
-        make("ai-campaign-time-box", "aiCampaignTimeBox", (a, o) => {
-                 Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, -3, 1); Put("Grunt", a, -3, 0); Put("Tank", a, -4, 1); Put("Tank", a, -4, 0); Put("Grunt", o, 5, -3); },
-             "Campaign on: a neutral city in front of Blue's task force, planned turn after turn with nothing moving. Gathered on its staging ground, the task force keeps the city until its 6th turn, then gives it up (AIProfile.campaignTimeBox, with campaignTransitTimeBox on; off by default) and leaves it alone for 6 turns (campaignGiveUpTurns 6; 0 by default). With nobody counted as gathered (ready strength above full), it is dissolved at the start of its 3rd turn instead (campaignDrawTurns 2) and, with nothing barring the objective by default (campaignGiveUpTurns 0), formed again at once.");
         make("rule-attacks-locomotion", "attacksLocomotion", (a, o) => { Put("Artillery", a, 0, 0); Put("Fighter", o, 2, 0); Put("Grunt", o, 2, 1); },
              "Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion, read from the prefab): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can (boots ticked). With boots unticked too, the grunt cannot be attacked either.");
         make("ui-fuel-warning-tiles", "fuelWarning", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 10; Put("Grunt", o, 5, 0); },
@@ -562,7 +577,7 @@ public static partial class Scenarios {
                  water(0, 0, -7, 7);
                  Rig.At(0, 0).terrain = T("Bridge");
                  Rig.At(-1, 0).terrain = T("Road"); Rig.At(1, 0).terrain = T("Road");
-                 Put("Grunt", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", o, 4, 3); },
+                 Put("Grunt", a, -4, 0); Put("Grunt", a, -4, 1); Put("Grunt", o, 2, 1); },
              "A river with one bridge (the rule-bridge-road-only board) and Blue's grunts on the near side: the bridge is a chokepoint, and the campaign has an objective at each end of it — on our side and on theirs — to bring into our supply (AICampaign.Places, AIProfile.campaignPlaces).");
         make("attrition-rule-cut-off-supply", "attritionCutOff", (a, o) => { Put("Supplies", a, 4, 0); Put("Grunt", a, 4, 1); Put("Grunt", o, 6, -4); },
              "A supply unit beside a grunt, both far outside the HQ's supply: a supply unit relays supply, it does not make it, so neither is supplied. After a turn the grunt has used a turn of its own supplies and the supply unit has lost no strength.");
@@ -590,11 +605,11 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
-        makeFog("fog-rule-radar", "fogRadar", (a, o) => {
-                 Rig.PlaceBuilding("Radar", a, -4, 0); Put("Grunt", a, -7, 3);
+        makeFog("fog-rule-int-ops", "fogIntOps", (a, o) => {
+                 Rig.PlaceBuilding("Int. Ops", a, -4, 0); Put("Grunt", a, -7, 3);
                  Rig.At(-3, 0).terrain = T("Mountains");
-                 Put("Recon", o, -1, 0); },
-             "A radar (the Radar prefab: detectRange 3, vision 5 over terrain): a stealthy Red recon three tiles from it is seen, which no land observer three tiles off would see (stealth 3), and four tiles off it is not; with the radar's detection off it is unseen at three too. The tile four beyond a mountain beside it is seen; with visionOverTerrain off it is not (the mountain blocks the line).", "Human");
+                 Put("Recon", o, 1, 0); },
+             "Int. Ops (the prefab: detectRange 5, vision 6 over terrain): a stealthy Red recon five tiles from it is seen, which no observer that far off would see (stealth 3), and six tiles off it is not; with its detection off it is unseen at five too. The tile four beyond a mountain beside it is seen; with visionOverTerrain off it is not (the mountain blocks the line).", "Human");
         makeFog("fog-rule-vision", "fogVision", (a, o) => {
                  Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", o, 1, 0); Put("Recon", o, 2, -3);
                  Rig.PlaceBuilding("City", a, 2, 2); Put("Artillery", o, -2, 4); Put("APC", o, 4, -4); Put("Grunt", o, 4, -3); },
@@ -660,8 +675,6 @@ public static partial class Scenarios {
              "A scenario with purchases off: Blue's HQ offers nothing to build and refuses a Grunt even with the money.", "off", null);
         makeBuy("rule-allowed-units", "allowedUnits", (a, o) => { Put("Grunt", o, 4, 0); },
              "A scenario allowing only Grunts: Blue's HQ offers only the Grunt; it builds one, and refuses a Tank even with the money.", "on", "Grunt");
-        makeBuy("ai-buy-time-to-fight", "buyTimeToFight", (a, o) => { Rig.PlaceBuilding("City", a, 4, 3); Put("Grunt", o, -3, -1); Put("Grunt", a, -4, 1); },
-             "Blue has gold for one Grunt; its HQ builds Grunts, a distant city of its own builds Conscripts (made able to for this test). The Red grunt is beside Blue's HQ, the city ten tiles off. With productionTimeToFront a Conscript at the city is worth less by the turns it would take to get to the fight, so the Grunt at the HQ is bought; without it, the cheaper Conscript at the city is.", "on", "Grunt,Conscript");
         makeBuy("ai-buys-units", "aiBuys", (a, o) => { Put("Tank", o, 3, 0); Put("Grunt", o, 3, 1); Put("Grunt", a, -4, 0); },
              "An AI with money (10,000), purchases on, Grunt and Tank allowed: at the end of its turn it buys an allowed unit at its HQ (one: the HQ has one tile to build on), never a unit the scenario does not allow.", "on", "Grunt,Tank");
         make("attrition-rule-transport-load", "transportLoad", (a, o) => {
@@ -1082,7 +1095,7 @@ public static partial class Scenarios {
                 return viaHub && path.Count > 2 && path[0] == g.tile && path.Contains(sup.tile) && path[path.Count - 1] == hq
                        && path.IndexOf(sup.tile) < path.Count - 1;
             }
-            case "stronghold": {
+            case "bunker": {
                 Unit g = Rig.At(0, 0).occupier, tank = Rig.At(1, 0).occupier, rg = Rig.At(-1, 0).occupier;
                 Building sh = Rig.At(0, 0).building;
                 bool prefab = sh != null && sh.holdsGround && sh.attackBonus > 0 && sh.defenseBonus > 0;
@@ -1094,9 +1107,11 @@ public static partial class Scenarios {
                 CombatOutcome off = CombatMath.Resolve(tank, g, tank.tile);
                 int hitOff = Unit.calculateDamage(tank, g, g.tile, 0), backOff = Unit.calculateDamage(g, rg, rg.tile, 0, g.tile);
                 sh.owner = l.ai;
-                detail = "prefab holds ground with bonuses " + prefab + "; on its stronghold: retreats " + on.defenderRetreats + " (pinned " + on.defenderPinned + "), takes " + hitOn + ", hits a Red grunt for " + backOn
+                Unit heli = Rig.At(-3, 3).occupier;
+                bool airOut = heli != null && Building.GarrisonFor(heli, g.tile) == null && Building.GarrisonFor(g, g.tile) == sh;
+                detail = "prefab holds ground with bonuses " + prefab + "; a gunship over it has no garrison " + airOut + "; in its bunker: retreats " + on.defenderRetreats + " (pinned " + on.defenderPinned + "), takes " + hitOn + ", hits a Red grunt for " + backOn
                        + "; on the enemy's: retreats " + off.defenderRetreats + ", takes " + hitOff + ", hits a Red grunt for " + backOff;
-                return prefab && !on.defenderRetreats && !on.defenderPinned && off.defenderRetreats && hitOn < hitOff && backOn > backOff;
+                return prefab && airOut && !on.defenderRetreats && !on.defenderPinned && off.defenderRetreats && hitOn < hitOff && backOn > backOff;
             }
             case "retreatAway": {
                 Unit tank = Rig.At(1, 0).occupier, g = Rig.At(0, 0).occupier;
@@ -1186,7 +1201,6 @@ public static partial class Scenarios {
             case "aiCampaignClear": {
                 Unit tank = Rig.At(-2, 0).occupier, g = Rig.At(-3, 1).occupier;
                 Building city = Rig.At(-2, 0).building;
-                l.ai.GetComponent<AIPlayer>().Profile.campaign = true;
                 ScenarioFile.PlayTurn();
                 bool off = tank.tile != city.tile;
                 ScenarioFile.PlayTurn(); ScenarioFile.PlayTurn();
@@ -1194,36 +1208,6 @@ public static partial class Scenarios {
                 string obj = c == null ? "none" : string.Join("; ", c.objectives.ConvertAll(x => x.kind + "(" + (x.target != null ? x.target.x + "," + x.target.y : "-") + ")").ToArray());
                 detail = "objectives " + obj + "; the tank off the city on Blue's first turn " + off + "; after Blue's second: tank at " + Pos(tank.tile) + ", grunt at " + Pos(g.tile) + ", city " + (city.capturingPlayer == l.ai ? "being taken by Blue" : "not being taken") + " (" + city.capturePoints + ")";
                 return off && tank.tile != city.tile && g.tile == city.tile;
-            }
-            case "aiCampaignTimeBox": {
-                Rig.At(0, 0).building.capturingPlayer = null;
-                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
-                prof.campaign = true; prof.campaignTransitTimeBox = true; prof.campaignGiveUpTurns = 6;   // both off by default
-                List<string> r = new List<string>();
-                Func<AIProfile, int, List<string>> run = (pr, turns) => {
-                    List<string> seen = new List<string>();
-                    AICampaign c = null;
-                    for (int t = 0; t < turns; t++) {
-                        c = AICampaign.Plan(new AIMap(l.ai, pr), pr, c);
-                        CampaignObjective city = c.objectives.Find(x => x.kind == CampaignKind.Secure && x.target == Rig.At(0, 0));
-                        seen.Add((city != null ? "city turn " + (city.age + 1) + (city.staging != null ? " via " + Pos(city.staging) : "") : "no city") + (c.replanned != null ? " [" + c.replanned + "]" : ""));
-                        if (t == 0 && pr.readyStrength > 1f) { }   // (nothing moves)
-                    }
-                    return seen;
-                };
-                List<string> a6 = run(prof, 9);
-                r.Add("gathered: " + string.Join(" | ", a6.ToArray()));
-                AIProfile wounded = ScriptableObject.CreateInstance<AIProfile>();
-                wounded.campaign = true; wounded.readyStrength = 1.01f;
-                List<string> b = run(wounded, 4);
-                r.Add("never gathered: " + string.Join(" | ", b.ToArray()));
-                detail = string.Join("; ", r.ToArray());
-                // Kept turns 1..6, given up at the 7th plan (its 7th turn would begin) and not taken on again before the 13th.
-                bool kept = true; for (int t = 0; t < 6; t++) kept &= a6[t].StartsWith("city turn " + (t + 1));
-                bool gaveUp = a6[6].StartsWith("no city") && a6[6].Contains("not achieved in 6 turns") && a6[7].StartsWith("no city") && a6[8].StartsWith("no city");
-                // Dissolved at its 3rd plan and, with nothing barring the objective (campaignGiveUpTurns 0, the default), formed again at once from the units best placed for it.
-                bool dissolved = b[0].StartsWith("city turn 1") && b[1].StartsWith("city turn 2") && b[2].StartsWith("city turn 1") && b[2].Contains("did not gather in 2 turns");
-                return kept && gaveUp && dissolved;
             }
             case "attacksLocomotion": {
                 Unit art = Rig.At(0, 0).occupier, jet = Rig.At(2, 0).occupier, grunt = Rig.At(2, 1).occupier;
@@ -1297,7 +1281,7 @@ public static partial class Scenarios {
             }
             case "campaignLogistics": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
-                prof.campaign = true; prof.objectiveSpread = 1f;
+                prof.objectiveSpread = 1f;
                 AIMap m = new AIMap(l.ai, prof);
                 AICampaign c = AICampaign.Plan(m, prof, null);
                 c.Fronts(m, prof, new Dictionary<HexTile, Posture>(), new HashSet<HexTile>());
@@ -1318,7 +1302,6 @@ public static partial class Scenarios {
             case "chainTruck": {
                 Unit hub = Rig.At(-4, 0).occupier, truck = Rig.At(-6, 3).occupier;
                 AIPlayer ap = l.ai.GetComponent<AIPlayer>();
-                ap.Profile.campaign = true;
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; AITactical.DecisionLog = Console.WriteLine; }
                 List<string> r = new List<string>();
                 int boardedOn = -1; bool setDown = false, claimed = false;
@@ -1345,7 +1328,7 @@ public static partial class Scenarios {
             }
             case "campaignNoOverpromise": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
-                prof.campaign = true; prof.objectiveSpread = 1f;
+                prof.objectiveSpread = 1f;
                 AIMap m = new AIMap(l.ai, prof);
                 AICampaign first = AICampaign.Plan(m, prof, null);
                 Func<AICampaign, AIMap, string> promised = (c, mm) => {
@@ -1406,24 +1389,12 @@ public static partial class Scenarios {
                 Unit apc = Rig.At(-4, 2).occupier, rider = Rig.At(-6, 2).occupier, tank = Rig.At(-5, -1).occupier, recon = Rig.At(-5, 2).occupier, gun = Rig.At(-6, 1).occupier, foot = Rig.At(-4, -2).occupier;
                 rider.TeleportTo(Rig.At(-4, 1), 0);
                 Transporting.Load(apc, rider);
-                Func<bool, Unit, bool> member = (mobile, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.campaignMobileReserve = mobile; prof.reserveTakesSpare = false; return AICampaign.ReserveMember(u, prof); };
+                Func<bool, Unit, bool> member = (mobile, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); return AICampaign.ReserveMember(u, prof); };
                 Func<bool, string> list = mobile => string.Join(", ", new[] { tank, recon, gun, apc, foot }.Where(u => member(mobile, u)).Select(u => GameController.UnitName(u)).ToArray());
-                string on = list(true), off = list(false);
-                detail = "rider aboard the APC " + (rider.trasnporter == apc) + "; mobile reserve may hold: " + on + " || off: " + off;
+                string on = list(true);
+                detail = "rider aboard the APC " + (rider.trasnporter == apc) + "; mobile reserve may hold: " + on;
                 bool mob = member(true, tank) && member(true, recon) && member(true, gun) && member(true, apc) && !member(true, foot) && !member(true, rider);
-                bool old = member(false, tank) && member(false, recon) && !member(false, gun) && !member(false, apc) && member(false, foot);
-                return rider.trasnporter == apc && mob && old;
-            }
-            case "keepHQClear": {
-                Unit gun = Rig.At(5, 0).occupier, g = Rig.At(1, 0).occupier;
-                Building hq = GameController.HQOf(l.other);
-                Func<bool, Unit, float> cost = (on, u) => { AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.captureBlockCost = on; return AITactical.CaptureBlockCost(u, hq.tile, new AIMap(a, prof)); };
-                float gunOn = cost(true, gun), gruntOn = cost(true, g), gunOff = cost(false, gun);
-                // With the grunt far away (more than two of its turns), nobody is kept waiting.
-                g.TeleportTo(Rig.At(-6, 4), 0);
-                float gunFar = cost(true, gun);
-                detail = "the gunship on Red's HQ, the grunt two turns off: costs " + gunOn.ToString("0") + "; the grunt itself " + gruntOn.ToString("0") + "; with captureBlockCost off " + gunOff.ToString("0") + "; with the grunt far away " + gunFar.ToString("0");
-                return gunOn > 0f && gruntOn == 0f && gunOff == 0f && gunFar == 0f;
+                return rider.trasnporter == apc && mob;
             }
             case "factionRoster": {
                 Building hq = Rig.At(-4, 0).building, fac = Rig.At(-2, 2).building;
@@ -1885,7 +1856,7 @@ public static partial class Scenarios {
                 Unit g = rc.transported.Count > 0 ? rc.transported[0] : null;
                 g.active = true;
                 // The transport's own choice (no coordinated plan, which may also send the recon in and set its ride aside).
-                AIProfile ap0 = a.GetComponent<AIPlayer>().Profile; ap0.coordination = false; ap0.coordinationPasses = false;
+                AIProfile ap0 = a.GetComponent<AIPlayer>().Profile;
                 List<string> events = new List<string>();
                 Action<Unit, Unit, bool> att = (x, d, sur) => { if (x.owner == a) events.Add(GameController.UnitName(x) + " fires" + (x == g ? (g.trasnporter == null ? " (off)" : " (aboard)") : "")); };
                 Unit.Attacking += att;
@@ -1971,6 +1942,34 @@ public static partial class Scenarios {
                 detail = string.Join(" | ", r.ToArray()) + "; on a building that mends it from Blue turn " + reachedTurn + (leftHurt ? ", but RODE OFF while still wounded" : ", and did not ride off while wounded (whether it stays on the building is its own call)");
                 return reachedTurn > 0 && reachedTurn <= 3 && !leftHurt;
             }
+            case "buyInfantry": {
+                // The whole AI plays three Blue turns from 6000 gold; what it buys, turn by turn.
+                List<string> said = new List<string>(), r = new List<string>();
+                Action<string> was = AIPlayer.Trace;
+                bool showAll = Environment.GetEnvironmentVariable("CHECKTRACE") != null;
+                AIPlayer.Trace = x => { if (showAll) Console.WriteLine(x); if (x.Contains(" buys ") || x.Contains("budget") || x.Contains("objective ")) said.Add(x.Trim()); };
+                if (Environment.GetEnvironmentVariable("VALUES") != null) { AIProduction.ValueTrace = Console.WriteLine; AIProduction.ValueFilter = Environment.GetEnvironmentVariable("VALUES"); }
+                l.ai.money = 6000;
+                HashSet<Unit> had = new HashSet<Unit>(l.ai.units);
+                int capturers = 0, blueTurns = 0;
+                try {
+                    for (int turn = 0; turn < 8 && blueTurns < 3 && !gc.gameOver; turn++) {
+                        bool blue = gc.activePlayer == l.ai;
+                        int before = l.ai.money;
+                        said.Clear();
+                        ScenarioFile.PlayTurn();
+                        if (!blue) continue;
+                        blueTurns++;
+                        List<string> got = new List<string>();
+                        foreach (Unit u in l.ai.units) if (u != null && !had.Contains(u)) { had.Add(u); got.Add(GameController.UnitName(u)); if (Building.CanCapture(u)) capturers++; }
+                        r.Add("turn " + blueTurns + " (" + before + " gold): " + (got.Count > 0 ? string.Join(", ", got.ToArray()) : "nothing")
+                              + " [" + string.Join(" / ", said.FindAll(x => x.Contains(" buys ") || x.Contains("builds nothing")).ToArray()) + "]");
+                    }
+                } finally { AIPlayer.Trace = was; AIProduction.ValueTrace = null; }
+                int held = 0; foreach (Building bb in Building.all) if (bb != null && bb.owner == l.ai) held++;
+                detail = string.Join(" | ", r.ToArray()) + "; units that can capture bought: " + capturers + "; buildings held after: " + held;
+                return capturers > 0;
+            }
             case "buyTransports": {
                 Building bas = Rig.At(-11, 0).building;
                 List<string> r = new List<string>();
@@ -2000,27 +1999,13 @@ public static partial class Scenarios {
             case "coverByTarget": {
                 Unit truck = Rig.At(-4, 0).occupier, gun = Rig.At(-4, 2).occupier;
                 Func<bool, Unit, int> cover = (on, x) => {
-                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.coverByTarget = on;
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
                     HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
                     return HexTactica.AI.AIWorld.Evaluate(x, x.tile, new AttackAppraisal(), m, m.replyCache, false, true).gunCover;
                 };
-                int tOn = cover(true, truck), tOff = cover(false, truck), gOn = cover(true, gun);
-                detail = "missile truck covers " + tOn + " tiles with coverByTarget, " + tOff + " without; artillery " + gOn;
-                return tOn == 0 && tOff > 0 && gOn > 0;
-            }
-            case "roleWorth": {
-                Unit truck = Rig.At(-4, 0).occupier, grunt = Rig.At(-4, 2).occupier, sup = Rig.At(-6, 1).occupier;
-                AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.forecastRoleWorth = true;
-                HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
-                Dictionary<Unit, float> r = HexTactica.AI.AIWorld.RoleWorth(m, prof);
-                bool within = true; List<string> all = new List<string>();
-                foreach (KeyValuePair<Unit, float> kv in r) { if (kv.Value < 0.5f - 1e-4f || kv.Value > 2f + 1e-4f) within = false; all.Add(kv.Key.owner.personal_name + " " + kv.Key.name.Replace("(Clone)", "") + " x" + kv.Value.ToString("0.00")); }
-                float plain = HexTactica.AI.AIWorld.Value(truck);
-                HexTactica.AI.AIWorld.Roles = r;
-                float priced = HexTactica.AI.AIWorld.Value(truck);
-                HexTactica.AI.AIWorld.Roles = null;
-                detail = string.Join(", ", all.ToArray()) + "; the truck's forecast worth " + plain.ToString("0") + " -> " + priced.ToString("0");
-                return r[truck] > 1f && r[truck] > r[grunt] && Math.Abs(r[sup] - 1f) < 1e-4f && within && priced > plain;
+                int tOn = cover(true, truck), gOn = cover(true, gun);
+                detail = "missile truck covers " + tOn + " tiles; artillery " + gOn;
+                return tOn == 0 && gOn > 0;
             }
             case "selfPreservationScope": {
                 Unit grunt = Rig.At(-4, 0).occupier, tank = Rig.At(-4, 2).occupier, gun = Rig.At(-5, 2).occupier, truck = Rig.At(-5, 1).occupier, sup = Rig.At(-6, 1).occupier;
@@ -2028,13 +2013,13 @@ public static partial class Scenarios {
                 bool scope = sh(grunt) && sh(tank) && !sh(gun) && !sh(truck) && !sh(sup);
                 HexTile exposed = Rig.At(-2, 0);
                 Func<bool, float> risk = disc => {
-                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.selfPreservationWeight = 1f; prof.selfPreservationDiscount = disc;
+                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.selfPreservationWeight = 1f;
                     HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
                     return HexTactica.AI.AIWorld.Evaluate(truck, exposed, new AttackAppraisal(), m, m.replyCache, false, true).selfRisk;
                 };
-                float on = risk(true), off = risk(false);
-                detail = "shields: grunt " + sh(grunt) + ", tank " + sh(tank) + ", artillery " + sh(gun) + ", missile truck " + sh(truck) + ", supplies " + sh(sup) + "; the truck at " + Pos(exposed) + " pays " + on.ToString("0") + " for its exposure priced as the reply prices it, " + off.ToString("0") + " undiscounted";
-                return scope && on > 0f && on <= off;
+                float on = risk(true);
+                detail = "shields: grunt " + sh(grunt) + ", tank " + sh(tank) + ", artillery " + sh(gun) + ", missile truck " + sh(truck) + ", supplies " + sh(sup) + "; the truck at " + Pos(exposed) + " pays " + on.ToString("0") + " for its exposure priced as the reply prices it";
+                return scope && on > 0f;
             }
             case "landStepsLayout": {
                 HexTile bridge = Rig.At(0, 0), west = Rig.At(-1, 0), east = Rig.At(1, 0);
@@ -2092,16 +2077,16 @@ public static partial class Scenarios {
             }
             case "campaignChokepoints": {
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
-                prof.campaign = true;
-                prof.campaignHoldContested = false;   // the detection is what is checked: the enemy here is 6 tiles off, so with it on the crossing counts as held
                 AIMap m = new AIMap(l.ai, prof);
                 List<KeyValuePair<HexTile, string>> places = AICampaign.Places(m);
                 List<string> ends = new List<string>(); bool west = false, east = false;
                 foreach (KeyValuePair<HexTile, string> kv in places) if (kv.Value == "chokepoint end") { ends.Add(Pos(kv.Key)); if (kv.Key.x < 0) west = true; if (kv.Key.x > 0) east = true; }
                 AICampaign c = AICampaign.Plan(m, prof, null);
                 int holds = c.considered.FindAll(x => x.kind == CampaignKind.Hold).Count;
-                detail = "chokepoint ends " + string.Join(" ", ends.ToArray()) + "; Hold objectives considered " + holds;
-                return west && east && holds > 0;
+                // (The board is in plain sight here, so the crossing counts as held and no Hold objective is raised for it:
+                // one is raised only for ground gone dark under the fog, or with the enemy near it out of our sight.)
+                detail = "chokepoint ends " + string.Join(" ", ends.ToArray()) + "; Hold objectives considered " + holds + " (in plain sight: none)";
+                return west && east && holds == 0;
             }
             case "aiFightFirst": {
                 Unit g = Rig.At(0, 0).occupier, e = Rig.At(1, -1).occupier;
@@ -2150,31 +2135,8 @@ public static partial class Scenarios {
                 if (l.meta.Get("check", "") == "purchasesOff") return offered.Count == 0 && madeTank == null && madeGrunt == null;
                 return offered.Count == 1 && offered[0] == "Grunt" && madeTank == null && madeGrunt != null;
             }
-            case "buyTimeToFight": {
-                Building city = Rig.At(4, 3).building, hq = GameController.HQOf(l.ai);
-                Unit conscript = PrefabLoader.Load("Conscript"), grunt = PrefabLoader.Load("Grunt");
-                city.buildable = new List<Unit> { conscript };
-                hq.buildable = new List<Unit> { grunt };
-                Func<bool, string> buy = on => {
-                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.procurement = false;   // checks the time-to-fight rule on its own
-                    prof.productionTimeToFront = on;
-                    // (Valued by one exchange, as this was written for: under productionLifetime the Grunt is worth more
-                    // over its life than the Conscript wherever it is built, so the contrast would not show.)
-                    prof.productionLifetime = false; prof.productionOverkill = false; prof.productionShieldCut = 0f; prof.productionDefenceFade = 0f;
-                    l.ai.money = grunt.cost;
-                    List<string> said = new List<string>();
-                    List<Unit> got = AIProduction.Buy(l.ai, new AIMap(l.ai, prof), prof, x => said.Add(x.Trim()));
-                    string r = got.Count == 0 ? "nothing" : string.Join(", ", got.ConvertAll(u => GameController.UnitName(u) + " at " + Pos(u.tile)).ToArray());
-                    foreach (Unit u in got) u.Perish();
-                    return r + " [" + string.Join(" / ", said.FindAll(x => x.Contains(" buys ")).ToArray()) + "]";
-                };
-                string withTime = buy(true), without = buy(false);
-                detail = "with time to the fight: " + withTime + "; without: " + without;
-                return withTime.StartsWith("Grunt") && without.StartsWith("Conscript");
-            }
             case "aiBuys": {
                 l.ai.money = 10000;
-                l.ai.GetComponent<AIPlayer>().Profile.buyUnits = true;
                 List<Unit> had = new List<Unit>(l.ai.units);
                 int before = l.ai.units.Count;
                 ScenarioFile.PlayTurn();
@@ -2292,28 +2254,28 @@ public static partial class Scenarios {
                        + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
                 return hull && turret && flag && none;
             }
-            case "fogRadar": {
+            case "fogIntOps": {
                 PinVision();
-                Unit rc = Rig.At(-1, 0).occupier;
+                Unit rc = Rig.At(1, 0).occupier;
                 Building radar = Rig.At(-4, 0).building;
-                bool prefab = radar != null && radar.detectRange == 3 && radar.visionOverTerrain && radar.visionRange >= 5;
+                bool prefab = radar != null && radar.detectRange == 5 && radar.visionOverTerrain && radar.visionRange >= 6;
                 rc.stealthRange = 3;
                 Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
                 moved();
                 bool at3 = FogOfWar.Sees(a, rc);
-                rc.TeleportTo(Rig.At(0, 0), 0); moved();
+                rc.TeleportTo(Rig.At(2, 0), 0); moved();
                 bool at4 = FogOfWar.Sees(a, rc);
-                rc.TeleportTo(Rig.At(-1, 0), 0);
+                rc.TeleportTo(Rig.At(1, 0), 0);
                 radar.detectRange = 0; moved();
                 bool noDetect = FogOfWar.Sees(a, rc);
-                radar.detectRange = 3;
+                radar.detectRange = 5;
                 HexTile beyond = Rig.At(0, 0);
                 rc.TeleportTo(Rig.At(-1, 2), 0); moved();
                 bool over = FogOfWar.TileVisible(a, beyond);
                 radar.visionOverTerrain = false; moved();
                 bool blocked = !FogOfWar.TileVisible(a, beyond);
                 radar.visionOverTerrain = true; moved();
-                detail = "prefab detect 3, vision 5 over terrain " + prefab + "; stealthy recon 3 off seen " + at3 + ", 4 off seen " + at4 + ", 3 off without detection seen " + noDetect
+                detail = "prefab detect 5, vision 6 over terrain " + prefab + "; stealthy recon 5 off seen " + at3 + ", 6 off seen " + at4 + ", 5 off without detection seen " + noDetect
                        + "; (0,0) behind the mountain seen " + over + ", without seeing over terrain hidden " + blocked;
                 return prefab && at3 && !at4 && !noDetect && over && blocked;
             }
@@ -2677,7 +2639,6 @@ public static partial class Scenarios {
             case "campaignObjectives": {
                 List<string> r = new List<string>();
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
-                prof.campaign = true;
                 if (Environment.GetEnvironmentVariable("CAMPDBG") != null) HexTactica.AI.AICampaign.Debug = x => Console.WriteLine("      " + x);
                 HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, prof);
                 HexTactica.AI.AICampaign c = HexTactica.AI.AICampaign.Plan(m, prof, null);
@@ -4135,20 +4096,6 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, "ai-campaign-front-buys-supply.dat"), test, ai, other, ai);
             n++;
         }
-        {
-            List<HexTile> road = windingRoad();
-            Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
-            Put("HQ", ai, road[0].x, road[0].y);
-            Put("Grunt", ai, road[1].x, road[1].y); Put("Grunt", ai, road[2].x, road[2].y); Put("APC", ai, road[3].x, road[3].y + 1);
-            Put("Supplies", ai, road[4].x, road[4].y); Put("Supplies", ai, road[7].x, road[7].y); Put("Supplies", ai, road[10].x, road[10].y); Put("Tank", ai, road[12].x, road[12].y);
-            HexTile end = road[road.Count - 1];
-            Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);
-            Dictionary<string, string> test = Test("grunts-ride-the-apc", "behaviour", "Human", 2, "combatRide",
-                "The winding road again: Blue's two grunts at home with an empty APC beside them (grunts move 3, the APC 6 and takes both); three supply units already carry supply up the road to a tank at the far end of it, the enemy beyond. With rides for fighting units on (combatRides), the APC goes to whoever gains most from it: the first supply unit aboard a vehicle gains more than anyone (it carries supply forward for the whole army), so over two rounds a supply unit rides the APC forward; the grunts walk (or ride along, if there is room).");
-            test["rules"] = "attrition";
-            ScenarioFile.Save(Path.Combine(Dir, "grunts-ride-the-apc.dat"), test, ai, other, ai);
-            n++;
-        }
         {   // Artillery first, then the assault: the suppressed pips do not fire back.
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
@@ -4368,31 +4315,6 @@ public static partial class Scenarios {
                 detail = order.Count == 0 ? "nobody attacked it" : string.Join(" -> ", order.ToArray());
                 return order.Count >= 2 && order[0].StartsWith("Artillery");
             }
-            case "combatRide": {
-                // (combatRides, which this documents: under assaultRides grunts take a free transport and ride it to the assault.)
-                l.ai.GetComponent<AIPlayer>().Profile.assaultRides = false;
-                if (Environment.GetEnvironmentVariable("SET") == null) l.ai.GetComponent<AIPlayer>().Profile.combatRides = true;
-                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
-                HexTile home = GameController.HQOf(l.ai).tile;
-                Dictionary<HexTile, int> fromHome = new AIMap(l.ai, l.ai.GetComponent<AIPlayer>().Profile).LandSteps(home);
-                Func<HexTile, int> hs = t => { int v; return t != null && fromHome.TryGetValue(t, out v) ? v : -1; };
-                List<Unit> grunts = new List<Unit>();
-                foreach (Unit u in l.ai.units) if (u != null && GameController.UnitName(u) == "Grunt") grunts.Add(u);
-                int start = 0; foreach (Unit g in grunts) start = Math.Max(start, hs(g.tile));
-                List<string> trail = new List<string>(); bool aboard = false, supplyRode = false;
-                for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) {
-                    bool blue = gc.activePlayer == l.ai;
-                    ScenarioFile.PlayTurn();
-                    if (!blue) continue;
-                    List<string> at = new List<string>();
-                    foreach (Unit g in grunts) { if (g.trasnporter != null) aboard = true; at.Add(hs(g.tile) + (g.trasnporter != null ? " aboard" : "")); }
-                    foreach (Unit u in l.ai.units) if (u != null && u.Hub != null && u.trasnporter != null && GameController.UnitName(u.trasnporter) == "APC") supplyRode = true;
-                    trail.Add(string.Join(", ", at.ToArray()));
-                }
-                int far = 0; foreach (Unit g in grunts) far = Math.Max(far, hs(g.tile));
-                detail = "grunts' steps from home after each Blue turn (start " + start + "): " + string.Join(" | ", trail.ToArray()) + "; a supply unit rode the APC " + supplyRode;
-                return supplyRode;
-            }
             case "buySupply": {
                 l.ai.money = 25000;
                 int before = 0;
@@ -4405,7 +4327,6 @@ public static partial class Scenarios {
             }
             case "campaignBuySupply": {
                 AIPlayer ap = l.ai.GetComponent<AIPlayer>();
-                ap.Profile.campaign = true;
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
                 Building hq = GameController.HQOf(l.ai);
                 int price = 0; foreach (Unit b in hq.buildable) if (b != null && b.Hub != null && !b.Hub.producer) price = price == 0 ? b.cost : Math.Min(price, b.cost);
@@ -5210,25 +5131,6 @@ public static partial class Scenarios {
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none") + "; material Blue " + ScenarioFile.Material(l.ai) + " Red " + ScenarioFile.Material(l.other));
     }
 
-    /// <summary>PROBE=tree FILE=&lt;board&gt; [SIDE=Red]: the supply tree that side would plan on that board, link by link, and the supply around each fighting unit left out.</summary>
-    public static void Tree(string name, string side) {
-        ScenarioFile.Loaded l = ScenarioFile.Load(Find(name), "Full", null, null);
-        Player p = side == "Red" ? l.other : l.ai;
-        AIProfile prof = p.GetComponent<AIPlayer>().Profile;
-        AIMap m = new AIMap(p, prof);
-        AISupplyTree.DebugLog = Console.WriteLine;
-        AISupplyTree.Plan plan;
-        try { plan = AISupplyTree.Make(m, null); } finally { AISupplyTree.DebugLog = null; }
-        Console.WriteLine(plan);
-        SupplyNetwork.Result net = SupplyNetwork.SolvePlanned(p, plan.links);
-        foreach (Unit u in m.ownUnits) {
-            if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0 || net.DepthAt(u.tile) > 0) continue;
-            List<string> around = new List<string>();
-            foreach (HexTile n in u.tile.neighbors) if (n != null) around.Add(Pos(n) + n.terrain.name.Substring(0, 3) + "d" + net.DepthAt(n) + (n.occupier != null ? "[" + n.occupier.name.Substring(0, 3) + (n.occupier.owner == p ? "" : "!") + "]" : ""));
-            Console.WriteLine("  out: " + u.name + Pos(u.tile) + " on " + u.tile.terrain.name + " | " + string.Join(" ", around.ToArray()));
-        }
-    }
-
     /// <summary>
     /// PROBE=bench SET_A=... [SET_B=...] [MAPS=a.dat,b.dat] [FOGS=off,on] [ROUNDS=r]: the challenger (A)
     /// against the champion (B) on bigger maps, each played from both sides, with fog off and on; and
@@ -5252,8 +5154,6 @@ public static partial class Scenarios {
         foreach (string seedText in seeds)
         foreach (string fog in (Environment.GetEnvironmentVariable("FOGS") ?? "off,on").Split(',')) {
             int seed = int.Parse(seedText);
-            challenger = p => { if (chal0 != null) chal0(p); p.noiseSeed = seed; };
-            champion = p => { if (champ0 != null) champ0(p); p.noiseSeed = seed; };
             foreach (string map in maps) {
                 float[] lead = new float[2];
                 int[] ground = new int[2], held = new int[2];
@@ -5433,9 +5333,9 @@ public static partial class Scenarios {
         // Red: the baseline it is measured against — the same profile with the campaign off (SET_RED changes it).
         Action<AIProfile> blueProfile = pr => { ApplyProfileAsset(pr); if (tweak != null) tweak(pr); };
         Action<AIProfile> redTweak = Tests.Tweak(Environment.GetEnvironmentVariable("SET_RED"));
-        Action<AIProfile> redProfile = pr => { ApplyProfileAsset(pr); pr.campaign = false; if (redTweak != null) redTweak(pr); };
+        Action<AIProfile> redProfile = pr => { ApplyProfileAsset(pr); if (redTweak != null) redTweak(pr); };
         ScenarioFile.Loaded l = opposed ? ScenarioFile.Load(Find(file), "Full", blueProfile, redProfile) : ScenarioFile.Load(Find(file), "Human", blueProfile);
-        if (opposed) Console.WriteLine("Blue: TestProfile.asset (campaign " + l.ai.GetComponent<AIPlayer>().Profile.campaign + ") with SET; Red, the baseline: TestProfile.asset with campaign " + l.other.GetComponent<AIPlayer>().Profile.campaign + (redTweak != null ? " and SET_RED" : ""));
+        if (opposed) Console.WriteLine("Blue: TestProfile.asset with SET; Red, the baseline: TestProfile.asset with SET_RED");
         Rig.gc.fogOfWar = (Environment.GetEnvironmentVariable("FOG") ?? "off") == "on"; FogOfWar.Reset();
         if (!opposed) { foreach (Unit u in new List<Unit>(l.other.units)) if (u != null) u.Perish(); }
         else if (enemy == "half") {

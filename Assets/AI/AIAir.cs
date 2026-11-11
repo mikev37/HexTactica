@@ -28,7 +28,7 @@ namespace HexTactica.AI {
         /// </summary>
         public static bool MayEndOn(Unit u, HexTile t, AIMap map) {
             if (u != null && u.trasnporter != null) return true;
-            // A transport does not park on a building of ours that builds (keepBuildSlotsClear): it would take the slot
+            // A transport does not park on a building of ours that builds: it would take the slot
             // and nothing could be bought there (a supply truck held on the HQ for twenty turns: no unit bought since).
             if (BlocksBuildSlot(u, t, map)) return false;
             Unit link;
@@ -39,7 +39,7 @@ namespace HexTactica.AI {
             return true;
         }
 
-        /// <summary>Would <paramref name="u"/>, a transport, ending its turn on <paramref name="t"/> take one of our building slots (keepBuildSlotsClear)? Its own tile counts too: it should leave.</summary>
+        /// <summary>Would <paramref name="u"/>, a transport, ending its turn on <paramref name="t"/> take one of our building slots? Its own tile counts too: it should leave.</summary>
         /// <summary>Short of fuel, ammunition, supplies or strength: it needs a base's service.</summary>
         static bool NeedsService(Unit u) {
             return (u.fuelMax > 0 && u.fuel < u.fuelMax) || (u.ammoMax > 0 && u.ammo < u.ammoMax) || (u.suppliesMax > 0 && u.supplies < u.suppliesMax) || u.Strength < 6;
@@ -49,16 +49,14 @@ namespace HexTactica.AI {
             if (u == null || t == null || map == null || map.profile == null) return false;
             Building b = t.building;
             if (b == null || b.owner != u.owner || !b.CanProduce) return false;
-            // offFacilities: nobody ends on it (purchases allowed), but an aircraft or ship it services.
-            if (map.profile.offFacilities && (GameController.gc == null || GameController.gc.purchasesAllowed)) {
+            // Nobody ends on it (purchases allowed), but an aircraft or ship it services.
+            if ((GameController.gc == null || GameController.gc.purchasesAllowed)) {
                 if (u.tile == t) return false;   // (already there: standing still is not a move onto it)
                 // (Aircraft and ships it services: only there do they land, rearm or refuel — when it will not build this turn
                 // (saving, or buying nothing: it then gives its budget to the others), or when they need it now.)
-                if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u)
-                    && (!map.profile.procBudgets || !AIProduction.WillBuild(u.owner, b) || NeedsService(u))) return false;
+                if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u) && (!AIProduction.WillBuild(u.owner, b) || NeedsService(u))) return false;
                 return b.Purchasable().Count > 0;
             }
-            if (!map.profile.keepBuildSlotsClear) return false;
             if (!Transporting.IsTransport(u) || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return false;
             return true;
         }
@@ -298,14 +296,6 @@ namespace HexTactica.AI {
         /// </summary>
         /// <summary>May a unit be built on <paramref name="t"/> this turn? Not on a tile reserved for a landing this turn.</summary>
         public static bool MayBuildOn(HexTile t, AIMap map) { return MayEndOn(null, t, map); }
-
-        public static bool RoomForAircraft(Building b, AIMap map, int turns) {
-            if (b == null) return false;
-            HashSet<HexTile> reserved = new HashSet<HexTile>();
-            if (map.landings != null) foreach (Landing l in map.landings.Values) if (l.turn <= turns) reserved.Add(l.tile);
-            if (b.tile != null && b.tile.occupier == null && !reserved.Contains(b.tile)) return true;
-            return false;
-        }
 
         /// <summary>Fuel steps from every tile to the nearest of <paramref name="bases"/>, moving as <paramref name="u"/> moves (air: any tile, one each; ships: water only).</summary>
         public static Dictionary<HexTile, int> DistanceToBase(Unit u, List<HexTile> bases) {

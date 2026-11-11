@@ -162,7 +162,7 @@ namespace HexTactica.AI {
         public static bool Ghost;
         static readonly Dictionary<HexTile, string> breakdown = new Dictionary<HexTile, string>();
 
-        /// <summary>Set (per thread) while placing a front-line supply unit (supplyFrontFirst): it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
+        /// <summary>Set (per thread) while placing a front-line supply unit: it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
         [System.ThreadStatic] public static bool FrontLine;
 
         public static float ExactValue(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
@@ -325,14 +325,12 @@ namespace HexTactica.AI {
                 }
             }
             float total = resupply + heal + spared + relays - cutLinks;
-            if (profile.hubPricingForward) {
-                forward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                if (hypothetical.connectedHubs.Contains(hub)) {
-                    intent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                    ground = GroundCoverage(map, profile, at, hub.range, t => without.DepthAt(t), t => hypothetical.DepthAt(t));
-                }
-                total += forward + intent + ground;
+            forward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+            if (hypothetical.connectedHubs.Contains(hub)) {
+                intent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+                ground = GroundCoverage(map, profile, at, hub.range, t => without.DepthAt(t), t => hypothetical.DepthAt(t));
             }
+            total += forward + intent + ground;
             float hubWorth = AIScore.Worth(hub.myUnit);
             if (!hypothetical.connectedHubs.Contains(hub)) {
                 stranded = hubWorth * (1f + (LocomotionRules.IsNaval(hub.myUnit.locomotion) ? 0f : 0.5f * AIMap.GapToSupply(at, t => without.DepthAt(t), 12)));
@@ -385,10 +383,9 @@ namespace HexTactica.AI {
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(map.player, hub);
             AIPerf.End("supply plan: network without it", __s); __s = AIPerf.Begin();
             Dictionary<HexTile, float> proxy = new Dictionary<HexTile, float>();
-            // Each tile's value on its own: at once on worker threads (profile.parallelForecast, AIParallel).
+            // Each tile's value on its own: at once on worker threads (AIParallel).
             float[] pv = new float[candidates.Count];
-            if (profile.parallelForecast) AIParallel.For(candidates.Count, i => pv[i] = ProxyValue(hub, candidates[i], map, without));
-            else for (int i = 0; i < candidates.Count; i++) pv[i] = ProxyValue(hub, candidates[i], map, without);
+            AIParallel.For(candidates.Count, i => pv[i] = ProxyValue(hub, candidates[i], map, without));
             for (int i = 0; i < candidates.Count; i++) proxy[candidates[i]] = pv[i];
             AIPerf.End("supply plan: rough value of every tile", __s);
 
@@ -406,8 +403,7 @@ namespace HexTactica.AI {
             Dictionary<HexTile, float> exact = new Dictionary<HexTile, float>();
             __s = AIPerf.Begin();
             float[] ev = new float[shortlist.Count];
-            if (profile.parallelForecast) AIParallel.For(shortlist.Count, i => ev[i] = ExactValue(hub, shortlist[i], map, profile));
-            else for (int i = 0; i < shortlist.Count; i++) ev[i] = ExactValue(hub, shortlist[i], map, profile);
+            AIParallel.For(shortlist.Count, i => ev[i] = ExactValue(hub, shortlist[i], map, profile));
             for (int i = 0; i < shortlist.Count; i++) exact[shortlist[i]] = ev[i];
             AIPerf.End("supply plan: exact value of the shortlist", __s);
 
@@ -460,34 +456,14 @@ namespace HexTactica.AI {
             };
 
             TransportPlan plan = AITransportPlanner.Plan(unit, map, profile, valueOf, shortlist, reserved);
-            // A ride for a supply unit ends with it still aboard (supplyStaysAboard): the transport parks on the tile
+            // A ride for a supply unit ends with it still aboard: the transport parks on the tile
             // chosen for the supply, if it can stand there, and the supply spreads from it.
-            if (plan != null && plan.usesTransport && plan.transport != null && profile.supplyStaysAboard) {
+            if (plan != null && plan.usesTransport && plan.transport != null) {
                 plan.stayAboard = true;
                 if (plan.destination != null && plan.transport.CanEnter(plan.destination)) plan.dropoff = plan.destination;
             }
             return plan;
         }
 
-        /// <summary>
-        /// Tiles that would restore a stranded hub's connection to HQ, for the case
-        /// where the AI needs to prioritise reconnection over coverage.
-        /// </summary>
-        public static List<HexTile> ReconnectionTiles(SupplyPoint hub, AIMap map) {
-            List<HexTile> result = new List<HexTile>();
-            if (hub == null || hub.myUnit == null) return result;
-
-            MoveField reach = map.ReachHorizon(hub.myUnit);
-            foreach (HexTile t in reach.Tiles) {
-                if (!AIPath.CanFinishTurnOn(hub.myUnit, t)) continue;
-                if (map.SupplyDepth(t) > 0) result.Add(t);
-            }
-            result.Sort((a, b) => {
-                int da = reach.Get(a).turns, db = reach.Get(b).turns;
-                if (da != db) return da.CompareTo(db);
-                return CombatMath.CompareTiles(a, b);
-            });
-            return result;
-        }
     }
 }

@@ -357,7 +357,7 @@ public static class SupplyNetwork {
     [System.ThreadStatic] public static Dictionary<SupplyPoint, Unit> PlannedAboard;
 
     /// <summary>
-    /// Set (per thread) by an AI placing a front-line supply unit (AIProfile.supplyFrontFirst): this
+    /// Set (per thread) by an AI placing a front-line supply unit: this
     /// supply unit counts as linked wherever it is put — the units behind it will line up to link it —
     /// so where it is placed is judged by what it supplies there.
     /// </summary>

@@ -87,11 +87,11 @@ namespace HexTactica.AI {
             foreach (KeyValuePair<SupplyPoint, HexTile> kv in ghost)
                 if (kv.Key == null || kv.Key.myUnit == null || kv.Key.myUnit.Strength <= 0 || kv.Key.myUnit.tile == null) gone.Add(kv.Key);
             foreach (SupplyPoint g in gone) ghost.Remove(g);
-            // keepCaches: kept while our supply units, the buildings and the terrain are as they were, the planned
+            // Kept while our supply units, the buildings and the terrain are as they were, the planned
             // (ghost) moves are the same and nothing changed on or beside the network (an enemy there cuts it; one gone,
             // or a supply unit killed, retreated or carried off, is a change of marks or tiles and solves it afresh).
             string ghosts = GhostKey();
-            bool keep = profile.keepCaches && !buildingsChanged && realSupply != null && supply != null && ghosts == lastGhosts
+            bool keep = !buildingsChanged && realSupply != null && supply != null && ghosts == lastGhosts
                      && HubsUnchanged(player) && NetworkUntouched(realSupply) && NetworkUntouched(supply);
             supplyChanged = !keep;
             if (keep && Verify) {
@@ -261,7 +261,7 @@ namespace HexTactica.AI {
 
         void ComputeSupplyRead() {
             hubStake.Clear();
-            bool keep = profile.keepCaches && !buildingsChanged;
+            bool keep = !buildingsChanged;
             // Static supply (buildings and producers): kept like ours.
             if (keep && staticSupply != null && HubsUnchanged(player) && NetworkUntouched(staticSupply)) {
                 if (Verify) { Count(Checked, "static supply"); if (!SameDepth(SupplyNetwork.SolveStatic(player), staticSupply)) Count(Mismatches, "static supply"); }
@@ -294,7 +294,6 @@ namespace HexTactica.AI {
             theirByPlayer.Clear();
             theirConnected.Clear();
             enemyPlayers.Clear();
-            if (!profile.keepCaches) ourSpace.Clear();
             SpaceVersion++;
             enemySpace.Clear();
             HashSet<Player> enemies = new HashSet<Player>();

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// Supply units as a chain from the HQ toward the objective (profile.supplyChain).
+    /// Supply units as a chain from the HQ toward the objective.
     ///
     /// A supply unit relays supply when it stands on supplied ground, so a chain reaches as far as
     /// its links are spaced: each link inside the reach of the one behind it. The chain advances
@@ -44,7 +44,7 @@ namespace HexTactica.AI {
             /// further supply unit would carry supply further. (Also true with no supply units.)
             /// </summary>
             public bool short_;
-            /// <summary>Links that ride a truck this turn (AIProfile.supplyLeaps): the truck, where it stops with the supply unit aboard, and where the supply unit boards it from (null: aboard already).</summary>
+            /// <summary>Links that ride a truck this turn: the truck, where it stops with the supply unit aboard, and where the supply unit boards it from (null: aboard already).</summary>
             public readonly Dictionary<SupplyPoint, Leap> leaps = new Dictionary<SupplyPoint, Leap>();
 
             public override string ToString() {
@@ -75,13 +75,13 @@ namespace HexTactica.AI {
         /// <summary>Set (AILogistics): fighting units Harm counts too when they would lose supply — a campaign front's and any in contact.</summary>
         [System.ThreadStatic] public static HashSet<Unit> ProtectUnits;
 
-        /// <summary>A transport that can hold supply where it stops: any but an aircraft that must go back to a runway (unifiedLogistics: it flew a supply unit out and home again for fuel with it aboard).</summary>
+        /// <summary>A transport that can hold supply where it stops: any but an aircraft that must go back to a runway (it flew a supply unit out and home again for fuel with it aboard).</summary>
         static bool IsTruck(Unit t) {
             if (t == null || t.tile == null || !Transporting.IsTransport(t) || t.Firepower > 1) return false;
             if (Unified && LocomotionRules.IsAirborne(t.locomotion) && LocomotionRules.NeedsBase(t.locomotion) && !LocomotionRules.ResuppliedInSupply(t.locomotion)) return false;
             return true;
         }
-        /// <summary>unifiedLogistics, for the chain being made.</summary>
+        /// <summary>For the chain being made.</summary>
         [System.ThreadStatic] static bool Unified;
 
         /// <summary>
@@ -103,9 +103,9 @@ namespace HexTactica.AI {
                 MoveField walk = map.ReachThisTurn(u);
                 int bestD = int.MaxValue;
                 foreach (Unit t in map.ownUnits) {
-                    // (One that has acted this turn too (boardSpentTransports): aboard is better than on foot for a supply unit —
+                    // (One that has acted this turn too: aboard is better than on foot for a supply unit —
                     // it is linked as cargo, and rides next turn. A fresh one is preferred: it can drive it on now.)
-                    if (!IsTruck(t) || t.transported.Count > 0 || (!t.active && !map.profile.boardSpentTransports) || used.Contains(t) || (ReservedTrucks != null && ReservedTrucks.Contains(t)) || !Transporting.CanCarry(t, u)) continue;
+                    if (!IsTruck(t) || t.transported.Count > 0 || used.Contains(t) || (ReservedTrucks != null && ReservedTrucks.Contains(t)) || !Transporting.CanCarry(t, u)) continue;
                     HexTile b = null;
                     if (Transporting.CanBoardFrom(t, u)) b = u.tile;
                     else foreach (HexTile n in t.tile.neighbors) {
@@ -133,7 +133,7 @@ namespace HexTactica.AI {
                 if (every == null && (sx > bestSteps || (sx == bestSteps && !CombatMath.Precedes(x, best)))) continue;
                 // Supply serves the army: never ahead of it. (Carried out in front where nothing could strike
                 // it yet, it fed itself to the enemy and left the army behind a gap it would not cross.)
-                if (sx < front && !(map.profile.leapsAheadWhenClear && map.EnemyStrikeTurns(x) > 2)) { nAhead++; continue; }
+                if (sx < front) { nAhead++; continue; }
                 float loss = map.KnownLoss(truck, x);
                 if (loss * caution >= truck.Strength || loss > tolerance) { nRisk++; continue; }
                 if (!SupplyNetwork.WithinMoveOfSupply(truck, x, net)) { nUnlinked++; continue; }
@@ -183,9 +183,9 @@ namespace HexTactica.AI {
         /// whole army's chain toward the nearest enemy HQ.
         /// </summary>
         public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
-            Unified = map.profile.unifiedLogistics;
+            Unified = true;
             Plan plan = MakeOne(map, fixedHubs, objective, only, army, null);
-            if (NoLeaps || !map.profile.supplyLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
+            if (NoLeaps || !plan.short_ || plan.reachSteps == 0) return plan;
             // Stretched, with trucks to hand: try each supply unit on foot that a truck could take now
             // carried forward, and the rest of the chain planned after it. A chain of links on foot has
             // every link holding the next: none could leap alone without cutting the ones ahead, though
@@ -211,7 +211,7 @@ namespace HexTactica.AI {
         /// <summary>A free truck stands beside (or within this turn's walk of a tile beside) <paramref name="h"/>.</summary>
         static bool TruckBeside(SupplyPoint h, AIMap map) {
             foreach (Unit t in map.ownUnits) {
-                if (!IsTruck(t) || t.transported.Count > 0 || (!t.active && !map.profile.boardSpentTransports) || (ReservedTrucks != null && ReservedTrucks.Contains(t))) continue;
+                if (!IsTruck(t) || t.transported.Count > 0 || (ReservedTrucks != null && ReservedTrucks.Contains(t))) continue;
                 if (t.tile.Distance(h.myUnit.tile) <= h.myUnit.moveRange + 1) return true;
             }
             return false;
@@ -252,7 +252,7 @@ namespace HexTactica.AI {
             Plan plan = new Plan();
             plan.objective = objective ?? Objective(map);
             if (plan.objective == null) return plan;
-            Unified = map.profile.unifiedLogistics;
+            Unified = true;
             Dictionary<HexTile, int> toObj = map.SupplySteps(plan.objective);
             System.Func<HexTile, int> steps = t => { int s; return t != null && toObj.TryGetValue(t, out s) ? s : int.MaxValue; };
 
@@ -263,7 +263,7 @@ namespace HexTactica.AI {
                 plan.frontSteps = Mathf.Min(plan.frontSteps, steps(u.tile));
             }
 
-            bool leaps = map.profile.supplyLeaps && !NoLeaps;
+            bool leaps = !NoLeaps;
             List<SupplyPoint> hubs = new List<SupplyPoint>();
             foreach (SupplyPoint h in map.ownHubs) {
                 if (only != null && !only.Contains(h)) continue;
@@ -289,35 +289,33 @@ namespace HexTactica.AI {
                 if (placed.ContainsKey(h)) continue;
                 Unit u = h.myUnit;
                 if (u.trasnporter != null) {
-                    // Aboard a truck (or any transport): placed as a link on foot is (unifiedLinkPlacement) — of the tiles its
+                    // Aboard a truck (or any transport): placed as a link on foot is — of the tiles its
                     // transport can reach tonight, linked as cargo is, safe and not ahead of the army, the one that brings
                     // our supplied ground nearest the objective; only if that does better than holding where it stands.
                     // (Placed by fewest steps alone, a truck drove its supply back onto the HQ: one step nearer the front's
                     // gathering point, and no ground added.)
                     Leap ride;
-                    if (map.profile.unifiedLinkPlacement) {
-                        List<HexTile> every = new List<HexTile>();
-                        ride = FindLeap(h, map, net, steps, plan.frontSteps, trucksUsed, taken, every);
-                        if (ride != null) {
-                            Unit tr = u.trasnporter;
-                            aboard[h] = tr;
-                            Dictionary<SupplyPoint, HexTile> hold = new Dictionary<SupplyPoint, HexTile>(placed); hold[h] = tr.tile;
-                            int bestR = Reach(SupplyNetwork.SolvePlanned(map.player, hold), toObj);
-                            HexTile go = null;
-                            every.Sort((a, b) => { int c = steps(a).CompareTo(steps(b)); return c != 0 ? c : CombatMath.CompareTiles(a, b); });
-                            int tried = 0;
-                            foreach (HexTile x in every) {
-                                if (x == tr.tile) continue;
-                                if (++tried > 12) break;   // forward first: the furthest few are where the reach is
-                                Dictionary<SupplyPoint, HexTile> trial = new Dictionary<SupplyPoint, HexTile>(placed); trial[h] = x;
-                                int r = Reach(SupplyNetwork.SolvePlanned(map.player, trial), toObj);
-                                if (r < bestR) { bestR = r; go = x; }
-                            }
-                            aboard.Remove(h);
-                            if (DebugLog != null) DebugLog("   chain: supply unit aboard at (" + tr.tile.x + "," + tr.tile.y + "): " + every.Count + " tiles its transport reaches linked; " + (go != null ? "to (" + go.x + "," + go.y + "), reach " + bestR : "holds: none brings supply nearer"));
-                            ride = go != null ? new Leap { truck = tr, tile = go, board = null } : null;
+                    List<HexTile> every = new List<HexTile>();
+                    ride = FindLeap(h, map, net, steps, plan.frontSteps, trucksUsed, taken, every);
+                    if (ride != null) {
+                        Unit tr = u.trasnporter;
+                        aboard[h] = tr;
+                        Dictionary<SupplyPoint, HexTile> hold = new Dictionary<SupplyPoint, HexTile>(placed); hold[h] = tr.tile;
+                        int bestR = Reach(SupplyNetwork.SolvePlanned(map.player, hold), toObj);
+                        HexTile go = null;
+                        every.Sort((a, b) => { int c = steps(a).CompareTo(steps(b)); return c != 0 ? c : CombatMath.CompareTiles(a, b); });
+                        int tried = 0;
+                        foreach (HexTile x in every) {
+                            if (x == tr.tile) continue;
+                            if (++tried > 12) break;   // forward first: the furthest few are where the reach is
+                            Dictionary<SupplyPoint, HexTile> trial = new Dictionary<SupplyPoint, HexTile>(placed); trial[h] = x;
+                            int r = Reach(SupplyNetwork.SolvePlanned(map.player, trial), toObj);
+                            if (r < bestR) { bestR = r; go = x; }
                         }
-                    } else ride = FindLeap(h, map, net, steps, plan.frontSteps, trucksUsed, taken);
+                        aboard.Remove(h);
+                        if (DebugLog != null) DebugLog("   chain: supply unit aboard at (" + tr.tile.x + "," + tr.tile.y + "): " + every.Count + " tiles its transport reaches linked; " + (go != null ? "to (" + go.x + "," + go.y + "), reach " + bestR : "holds: none brings supply nearer"));
+                        ride = go != null ? new Leap { truck = tr, tile = go, board = null } : null;
+                    }
                     if (ride == null) {
                         // No better tile for its truck: it holds aboard where the truck stands, a link still
                         // (a chain link stays aboard: AITransportPlanner.KeepsAboard).
@@ -345,12 +343,12 @@ namespace HexTactica.AI {
                     if (net.DepthAt(t) <= 0) { nUnsupplied++; continue; }       // a link must be supplied by the links behind it
                     int s = steps(t);
                     if (s == int.MaxValue) continue;
-                    if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) nAhead++;
+                    if (s < plan.frontSteps) nAhead++;
                     // Not ahead of the army — unless no enemy can strike there for more than two
-                    // turns (profile.chainLeadsWhenClear): a link behind which the army stands
+                    // turns: a link behind which the army stands
                     // would otherwise hold in the road and the army, behind it on a narrow road,
                     // never get past (zigzag: Red's chain stood in front of its army all game).
-                    if (s < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) { cappedOut = true; continue; }
+                    if (s < plan.frontSteps) { cappedOut = true; continue; }
                     // Little or nothing can hit it tonight (profile.chainRiskTolerance strength at most)...
                     float tolerance = Mathf.Max(0f, map.profile.chainRiskTolerance);
                     float expected = map.KnownLoss(u, t);
@@ -379,11 +377,11 @@ namespace HexTactica.AI {
                         continue;
                     }
                 }
-                // Reconnecting first (profile.chainReconnects): of the tiles a link could take, the one
+                // Reconnecting first: of the tiles a link could take, the one
                 // that connects the most of our cut-off supply units again, if any does — a link held
                 // in the rear only for its reach toward the enemy HQ left five supply units cut off
                 // for three turns after the one joining them to the HQ was killed.
-                if (map.profile.chainReconnects && Cut(placed, map) > 0) {
+                if (Cut(placed, map) > 0) {
                     HexTile fix = null; int fixCut = Cut(placed, map); int fixSteps = int.MaxValue;
                     foreach (HexTile t in field.Tiles) {
                         if (t != u.tile && (!field.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
@@ -391,7 +389,7 @@ namespace HexTactica.AI {
                         if (t != u.tile && t.occupier != null && (t.occupier.owner != u.owner || t.occupier.Hub != null)) continue;
                         if (map.KnownLoss(u, t) > Mathf.Max(0f, map.profile.chainRiskTolerance)) continue;
                         int ahead = steps(t);
-                        if (ahead < plan.frontSteps && !(map.profile.chainLeadsWhenClear && map.EnemyStrikeTurns(t) > 2)) continue;   // not ahead of the army
+                        if (ahead < plan.frontSteps) continue;   // not ahead of the army
                         Dictionary<SupplyPoint, HexTile> tr = new Dictionary<SupplyPoint, HexTile>(placed);
                         tr[h] = t;
                         int c = Cut(tr, map);
@@ -406,7 +404,7 @@ namespace HexTactica.AI {
                         continue;
                     }
                 }
-                // A leap (supplyLeaps): aboard a truck past the edge of supply, if that reaches further than walking.
+                // A leap: aboard a truck past the edge of supply, if that reaches further than walking.
                 Leap jump = leaps ? FindLeap(h, map, net, steps, plan.frontSteps, trucksUsed, taken) : null;
                 if (jump != null) {
                     Dictionary<SupplyPoint, HexTile> trial = new Dictionary<SupplyPoint, HexTile>(placed);
@@ -424,10 +422,10 @@ namespace HexTactica.AI {
                     // supply unit linked: the rear link carried past the ones ahead of it (they are then
                     // free to move up or leap in turn — leapfrogging, as a player moves a column of trucks).
                     bool better = (leapReach < reach && leapReach < walkReach) || h == forceLeap;
-                    // Cut off on foot, linked aboard (boardSpentTransports): it gets in, whatever the reach.
-                    if (map.profile.boardSpentTransports && !net.connectedHubs.Contains(h) && after.connectedHubs.Contains(h)) better = true;
+                    // Cut off on foot, linked aboard: it gets in, whatever the reach.
+                    if (!net.connectedHubs.Contains(h) && after.connectedHubs.Contains(h)) better = true;
                     bool leapfrog = leapReach <= Mathf.Min(reach, walkReach) && steps(jump.tile) <= steps(u.tile) - Mathf.Max(2, jump.truck.moveRange / 2) && Harm(trial, map) <= Harm(placed, map);
-                    if (after.connectedHubs.Contains(h) && (better || leapfrog) && (h == forceLeap || !map.profile.chainReconnects || Harm(trial, map) <= Harm(placed, map))) {
+                    if (after.connectedHubs.Contains(h) && (better || leapfrog) && (h == forceLeap || Harm(trial, map) <= Harm(placed, map))) {
                         trucksUsed.Add(jump.truck);
                         placed[h] = jump.tile; taken.Add(jump.tile);
                         if (jump.board != null) taken.Add(jump.board);
@@ -444,7 +442,7 @@ namespace HexTactica.AI {
                     SupplyNetwork.Result after = SupplyNetwork.SolvePlanned(map.player, trial);
                     bestReach = Reach(after, toObj);
                     // Never a move that cuts off more of our supply units than are cut off now.
-                    if (bestReach < reach && (!map.profile.chainReconnects || Harm(trial, map) <= Harm(placed, map))) {
+                    if (bestReach < reach && (Harm(trial, map) <= Harm(placed, map))) {
                         placed[h] = best; taken.Add(best);
                         net = after; reach = bestReach;
                         plan.links[h] = best;
@@ -524,7 +522,7 @@ namespace HexTactica.AI {
             int best = int.MaxValue;
             foreach (KeyValuePair<HexTile, int> kv in net.depth) {
                 if (kv.Value <= 0) continue;
-                if (kv.Key.terrain != null && kv.Key.terrain.elevation < 0) continue;   // supply is for the land (steps over water: unifiedLogistics)
+                if (kv.Key.terrain != null && kv.Key.terrain.elevation < 0) continue;   // supply is for the land (steps over water)
                 int s;
                 if (toObj.TryGetValue(kv.Key, out s) && s < best) best = s;
             }

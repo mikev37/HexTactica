@@ -60,10 +60,6 @@ namespace HexTactica.AI {
             return new AIAction { kind = AIActionKind.Unload, unit = transport, target = cargo, destination = at, via = via, reason = why };
         }
 
-        public static AIAction Seize(Unit u, Building b, float score, string why) {
-            return new AIAction { kind = AIActionKind.Capture, unit = u, building = b, score = score, reason = why };
-        }
-
         public bool IsNothing { get { return kind == AIActionKind.Wait; } }
     }
 

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// How well we know the enemy's forces, and so how bold we can be (AIProfile.campaignKnowledge).
+    /// How well we know the enemy's forces, and so how bold we can be.
     ///
     ///   - What the enemy can have: its starting budget (gold and units, known from the start), plus what
     ///     its buildings could have paid for each turn since (their income, as far as its production slots

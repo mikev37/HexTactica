@@ -14,8 +14,70 @@ namespace HexTactica.AI {
     /// </summary>
     public static class AIExecutor {
 
+        /// <summary>
+        /// Told of every action the AI is about to carry out that a player could not order (the reason, in words).
+        /// Null: no check. The test harness counts these; an AI that does what a human cannot has a bug.
+        /// </summary>
+        public static System.Action<AIAction, string> OnIllegal;
+
+        /// <summary>
+        /// Why a player could not order <paramref name="a"/> on the board as it stands, by the checks the click flow
+        /// itself makes (HexTile.OnClick, TransportMenu); null if a player could.
+        /// </summary>
+        public static string WhyIllegal(AIAction a) {
+            Unit u = a.unit;
+            if (u == null || a.kind == AIActionKind.Wait || a.kind == AIActionKind.Capture) return null;
+            GameController gc = GameController.gc;
+            if (gc != null && gc.activePlayer != null && u.owner != gc.activePlayer) return "it is not its side's turn";
+            if (u.tile == null || (u.trasnporter != null && u.trasnporter != u)) return "it is aboard a transport";
+            if (a.kind == AIActionKind.Unload) {
+                Unit cargo = a.target;
+                if (cargo == null || !u.transported.Contains(cargo)) return "the unit to put down is not aboard";
+                HexTile anchor = u.tile;
+                if (a.via != null && a.via != u.tile) {
+                    if (!u.active) return "the transport has already acted and cannot move first";
+                    string m = WhyCannotMove(u, a.via);
+                    if (m != null) return "the transport's move first: " + m;
+                    anchor = a.via;
+                }
+                if (a.destination == null || !Transporting.UnloadOptions(u, cargo, anchor).Contains(a.destination)) return "the tile is not one the cargo can be put down on from there";
+                return null;
+            }
+            if (!u.active) return "it has already acted this turn";
+            switch (a.kind) {
+                case AIActionKind.Move:
+                    return WhyCannotMove(u, a.destination);
+                case AIActionKind.Attack:
+                    return WhyCannotFire(u, u.tile, a.target);
+                case AIActionKind.MoveAndAttack: {
+                    if (a.destination == null || a.destination == u.tile) return WhyCannotFire(u, u.tile, a.target);
+                    if (!u.moveAndAttack) return "it cannot move and fire in one turn";
+                    return WhyCannotMove(u, a.destination) ?? WhyCannotFire(u, a.destination, a.target);
+                }
+                case AIActionKind.Load:
+                    if (a.transport == null) return "no transport";
+                    return HexTile.BoardingPath(u, a.transport) == null ? "it cannot get aboard that transport this turn" : null;
+            }
+            return null;
+        }
+        static string WhyCannotMove(Unit u, HexTile dest) {
+            if (dest == null) return "no destination";
+            if (dest == u.tile) return null;
+            if (!u.tile.ReachableThisTurn(u).Contains(dest)) return "(" + dest.x + "," + dest.y + ") is not within its move";
+            if (!dest.CanEndTurnHere(u)) return "(" + dest.x + "," + dest.y + ") is taken";
+            return null;
+        }
+        static string WhyCannotFire(Unit u, HexTile from, Unit target) {
+            if (target == null || target.tile == null) return "no target";
+            if (target.tile.occupier != target) return target.name + " is not what stands on its tile (aboard a transport?)";
+            if (!from.AllInAttackRange(u).Contains(target.tile)) return target.name + " is out of range or line of fire from (" + from.x + "," + from.y + ")";
+            if (!u.validTarget(target.tile)) return target.name + " is not a valid target (own side, unseen, protected, or a kind it cannot fire on)";
+            return null;
+        }
+
         public static bool Execute(AIAction action, AIMap map, bool headless) {
             if (action.unit == null) return false;
+            if (OnIllegal != null) { string why = WhyIllegal(action); if (why != null) OnIllegal(action, why); }
 
             switch (action.kind) {
 
