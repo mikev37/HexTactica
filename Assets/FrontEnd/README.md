@@ -75,6 +75,15 @@ drives the defender back records where (`retreats to (x,y)`). A purchase records
 off Blue APC (2,2) onto (3,2)`; `Transporting.Boarded`, `Unloaded`), with the transport's own move written first.
 Recordings made before these lines existed replay without them, and catch up when the next turn's board loads.
 
+Going from one turn to the next loads nothing: the turn is ended as the game ends it (`GameController.EndTurn`:
+captures, upkeep, the next side's start) and every unit stays where it is. The board is then compared with the
+recording's board for that turn (`Replay.Differs`), and only a board that differs is loaded, with the first
+difference in the console. **Next turn** and **Previous turn** always load.
+
+Each turn's board (`turn-NNN-Side.dat`, written by `GameLog.Snapshot`) now holds the sides: name, colour, faction
+and money. Recordings made before this have no sides in their boards; for those the replay takes each side's name
+and faction from the log's `side:` lines, and the colours stay the scene's.
+
 The sides are read from the log's own `side:` lines (name and id), not from the board. A side the recording gives
 no faction has none (`ScenarioLoader.SidesAsFiled`; the same for a saved game), where a scenario opened in the scene
 keeps the scene's. Nothing is recorded while a recording is watched, and the scene's own board is no longer recorded
