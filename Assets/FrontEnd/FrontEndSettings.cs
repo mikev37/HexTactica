@@ -26,10 +26,12 @@ public class FrontEndSettings : ScriptableObject {
     public string replayScene = "Replay";
 
     [Header("Replay")]
-    [Tooltip("Play mode: seconds between one action and the next (once the last one's animation is done).")]
-    public float replayStepSeconds = 0.5f;
-    [Tooltip("Fast forward: this many times faster than play mode.")]
-    public float replayFastForward = 5f;
+    [Tooltip("Play: seconds between one action and the next, counted from when the last one's animation is done.")]
+    public float replayPlayPause = 0.1f;
+    [Tooltip("Fast forward: an action is ordered every this many seconds, without waiting for the last one to finish.")]
+    public float replayFastInterval = 0.2f;
+    [Tooltip("Fast forward: every unit's move speed on screen is multiplied by this.")]
+    public float replayFastMoveSpeed = 3f;
     [Tooltip("The most log lines the replay's controls list for a turn.")]
     public int replayLinesShown = 200;
 

@@ -65,8 +65,11 @@ each turn's board comes from its `turn-NNN-Side.dat`, and each action from that 
   to the log's (a warning in the console if the game worked it out differently). Boarding is `Unit.WalkAndBoard`.
   After the turn's last action it loads the next turn's board.
 - **Next turn** and **Previous turn** load that turn's board.
-- **Play** plays an action every `FrontEndSettings.replayStepSeconds` (0.5), counted from when the last action's
-  animation has finished. **Fast forward** does the same `replayFastForward` (5) times faster.
+- **Play** orders the next action `FrontEndSettings.replayPlayPause` (0.1 s) after the last one's animation has
+  finished.
+- **Fast forward** orders an action every `replayFastInterval` (0.2 s) without waiting for the last to finish, and
+  multiplies every unit's move speed on screen by `replayFastMoveSpeed` (3). A turn still ends only once the board
+  is still.
 - **Whose eyes** cycles through each side's fog and everything.
 
 Three log lines changed for this. A move is now written and read in `GameLog.Lines` (`Moved`). An attack that
