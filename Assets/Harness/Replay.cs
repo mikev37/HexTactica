@@ -54,6 +54,7 @@ namespace HexTactica.Harness {
         static readonly List<string> sides = new List<string>();
         /// <summary>The log's sides by name, with their ids (its "side:" lines).</summary>
         static readonly Dictionary<string, long> logSides = new Dictionary<string, long>();
+        static readonly Dictionary<string, string> logFactions = new Dictionary<string, string>();
 
         public static readonly List<Turn> turns = new List<Turn>();
         public static int Index { get; private set; }
@@ -72,7 +73,7 @@ namespace HexTactica.Harness {
 
         /// <summary>Read the recording in <paramref name="folder"/>: its boards in order, each with its part of the log. False if it has none.</summary>
         public static bool Read(string folder) {
-            turns.Clear(); Ending = null; logSides.Clear();
+            turns.Clear(); Ending = null; logSides.Clear(); logFactions.Clear();
             if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return false;
             List<string> files = new List<string>(Directory.GetFiles(folder, "turn-*.dat"));
             files.Sort(StringComparer.Ordinal);
@@ -88,7 +89,7 @@ namespace HexTactica.Harness {
                 foreach (string raw in File.ReadAllLines(log)) {
                     string line = raw.TrimEnd();
                     long sideId; string sideName, sideFaction; bool sideAI;
-                    if (round < 0 && GameLog.Lines.ReadSide(line, out sideId, out sideName, out sideFaction, out sideAI)) { logSides[sideName] = sideId; continue; }
+                    if (round < 0 && GameLog.Lines.ReadSide(line, out sideId, out sideName, out sideFaction, out sideAI)) { logSides[sideName] = sideId; logFactions[sideName] = sideFaction; continue; }
                     if (line.StartsWith("== round ", StringComparison.Ordinal)) {
                         at = null; board = true;
                         int.TryParse(line.Substring(9).Split(':')[0], out round);
@@ -142,13 +143,166 @@ namespace HexTactica.Harness {
             ScenarioLoader.RecordGames = false;
             bool exactWas = ScenarioLoader.SidesAsFiled;
             ScenarioLoader.SidesAsFiled = true;   // each side's faction exactly as recorded (none means none)
-            try { Loader(turns[i].file); }
+            try {
+                // The board's sides are made the file's before it is loaded (units are placed as their side's faction
+                // fields them), and checked after: a side that does not come out as recorded is said so, set, and the
+                // board loaded once more.
+                SidesFrom(turns[i].file, true);
+                if (!Loader(turns[i].file)) Debug.LogError("Replay: could not load " + turns[i].file);
+                if (SidesFrom(turns[i].file, false)) {
+                    Loader(turns[i].file);
+                    if (SidesFrom(turns[i].file, false)) Debug.LogError("Replay: the sides still do not come out as recorded after loading " + turns[i].file + " twice (see the warnings above).");
+                }
+            }
             finally { ScenarioLoader.RecordGames = recordWas; ScenarioLoader.SidesAsFiled = exactWas; }
             Index = i;
             Freeze();
             ApplyView();
             Prepare(turns[i]);
             if (Changed != null) Changed();
+        }
+
+        /// <summary>
+        /// Make each of the board's sides what the turn file records for it (name, colour, faction), by id. Returns
+        /// true if any side was not that already; <paramref name="quiet"/> off, each difference is logged.
+        /// </summary>
+        static bool SidesFrom(string file, bool quiet) {
+            GameController gc = GameController.gc;
+            if (gc == null) return false;
+            bool changed = false;
+            try {
+                Defective.JSON.JSONObject obj = new Defective.JSON.JSONObject(File.ReadAllText(file));
+                Defective.JSON.JSONObject players = obj.GetField("players");
+                if (players == null || players.list == null) return SidesFromLog();
+                foreach (Defective.JSON.JSONObject pj in players.list) {
+                    PlayerData pd = JsonUtility.FromJson<PlayerData>(pj.Print());
+                    if (string.IsNullOrEmpty(pd.personal_name)) continue;
+                    Player p = null;
+                    foreach (Player x in gc.players) if (x != null && x.id == pd.id) p = x;
+                    if (p == null) { if (!quiet) Debug.LogWarning("Replay: the board has no side with id " + pd.id + " (" + pd.personal_name + ") after loading " + Path.GetFileName(file) + "."); continue; }
+                    Faction f = string.IsNullOrEmpty(pd.factionName) ? null : LevelEditor.FindFaction(pd.factionName);
+                    if (!string.IsNullOrEmpty(pd.factionName) && f == null && !quiet) Debug.LogWarning("Replay: no faction named " + pd.factionName + " (side " + pd.personal_name + ").");
+                    bool same = p.personal_name == pd.personal_name && p.faction == f && p.displayColor == pd.displayColor;
+                    if (same) continue;
+                    changed = true;
+                    if (!quiet) Debug.LogWarning("Replay: side " + pd.id + " came out as " + p.personal_name + " / " + (p.faction != null ? p.faction.name : "no faction") + " / " + p.displayColor
+                        + "; " + Path.GetFileName(file) + " records " + pd.personal_name + " / " + (f != null ? f.name : "no faction") + " / " + pd.displayColor + ". Set to the file's.");
+                    p.personal_name = pd.personal_name; p.faction = f; p.displayColor = pd.displayColor;
+                }
+            } catch (Exception e) {
+                if (!quiet) Debug.LogWarning("Replay: could not read the sides in " + file + ": " + e.Message);
+            }
+            return changed;
+        }
+
+        /// <summary>
+        /// A recording made before its turn boards kept the sides: each side's name and faction from the log's "side:"
+        /// lines (its colour is not in such a recording: the board's stays). True if any side was changed.
+        /// </summary>
+        static bool SidesFromLog() {
+            GameController gc = GameController.gc;
+            bool changed = false;
+            foreach (KeyValuePair<string, long> kv in logSides) {
+                Player p = null;
+                foreach (Player x in gc.players) if (x != null && x.id == kv.Value) p = x;
+                if (p == null) continue;
+                string fn; logFactions.TryGetValue(kv.Key, out fn);
+                Faction f = string.IsNullOrEmpty(fn) ? null : LevelEditor.FindFaction(fn);
+                if (p.personal_name == kv.Key && p.faction == f) continue;
+                p.personal_name = kv.Key; p.faction = f;
+                changed = true;
+            }
+            return changed;
+        }
+
+        // ---------------------------------------------------------------- turn to turn without loading
+
+        /// <summary>
+        /// The turn after the one on screen, reached as the game reaches it: the turn is ended (captures, upkeep, the
+        /// next side's start), with every unit left where it is — nothing is taken off and put back. The board is then
+        /// checked against the recording's board for that turn, and only if it is not the same is that board loaded.
+        /// </summary>
+        /// <summary>How many times going on to the next turn had to load its board (the board was not the recording's).</summary>
+        public static int Reloads;
+
+        static void Advance() {
+            GameController gc = GameController.gc;
+            int next = Index + 1;
+            if (gc == null || gc.gameOver) { Show(next); return; }
+            try { gc.EndTurn(); }
+            catch (Exception e) { Debug.LogWarning("Replay: ending the turn failed (" + e.Message + "): the next turn's board is loaded."); Show(next); return; }
+            string why = Differs(turns[next].file);
+            if (why != null) {
+                Reloads++;
+                Debug.LogWarning("Replay: after turn " + (Index + 1) + " the board is not the recording's (" + why + "): turn " + (next + 1) + "'s board is loaded.");
+                Show(next);
+                return;
+            }
+            Index = next;
+            Freeze();
+            Prepare(turns[next]);
+            if (Changed != null) Changed();
+        }
+
+        /// <summary>
+        /// How the board differs from a turn's recorded board (the side to move, a unit's place, kind, side or strength, a
+        /// building's owner), or null if it does not. Where they agree, each unit's supplies, fuel and ammunition and each
+        /// side's money are set to the recording's.
+        /// </summary>
+        static string Differs(string file) {
+            GameController gc = GameController.gc;
+            Defective.JSON.JSONObject obj;
+            try { obj = new Defective.JSON.JSONObject(File.ReadAllText(file)); }
+            catch (Exception e) { return "could not read " + Path.GetFileName(file) + ": " + e.Message; }
+            Defective.JSON.JSONObject active = obj.GetField("active");
+            if (active != null && gc.activePlayer != null && gc.activePlayer.id != active.intValue) return "it is " + gc.activePlayer.personal_name + "'s turn";
+            int onBoard = 0;
+            if (UnitController.uc != null) foreach (Unit u in UnitController.uc.units) if (u != null && u.Strength > 0 && u.tile != null && u.trasnporter == null) onBoard++;
+            int inFile = 0;
+            List<KeyValuePair<Unit, Defective.JSON.JSONObject>> matched = new List<KeyValuePair<Unit, Defective.JSON.JSONObject>>();
+            Defective.JSON.JSONObject units = obj.GetField("units");
+            if (units != null && units.list != null)
+                foreach (Defective.JSON.JSONObject uj in units.list) {
+                    Defective.JSON.JSONObject carried = uj.GetField("transporterIndexPlusOne");
+                    if (carried != null && carried.intValue > 0) continue;
+                    inFile++;
+                    int x = uj.GetField("x").intValue, y = uj.GetField("y").intValue;
+                    HexTile t = Tile(x, y);
+                    Unit u = t != null ? t.occupier : null;
+                    string kind = uj.GetField("gameobject_name").stringValue;
+                    if (u == null || u.Strength <= 0) return "no unit at (" + x + "," + y + "), the recording has " + kind;
+                    if (GameLog.Lines.UnitName(u) != kind) return GameLog.Lines.UnitName(u) + " at (" + x + "," + y + "), the recording has " + kind;
+                    if (u.owner == null || u.owner.id != uj.GetField("owner_id").intValue) return "the unit at (" + x + "," + y + ") is another side's";
+                    if (u.Strength != uj.GetField("Strength").intValue) return GameLog.Lines.Who(u) + " at (" + x + "," + y + ") has strength " + u.Strength + ", the recording " + uj.GetField("Strength").intValue;
+                    matched.Add(new KeyValuePair<Unit, Defective.JSON.JSONObject>(u, uj));
+                }
+            if (onBoard != inFile) return onBoard + " units on the board, the recording has " + inFile;
+            Defective.JSON.JSONObject buildings = obj.GetField("buildings");
+            if (buildings != null && buildings.list != null)
+                foreach (Defective.JSON.JSONObject bj in buildings.list) {
+                    HexTile t = Tile(bj.GetField("x").intValue, bj.GetField("y").intValue);
+                    if (t == null || t.building == null) return "no building at (" + bj.GetField("x").intValue + "," + bj.GetField("y").intValue + ")";
+                    long owner = t.building.owner != null ? t.building.owner.id : -1;
+                    long filed = bj.GetField("owner_id").intValue;
+                    bool filedNeutral = true;
+                    foreach (Player p in gc.players) if (p != null && p.id == filed) filedNeutral = false;
+                    if (filedNeutral ? t.building.owner != null : owner != filed) return "the building at (" + t.x + "," + t.y + ") has another owner";
+                }
+            // The same board: what the log does not tell (stores) is taken from the recording, so nothing drifts.
+            foreach (KeyValuePair<Unit, Defective.JSON.JSONObject> m in matched) {
+                Defective.JSON.JSONObject v;
+                if ((v = m.Value.GetField("supplies")) != null) m.Key.supplies = v.intValue;
+                if ((v = m.Value.GetField("fuel")) != null) m.Key.fuel = v.intValue;
+                if ((v = m.Value.GetField("ammo")) != null) m.Key.ammo = v.intValue;
+            }
+            Defective.JSON.JSONObject players = obj.GetField("players");
+            if (players != null && players.list != null)
+                foreach (Defective.JSON.JSONObject pj in players.list) {
+                    Defective.JSON.JSONObject id = pj.GetField("id"), money = pj.GetField("money");
+                    if (id == null || money == null) continue;
+                    foreach (Player p in gc.players) if (p != null && p.id == id.intValue) p.money = money.intValue;
+                }
+            return null;
         }
 
         // ---------------------------------------------------------------- actions within a turn
@@ -199,7 +353,9 @@ namespace HexTactica.Harness {
             while (Step < t.actions.Count && played.Contains(t.actions[Step])) Step++;   // (a move played early, with its attack)
             if (Step >= t.actions.Count) {
                 if (Index >= turns.Count - 1) return false;
-                Next();
+                if (Unit.AnyAnimating()) return true;   // the turn ends when the board is still (as in play)
+                LastAction = "";
+                Advance();
                 return true;
             }
             int e = t.actions[Step++];

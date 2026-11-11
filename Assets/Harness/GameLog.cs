@@ -483,6 +483,21 @@ namespace HexTactica.Harness {
             sb.Append("{\n\"width\":").Append(2 * r + 1).Append(",\n\"active\":").Append(active != null ? active.id : 112);
             sb.Append(",\n\"test\":{\"name\":").Append(Q("snapshot")).Append(",\"kind\":\"snapshot\",\"opponent\":").Append(Q(redKind == "?" ? "Human" : redKind))
               .Append(",\"rules\":").Append(Q(GameController.gc != null ? GameController.gc.rules.ToString().ToLowerInvariant() : "standard")).Append(",\"rounds\":\"30\",\"check\":\"report\",\"question\":").Append(Q(question)).Append('}');
+            // The sides as they are (name, colour, faction, money), the round, and whether factions field their special
+            // units: a replay's board is this turn's, sides and all.
+            if (GameController.gc != null) {
+                sb.Append(",\n\"day\":").Append(GameController.gc.days);
+                sb.Append(",\n\"factionSpecialUnits\":").Append(Q(GameController.gc.SpecialUnitsSetting));
+                sb.Append(",\n\"players\":[");
+                bool firstSide = true;
+                foreach (Player q in GameController.gc.players) {
+                    if (q == null) continue;
+                    if (!firstSide) sb.Append(',');
+                    firstSide = false;
+                    sb.Append('\n').Append(JsonUtility.ToJson(new PlayerData(q)));
+                }
+                sb.Append("\n]");
+            }
             sb.Append(",\n\"tiles\":[");
             bool first = true;
             foreach (HexTile t in HexGenerator.hg.tiles) {

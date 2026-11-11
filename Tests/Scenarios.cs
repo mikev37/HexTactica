@@ -3164,6 +3164,12 @@ public static partial class Scenarios {
                     compared++;
                     if (Draw() == boards[i + 1]) sameAfter++; else if (firstOff == null) firstOff = "turn " + i;
                 }
+                // Straight through with Next action: each turn ended as the game ends it, no board loaded in between.
+                HexTactica.Harness.Replay.Show(0);
+                HexTactica.Harness.Replay.Reloads = 0;
+                int through = 0;
+                while (HexTactica.Harness.Replay.NextAction() && through++ < 500) { }
+                r.Add("played through to turn " + (HexTactica.Harness.Replay.Index + 1) + " with " + HexTactica.Harness.Replay.Reloads + " boards loaded on the way; ends as recorded " + (Draw() == boards[turns.Count - 1]));
                 HexTactica.Harness.Replay.Show(turns.Count - 1);
                 r.Add("actions played " + stepped + "; boards after a turn's actions equal to the next turn's " + sameAfter + "/" + compared + (firstOff != null ? " (first off: " + firstOff + ")" : ""));
                 r.Add("boards as recorded " + same + " of " + turns.Count + "; back " + back + ", stops at the last " + clamp + "; nobody plays " + frozen);
