@@ -604,8 +604,47 @@ namespace HexTactica.AI {
             AIProfile p = map.profile;
             // A destroyed building earns, supplies and builds nothing (until it is repaired).
             if (!b.Functioning) return p.buildingValue;
-            return p.buildingValue + b.income * p.buildingIncomeTurns + (b.producesSupply ? p.buildingSupplyValue : 0f) + (b.CanProduce ? p.buildingProductionValue : 0f);
+            return p.buildingValue + b.income * p.buildingIncomeTurns + (b.producesSupply ? p.buildingSupplyValue : 0f) + (b.CanProduce ? p.buildingProductionValue : 0f)
+                 + RoleWorth(b, map);
         }
+
+        /// <summary>
+        /// What a building does besides earning, supplying and building, in gold (each a building's base value):
+        ///   - one that watches (detects hidden units, or sees over terrain: Int. Ops): a region kept in sight, as a scout
+        ///     would; twice that against an enemy that hides (StealthMatters);
+        ///   - one that shelters its garrison (holds its ground, or adds to its attack or defence: a bunker).
+        /// </summary>
+        public static float RoleWorth(Building b, AIMap map) {
+            if (b == null || map == null) return 0f;
+            float v = 0f, one = map.profile.buildingValue;
+            if (b.detectRange > 0 || b.visionOverTerrain) v += one * (StealthMatters(map) ? 2f : 1f);
+            if (b.holdsGround || b.attackBonus > 0 || b.defenseBonus > 0) v += one;
+            return v;
+        }
+
+        /// <summary>
+        /// Does the enemy hide: a unit of its that hides has been seen this game (by this side), or one of its buildings
+        /// can build one. Worked out once per board read.
+        /// </summary>
+        public static bool StealthMatters(AIMap map) {
+            if (stealthMap == map && stealthVersion == map.SpaceVersion) return stealthAnswer;
+            Player us = map.player;
+            bool any;
+            lock (stealthSeen) any = stealthSeen.Contains(us);
+            if (!any) foreach (Unit e in map.enemyUnits) if (e != null && e.stealthRange > 0) { any = true; lock (stealthSeen) stealthSeen.Add(us); break; }
+            if (!any) foreach (Building x in Building.all) {
+                if (x == null || x.owner == null || x.owner == us || !x.CanProduce) continue;
+                foreach (Unit t in x.Purchasable()) if (t != null && t.stealthRange > 0) { any = true; break; }
+                if (any) break;
+            }
+            stealthMap = map; stealthVersion = map.SpaceVersion; stealthAnswer = any;
+            return any;
+        }
+        /// <summary>The sides that have seen an enemy unit that hides, this game (players are made anew each game).</summary>
+        static readonly HashSet<Player> stealthSeen = new HashSet<Player>();
+        [ThreadStatic] static AIMap stealthMap;
+        [ThreadStatic] static int stealthVersion;
+        [ThreadStatic] static bool stealthAnswer;
 
         /// <summary>
         /// Control of a building for <paramref name="side"/>, -1..1: 1 held by it with nobody taking it, -1 held by

@@ -1340,8 +1340,8 @@ namespace HexTactica.AI {
                         float cap = 0f;
                         if (!o.units.Exists(u => u != null && u.tile != null && Building.CanCapture(u)))
                             foreach (Building b in Building.all)
-                                if (b != null && b.tile != null && b.Capturable && b.owner != p && b.tile.Distance(o.target) <= 2)
-                                    cap += b.income * pr.objectiveHorizonTurns + (b.CanProduce ? pr.procCaptureProducerValue : 0f);
+                                if (b != null && b.tile != null && b.Capturable && b.owner != p && b.tile.Distance(o.target) <= 3)
+                                    cap += CaptureValue(b);
                         askCapture[o] = cap;
                         askCombat[o] = Mathf.Max(0f, o.needPower - o.assignedPower);
                         AILogistics.Task task = logistics != null ? logistics.tasks.Find(x => x.front == o) : null;
@@ -1377,7 +1377,7 @@ namespace HexTactica.AI {
                     foreach (Building b in Building.all) {
                         if (b == null || b.tile == null || !b.Capturable || b.owner == p) continue;
                         if (cheap == null || map.Travel(cheap, sl.tile, b.tile) > 2 * Mathf.Max(1, cheap.moveRange)) continue;
-                        cv += b.income * pr.objectiveHorizonTurns + (b.CanProduce ? pr.procCaptureProducerValue : 0f);
+                        cv += CaptureValue(b);
                     }
                     captureNear[sl] = cv;
                 }
@@ -1393,6 +1393,16 @@ namespace HexTactica.AI {
             public string FrontOf(Slot sl) { CampaignObjective o; return serves.TryGetValue(sl, out o) && o != null ? o.Id : null; }
 
             /// <summary>Facilities (not locked down) that can build a kind like <paramref name="t"/>.</summary>
+            /// <summary>
+            /// What taking <paramref name="b"/> is worth to a purchase: its income over the horizon and a place to build,
+            /// and never less than what the forecast holds any building to be worth (AIWorld.BuildingWorth: one that
+            /// earns and builds nothing still supplies, watches or shelters). The HQ by its income: its worth is the game.
+            /// </summary>
+            float CaptureValue(Building b) {
+                float v = b.income * pr.objectiveHorizonTurns + (b.CanProduce ? pr.procCaptureProducerValue : 0f);
+                return b.IsHQ ? v : Mathf.Max(v, AIWorld.BuildingWorth(b, map));
+            }
+
             int Builders(Unit t) {
                 int n = 0;
                 foreach (Slot sl in slots) { if (locked[sl]) continue; foreach (Unit u in sl.b.Purchasable()) if (u == t) { n++; break; } }
