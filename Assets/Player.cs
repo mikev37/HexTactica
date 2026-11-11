@@ -269,6 +269,7 @@ public class Player : MonoBehaviour
         units.ForEach(x => {
             if (x == null) return;
             x.active = true;
+            x.carriedThisTurn = false;
         });
     }
 

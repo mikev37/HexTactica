@@ -739,6 +739,11 @@ public static partial class Scenarios {
                  Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
                  Put("Grunt", o, 6, -5); },
              "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
+        make("ai-ship-without-base", "seaMeeting", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Put("Hauler", a, 1, -6); Put("Grunt", a, -5, 3); Put("Grunt", a, -4, 3);
+                 Put("Grunt", o, 5, -2); },
+             "As ai-sea-meeting, but Blue has no naval yard and no supply ship: nowhere to refuel. The hauler still acts (it does not hold for want of a base it cannot get back to): it meets the grunts and takes them across.");
         make("ai-sea-meeting", "seaMeeting", (a, o) => {
                  for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.At(-1, -5).terrain = T("Grassland"); Rig.PlaceBuilding("NavalYard", a, -1, -5);
@@ -762,6 +767,10 @@ public static partial class Scenarios {
                  Put("Gunboat", a, 3, -2); Put("Gunboat", a, 4, 3); Put("SupplyBoat", a, 1, 4);
                  Put("Grunt", o, 6, -5); },
              "Ships go back for what they run out of: a gunboat out of ammunition five tiles from Blue's naval yard heads for the yard (only a yard rearms) and is rearmed there; a gunboat with one turn of supplies left, far from the yard, goes beside Blue's supply boat instead, and is restocked there at the start of its next turn.");
+        make("rule-artillery-after-ride", "artilleryRide", (a, o) => {
+                 water(-3, -1, -7, 7);
+                 Put("Artillery", a, -4, 0); Put("Grunt", a, -4, 1); Put("Hauler", a, -3, 0); Put("Grunt", o, 3, 0); },
+             "Move or attack: artillery carried somewhere this turn has had its move. Put down from a hauler that has not moved it can still fire; put down after the hauler sailed it, it cannot fire until its next turn (a grunt riding with it, which moves and attacks, still can).");
         make("rule-board-reach", "boardReach", (a, o) => {
                  water(0, 7, -7, 7);
                  Put("Grunt", a, -4, 0); Put("APC", a, -1, 0); Put("APC", a, -1, 1); Put("Hauler", a, 0, -2); Put("Grunt", o, 6, -3); },
@@ -3627,6 +3636,23 @@ public static partial class Scenarios {
                 detail = string.Join(" | ", r.ToArray()) + "; rearmed " + rearmed + ", restocked " + restocked + " without losing strength " + (hungry.Strength == 6);
                 return rearmed && restocked && hungry.Strength == 6;
             }
+            case "artilleryRide": {
+                Unit art = Rig.At(-4, 0).occupier, g = Rig.At(-4, 1).occupier, apc = Rig.At(-3, 0).occupier, e = Rig.At(3, 0).occupier;
+                Func<Unit, bool> board = c => { if (!Transporting.CanCarry(apc, c)) return false; Transporting.Load(apc, c); c.FinishBoarding(); c.active = true; return true; };
+                // Not moved: put down beside it, it fires.
+                bool loaded = board(art);
+                Transporting.Unload(apc, art, Rig.At(-4, 0));
+                bool firesUnmoved = art.CanAttack(e) && art.tile.AllInAttackRange(art).Count > 0;
+                // Driven two tiles, then put down: it does not; the grunt that rode along does.
+                bool both = board(art) && board(g);
+                apc.MoveAlong(new List<HexTile> { Rig.At(-3, 0), Rig.At(-2, 0), Rig.At(-1, 0) }, false, false);
+                Transporting.Unload(apc, art, Rig.At(0, 0)); Transporting.Unload(apc, g, Rig.At(0, -1));
+                bool firesRidden = art.CanAttack(e) || art.tile.AllInAttackRange(art).Count > 0, gruntFires = g.CanAttack(e);
+                a.EndTurn();
+                bool firesNextTurn = art.CanAttack(e);
+                detail = "loaded " + loaded + "/" + both + "; artillery put down unmoved fires " + firesUnmoved + "; after the ride fires " + firesRidden + ", the grunt that rode fires " + gruntFires + "; next turn the artillery fires " + firesNextTurn;
+                return loaded && both && art.trasnporter == null && art.tile == Rig.At(0, 0) && g.trasnporter == null && firesUnmoved && !firesRidden && gruntFires && firesNextTurn;
+            }
             case "boardReach": {
                 Unit g = Rig.At(-4, 0).occupier, near = Rig.At(-1, 0).occupier, far = Rig.At(-1, 1).occupier, ship = Rig.At(0, -2).occupier;
                 int dn = g.tile.Distance(near.tile), df = g.tile.Distance(far.tile), ds = g.tile.Distance(ship.tile);
@@ -4039,7 +4065,9 @@ public static partial class Scenarios {
             List<HexTile> road = windingRoad();
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, road[0].x, road[0].y);
-            Put("APC", ai, road[1].x, road[1].y);
+            // (The APC on road[2]: from road[1] the supply unit at road[4] could only board it through the free extra step
+            // boarding used to give, which this does not test.)
+            Put("APC", ai, road[2].x, road[2].y);
             Put("Supplies", ai, road[4].x, road[4].y); Put("Supplies", ai, road[7].x, road[7].y); Put("Supplies", ai, road[10].x, road[10].y); Put("Tank", ai, road[12].x, road[12].y);
             HexTile end = road[road.Count - 1];
             Put("HQ", other, end.x, end.y); Put("Grunt", other, road[road.Count - 2].x, road[road.Count - 2].y);

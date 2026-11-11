@@ -128,7 +128,7 @@ namespace HexTactica.AI {
 
         /// <summary>Can <paramref name="c"/>, put down on <paramref name="n"/> with its whole turn ahead, strike this turn: hit an enemy it can hurt, or reach a building to take?</summary>
         public static bool Strikes(Unit c, HexTile n, AIMap map, out string what) {
-            Strike k = StrikeFrom(c, n, map);
+            Strike k = StrikeFrom(c, n, map, c.carriedThisTurn);
             what = k != null ? k.what : null;
             return k != null;
         }
@@ -138,7 +138,10 @@ namespace HexTactica.AI {
         /// take (stand on it), else the hit worth most (what it does to the target, less what it stands to lose where it
         /// fires from), from a tile where it would not be destroyed tonight. Null: none.
         /// </summary>
-        public static Strike StrikeFrom(Unit c, HexTile n, AIMap map) {
+        /// <param name="carried">It gets there by riding (its transport moves this turn, or has): a unit that must move or
+        /// attack (artillery) can then only take a building, not fire (Unit.carriedThisTurn).</param>
+        public static Strike StrikeFrom(Unit c, HexTile n, AIMap map, bool carried) {
+            bool fires = c.moveAndAttack || !carried;
             // Nothing within its walk and fire, or a building's walk, as the crow flies: no strike (no field to work out).
             int reach = (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange);
             bool near = false;
@@ -158,7 +161,7 @@ namespace HexTactica.AI {
                     }
                 Strike best = null;
                 float worth = AIScore.Worth(c);
-                foreach (Unit e in map.enemyUnits) {
+                if (fires) foreach (Unit e in map.enemyUnits) {
                     if (e == null || e.tile == null || e.Strength <= 0) continue;
                     if (!c.CanTarget(e)) continue;
                     float dmg = Unit.calculateDamage(c, e, e.tile, 0);
@@ -254,7 +257,9 @@ namespace HexTactica.AI {
                         if (taken.Contains(n)) continue;
                         Strike k;
                         long key = ((long)riders.IndexOf(c) << 32) | (uint)(n.viewId >= 0 ? n.viewId : (n.x + 512) * 2048 + (n.y + 512));
-                        if (!strikeAt.TryGetValue(key, out k)) { k = StrikeFrom(c, n, map); strikeAt[key] = k; }
+                        bool carried = via != t.tile || c.carriedThisTurn;
+                        if (carried) key |= 1L << 62;   // (artillery: fires from n only if it did not ride there)
+                        if (!strikeAt.TryGetValue(key, out k)) { k = StrikeFrom(c, n, map, carried); strikeAt[key] = k; }
                         if (k == null) continue;
                         taken.Add(n); count++;
                         if (first == null) { first = c; firstDrop = n; firstStrike = k; }
@@ -354,7 +359,7 @@ namespace HexTactica.AI {
             if (t.active) return AIAction.Wait(c, "rides to the assault");   // its transport moves first
             if (profile.assaultMedevacStrength > 0 && c.Strength <= profile.assaultMedevacStrength) return AIAction.Wait(c, "wounded: rides on to mend");
             foreach (HexTile n in Transporting.UnloadOptions(t, c)) {
-                Strike k = StrikeFrom(c, n, map);
+                Strike k = StrikeFrom(c, n, map, c.carriedThisTurn);
                 if (k == null) continue;
                 if (!WaveGoesIn(t.tile, 1, frontAttacks, map, profile)) break;
                 Planned[c] = k;

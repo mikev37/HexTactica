@@ -317,6 +317,9 @@ namespace HexTactica.AI {
             Landing land = LandingOf(u, map);
             List<HexTile> bases = Bases(u, map);
             Dictionary<HexTile, int> toBase = DistanceToBase(u, bases);
+            // No base it can get back to from here (none at all, or none on its water): holding would only idle it for
+            // good, so it carries on with what it was going to do.
+            if (!toBase.ContainsKey(u.tile)) return action;
             // Where it ends the turn (EndOf): a ship putting troops ashore stays on the water it unloads from, not on the
             // land they step onto (read as the land, every unloading ship was "out of fuel" and held).
             HexTile stop = EndOf(u, action);
