@@ -82,6 +82,7 @@ namespace UnityEditor.SceneManagement {
 namespace UnityEditor.Events {
     public static class UnityEventTools {
         public static void AddPersistentListener(UnityEngine.Events.UnityEvent e, UnityEngine.Events.UnityAction call) { }
+        public static void RemovePersistentListener(UnityEngine.Events.UnityEventBase e, int index) { }
     }
 }
 namespace UnityEngine {

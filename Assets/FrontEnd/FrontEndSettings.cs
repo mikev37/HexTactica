@@ -22,6 +22,17 @@ public class FrontEndSettings : ScriptableObject {
     [Tooltip("Loaded over the game scene in the map editor: the editing tools.")]
     public string mapEditorScene = "MapEditor";
 
+    [Tooltip("Loaded over the game scene to watch a recorded game: the replay's controls.")]
+    public string replayScene = "Replay";
+
+    [Header("Replay")]
+    [Tooltip("Play mode: seconds between one action and the next (once the last one's animation is done).")]
+    public float replayStepSeconds = 0.5f;
+    [Tooltip("Fast forward: this many times faster than play mode.")]
+    public float replayFastForward = 5f;
+    [Tooltip("The most log lines the replay's controls list for a turn.")]
+    public int replayLinesShown = 200;
+
     [Header("Files")]
     [Tooltip("Folders scenarios are listed from, relative to the game's data folder (Application.dataPath: Assets in the editor, <Game>_Data in a build). The first that exist are read; scenarios saved by the map editor are listed too (userScenarioFolder).")]
     public List<string> scenarioFolders = new List<string> { "Resources/Scenarios", "StreamingAssets/Scenarios" };

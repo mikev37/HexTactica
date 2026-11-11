@@ -10,7 +10,7 @@ using UnityEngine.UI;
 /// Play / Load / Edit button is pressed.
 /// </summary>
 public class FileList : MonoBehaviour {
-    public enum Source { Scenarios, Saves }
+    public enum Source { Scenarios, Saves, Recordings }
 
     [Tooltip("Which files it lists when it opens (ShowScenarios and ShowSaves switch).")]
     public Source source = Source.Scenarios;
@@ -43,6 +43,7 @@ public class FileList : MonoBehaviour {
 
     public void ShowScenarios() { source = Source.Scenarios; Refresh(); }
     public void ShowSaves() { source = Source.Saves; Refresh(); }
+    public void ShowRecordings() { source = Source.Recordings; Refresh(); }
 
     /// <summary>Read the folder again (a file saved meanwhile shows; the pick is kept if it is still there).</summary>
     public void Refresh() {
@@ -51,7 +52,7 @@ public class FileList : MonoBehaviour {
         rows.Clear();
         picked = null;
         if (rowTemplate == null || content == null) return;
-        List<GameFile> files = source == Source.Saves ? GameFiles.Saves() : GameFiles.Scenarios();
+        List<GameFile> files = source == Source.Saves ? GameFiles.Saves() : source == Source.Recordings ? GameFiles.Recordings() : GameFiles.Scenarios();
         foreach (GameFile f in files) {
             FileListRow row = Instantiate(rowTemplate, content);
             row.gameObject.SetActive(true);

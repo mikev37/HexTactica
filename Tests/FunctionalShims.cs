@@ -539,7 +539,7 @@ namespace UnityEngine.Events {
     public delegate void UnityAction();
     public delegate void UnityAction<T0>(T0 a);
     public delegate void UnityAction<T0, T1>(T0 a, T1 b);
-    public abstract class UnityEventBase { public int GetPersistentEventCount() { return 0; } }
+    public abstract class UnityEventBase { public int GetPersistentEventCount() { return 0; } public string GetPersistentMethodName(int i) { return ""; } }
     public class UnityEvent : UnityEventBase {
         UnityAction calls;
         public void AddListener(UnityAction a) { calls += a; }

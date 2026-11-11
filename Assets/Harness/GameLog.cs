@@ -83,6 +83,9 @@ namespace HexTactica.Harness {
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
             GameController.GameEnded += GameOver;
+            GameController.Resigned += OnResigned;
+            Transporting.Boarded += OnBoarded;
+            Transporting.Unloaded += OnUnloaded;
             AIPlayer.Trace = Line;
             AITactical.DecisionLog = Line;
             AISupplyPlanner.DebugLog = Line;
@@ -172,6 +175,9 @@ namespace HexTactica.Harness {
             Unit.RanInto -= OnRanInto;
             GameController.TurnStarted -= OnTurnStarted;
             GameController.GameEnded -= GameOver;
+            GameController.Resigned -= OnResigned;
+            Transporting.Boarded -= OnBoarded;
+            Transporting.Unloaded -= OnUnloaded;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
             if (AITactical.DecisionLog == (Action<string>)Line) AITactical.DecisionLog = null;
             if (AISupplyPlanner.DebugLog == (Action<string>)Line) AISupplyPlanner.DebugLog = null;
@@ -216,11 +222,37 @@ namespace HexTactica.Harness {
 
         static void OnFinished(Unit u) {
             if (writer == null || u == null) return;
+            if (u.trasnporter != null) return;   // aboard: it goes where its transport goes (the boarding was logged)
             HexTile was;
             lastSeen.TryGetValue(u, out was);
             if (u.tile != null && was != null && was != u.tile)
-                Line("   " + Who(u) + " moved " + D(was) + " -> " + D(u.tile));
+                Line(Lines.Moved(u, was, u.tile));
             if (u.tile != null) lastSeen[u] = u.tile;
+        }
+
+        /// <summary>A unit about to do something from <paramref name="now"/> that it moved to first: its move is logged before what it does there (it only "finishes" after).</summary>
+        static void FlushMove(Unit u, HexTile now) {
+            HexTile was;
+            if (u == null || now == null || !lastSeen.TryGetValue(u, out was) || was == now) return;
+            Line(Lines.Moved(u, was, now));
+            lastSeen[u] = now;
+        }
+
+        static void OnBoarded(Unit transport, Unit cargo, HexTile from) {
+            if (writer == null || transport == null || cargo == null) return;
+            FlushMove(transport, transport.tile);
+            HexTile was;
+            // Where it stood at the start of its action (it may have walked up to the transport first).
+            if (!lastSeen.TryGetValue(cargo, out was) || was == null) was = from;
+            Line(Lines.Boards(transport, cargo, was));
+            lastSeen.Remove(cargo);
+        }
+
+        static void OnUnloaded(Unit transport, Unit cargo, HexTile onto) {
+            if (writer == null || transport == null || cargo == null) return;
+            FlushMove(transport, transport.tile);
+            Line(Lines.GetsOff(transport, cargo, onto));
+            lastSeen[cargo] = onto;
         }
 
         /// <summary>Each side's state lines at the start of a turn (Lines.State, Fields, CanBuy).</summary>
@@ -270,6 +302,8 @@ namespace HexTactica.Harness {
             return len2 > 0f ? (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / len2 : 0f;
         }
 
+        static void OnResigned(Player p) { if (writer != null && p != null) Line(Lines.Resigns(p)); }
+
         static void OnProduced(Building b, Unit made) {
             if (writer == null || made == null) return;
             Line(Lines.Buy(b, made));
@@ -311,10 +345,7 @@ namespace HexTactica.Harness {
             if (writer == null) return;
             // A move-and-attack: report the move first (the unit only "finishes" after firing).
             HexTile was;
-            if (attacker != null && from != null && lastSeen.TryGetValue(attacker, out was) && was != from) {
-                Line("   " + Who(attacker) + " moved " + D(was) + " -> " + D(from));
-                lastSeen[attacker] = from;
-            }
+            FlushMove(attacker, from);
             Line(Lines.Attack(attacker, defender, from, at, o));
             if (GameController.gc != null && GameController.gc.gameOver) GameOver();
         }

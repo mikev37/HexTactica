@@ -446,6 +446,26 @@ public class GameController : MonoBehaviour
         CheckVictory();
     }
 
+    /// <summary>A side gave the game up (before it is eliminated). For logs.</summary>
+    public static event System.Action<Player> Resigned;
+
+    /// <summary>
+    /// <paramref name="p"/> gives the game up: out of it at once (its units go, as when its HQ falls), and the game
+    /// ends if one side is left. Nothing in a game that is over or that nobody can lose (Sandbox).
+    /// </summary>
+    public void Resign(Player p) {
+        if (p == null || gameOver || p.eliminated || rules == RuleSet.Sandbox) return;
+        if (Resigned != null) Resigned(p);
+        bool keep = p.eliminable;
+        p.eliminable = true;   // resigning is the player's own choice, whatever the scenario keeps in
+        Eliminate(p);
+        p.eliminable = keep;
+        CancelPendingEndTurn();
+        CheckVictory();
+        // The side to move resigned and the game goes on (three or more sides): the next side's turn.
+        if (!gameOver && activePlayer == p) EndTurn();
+    }
+
     public void Eliminate(Player p) {
         if (p == null || p.eliminated || !p.eliminable) return;   // (a side the scenario keeps in: Player.eliminable)
         p.eliminated = true;

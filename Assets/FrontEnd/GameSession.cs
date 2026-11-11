@@ -71,6 +71,15 @@ public class GameSession : MonoBehaviour {
                 Frame();
                 SceneManager.LoadScene(s.mapEditorScene, LoadSceneMode.Additive);
                 break;
+            case SessionMode.Replay:
+                // Nobody plays: the game is held, and the Replay scene's controls step through the recording.
+                GameController.Paused = true;
+                HexTactica.Harness.Replay.BuiltInPanel = false;
+                if (HexTactica.Harness.Replay.Open(MatchSetup.FilePath)) {
+                    Frame();
+                    SceneManager.LoadScene(s.replayScene, LoadSceneMode.Additive);
+                } else MatchSetup.ToMainMenu();
+                break;
             default:
                 GameController.Paused = false;
                 break;
@@ -118,7 +127,7 @@ public class GameSession : MonoBehaviour {
     public void CloseMenu() {
         if (!menuOpen) return;
         menuOpen = false;
-        GameController.Paused = mode == SessionMode.Setup || mode == SessionMode.Editor;
+        GameController.Paused = mode != SessionMode.Play && mode != SessionMode.None;
         Unload(FrontEndSettings.Get.inGameMenuScene);
     }
 
@@ -141,7 +150,7 @@ public class GameSession : MonoBehaviour {
     /// unit and tile panels (they show the pick) without the turn controls (gold, next unit, end turn) or the banner.
     /// </summary>
     static void ShowGamePanels(SessionMode m) {
-        bool hud = m != SessionMode.Setup, turns = m != SessionMode.Setup && m != SessionMode.Editor;
+        bool hud = m != SessionMode.Setup, turns = m == SessionMode.Play || m == SessionMode.None;
         foreach (Hud h in Resources.FindObjectsOfTypeAll<Hud>()) if (h != null && h.gameObject.scene.IsValid()) h.gameObject.SetActive(hud);
         foreach (TurnControls c in Resources.FindObjectsOfTypeAll<TurnControls>()) if (c != null && c.gameObject.scene.IsValid()) c.gameObject.SetActive(turns);
         foreach (TurnBanner b in Resources.FindObjectsOfTypeAll<TurnBanner>()) if (b != null && b.gameObject.scene.IsValid()) b.gameObject.SetActive(turns);

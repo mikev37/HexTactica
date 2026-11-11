@@ -120,9 +120,79 @@ namespace HexTactica.Harness {
 
             /// <summary>A unit bought: "Blue buys Grunt at City (3,4) for 2500".</summary>
             public static string Buy(Building at, Unit made) {
-                return Indent + Name(made.owner) + " buys " + UnitName(made) + " at " + (at != null ? at.name.Replace("(Clone)", "").Trim() : "?") + " " + D(at != null ? at.tile : null) + " for " + made.cost.ToString(Inv);
+                return Indent + Name(made.owner) + " buys " + UnitName(made) + " at " + (at != null ? at.name.Replace("(Clone)", "").Trim() : "?") + " " + D(at != null ? at.tile : null) + " for " + made.cost.ToString(Inv)
+                     + (made.tile != null ? ", placed " + D(made.tile) : "");
             }
-            static readonly Regex buy = new Regex(@"^   (.+?) buys (.+) at (.+) " + Tile + @" for (\d+)$");
+
+            /// <summary>Where a bought unit was put, from its buy line ("..., placed (3,5)"); false for a log written before that was recorded.</summary>
+            public static bool ReadBuyPlace(string line, out int x, out int y) {
+                Match m = placed.Match(line);
+                x = y = 0;
+                if (!m.Success) return false;
+                x = int.Parse(m.Groups[1].Value, Inv); y = int.Parse(m.Groups[2].Value, Inv);
+                return true;
+            }
+            static readonly Regex placed = new Regex(@", placed \((-?\d+),(-?\d+)\)$");
+
+            /// <summary>A unit ended its action somewhere else: "Blue Tank moved (1,2) -> (3,2)".</summary>
+            public static string Moved(Unit u, HexTile from, HexTile to) { return Indent + Who(u) + " moved " + D(from) + " -> " + D(to); }
+            static readonly Regex moved = new Regex(@"^   (.+) moved \((-?\d+),(-?\d+)\) -> \((-?\d+),(-?\d+)\)$");
+            public static bool ReadMoved(string line, IEnumerable<string> sides, out string sideName, out string unit, out int fromX, out int fromY, out int toX, out int toY) {
+                Match m = moved.Match(line);
+                sideName = unit = null; fromX = fromY = toX = toY = 0;
+                if (!m.Success || !SplitWho(m.Groups[1].Value, sides, out sideName, out unit)) return false;
+                fromX = int.Parse(m.Groups[2].Value, Inv); fromY = int.Parse(m.Groups[3].Value, Inv);
+                toX = int.Parse(m.Groups[4].Value, Inv); toY = int.Parse(m.Groups[5].Value, Inv);
+                return true;
+            }
+
+            /// <summary>A unit got into a transport: "Blue Grunt (1,2) boards Blue APC (2,2)" (the tile it stood on, the transport's).</summary>
+            public static string Boards(Unit transport, Unit cargo, HexTile from) { return Indent + Who(cargo) + " " + D(from) + " boards " + Who(transport) + " " + D(transport.tile); }
+            static readonly Regex boards = new Regex(@"^   (.+) \((-?\d+),(-?\d+)\) boards (.+) \((-?\d+),(-?\d+)\)$");
+            /// <summary>A unit got out of a transport: "Blue Grunt gets off Blue APC (2,2) onto (3,2)".</summary>
+            public static string GetsOff(Unit transport, Unit cargo, HexTile onto) { return Indent + Who(cargo) + " gets off " + Who(transport) + " " + D(transport.tile) + " onto " + D(onto); }
+            static readonly Regex getsOff = new Regex(@"^   (.+) gets off (.+) \((-?\d+),(-?\d+)\) onto \((-?\d+),(-?\d+)\)$");
+
+            /// <summary>A boards or gets-off line read back: who, which transport and where it stood, and the cargo's tile (stood on before boarding, or put down on).</summary>
+            public class CargoLine { public bool boards; public string side, unit, transportSide, transportUnit; public int x, y, transportX, transportY; }
+            public static bool ReadCargo(string line, IEnumerable<string> sides, out CargoLine c) {
+                c = null;
+                CargoLine r = new CargoLine();
+                Match m = boards.Match(line);
+                if (m.Success) {
+                    r.boards = true;
+                    if (!SplitWho(m.Groups[1].Value, sides, out r.side, out r.unit) || !SplitWho(m.Groups[4].Value, sides, out r.transportSide, out r.transportUnit)) return false;
+                    r.x = int.Parse(m.Groups[2].Value, Inv); r.y = int.Parse(m.Groups[3].Value, Inv);
+                    r.transportX = int.Parse(m.Groups[5].Value, Inv); r.transportY = int.Parse(m.Groups[6].Value, Inv);
+                } else {
+                    m = getsOff.Match(line);
+                    if (!m.Success) return false;
+                    if (!SplitWho(m.Groups[1].Value, sides, out r.side, out r.unit) || !SplitWho(m.Groups[2].Value, sides, out r.transportSide, out r.transportUnit)) return false;
+                    r.transportX = int.Parse(m.Groups[3].Value, Inv); r.transportY = int.Parse(m.Groups[4].Value, Inv);
+                    r.x = int.Parse(m.Groups[5].Value, Inv); r.y = int.Parse(m.Groups[6].Value, Inv);
+                }
+                c = r;
+                return true;
+            }
+
+            /// <summary>A side gave the game up: "Blue resigns".</summary>
+            public static string Resigns(Player p) { return Indent + Name(p) + " resigns"; }
+            public static bool ReadResigns(string line, IEnumerable<string> sides, out string sideName) {
+                sideName = null;
+                foreach (string s in sides) if (line == Indent + s + " resigns") sideName = s;
+                return sideName != null;
+            }
+
+            /// <summary>The tile a dies or changes-hands line names (its last "(x,y)" before the colon part).</summary>
+            public static bool ReadTile(string line, out int x, out int y) {
+                Match m = anyTile.Match(line);
+                x = y = 0;
+                if (!m.Success) return false;
+                x = int.Parse(m.Groups[1].Value, Inv); y = int.Parse(m.Groups[2].Value, Inv);
+                return true;
+            }
+            static readonly Regex anyTile = new Regex(@"\((-?\d+),(-?\d+)\) (?:dies|changes hands):");
+            static readonly Regex buy = new Regex(@"^   (.+?) buys (.+) at (.+) " + Tile + @" for (\d+)(?:, placed " + Tile + @")?$");
             public static bool ReadBuy(string line, IEnumerable<string> sides, out string sideName, out string unit, out int cost) {
                 Match m = buy.Match(line);
                 sideName = unit = null; cost = 0;
@@ -131,7 +201,7 @@ namespace HexTactica.Harness {
                 string ignored;
                 if (!SplitWho(line.Substring(Indent.Length), sides, out sideName, out ignored)) return false;
                 string rest = line.Substring(Indent.Length + sideName.Length);
-                Match r = new Regex(@"^ buys (.+) at (.+) " + Tile + @" for (\d+)$").Match(rest);
+                Match r = new Regex(@"^ buys (.+) at (.+) " + Tile + @" for (\d+)(?:, placed " + Tile + @")?$").Match(rest);
                 if (!r.Success) return false;
                 unit = r.Groups[1].Value; cost = int.Parse(r.Groups[3].Value, Inv);
                 return true;
@@ -159,18 +229,21 @@ namespace HexTactica.Harness {
                 if (o.defenderFiresFirst) sb.Append(" (ambush: defender fired first)");
                 if (o.defenderDies) sb.Append(", ").Append(UnitName(defender)).Append(" destroyed");
                 else if (o.defenderSuppressed) sb.Append(", suppressed " + o.suppressionAdded + " (" + defender.suppressed + " of " + defender.Strength + " will not fire back until its turn)");
-                else if (o.defenderRetreats) sb.Append(o.defenderPinned ? ", pinned (1 of that for having nowhere to retreat)" : ", retreats");
+                else if (o.defenderRetreats) sb.Append(o.defenderPinned ? ", pinned (1 of that for having nowhere to retreat)" : ", retreats" + (o.retreatTile != null ? " to " + D(o.retreatTile) : ""));
                 if (o.attackerDies) sb.Append(AttackerDestroyed);
                 sb.Append(" -> ").Append(attacker.Strength).Append(" v ").Append(defender.Strength);
                 return sb.ToString();
             }
             const string AttackerDestroyed = ", attacker destroyed";
+            static readonly Regex retreat = new Regex(@", retreats to \((-?\d+),(-?\d+)\)");
             static readonly Regex attack = new Regex(@"^   (.+?) \((-?\d+),(-?\d+)\) attacks (.+?) \((-?\d+),(-?\d+)\): deals (\d+), takes (\d+)(.*) -> (-?\d+) v (-?\d+)$");
 
             public class AttackLine {
                 public string side, unit, targetSide, targetUnit;
                 public int fromX, fromY, atX, atY, dealt, taken, strengthAfter, targetStrengthAfter;
                 public bool killed, attackerDied;
+                /// <summary>The defender was driven back to this tile (retreated: false for a log written before the tile was recorded).</summary>
+                public bool retreated; public int retreatX, retreatY;
                 /// <summary>Hex distance between where it fired from and where the target stood.</summary>
                 public int Distance { get { int dz = (-fromX - fromY) - (-atX - atY); return Math.Max(Math.Abs(fromX - atX), Math.Max(Math.Abs(fromY - atY), Math.Abs(dz))); } }
             }
@@ -188,6 +261,8 @@ namespace HexTactica.Harness {
                 string rest = m.Groups[9].Value;
                 r.attackerDied = rest.Contains(AttackerDestroyed);
                 r.killed = rest.Replace(AttackerDestroyed, "").Contains(", " + r.targetUnit + " destroyed");
+                Match back = retreat.Match(rest);
+                if (back.Success) { r.retreated = true; r.retreatX = int.Parse(back.Groups[1].Value, Inv); r.retreatY = int.Parse(back.Groups[2].Value, Inv); }
                 r.strengthAfter = int.Parse(m.Groups[10].Value, Inv); r.targetStrengthAfter = int.Parse(m.Groups[11].Value, Inv);
                 a = r;
                 return true;
