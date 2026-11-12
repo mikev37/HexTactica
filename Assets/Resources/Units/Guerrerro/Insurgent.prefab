@@ -8,17 +8,25 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1170053521584992844, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.26
+      objectReference: {fileID: 0}
     - target: {fileID: 1322481137837626004, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 175780508040051925, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
+      objectReference: {fileID: -1954982937483108639, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
+    - target: {fileID: 1404536959001453031, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -36931327290252056, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
     - target: {fileID: 2135285971195945096, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 33.61135
+      value: -44.530296
       objectReference: {fileID: 0}
     - target: {fileID: 2135285971195945096, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -25.68865
+      value: 27.365366
       objectReference: {fileID: 0}
     - target: {fileID: 2135285971195945096, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: m_LocalPosition.z
@@ -68,9 +76,21 @@ PrefabInstance:
       propertyPath: m_Sprite
       value: 
       objectReference: {fileID: 6048533339198272901, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
+    - target: {fileID: 4969277058479737524, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -278457815178064543, guid: 2b447d140962ecf46ab741b30eeb04af, type: 3}
+    - target: {fileID: 8016336743562798724, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.55
+      objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: ammo
       value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: cost
+      value: 3500
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: ammoMax
@@ -86,19 +106,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: Firepower
-      value: 3
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: Targeting
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 2b5ae1fea513d2e428ed6668a5643b4a, type: 3}
+    - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: orderSound
       value: 
-      objectReference: {fileID: 8300000, guid: 656cee453d43e774587e37f27543a196, type: 3}
+      objectReference: {fileID: 8300000, guid: 1132ea001c6336845a81f746c7d69471, type: 3}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: description
-      value: The rebel Grunt is hidden as long as it is 2 tiles or more from an enemy unit, and has better armor penetration.
+      value: The Rebel Heavy is a powerful infantry unit capable of taking on vehicles. Like other Rebel units, it is hidden by default.
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: suppliesMax
