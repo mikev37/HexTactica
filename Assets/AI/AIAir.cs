@@ -32,7 +32,9 @@ namespace HexTactica.AI {
             // and nothing could be bought there (a supply truck held on the HQ for twenty turns: no unit bought since).
             if (BlocksBuildSlot(u, t, map)) return false;
             Unit link;
-            if (t != null && map.chainTiles.TryGetValue(t, out link) && link != u) return false;
+            // (The transport carrying that link takes it there: a hauler with a supply unit aboard was kept off the tile
+            // its own supply unit was going to.)
+            if (t != null && map.chainTiles.TryGetValue(t, out link) && link != u && (link == null || link.trasnporter != u)) return false;
             if (map.landings == null || t == null) return true;
             // (The carrier an aircraft lands on is where it lands: it stays there.)
             foreach (Landing l in map.landings.Values) if (l.turn == 1 && l.tile == t && l.unit != u && (u == null || l.carrier != u)) return false;
@@ -423,6 +425,11 @@ namespace HexTactica.AI {
                 if (better) { best = t; bestMargin = m; bestDist = d; }
             }
             if (best == null || best == stop) return action;
+            // (Fuel enough for where it was going, but it may not end there: a tile held for another unit.)
+            if (Margin(u, stop, toBase, bases, land, map) >= 0) {
+                string held = "(" + stop.x + "," + stop.y + ") is held for another unit (" + action.reason + ")";
+                return best == u.tile ? AIAction.Wait(u, held + ": holds") : AIAction.Move(u, best, 0f, held + ": moves to (" + best.x + "," + best.y + ")");
+            }
             if (best == u.tile) return AIAction.Wait(u, "bingo fuel: holds (fuel " + u.fuel + ")");
             return AIAction.Move(u, best, 0f, "bingo fuel: heading for base (fuel " + u.fuel + ", margin " + bestMargin + ")");
         }

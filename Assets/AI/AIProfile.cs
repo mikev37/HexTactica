@@ -147,7 +147,7 @@ namespace HexTactica.AI {
         [Tooltip("Buying: supply units beyond one per campaignUnitsPerSupply fighting units, for fronts short of supply (and the campaign's next front waiting on one).")]
         internal int productionSupplyExtra = 2;
         [Tooltip("Place objectives (AICampaign.Places): both ends of chokepoints and road junctions not yet in our supply, at most this many, the nearest our units. 0: none.")]
-        public int campaignPlaces = 12;
+        internal int campaignPlaces = 12;
         [Tooltip("A place objective's worth, in multiples of what a building with no income is worth.")]
         internal float campaignPlaceWeight = 0.5f;
         [Tooltip("Out of contact, a campaign unit may spend this many rations out of supply (and go no further than its rations bring it back from); past that it is pulled back. 0: never out of supply.")]
@@ -222,9 +222,6 @@ namespace HexTactica.AI {
         [Range(1, 6)]
         public int healMinStrength = 2;
 
-        [Tooltip("Strength a unit in its own supply heals back by its next turn (the game's rule: 1). That much of the damage done to it doesn't count; kills, and damage beyond it, count in full.")]
-        [Range(0f, 6f)]
-        public float healedPerTurn = 1f;
 
         [Tooltip("Worth of damage that will not be finished on a unit that does not fight (an HQ, a supply hub), as a fraction of face value. It does not weaken them, and they heal.")]
         [Range(0f, 1f)]
@@ -271,10 +268,8 @@ namespace HexTactica.AI {
         [Tooltip("Artillery: worth of each friendly combat unit within range, as a fraction of that unit's worth per strength.")]
         internal float supportWeight = 0.1f;
 
-        [Header("Posture")]
         [Tooltip("A front counts the units of both sides that could reach it within this many turns when judging the balance of force.")]
-        [Range(1, 5)]
-        public int frontReachTurns = 2;
+        internal int frontReachTurns = 2;
 
         [Tooltip("Local force ratio (own combat power / enemy) at which an aggressive front's units commit to going in together, pricing risk as a group.")]
         internal float assaultRatio = 1.0f;
@@ -282,6 +277,7 @@ namespace HexTactica.AI {
         [Tooltip("An attack beyond our supply waits until this fraction of the front's full combat power is healthy and gathered at the staging tile.")]
         internal float assaultReadiness = 0.6f;
 
+        [Header("Posture")]
         [Tooltip("An attack under way breaks off and regroups when the power still able to reach the objective falls below this fraction of the front's full combat power.")]
         [Range(0f, 1f)]
         public float assaultBreakoff = 0.35f;
@@ -351,14 +347,13 @@ namespace HexTactica.AI {
         [Tooltip("Turns of travel beyond which a unit is not considered for an objective.")]
         internal int objectiveReachTurns = 8;
 
-        [Header("Planning")]
         [Tooltip("How many turns ahead approach routes are planned.")]
-        [Range(1, 12)]
-        public int planningHorizon = 5;
+        internal int planningHorizon = 5;
 
         [Tooltip("Bonus, as a fraction of the unit's worth, for continuing toward last turn's destination. Stops units flip-flopping between two plans.")]
         internal float commitment = 0.25f;
 
+        [Header("Planning")]
         [Tooltip("Cost per turn of delay when comparing destinations of different value.")]
         public float turnPenalty = 0.12f;
 
@@ -375,8 +370,7 @@ namespace HexTactica.AI {
         public float potentialSupplyValue = 0.25f;
 
         [Tooltip("How many enemy turns ahead the strike map looks (1 disables the extra turns; the coming turn is the world simulation's).")]
-        [Range(1, 5)]
-        public int enemyReachTurns = 3;
+        internal int enemyReachTurns = 3;
 
         [Header("World score")]
         [Tooltip("Our units' best blow on our next turn, counted in the world score at this fraction. We attack first, so this is a near-certain gain.")]
@@ -397,8 +391,8 @@ namespace HexTactica.AI {
 
         [Tooltip("Sea lift: how much a transport ship is worth to buy, times the land units waiting to cross that it would take over (their value, discounted for the turns to get them there). Above 1: the AI puts a ship ahead of a fighting unit of the same value, since without one the units across the water do nothing.")]
         public float seaLiftWeight = 3f;
-        [Tooltip("Sea lift: steps added to a trip by sea (AIMap.SeaTravel) for getting into the ship at a naval yard and out on the far shore.")]
-        public int seaLiftBoardSteps = 2;
+        [Tooltip("Sea lift: steps added to a trip by sea (AIMap.SeaTravel) for getting into the ship and out on the far shore. An estimate from the rules, not a rule: getting in ends the unit's turn, getting off is free.")]
+        internal int seaLiftBoardSteps = 2;
         [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
         public int assaultBoardTurns = 2;
         [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth what it adds to the riders it would carry (the nearest of them): each one's value times the turns sooner it reaches the fight riding than walking, over productionLifeRef (at most its whole value) — times this (more than 1: it goes back for more, and carries the wounded, over its life). 0: not bought for riders.")]
@@ -411,10 +405,10 @@ namespace HexTactica.AI {
         internal float assaultWaveRatio = 1f;
 
         [Tooltip("Forecast only the theatre of the unit deciding: enemies that could strike anywhere it could move or fire this turn (move and range, plus theaterMargin), and our units they could strike. Everything else stands as it is, the same for all of its options. Off: the whole board, for every option.")]
-        public bool theaterForecast = true;
+        internal bool theaterForecast = true;
 
         [Tooltip("Extra tiles around the theatre, for knock-on effects (an enemy driven back, a tile freed by a kill, roads that move units further than their move).")]
-        public int theaterMargin = 6;
+        internal int theaterMargin = 6;
 
         internal float productionBuildingWeight = 3f;
         internal float supplyBuildingWeight = 2f;
@@ -490,8 +484,7 @@ namespace HexTactica.AI {
         [Tooltip("Price what the fog may hide (AISigint): enemies seen before and lost track of, somewhere within reach of where they were last seen, and ground not seen lately, which may hide anything the enemy fields.")]
         public bool fogThreat = true;
         [Tooltip("Enemy moves an enemy unit lost track of is still counted near an objective by the campaign (AICampaign). The tactical fog risk (AISigint) keeps it until it is seen again or dies.")]
-        [Range(1, 12)]
-        public int sigintMoves = 6;
+        internal int sigintMoves = 6;
         [Tooltip("Confidence kept in a lost enemy unit for each move it has had since it was last seen: the campaign's estimate of enemy power near an objective (AICampaign). The tactical fog risk (AISigint) does not fade it: it spreads it over where the unit could be.")]
         internal float sigintDecay = 0.7f;
         [Tooltip("Appetite for ground the fog hides (fogThreat). 0: every unknown tile may hide an enemy unit of a kind it fields (the average of those kinds' damage, by the share of unknown ground near: a threat from anywhere, with no position); 1: unknown ground is empty. Default 1 since lost units are tracked by where they could be (AISigint): the average over every kind feared expansion everywhere while the enemy stood in a known place. (0.2 had beaten fogThreat off on the big maps, 18 of 24, before that.)")]

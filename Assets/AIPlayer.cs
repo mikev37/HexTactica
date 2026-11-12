@@ -1306,13 +1306,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
         foreach (Unit c in truck.transported) if (c != null && c.Hub != null && !c.Hub.producer) { cargo = c; break; }
         if (cargo == null) return false;
         SupplyPoint hub = cargo.Hub;
-        if (LocomotionRules.IsNaval(truck.locomotion)) {
-            // Troops aboard too (a convoy): it goes as their ride goes (the assault ride), its supply aboard throughout.
-            if (AIAssault.Riders(truck).Count > 0) return false;
-            // (The logistics chain places it, as any link aboard a transport.)
-            AIAction? sl = null;
-            if (sl.HasValue) { action = sl.Value; return true; }
-        }
+        // A ship with troops aboard too (a convoy) and no ride booked by its supply unit: it goes as their ride goes (the
+        // assault ride, which takes only a transport with no supply booking), its supply aboard throughout. With a ride
+        // booked (troops that got in to cross with the supply), the supply drives it and lets them out where it lands;
+        // the two rules agree, so one of them always drives the ship. (Both declined it: it held for turns.)
+        if (LocomotionRules.IsNaval(truck.locomotion) && AIAssault.Riders(truck).Count > 0 && !transportAssignments.ContainsKey(truck)) return false;
         // Relieved (Relieve): the step it was relieved to make.
         HexTile upTo;
         if (relieved.TryGetValue(hub, out upTo) && upTo.occupier == null && !CutsOff(hub, upTo)) {

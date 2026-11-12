@@ -144,7 +144,7 @@ namespace HexTactica.AI {
         /// Strength <paramref name="x"/> heals by its next turn standing on <paramref name="at"/>, as the
         /// game gives it (Player.UpkeepOne): a building of its owner's that services its kind heals
         /// Building.healPerTurn — on top of the supply network's 1 where the building stacks it and the
-        /// tile is supplied, else the more of the two — and otherwise the network heals 1 (healedPerTurn).
+        /// tile is supplied, else the more of the two — and otherwise the network heals Player.NetworkHealPerTurn.
         /// </summary>
         public float HealAt(Unit x, HexTile at) {
             if (x == null || at == null || x.owner == null) return 0f;
@@ -152,9 +152,9 @@ namespace HexTactica.AI {
             if (b != null && b.owner == x.owner && b.Services(x)) {
                 bool inNet = (LocomotionRules.ResuppliedInSupply(x.locomotion) || !LocomotionRules.NeedsBase(x.locomotion)) && SuppliedFor(x, at);
                 if (!inNet) return b.healPerTurn;
-                return b.healStacksWithSupply ? profile.healedPerTurn + b.healPerTurn : Mathf.Max(profile.healedPerTurn, b.healPerTurn);
+                return b.healStacksWithSupply ? Player.NetworkHealPerTurn + b.healPerTurn : Mathf.Max(Player.NetworkHealPerTurn, b.healPerTurn);
             }
-            return Heals(x, at) ? profile.healedPerTurn : 0f;
+            return Heals(x, at) ? Player.NetworkHealPerTurn : 0f;
         }
 
         bool SuppliedFor(Unit x, HexTile at) {

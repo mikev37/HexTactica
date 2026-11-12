@@ -839,7 +839,7 @@ namespace HexTactica.AI {
                 if (depth <= 0) v -= worth * map.TurnsToSupply(unit, t);
                 // Where it heals faster (a city or base that heals: Building.healPerTurn), a strength's worth a point.
                 float heal = map.HealAt(unit, t);
-                if (heal > profile.healedPerTurn) v += (Mathf.Min(6 - unit.Strength, heal) - profile.healedPerTurn) * worth;
+                if (heal > Player.NetworkHealPerTurn) v += (Mathf.Min(6 - unit.Strength, heal) - Player.NetworkHealPerTurn) * worth;
                 v -= AIScore.Hold(map.Conflict(t)) * worth * 0.3f;      // off the contact line
                 // Friendly neighbours mean an attacker has to eat a counterattack.
                 List<HexTile> neighbors = t.neighbors;
