@@ -341,7 +341,7 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", "Human", 4, check, question);
             test["rules"] = check.StartsWith("attrition") ? "attrition" : "standard";
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
@@ -393,7 +393,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, 0, 0);
-            Dictionary<string, string> test = Test("rule-supply-fob-refresh", "rules", "Human", 4, "supplyFob", "Supply around a forward base, and the board kept up to date. HQ at -13, FOB at 0 with a store. Nothing linking them: the FOB is cut off and gives from its store (the ground around it is supplied), and supply units standing there, or aboard a truck there, are cut off (a supply unit links only to supply that comes from the HQ). After each kind of move the supply shown on the board is the network as it is: a truck carrying supply units driven by the player (its supply moves with it), a supply unit walking, an enemy blocking a corridor killed; and a supply unit's cut-off flag (the cut-off icon) follows the network, not the start of the turn. Also reports whether an enemy Blue does not see, under fog, cuts Blue's supply.");
+            Dictionary<string, string> test = Test("rule-supply-fob-refresh", "rules", "Human", 4, "supplyFob", "Supply around a forward base, and the board kept up to date. HQ at -13, FOB at 0 with a store. Nothing linking them: the FOB is cut off and gives from its store (the ground around it is supplied), and supply units standing there, or aboard a truck there, relay its supply on (they link to it as to the HQ's). After each kind of move the supply shown on the board is the network as it is: a truck carrying supply units driven by the player (its supply moves with it), a supply unit walking, an enemy blocking a corridor killed; and a supply unit's cut-off flag (the cut-off icon) follows the network, not the start of the turn. Also reports whether an enemy Blue does not see, under fog, cuts Blue's supply.");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "rule-supply-fob-refresh.dat"), test, ai, other, ai);
             n++;
@@ -470,7 +470,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
             Put("Grunt", other, 5, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", "Human", 4, "buyInfantry", question);
             test["purchases"] = "on";
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
@@ -564,7 +564,7 @@ public static partial class Scenarios {
         make("rule-attacks-locomotion", "attacksLocomotion", (a, o) => { Put("Artillery", a, 0, 0); Put("Fighter", o, 2, 0); Put("Grunt", o, 2, 1); },
              "Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion, read from the prefab): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can (boots ticked). With boots unticked too, the grunt cannot be attacked either.");
         make("ui-fuel-warning-tiles", "fuelWarning", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 10; Put("Grunt", o, 5, 0); },
-             "A fighter at (0,0) with 10 fuel (1 a tile, 3 a turn in the air), Blue's airport at (-3,2). A move tile it could not get back to a building that refuels it from before running dry next turn is marked with the move warning (Unit.WouldDitchFrom): (3,0) is — 3 tiles flown and a turn's burn leave 4, and the airfield is further than that — (-2,1) is not, nor is the airport itself. With 3 fuel every tile is, but the airport.");
+             "A fighter at (0,0) with 10 fuel (1 a tile, 3 a turn in the air), Blue's airport at (-3,2). A move tile it could not get back to a building that refuels it from before running dry next turn is marked with the move warning (Unit.WouldDitchFrom): (3,0) is — 3 tiles flown and a turn's burn leave 4, and the airfield is further than that — (-2,1) is not, nor is the airport itself. With 3 fuel every tile is, but the airport. A stocked Blue carrier two tiles past (3,0) is somewhere to land too: (3,0) is no longer marked; with the carrier out of supplies it is again.");
         make("ai-regroup-press-with-reserves", "aiRegroupPress", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
              "The hit-the-supply-unit board: Blue's tank beside the enemy supply unit that keeps four grunts going, with regrouping on. Blue has 100,000 gold and an HQ that builds: what it could replace makes its front aggressive (AIStrategic.StrategicNeed), and the tank hits the supply unit.");
         make("ai-regroup-hold-off-without-reserves", "aiRegroupHold", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
@@ -585,7 +585,7 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", "Human", 1, check, question);
             test["rules"] = "standard";
             if (purchases != null) test["purchases"] = purchases;
@@ -598,7 +598,7 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", opponent, opponent == "Full" ? 12 : 4, check, question);
             test["rules"] = "attrition";
             test["fog"] = "on";
@@ -1234,8 +1234,19 @@ public static partial class Scenarios {
                 bool far = f.WouldDitchFrom(Rig.At(3, 0)), near = f.WouldDitchFrom(Rig.At(-2, 1)), port = f.WouldDitchFrom(Rig.At(-3, 2));
                 f.fuel = 3;
                 bool nearLow = f.WouldDitchFrom(Rig.At(-2, 1)), portLow = f.WouldDitchFrom(Rig.At(-3, 2));
-                detail = "10 fuel: (3,0) " + far + ", (-2,1) " + near + ", airport " + port + "; 3 fuel: (-2,1) " + nearLow + ", airport " + portLow;
-                return far && !near && !port && nearLow && !portLow;
+                // A stocked carrier of ours two tiles past (3,0): a base too, so (3,0) is safe; out of supplies it is not one.
+                f.fuel = 10;
+                HexTile sea = null;
+                foreach (HexTile t in Rig.hg.tiles) if (t.occupier == null && t.x > 3 && t.Distance(Rig.At(3, 0)) == 2 && (sea == null || CombatMath.Precedes(t, sea))) sea = t;
+                sea.terrain = T("Water");
+                Unit carrier = Put("Carrier", a, sea.x, sea.y);
+                carrier.supplies = Mathf.Max(1, carrier.suppliesMax);
+                bool farCarrier = f.WouldDitchFrom(Rig.At(3, 0));
+                carrier.supplies = 0;
+                bool farEmptyCarrier = f.WouldDitchFrom(Rig.At(3, 0));
+                detail = "10 fuel: (3,0) " + far + ", (-2,1) " + near + ", airport " + port + "; 3 fuel: (-2,1) " + nearLow + ", airport " + portLow
+                       + "; stocked carrier at " + Pos(sea) + ", 2 past it: (3,0) " + farCarrier + "; that carrier out of supplies: (3,0) " + farEmptyCarrier;
+                return far && !near && !port && nearLow && !portLow && !farCarrier && farEmptyCarrier;
             }
             case "aiRegroupPress":
             case "aiRegroupHold": {
@@ -1606,6 +1617,12 @@ public static partial class Scenarios {
                 fob.supplies = 6;
                 SupplyNetwork.Result s0 = SupplyNetwork.Solve(a, false);
                 r.Add("1. HQ at -13, FOB at 0 (range " + fob.supplyRange + ", store 6), no supply units. Row y=0 depth: " + row(s0) + "; FOB " + (s0.connectedBuildings.Contains(fob) ? "linked" : s0.strandedBuildings.Contains(fob) ? "cut off, giving from its store" : "?"));
+                // A supply unit in the cut-off FOB's ground relays its store on, past the FOB's own reach (to 8).
+                Unit relayU = Put("Supplies", a, 7, 0);
+                SupplyNetwork.Result s0b = SupplyNetwork.Solve(a, false);
+                bool relays = s0b.connectedHubs.Contains(relayU.Hub) && s0b.IsSupplied(Rig.At(10, 0)) && !s0.IsSupplied(Rig.At(10, 0));
+                r.Add("1b. Supplies at 7 (FOB cut off): " + st(relayU.Hub, s0b) + "; (10,0) supplied " + s0b.IsSupplied(Rig.At(10, 0)) + "; row " + row(s0b));
+                die.Invoke(relayU, null);
                 // Supply units on foot between them.
                 Unit h1 = Put("Supplies", a, -6, 0);
                 SupplyNetwork.Result s1 = SupplyNetwork.Solve(a, false);
@@ -1658,10 +1675,10 @@ public static partial class Scenarios {
                 r.Add("9. Fog on, a Red grunt back at -3,0, seen by Blue " + seen + ": FOB " + (s5.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s5));
                 gc.fogOfWar = false; FogOfWar.Reset();
                 detail = string.Join(" | ", r.ToArray());
-                bool fobRules = s0.strandedBuildings.Contains(fob) && s0.IsSupplied(Rig.At(5, 0)) && !s1.connectedHubs.Contains(h1.Hub) && !s2.connectedHubs.Contains(h2.Hub)
-                                && s3.strandedHubs.Contains(cargo.Hub) && truckTileSupplied;
+                bool fobRules = s0.strandedBuildings.Contains(fob) && s0.IsSupplied(Rig.At(5, 0)) && s1.connectedHubs.Contains(h1.Hub) && s2.connectedHubs.Contains(h2.Hub)
+                                && s3.connectedHubs.Contains(cargo.Hub) && truckTileSupplied;
                 bool upToDate = st5 == "board up to date" && st6a == "board up to date" && staleNow == "board up to date" && st8 == "board up to date";
-                return fobRules && upToDate && before6 == "linked" && s7.connectedHubs.Contains(cargo2.Hub) && cargo2.Hub.connected;
+                return fobRules && relays && upToDate && before6 == "linked" && s7.connectedHubs.Contains(cargo2.Hub) && cargo2.Hub.connected;
             }
             case "fobPrefersHQ": {
                 // HQ at -13 (its supply reaches -10 on grassland). FOB at -4, its own range covering -11..3, cut off.
@@ -4079,7 +4096,7 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0); Put("Grunt", other, 5, 1);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "behaviour", "Human", rounds, check, question);
             test["rules"] = "attrition";
             test["purchases"] = "on";   // the build-on-reserved check buys at the airport
@@ -4555,7 +4572,13 @@ public static partial class Scenarios {
         string onlyBehaviour = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "behaviour" ? "behaviour" : "-")) {
             if (onlyBehaviour != null && !Path.GetFileName(f).Contains(onlyBehaviour)) continue;
-            ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
+            ScenarioFile.Loaded l;
+            try { l = ScenarioFile.Load(f, null, tweak); }
+            catch (FileNotFoundException e) {
+                failed++;
+                Console.WriteLine(string.Format("  FAIL  {0,-24} cannot load: no {1} (removed from the game?)", Path.GetFileNameWithoutExtension(f), Path.GetFileName(e.FileName)));
+                continue;
+            }
             string detail;
             bool ok = Judge(l, out detail);
             if (ok) passed++; else failed++;
@@ -4567,7 +4590,13 @@ public static partial class Scenarios {
         string onlyName = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "rules" ? "rules" : "-")) {
             if (onlyName != null && !Path.GetFileName(f).Contains(onlyName)) continue;
-            ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
+            ScenarioFile.Loaded l;
+            try { l = ScenarioFile.Load(f, null, tweak); }
+            catch (FileNotFoundException e) {
+                failed++;
+                Console.WriteLine(string.Format("  FAIL  {0,-24} cannot load: no {1} (removed from the game?)", Path.GetFileNameWithoutExtension(f), Path.GetFileName(e.FileName)));
+                continue;
+            }
             string detail;
             bool ok = RuleCheck(l, out detail);
             bool skip = detail.StartsWith("SKIP");

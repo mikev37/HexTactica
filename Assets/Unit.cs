@@ -887,8 +887,8 @@ public class Unit : MonoBehaviour
     /// Would ending this turn's move on <paramref name="end"/> leave this unit unable to get back to a building
     /// of ours that services it before it runs dry (a fuel-burning aircraft or ship)? It would start next turn
     /// with its fuel less the tiles flown there (minFuelPerTile each) and, airborne, a turn's burn
-    /// (minFuelPerTurn); out of fuel then, it ditches; otherwise it must be no further from such a building
-    /// than that fuel takes it. Ending on such a building refuels it there (ServiceOnLanding): no warning.
+    /// (minFuelPerTurn); out of fuel then, it ditches; otherwise it must be no further from such a building (or from
+    /// a carrier of ours that would take it in and refuel it: AIAir.Carriers) than that fuel takes it. Ending on such a building refuels it there (ServiceOnLanding): no warning.
     /// </summary>
     public bool WouldDitchFrom(HexTile end) {
         if (end == null || tile == null || fuelMax <= 0) return false;
@@ -904,6 +904,9 @@ public class Unit : MonoBehaviour
             if (b == null || b.owner != owner || !b.Services(this)) continue;
             if (b.tile != null) nearest = Mathf.Min(nearest, b.tile.Distance(end));
         }
+        // A carrier of ours it could land on and be refuelled aboard (afloat, room for it, stocked) is a base too,
+        // where it is now.
+        foreach (Unit c in HexTactica.AI.AIAir.Carriers(this)) nearest = Mathf.Min(nearest, c.tile.Distance(end));
         return nearest > reach;
     }
 
