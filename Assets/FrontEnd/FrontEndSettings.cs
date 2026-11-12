@@ -25,6 +25,16 @@ public class FrontEndSettings : ScriptableObject {
     [Tooltip("Loaded over the game scene to watch a recorded game: the replay's controls.")]
     public string replayScene = "Replay";
 
+    [Header("Campaign")]
+    [Tooltip("The campaign screen: the map with a flag for every mission.")]
+    public string campaignScene = "Campaign";
+    [Tooltip("Loaded over the game scene before a campaign mission starts, in place of the pre-game screen: the mission's introduction and objectives, no choices.")]
+    public string missionBriefScene = "MissionBrief";
+    [Tooltip("Loaded over the game scene when a campaign mission ends, in place of the post-game screen: the result against the mission's pars, and its stars.")]
+    public string missionResultScene = "MissionResult";
+    [Tooltip("Folders the campaign's mission scenarios are in, relative to the game's data folder (as Scenario Folders): apart from the scenarios, so they are not listed under Load Scenario. The first that holds a mission's file is used.")]
+    public List<string> campaignFolders = new List<string> { "Resources/Campaign/Scenarios", "StreamingAssets/Campaign/Scenarios" };
+
     [Header("Replay")]
     [Tooltip("Play: seconds between one action and the next, counted from when the last one's animation is done.")]
     public float replayPlayPause = 0.1f;

@@ -15,6 +15,10 @@ using UnityEngine;
 public class Faction : ScriptableObject {
     public Sprite icon;
     public string description;
+    [Tooltip("The faction's full name, as the campaign uses it (\"Blue Sun Federation\"). Empty: the asset's name.")]
+    public string campaignName = "";
+    [Tooltip("The colour of the flag of a campaign mission told from this faction's point of view.")]
+    public Color flagColor = Color.white;
     [Tooltip("Not used by production (kept as it was): see replacements, removed and extras")]
     public List<Unit> unitlist;
 

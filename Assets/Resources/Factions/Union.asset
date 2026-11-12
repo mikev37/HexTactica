@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
   description: Heavy Tanks and wheeled vehicles
+  campaignName: Green World Union
+  flagColor: {r: 0.2, g: 0.7, b: 0.3, a: 1}
   unitlist: []
   replacements:
   - original: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}

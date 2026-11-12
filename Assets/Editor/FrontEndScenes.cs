@@ -21,12 +21,12 @@ using UnityEngine.UI;
 /// The game never builds any of this at run time.
 /// </summary>
 [InitializeOnLoad]
-static class FrontEndScenes {
+static partial class FrontEndScenes {
     const string SceneFolder = "Assets/Scenes/";
     const string SettingsPath = "Assets/Resources/" + FrontEndSettings.ResourceName + ".asset";
     const string PreviewTexturePath = "Assets/FrontEnd/UnitPreview.renderTexture";
     const string PrefabFolder = "Assets/FrontEnd/Prefabs/";
-    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row" };
+    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row", MissionFlagPrefab };
 
     static FrontEndScenes() { EditorApplication.delayCall += () => CreateMissing(false); }
 
@@ -46,7 +46,7 @@ static class FrontEndScenes {
     [MenuItem("HexTactica/Front End/Rebuild Front End Scenes (overwrites)")]
     static void Rebuild() {
         FrontEndSettings s = Settings();
-        string[] names = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene };
+        string[] names = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
         for (int i = 0; i < SceneManager.sceneCount; i++)
             foreach (string n in names)
                 if (SceneManager.GetSceneAt(i).path == SceneFolder + n + ".unity") {
@@ -79,7 +79,8 @@ static class FrontEndScenes {
         // (A scene that does not exist yet is made new.)
         List<string> made = new List<string>();
         Make(s.replayScene, BuildReplay, true, made);
-        if (made.Count > 0) { ListInBuild(s); Debug.Log("Created the " + s.replayScene + " scene."); }
+        MakeCampaignScenes(s, true, made);
+        if (made.Count > 0) { ListInBuild(s); Debug.Log("Created the scene(s): " + string.Join(", ", made.ToArray()) + "."); }
         AssetDatabase.SaveAssets();
     }
 
@@ -246,6 +247,7 @@ static class FrontEndScenes {
         Make(s.inGameMenuScene, BuildInGameMenu, fromMenu, made);
         Make(s.mapEditorScene, BuildMapEditor, fromMenu, made);
         Make(s.replayScene, BuildReplay, fromMenu, made);
+        MakeCampaignScenes(s, fromMenu, made);
         bool listed = ListInBuild(s);
         AssetDatabase.SaveAssets();
         if (made.Count > 0) Debug.Log("Created the front end's scenes: " + string.Join(", ", made.ToArray()) + ". They are yours to edit; open " + SceneFolder + s.mainMenuScene + ".unity and press Play.");
@@ -299,7 +301,7 @@ static class FrontEndScenes {
     static bool ListInBuild(FrontEndSettings s) {
         List<EditorBuildSettingsScene> list = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         bool changed = false;
-        string[] ours = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene };
+        string[] ours = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
         foreach (string n in ours) {
             string path = SceneFolder + n + ".unity";
             if (!File.Exists(path) || list.Exists(x => x.path == path)) continue;
@@ -347,6 +349,7 @@ static class FrontEndScenes {
 
         // Main buttons.
         GameObject main = Column(root, "Main", 440f, 600f, new Vector2(0f, -40f));
+        Btn(main.transform, "Campaign", menu.Campaign);
         Btn(main.transform, "Load Scenario", menu.ShowLoadScenario);
         Btn(main.transform, "Map Editor", menu.ShowMapEditor);
         Btn(main.transform, "Unit Explorer", menu.ShowUnitExplorer);
@@ -617,8 +620,18 @@ static class FrontEndScenes {
         return b;
     }
 
-    /// <summary>The main menu's Replay button (a copy of your Options button, before it) and Replay window.</summary>
+    /// <summary>
+    /// The main menu's Campaign button (a copy of your Load Scenario button, before it), and its Replay button (a copy
+    /// of your Options button, before it) and Replay window.
+    /// </summary>
     static void UpdateMainMenu(MainMenu menu, List<string> done) {
+        Transform mainButtons = menu.mainPanel != null ? menu.mainPanel.transform : null;
+        if (mainButtons != null && FindButton(mainButtons, "Campaign") == null) {
+            Button first = FindButton(mainButtons, "ShowLoadScenario");
+            if (first != null) CopyButton(first, "Campaign", menu.Campaign, true);
+            else Btn(mainButtons, "Campaign", menu.Campaign).transform.SetSiblingIndex(0);
+            done.Add("Campaign button added");
+        }
         if (menu.replayPanel != null) return;
         ReplayWindow(menu.transform, menu);
         menu.replayPanel.SetActive(false);

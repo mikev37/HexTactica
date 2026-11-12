@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// The main menu (the MainMenu scene): Load Scenario (a scenario to set up, or a saved game to play on), Map Editor,
+/// The main menu (the MainMenu scene): Campaign (the campaign screen), Load Scenario (a scenario to set up, or a saved game to play on), Map Editor,
 /// Unit Explorer, Options, Exit. Each opens its panel; everything they look like is the scene's. The buttons call the
 /// methods below (wired in the scene).
 /// </summary>
@@ -52,10 +52,13 @@ public class MainMenu : MonoBehaviour {
 
     public void ShowMain() { Show(mainPanel); }
     public void ShowLoadScenario() { Show(loadPanel); if (loadList != null) loadList.ShowScenarios(); }
-    public void ShowMapEditor() { Show(editorPanel); }
+    public void ShowMapEditor() { Show(editorPanel); if (editorList != null) editorList.ShowEditable(); }
     public void ShowUnitExplorer() { Show(unitsPanel); }
     public void ShowOptions() { Show(optionsPanel); }
     public void ShowReplays() { Show(replayPanel); if (replayList != null) replayList.ShowRecordings(); UpdateButtons(); }
+
+    /// <summary>The campaign screen: the map and its mission flags.</summary>
+    public void Campaign() { MatchSetup.ToCampaign(); }
 
     /// <summary>Watch the picked recording.</summary>
     public void Watch() { if (replayList != null && replayList.Selected != null) MatchSetup.Watch(replayList.Selected); }

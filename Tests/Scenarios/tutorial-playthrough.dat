@@ -1963,7 +1963,6 @@
     "Value": 0
    }
   ]
- }
-,
-"test": {"name": "tutorial-playthrough", "kind": "rules", "opponent": "Human", "rounds": "8", "rules": "standard", "check": "scriptTutorial", "question": "The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order."}
+ },
+"test": {"name": "tutorial-playthrough", "kind": "rules", "opponent": "Human", "rounds": "8", "rules": "standard", "check": "scriptTutorial", "question": "The tutorial mission (Resources/Campaign/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order."}
 }

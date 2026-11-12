@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f12e048022d4e9682801042839c042d, type: 3}
+  m_Name: Tutorial 1
+  m_EditorClassIdentifier: 
+  title: 'Tutorial 1: First Command'
+  scenario: Tutorial
+  faction: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
+  mapPosition: {x: 0.3, y: 0.45}
+  availableAtStart: 1
+  intro:
+  - Character: Placeholder Commander
+    Text: 'New recruits report here. We start with the basics: one squad and one HQ.'
+    Sound: 
+    Portrait: 0
+  - Character: Placeholder Scout
+    Text: 'I''ll walk you through it. Press Start when you''re ready.'
+    Sound: 
+    Portrait: 1
+  briefing: 'Your first command. The scout and the commander walk you through moving a grunt, ending your turn, staying in supply, buying units at the HQ, capturing a city and attacking.'
+  objectives: "Follow the scout's lead.\nDestroy the raider."
+  outro:
+  - Character: Placeholder Commander
+    Text: 'Well done, recruit. You can move, buy and fight.'
+    Sound: 
+    Portrait: 0
+  - Character: Placeholder Scout
+    Text: 'Next we stop walking everywhere. A new mission is on the map.'
+    Sound: 
+    Portrait: 1
+  outroLost:
+  - Character: Placeholder Commander
+    Text: 'It happens to everyone once. Have another go.'
+    Sound: 
+    Portrait: 0
+  unlocks:
+  - {fileID: 11400000, guid: 3f2f0dcbf71940debdcb73b397bca151, type: 2}
+  blocks: []
+  parTurns: 8
+  parKills: 1
+  parLosses: 0
