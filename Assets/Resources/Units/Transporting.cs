@@ -186,7 +186,15 @@ public static class Transporting {
         if (!cargo.CanEnter(onto)) return false;
         if (!LocomotionRules.BridgeStep(transport.tile, onto, cargo.locomotion)) return false;
         if (!transport.tile.neighbors.Contains(onto) && onto != transport.tile) return false;
+        return Disembark(transport, cargo, onto);
+    }
 
+    /// <summary>
+    /// The getting off itself, unchecked but for the tile being free: Unload after its checks, and a recorded one
+    /// played again (a replay), where the recording is the authority on where the unit came to stand.
+    /// </summary>
+    internal static bool Disembark(Unit transport, Unit cargo, HexTile onto) {
+        if (transport == null || cargo == null || onto == null || onto.occupier != null || !transport.transported.Contains(cargo)) return false;
         transport.transported.Remove(cargo);
         cargo.trasnporter = null;
         cargo.tile = onto;
