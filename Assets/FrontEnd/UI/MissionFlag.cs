@@ -37,6 +37,13 @@ public class MissionFlag : MonoBehaviour {
 
     public Mission Mission { get; private set; }
 
+    float size = 1f, appearing = 1f;
+
+    /// <summary>The flag's scale (the campaign screen keeps flags one size on screen as the map zooms).</summary>
+    public void SetSize(float s) { size = s; Rescale(); }
+
+    void Rescale() { transform.localScale = Vector3.one * (size * appearing); }
+
     /// <summary>Show <paramref name="m"/> as it stands: <paramref name="stars"/> are the stars shown as earned (the rest empty).</summary>
     public void Show(Mission m, Color colour, bool complete, bool blocked, MissionStars shown) {
         Mission = m;
@@ -67,11 +74,12 @@ public class MissionFlag : MonoBehaviour {
         if (appearSound != null) GameSounds.Play(appearSound);
         if (animator != null && !string.IsNullOrEmpty(appearTrigger)) animator.SetTrigger(appearTrigger);
         if (appearSeconds <= 0f || appear == null) yield break;
-        Vector3 rest = transform.localScale;
         for (float t = 0f; t < appearSeconds; t += Time.unscaledDeltaTime) {
-            transform.localScale = rest * appear.Evaluate(t / appearSeconds);
+            appearing = appear.Evaluate(t / appearSeconds);
+            Rescale();
             yield return null;
         }
-        transform.localScale = rest;
+        appearing = 1f;
+        Rescale();
     }
 }

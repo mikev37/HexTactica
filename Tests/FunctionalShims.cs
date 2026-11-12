@@ -391,7 +391,7 @@ namespace UnityEngine {
         public bool useWorldSpace;
         public void SetPosition(int i, Vector3 v) { }
     }
-    public class Canvas : Behaviour { public RenderMode renderMode; public int sortingOrder; public static void ForceUpdateCanvases() { } }
+    public class Canvas : Behaviour { public RenderMode renderMode; public Camera worldCamera; public int sortingOrder; public static void ForceUpdateCanvases() { } }
     public class CanvasGroup : Behaviour { public float alpha = 1f; public bool blocksRaycasts = true, interactable = true; }
     public class Animator : Behaviour {
         public RuntimeAnimatorController runtimeAnimatorController;
