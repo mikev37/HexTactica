@@ -345,9 +345,12 @@ namespace HexTactica.Harness {
         static void OnAttack(Unit attacker, Unit defender, HexTile from, HexTile at, CombatOutcome o) {
             if (writer == null) return;
             // A move-and-attack: report the move first (the unit only "finishes" after firing).
-            HexTile was;
             FlushMove(attacker, from);
+            // A defender fired on mid-move (it ran into an unseen unit): its move up to where it was stopped comes first.
+            FlushMove(defender, at);
             Line(Lines.Attack(attacker, defender, from, at, o));
+            // A retreat moves the defender without an action of its own: its next move starts from where it was driven.
+            if (defender != null && defender.Strength > 0 && defender.tile != null) lastSeen[defender] = defender.tile;
             if (GameController.gc != null && GameController.gc.gameOver) GameOver();
         }
 
