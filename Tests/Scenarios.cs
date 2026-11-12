@@ -484,8 +484,6 @@ public static partial class Scenarios {
                  "Buying infantry for buildings that earn and build nothing: a neutral bunker and Int. Ops beside Blue's army base: within three turns it buys a unit that can take them.");
         make("ai-cover-by-target", "coverByTarget", (a, o) => { Put("Anti Air Missile Truck", a, -4, 0); Put("Artillery", a, -4, 2); Put("Tank", o, 3, 0); Put("Grunt", o, 3, 2); },
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
-        make("ai-self-preservation-scope", "selfPreservationScope", (a, o) => { Put("Grunt", a, -4, 0); Put("Tank", a, -4, 2); Put("Artillery", a, -5, 2); Put("Anti Air Missile Truck", a, -5, 1); Put("Supplies", a, -6, 1); Put("Tank", o, 0, 0); Put("Tank", o, 0, 2); },
-             "Which units shield anything by standing in reach (AIWorld.Shields, selfPreservationShieldless): those that fire back at ground attackers beside them (the grunt, the tank); not the artillery, the anti-air truck or the supply unit. With self-preservation on, the truck standing where both Red tanks could reach pays for it; priced as the reply prices blows (selfPreservationDiscount) it pays no more than undiscounted.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) standing on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two (progress cleared).");
         make("rule-capture-from-zero", "captureFromZero", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); },
@@ -2046,20 +2044,6 @@ public static partial class Scenarios {
                 detail = "missile truck covers " + tOn + " tiles; artillery " + gOn;
                 return tOn == 0 && gOn > 0;
             }
-            case "selfPreservationScope": {
-                Unit grunt = Rig.At(-4, 0).occupier, tank = Rig.At(-4, 2).occupier, gun = Rig.At(-5, 2).occupier, truck = Rig.At(-5, 1).occupier, sup = Rig.At(-6, 1).occupier;
-                Func<Unit, bool> sh = HexTactica.AI.AIWorld.ShieldsForTest;
-                bool scope = sh(grunt) && sh(tank) && !sh(gun) && !sh(truck) && !sh(sup);
-                HexTile exposed = Rig.At(-2, 0);
-                Func<bool, float> risk = disc => {
-                    AIProfile prof = ScriptableObject.CreateInstance<AIProfile>(); prof.selfPreservationWeight = 1f;
-                    HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(l.ai, prof);
-                    return HexTactica.AI.AIWorld.Evaluate(truck, exposed, new AttackAppraisal(), m, m.replyCache, false, true).selfRisk;
-                };
-                float on = risk(true);
-                detail = "shields: grunt " + sh(grunt) + ", tank " + sh(tank) + ", artillery " + sh(gun) + ", missile truck " + sh(truck) + ", supplies " + sh(sup) + "; the truck at " + Pos(exposed) + " pays " + on.ToString("0") + " for its exposure priced as the reply prices it";
-                return scope && on > 0f;
-            }
             case "landStepsLayout": {
                 HexTile bridge = Rig.At(0, 0), west = Rig.At(-1, 0), east = Rig.At(1, 0);
                 AIProfile prof = ScriptableObject.CreateInstance<AIProfile>();
@@ -3087,8 +3071,7 @@ public static partial class Scenarios {
                 HexTile near = Rig.At(1, -1), far = Rig.At(-5, 1);
                 Func<Action<AIProfile>, Func<HexTactica.AI.AIMap, float>, float> with = (tweak, f) => {
                     AIProfile c = ScriptableObject.CreateInstance<AIProfile>();
-                    foreach (System.Reflection.FieldInfo fi in typeof(AIProfile).GetFields()) if (!fi.IsStatic) fi.SetValue(c, fi.GetValue(prof));
-                    c.fogScreenBelowCost = 0;   // the grunt here measures the fear of unknown ground (screens ignore it)
+                    foreach (System.Reflection.FieldInfo fi in typeof(AIProfile).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)) if (!fi.IsStatic) fi.SetValue(c, fi.GetValue(prof));
                     if (tweak != null) tweak(c);
                     float v = float.NaN;
                     BoardView cv = FogOfWar.Conceal(a, true, c.fogMemoryTurns);
@@ -5035,7 +5018,7 @@ public static partial class Scenarios {
         int checks = 0, bad = 0;
         foreach (string f in files) {
             ScenarioFile.Loaded l = ScenarioFile.Load(f, "Human", p => {
-                p.assistWeight = 0f; p.forecastKnockback = false; p.forecastBuildings = false; p.selfPreservationWeight = 0f; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
+                p.assistWeight = 0f; p.forecastKnockback = false; p.forecastBuildings = false; p.ownStrikeWeight = 0f; p.enemyStrikeWeight = 0f;
             });
             // Play a few rounds so units are in contact, then check Blue's options.
             GameController gc = Rig.gc;

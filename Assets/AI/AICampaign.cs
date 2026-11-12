@@ -58,7 +58,7 @@ namespace HexTactica.AI {
         public bool ordinaryFront;
         /// <summary>Hold: what kind of place (chokepoint end, road junction).</summary>
         public string placeKind;
-        /// <summary>Turns this task force has been out (0 the turn it formed), whether it has gone in yet, and the turns from its staging tile to its target when it formed (time boxes: AIProfile.campaignTimeBox).</summary>
+        /// <summary>Turns this task force has been out (0 the turn it formed), and whether it has gone in yet.</summary>
         public int age;
         public bool went;
         /// <summary>Last turn's pace (AIStrategic.Pace) for this task force: no nearer since, it has stalled.</summary>
@@ -234,31 +234,23 @@ namespace HexTactica.AI {
             foreach (Unit t in map.ownUnits) if (IsSeatCarrier(t)) seats[t] = Mathf.Max(1, t.transportSlots);
             List<CampaignObjective> candidates = Candidates(map, p);
 
-            // Time boxes (AIProfile.campaignTimeBox): a task force that has not gathered on its staging
-            // ground by its campaignDrawTurns-th turn is dissolved; one that has not achieved its
-            // objective in campaignTimeBox turns (more for one further off) gives it up. Either way the
-            // objective is left alone for campaignTimeBox turns and its units go to other objectives
-            // and to the fighting.
+            // A task force that has not gathered on its staging ground in DrawTurns turns is dissolved, and
+            // its objective formed again from the units best placed for it now.
             string timedOut = null;
             HashSet<string> timedOutIds = new HashSet<string>();
             if (last != null) {
                 foreach (KeyValuePair<string, int> kv in last.givenUp) if (kv.Value > c.turn) c.givenUp[kv.Key] = kv.Value;
                 int draw = DrawTurns(p);
                 foreach (CampaignObjective o in last.objectives) {
-                    if (o.kind == CampaignKind.DefendHQ || o.respond || p.campaignTimeBox <= 0) continue;
+                    if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                     // Being taken (one of ours on it, or our capture under way): never given up now.
                     // (The HQ push was given up on the turn its grunt was finishing the capture.)
                     if (o.building != null && o.building.tile != null && ((o.building.tile.occupier != null && o.building.tile.occupier.owner == map.player) || (o.building.capturingPlayer == map.player && o.building.capturePoints > 0))) continue;
                     int age = o.age + 1;
                     string why = null;
                     if (!o.went && o.staging != null && age >= draw && !GatheredEnough(o, map, p)) why = "did not gather in " + draw + " turns";
-                    else if (o.went && p.campaignStallTurns > 0 && o.stalled >= p.campaignStallTurns) why = "stalled " + o.stalled + " turns";
-
                     if (why == null) continue;
-                    // Left alone for campaignGiveUpTurns (0: not at all — the task force is dissolved and the
-                    // objective formed again from whatever units are best placed for it now).
-                    if (p.campaignGiveUpTurns > 0) c.givenUp[o.Id] = c.turn + p.campaignGiveUpTurns;
-                    else timedOutIds.Add(o.Id);
+                    timedOutIds.Add(o.Id);
                     if (timedOut == null) timedOut = o.Id + " " + why + ", given up";
                 }
                 candidates.RemoveAll(o => o.kind != CampaignKind.DefendHQ && !o.respond && c.givenUp.ContainsKey(o.Id));
@@ -274,7 +266,7 @@ namespace HexTactica.AI {
             // keeps the one it gathers on while that is still ours and safe.
             List<Unit> free = new List<Unit>();
             foreach (Unit u in map.ownUnits)
-                if (u != null && u.tile != null && Power(u) > 0f && !(Transporting.IsTransport(u) && u.Firepower <= 1) && map.TurnsToContact(u) > 1 && !HomeFight(u, map, p)) free.Add(u);
+                if (u != null && u.tile != null && Power(u) > 0f && !(Transporting.IsTransport(u) && u.Firepower <= 1) && map.TurnsToContact(u) > 1) free.Add(u);
             foreach (CampaignObjective o in candidates) {
                 CampaignObjective was = last != null ? last.objectives.Find(x => x.Id == o.Id) : null;
                 HexTile keepStaging = was != null && was.staging != null && map.SupplyDepth(was.staging) > 0 && map.EnemyStrikeTurns(was.staging) > 1 ? was.staging : null;
@@ -345,7 +337,7 @@ namespace HexTactica.AI {
             // the enemy HQ — the ordinary tactics' job — while cities stood a few turns off.)
             List<Unit> forces = new List<Unit>();
             foreach (Unit u in map.ownUnits)
-                if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1) && !HomeFight(u, map, p)) forces.Add(u);
+                if (u != null && u.tile != null && u.Hub == null && u.Firepower > 0 && !(Transporting.IsTransport(u) && u.Firepower <= 1)) forces.Add(u);
             foreach (CampaignObjective o in candidates) {
                 if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                 o.turnsAway = TurnsAway(o, forces, map, p);
@@ -755,9 +747,8 @@ namespace HexTactica.AI {
                     break;
                 }
                 case CampaignKind.Scout:
-                    // A look, not a fight: the one that sees best for its cost (Fill), and an escort only by
-                    // campaignScoutEscort of the enemy there (0: none — a scouting trip was given two tanks).
-                    o.needPower = o.enemyPower * p.objectiveForceRatio * Mathf.Max(0f, p.campaignScoutEscort);
+                    // A look, not a fight: the one that sees best for its cost (Fill), with no escort.
+                    o.needPower = 0f;
                     break;
             }
 
@@ -819,13 +810,13 @@ namespace HexTactica.AI {
             return d;
         }
 
-        static int DrawTurns(AIProfile p) { return p.campaignDrawTurns > 0 ? p.campaignDrawTurns : Mathf.Max(1, p.frontReachTurns); }
+        static int DrawTurns(AIProfile p) { return Mathf.Max(1, p.frontReachTurns); }
 
         /// <summary>Whether the healthy power on the task force's staging ground (or past it) is campaignGatherShare of its need, as AIStrategic.GatherThenGo counts it.</summary>
         static bool GatheredEnough(CampaignObjective o, AIMap map, AIProfile p) {
             if (o.staging == null || o.target == null) return true;
             int healthy = Mathf.CeilToInt(6 * p.readyStrength);
-            int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+            int radius = TypicalMove(map);
             int stagingToGo = map.Travel(null, o.staging, o.target);
             float gathered = 0f;
             // Past the staging ground counts only with the body, as AIStrategic.GatherThenGo.
@@ -898,7 +889,7 @@ namespace HexTactica.AI {
         /// to 35–48k, and lost them.)
         /// </summary>
         void StopOnSurge(AICampaign last, List<CampaignObjective> candidates, AIMap map, AIProfile p, bool afresh, HashSet<string> restart) {
-            int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+            int radius = TypicalMove(map);
             System.Func<Unit, bool> alive = u => u != null && u.tile != null && u.Strength > 0 && map.ownUnits.Contains(u);
             foreach (Withdrawal w in last.withdrawals) {
                 if (w.turns + 1 >= p.campaignSurgeWithdrawTurns) continue;
@@ -945,13 +936,6 @@ namespace HexTactica.AI {
             return null;
         }
 
-        /// <summary>In contact within homeFightRadius of our HQ: left to the ordinary tactics (and supply).</summary>
-        public static bool HomeFight(Unit u, AIMap map, AIProfile p) {
-            if (p.homeFightRadius <= 0 || u == null || u.tile == null) return false;
-            Building home = GameController.HQOf(map.player);
-            return home != null && home.tile != null && u.tile.Distance(home.tile) <= p.homeFightRadius && map.TurnsToContact(u) <= p.objectiveContactTurns;
-        }
-
         // ------------------------------------------------------------------ task forces
 
         void Allocate(List<CampaignObjective> candidates, AIMap map, AIProfile p, AICampaign keep, HashSet<string> restart = null) {
@@ -961,7 +945,6 @@ namespace HexTactica.AI {
                 if (u == null || u.tile == null || u.Hub != null || u.Firepower <= 0) continue;
                 if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;
                 // Fighting close to home (homeFightRadius): the ordinary tactics, not a task force.
-                if (p.homeFightRadius > 0 && HomeFight(u, map, p)) continue;
                 // Pulling back to a stopped task force's staging ground: planned again once there.
                 if (withdrawals.Exists(w => w.units.Contains(u))) continue;
                 // Bought for the reserve: not for task forces, unless a front is under attack (taken from heldBack below).
@@ -1030,7 +1013,6 @@ namespace HexTactica.AI {
             float armyPower = 0f; int armyUnits = 0;
             foreach (Unit u in map.ownUnits) { float w = Power(u); if (w > 0f && !(Transporting.IsTransport(u) && u.Firepower <= 1)) { armyPower += w; armyUnits++; } }
             float budget = armyPower * (1f - Mathf.Clamp01(p.campaignReserveShare));
-            if (p.campaignMinTaskForce > 0) maxPursued = Mathf.Min(maxPursued, Mathf.Max(1, Mathf.FloorToInt(armyUnits * (1f - Mathf.Clamp01(p.campaignReserveShare)) / p.campaignMinTaskForce)));
             int pursued = 0;
             foreach (CampaignObjective o in objectives) if (o.kind != CampaignKind.DefendHQ && o.kind != CampaignKind.Scout && !o.respond && o.units.Count > 0) pursued++;
             // Supply decides how far the army can spread: an objective beyond our supply is taken on
@@ -1225,7 +1207,7 @@ namespace HexTactica.AI {
             foreach (CampaignObjective o in objectives) {
                 if (o.formedPower <= 0f) o.formedPower = o.assignedPower;
                 if (o.formedEnemy <= 0f) o.formedEnemy = o.enemyPower;
-                o.SortUnits(map, p, p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map));
+                o.SortUnits(map, p, TypicalMove(map));
                 foreach (Unit u in o.units) unitOf[u] = o;
                 foreach (SupplyPoint h in o.hubs) hubOf[h] = o;
             }
@@ -1335,7 +1317,7 @@ namespace HexTactica.AI {
             if (Turns(u, o, map) > DrawTurns(p)) return false;
             if (o.staging == null || o.kind == CampaignKind.DefendHQ) return true;
             if (map.TurnsToContact(u) > 1) return true;
-            int radius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+            int radius = TypicalMove(map);
             return map.Travel(u, u.tile, o.staging) <= radius;
         }
 
@@ -1467,18 +1449,12 @@ namespace HexTactica.AI {
                 f.pullScale = p.campaignPull;
                 f.campaign = true;
                 f.campaignObjective = o;
-                f.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                f.campaignStagingRadius = TypicalMove(map);
                 // Outmatched where it stands (campaignFallbackRatio): the enemy that can strike its units
                 // next turn is more than it can take. It falls back to its staging ground and the campaign
                 // plans again, rather than being destroyed in detail — the south task force on ChanceMeeting
                 // lost its tanks one by one to the enemy's whole army.
                 float met;
-                if (o.kind != CampaignKind.DefendHQ && o.staging != null && Outmatched(o, map, p, out met)) {
-                    o.metPower = met;
-                    f.objectiveTile = o.staging; f.objective = null; f.objectiveIsHQ = false; f.objectiveValue = o.value * 0.5f;
-                    f.campaignStaging = null; f.campaignReady = false; f.posture = Posture.Defensive;
-                    o.fellBack = true;
-                }
                 // A look, not a fight: a scouting task force in contact falls back to where it gathered.
                 if (o.kind == CampaignKind.Scout && o.staging != null && o.units.Exists(u => u != null && u.tile != null && map.TurnsToContact(u) <= 1)) {
                     f.objectiveTile = o.staging; f.objective = null; f.objectiveValue = o.value * 0.5f; f.campaignStaging = null; f.campaignReady = false;
@@ -1500,7 +1476,7 @@ namespace HexTactica.AI {
             foreach (Withdrawal w in withdrawals) {
                 if (w.staging == null) continue;
                 Front f = new Front { center = w.staging, objectiveTile = w.staging, priority = 0.5f, objectiveValue = w.value * 0.5f };
-                f.campaign = true; f.pullScale = p.campaignPull; f.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                f.campaign = true; f.pullScale = p.campaignPull; f.campaignStagingRadius = TypicalMove(map);
                 f.assigned.AddRange(w.units);
                 AIStrategic.Finish(new List<Front> { f }, map, p, memory, assaulting);
                 f.posture = Posture.Defensive;
@@ -1591,7 +1567,7 @@ namespace HexTactica.AI {
                 // at the HQ's tile as a bare tile, the released gunships were pulled onto it and stood there while
                 // the grunt that would have taken it walked back to supply.)
                 if (pressed != null && released != null && rally == pressed.objectiveTile && pressed.objective != null) { r.objective = pressed.objective; r.objectiveIsHQ = pressed.objectiveIsHQ; r.objectiveValue = pressed.objectiveValue; }
-                r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = p.campaignStagingRadius > 0 ? p.campaignStagingRadius : TypicalMove(map);
+                r.campaign = true; r.pullScale = p.campaignPull; r.campaignStagingRadius = TypicalMove(map);
                 r.reserve = true;
                 r.assigned.AddRange(calm);
                 foreach (Unit u in calm) taken.Add(u);
@@ -1673,21 +1649,6 @@ namespace HexTactica.AI {
                 if (kv.Value < bs || (kv.Value == bs && CombatMath.Precedes(t, best))) { bs = kv.Value; best = t; }
             }
             return best;
-        }
-
-        /// <summary>Is the enemy that can strike <paramref name="o"/>'s units next turn more than campaignFallbackRatio of their power?</summary>
-        static bool Outmatched(CampaignObjective o, AIMap map, AIProfile p, out float theirs) {
-            theirs = 0f;
-            if (p.campaignFallbackRatio <= 0f) return false;
-            float ours = 0f;
-            HashSet<Unit> near = new HashSet<Unit>();
-            foreach (Unit u in o.units) {
-                if (u == null || u.tile == null) continue;
-                ours += Power(u);
-                foreach (Unit e in map.enemyUnits)
-                    if (e != null && e.tile != null && !near.Contains(e) && CanArrive(e, u.tile, 1, map)) { near.Add(e); theirs += Power(e); }
-            }
-            return theirs > 0f && ours < theirs * p.campaignFallbackRatio;
         }
 
         public IEnumerable<string> Describe() {

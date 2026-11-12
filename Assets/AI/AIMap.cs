@@ -446,16 +446,12 @@ namespace HexTactica.AI {
                 if (damage <= 0) continue;
                 float mine, others;
                 float share = ShareOf(ef, u, at, out mine, out others);   // own prior share replaced, not added
-                // dangerModel 1: every enemy that can reach the tile is assumed to fire on it, in full.
-                if (profile.dangerModel == 1) share = 1f;
-                // dangerModel 2: each enemy puts its whole attack into the most valuable target it can
-                // reach — the same rule the simulated reply (AIWorld) and the original AI use.
-                else if (profile.dangerModel == 2) {
-                    float bestOther = 0f;
-                    foreach (KeyValuePair<Unit, float> kv in ef.attractionOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
-                    foreach (KeyValuePair<Unit, float> kv in ef.committedOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
-                    share = mine >= bestOther ? 1f : 0f;
-                }
+                // Each enemy puts its whole attack into the most valuable target it can reach: the same rule
+                // the simulated reply (AIWorld) uses.
+                float bestOther = 0f;
+                foreach (KeyValuePair<Unit, float> kv in ef.attractionOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
+                foreach (KeyValuePair<Unit, float> kv in ef.committedOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
+                share = mine >= bestOther ? 1f : 0f;
                 loss += damage * share;
             }
             return Mathf.Min(u.Strength, loss);
@@ -477,9 +473,9 @@ namespace HexTactica.AI {
         /// The plan is built once per board state and rebuilt after every action.
         /// </summary>
         public float SpaceDenial(Unit u, HexTile at) {
-            if (u == null || at == null || u.tile == null || profile.screenWeight <= 0f) return 0f;
+            return 0f;
             if (space == null) space = AISpace.Prepare(this);
-            return AISpace.Credit(space, u, at) * profile.screenWeight;
+            return AISpace.Credit(space, u, at) * 0f;
         }
 
         /// <summary>The current screen plan, for diagnostics (null until a screener asks).</summary>
@@ -738,7 +734,7 @@ namespace HexTactica.AI {
                 float attackers;
                 if (!hqAttackPower.TryGetValue(kv.Key, out attackers) || attackers <= 0f) continue;
                 float share = Mathf.Min(1f, AIObjectives.Power(u) / attackers);
-                total += kv.Value * BoardStake * profile.hqDefenseWeight * share * profile.guardWeight;
+                total += kv.Value * BoardStake * profile.hqDefenseWeight * share * 0f;
             }
             return total;
         }

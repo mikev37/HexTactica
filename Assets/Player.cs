@@ -4,6 +4,10 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    /// <summary>Strength a unit in its side's supply heals at the start of its turn (on a building that services it, the
+    /// larger of this and the building's heal, or both when the building's stacks). The AI reads it as well.</summary>
+    public const int NetworkHealPerTurn = 1;
+
     public string personal_name;
     public long id;
     public Color displayColor;
@@ -145,7 +149,7 @@ public class Player : MonoBehaviour
     /// health IS the supply it is spending, so it cannot top itself back up.
     /// </summary>
     void Resupplied(Unit u, bool mayHeal) {
-        if (mayHeal) u.Strength = Mathf.Min(6, u.Strength + 1);
+        if (mayHeal) u.Strength = Mathf.Min(6, u.Strength + NetworkHealPerTurn);
         u.ammo = u.ammoMax;
         u.fuel = u.fuelMax;
         u.supplies = u.suppliesMax;
@@ -158,7 +162,7 @@ public class Player : MonoBehaviour
     /// when the building's stacks).
     /// </summary>
     void Serviced(Unit u, Building b, bool network, bool mayHeal) {
-        int heal = network ? (b.healStacksWithSupply ? 1 + b.healPerTurn : Mathf.Max(1, b.healPerTurn)) : b.healPerTurn;
+        int heal = network ? (b.healStacksWithSupply ? NetworkHealPerTurn + b.healPerTurn : Mathf.Max(NetworkHealPerTurn, b.healPerTurn)) : b.healPerTurn;
         if (mayHeal && heal > 0) u.Strength = Mathf.Min(6, u.Strength + heal);
         if (network || b.rearm) u.ammo = u.ammoMax;
         if (network || b.refuel) u.fuel = u.fuelMax;

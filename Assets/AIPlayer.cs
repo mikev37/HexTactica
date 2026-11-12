@@ -877,17 +877,14 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
         if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);
         // How well we know the enemy, and how bold that lets us be.
-        bool knows = true;
-        if (knows || Profile.fogUncertainty) {
-            knowledge.Update(map, Profile);
-            if (knows) map.knowledge = knowledge;
-            // How much of the enemy we cannot place: the fog's unknown ground is feared by that share (AISigint).
-            if (Profile.fogUncertainty) map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
-            map.fogUnplacedPower = Mathf.Max(0f, knowledge.estimate - knowledge.known);
-            map.fogKnownAtStart = new HashSet<Unit>(map.enemyUnits);
-            if (map.sigint != null) { string note = map.sigint.Prime(); if (Trace != null && note != null) Trace("   fog: " + note); }
-            if (Trace != null) Trace("   " + knowledge + (Profile.fogUncertainty ? "; unknown ground feared at " + map.fogUncertainty.ToString("0.00") : ""));
-        }
+        knowledge.Update(map, Profile);
+        map.knowledge = knowledge;
+        // How much of the enemy we cannot place: the fog's unknown ground is feared by that share (AISigint).
+        if (Profile.fogUncertainty) map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
+        map.fogUnplacedPower = Mathf.Max(0f, knowledge.estimate - knowledge.known);
+        map.fogKnownAtStart = new HashSet<Unit>(map.enemyUnits);
+        if (map.sigint != null) { string note = map.sigint.Prime(); if (Trace != null && note != null) Trace("   fog: " + note); }
+        if (Trace != null) Trace("   " + knowledge + (Profile.fogUncertainty ? "; unknown ground feared at " + map.fogUncertainty.ToString("0.00") : ""));
         // What each unit does for its side, for this turn's forecasts.
         roleWorth = null;
         AIWorld.Roles = roleWorth;
@@ -1022,7 +1019,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // Transports act after everyone else, so the units they carry (or are to pick up) have
         // decided first and handed them their plans: only when some fighting unit could ride this
         // turn, so with nobody to carry the turn order (and the game) is what it was without rides.
-        bool anyRider = false;
         // Riding to the assault: a transport with troops aboard goes before what it carries (they get off where it
         // stops); an empty one after everyone else, so all who get in this turn are in before it leaves.
         List<Unit> loaded = new List<Unit>(), empty = new List<Unit>();
@@ -1032,11 +1028,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
             else if (u.transported.Count == 0 && u.Firepower <= 1 && !supplyTransports.Contains(u)) empty.Add(u);   // (supply's trucks keep the supply's order)
         }
         foreach (Unit u in empty) { queue.Remove(u); queue.Add(u); }
-        if (anyRider) {
-            List<Unit> carriers = new List<Unit>();
-            foreach (Unit u in queue) if (Transporting.IsTransport(u) && u.Firepower <= 1) carriers.Add(u);
-            foreach (Unit u in carriers) { queue.Remove(u); queue.Add(u); }
-        }
         // A chain link's truck acts after its link: the link boards (or says where to meet it) first.
         if (logistics != null)
             foreach (KeyValuePair<SupplyPoint, Unit> kv in logistics.chainTrucks) {
@@ -1317,13 +1308,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
         foreach (Unit c in truck.transported) if (c != null && c.Hub != null && !c.Hub.producer) { cargo = c; break; }
         if (cargo == null) return false;
         SupplyPoint hub = cargo.Hub;
-        if (LocomotionRules.IsNaval(truck.locomotion)) {
-            // Troops aboard too (a convoy): it goes as their ride goes (the assault ride), its supply aboard throughout.
-            if (AIAssault.Riders(truck).Count > 0) return false;
-            // (The logistics chain places it, as any link aboard a transport.)
-            AIAction? sl = null;
-            if (sl.HasValue) { action = sl.Value; return true; }
-        }
+        // A ship with troops aboard too (a convoy) and no ride booked by its supply unit: it goes as their ride goes (the
+        // assault ride, which takes only a transport with no supply booking), its supply aboard throughout. With a ride
+        // booked (troops that got in to cross with the supply), the supply drives it and lets them out where it lands;
+        // the two rules agree, so one of them always drives the ship. (Both declined it: it held for turns.)
+        if (LocomotionRules.IsNaval(truck.locomotion) && AIAssault.Riders(truck).Count > 0 && !transportAssignments.ContainsKey(truck)) return false;
         // Relieved (Relieve): the step it was relieved to make.
         HexTile upTo;
         if (relieved.TryGetValue(hub, out upTo) && upTo.occupier == null && !CutsOff(hub, upTo)) {
@@ -1710,7 +1699,6 @@ public class AIPlayer : MonoBehaviour, IAIController {
         int r = unit.moveRange + Mathf.Max(1, unit.AttackRange) + enemyReach + 1;
         // reuseRadiusCap: only changes this close count (the unit's own reach plus one, at most the cap). Not the same
         // answers: a change farther off that the full radius would have caught is missed (VERIFYREUSE counts those).
-        if (Profile.reuseRadiusCap > 0) r = Mathf.Min(Profile.reuseRadiusCap, unit.moveRange + Mathf.Max(1, unit.AttackRange) + 1);
         HexTile at = unit.tile;
         Func<HexTile, bool> near = t => t != null && t.Distance(at) <= r;
         foreach (KeyValuePair<Unit, KeyValuePair<HexTile, int>> kv in firstBoard) {

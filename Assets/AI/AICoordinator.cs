@@ -132,15 +132,14 @@ namespace HexTactica.AI {
             }
 
             // ---- pass 2: battle plans per target.
-            bool retreats = true;
             float empty = float.NaN;
             Dictionary<string, float> single = new Dictionary<string, float>();
             Func<PlanStep, float> alone = st => {
                 float v;
                 string key = st.unit.tile.x + "," + st.unit.tile.y + ">" + st.stop.x + "," + st.stop.y + ">" + (st.target != null ? st.target.tile.x + "," + st.target.tile.y : "-");
                 if (single.TryGetValue(key, out v)) return v;
-                if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, retreats).score;
-                v = AIPlan.Evaluate(new List<PlanStep> { st }, map, false, retreats).score - empty;
+                if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, true).score;
+                v = AIPlan.Evaluate(new List<PlanStep> { st }, map, false, true).score - empty;
                 single[key] = v;
                 return v;
             };
@@ -216,8 +215,8 @@ namespace HexTactica.AI {
                     if (!ok) continue;
                     b.kills = left <= 0f;
                     if (!b.kills) continue;
-                    if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, retreats).score;
-                    b.joint = AIPlan.Evaluate(b.steps, map, false, retreats).score - empty;
+                    if (float.IsNaN(empty)) empty = AIPlan.Evaluate(new List<PlanStep>(), map, false, true).score;
+                    b.joint = AIPlan.Evaluate(b.steps, map, false, true).score - empty;
                     plansForecast++;
                     float sum = 0f;
                     foreach (PlanStep st in b.steps) sum += alone(st);

@@ -254,7 +254,7 @@ namespace HexTactica.AI {
         /// see on the way is worth what it always is (AIFog.ScoutValue).
         /// </summary>
         public static void AssignScouts(Dictionary<Unit, Objective> result, AIMap map, AIProfile profile) {
-            if (map.sigint == null || profile.scoutUnits <= 0) return;
+            return;
             List<Unit> pool = new List<Unit>();
             foreach (Unit u in map.ownUnits) {
                 if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || u.moveRange <= 0 || u.visionRange <= 0) continue;
@@ -268,7 +268,7 @@ namespace HexTactica.AI {
             System.Func<Unit, float> eye = u => (u.visionRange + 1f) * u.moveRange / AIScore.Worth(u);
             pool.Sort((a, b) => { int c = eye(b).CompareTo(eye(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
             HashSet<HexTile> taken = new HashSet<HexTile>();
-            for (int i = 0; i < pool.Count && i < profile.scoutUnits; i++) {
+            for (int i = 0; i < pool.Count && i < 0; i++) {
                 Unit u = pool[i];
                 HexTile best = null;
                 float bestV = 0f;

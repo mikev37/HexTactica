@@ -500,7 +500,6 @@ namespace HexTactica.AI {
                 if (screens) {
                     score += map.FirstStrikeCredit(unit, stop);
                     // And the space it makes for the armour still to move (AISpace).
-                    score += map.SpaceDenial(unit, stop);
                 }
 
                 // And the destination's exposure, since standing there is the point of going.
@@ -672,13 +671,9 @@ namespace HexTactica.AI {
                 float v = 0f;
                 AttackAppraisal future = AITargeting.BestNextTurn(unit, t, map, profile, posture);
                 float fut = future.valid ? future.value : 0f;
-                // Standoff: nothing can strike this tile tonight, yet from it we strike first next
-                // turn. Only possible where our reach is longer than theirs; there the enemy must
-                // either give ground or step into our reach and take the first blow.
-                if (fut > 0f && map.FirersAt(t) == 0) fut *= 1f + profile.standoffWeight;
                 float hold = AIScore.Hold(map.Conflict(t)) * worth * profile.holdWeight;
                 float relief = AIScore.Relief(map.Distress(t)) * worth * 0.5f;
-                float strat = StrategicBonus(unit, t, posture) + map.GuardValue(unit, t);
+                float strat = StrategicBonus(unit, t, posture);
                 float depth = posture == Posture.Defensive ? AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.3f : 0f;
                 // "Aggressive: attempt to go deeper into enemy supply range." An enemy unit in a
                 // corridor severs supply through it, and so do ours: standing in their network
@@ -717,7 +712,6 @@ namespace HexTactica.AI {
                 v += AIScore.Hold(map.Conflict(t)) * worth * 0.15f;
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.2f;
                 v += StrategicBonus(unit, t, posture) * 0.25f;
-                v += map.GuardValue(unit, t);
                 // Support: guns belong within range of the line they cover. Without this the
                 // artillery had no reason to leave home, and sat at the HQ all game while the
                 // army advanced without it.
@@ -845,7 +839,7 @@ namespace HexTactica.AI {
                 if (depth <= 0) v -= worth * map.TurnsToSupply(unit, t);
                 // Where it heals faster (a city or base that heals: Building.healPerTurn), a strength's worth a point.
                 float heal = map.HealAt(unit, t);
-                if (heal > profile.healedPerTurn) v += (Mathf.Min(6 - unit.Strength, heal) - profile.healedPerTurn) * worth;
+                if (heal > Player.NetworkHealPerTurn) v += (Mathf.Min(6 - unit.Strength, heal) - Player.NetworkHealPerTurn) * worth;
                 v -= AIScore.Hold(map.Conflict(t)) * worth * 0.3f;      // off the contact line
                 // Friendly neighbours mean an attacker has to eat a counterattack.
                 List<HexTile> neighbors = t.neighbors;

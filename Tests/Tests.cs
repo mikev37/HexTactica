@@ -27,7 +27,7 @@ public static class Tests {
         return p => {
             foreach (string pair in pairs) {
                 string[] kv = pair.Split('=');
-                var fi = typeof(AIProfile).GetField(kv[0]);
+                var fi = typeof(AIProfile).GetField(kv[0], System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);   // hidden (internal) fields too
                 if (fi == null) throw new Exception("No AIProfile field " + kv[0]);
                 if (fi.FieldType == typeof(int)) fi.SetValue(p, int.Parse(kv[1]));
                 else if (fi.FieldType == typeof(bool)) fi.SetValue(p, bool.Parse(kv[1]));
