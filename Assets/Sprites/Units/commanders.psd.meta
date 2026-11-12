@@ -1,145 +1,661 @@
 fileFormatVersion: 2
 guid: b29cbcdb55709034b8c1f62543160ea1
-TextureImporter:
-  internalIDToNameTable:
-  - first:
-      213: -8155457035200001505
-    second: commanders_0
+importerOverride:
+  nativeImporterType: 2089858483
+  scriptedImporterType:
+    serializedVersion: 2
+    Hash: b10b55a1aa6a1aa32521bc0cab59632e
+ScriptedImporter:
+  internalIDToNameTable: []
   externalObjects: {}
-  serializedVersion: 13
-  mipmaps:
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: b2a9591990af98743ba3ff7cf1000886, type: 3}
+  textureImporterSettings:
+    alphaSource: 1
     mipMapMode: 0
-    enableMipMap: 0
-    sRGBTexture: 1
-    linearTexture: 0
+    enableMipMap: 1
     fadeOut: 0
     borderMipMap: 0
     mipMapsPreserveCoverage: 0
     alphaTestReferenceValue: 0.5
     mipMapFadeDistanceStart: 1
     mipMapFadeDistanceEnd: 3
-  bumpmap:
     convertToNormalMap: 0
-    externalNormalMap: 0
     heightScale: 0.25
     normalMapFilter: 0
     flipGreenChannel: 0
-  isReadable: 0
-  streamingMipmaps: 0
-  streamingMipmapsPriority: 0
-  vTOnly: 0
-  ignoreMipmapLimit: 0
-  grayScaleToAlpha: 0
-  generateCubemap: 6
-  cubemapConvolution: 0
-  seamlessCubemap: 0
-  textureFormat: 1
-  maxTextureSize: 2048
-  textureSettings:
-    serializedVersion: 2
+    swizzle: 50462976
+    isReadable: 0
+    streamingMipmaps: 0
+    streamingMipmapsPriority: 0
+    vTOnly: 0
+    ignoreMipmapLimit: 0
+    nPOTScale: 1
+    sRGBTexture: 1
+    spriteMode: 2
+    spriteExtrude: 1
+    spriteMeshType: 0
+    alignment: 0
+    spritePivot: {x: 0.5, y: 0.5}
+    spritePixelsToUnits: 100
+    spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+    spriteGenerateFallbackPhysicsShape: 0
+    generateCubemap: 6
+    cubemapConvolution: 0
+    seamlessCubemap: 0
+    alphaIsTransparency: 1
+    spriteTessellationMethod: 0
+    spriteTessellationDetail: -1
+    spriteGeometrySubdivision: 0
+    textureType: 8
+    textureShape: 1
+    singleChannelComponent: 0
+    flipbookRows: 0
+    flipbookColumns: 0
+    ignorePngGamma: 0
+    cookieMode: 0
     filterMode: 1
     aniso: 1
     mipBias: 0
-    wrapU: 1
-    wrapV: 1
-    wrapW: 1
-  nPOTScale: 0
-  lightmap: 0
-  compressionQuality: 50
-  spriteMode: 2
-  spriteExtrude: 1
-  spriteMeshType: 1
-  alignment: 0
-  spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
-  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
-  alphaUsage: 1
-  alphaIsTransparency: 1
-  spriteTessellationMethod: 0
-  spriteTessellationDetail: -1
-  spriteGeometrySubdivision: -1
-  textureType: 8
-  textureShape: 1
-  singleChannelComponent: 0
-  flipbookRows: 1
-  flipbookColumns: 1
-  maxTextureSizeSet: 0
-  compressionQualitySet: 0
-  textureFormatSet: 0
-  ignorePngGamma: 0
-  applyGammaDecoding: 0
-  swizzle: 50462976
-  cookieLightType: 0
-  platformSettings:
-  - serializedVersion: 4
-    buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 4
-    buildTarget: Standalone
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
-  spriteSheet:
-    serializedVersion: 2
-    sprites:
-    - serializedVersion: 2
-      name: commanders_0
-      rect:
-        serializedVersion: 2
-        x: 137
-        y: 257
-        width: 256
-        height: 253
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: f1a81f3390ff1de80800000000000000
-      internalID: -8155457035200001505
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    outline: []
+    wrapU: 0
+    wrapV: 0
+    wrapW: 0
+    normalMap: 0
+    textureFormat: 0
+    maxTextureSize: 0
+    lightmap: 0
+    compressionQuality: 0
+    linearTexture: 0
+    grayScaleToAlpha: 0
+    rGBM: 0
+    cubemapConvolutionSteps: 0
+    cubemapConvolutionExponent: 0
+    maxTextureSizeSet: 0
+    compressionQualitySet: 0
+    textureFormatSet: 0
+    applyGammaDecoding: 0
+  singleSpriteImportData:
+  - name: 
+    originalName: 
+    pivot: {x: 0, y: 0}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
-    physicsShape: []
-    bones: []
-    spriteID: 
-    internalID: 0
+    rect:
+      serializedVersion: 2
+      x: 0
+      y: 0
+      width: 0
+      height: 0
+    spriteID: 87afd7fd3ab51de47ac0ce9dae6cc436
+    spriteBone: []
+    spriteOutline: []
     vertices: []
+    spritePhysicsOutline: []
     indices: 
     edges: []
-    weights: []
-    secondaryTextures: []
-    spriteCustomMetadata:
-      entries: []
-    nameFileIdTable:
-      commanders_0: -8155457035200001505
-  mipmapLimitGroupName: 
-  pSDRemoveMatte: 0
-  userData: 
-  assetBundleName: 
-  assetBundleVariant: 
+    tessellationDetail: 0
+    uvTransform: {x: 0, y: 0}
+    spritePosition: {x: 0, y: 0}
+  multiSpriteImportData: []
+  layeredSpriteImportData:
+  - name: Ken
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 266
+      y: 4
+      width: 208
+      height: 211
+    spriteID: 5f0bcac5614f65e4f93d367a25848900
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 266, y: 4}
+    spritePosition: {x: 161, y: 287}
+  - name: Anna
+    originalName: 
+    pivot: {x: 0.5, y: 0.5}
+    alignment: 0
+    border: {x: 0, y: 0, z: 0, w: 0}
+    customData: 
+    rect:
+      serializedVersion: 2
+      x: 4
+      y: 4
+      width: 254
+      height: 251
+    spriteID: a5766361d0350284d8440f6d691fbaee
+    spriteBone: []
+    spriteOutline: []
+    vertices: []
+    spritePhysicsOutline: []
+    indices: 
+    edges: []
+    tessellationDetail: 0
+    uvTransform: {x: 4, y: 4}
+    spritePosition: {x: 138, y: 258}
+  spriteImportData: []
+  rigSpriteImportData: []
+  sharedRigSpriteImportData: []
+  mosaicSpriteImportData: []
+  sharedRigCharacterData:
+    bones: []
+    parts: []
+    dimension: {x: 0, y: 0}
+    characterGroups: []
+    pivot: {x: 0, y: 0}
+    boneReadOnly: 0
+  characterData:
+    bones: []
+    parts: []
+    dimension: {x: 0, y: 0}
+    characterGroups: []
+    pivot: {x: 0, y: 0}
+    boneReadOnly: 0
+  platformSettings:
+  - name: DefaultTexturePlatform
+    overridden: 0
+    ignorePlatformSupport: 0
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    androidETC2FallbackOverride: 0
+  - name: Standalone
+    overridden: 0
+    ignorePlatformSupport: 0
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    androidETC2FallbackOverride: 0
+  mosaicLayers: 1
+  characterMode: 1
+  documentPivot: {x: 0, y: 0}
+  documentAlignment: 7
+  importHiddenLayers: 0
+  layerMappingOption: 2
+  generatePhysicsShape: 0
+  paperDollMode: 0
+  keepDupilcateSpriteName: 1
+  generateTileAssets: 0
+  tilePaletteCellLayout: 0
+  tilePaletteHexagonLayout: 0
+  tilePaletteCellSize: {x: 1, y: 1, z: 0}
+  tilePaletteCellSizing: 0
+  transparencySortMode: 0
+  transparencySortAxis: {x: 0, y: 0, z: 1}
+  tileTemplate: {instanceID: 0}
+  padding: 4
+  spriteSizeExpand: 0
+  skeletonAssetReferenceID: 
+  pipeline: {instanceID: 0}
+  pipelineVersion: 
+  spriteCategoryList:
+    categories: []
+  spritePackingTag: 
+  resliceFromLayer: 0
+  pSDLayerImportSetting: []
+  psdLayers:
+  - name: grunt
+    spriteName: 
+    isGroup: 1
+    parentIndex: -1
+    spriteID: 7382f639cdac296449510c23fd24c7e4
+    layerID: 72
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 1
+  - name: consc_rifle
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: a61367bcbf378144c9e9312bedf72d38
+    layerID: 78
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: hands
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: f66a20bda4dda174f8ac3725ca35f464
+    layerID: 101
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: rpg
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: f1a058dc83df9364fa2ad624fadee10d
+    layerID: 75
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: marksman
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 7da6ea6ad1ef49146838a21fcdf1a005
+    layerID: 117
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: grunt_gun
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 249232ffde0f1cb49bd1c7db9f602569
+    layerID: 71
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: head guerilla
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: a01ed49eb2e1aa0489b4b991037333ff
+    layerID: 99
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: Ken
+    spriteName: Ken
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 5f0bcac5614f65e4f93d367a25848900
+    layerID: 125
+    mosaicPosition: {x: 266, y: 4}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: Anna
+    spriteName: Anna
+    isGroup: 0
+    parentIndex: 0
+    spriteID: a5766361d0350284d8440f6d691fbaee
+    layerID: 124
+    mosaicPosition: {x: 4, y: 4}
+    flatten: 0
+    isImported: 1
+    isVisible: 1
+  - name: head guerilla color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 420125fc1faf5ce43a495fb6e6ef921f
+    layerID: 107
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: head guerilla grunt
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: b72d3a06475ae8747b101cf4a907dc94
+    layerID: 98
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: hed guer cons color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 7e9a48f4d53819843ba3c240f43532dc
+    layerID: 108
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: head guerilla conscript
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 20af25a856ae2004aadb27b00e88b7a2
+    layerID: 96
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: marine_coalition
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 41c14873e90553b4eb51d7749820f91c
+    layerID: 93
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: marine_federation
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 6f1f0dfa556670942945a0809a27f099
+    layerID: 92
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: marine_empire
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 21014038786289949a75eee9c7c5d672
+    layerID: 91
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: marine_unipmn
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 2b9641476c491d14e91bc3d1aecb6ba5
+    layerID: 95
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: head_empire_sharpshooter copy
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 42140fcbaa9732545bdab106b5d20f3a
+    layerID: 122
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: head_empire_sharpshooter
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 30fae6c166982c94e9ae15a92b643a6a
+    layerID: 121
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: head
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: e39a55294b5453a44a067c2fca96c9ba
+    layerID: 84
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: cons uni color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 45665d501c9feed418e51fbd57dcf3f6
+    layerID: 109
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: conscript_union
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: f2a857a9ca4c21d40aa533d8c04015b0
+    layerID: 86
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: cons emp color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 4ccfd8a9ac2c8e64d8e05506989444a8
+    layerID: 110
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: conscript_empire
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 15739e13364c315489ad837fb48be931
+    layerID: 85
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: cons fed color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 13123922300bc964c91efe7b3df4d40a
+    layerID: 111
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: conscript_federation
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 8f4ac0848334c37479c811c0183efa65
+    layerID: 79
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: grunt_head_color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: a65bc9dff7200224c8927b61019263e8
+    layerID: 62
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: grunt_head
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: e245c752767deed4c8fac147ad794f76
+    layerID: 61
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: helmet uniton color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 407e44d652af7744184b8129f8cb9f3b
+    layerID: 113
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: helmet_union_grunt
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: b09070dc68cf90a4db590a9e1201030d
+    layerID: 68
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: helmet_federation_grunt
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 06f65ff0ecebbe4449e9390d3438f6b3
+    layerID: 67
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: helmet empire color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 5b89df5c2ee70024f821cfc888f4b9d0
+    layerID: 112
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: helmet_empire_grunt
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 5d6eda305ca7af04994108bc4a35d200
+    layerID: 66
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: grunt_torso_color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: b1079edf0f94e754f8da6e63425c7bdf
+    layerID: 65
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: marine_color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: e9a0429908520064ca61c1c8e8f9be39
+    layerID: 114
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: marine_torso
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: bde9163e0d338e24aadb1c53a8f31047
+    layerID: 89
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: cons torso color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 02935905c5be39244821c27eb679485f
+    layerID: 115
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: conscript_torso
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: e952ed8c7f8860b42b7cc442929327d7
+    layerID: 81
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: grunt_torso
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: e52f192a882b09140bff83580c31d0c6
+    layerID: 64
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: conscript_legs
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 0e7d996ad991a67429f23d16ac639714
+    layerID: 82
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: grunt_legs 1
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 06bb7dc5aa967e84b86cb27fd5a8d543
+    layerID: 63
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: boot_color
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: 78cebd507e0a44345b2f0dd9bffb8e27
+    layerID: 70
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  - name: boot
+    spriteName: 
+    isGroup: 0
+    parentIndex: 0
+    spriteID: bb88abd0e5718cb4b9b497e54c76063e
+    layerID: 69
+    mosaicPosition: {x: 0, y: 0}
+    flatten: 0
+    isImported: 0
+    isVisible: 0
+  mosaicPSDLayers: []
+  rigPSDLayers: []
+  sharedRigPSDLayers: []
+  importFileNodeState: 1
+  platformSettingsDirtyTick: 0
+  spriteSizeExpandChanged: 0
+  generateGOHierarchy: 0
+  textureAssetName: 
+  prefabAssetName: 
+  spriteLibAssetName: 
+  skeletonAssetName: 
+  secondarySpriteTextures: []
