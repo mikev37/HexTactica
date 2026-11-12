@@ -28,7 +28,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.6, y: 0.6, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6948261316378351903}
@@ -112,7 +112,7 @@ MonoBehaviour:
   tile: {fileID: 0}
   _owner: {fileID: 0}
   home: {fileID: 0}
-  ground: {fileID: 11400000, guid: 738095669175cad40847e1af87bbef4f, type: 2}
+  ground: {fileID: 11400000, guid: 9c9844dd7fd7fdcd9c187b589764e853, type: 2}
   sprite: {fileID: 2120000000000000001}
   visionRange: 1
   visionOverTerrain: 0
@@ -277,7 +277,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8266670836053472591, guid: 986b793450c2cf64180ab67ce51e6962, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 4.6
+      value: 3.36
       objectReference: {fileID: 0}
     - target: {fileID: 8266670836053472591, guid: 986b793450c2cf64180ab67ce51e6962, type: 3}
       propertyPath: m_LocalPosition.z
