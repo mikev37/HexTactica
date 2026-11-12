@@ -148,7 +148,10 @@ namespace HexTactica.Harness {
                 // fields them), and checked after: a side that does not come out as recorded is said so, set, and the
                 // board loaded once more.
                 SidesFrom(turns[i].file, true);
-                if (!Loader(turns[i].file)) Debug.LogError("Replay: could not load " + turns[i].file);
+                bool loaded = false;
+                try { loaded = Loader(turns[i].file); }
+                catch (Exception e) { Debug.LogError("Replay: loading " + turns[i].file + " failed: " + e); }
+                if (!loaded) Debug.LogError("Replay: could not load " + turns[i].file + " (the replay goes on with the board as it is).");
                 if (SidesFrom(turns[i].file, false)) {
                     Loader(turns[i].file);
                     if (SidesFrom(turns[i].file, false)) Debug.LogError("Replay: the sides still do not come out as recorded after loading " + turns[i].file + " twice (see the warnings above).");
