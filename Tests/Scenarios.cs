@@ -1419,11 +1419,13 @@ public static partial class Scenarios {
                 return rider.trasnporter == apc && mob;
             }
             case "factionRoster": {
+                Func<List<Unit>, bool> Sorted = list => { for (int i = 1; i < list.Count; i++) if (list[i].cost < list[i - 1].cost) return false; return true; };
                 Building hq = Rig.At(-4, 0).building, fac = Rig.At(-2, 2).building;
                 Func<List<Unit>, string> names = list => string.Join(", ", list.ConvertAll(u => u.name.Replace("(Clone)", "").Trim()).ToArray());
                 List<Unit> baseHQ = hq.Purchasable(), baseFac = fac.Purchasable();
                 Unit grunt = baseHQ.Find(u => u.name.Replace("(Clone)", "").Trim() == "Grunt");
-                Unit dropped = baseHQ.Find(u => u != grunt);
+                // A unit the HQ offers and the ArmyBase does not (the base lists are by cost: not "the first that is not the Grunt").
+                Unit dropped = baseHQ.Find(u => u != grunt && !baseFac.Exists(x => x.name == u.name));
                 Unit version = PrefabLoader.Load("Grunt"); version.name = "Grunt - Testland";
                 Unit extra = PrefabLoader.Load("Tank"); extra.name = "Heavy Tank - Testland";
                 Faction f = ScriptableObject.CreateInstance<Faction>(); f.name = "Testland";
@@ -1435,7 +1437,8 @@ public static partial class Scenarios {
                 bool roster = grunt != null && dropped != null
                     && hqF.Contains(version) && !hqF.Contains(grunt) && !hqF.Contains(dropped) && !hqF.Contains(extra)
                     && facF.Contains(extra) && facF.Contains(version) && !facF.Exists(u => u.name.Replace("(Clone)", "").Trim() == "Grunt")
-                    && hqF.Count == baseHQ.Count - 1 && facF.Count == baseFac.Count + 1;
+                    && hqF.Count == baseHQ.Count - 1 && facF.Count == baseFac.Count + 1
+                    && Sorted(hqF) && Sorted(facF);
                 List<string> r = new List<string>();
                 r.Add("HQ base: " + names(baseHQ) + "; with the faction: " + names(hqF));
                 r.Add("ArmyBase base: " + names(baseFac) + "; with the faction: " + names(facF));
