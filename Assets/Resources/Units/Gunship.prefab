@@ -1322,6 +1322,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: weight
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: Evasion
       value: 3
       objectReference: {fileID: 0}
