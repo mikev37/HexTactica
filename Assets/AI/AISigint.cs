@@ -190,7 +190,6 @@ namespace HexTactica.AI {
                 }
             }
             // Screens (fogScreenBelowCost): a cheap unit does not fear what the fog may hide: finding it is its job.
-            if (unknownGround && profile.fogScreenBelowCost > 0 && u.cost > 0 && u.cost < profile.fogScreenBelowCost) unknownGround = false;
             if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && Concentrated) {
                 // The chance that one of the unplaced enemy is within reach of this tile (1 - e^-expected),
                 // firing its kind's average, times the share of the enemy we cannot place. At most one unit's fire: the

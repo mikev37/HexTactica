@@ -263,7 +263,6 @@ namespace HexTactica.AI {
             cost += AIScore.OutOfSupplyCost(attacker, at, map);
             cost += map.CohesionCost(attacker, at);
             cost -= map.FirstStrikeCredit(attacker, at);
-            cost -= map.SpaceDenial(attacker, at);
             return cost;
         }
 

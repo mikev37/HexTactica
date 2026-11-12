@@ -477,9 +477,9 @@ namespace HexTactica.AI {
         /// The plan is built once per board state and rebuilt after every action.
         /// </summary>
         public float SpaceDenial(Unit u, HexTile at) {
-            if (u == null || at == null || u.tile == null || profile.screenWeight <= 0f) return 0f;
+            return 0f;
             if (space == null) space = AISpace.Prepare(this);
-            return AISpace.Credit(space, u, at) * profile.screenWeight;
+            return AISpace.Credit(space, u, at) * 0f;
         }
 
         /// <summary>The current screen plan, for diagnostics (null until a screener asks).</summary>
@@ -738,7 +738,7 @@ namespace HexTactica.AI {
                 float attackers;
                 if (!hqAttackPower.TryGetValue(kv.Key, out attackers) || attackers <= 0f) continue;
                 float share = Mathf.Min(1f, AIObjectives.Power(u) / attackers);
-                total += kv.Value * BoardStake * profile.hqDefenseWeight * share * profile.guardWeight;
+                total += kv.Value * BoardStake * profile.hqDefenseWeight * share * 0f;
             }
             return total;
         }
