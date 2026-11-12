@@ -7938,7 +7938,10 @@ MonoBehaviour:
   sideTemplate: {fileID: 7933528716827446765, guid: b4101d47233778143906e3d2f312995c, type: 3}
   sides: {fileID: 1865021075}
   anyFaction: Any (chosen before the game)
+  colourMenu: {fileID: 1000000000000000006, guid: 5e8b2f7a91c34d06b7a4c3d1e9f60b28, type: 3}
   extraSideColors:
+  - {r: 0, g: 0.5294118, b: 1, a: 1}
+  - {r: 1, g: 0, b: 0, a: 1}
   - {r: 0.2, g: 0.75, b: 0.25, a: 1}
   - {r: 0.95, g: 0.85, b: 0.15, a: 1}
   - {r: 0.6, g: 0.3, b: 0.85, a: 1}
