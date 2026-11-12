@@ -62,6 +62,7 @@ namespace TMPro {
     }
 }
 namespace UnityEditor {
+    public class SceneAsset : UnityEngine.Object { }
     public static class EditorBuildSettings { public static EditorBuildSettingsScene[] scenes = new EditorBuildSettingsScene[0]; }
     public class EditorBuildSettingsScene { public string path; public bool enabled; public EditorBuildSettingsScene(string p, bool e) { path = p; enabled = e; } }
     public static partial class AssetDatabaseExtra { }

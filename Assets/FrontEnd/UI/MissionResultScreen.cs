@@ -53,7 +53,7 @@ public class MissionResultScreen : MonoBehaviour {
     void Awake() { TransportPanel.EnsureEventSystem(); }
 
     void Start() {
-        Mission m = MatchSetup.Mission;
+        MissionInfo m = MatchSetup.Mission;
         GameController gc = GameController.gc;
         GameRecord record = GameRecord.Read(HexTactica.Harness.GameLog.Folder);
         Player me = FogOfWar.Viewer;

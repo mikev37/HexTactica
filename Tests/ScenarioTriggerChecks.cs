@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -194,78 +195,119 @@ public static partial class Scenarios {
     // ------------------------------------------------------------------ the campaign (Assets/FrontEnd/Campaign)
 
     /// <summary>
-    /// The mission assets as they are on disk (Assets/Resources/Campaign/Missions/*.asset): their plain fields, and
-    /// their unlocks and blocks followed through the assets' GUIDs (their .meta files), as Unity links them.
+    /// The missions placed in a campaign scene (Assets/Scenes/&lt;scene&gt;.unity), read from the scene file as Unity
+    /// wrote it: every instance of the Mission Flag prefab, its name and its Mission's fields from the instance's
+    /// overrides (the prefab's own values otherwise: all empty), and its unlocks and blocks followed through the
+    /// scene's references to other flags' Missions. What the campaign screen would make of each (Mission.Info).
     /// </summary>
-    static List<Mission> MissionAssets() {
-        string dir = PrefabLoader.Root(Mission.Folder);
-        List<Mission> list = new List<Mission>();
-        if (!Directory.Exists(dir)) return list;
-        Dictionary<string, Mission> byGuid = new Dictionary<string, Mission>();
-        Dictionary<Mission, string> text = new Dictionary<Mission, string>();
-        string[] files = Directory.GetFiles(dir, "*.asset");
-        Array.Sort(files, StringComparer.Ordinal);
-        foreach (string f in files) {
-            string yaml = File.ReadAllText(f);
-            Mission m = ScriptableObject.CreateInstance<Mission>();
-            m.name = Path.GetFileNameWithoutExtension(f);
-            m.title = Yaml(yaml, "title").Trim('\'', '"');
-            m.scenario = Yaml(yaml, "scenario");
-            m.availableAtStart = Yaml(yaml, "availableAtStart") == "1";
-            int.TryParse(Yaml(yaml, "parTurns"), out m.parTurns);
-            int.TryParse(Yaml(yaml, "parKills"), out m.parKills);
-            int.TryParse(Yaml(yaml, "parLosses"), out m.parLosses);
-            System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(f + ".meta"), @"^guid: (\w+)", System.Text.RegularExpressions.RegexOptions.Multiline);
-            if (g.Success) byGuid[g.Groups[1].Value] = m;
-            text[m] = yaml;
-            list.Add(m);
+    static List<MissionInfo> SceneMissions(string scene, out Dictionary<string, Vector2> anchors) {
+        anchors = new Dictionary<string, Vector2>();
+        List<MissionInfo> list = new List<MissionInfo>();
+        string assets = PrefabLoader.Root("..");
+        string path = Path.Combine(Path.Combine(assets, "Scenes"), scene + ".unity");
+        string prefabMeta = Path.Combine(Path.Combine(Path.Combine(assets, "FrontEnd"), "Prefabs"), "Mission Flag.prefab.meta");
+        string missionMeta = Path.Combine(Path.Combine(Path.Combine(assets, "FrontEnd"), "Campaign"), "Mission.cs.meta");
+        if (!File.Exists(path) || !File.Exists(prefabMeta) || !File.Exists(missionMeta)) return list;
+        string prefabGuid = Regex.Match(File.ReadAllText(prefabMeta), @"^guid: (\w+)", RegexOptions.Multiline).Groups[1].Value;
+        string missionGuid = Regex.Match(File.ReadAllText(missionMeta), @"^guid: (\w+)", RegexOptions.Multiline).Groups[1].Value;
+        // The prefab's Mission component (its fileID), found by the script it runs.
+        string prefab = File.ReadAllText(prefabMeta.Substring(0, prefabMeta.Length - 5));
+        Match mc = Regex.Match(prefab, @"--- !u!114 &(\d+)\nMonoBehaviour:\n(?:  .*\n)*?  m_Script: \{fileID: 11500000, guid: " + missionGuid);
+        if (!mc.Success) return list;
+        string missionId = mc.Groups[1].Value;
+        string text = File.ReadAllText(path).Replace("\r\n", "\n");
+        // A reference to another flag's Mission is to a stripped MonoBehaviour standing for it: which instance.
+        Dictionary<string, string> strippedOf = new Dictionary<string, string>();
+        foreach (Match st in Regex.Matches(text, @"--- !u!114 &(\d+) stripped\nMonoBehaviour:\n  m_CorrespondingSourceObject: \{fileID: " + missionId + @", guid: " + prefabGuid + @", type: 3\}\n  m_PrefabInstance: \{fileID: (\d+)\}"))
+            strippedOf[st.Groups[1].Value] = st.Groups[2].Value;
+        Dictionary<string, MissionInfo> byInstance = new Dictionary<string, MissionInfo>();
+        Dictionary<MissionInfo, List<string>[]> refs = new Dictionary<MissionInfo, List<string>[]>();
+        foreach (Match inst in Regex.Matches(text, @"--- !u!1001 &(\d+)\nPrefabInstance:\n(?:  .*\n|    .*\n|      .*\n)*?  m_SourcePrefab: \{fileID: 100100000, guid: " + prefabGuid + @", type: 3\}")) {
+            Dictionary<string, string> value = new Dictionary<string, string>(), reference = new Dictionary<string, string>();
+            foreach (Match m in Regex.Matches(inst.Value, @"    - target: \{fileID: (\d+), guid: \w+, type: 3\}\n      propertyPath: (.*)\n      value: ?(.*)\n      objectReference: \{fileID: (\d+)(?:, guid: (\w+))?")) {
+                string key = (m.Groups[1].Value == missionId ? "" : m.Groups[1].Value + ":") + m.Groups[2].Value;
+                value[key] = Scalar(m.Groups[3].Value);
+                reference[key] = m.Groups[4].Value;
+            }
+            string name = "";
+            foreach (KeyValuePair<string, string> kv in value) if (kv.Key.EndsWith(":m_Name")) name = kv.Value;
+            Func<string, string> v = k => { string x; return value.TryGetValue(k, out x) ? x : ""; };
+            Func<string, int> n = k => { int x; int.TryParse(v(k), out x); return x; };
+            MissionInfo info = new MissionInfo {
+                key = MissionInfo.KeyOf(scene, name), campaignScene = scene, title = v("title"), scenario = v("scenario"),
+                briefing = v("briefing"), objectives = v("objectives"), availableAtStart = v("availableAtStart") == "1",
+                parTurns = n("parTurns"), parKills = n("parKills"), parLosses = n("parLosses"), factionName = reference.ContainsKey("faction") && reference["faction"] != "0" ? "(set)" : ""
+            };
+            List<string>[] links = { new List<string>(), new List<string>() };
+            string[] fields = { "unlocks", "blocks" };
+            for (int f = 0; f < 2; f++) for (int k = 0; k < n(fields[f] + ".Array.size"); k++) {
+                string r; links[f].Add(reference.TryGetValue(fields[f] + ".Array.data[" + k + "]", out r) ? r : "0");
+            }
+            refs[info] = links;
+            byInstance[inst.Groups[1].Value] = info;
+            float ax, ay;
+            foreach (KeyValuePair<string, string> kv in value) if (kv.Key.EndsWith(":m_AnchorMin.x")) { float.TryParse(kv.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ax); anchors[info.key] = new Vector2(ax, anchors.ContainsKey(info.key) ? anchors[info.key].y : 0f); }
+            foreach (KeyValuePair<string, string> kv in value) if (kv.Key.EndsWith(":m_AnchorMin.y")) { float.TryParse(kv.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ay); anchors[info.key] = new Vector2(anchors.ContainsKey(info.key) ? anchors[info.key].x : 0f, ay); }
+            list.Add(info);
         }
-        foreach (Mission m in list) {
-            m.unlocks = Linked(text[m], "unlocks", byGuid);
-            m.blocks = Linked(text[m], "blocks", byGuid);
+        foreach (MissionInfo info in list) {
+            List<string>[] links = refs[info];
+            List<string>[] into = { info.unlocks, info.blocks };
+            for (int f = 0; f < 2; f++) foreach (string r in links[f]) {
+                string instance; MissionInfo to;
+                // (a link to nothing, or to something not a flag of this scene, shows as "?" and fails the check)
+                into[f].Add(strippedOf.TryGetValue(r, out instance) && byInstance.TryGetValue(instance, out to) ? to.key : "?");
+            }
         }
+        list.Sort((a, b) => string.CompareOrdinal(a.key, b.key));
         return list;
     }
 
     static bool Near(Vector2 a, Vector2 b) { return Math.Abs(a.x - b.x) < 0.01f && Math.Abs(a.y - b.y) < 0.01f; }
 
-    static string Yaml(string yaml, string key) {
-        System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(yaml, @"^  " + key + @": ?(.*)$", System.Text.RegularExpressions.RegexOptions.Multiline);
-        return m.Success ? m.Groups[1].Value.Trim() : "";
-    }
-
-    /// <summary>The assets a list field links ("  key:" followed by "  - {fileID: ..., guid: ..., type: 2}" lines).</summary>
-    static List<Mission> Linked(string yaml, string key, Dictionary<string, Mission> byGuid) {
-        List<Mission> r = new List<Mission>();
-        System.Text.RegularExpressions.Match block = System.Text.RegularExpressions.Regex.Match(yaml, @"^  " + key + @":\n((?:  - \{.*\}\n?)*)", System.Text.RegularExpressions.RegexOptions.Multiline);
-        if (!block.Success) return r;
-        foreach (System.Text.RegularExpressions.Match g in System.Text.RegularExpressions.Regex.Matches(block.Groups[1].Value, @"guid: (\w+)")) {
-            Mission m;
-            r.Add(byGuid.TryGetValue(g.Groups[1].Value, out m) ? m : null);   // (a link to nothing shows as null, and fails the check)
+    /// <summary>A YAML scalar as Unity writes one in an override: plain, or double-quoted with escapes.</summary>
+    static string Scalar(string raw) {
+        raw = raw.Trim();
+        if (raw.Length >= 2 && raw[0] == '"' && raw[raw.Length - 1] == '"') {
+            string body = raw.Substring(1, raw.Length - 2);
+            System.Text.StringBuilder b = new System.Text.StringBuilder();
+            for (int i = 0; i < body.Length; i++) {
+                if (body[i] == '\\' && i + 1 < body.Length) { char c = body[++i]; b.Append(c == 'n' ? '\n' : c == 't' ? '\t' : c); }
+                else b.Append(body[i]);
+            }
+            return b.ToString();
         }
-        return r;
+        if (raw.Length >= 2 && raw[0] == '\'' && raw[raw.Length - 1] == '\'') return raw.Substring(1, raw.Length - 2).Replace("''", "'");
+        return raw;
     }
 
     /// <summary>
-    /// The campaign's rules on the real mission assets, with <paramref name="tally"/> (a won game of Tutorial 2) as
+    /// The campaign's rules on the real missions (the flags placed in the Campaign scene), with <paramref name="tally"/> (a won game of Tutorial 2) as
     /// the result: what is on the map at first, unlocking, stars against the pars, stars kept, a fork (a fixture: no
     /// real mission blocks another yet), and progress saved and read back.
     /// </summary>
     static bool CampaignCheck(MissionTally tally, out string detail) {
-        List<Mission> missions = MissionAssets();
-        Mission t1 = missions.Find(m => m.name == "Tutorial 1"), t2 = missions.Find(m => m.name == "Tutorial 2");
-        if (t1 == null || t2 == null) { detail = "the mission assets Tutorial 1 and Tutorial 2 were not found (" + missions.Count + " in " + PrefabLoader.Root(Mission.Folder) + ")"; return false; }
-        List<Mission> was = null;
+        Dictionary<string, Vector2> anchors;
+        List<MissionInfo> missions = SceneMissions("Campaign", out anchors);
+        MissionInfo t1 = missions.Find(m => m.Name == "Tutorial 1"), t2 = missions.Find(m => m.Name == "Tutorial 2");
+        if (t1 == null || t2 == null) { detail = "the flags Tutorial 1 and Tutorial 2 were not found in the Campaign scene (" + missions.Count + " missions read)"; return false; }
         string file = Path.Combine(Path.GetTempPath(), "hextactica-campaign-" + Guid.NewGuid().ToString("N") + ".dat");
         string fileWas = CampaignProgress.FilePath;
         try {
-            Mission.All = missions;
             CampaignProgress.FilePath = file;
             CampaignProgress.Load();
             string scenarios = PrefabLoader.Root("Campaign/Scenarios");
             bool files = File.Exists(Path.Combine(scenarios, t1.ScenarioName + ".dat")) && File.Exists(Path.Combine(scenarios, t2.ScenarioName + ".dat"))
                       && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t1.ScenarioName + ".dat")) && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t2.ScenarioName + ".dat"));
-            bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2 && t1.availableAtStart && !t2.availableAtStart;
+            bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2.key && t2.unlocks.Count == 0 && t1.availableAtStart && !t2.availableAtStart
+                       && t1.key == "Campaign/Tutorial 1" && t1.factionName != "" && t2.factionName != "" && t2.objectives.Contains("\nDestroy the lookout.") && t1.parTurns == 8 && t2.parTurns == 6;
+            // Each flag pinned to its spot on the picture (its anchors), apart from the other.
+            bool placed = anchors.ContainsKey(t1.key) && anchors.ContainsKey(t2.key) && !Near(anchors[t1.key], anchors[t2.key])
+                       && anchors[t1.key].x > 0f && anchors[t1.key].x < 1f && anchors[t2.key].y > 0f && anchors[t2.key].y < 1f;
+            // The mission as a saved game keeps it (MatchSetup.StampMission), read back whole.
+            MissionInfo back = MissionInfo.FromJson(new Defective.JSON.JSONObject(t2.ToJson().Print()));
+            bool stamped = back != null && back.key == t2.key && back.campaignScene == "Campaign" && back.objectives == t2.objectives && back.briefing == t2.briefing
+                        && back.parTurns == t2.parTurns && back.unlocks.Count == t2.unlocks.Count && back.availableAtStart == t2.availableAtStart;
             bool atFirst = CampaignProgress.Playable(t1) && !CampaignProgress.Visible(t2);
             // Tutorial 1 lost: attempted, nothing unlocked, no stars.
             CampaignProgress.Attempt(t1);
@@ -273,7 +315,7 @@ public static partial class Scenarios {
             bool lostNothing = lost.earned == MissionStars.None && lost.unlocked.Count == 0 && !CampaignProgress.Get(t1).completed && !CampaignProgress.Visible(t2);
             // Tutorial 1 won slowly, with a loss, its raider destroyed: one star (aggression), and Tutorial 2 appears.
             CampaignProgress.Outcome slow = CampaignProgress.Finish(t1, new MissionTally { recorded = true, won = true, turns = t1.parTurns + 1, kills = t1.parKills, losses = t1.parLosses + 1 });
-            bool unlocked = slow.firstWin && slow.unlocked.Count == 1 && slow.unlocked[0] == t2 && CampaignProgress.Playable(t2) && slow.earned == MissionStars.Aggression && slow.gained == MissionStars.Aggression
+            bool unlocked = slow.firstWin && slow.unlocked.Count == 1 && slow.unlocked[0] == t2.key && CampaignProgress.Playable(t2) && slow.earned == MissionStars.Aggression && slow.gained == MissionStars.Aggression
                          && CampaignProgress.Pending == slow && CampaignProgress.TakePending() == slow && CampaignProgress.Pending == null;
             // Won again within every par: the two new stars are gained, the old one kept, nothing unlocked twice.
             CampaignProgress.Outcome fast = CampaignProgress.Finish(t1, new MissionTally { recorded = true, won = true, turns = t1.parTurns, kills = t1.parKills, losses = t1.parLosses });
@@ -291,10 +333,9 @@ public static partial class Scenarios {
             if (tally.won && tally.losses <= t2.parLosses) expected |= MissionStars.Defense;
             bool rated = played.earned == expected && MissionRating.Count(played.earned) == 3 && CampaignProgress.Get(t2).completed;
             // A fork (fixture missions: the campaign has none yet): attempting one closes the other, for good unless it was already won.
-            Mission left = ScriptableObject.CreateInstance<Mission>(), right = ScriptableObject.CreateInstance<Mission>(), done = ScriptableObject.CreateInstance<Mission>();
-            left.name = "Fixture Left"; right.name = "Fixture Right"; done.name = "Fixture Done";
+            MissionInfo left = new MissionInfo { key = "Fixture/Left" }, right = new MissionInfo { key = "Fixture/Right" }, done = new MissionInfo { key = "Fixture/Done" };
             left.availableAtStart = right.availableAtStart = done.availableAtStart = true;
-            left.blocks.Add(right); left.blocks.Add(done);
+            left.blocks.Add(right.key); left.blocks.Add(done.key);
             CampaignProgress.Finish(done, new MissionTally { recorded = true, won = true });
             bool open = CampaignProgress.Playable(left) && CampaignProgress.Playable(right);
             CampaignProgress.Attempt(left);
@@ -316,14 +357,13 @@ public static partial class Scenarios {
             bool mapView = pinned && panRoom && aboutCursor && centres;
             CampaignProgress.Reset();
             bool reset = !CampaignProgress.Visible(t2) && !CampaignProgress.Get(t1).completed && CampaignProgress.Playable(t1);
-            detail = "mission files in the campaign folder, not among the scenarios " + files + "; Tutorial 1 unlocks Tutorial 2 (the assets' links) " + linked + "; only Tutorial 1 on the map at first " + atFirst
+            detail = "mission files in the campaign folder, not among the scenarios " + files + "; the flags in the Campaign scene, Tutorial 1 unlocking Tutorial 2 " + linked + ", each pinned to its spot " + placed + ", kept whole by a save " + stamped + "; only Tutorial 1 on the map at first " + atFirst
                    + "; lost: nothing " + lostNothing + "; won: one star, Tutorial 2 unlocked, handed to the campaign screen once " + unlocked + "; won again: stars added, kept " + kept + ", not lost by a worse win " + notLost
                    + "; this game against Tutorial 2's pars (" + t2.parTurns + " turns, " + t2.parKills + " killed, " + t2.parLosses + " lost): " + MissionRating.Count(played.earned) + " stars " + rated
                    + "; a fork closes the other mission, not one already won " + fork + "; saved and read back " + saved + "; reset " + reset
                    + "; map pan and zoom: pinned unzoomed " + pinned + ", room at 2x " + panRoom + ", zooms about the cursor " + aboutCursor + ", centres a mission " + centres;
-            return files && linked && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView;
+            return files && linked && placed && stamped && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView;
         } finally {
-            Mission.All = was;
             CampaignProgress.FilePath = fileWas;
             CampaignProgress.Pending = null;
             CampaignProgress.Load();
