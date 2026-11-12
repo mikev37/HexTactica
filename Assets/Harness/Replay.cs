@@ -321,7 +321,14 @@ namespace HexTactica.Harness {
                     if (u == null || u.Strength <= 0) return "no unit at (" + x + "," + y + "), the recording has " + kind;
                     if (GameLog.Lines.UnitName(u) != kind) return GameLog.Lines.UnitName(u) + " at (" + x + "," + y + "), the recording has " + kind;
                     if (u.owner == null || u.owner.id != uj.GetField("owner_id").intValue) return "the unit at (" + x + "," + y + ") is another side's";
-                    if (u.Strength != uj.GetField("Strength").intValue) return GameLog.Lines.Who(u) + " at (" + x + "," + y + ") has strength " + u.Strength + ", the recording " + uj.GetField("Strength").intValue;
+                    // Strength gained or lost at the turn's start (supply, repair) is worked out again by the game here and
+                    // can come out otherwise (it depends on what the log does not hold): the recording's is taken.
+                    int filedStrength = uj.GetField("Strength").intValue;
+                    if (u.Strength != filedStrength) {
+                        Debug.Log("Replay: " + GameLog.Lines.Who(u) + " at (" + x + "," + y + ") came out at strength " + u.Strength + " after the turn ended; the recording has " + filedStrength + ". Set to the recording's.");
+                        u.Strength = filedStrength;
+                        u.StrengthDisplay = filedStrength;
+                    }
                     matched.Add(new KeyValuePair<Unit, Defective.JSON.JSONObject>(u, uj));
                 }
             if (onBoard != inFile) return onBoard + " units on the board, the recording has " + inFile;
@@ -472,14 +479,19 @@ namespace HexTactica.Harness {
                 }
                 Unit defender = UnitAt(at.targetSide, at.targetUnit, at.atX, at.atY);
                 if (defender == null) {
-                    // The target walked into this (it ran into a unit it had not seen, which fired): its move is
-                    // logged after. Play that move first.
+                    // The target walked into this (it ran into a unit it had not seen, which fired): an older log writes
+                    // its move after, ending where it retreated to. It is brought to where it was stopped, first.
+                    bool stopped = false;
+                    for (int j = e + 1; j < t.events.Count && j <= e + 4; j++)
+                        if (t.events[j].Contains(" ran into ") && t.events[j].EndsWith("stopped at (" + at.atX + "," + at.atY + ")")) stopped = true;
                     for (int j = t.actions.IndexOf(e) + 1; j < t.actions.Count; j++) {
                         int k = t.actions[j];
                         if (played.Contains(k)) continue;
                         if (GameLog.Lines.ReadMoved(t.events[k], sides, out side, out unit, out x1, out y1, out x2, out y2)
-                            && side == at.targetSide && unit == at.targetUnit && x2 == at.atX && y2 == at.atY) {
-                            MoveOrCargo(t, k, side, unit, x1, y1, Tile(x2, y2), false);
+                            && side == at.targetSide && unit == at.targetUnit && ((x2 == at.atX && y2 == at.atY) || stopped)) {
+                            Unit walker = UnitAt(side, unit, x1, y1);
+                            HexTile stop = Tile(at.atX, at.atY);
+                            if (walker != null && stop != null && stop.occupier == null) walker.TeleportTo(stop, walker.tile.Distance(stop));
                             played.Add(k);
                             break;
                         }
@@ -549,6 +561,9 @@ namespace HexTactica.Harness {
             HexTile from = Tile(x1, y1);
             Unit u = from != null ? from.occupier : null;
             Player owner = Side(side);
+            // Already there (driven back there by an attack this move ended with): nothing to play.
+            Unit there = to.occupier;
+            if (there != null && there.owner == owner && GameLog.Lines.UnitName(there) == kind && (u == null || u.owner != owner || GameLog.Lines.UnitName(u) != kind)) return;
             if (u != null && u.owner == owner && u.Strength > 0 && GameLog.Lines.UnitName(u) == kind) {
                 Unit carrier = to.occupier;
                 if (carrier != null && carrier != u && carrier.owner == owner && Transporting.CanCarry(carrier, u)) { Board(u, carrier); return; }
