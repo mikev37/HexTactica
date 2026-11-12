@@ -30,9 +30,12 @@ methods through their On Click lists. Lists such as files, units, sides and pale
 
 | Scene | Component | What it does |
 |---|---|---|
-| MainMenu | `MainMenu` | **Load Scenario** has two tabs. Scenarios: sets one up on the pre-game screen. Saved games: continues one. **Map Editor** edits a scenario or starts a new map. **Unit Explorer** (`UnitExplorer`, `UnitPreview`) and **Options** (`OptionsPanel`) open panels. **Exit** quits. |
+| MainMenu | `MainMenu` | **Campaign** opens the campaign screen. **Load Scenario** has two tabs. Scenarios: sets one up on the pre-game screen. Saved games: continues one. **Map Editor** edits a scenario or starts a new map. **Unit Explorer** (`UnitExplorer`, `UnitPreview`) and **Options** (`OptionsPanel`) open panels. **Exit** quits. |
 | PreGame (over SampleScene) | `PreGameMenu`, `PlayerSetupRow` | Shows the scenario's board. Each side gets **who plays it** (Human, AI with the default profile, or AI with a profile from `FrontEndSettings.aiProfiles`) and a **faction** (fixed if the map sets it). Also **Fog of war**, **Build units** (purchases) and **Faction special units**. **Start** reloads the scenario with these choices and the game plays. |
 | PostGame (over the game, when it ends) | `PostGameScreen` | Shows who won and **What happened**, the findings from `GameInsights`. It also has a **Units** table for each side. **View board**, **Play again** and **Main menu** close it. |
+| Campaign | `CampaignScreen`, `MissionFlag`, `StarPip` | The campaign map with a flag per visible mission. Picking one plays its intro lines, then shows its briefing, pars and **Start**. See *Campaign* below. |
+| MissionBrief (over SampleScene) | `MissionBriefing` | A campaign mission's pre-game screen: introduction, objectives and pars. No choices. **Start** / **Back**. |
+| MissionResult (over the game, when a mission ends) | `MissionResultScreen` | Won or lost, the scenario's words, each par with the result and its star (gained one by one). **Return to campaign** / **View board**. |
 | InGameMenu (Esc, over the game) | `InGameMenu` | **Resume**, **Save** (named, into the saves folder), **Load** a saved game, **Exit to main menu**. The game is held while it is open. |
 | MapEditor (over SampleScene) | `MapEditorPanel`, `PaletteButton`, `MapPlayerRow` | Tools: **Look**, **Terrain** (click or drag), **Units** (shown by base units, one faction's, or all), **Buildings**. Placement uses the chosen side, or neutral for buildings; clicking a unit or building again removes it. **Sides**: add or remove sides, rename them, change their colour, and fix a side's faction or leave it "Any". Also sets the name, width (**Resize**), fog and purchases. **New**, **Load**, **Save**, **Play** (pre-game on it) and **Exit**. |
 
@@ -52,6 +55,79 @@ building registry and camera rig now install only in a scene with a GameControll
   game, however many sittings it took.
 - The map editor saves to the player's folder. With `editorSavesInPlace` (off by default), it saves back over the
   file it loaded, in the editor only, and keeps that file's `test` block.
+
+## Campaign
+
+- **Missions** are `Mission` assets in `Assets/Resources/Campaign/Missions` (*Create ▸ HexTactica ▸ Campaign Mission*).
+  Each names a scenario file in `Assets/Resources/Campaign/Scenarios` (`FrontEndSettings.campaignFolders`), so
+  missions never appear under Load Scenario. The map editor's Load lists them too, tagged *campaign*.
+- **Fields:** title, scenario, faction (the flag's colour: `Faction.flagColor`; the factions now carry their campaign
+  names and colours: Blue Sun Federation, Red Wolf Empire, Green World Union, Golden Eagle Coalition, Rebels brown),
+  map position (0–1 over the map image), *Available At Start*, intro lines, briefing, objectives, outro lines (won)
+  and lost lines, *Unlocks* (appear on a win), *Blocks* (closed for good on attempting; one already won stays won),
+  and three pars.
+- **Stars** (only for a win): **Speed** — won within *Par Turns* of the player's turns (0: no speed star);
+  **Aggression** — at least *Par Kills* enemy units destroyed; **Defense** — at most *Par Losses* own units lost.
+  Read from the game log (`GameRecord`), as the post-game report is, so they hold across saves. A game that was not
+  recorded counts as won but earns no stars. Stars once earned are kept (`CampaignProgress`).
+- **Progress** is `<persistentDataPath>/campaign.dat`. *HexTactica ▸ Campaign ▸ Reset Campaign Progress* clears it
+  (asks first); *Check Missions* lists missing scenario files and missions nothing unlocks.
+- **Flow:** flag → intro lines (once per run) → briefing → Start → MissionBrief → Start (counts as attempted, closes
+  what it blocks) → game → MissionResult (stars gained one by one) → Return → Campaign: the flag gains its new stars,
+  the view zooms onto each mission just unlocked as its flag appears, then the outro lines play.
+- A save made during a mission remembers the mission (`"mission"` in the file), so loading it goes on as that mission.
+- **The map picture** is a placeholder colour: give the Campaign scene's *Map* object's Image your picture (and
+  delete the *Placeholder Note*). Flag, star, tick and cross art are white placeholders in `Sprites/UI/Widgets`.
+- The Campaign, MissionBrief and MissionResult scenes and the *Mission Flag* prefab are made by the front end's
+  first-layout tool when missing (on opening the project, or *HexTactica ▸ Front End ▸ Create Missing Scenes*).
+  *HexTactica ▸ Front End ▸ Update Scenes* adds the **Campaign** button to an existing main menu (a copy of its
+  Load Scenario button, placed before it). Nothing that already exists is changed.
+
+## Replay
+
+**Main menu ▸ Replay** lists the recorded games (the game log folders in `GameLog.DefaultRoot`) and opens the game
+scene on one, with the **Replay** scene's controls (`ReplayControls`) over it. Nothing but the game log is read:
+each turn's board comes from its `turn-NNN-Side.dat`, and each action from that turn's lines in game.log, read by
+`GameLog.Lines` (which wrote them) and played by `Harness/Replay.cs`.
+
+- **Next action** gives the turn's next logged order to the game as a player or the AI would. A move walks the
+  path the game finds (`Unit.MoveAlong`). An attack is `Unit.OrderAttack`, after which each unit's strength is held
+  to the log's (a warning in the console if the game worked it out differently). Boarding is `Unit.WalkAndBoard`.
+  After the turn's last action it loads the next turn's board.
+- **Next turn** and **Previous turn** load that turn's board.
+- **Play** orders the next action `FrontEndSettings.replayPlayPause` (0.1 s) after the last one's animation has
+  finished.
+- **Fast forward** orders an action every `replayFastInterval` (0.2 s) without waiting for the last to finish, and
+  multiplies every unit's move speed on screen by `replayFastMoveSpeed` (3). A turn still ends only once the board
+  is still.
+- **Whose eyes** cycles through each side's fog and everything.
+
+Three log lines changed for this. A move is now written and read in `GameLog.Lines` (`Moved`). An attack that
+drives the defender back records where (`retreats to (x,y)`). A purchase records where the unit was put
+(`placed (x,y)`). Getting into and out of a transport is logged too (`Blue Grunt (1,2) boards Blue APC (2,2)`, `Blue Grunt gets
+off Blue APC (2,2) onto (3,2)`; `Transporting.Boarded`, `Unloaded`), with the transport's own move written first.
+Recordings made before these lines existed replay without them, and catch up when the next turn's board loads.
+
+Going from one turn to the next loads nothing: the turn is ended as the game ends it (`GameController.EndTurn`:
+captures, upkeep, the next side's start) and every unit stays where it is. The board is then compared with the
+recording's board for that turn (`Replay.Differs`), and only a board that differs is loaded, with the first
+difference in the console. **Next turn** and **Previous turn** always load.
+
+Each turn's board (`turn-NNN-Side.dat`, written by `GameLog.Snapshot`) now holds the sides: name, colour, faction
+and money. Recordings made before this have no sides in their boards; for those the replay takes each side's name
+and faction from the log's `side:` lines, and the colours stay the scene's.
+
+The sides are read from the log's own `side:` lines (name and id), not from the board. A side the recording gives
+no faction has none (`ScenarioLoader.SidesAsFiled`; the same for a saved game), where a scenario opened in the scene
+keeps the scene's. Nothing is recorded while a recording is watched, and the scene's own board is no longer recorded
+when it opens under a menu (pre-game, map editor, replay).
+
+## Resigning, and options in game
+
+The in-game menu has **Resign**: `GameController.Resign` takes the human side out (logged as `Blue resigns`), and
+with one side left the game ends on the post-game screen, headed "Defeat." It also has **Options**, which shows
+the same options panel as the main menu. That panel is the `Options Panel` prefab in `Assets/FrontEnd/Prefabs`,
+made from your main menu's panel as it is by **Update Scenes**.
 
 ## Options
 

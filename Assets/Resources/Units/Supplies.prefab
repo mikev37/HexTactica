@@ -56,7 +56,7 @@ MonoBehaviour:
   lower: {fileID: 0}
   weaponImpact: {fileID: 3652074506526222895, guid: 237dda73323d86848bef36528bce2bd2, type: 3}
   deathExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
-  orderSound: {fileID: 0}
+  orderSound: {fileID: 8300000, guid: 7cb37c585bf948b428971332a2d3e41d, type: 3}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 8300000, guid: 081f115199875ba41b437c67555b24de, type: 3}
   fireSound: {fileID: 0}
@@ -66,7 +66,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 6500
-  description: 
+  description: Logistics win wars. Supply hubs spread the supplies that originate at your HQ, as long as they are connected to the supply. If transported, they can be connected by the range of the transport.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -90,6 +90,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 1
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 0
   moveRange: 2
@@ -556,6 +557,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &5749234458367255950
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -614,6 +616,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &4897724835761791257 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8670395295771646539, guid: c7970adddc23d154b9de98dbd7707eb6, type: 3}
@@ -647,6 +650,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &5228212078390971938 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8297054878844974448, guid: c7970adddc23d154b9de98dbd7707eb6, type: 3}
@@ -680,6 +684,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &6638499717085216986 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7461312356777868168, guid: c7970adddc23d154b9de98dbd7707eb6, type: 3}
@@ -713,6 +718,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &6902516905475731306 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7233329457851601976, guid: c7970adddc23d154b9de98dbd7707eb6, type: 3}
@@ -734,6 +740,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2290937204584652243
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -767,6 +774,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &6256121095694405187
 MonoBehaviour:
   m_ObjectHideFlags: 0

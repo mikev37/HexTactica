@@ -341,7 +341,7 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", "Human", 4, check, question);
             test["rules"] = check.StartsWith("attrition") ? "attrition" : "standard";
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
@@ -393,7 +393,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, 0, 0);
-            Dictionary<string, string> test = Test("rule-supply-fob-refresh", "rules", "Human", 4, "supplyFob", "Supply around a forward base, and the board kept up to date. HQ at -13, FOB at 0 with a store. Nothing linking them: the FOB is cut off and gives from its store (the ground around it is supplied), and supply units standing there, or aboard a truck there, are cut off (a supply unit links only to supply that comes from the HQ). After each kind of move the supply shown on the board is the network as it is: a truck carrying supply units driven by the player (its supply moves with it), a supply unit walking, an enemy blocking a corridor killed; and a supply unit's cut-off flag (the cut-off icon) follows the network, not the start of the turn. Also reports whether an enemy Blue does not see, under fog, cuts Blue's supply.");
+            Dictionary<string, string> test = Test("rule-supply-fob-refresh", "rules", "Human", 4, "supplyFob", "Supply around a forward base, and the board kept up to date. HQ at -13, FOB at 0 with a store. Nothing linking them: the FOB is cut off and gives from its store (the ground around it is supplied), and supply units standing there, or aboard a truck there, relay its supply on (they link to it as to the HQ's). After each kind of move the supply shown on the board is the network as it is: a truck carrying supply units driven by the player (its supply moves with it), a supply unit walking, an enemy blocking a corridor killed; and a supply unit's cut-off flag (the cut-off icon) follows the network, not the start of the turn. Also reports whether an enemy Blue does not see, under fog, cuts Blue's supply.");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "rule-supply-fob-refresh.dat"), test, ai, other, ai);
             n++;
@@ -423,7 +423,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, -4, 0);
-            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is.");
+            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is. An enemy's supply is shown as it is on tiles Blue sees: a tile a Blue recon sees shows in Red's supply, though the Red supply unit giving it is in the fog.");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "fog-rule-supply-shown.dat"), test, ai, other, ai);
             n++;
@@ -470,7 +470,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
             Put("Grunt", other, 5, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", "Human", 4, "buyInfantry", question);
             test["purchases"] = "on";
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
@@ -562,7 +562,7 @@ public static partial class Scenarios {
         make("rule-attacks-locomotion", "attacksLocomotion", (a, o) => { Put("Artillery", a, 0, 0); Put("Fighter", o, 2, 0); Put("Grunt", o, 2, 1); },
              "Blue's artillery with jets unticked in its locomotion checklist (Unit.attacksLocomotion, read from the prefab): a fighter in range cannot be attacked (Unit.CanAttack false, no damage, not a valid target), a grunt in range can (boots ticked). With boots unticked too, the grunt cannot be attacked either.");
         make("ui-fuel-warning-tiles", "fuelWarning", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 0); f.fuel = 10; Put("Grunt", o, 5, 0); },
-             "A fighter at (0,0) with 10 fuel (1 a tile, 3 a turn in the air), Blue's airport at (-3,2). A move tile it could not get back to a building that refuels it from before running dry next turn is marked with the move warning (Unit.WouldDitchFrom): (3,0) is — 3 tiles flown and a turn's burn leave 4, and the airfield is further than that — (-2,1) is not, nor is the airport itself. With 3 fuel every tile is, but the airport.");
+             "A fighter at (0,0) with 10 fuel (1 a tile, 3 a turn in the air), Blue's airport at (-3,2). A move tile it could not get back to a building that refuels it from before running dry next turn is marked with the move warning (Unit.WouldDitchFrom): (3,0) is — 3 tiles flown and a turn's burn leave 4, and the airfield is further than that — (-2,1) is not, nor is the airport itself. With 3 fuel every tile is, but the airport. A stocked Blue carrier two tiles past (3,0) is somewhere to land too: (3,0) is no longer marked; with the carrier out of supplies it is again.");
         make("ai-regroup-press-with-reserves", "aiRegroupPress", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
              "The hit-the-supply-unit board: Blue's tank beside the enemy supply unit that keeps four grunts going, with regrouping on. Blue has 100,000 gold and an HQ that builds: what it could replace makes its front aggressive (AIStrategic.StrategicNeed), and the tank hits the supply unit.");
         make("ai-regroup-hold-off-without-reserves", "aiRegroupHold", (a, o) => { Put("Tank", a, 0, 0); Put("Supplies", o, 1, 0); Put("Grunt", o, 0, 1); for (int x = 2; x <= 4; x++) Put("Grunt", o, x, 0); },
@@ -583,7 +583,7 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", "Human", 1, check, question);
             test["rules"] = "standard";
             if (purchases != null) test["purchases"] = purchases;
@@ -596,13 +596,15 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "rules", opponent, opponent == "Full" ? 12 : 4, check, question);
             test["rules"] = "attrition";
             test["fog"] = "on";
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
+        makeFog("fog-rule-unit-detector", "fogUnitDetect", (a, o) => { Put("Grunt", a, -4, 0); Put("Recon", o, 1, 0); },
+             "A unit's detectRange works as a Radar's: a stealthy Red recon (stealth 3) five tiles from a Blue grunt (vision 2) is unseen; with the grunt's detectRange 5 it is seen, and six tiles off it is not. Each time it goes from unseen to seen it is announced once (FogOfWar.StealthSpotted, the cue for the detection sound), not again while it stays seen.", "Human");
         makeFog("fog-rule-int-ops", "fogIntOps", (a, o) => {
                  Rig.PlaceBuilding("Int. Ops", a, -4, 0); Put("Grunt", a, -7, 3);
                  Rig.At(-3, 0).terrain = T("Mountains");
@@ -623,6 +625,10 @@ public static partial class Scenarios {
                  foreach (int[] w in new[] { new[] { 4, 2 }, new[] { 5, 2 }, new[] { 4, 3 }, new[] { 5, 1 } }) Rig.At(w[0], w[1]).terrain = T("Water");
                  Put("Gunboat", a, 4, 2); Put("Grunt", o, 2, 4); Rig.PlaceBuilding("City", a, -3, 3); },
              "High ground and kinds of unit: a land unit sees one tile further from hills and two from mountains (an aircraft gets nothing from them). A stealthy unit is seen only by observers of its own kind (land — buildings count as land — air, sea): a stealth jet next to a grunt or over our city goes unseen, a fighter two tiles off sees it; a stealthy grunt next to a gunboat goes unseen, a grunt two tiles off sees it, and on our city it is seen.", "Human");
+        makeFog("rule-combat-scars-target", "combatScars", (a, o) => { Put("Tank", a, -2, 0); Put("Grunt", o, -1, 0); Put("Grunt", a, -2, 3); Put("Grunt", o, 0, 3); },
+             "Combat damages the ground fought over, the target's tile, never the tile fired from: a Blue tank attacks a Red grunt beside it (the grunt answers); a Blue grunt walks into a hidden Red grunt (the ambusher fires first). The tile of the unit fired on takes damage: the Red grunt's in the attack, the walker's in the ambush; never the tile of the one that fired, and an answer (retaliation) damages nothing.", "Human");
+        makeFog("fog-rule-bump-artillery", "fogBumpArt", (a, o) => { Put("Artillery", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, -2, 3); Put("Artillery", o, 0, 3); },
+             "Artillery (no close-range fire, never answers) running into a hidden grunt: the grunt fires on it, and the artillery plays no shot back.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
         makeFog("fog-view-after-load", "fogViewLoad", (a, o) => { Put("Grunt", o, -3, 0); Put("Grunt", a, 3, 0); },
@@ -710,11 +716,12 @@ public static partial class Scenarios {
         make("attrition-rule-supply-boats", "attritionBoats", (a, o) => {
                  water(-2, 1, -7, 7);
                  Rig.PlaceBuilding("NavalYard", a, -3, 0);
-                 Put("SupplyBoat", a, -1, 0); Put("SupplyBoat", a, 1, 0); Put("Grunt", a, 3, 0); Put("Grunt", o, 4, 3); },
-             "A strait four tiles wide: the HQ's supply stops at the water. Two supply boats link from beside the naval yard (in supply) to each other, and the far one supplies the island it borders. With the far boat moved out to sea, the island grunt is not supplied.");
+                 foreach (int x in new[] { -1, 1 }) { Unit h = Put("Hauler", a, x, 0); Unit su = Put("Supplies", a, -5, x + 2); Aboard(h, su); }
+                 Put("Grunt", a, 2, 0); Put("Grunt", o, 4, 3); },
+             "A strait four tiles wide: the HQ's supply stops at the water. Two haulers, each with a supply unit aboard, link from beside the naval yard (in supply) to each other, and the far one supplies the island it borders. With the far hauler moved out to sea, the island grunt is not supplied.");
         make("attrition-rule-ship-mends", "shipMends", (a, o) => { water(-2, 2, -7, 7); Unit g = Put("Gunboat", a, 0, 0); g.Strength = 3; g.supplies = 5; Unit dry = Put("Gunboat", a, 0, 4); dry.Strength = 3; dry.supplies = 0; Put("Grunt", o, 5, 0); },
              "Ships mend themselves at sea while they have supplies: a Gunboat at strength 3 with 5 supplies is at 4 (4 supplies) after a turn, 5 after two; one with no supplies left loses a strength instead.");
-        make("attrition-rule-supply-ship-tends", "shipTender", (a, o) => { water(-2, 2, -7, 7); Unit sb = Put("SupplyBoat", a, 0, 0); sb.supplies = 5; Unit g = Put("Gunboat", a, 1, 0); g.fuel = 10; g.supplies = 1; Unit far = Put("Gunboat", a, 0, 5); far.fuel = 10; Unit sb2 = Put("SupplyBoat", a, -1, 0); sb2.fuel = 10; Put("Grunt", o, 5, 0); },
+        make("attrition-rule-supply-ship-tends", "shipTender", (a, o) => { water(-2, 2, -7, 7); Unit sb = Put("Hauler", a, 0, 0); sb.supplies = 5; Unit g = Put("Gunboat", a, 1, 0); g.fuel = 10; g.supplies = 1; Unit far = Put("Gunboat", a, 0, 5); far.fuel = 10; Unit sb2 = Put("Hauler", a, -1, 0); sb2.fuel = 10; Put("Grunt", o, 5, 0); },
              "A supply ship refuels and restocks the ships beside it at the start of the turn, as an air tanker does aircraft: the Gunboat beside it (fuel 10, 1 supply) is full after a turn; one away from it is not; a supply ship beside it is not tended by it (a tender is never tended by another).");
         make("attrition-rule-ship-carried-supply", "shipCarriedSupply", (a, o) => {
                  water(-4, 5, -7, 7);
@@ -733,7 +740,7 @@ public static partial class Scenarios {
                  water(-4, 5, -7, 7);
                  for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
                  Put("Hauler", a, -1, 0); Put("APC", a, -6, 1); Put("Supplies", a, -6, 2); Put("Grunt", a, -6, 3);
-                 Put("SupplyBoat", a, 2, 0); Put("Gunboat", a, 0, 0);
+                 Put("Gunboat", a, 0, 0);
                  Put("Grunt", o, 7, -6); },
              "Supply at sea, and what it gives: a hauler within a move of Blue's shore, beside a strip of island, carrying an APC with a supply unit inside it and a weakened grunt. (1) The supply two transports deep links and supplies the island, as supply aboard the hauler itself would (ship rules). (2) The grunt aboard, the hauler having supplies, is resupplied at the start of Blue's turn as on supplied ground: healed a strength, rearmed, refuelled. (3) The hauler itself only mends from its own supplies (+1): the water its own supply covers is not supplied ground for it. (4) When the hauler sails away, the water and the island it supplied are no longer supplied.");
         make("attrition-rule-ship-line-on-water", "shipLineOnWater", (a, o) => {
@@ -791,9 +798,9 @@ public static partial class Scenarios {
         make("ai-ship-refit", "shipRefit", (a, o) => {
                  for (int x = -1; x <= 5; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
-                 Put("Gunboat", a, 3, -2); Put("Gunboat", a, 4, 3); Put("SupplyBoat", a, 1, 4);
+                 Put("Gunboat", a, 3, -2); Put("Gunboat", a, 4, 3);
                  Put("Grunt", o, 6, -5); },
-             "Ships go back for what they run out of: a gunboat out of ammunition five tiles from Blue's naval yard heads for the yard (only a yard rearms) and is rearmed there; a gunboat with one turn of supplies left, far from the yard, goes beside Blue's supply boat instead, and is restocked there at the start of its next turn.");
+             "Ships go back for what they run out of: a gunboat out of ammunition five tiles from Blue's naval yard heads for the yard (only a yard rearms) and is rearmed there; a gunboat with one turn of supplies left, far from the yard, goes back to it too (nothing restocks ships at sea), and is restocked there without losing strength.");
         make("rule-artillery-after-ride", "artilleryRide", (a, o) => {
                  water(-3, -1, -7, 7);
                  Put("Artillery", a, -4, 0); Put("Grunt", a, -4, 1); Put("Hauler", a, -3, 0); Put("Grunt", o, 3, 0); },
@@ -1226,8 +1233,19 @@ public static partial class Scenarios {
                 bool far = f.WouldDitchFrom(Rig.At(3, 0)), near = f.WouldDitchFrom(Rig.At(-2, 1)), port = f.WouldDitchFrom(Rig.At(-3, 2));
                 f.fuel = 3;
                 bool nearLow = f.WouldDitchFrom(Rig.At(-2, 1)), portLow = f.WouldDitchFrom(Rig.At(-3, 2));
-                detail = "10 fuel: (3,0) " + far + ", (-2,1) " + near + ", airport " + port + "; 3 fuel: (-2,1) " + nearLow + ", airport " + portLow;
-                return far && !near && !port && nearLow && !portLow;
+                // A stocked carrier of ours two tiles past (3,0): a base too, so (3,0) is safe; out of supplies it is not one.
+                f.fuel = 10;
+                HexTile sea = null;
+                foreach (HexTile t in Rig.hg.tiles) if (t.occupier == null && t.x > 3 && t.Distance(Rig.At(3, 0)) == 2 && (sea == null || CombatMath.Precedes(t, sea))) sea = t;
+                sea.terrain = T("Water");
+                Unit carrier = Put("Carrier", a, sea.x, sea.y);
+                carrier.supplies = Mathf.Max(1, carrier.suppliesMax);
+                bool farCarrier = f.WouldDitchFrom(Rig.At(3, 0));
+                carrier.supplies = 0;
+                bool farEmptyCarrier = f.WouldDitchFrom(Rig.At(3, 0));
+                detail = "10 fuel: (3,0) " + far + ", (-2,1) " + near + ", airport " + port + "; 3 fuel: (-2,1) " + nearLow + ", airport " + portLow
+                       + "; stocked carrier at " + Pos(sea) + ", 2 past it: (3,0) " + farCarrier + "; that carrier out of supplies: (3,0) " + farEmptyCarrier;
+                return far && !near && !port && nearLow && !portLow && !farCarrier && farEmptyCarrier;
             }
             case "aiRegroupPress":
             case "aiRegroupHold": {
@@ -1598,6 +1616,12 @@ public static partial class Scenarios {
                 fob.supplies = 6;
                 SupplyNetwork.Result s0 = SupplyNetwork.Solve(a, false);
                 r.Add("1. HQ at -13, FOB at 0 (range " + fob.supplyRange + ", store 6), no supply units. Row y=0 depth: " + row(s0) + "; FOB " + (s0.connectedBuildings.Contains(fob) ? "linked" : s0.strandedBuildings.Contains(fob) ? "cut off, giving from its store" : "?"));
+                // A supply unit in the cut-off FOB's ground relays its store on, past the FOB's own reach (to 8).
+                Unit relayU = Put("Supplies", a, 7, 0);
+                SupplyNetwork.Result s0b = SupplyNetwork.Solve(a, false);
+                bool relays = s0b.connectedHubs.Contains(relayU.Hub) && s0b.IsSupplied(Rig.At(10, 0)) && !s0.IsSupplied(Rig.At(10, 0));
+                r.Add("1b. Supplies at 7 (FOB cut off): " + st(relayU.Hub, s0b) + "; (10,0) supplied " + s0b.IsSupplied(Rig.At(10, 0)) + "; row " + row(s0b));
+                die.Invoke(relayU, null);
                 // Supply units on foot between them.
                 Unit h1 = Put("Supplies", a, -6, 0);
                 SupplyNetwork.Result s1 = SupplyNetwork.Solve(a, false);
@@ -1650,10 +1674,10 @@ public static partial class Scenarios {
                 r.Add("9. Fog on, a Red grunt back at -3,0, seen by Blue " + seen + ": FOB " + (s5.connectedBuildings.Contains(fob) ? "linked" : "cut off") + "; row " + row(s5));
                 gc.fogOfWar = false; FogOfWar.Reset();
                 detail = string.Join(" | ", r.ToArray());
-                bool fobRules = s0.strandedBuildings.Contains(fob) && s0.IsSupplied(Rig.At(5, 0)) && !s1.connectedHubs.Contains(h1.Hub) && !s2.connectedHubs.Contains(h2.Hub)
-                                && s3.strandedHubs.Contains(cargo.Hub) && truckTileSupplied;
+                bool fobRules = s0.strandedBuildings.Contains(fob) && s0.IsSupplied(Rig.At(5, 0)) && s1.connectedHubs.Contains(h1.Hub) && s2.connectedHubs.Contains(h2.Hub)
+                                && s3.connectedHubs.Contains(cargo.Hub) && truckTileSupplied;
                 bool upToDate = st5 == "board up to date" && st6a == "board up to date" && staleNow == "board up to date" && st8 == "board up to date";
-                return fobRules && upToDate && before6 == "linked" && s7.connectedHubs.Contains(cargo2.Hub) && cargo2.Hub.connected;
+                return fobRules && relays && upToDate && before6 == "linked" && s7.connectedHubs.Contains(cargo2.Hub) && cargo2.Hub.connected;
             }
             case "fobPrefersHQ": {
                 // HQ at -13 (its supply reaches -10 on grassland). FOB at -4, its own range covering -11..3, cut off.
@@ -1758,6 +1782,15 @@ public static partial class Scenarios {
                 SupplyNetwork.Solve(a, false);
                 bool seenNow = FogOfWar.Sees(a, wall[3]), shownCut = !g.tile.isSuppliedShown(a);
                 r.Add("a Blue recon beside it sees the wall " + seenNow + ": shown cut off " + shownCut);
+                // Red's supply: a Red supply unit at (10,0) linked to Red's HQ, out of Blue's sight, supplies (7,0), which a
+                // Blue recon at (5,0) sees: it shows in Red's supply.
+                Unit rs = Put("Supplies", o, 10, 0); Unit rec2 = Put("Recon", a, 5, 0); rec2.visionRange = 2;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                SupplyNetwork.Solve(o, false);
+                HexTile wallTile = Rig.At(7, 0);
+                bool rsHidden = !FogOfWar.Sees(a, rs), wallSeen = FogOfWar.TileVisible(a, wallTile);
+                bool redTrue = wallTile.isSupplied(o), redShown = wallTile.isSuppliedShown(o);
+                r.Add("Red supplies at (10,0) hidden from Blue " + rsHidden + "; (7,0) seen " + wallSeen + ", truly in Red supply " + redTrue + ", shown in Red supply " + redShown);
                 // Fog off: the screen shows the true network.
                 gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
                 SupplyNetwork.Solve(a, false);
@@ -1765,7 +1798,7 @@ public static partial class Scenarios {
                 r.Add("fog off: shown as it is " + fogOff);
                 if (blueAI != null) blueAI.enabled = true;
                 detail = string.Join(" | ", r.ToArray());
-                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff;
+                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff && rsHidden && wallSeen && redTrue && redShown;
             }
             case "fobStorePips": {
                 // A FOB (Blue) with 3 of 6 in store, Blue's HQ, and a Red FOB with 5. Blue is the screen's player.
@@ -2238,6 +2271,27 @@ public static partial class Scenarios {
                        + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
                 return hull && turret && flag && none;
             }
+            case "fogUnitDetect": {
+                PinVision();
+                Unit g = Rig.At(-4, 0).occupier, rc = Rig.At(1, 0).occupier;
+                rc.stealthRange = 3; g.visionRange = 2;
+                int spotted = 0;
+                Action<Unit, Player> hook = (u, q) => { if (u == rc && q == a) spotted++; };
+                FogOfWar.StealthSpotted += hook;
+                try {
+                    Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
+                    moved();
+                    bool plain = FogOfWar.Sees(a, rc);
+                    g.detectRange = 5; moved();
+                    bool at5 = FogOfWar.Sees(a, rc); int first = spotted;
+                    moved(); int still = spotted;
+                    rc.TeleportTo(Rig.At(2, 0), 0); moved();
+                    bool at6 = FogOfWar.Sees(a, rc);
+                    rc.TeleportTo(Rig.At(1, 0), 0); moved();
+                    detail = "no detector: seen " + plain + "; detectRange 5: 5 off seen " + at5 + ", 6 off seen " + at6 + "; announced " + first + " on first sight, " + still + " while still seen, " + spotted + " after leaving and coming back";
+                    return !plain && at5 && !at6 && first == 1 && still == 1 && spotted == 2;
+                } finally { FogOfWar.StealthSpotted -= hook; }
+            }
             case "fogIntOps": {
                 PinVision();
                 Unit rc = Rig.At(1, 0).occupier;
@@ -2423,6 +2477,45 @@ public static partial class Scenarios {
                 res.Add("stealthy grunt: next to the gunboat unseen " + boatBlind + ", grunt at 2 sees it " + gruntSees + ", on our city seen " + onCity);
                 detail = string.Join("; ", res.ToArray());
                 return flat && hills && mountains && beyond && air && jetHidden && jetSeen && jetFar && jetOverCity && boatBlind && gruntSees && onCity;
+            }
+            case "combatScars": {
+                Unit tank = Rig.At(-2, 0).occupier, g1 = Rig.At(-1, 0).occupier, b = Rig.At(-2, 3).occupier;
+                HexTile from = tank.tile, to = g1.tile;
+                foreach (HexTile t in new[] { from, to, Rig.At(-2, 3), Rig.At(-1, 3), Rig.At(0, 3) }) { t.terrain = T("Grassland"); t.damage = 0; }
+                g1.Strength = 6;
+                CombatOutcome oc = tank.OrderAttack(g1);
+                string d1 = "attack: from " + from.damage + ", target " + to.damage + " (answered " + oc.retaliationHappens + ")";
+                foreach (Unit u in a.units) if (u != null) u.visionRange = 1;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                CombatOutcome amb = new CombatOutcome(); HexTile ambFrom = null, ambAt = null;
+                System.Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (att, def, f, t, x) => { amb = x; ambFrom = f; ambAt = t; };
+                Unit.Attacked += hook;
+                try { b.MoveAlong(new List<HexTile> { Rig.At(-2, 3), Rig.At(-1, 3), Rig.At(0, 3), Rig.At(1, 3) }, false, false); } finally { Unit.Attacked -= hook; }
+                string d2 = "ambush: walker's tile " + Rig.At(-1, 3).damage + ", ambusher's " + Rig.At(0, 3).damage + ", start " + Rig.At(-2, 3).damage + " (fired first " + amb.defenderFiresFirst + ")";
+                detail = d1 + "; " + d2;
+                return from.damage == 0 && to.damage == 1 && Rig.At(-2, 3).damage == 0 && Rig.At(-1, 3).damage == 1 && Rig.At(0, 3).damage == 0;
+            }
+            case "fogBumpArt": {
+                Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier;
+                foreach (Unit u in a.units) if (u != null) u.visionRange = 1;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                int before = m.Strength, hb = h.Strength;
+                CombatOutcome seen = new CombatOutcome();
+                System.Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (att, def, f, t, oc) => { seen = oc; };
+                Unit.Attacked += hook;
+                try { m.MoveAlong(new List<HexTile> { Rig.At(-2, 0), Rig.At(-1, 0), Rig.At(0, 0), Rig.At(1, 0) }, false, false); }
+                finally { Unit.Attacked -= hook; }
+                detail = "artillery " + before + "->" + m.Strength + ", grunt " + hb + "->" + h.Strength + "; retaliation " + seen.retaliationHappens + ", damage back " + seen.damageToAttacker
+                       + "; grunt answeredBy " + (h.answeredBy != null) + "; artillery attacking " + m.attacking + " firing " + m.firing;
+                Unit g = Rig.At(-2, 3).occupier, ha = Rig.At(0, 3).occupier; int gb = g.Strength; bool shot = false;
+                System.Action<Unit, Unit, bool> sh = (x, y, z) => { if (x == ha) shot = true; };
+                Unit.Attacking += sh;
+                try { g.MoveAlong(new List<HexTile> { Rig.At(-2, 3), Rig.At(-1, 3), Rig.At(0, 3), Rig.At(1, 3) }, false, false); } finally { Unit.Attacking -= sh; }
+                detail += " | grunt into hidden artillery: artillery shot " + shot + ", grunt " + gb + "->" + g.Strength + " at " + Pos(g.tile) + " art attacking " + ha.attacking;
+                m.tile.terrain = T("Forest"); m.Veterancy = 3;
+                CombatOutcome o2 = h.OrderAttack(m);
+                detail += " | plain attack on it in forest: firesFirst " + o2.defenderFiresFirst + " retaliation " + o2.retaliationHappens + " back " + o2.damageToAttacker + " art attacking " + m.attacking + " grunt attacking " + h.attacking + " answeredBy " + (h.answeredBy != null) + "/" + (m.answeredBy != null);
+                return m.Strength < before && h.Strength == hb && !seen.retaliationHappens && h.answeredBy == null && !m.attacking && !m.firing;
             }
             case "fogBump": {
                 Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier, p = Rig.At(0, 3).occupier, q = Rig.At(2, 3).occupier;
@@ -3100,6 +3193,22 @@ public static partial class Scenarios {
                 bool back = HexTactica.Harness.Replay.Index == turns.Count - 2 && Draw() == boards[turns.Count - 2];
                 HexTactica.Harness.Replay.Next(); HexTactica.Harness.Replay.Next();
                 bool clamp = HexTactica.Harness.Replay.Index == turns.Count - 1;
+                // Action by action: each turn's logged actions played on its board should leave the next turn's board.
+                int stepped = 0, sameAfter = 0, compared = 0; string firstOff = null;
+                for (int i = 0; i + 1 < turns.Count && i + 1 < boards.Count; i++) {
+                    HexTactica.Harness.Replay.Show(i);
+                    while (HexTactica.Harness.Replay.StepsLeft > 0) { HexTactica.Harness.Replay.NextAction(); stepped++; }
+                    compared++;
+                    if (Draw() == boards[i + 1]) sameAfter++; else if (firstOff == null) firstOff = "turn " + i;
+                }
+                // Straight through with Next action: each turn ended as the game ends it, no board loaded in between.
+                HexTactica.Harness.Replay.Show(0);
+                HexTactica.Harness.Replay.Reloads = 0;
+                int through = 0;
+                while (HexTactica.Harness.Replay.NextAction() && through++ < 500) { }
+                r.Add("played through to turn " + (HexTactica.Harness.Replay.Index + 1) + " with " + HexTactica.Harness.Replay.Reloads + " boards loaded on the way; ends as recorded " + (Draw() == boards[turns.Count - 1]));
+                HexTactica.Harness.Replay.Show(turns.Count - 1);
+                r.Add("actions played " + stepped + "; boards after a turn's actions equal to the next turn's " + sameAfter + "/" + compared + (firstOff != null ? " (first off: " + firstOff + ")" : ""));
                 r.Add("boards as recorded " + same + " of " + turns.Count + "; back " + back + ", stops at the last " + clamp + "; nobody plays " + frozen);
                 HexTile clickedWas = HexTile.lastClicked;
                 Rig.At(0, 0).OnMouseDown();
@@ -3118,7 +3227,7 @@ public static partial class Scenarios {
                 try { Directory.Delete(root, true); } catch (Exception) { }
                 HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
                 detail = string.Join("; ", r.ToArray());
-                return read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
+                return stepped > 0 && read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;
@@ -3349,7 +3458,7 @@ public static partial class Scenarios {
                 return ap.owner == a && ap.capturePoints == 0 && ap.capturingPlayer == null;
             }
             case "attritionBoats": {
-                Unit g = Rig.At(3, 0).occupier, far = Rig.At(1, 0).occupier;
+                Unit g = Rig.At(2, 0).occupier, far = Rig.At(1, 0).occupier;
                 SupplyNetwork.Result with = SupplyNetwork.Solve(a, false);
                 bool withBoats = with.IsSupplied(g.tile);
                 int linked = with.connectedHubs.Count;
@@ -3357,8 +3466,8 @@ public static partial class Scenarios {
                 SupplyNetwork.Result without = SupplyNetwork.Solve(a, false);
                 bool withoutFar = without.IsSupplied(g.tile);
                 bool yardSupplied = with.IsSupplied(Rig.At(-3, 0));
-                detail = "naval yard in supply " + yardSupplied + "; island grunt supplied with both boats " + withBoats + ", without the far one " + withoutFar
-                         + "; boats linked " + with.connectedHubs.Count;
+                detail = "naval yard in supply " + yardSupplied + "; island grunt supplied with both haulers " + withBoats + ", without the far one " + withoutFar
+                         + "; supply aboard linked " + with.connectedHubs.Count;
                 return yardSupplied && withBoats && !withoutFar && linked == 2;
             }
             case "shipMends": {
@@ -3370,6 +3479,9 @@ public static partial class Scenarios {
                 return ok1 && g.Strength == 5 && dry.Strength == 1;
             }
             case "shipTender": {
+                // A supply ship (Player.IsSupplyShip: a ship with a supply point of its own) tends the ships beside it. No
+                // unit in the game is one since the SupplyBoat went; the rule (and this check) wait for one.
+                if (!Player.IsSupplyShip(Rig.At(0, 0).occupier)) { detail = "SKIP: no supply ship in the game (the SupplyBoat was removed): nothing tends ships at sea"; return true; }
                 Unit g = Rig.At(1, 0).occupier, far = Rig.At(0, 5).occupier, sb2 = Rig.At(-1, 0).occupier;
                 endTurn(); endTurn();
                 detail = "beside it: fuel " + g.fuel + "/" + g.fuelMax + ", supplies " + g.supplies + "/" + g.suppliesMax + "; away: fuel " + far.fuel + "; the supply ship beside it: fuel " + sb2.fuel;
@@ -3432,8 +3544,8 @@ public static partial class Scenarios {
                 aboard(apc, sup); aboard(ship, apc); sup.tile = ship.tile; aboard(ship, g);
                 bool loaded = sup.trasnporter == apc && apc.trasnporter == ship && g.trasnporter == ship && sup.tile == ship.tile;
                 g.Strength = 3; g.ammo = 0; g.fuel = 5; ship.Strength = 3; ship.supplies = 10;
-                Unit boat = Rig.At(2, 0).occupier, gun = Rig.At(0, 0).occupier;
-                boat.Strength = 3; boat.supplies = 10; gun.Strength = 3; gun.supplies = 10;
+                Unit gun = Rig.At(0, 0).occupier;
+                gun.Strength = 3; gun.supplies = 10;
                 SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
                 HexTile island = Rig.At(0, -1);
                 bool nested = r.connectedHubs.Contains(sup.Hub) && r.IsSupplied(island);
@@ -3450,7 +3562,7 @@ public static partial class Scenarios {
                 int still = 0; foreach (HexTile t in was) if (t.isSupplied(a)) still++;
                 detail = "loaded " + loaded + "; supply two deep linked, island supplied " + nested + "; the hauler's own tile depth " + shipTile
                        + "; after upkeep: grunt aboard strength " + g.Strength + " ammo " + g.ammo + "/" + g.ammoMax + " fuel " + g.fuel + "/" + g.fuelMax + " (resupplied " + cargo + "), hauler 3 -> " + ship.Strength
-                       + "; supply boat 3 -> " + boat.Strength + " (its tile supplied " + r.IsSupplied(boat.tile) + "), gunboat in the zone 3 -> " + gun.Strength + " (its tile supplied " + r.IsSupplied(gun.tile) + ")"
+                       + "; gunboat in the zone 3 -> " + gun.Strength + " (its tile supplied " + r.IsSupplied(gun.tile) + ")"
                        + "; tiles it supplied " + was.Count + ", still supplied after it left " + still;
                 return loaded && nested && shipTile == 0 && cargo && shipOnce && was.Count > 0 && still == 0;
             }
@@ -3636,7 +3748,7 @@ public static partial class Scenarios {
             }
             case "shipRefit": {
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
-                Unit dry = Rig.At(3, -2).occupier, hungry = Rig.At(4, 3).occupier, tender = Rig.At(1, 4).occupier;
+                Unit dry = Rig.At(3, -2).occupier, hungry = Rig.At(4, 3).occupier;
                 HexTile yard = Rig.At(-2, 0);
                 dry.ammo = 0; hungry.supplies = 1;
                 List<string> r = new List<string>();
@@ -3647,7 +3759,7 @@ public static partial class Scenarios {
                     if (!blue) continue;
                     if (dry.ammo == dry.ammoMax) rearmed = true;
                     if (hungry.supplies == hungry.suppliesMax) restocked = true;
-                    r.Add("dry " + Pos(dry.tile) + " ammo " + dry.ammo + ", hungry " + Pos(hungry.tile) + " supplies " + hungry.supplies + " (strength " + hungry.Strength + "), tender " + Pos(tender.tile));
+                    r.Add("dry " + Pos(dry.tile) + " ammo " + dry.ammo + ", hungry " + Pos(hungry.tile) + " supplies " + hungry.supplies + " (strength " + hungry.Strength + ")");
                 }
                 detail = string.Join(" | ", r.ToArray()) + "; rearmed " + rearmed + ", restocked " + restocked + " without losing strength " + (hungry.Strength == 6);
                 return rearmed && restocked && hungry.Strength == 6;
@@ -3867,6 +3979,12 @@ public static partial class Scenarios {
     }
 
     /// <summary>A unit, or a building when <paramref name="prefab"/> names one (HQ, City, FOB ...): null then.</summary>
+    /// <summary>Puts <paramref name="c"/> aboard <paramref name="t"/> where it stands (setting up a scenario: no move, no boarding rules).</summary>
+    static void Aboard(Unit t, Unit c) {
+        if (c.tile != null && c.tile.occupier == c) c.tile.occupier = null;
+        c.tile = t.tile; c.trasnporter = t; t.transported.Add(c); c.transform.SetParent(t.transform);
+    }
+
     static Unit Put(string prefab, Player p, int x, int y) {
         if (!PrefabLoader.Has(prefab) && PrefabLoader.HasBuilding(prefab)) { Rig.PlaceBuilding(prefab, p, x, y); return null; }
         Unit u = Rig.Spawn(PrefabLoader.Load(prefab), p, x, y);
@@ -3971,7 +4089,7 @@ public static partial class Scenarios {
             Blank(7);
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -6, 0); Put("HQ", other, 6, 0); Put("Grunt", other, 5, 1);
-            setup(ai, other);
+            try { setup(ai, other); } catch (FileNotFoundException e) { Console.WriteLine("  (not made: " + name + " needs " + Path.GetFileName(e.FileName) + ", no longer in the game)"); return; }
             Dictionary<string, string> test = Test(name, "behaviour", "Human", rounds, check, question);
             test["rules"] = "attrition";
             test["purchases"] = "on";   // the build-on-reserved check buys at the airport
@@ -3991,8 +4109,8 @@ public static partial class Scenarios {
             "One landing tile reserved for a Fighter landing this turn: the AI may not build a unit on it.");
         air("tanker-meets-fighter", "tankerMeets", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Unit f = Put("Fighter", a, 1, -1); f.fuel = 9; Put("AirTanker", a, -3, 0); Put("Grunt", a, -5, 0); }, 1,
             "An air tanker (3 supplies) and a Fighter that is short of fuel: the tanker should end its turn beside the fighter.");
-        air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); Put("SupplyBoat", a, -2, 0); Put("SupplyBoat", a, -2, -1); Put("Grunt", a, 3, 0); Put("Grunt", a, -4, 1); }, 3,
-            "A Blue grunt stranded on an island across a four-tile strait; two supply boats at the naval yard's docks. Within three turns the boats should link up and supply the island.");
+        air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); foreach (int y in new[] { 0, -1 }) { Unit h = Put("Hauler", a, -2, y); Unit su = Put("Supplies", a, -6, y + 3); Aboard(h, su); } Put("Grunt", a, 2, 0); Put("Grunt", a, -4, 1); }, 3,
+            "A Blue grunt stranded on the shore of an island across a four-tile strait (a ship's supply reaches only the land beside it); two haulers with a supply unit aboard each at the naval yard's docks. Within three turns the haulers should link up and supply the island.");
 
         // A winding road two tiles wide over water: east along y = -3, down, and back west along y = 3.
         // The HQs are 6 apart as the crow flies and about 26 apart by road.
@@ -4348,7 +4466,8 @@ public static partial class Scenarios {
                 return beside;
             }
             case "boatsIsland": {
-                Unit g = Rig.At(3, 0).occupier;
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit g = Rig.At(2, 0).occupier;
                 List<string> trail = new List<string>();
                 bool ok = false;
                 for (int r = 0; r < rounds * 2 && !gc.gameOver; r++) {
@@ -4357,9 +4476,9 @@ public static partial class Scenarios {
                     if (!blue) continue;
                     SupplyNetwork.Result res = SupplyNetwork.Solve(l.ai, false);
                     string boats = "";
-                    foreach (Unit u in l.ai.units) if (u != null && u.name == "SupplyBoat" && u.tile != null) boats += " " + Pos(u.tile) + (res.connectedHubs.Contains(u.GetComponent<SupplyPoint>()) ? "+" : "-");
+                    foreach (Unit u in l.ai.units) if (u != null && u.Hub != null && !u.Hub.producer && u.tile != null) boats += " " + Pos(u.tile) + (u.trasnporter != null ? " aboard" : " ashore") + (res.connectedHubs.Contains(u.Hub) ? "+" : "-");
                     bool sup = g.tile != null && res.IsSupplied(g.tile);
-                    trail.Add("boats" + boats + (sup ? ", island supplied" : ""));
+                    trail.Add("supplies" + boats + (sup ? ", island supplied" : ""));
                     if (sup) ok = true;
                 }
                 detail = string.Join(" | ", trail.ToArray());
@@ -4447,7 +4566,13 @@ public static partial class Scenarios {
         string onlyBehaviour = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "behaviour" ? "behaviour" : "-")) {
             if (onlyBehaviour != null && !Path.GetFileName(f).Contains(onlyBehaviour)) continue;
-            ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
+            ScenarioFile.Loaded l;
+            try { l = ScenarioFile.Load(f, null, tweak); }
+            catch (FileNotFoundException e) {
+                failed++;
+                Console.WriteLine(string.Format("  FAIL  {0,-24} cannot load: no {1} (removed from the game?)", Path.GetFileNameWithoutExtension(f), Path.GetFileName(e.FileName)));
+                continue;
+            }
             string detail;
             bool ok = Judge(l, out detail);
             if (ok) passed++; else failed++;
@@ -4459,7 +4584,13 @@ public static partial class Scenarios {
         string onlyName = Environment.GetEnvironmentVariable("NAME");
         foreach (string f in Files(only == null || only == "rules" ? "rules" : "-")) {
             if (onlyName != null && !Path.GetFileName(f).Contains(onlyName)) continue;
-            ScenarioFile.Loaded l = ScenarioFile.Load(f, null, tweak);
+            ScenarioFile.Loaded l;
+            try { l = ScenarioFile.Load(f, null, tweak); }
+            catch (FileNotFoundException e) {
+                failed++;
+                Console.WriteLine(string.Format("  FAIL  {0,-24} cannot load: no {1} (removed from the game?)", Path.GetFileNameWithoutExtension(f), Path.GetFileName(e.FileName)));
+                continue;
+            }
             string detail;
             bool ok = RuleCheck(l, out detail);
             bool skip = detail.StartsWith("SKIP");

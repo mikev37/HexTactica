@@ -142,6 +142,9 @@ public class Unit : MonoBehaviour
     [Range(0, 10)]
     [Tooltip("Stealth: an enemy observer this many steps away or more does not see it, even inside its vision (0: no stealth). A unit next to an enemy unit, or on an enemy building, is always seen.")]
     public int stealthRange = 0;
+    [Range(0, 10)]
+    [Tooltip("Stealth detection, as a Radar's (Building.detectRange): a stealthy enemy unit of any kind (land, air or sea) this many steps from it or fewer is seen by its owner, whether its own vision reaches or not (0: none). Fog of war only.")]
+    public int detectRange = 0;
 
 
     [Header("Movement Variables")]
@@ -165,6 +168,8 @@ public class Unit : MonoBehaviour
 
     [Tooltip("Just for animation - for movement edit moveRange")]
     [LooksOnly] public int moveSpeed = 10;
+    /// <summary>Every unit's move speed on screen is multiplied by this (a replay's fast forward); 1 in play.</summary>
+    public static float MoveSpeedScale = 1f;
     [Tooltip("How much health the unit appears to have (for animations so the unit doesn't die before the shot is fired)")]
     [LooksOnly] public int StrengthDisplay;
 
@@ -308,7 +313,7 @@ public class Unit : MonoBehaviour
                     if (animator != null) animator.SetBool("Moving", true);
                     if (!driving || Vector2.Distance(transform.position, there) > .1f) {
                         transform.rotation = there.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
-                        transform.position = Vector2.MoveTowards(transform.position, there, Time.deltaTime * moveSpeed);
+                        transform.position = Vector2.MoveTowards(transform.position, there, Time.deltaTime * moveSpeed * MoveSpeedScale);
                     }
                     return;
                 }
@@ -318,7 +323,7 @@ public class Unit : MonoBehaviour
                 if (animator != null) animator.SetBool("Moving", true);
                 Vector3 to = next.unitPlacement != null ? next.unitPlacement.position : next.transform.position;
                 transform.rotation = to.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
-                if (Vector2.Distance(transform.position, to) > .1f) transform.position = Vector2.MoveTowards(transform.position, to, Time.deltaTime * moveSpeed);
+                if (Vector2.Distance(transform.position, to) > .1f) transform.position = Vector2.MoveTowards(transform.position, to, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 else { spriteTile = next; boardingWalk.RemoveAt(0); }
                 return;
             }
@@ -327,7 +332,7 @@ public class Unit : MonoBehaviour
         // stopped, then gets off and walks to its tile.
         if (disembarkFrom != null) {
             if (disembarkFrom.Strength > 0 && disembarkFrom.path != null && disembarkFrom.path.Count > 0) {
-                transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
+                transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 return;
             }
             FinishDisembark();
@@ -335,7 +340,7 @@ public class Unit : MonoBehaviour
         // Aboard: shrink into the transport's slot; nothing else moves this sprite.
         if (trasnporter != null) {
             if (!Finite(transform.localPosition)) transform.localPosition = Vector3.zero;
-            transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed);
+            transform.localPosition = Vector3.MoveTowards(transform.localPosition, Vector3.zero, Time.deltaTime * moveSpeed * MoveSpeedScale);
             transform.localScale = Vector3.MoveTowards(transform.localScale, homeScale * cargoScale, Time.deltaTime * 2f);
             return;
         }
@@ -373,7 +378,7 @@ public class Unit : MonoBehaviour
             } else transform.rotation = Quaternion.identity;
 
             if(Vector2.Distance(transform.position, ht.unitPlacement.position) > .1f) {
-                transform.position = Vector2.MoveTowards(transform.position, ht.unitPlacement.position, Time.deltaTime * moveSpeed);
+                transform.position = Vector2.MoveTowards(transform.position, ht.unitPlacement.position, Time.deltaTime * moveSpeed * MoveSpeedScale);
             } else {
                 spriteTile = ht;
                 path.RemoveAt(0);
@@ -393,12 +398,12 @@ public class Unit : MonoBehaviour
             // first, so the shot that waits on it (see the ambush/attack check below) has a sprite
             // to aim at, and the new retreat starts from where the unit really was.
             if (slideFirst.HasValue) {
-                transform.position = Vector2.MoveTowards(transform.position, slideFirst.Value, Time.deltaTime * moveSpeed);
+                transform.position = Vector2.MoveTowards(transform.position, slideFirst.Value, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 if (Vector2.Distance(transform.position, slideFirst.Value) <= 0.05f) slideFirst = null;
             }
             else if (refuelHopTo != null && tile && retreatHold <= 0f) RefuelHopStep();
             else if(tile && retreatHold <= 0f) {
-                transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed);
+                transform.position = Vector2.MoveTowards(transform.position, tile.unitPlacement.position, Time.deltaTime * moveSpeed * MoveSpeedScale);
                 if (Vector2.Distance(transform.position, tile.unitPlacement.position) <= 0.2f) spriteTile = tile;
             }
             else {
@@ -466,9 +471,13 @@ public class Unit : MonoBehaviour
 
     bool SoundsOn { get { return GameSounds.On; } }
 
-    /// <summary>Can whoever is watching see this unit (fog of war)? Unseen units make no sound, as they show no explosion.</summary>
+    /// <summary>
+    /// Can whoever is watching see this unit (fog of war)? Unseen units make no sound, as they show no explosion.
+    /// Asked of the fog itself as well as the fader: the fader only catches up at the end of the frame, and a unit
+    /// that fires from the fog is revealed (FogOfWar.Reveal) in the same frame its shot sounds.
+    /// </summary>
     bool Audible {
-        get { FogFader f = GetComponent<FogFader>(); return f == null || f.Shown; }
+        get { FogFader f = GetComponent<FogFader>(); return f == null || f.Shown || FogOfWar.ShownToViewer(this); }
     }
 
     AudioSource oneShotSource, moveLoopSource;
@@ -603,7 +612,7 @@ public class Unit : MonoBehaviour
     }
 
     /// <summary>A child that is this unit's own UI: strength pips, veterancy, status icons.</summary>
-    static bool IsOwnUI(Transform t) {
+    internal static bool IsOwnUI(Transform t) {
         if (t.GetComponent<Canvas>() != null || t.name == "HealthCircles" || t.name == "Veterancy" || t.name == "Canvas") return true;
         foreach (MonoBehaviour m in t.GetComponents<MonoBehaviour>())
             if (m != null && (m.GetType().Name == "UnitStatusIcon" || m.GetType().Name == "HealthDot" || m.GetType().Name == "VeterancyChevron")) return true;
@@ -878,8 +887,8 @@ public class Unit : MonoBehaviour
     /// Would ending this turn's move on <paramref name="end"/> leave this unit unable to get back to a building
     /// of ours that services it before it runs dry (a fuel-burning aircraft or ship)? It would start next turn
     /// with its fuel less the tiles flown there (minFuelPerTile each) and, airborne, a turn's burn
-    /// (minFuelPerTurn); out of fuel then, it ditches; otherwise it must be no further from such a building
-    /// than that fuel takes it. Ending on such a building refuels it there (ServiceOnLanding): no warning.
+    /// (minFuelPerTurn); out of fuel then, it ditches; otherwise it must be no further from such a building (or from
+    /// a carrier of ours that would take it in and refuel it: AIAir.Carriers) than that fuel takes it. Ending on such a building refuels it there (ServiceOnLanding): no warning.
     /// </summary>
     public bool WouldDitchFrom(HexTile end) {
         if (end == null || tile == null || fuelMax <= 0) return false;
@@ -895,6 +904,9 @@ public class Unit : MonoBehaviour
             if (b == null || b.owner != owner || !b.Services(this)) continue;
             if (b.tile != null) nearest = Mathf.Min(nearest, b.tile.Distance(end));
         }
+        // A carrier of ours it could land on and be refuelled aboard (afloat, room for it, stocked) is a base too,
+        // where it is now.
+        foreach (Unit c in HexTactica.AI.AIAir.Carriers(this)) nearest = Mathf.Min(nearest, c.tile.Distance(end));
         return nearest > reach;
     }
 
@@ -1332,6 +1344,9 @@ public class Unit : MonoBehaviour
             if (Hub) owner.Resupply();
         }
     }
+
+    /// <summary>Lost outside combat in a recorded game played again (starved, out of fuel, its side out): as Perish.</summary>
+    internal void ReplayLoss() { Perish(); }
 
     /// <summary>Off the board while it is wiped (Wiping): out of every list, its cargo with it, nothing played.</summary>
     void Wipe() {

@@ -127,7 +127,7 @@ MonoBehaviour:
   supplies: 0
   suppliesMax: 0
   chargePerTurn: 0
-  services: 
+  services: 00000000i
   healPerTurn: 0
   rearm: 1
   refuel: 0

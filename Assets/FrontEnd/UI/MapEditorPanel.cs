@@ -44,8 +44,12 @@ public class MapEditorPanel : MonoBehaviour {
     public RectTransform sides;
     [Tooltip("The faction list's first entry: the side's faction is chosen on the pre-game screen.")]
     public string anyFaction = "Any (chosen before the game)";
-    [Tooltip("The colours a new side is given (the first not near any side's), and the colours a side's swatch steps through. Blue and red are the scene's own sides'.")]
+    [Tooltip("The pop-up a side's colour is chosen from (clicking its swatch): one swatch per colour of the list below. None: the swatch steps to the next colour instead.")]
+    public ColourMenu colourMenu;
+    [Tooltip("The colours a side can have (the colour menu shows them all), and the colours a new side is given (the first not near any side's).")]
     public List<Color> extraSideColors = new List<Color> {
+        new Color(0f, 0.5294118f, 1f, 1f),   // blue
+        new Color(1f, 0f, 0f, 1f),           // red
         new Color(0.2f, 0.75f, 0.25f, 1f),   // green
         new Color(0.95f, 0.85f, 0.15f, 1f),  // yellow
         new Color(0.6f, 0.3f, 0.85f, 1f),    // purple
@@ -169,7 +173,7 @@ public class MapEditorPanel : MonoBehaviour {
                 Player me = p;
                 if (row.sideName != null) { row.sideName.text = p.personal_name; row.sideName.onEndEdit.AddListener(t => Rename(me, t)); }
                 if (row.swatch != null) row.swatch.color = Opaque(p.displayColor);
-                if (row.colour != null) row.colour.onClick.AddListener(() => NextColour(me));
+                if (row.colour != null) { Button swatchButton = row.colour; row.colour.onClick.AddListener(() => ChooseColour(me, swatchButton)); }
                 if (row.faction != null) {
                     row.faction.ClearOptions();
                     row.faction.AddOptions(names);
@@ -208,10 +212,40 @@ public class MapEditorPanel : MonoBehaviour {
         ShowSides();
     }
 
+    ColourMenu openColours;
+
+    /// <summary>
+    /// The colour menu, opened at the side's swatch: the side takes the colour clicked. A colour another side has is
+    /// swapped with it (that side takes this one's old colour), so any side can be given any colour.
+    /// </summary>
+    void ChooseColour(Player p, Button from) {
+        if (colourMenu == null) { NextColour(p); return; }
+        if (openColours != null) openColours.Close();
+        Canvas canvas = GetComponentInParent<Canvas>();
+        Transform under = canvas != null ? canvas.transform : transform;
+        openColours = Instantiate(colourMenu, under);
+        openColours.transform.SetAsLastSibling();
+        openColours.Show(extraSideColors, p.displayColor, from != null ? from.transform.position : transform.position, c => {
+            Color old = Opaque(p.displayColor);
+            foreach (Player x in Players) if (x != p && Same(x.displayColor, c)) x.displayColor = old;
+            p.displayColor = Opaque(c);
+            ShowSides();
+        });
+    }
+
+    static bool Same(Color a, Color b) { return Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) < 0.02f; }
+
     /// <summary>The next colour of the list that no other side is near (units and buildings take it at once: ColorObjectUnit).</summary>
     void NextColour(Player p) {
         if (extraSideColors.Count == 0) return;
-        int i = extraSideColors.FindIndex(c => Near(c, p.displayColor));
+        // Where it is in the list: the colour it has, not the first one near it (yellow is near orange: from orange
+        // the step went back to the colour after yellow, and the swatch went round two or three colours).
+        int i = -1; float best = 0.02f;
+        for (int k = 0; k < extraSideColors.Count; k++) {
+            Color c = extraSideColors[k];
+            float d = Mathf.Abs(c.r - p.displayColor.r) + Mathf.Abs(c.g - p.displayColor.g) + Mathf.Abs(c.b - p.displayColor.b);
+            if (d < best) { best = d; i = k; }
+        }
         for (int step = 1; step <= extraSideColors.Count; step++) {
             Color c = extraSideColors[(i + step + extraSideColors.Count) % extraSideColors.Count];
             if (Players.Exists(x => x != p && Near(x.displayColor, c))) continue;
@@ -469,7 +503,7 @@ public class MapEditorPanel : MonoBehaviour {
         return path;
     }
 
-    public void ShowLoad() { if (loadPanel != null) loadPanel.SetActive(true); if (loadList != null) loadList.ShowScenarios(); }
+    public void ShowLoad() { if (loadPanel != null) loadPanel.SetActive(true); if (loadList != null) loadList.ShowEditable(); }
     public void HideLoad() { if (loadPanel != null) loadPanel.SetActive(false); }
 
     public void LoadPicked() {

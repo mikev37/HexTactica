@@ -131,6 +131,18 @@ PrefabInstance:
       value: 0.25
       objectReference: {fileID: 0}
     - target: {fileID: 7449712608029447455, guid: dbb30092720cd474980b26d55a460bf3, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: ee993aa1de2383c4ab81bcaa74c71f82, type: 3}
+    - target: {fileID: 7449712608029447455, guid: dbb30092720cd474980b26d55a460bf3, type: 3}
+      propertyPath: description
+      value: The massive Cargo plane allows you to transport up to 2 infantry, or even a vehicle, like a transport plane.
+      objectReference: {fileID: 0}
+    - target: {fileID: 7449712608029447455, guid: dbb30092720cd474980b26d55a460bf3, type: 3}
+      propertyPath: moveLoopSound
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 7449712608029447455, guid: dbb30092720cd474980b26d55a460bf3, type: 3}
       propertyPath: transportSlots
       value: 2
       objectReference: {fileID: 0}
@@ -315,6 +327,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2678722743557136008
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -376,6 +389,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &4758349348541710490
 MonoBehaviour:
   m_ObjectHideFlags: 0

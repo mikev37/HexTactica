@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// The main menu (the MainMenu scene): Load Scenario (a scenario to set up, or a saved game to play on), Map Editor,
+/// The main menu (the MainMenu scene): Campaign (the campaign screen), Load Scenario (a scenario to set up, or a saved game to play on), Map Editor,
 /// Unit Explorer, Options, Exit. Each opens its panel; everything they look like is the scene's. The buttons call the
 /// methods below (wired in the scene).
 /// </summary>
@@ -13,6 +13,12 @@ public class MainMenu : MonoBehaviour {
     public GameObject editorPanel;
     public GameObject unitsPanel;
     public GameObject optionsPanel;
+    public GameObject replayPanel;
+
+    [Header("Replay")]
+    [Tooltip("The recorded games (game logs) that can be watched again.")]
+    public FileList replayList;
+    public Button watchButton;
 
     [Header("Load Scenario")]
     [Tooltip("Scenarios or saved games, by the tabs.")]
@@ -30,6 +36,7 @@ public class MainMenu : MonoBehaviour {
     void Awake() {
         if (loadList != null) loadList.onPicked.AddListener(UpdateButtons);
         if (editorList != null) editorList.onPicked.AddListener(UpdateButtons);
+        if (replayList != null) replayList.onPicked.AddListener(UpdateButtons);
     }
 
     void Start() {
@@ -38,16 +45,23 @@ public class MainMenu : MonoBehaviour {
     }
 
     void Show(GameObject panel) {
-        foreach (GameObject p in new[] { mainPanel, loadPanel, editorPanel, unitsPanel, optionsPanel })
+        foreach (GameObject p in new[] { mainPanel, loadPanel, editorPanel, unitsPanel, optionsPanel, replayPanel })
             if (p != null) p.SetActive(p == panel);
         UpdateButtons();
     }
 
     public void ShowMain() { Show(mainPanel); }
     public void ShowLoadScenario() { Show(loadPanel); if (loadList != null) loadList.ShowScenarios(); }
-    public void ShowMapEditor() { Show(editorPanel); }
+    public void ShowMapEditor() { Show(editorPanel); if (editorList != null) editorList.ShowEditable(); }
     public void ShowUnitExplorer() { Show(unitsPanel); }
     public void ShowOptions() { Show(optionsPanel); }
+    public void ShowReplays() { Show(replayPanel); if (replayList != null) replayList.ShowRecordings(); UpdateButtons(); }
+
+    /// <summary>The campaign screen: the map and its mission flags.</summary>
+    public void Campaign() { MatchSetup.ToCampaign(); }
+
+    /// <summary>Watch the picked recording.</summary>
+    public void Watch() { if (replayList != null && replayList.Selected != null) MatchSetup.Watch(replayList.Selected); }
 
     /// <summary>The Load panel's tabs.</summary>
     public void ListScenarios() { if (loadList != null) loadList.ShowScenarios(); UpdateButtons(); }
@@ -57,6 +71,7 @@ public class MainMenu : MonoBehaviour {
         if (playButton != null) playButton.interactable = loadList != null && loadList.Selected != null;
         if (playButtonLabel != null && loadList != null) playButtonLabel.text = loadList.source == FileList.Source.Saves ? playSaveLabel : playScenarioLabel;
         if (editButton != null) editButton.interactable = editorList != null && editorList.Selected != null;
+        if (watchButton != null) watchButton.interactable = replayList != null && replayList.Selected != null;
     }
 
     /// <summary>Set up the picked scenario, or play on the picked saved game.</summary>

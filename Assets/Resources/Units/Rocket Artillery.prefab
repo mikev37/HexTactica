@@ -567,6 +567,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.1
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &381532763494730122
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -956,12 +957,20 @@ PrefabInstance:
       value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
+      propertyPath: fireSound
+      value: 
+      objectReference: {fileID: 8300000, guid: e259f0c5c0a70534889802a6f643f998, type: 3}
+    - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: locomotion
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: AttackRange
       value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
+      propertyPath: description
+      value: Rocket Artillery can shoot even farther than artillery, although the minimum range is also increased, and they are not as good against armored targets. They also have limited ammunition, so keep them supplied.
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:

@@ -12,7 +12,9 @@ public enum SessionMode {
     /// <summary>A saved game, played on from where it was saved.</summary>
     Play,
     /// <summary>The map editor: a scenario (or the scene's board) to edit.</summary>
-    Editor
+    Editor,
+    /// <summary>A recorded game (a game log folder), watched again.</summary>
+    Replay
 }
 
 /// <summary>
@@ -36,6 +38,8 @@ public static class MatchSetup {
     }
 
     public static SessionMode Mode;
+    /// <summary>The campaign mission being played (null: an ordinary game): the briefing and result screens stand in for the pre-game and post-game ones, and the way out leads to the campaign screen.</summary>
+    public static Mission Mission;
     /// <summary>The scenario or save being set up, played or edited ("" none: the map editor on the scene's own board).</summary>
     public static string FilePath = "";
     public static readonly List<Side> Sides = new List<Side>();
@@ -54,20 +58,43 @@ public static class MatchSetup {
     /// <summary>Open the game scene in the map editor, on a scenario (null: the scene's own board).</summary>
     public static void Edit(string scenarioPath) { Open(SessionMode.Editor, scenarioPath); }
 
-    static void Open(SessionMode mode, string path) {
+    /// <summary>Open the game scene on a recorded game (its game log folder) to watch it again.</summary>
+    public static void Watch(string logFolder) { Open(SessionMode.Replay, logFolder); }
+
+    /// <summary>
+    /// Open the game scene on a campaign mission's scenario, with the mission's briefing over it. False (and nothing
+    /// opened) when its scenario file is not in the campaign's folders.
+    /// </summary>
+    public static bool PlayMission(Mission mission) {
+        string path = mission != null ? GameFiles.CampaignScenarioPath(mission.ScenarioName) : null;
+        if (path == null) return false;
+        Open(SessionMode.Setup, path, mission);
+        return true;
+    }
+
+    /// <summary>Leave the game (or the main menu) for the campaign screen.</summary>
+    public static void ToCampaign() { Leave(FrontEndSettings.Get.campaignScene); }
+
+    static void Open(SessionMode mode, string path, Mission mission = null) {
+        Mission = mission;
         Mode = mode;
         FilePath = path ?? "";
-        GameController.Paused = mode == SessionMode.Setup || mode == SessionMode.Editor;
+        GameController.Paused = mode != SessionMode.Play;
         SceneManager.LoadScene(FrontEndSettings.Get.gameScene, LoadSceneMode.Single);
     }
 
     /// <summary>Leave the game for the main menu.</summary>
-    public static void ToMainMenu() {
+    public static void ToMainMenu() { Leave(FrontEndSettings.Get.mainMenuScene); }
+
+    static void Leave(string toScene) {
+        Mission = null;
         Mode = SessionMode.None;
         FilePath = "";
         GameController.Paused = false;
         GameLog.Stop();
-        SceneManager.LoadScene(FrontEndSettings.Get.mainMenuScene, LoadSceneMode.Single);
+        Replay.Close();
+        Replay.BuiltInPanel = true;
+        SceneManager.LoadScene(toScene, LoadSceneMode.Single);
     }
 
     // ------------------------------------------------------------------ in the game scene
@@ -103,9 +130,33 @@ public static class MatchSetup {
 
     /// <summary>A saved game: every side played as it was (the file's "AI" per side), its game log going on from where it was saved.</summary>
     public static bool LoadSave(string path) {
-        bool ok = Load(path, () => { ScenarioLoader.ControlFromFile = true; });
-        if (ok) FilePath = path;
+        bool ok = Load(path, () => { ScenarioLoader.ControlFromFile = true; ScenarioLoader.SidesAsFiled = true; });
+        if (ok) { FilePath = path; Mission = MissionStamped(path); }
         return ok;
+    }
+
+    /// <summary>The key a saved game keeps its campaign mission under (the mission asset's name).</summary>
+    public const string MissionKey = "mission";
+
+    /// <summary>
+    /// Note in the saved game at <paramref name="path"/> that it is the campaign mission being played, so loading it
+    /// goes on as that mission (its result counts for the campaign). Nothing is written for an ordinary game.
+    /// </summary>
+    public static void StampMission(string path) {
+        if (Mission == null || string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return;
+        string text = System.IO.File.ReadAllText(path).TrimEnd();
+        int end = text.LastIndexOf('}');
+        if (end < 0) return;
+        string key = Mission.Key.Replace("\\", "").Replace("\"", "");
+        System.IO.File.WriteAllText(path, text.Substring(0, end).TrimEnd() + ",\n\"" + MissionKey + "\": \"" + key + "\"\n}\n");
+    }
+
+    /// <summary>The campaign mission a saved game was saved in (StampMission), or null.</summary>
+    static Mission MissionStamped(string path) {
+        try {
+            Defective.JSON.JSONObject key = new Defective.JSON.JSONObject(System.IO.File.ReadAllText(path)).GetField(MissionKey);
+            return key != null && key.isString ? Mission.Named(key.stringValue) : null;
+        } catch (Exception) { return null; }
     }
 
     /// <summary>A scenario into the map editor: as the file has it, nobody playing.</summary>
@@ -140,6 +191,7 @@ public static class MatchSetup {
             ScenarioLoader.FogOverride = fog; ScenarioLoader.SpecialUnitsOverride = special;
             ScenarioLoader.ControlOverride = control; ScenarioLoader.FactionOverride = factions; ScenarioLoader.ControlFromFile = fromFile;
             ScenarioLoader.ProfileOverride = profilesWere;
+            ScenarioLoader.SidesAsFiled = false;
             ScenarioLoader.RecordGames = recording;
         }
     }

@@ -59,6 +59,11 @@ public class DialogueBox : MonoBehaviour, IDialoguePresenter {
 
     static void Spawn() {
         if (GameController.gc != null && GameController.gc.headless) return;
+        Ensure();
+    }
+
+    /// <summary>The dialogue box in the open scene, made from its prefab if there is none yet (a game scene gets one by itself; the campaign screen asks).</summary>
+    public static void Ensure() {
         if (FindAnyObjectByType<DialogueBox>() != null) return;
         DialogueBox prefab = Resources.Load<DialogueBox>(ScenarioDialogue.DialogueBoxPrefabName);
         if (prefab == null) return;   // ScenarioDialogue says so when a line has nowhere to go

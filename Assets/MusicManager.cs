@@ -106,7 +106,12 @@ public class MusicManager : MonoBehaviour {
 
     void Update() {
         GameController gc = GameController.gc;
-        float dt = Time.unscaledDeltaTime;
+        // Away from the game (tabbed out, paused by the system) Unity holds the audio: a held track is not a finished
+        // one. Nothing is decided then, nor for a moment after coming back (the audio takes a frame or two to resume).
+        if (!Application.isFocused || away) { awayUntil = Time.unscaledTime + 1f; return; }
+        if (Time.unscaledTime < awayUntil) return;
+        // (Capped: the first frame back is as long as the time away, and would finish every fade at once.)
+        float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
         if (gc != null && gc.headless) { foreach (Deck d in decks) d.source.Stop(); return; }
 
         // What the game is doing: a change is a trigger (game start, game over, back to the menu).
@@ -130,7 +135,9 @@ public class MusicManager : MonoBehaviour {
                 Switch(Next(kind), Mathf.Max(0.05f, left), false, Settings.musicFadeIn);
             }
             // Over (or never started: a clip that could not play): the next one.
-            else if (!cur.source.isPlaying && !cur.endingStarted && Time.unscaledTime - cur.startedAt > 1f) {
+            // (A finished clip is back at its start; one stopped part-way was held, not finished.)
+            else if (!cur.source.isPlaying && !cur.endingStarted && Time.unscaledTime - cur.startedAt > 1f
+                     && (cur.source.time <= 0.05f || left <= 0.25f)) {
                 cur.endingStarted = true;
                 if (special) special = false;
                 Switch(Next(kind), Settings.musicFadeIn, false, Settings.musicFadeIn);
@@ -150,7 +157,11 @@ public class MusicManager : MonoBehaviour {
         }
     }
 
-    float retryAt, seenSince;
+    float retryAt, seenSince, awayUntil;
+    bool away;
+
+    void OnApplicationFocus(bool focused) { away = !focused; if (focused) awayUntil = Time.unscaledTime + 1f; }
+    void OnApplicationPause(bool paused) { away = paused; if (!paused) awayUntil = Time.unscaledTime + 1f; }
     Kind seen = Kind.None;
 
     /// <summary>The end fade for a clip: the setting, but never more than a third of a short track.</summary>

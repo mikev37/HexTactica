@@ -69,8 +69,28 @@ PrefabInstance:
       value: 1.84
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+      propertyPath: supplies
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
       propertyPath: Firepower
       value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 90cc38a58d7682847ad21ea6a7f2d12b, type: 3}
+    - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+      propertyPath: description
+      value: The rebel recon unit has stronger firepower, is invisible as long as no enemy units are within 3 tiles of it, and carries more supplies, but it is vulnerable to being hit.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+      propertyPath: suppliesMax
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
+      propertyPath: stealthRange
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7dd97f79c636c7e4da7bf8591f46f612, type: 3}
       propertyPath: Vulnerability

@@ -57,17 +57,17 @@ MonoBehaviour:
   lower: {fileID: 5100204457745414075}
   weaponImpact: {fileID: 3652074506526222895, guid: 237dda73323d86848bef36528bce2bd2, type: 3}
   deathExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
-  orderSound: {fileID: 0}
-  moveBurstSound: {fileID: 0}
+  orderSound: {fileID: 8300000, guid: bcec7955c1f355549aab04c925c58283, type: 3}
+  moveBurstSound: {fileID: 8300000, guid: ab39abb5aa50e294b962d081b382c5ea, type: 3}
   moveLoopSound: {fileID: 0}
-  fireSound: {fileID: 0}
+  fireSound: {fileID: 8300000, guid: f4e2d63149cf99d42bb10a278e155d21, type: 3}
   dieSound: {fileID: 8300000, guid: b80c8eb261bf4cf478acd1f22613a9b3, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 15000
-  description: 
+  description: The Fighter Jet is the premier air to air unit; able to traverse great distances, shoot down enemy aircraft at range. Unfortunately it is also vulnerable to anything that targets aircraf, and has limited range, so it must return to refuel often.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -76,9 +76,9 @@ MonoBehaviour:
   _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
-  Firepower: 7
+  Firepower: 6
   Evasion: 6
-  Targeting: 6
+  Targeting: 5
   Armor: 1
   Piercing: 0
   Concealment: 0
@@ -91,6 +91,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 6
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 5
   moveRange: 10
@@ -416,6 +417,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &5100088618317916628
 MonoBehaviour:
   m_ObjectHideFlags: 0

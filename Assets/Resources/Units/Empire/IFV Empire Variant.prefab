@@ -16,6 +16,10 @@ PrefabInstance:
       propertyPath: m_Sprite
       value: 
       objectReference: {fileID: 6389018192261116174, guid: 7c6f84fccfdebf74b93cf349e120406c, type: 3}
+    - target: {fileID: 970299335936698322, guid: 4a73ea100d2e8544abdb09b3e4f03d87, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 23c92202b1d5206488fe436a78043c22, type: 3}
     - target: {fileID: 2479104871868787622, guid: 4a73ea100d2e8544abdb09b3e4f03d87, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.29

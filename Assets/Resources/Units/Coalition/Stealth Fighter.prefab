@@ -65,6 +65,10 @@ PrefabInstance:
       value: 21000
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 2a17b185e6614e8429b3569f9798ee74, type: 3}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: Concealment
       value: 0
       objectReference: {fileID: 0}

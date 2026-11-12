@@ -358,6 +358,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &2330930385637973940
 GameObject:
   m_ObjectHideFlags: 0
@@ -481,6 +482,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &2540997343791161562
 GameObject:
   m_ObjectHideFlags: 0
@@ -623,14 +625,14 @@ MonoBehaviour:
   orderSound: {fileID: 0}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 8300000, guid: 081f115199875ba41b437c67555b24de, type: 3}
-  fireSound: {fileID: 0}
+  fireSound: {fileID: 8300000, guid: 48ee197f8b270b846b142d658b16c322, type: 3}
   dieSound: {fileID: 8300000, guid: 3db11af51fca9e3479d6843094661d5b, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 2500
-  description: 
+  description: 'A standard infantry unit, moderately effective at fighting, best in cover, and able to capture buildings. '
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -654,6 +656,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 3
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 0
   moveRange: 3
@@ -1065,6 +1068,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &7813393872732772569
 GameObject:
   m_ObjectHideFlags: 0
@@ -1205,6 +1209,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &8100479178936283976
 GameObject:
   m_ObjectHideFlags: 0
@@ -1345,6 +1350,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &8670340214765521119
 GameObject:
   m_ObjectHideFlags: 0

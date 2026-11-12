@@ -51,6 +51,7 @@ namespace HexTactica.Harness {
         /// <summary>Start a new recording (closing any open one). <paramref name="root"/> null = DefaultRoot.</summary>
         public static void Start(string from, string red, string root) {
             Stop();
+            if (Replay.Active) return;   // a recording being watched is not a game to record
             source = from ?? "";
             redKind = string.IsNullOrEmpty(red) ? "?" : red;
             Folder = Path.Combine(root ?? DefaultRoot, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture));
@@ -83,6 +84,9 @@ namespace HexTactica.Harness {
             Unit.Finished += OnFinished;
             GameController.TurnStarted += OnTurnStarted;
             GameController.GameEnded += GameOver;
+            GameController.Resigned += OnResigned;
+            Transporting.Boarded += OnBoarded;
+            Transporting.Unloaded += OnUnloaded;
             AIPlayer.Trace = Line;
             AITactical.DecisionLog = Line;
             AISupplyPlanner.DebugLog = Line;
@@ -172,6 +176,9 @@ namespace HexTactica.Harness {
             Unit.RanInto -= OnRanInto;
             GameController.TurnStarted -= OnTurnStarted;
             GameController.GameEnded -= GameOver;
+            GameController.Resigned -= OnResigned;
+            Transporting.Boarded -= OnBoarded;
+            Transporting.Unloaded -= OnUnloaded;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
             if (AITactical.DecisionLog == (Action<string>)Line) AITactical.DecisionLog = null;
             if (AISupplyPlanner.DebugLog == (Action<string>)Line) AISupplyPlanner.DebugLog = null;
@@ -216,11 +223,37 @@ namespace HexTactica.Harness {
 
         static void OnFinished(Unit u) {
             if (writer == null || u == null) return;
+            if (u.trasnporter != null) return;   // aboard: it goes where its transport goes (the boarding was logged)
             HexTile was;
             lastSeen.TryGetValue(u, out was);
             if (u.tile != null && was != null && was != u.tile)
-                Line("   " + Who(u) + " moved " + D(was) + " -> " + D(u.tile));
+                Line(Lines.Moved(u, was, u.tile));
             if (u.tile != null) lastSeen[u] = u.tile;
+        }
+
+        /// <summary>A unit about to do something from <paramref name="now"/> that it moved to first: its move is logged before what it does there (it only "finishes" after).</summary>
+        static void FlushMove(Unit u, HexTile now) {
+            HexTile was;
+            if (u == null || now == null || !lastSeen.TryGetValue(u, out was) || was == now) return;
+            Line(Lines.Moved(u, was, now));
+            lastSeen[u] = now;
+        }
+
+        static void OnBoarded(Unit transport, Unit cargo, HexTile from) {
+            if (writer == null || transport == null || cargo == null) return;
+            FlushMove(transport, transport.tile);
+            HexTile was;
+            // Where it stood at the start of its action (it may have walked up to the transport first).
+            if (!lastSeen.TryGetValue(cargo, out was) || was == null) was = from;
+            Line(Lines.Boards(transport, cargo, was));
+            lastSeen.Remove(cargo);
+        }
+
+        static void OnUnloaded(Unit transport, Unit cargo, HexTile onto) {
+            if (writer == null || transport == null || cargo == null) return;
+            FlushMove(transport, transport.tile);
+            Line(Lines.GetsOff(transport, cargo, onto));
+            lastSeen[cargo] = onto;
         }
 
         /// <summary>Each side's state lines at the start of a turn (Lines.State, Fields, CanBuy).</summary>
@@ -270,6 +303,8 @@ namespace HexTactica.Harness {
             return len2 > 0f ? (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / len2 : 0f;
         }
 
+        static void OnResigned(Player p) { if (writer != null && p != null) Line(Lines.Resigns(p)); }
+
         static void OnProduced(Building b, Unit made) {
             if (writer == null || made == null) return;
             Line(Lines.Buy(b, made));
@@ -310,12 +345,12 @@ namespace HexTactica.Harness {
         static void OnAttack(Unit attacker, Unit defender, HexTile from, HexTile at, CombatOutcome o) {
             if (writer == null) return;
             // A move-and-attack: report the move first (the unit only "finishes" after firing).
-            HexTile was;
-            if (attacker != null && from != null && lastSeen.TryGetValue(attacker, out was) && was != from) {
-                Line("   " + Who(attacker) + " moved " + D(was) + " -> " + D(from));
-                lastSeen[attacker] = from;
-            }
+            FlushMove(attacker, from);
+            // A defender fired on mid-move (it ran into an unseen unit): its move up to where it was stopped comes first.
+            FlushMove(defender, at);
             Line(Lines.Attack(attacker, defender, from, at, o));
+            // A retreat moves the defender without an action of its own: its next move starts from where it was driven.
+            if (defender != null && defender.Strength > 0 && defender.tile != null) lastSeen[defender] = defender.tile;
             if (GameController.gc != null && GameController.gc.gameOver) GameOver();
         }
 
@@ -451,6 +486,21 @@ namespace HexTactica.Harness {
             sb.Append("{\n\"width\":").Append(2 * r + 1).Append(",\n\"active\":").Append(active != null ? active.id : 112);
             sb.Append(",\n\"test\":{\"name\":").Append(Q("snapshot")).Append(",\"kind\":\"snapshot\",\"opponent\":").Append(Q(redKind == "?" ? "Human" : redKind))
               .Append(",\"rules\":").Append(Q(GameController.gc != null ? GameController.gc.rules.ToString().ToLowerInvariant() : "standard")).Append(",\"rounds\":\"30\",\"check\":\"report\",\"question\":").Append(Q(question)).Append('}');
+            // The sides as they are (name, colour, faction, money), the round, and whether factions field their special
+            // units: a replay's board is this turn's, sides and all.
+            if (GameController.gc != null) {
+                sb.Append(",\n\"day\":").Append(GameController.gc.days);
+                sb.Append(",\n\"factionSpecialUnits\":").Append(Q(GameController.gc.SpecialUnitsSetting));
+                sb.Append(",\n\"players\":[");
+                bool firstSide = true;
+                foreach (Player q in GameController.gc.players) {
+                    if (q == null) continue;
+                    if (!firstSide) sb.Append(',');
+                    firstSide = false;
+                    sb.Append('\n').Append(JsonUtility.ToJson(new PlayerData(q)));
+                }
+                sb.Append("\n]");
+            }
             sb.Append(",\n\"tiles\":[");
             bool first = true;
             foreach (HexTile t in HexGenerator.hg.tiles) {
@@ -480,6 +530,7 @@ namespace HexTactica.Harness {
 
             List<Unit> units = new List<Unit>();
             foreach (Unit u in AllUnits()) if (u != null && u.tile != null && u.Strength > 0) units.Add(u);
+            if (units.Count == 0) { sb.Append(",\n\"units\":[]\n}\n"); return sb.ToString(); }   // (the JSON reader does not take "[\n]")
             sb.Append(",\n\"units\":[");
             first = true;
             foreach (Unit u in units) {

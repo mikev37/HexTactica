@@ -3157,6 +3157,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &5700602749660029095
 GameObject:
   m_ObjectHideFlags: 0
@@ -3388,6 +3389,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &2068243611238315691
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3527,6 +3529,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &7467805933758477122
 GameObject:
   m_ObjectHideFlags: 0
@@ -3650,6 +3653,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!1 &8262858393916470263
 GameObject:
   m_ObjectHideFlags: 0
@@ -3868,6 +3872,7 @@ MonoBehaviour:
   color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
   distance: 0.15
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &1148991547513762554
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4075,12 +4080,32 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 31ffcc038dc519a489b76579b443f758, type: 3}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: Concealment
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: description
+      value: The Heavy Tank is a land battleship, with the most firepower, armor and piercing, able to one shot many land units. It is however vulnerable, with low vision, ammo, reach and movement.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: visionRange
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: moveLoopSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 22a2a89339fb7554cb5a0d9438b100e1, type: 3}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: moveBurstSound
+      value: 
+      objectReference: {fileID: 8300000, guid: bcec7955c1f355549aab04c925c58283, type: 3}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: terrainScramble
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:

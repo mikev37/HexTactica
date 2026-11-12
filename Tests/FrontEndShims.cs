@@ -82,9 +82,18 @@ namespace UnityEditor.SceneManagement {
 namespace UnityEditor.Events {
     public static class UnityEventTools {
         public static void AddPersistentListener(UnityEngine.Events.UnityEvent e, UnityEngine.Events.UnityAction call) { }
+        public static void RemovePersistentListener(UnityEngine.Events.UnityEventBase e, int index) { }
     }
 }
 namespace UnityEngine {
+    // (The campaign's screens: stars and flags that pop along a curve, a map that zooms.)
+    public struct Keyframe { public float time, value; public Keyframe(float t, float v) { time = t; value = v; } }
+    public class WaitForSecondsRealtime { public WaitForSecondsRealtime(float seconds) { } }
+    public class AnimationCurve {
+        public AnimationCurve(params Keyframe[] keys) { }
+        public float Evaluate(float t) { return t; }
+        public static AnimationCurve EaseInOut(float t0, float v0, float t1, float v1) { return new AnimationCurve(); }
+    }
     [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
     public class RequireComponent : System.Attribute { public RequireComponent(System.Type t) { } }
 }

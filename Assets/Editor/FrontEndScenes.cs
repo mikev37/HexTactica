@@ -21,12 +21,12 @@ using UnityEngine.UI;
 /// The game never builds any of this at run time.
 /// </summary>
 [InitializeOnLoad]
-static class FrontEndScenes {
+static partial class FrontEndScenes {
     const string SceneFolder = "Assets/Scenes/";
     const string SettingsPath = "Assets/Resources/" + FrontEndSettings.ResourceName + ".asset";
     const string PreviewTexturePath = "Assets/FrontEnd/UnitPreview.renderTexture";
     const string PrefabFolder = "Assets/FrontEnd/Prefabs/";
-    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row" };
+    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row", MissionFlagPrefab };
 
     static FrontEndScenes() { EditorApplication.delayCall += () => CreateMissing(false); }
 
@@ -46,7 +46,7 @@ static class FrontEndScenes {
     [MenuItem("HexTactica/Front End/Rebuild Front End Scenes (overwrites)")]
     static void Rebuild() {
         FrontEndSettings s = Settings();
-        string[] names = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene };
+        string[] names = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
         for (int i = 0; i < SceneManager.sceneCount; i++)
             foreach (string n in names)
                 if (SceneManager.GetSceneAt(i).path == SceneFolder + n + ".unity") {
@@ -74,6 +74,13 @@ static class FrontEndScenes {
         UpdateScene<MapEditorPanel>(s.mapEditorScene, UpdateMapEditor);
         UpdateScene<PostGameScreen>(s.postGameScene, UpdatePostGame);
         UpdateScene<OptionsPanel>(s.mainMenuScene, UpdateOptions);
+        UpdateScene<MainMenu>(s.mainMenuScene, UpdateMainMenu);
+        UpdateScene<InGameMenu>(s.inGameMenuScene, UpdateInGameMenu);
+        // (A scene that does not exist yet is made new.)
+        List<string> made = new List<string>();
+        Make(s.replayScene, BuildReplay, true, made);
+        MakeCampaignScenes(s, true, made);
+        if (made.Count > 0) { ListInBuild(s); Debug.Log("Created the scene(s): " + string.Join(", ", made.ToArray()) + "."); }
         AssetDatabase.SaveAssets();
     }
 
@@ -154,6 +161,21 @@ static class FrontEndScenes {
         Transform label = row.Find("Label");
         TMP_Text t = label != null ? label.GetComponent<TMP_Text>() : null;
         if (t != null && t.text == "Sound volume") { t.text = "Master volume"; done.Add("volume row labelled Master volume"); }
+        // Its Back goes through the panel itself (so the in-game menu can show the same panel), and the panel becomes
+        // the Options Panel prefab: yours as it is, left in place as the prefab's first instance.
+        MainMenu menu = op.GetComponentInParent<MainMenu>(true);
+        Button back = FindButton(op.transform, "ShowMain");
+        if (back != null) {
+            for (int i = back.onClick.GetPersistentEventCount() - 1; i >= 0; i--) UnityEventTools.RemovePersistentListener(back.onClick, i);
+            UnityEventTools.AddPersistentListener(back.onClick, op.Close);
+            done.Add("options Back goes through the panel");
+        }
+        if (op.returnTo == null && menu != null) op.returnTo = menu.mainPanel;
+        if (!PrefabUtility.IsPartOfPrefabInstance(op.gameObject) && AssetDatabase.LoadAssetAtPath<GameObject>(OptionsPrefabPath) == null) {
+            Directory.CreateDirectory(PrefabFolder);
+            PrefabUtility.SaveAsPrefabAssetAndConnect(op.gameObject, OptionsPrefabPath, InteractionMode.AutomatedAction);
+            done.Add("options panel saved as the Options Panel prefab (the in-game menu shows it too)");
+        }
     }
 
     static Slider CopyVolumeRow(Transform row, string name, string label, int at, out TMP_Text value) {
@@ -224,6 +246,8 @@ static class FrontEndScenes {
         Make(s.postGameScene, BuildPostGame, fromMenu, made);
         Make(s.inGameMenuScene, BuildInGameMenu, fromMenu, made);
         Make(s.mapEditorScene, BuildMapEditor, fromMenu, made);
+        Make(s.replayScene, BuildReplay, fromMenu, made);
+        MakeCampaignScenes(s, fromMenu, made);
         bool listed = ListInBuild(s);
         AssetDatabase.SaveAssets();
         if (made.Count > 0) Debug.Log("Created the front end's scenes: " + string.Join(", ", made.ToArray()) + ". They are yours to edit; open " + SceneFolder + s.mainMenuScene + ".unity and press Play.");
@@ -277,7 +301,7 @@ static class FrontEndScenes {
     static bool ListInBuild(FrontEndSettings s) {
         List<EditorBuildSettingsScene> list = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         bool changed = false;
-        string[] ours = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene };
+        string[] ours = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
         foreach (string n in ours) {
             string path = SceneFolder + n + ".unity";
             if (!File.Exists(path) || list.Exists(x => x.path == path)) continue;
@@ -324,10 +348,12 @@ static class FrontEndScenes {
         Text(root, "Title", "HexTactica", 72, TextAlignmentOptions.Center, FontStyles.Bold).rectTransform.Let(rt => Place(rt, new Vector2(0.5f, 1f), new Vector2(0f, -110f), new Vector2(900f, 110f)));
 
         // Main buttons.
-        GameObject main = Column(root, "Main", 440f, 520f, new Vector2(0f, -40f));
+        GameObject main = Column(root, "Main", 440f, 600f, new Vector2(0f, -40f));
+        Btn(main.transform, "Campaign", menu.Campaign);
         Btn(main.transform, "Load Scenario", menu.ShowLoadScenario);
         Btn(main.transform, "Map Editor", menu.ShowMapEditor);
         Btn(main.transform, "Unit Explorer", menu.ShowUnitExplorer);
+        Btn(main.transform, "Replay", menu.ShowReplays);
         Btn(main.transform, "Options", menu.ShowOptions);
         Btn(main.transform, "Exit", menu.Exit);
         menu.mainPanel = main;
@@ -402,27 +428,13 @@ static class FrontEndScenes {
         Btn(unitButtons.transform, "Back", menu.ShowMain, 200f);
         menu.unitsPanel = units;
 
-        // Options.
-        GameObject options = Window(root, "Options", 760f, 760f);
-        OptionsPanel op = options.AddComponent<OptionsPanel>();
-        Text(options.transform, "Heading", "Options", 40, TextAlignmentOptions.Left, FontStyles.Bold);
-        VolumeRow(options.transform, "Volume", "Master volume", out op.volume, out op.volumeValue);
-        VolumeRow(options.transform, "Music Volume", "Music", out op.musicVolume, out op.musicValue);
-        VolumeRow(options.transform, "Effects Volume", "Sound effects", out op.effectsVolume, out op.effectsValue);
-        op.fullScreen = Tog(options.transform, "Full screen");
-        GameObject res = Row(options.transform, "Resolution", 50f);
-        Text(res.transform, "Label", "Resolution", 26, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 260f, -1f));
-        op.resolution = Drop(res.transform, 360f);
-        GameObject q = Row(options.transform, "Quality", 50f);
-        Text(q.transform, "Label", "Graphics quality", 26, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 260f, -1f));
-        op.quality = Drop(q.transform, 360f);
-        op.vSync = Tog(options.transform, "Vertical sync");
-        Spacer(options.transform, true);
-        GameObject optButtons = Row(options.transform, "Buttons", 60f);
-        Btn(optButtons.transform, "Back", menu.ShowMain, 200f);
+        // Options: the shared panel (a prefab, the in-game menu shows it too).
+        GameObject options = OptionsInstance(root);
+        options.GetComponent<OptionsPanel>().returnTo = main;
+        ReplayWindow(root, menu);
         menu.optionsPanel = options;
 
-        foreach (GameObject p in new[] { load, editor, units, options }) p.SetActive(false);
+        foreach (GameObject p in new[] { load, editor, units, options, menu.replayPanel }) p.SetActive(false);
     }
 
     static void BuildPreGame() {
@@ -484,8 +496,11 @@ static class FrontEndScenes {
         GameObject w = Window(canvas.transform, "Menu", 1200f, 820f);
         Text(w.transform, "Heading", "Paused", 44, TextAlignmentOptions.Left, FontStyles.Bold);
         GameObject top = Row(w.transform, "Resume", 60f);
-        Btn(top.transform, "Resume", m.Resume, 240f);
+        Btn(top.transform, "Resume", m.Resume, 200f);
+        Btn(top.transform, "Options", m.ShowOptions, 200f);
+        m.resignButton = Btn(top.transform, "Resign", m.Resign, 200f);
         Spacer(top.transform);
+        m.window = w;
         Btn(top.transform, "Exit to main menu", m.ExitToMainMenu, 320f);
         Text(w.transform, "Save heading", "Save", 28, TextAlignmentOptions.Left, FontStyles.Bold);
         GameObject save = Row(w.transform, "Save", 56f);
@@ -500,6 +515,153 @@ static class FrontEndScenes {
         m.status = Text(bottom.transform, "Status", "", 22, TextAlignmentOptions.Left, FontStyles.Italic);
         Flexible(m.status.gameObject);
         m.loadButton = Btn(bottom.transform, "Load", m.Load, 200f);
+        GameObject options = OptionsInstance(canvas.transform);
+        m.optionsPanel = options.GetComponent<OptionsPanel>();
+        m.optionsPanel.returnTo = w;
+        options.SetActive(false);
+    }
+
+    /// <summary>The replay's controls: a panel down the left, the board beside it.</summary>
+    static void BuildReplay() {
+        Canvas canvas = MakeCanvas("Replay", 100);
+        ReplayControls m = canvas.gameObject.AddComponent<ReplayControls>();
+        GameObject panel = SidePanel(canvas.transform, "Controls", 480f, true);
+        Text(panel.transform, "Heading", "Replay", 34, TextAlignmentOptions.Left, FontStyles.Bold);
+        m.title = Text(panel.transform, "Turn", "", 24, TextAlignmentOptions.Left, FontStyles.Bold);
+        m.view = Text(panel.transform, "View", "", 20, TextAlignmentOptions.Left, FontStyles.Italic);
+        GameObject step = Row(panel.transform, "Step", 50f);
+        Btn(step.transform, "Next action", m.NextAction, -1f, 22);
+        Btn(step.transform, "Next turn", m.NextTurn, -1f, 22);
+        GameObject play = Row(panel.transform, "Play", 50f);
+        m.playLabel = Btn(play.transform, "Play", m.TogglePlay, -1f, 22).GetComponentInChildren<TMP_Text>();
+        m.fastLabel = Btn(play.transform, "Fast forward", m.ToggleFast, -1f, 22).GetComponentInChildren<TMP_Text>();
+        GameObject other = Row(panel.transform, "Other", 50f);
+        Btn(other.transform, "Previous turn", m.PreviousTurn, -1f, 22);
+        Btn(other.transform, "Whose eyes", m.CycleView, -1f, 22);
+        m.lastAction = Text(panel.transform, "Last Action", "", 20, TextAlignmentOptions.TopLeft, FontStyles.Bold);
+        RectTransform list = ScrollList(panel.transform, "Log", -1f, -1f);
+        Flexible(list.GetComponentInParent<ScrollRect>().gameObject, true);
+        m.log = Text(list, "Text", "", 18, TextAlignmentOptions.TopLeft, FontStyles.Normal);
+        GameObject bottom = Row(panel.transform, "Bottom", 50f);
+        Btn(bottom.transform, "Exit to main menu", m.Exit, -1f, 22);
+    }
+
+    /// <summary>The main menu's Replay window: the recorded games, and Watch.</summary>
+    static void ReplayWindow(Transform root, MainMenu menu) {
+        GameObject w = Window(root, "Replay", 1200f, 820f);
+        Text(w.transform, "Heading", "Replay", 40, TextAlignmentOptions.Left, FontStyles.Bold);
+        Text(w.transform, "Hint", "Every game is recorded. Pick one to watch again.", 24, TextAlignmentOptions.Left, FontStyles.Normal);
+        menu.replayList = FileBrowser(w.transform, "Recordings");
+        menu.replayList.source = FileList.Source.Recordings;
+        menu.replayList.empty = "No recorded games yet.";
+        GameObject buttons = Row(w.transform, "Buttons", 60f);
+        Btn(buttons.transform, "Back", menu.ShowMain, 200f);
+        Spacer(buttons.transform);
+        menu.watchButton = Btn(buttons.transform, "Watch", menu.Watch, 220f);
+        menu.replayPanel = w;
+    }
+
+    const string OptionsPrefabPath = PrefabFolder + "Options Panel.prefab";
+
+    /// <summary>
+    /// The options panel under <paramref name="parent"/>: an instance of the Options Panel prefab — made here the
+    /// first time (and the panel left in the scene as its first instance), so the main menu and the in-game menu show
+    /// the same panel and a change to the prefab changes both.
+    /// </summary>
+    static GameObject OptionsInstance(Transform parent) {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(OptionsPrefabPath);
+        if (prefab != null) return (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        GameObject made = BuildOptions(parent);
+        Directory.CreateDirectory(PrefabFolder);
+        PrefabUtility.SaveAsPrefabAssetAndConnect(made, OptionsPrefabPath, InteractionMode.AutomatedAction);
+        return made;
+    }
+
+    static GameObject BuildOptions(Transform root) {
+        GameObject options = Window(root, "Options", 760f, 760f);
+        OptionsPanel op = options.AddComponent<OptionsPanel>();
+        Text(options.transform, "Heading", "Options", 40, TextAlignmentOptions.Left, FontStyles.Bold);
+        VolumeRow(options.transform, "Volume", "Master volume", out op.volume, out op.volumeValue);
+        VolumeRow(options.transform, "Music Volume", "Music", out op.musicVolume, out op.musicValue);
+        VolumeRow(options.transform, "Effects Volume", "Sound effects", out op.effectsVolume, out op.effectsValue);
+        op.fullScreen = Tog(options.transform, "Full screen");
+        GameObject res = Row(options.transform, "Resolution", 50f);
+        Text(res.transform, "Label", "Resolution", 26, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 260f, -1f));
+        op.resolution = Drop(res.transform, 360f);
+        GameObject q = Row(options.transform, "Quality", 50f);
+        Text(q.transform, "Label", "Graphics quality", 26, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 260f, -1f));
+        op.quality = Drop(q.transform, 360f);
+        op.vSync = Tog(options.transform, "Vertical sync");
+        Spacer(options.transform, true);
+        GameObject optButtons = Row(options.transform, "Buttons", 60f);
+        Btn(optButtons.transform, "Back", op.Close, 200f);
+        return options;
+    }
+
+    /// <summary>The button under <paramref name="under"/> whose On Click calls the method of this name (as wired in the scene), or null.</summary>
+    static Button FindButton(Transform under, string method) {
+        if (under == null) return null;
+        foreach (Button b in under.GetComponentsInChildren<Button>(true))
+            for (int i = 0; i < b.onClick.GetPersistentEventCount(); i++)
+                if (b.onClick.GetPersistentMethodName(i) == method) return b;
+        return null;
+    }
+
+    /// <summary>A copy of a button of yours (so it looks like it), beside it, with a new label and call.</summary>
+    static Button CopyButton(Button source, string label, UnityAction call, bool before = false) {
+        GameObject g = Object.Instantiate(source.gameObject, source.transform.parent);
+        g.name = label;
+        g.transform.SetSiblingIndex(source.transform.GetSiblingIndex() + (before ? 0 : 1));
+        Button b = g.GetComponent<Button>();
+        for (int i = b.onClick.GetPersistentEventCount() - 1; i >= 0; i--) UnityEventTools.RemovePersistentListener(b.onClick, i);
+        UnityEventTools.AddPersistentListener(b.onClick, call);
+        TMP_Text t = g.GetComponentInChildren<TMP_Text>(true);
+        if (t != null) t.text = label;
+        return b;
+    }
+
+    /// <summary>
+    /// The main menu's Campaign button (a copy of your Load Scenario button, before it), and its Replay button (a copy
+    /// of your Options button, before it) and Replay window.
+    /// </summary>
+    static void UpdateMainMenu(MainMenu menu, List<string> done) {
+        Transform mainButtons = menu.mainPanel != null ? menu.mainPanel.transform : null;
+        if (mainButtons != null && FindButton(mainButtons, "Campaign") == null) {
+            Button first = FindButton(mainButtons, "ShowLoadScenario");
+            if (first != null) CopyButton(first, "Campaign", menu.Campaign, true);
+            else Btn(mainButtons, "Campaign", menu.Campaign).transform.SetSiblingIndex(0);
+            done.Add("Campaign button added");
+        }
+        if (menu.replayPanel != null) return;
+        ReplayWindow(menu.transform, menu);
+        menu.replayPanel.SetActive(false);
+        Button like = FindButton(menu.mainPanel != null ? menu.mainPanel.transform : null, "ShowOptions");
+        if (like != null) CopyButton(like, "Replay", menu.ShowReplays, true);
+        else if (menu.mainPanel != null) Btn(menu.mainPanel.transform, "Replay", menu.ShowReplays);
+        done.Add("Replay button and window added");
+    }
+
+    /// <summary>The in-game menu's Options and Resign buttons (copies of your Resume button, after it) and the options panel.</summary>
+    static void UpdateInGameMenu(InGameMenu m, List<string> done) {
+        if (m.window == null && m.saveName != null) {
+            Transform t = m.saveName.transform;
+            while (t.parent != null && t.parent != m.transform) t = t.parent;
+            m.window = t.gameObject;
+            done.Add("menu window linked");
+        }
+        Button resume = FindButton(m.transform, "Resume");
+        if (m.resignButton == null && resume != null) {
+            m.resignButton = CopyButton(resume, "Resign", m.Resign);
+            done.Add("Resign button added");
+        }
+        if (m.optionsPanel == null) {
+            GameObject options = OptionsInstance(m.transform);
+            m.optionsPanel = options.GetComponent<OptionsPanel>();
+            m.optionsPanel.returnTo = m.window;
+            options.SetActive(false);
+            if (resume != null) CopyButton(resume, "Options", m.ShowOptions);
+            done.Add("Options button and panel added");
+        }
     }
 
     static void BuildMapEditor() {

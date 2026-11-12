@@ -20,6 +20,8 @@ static class TriggerFields {
             case TriggerCondition.UnitKilled:
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
+            case TriggerCondition.UnitBoarded:
+            case TriggerCondition.UnitUnloaded:
             case TriggerCondition.UnitSpent:
             case TriggerCondition.UnitStarving:
             case TriggerCondition.UnitOutOfAmmo:
@@ -184,6 +186,8 @@ static class TriggerFields {
             case TriggerCondition.UnitsAtLeast: return t.Value + " or more " + units;
             case TriggerCondition.UnitSelected: return "the player selects " + units + times;
             case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
+            case TriggerCondition.UnitBoarded: return units + " gets into a transport" + times;
+            case TriggerCondition.UnitUnloaded: return units + " gets out of a transport" + times;
             case TriggerCondition.UnitSpent: return units + " has used its turn";
             case TriggerCondition.UnitSpotted: return Side(t.SeenBy) + " spots " + units + times;
             case TriggerCondition.BuildingOwned: return building + " held by " + Side(t.Side);

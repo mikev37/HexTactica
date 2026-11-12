@@ -22,6 +22,29 @@ public class FrontEndSettings : ScriptableObject {
     [Tooltip("Loaded over the game scene in the map editor: the editing tools.")]
     public string mapEditorScene = "MapEditor";
 
+    [Tooltip("Loaded over the game scene to watch a recorded game: the replay's controls.")]
+    public string replayScene = "Replay";
+
+    [Header("Campaign")]
+    [Tooltip("The campaign screen: the map with a flag for every mission.")]
+    public string campaignScene = "Campaign";
+    [Tooltip("Loaded over the game scene before a campaign mission starts, in place of the pre-game screen: the mission's introduction and objectives, no choices.")]
+    public string missionBriefScene = "MissionBrief";
+    [Tooltip("Loaded over the game scene when a campaign mission ends, in place of the post-game screen: the result against the mission's pars, and its stars.")]
+    public string missionResultScene = "MissionResult";
+    [Tooltip("Folders the campaign's mission scenarios are in, relative to the game's data folder (as Scenario Folders): apart from the scenarios, so they are not listed under Load Scenario. The first that holds a mission's file is used.")]
+    public List<string> campaignFolders = new List<string> { "Resources/Campaign/Scenarios", "StreamingAssets/Campaign/Scenarios" };
+
+    [Header("Replay")]
+    [Tooltip("Play: seconds between one action and the next, counted from when the last one's animation is done.")]
+    public float replayPlayPause = 0.1f;
+    [Tooltip("Fast forward: an action is ordered every this many seconds, without waiting for the last one to finish.")]
+    public float replayFastInterval = 0.2f;
+    [Tooltip("Fast forward: every unit's move speed on screen is multiplied by this.")]
+    public float replayFastMoveSpeed = 3f;
+    [Tooltip("The most log lines the replay's controls list for a turn.")]
+    public int replayLinesShown = 200;
+
     [Header("Files")]
     [Tooltip("Folders scenarios are listed from, relative to the game's data folder (Application.dataPath: Assets in the editor, <Game>_Data in a build). The first that exist are read; scenarios saved by the map editor are listed too (userScenarioFolder).")]
     public List<string> scenarioFolders = new List<string> { "Resources/Scenarios", "StreamingAssets/Scenarios" };

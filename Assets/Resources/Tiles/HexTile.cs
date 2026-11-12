@@ -744,8 +744,8 @@ public class HexTile : MonoBehaviour
         // target tile, so it is checked once rather than per tile.
         if (!attacker.CanAttack(this)) return new List<HexTile>();
         List<HexTile> inRange = HexTactica.AI.AIPath.TilesInRange(this, attacker.MinRange, attacker.AttackRange);
-        // Direct fire does not go through higher ground (CombatMath.LineOfFire).
-        if (attacker.moveAndAttack) inRange.RemoveAll(t => !CombatMath.LineOfFire(attacker, this, t, t.occupier));
+        // Ground Direct fire does not go through higher ground (CombatMath.LineOfFire).
+        if (attacker.moveAndAttack && attacker.locomotion != Locomotion.Ship) inRange.RemoveAll(t => !CombatMath.LineOfFire(attacker, this, t, t.occupier));
         return inRange;
     }
 }

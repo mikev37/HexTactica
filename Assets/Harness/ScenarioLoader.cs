@@ -112,6 +112,8 @@ namespace HexTactica.Harness {
                     fileProfile[pd.id] = pd.aiProfile ?? "";
                     inFile.Add(pd.id);
                     Player loaded = pd.load();
+                    // A saved game or a recording: a side the file gives no faction has none (not the scene's).
+                    if (loaded != null && SidesAsFiled && players.Current.GetField("factionName") != null && string.IsNullOrEmpty(pd.factionName)) loaded.faction = null;
                     // The pre-game screen's faction for this side (before any unit is placed: units are placed as
                     // their side's faction fields them).
                     string faction;
@@ -133,6 +135,7 @@ namespace HexTactica.Harness {
             if (obj.GetField("buildings")) {
                 JSONObjectEnumerator buildings = obj.GetField("buildings").GetEnumerator();
                 while (buildings.MoveNext()) {
+                    if (buildings.Current == null || buildings.Current.type != JSONObject.Type.Object) continue;
                     BuildingData bd = JsonUtility.FromJson<BuildingData>(buildings.Current.Print());
                     bd.load();
                 }
@@ -142,7 +145,8 @@ namespace HexTactica.Harness {
             List<UnitData> unitData = new List<UnitData>();
             if (obj.GetField("units")) {
                 JSONObjectEnumerator units = obj.GetField("units").GetEnumerator();
-                while (units.MoveNext()) unitData.Add(JsonUtility.FromJson<UnitData>(units.Current.Print()));
+                // (An entry that is not an object — an empty list written as "[\n]" reads as one — is not a unit.)
+                while (units.MoveNext()) if (units.Current != null && units.Current.type == JSONObject.Type.Object) unitData.Add(JsonUtility.FromJson<UnitData>(units.Current.Print()));
             }
             UnitData.LoadAll(unitData);
 
@@ -299,6 +303,12 @@ namespace HexTactica.Harness {
         /// null: as the file's test block says (Blue this AI, Red the file's opponent). Applied after the test block.
         /// </summary>
         public static Dictionary<long, bool> ControlOverride;
+
+        /// <summary>
+        /// The file's sides are taken exactly: a side whose "factionName" is empty has no faction. Off (a scenario opened
+        /// in the scene), such a side keeps the faction the scene gave it. Set for a saved game and a replay's boards.
+        /// </summary>
+        public static bool SidesAsFiled;
 
         /// <summary>The AI profile for each side an AI plays, by player id (an AIProfile's profileName; "" the default). Set by the pre-game screen with ControlOverride.</summary>
         public static Dictionary<long, string> ProfileOverride;

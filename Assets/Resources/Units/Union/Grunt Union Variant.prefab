@@ -217,6 +217,7 @@ MonoBehaviour:
   color: {r: 0.23529412, g: 0.23529412, b: 0.23529412, a: 1}
   distance: 0.2
   renderQueue: 9
+  maskRenderInside: 0
 --- !u!114 &9068482428328993302
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -301,6 +302,10 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: a807171554ae44d45a0c16175ecc30f4, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:

@@ -120,7 +120,21 @@ public static class Transporting {
     /// <summary>Board <paramref name="transport"/> from <paramref name="from"/> (see CanBoardFromTile): the cargo leaves its own tile for the transport's.</summary>
     public static bool BoardFrom(Unit transport, Unit cargo, HexTile from) {
         if (!CanBoardFromTile(transport, cargo, from)) return false;
+        return Embark(transport, cargo);
+    }
 
+    /// <summary>A unit got into a transport: the transport, the cargo, the tile the cargo stood on before. For logs (not raised in a board view).</summary>
+    public static event System.Action<Unit, Unit, HexTile> Boarded;
+    /// <summary>A unit got out of a transport onto a tile: the transport, the cargo, the tile. For logs (not raised in a board view).</summary>
+    public static event System.Action<Unit, Unit, HexTile> Unloaded;
+
+    /// <summary>
+    /// The boarding itself, unchecked: BoardFrom after its checks, and a recorded boarding played again (a replay, a
+    /// turn received), where the log is the authority.
+    /// </summary>
+    internal static bool Embark(Unit transport, Unit cargo) {
+        if (transport == null || cargo == null || transport == cargo) return false;
+        HexTile stoodOn = cargo.tile;
         if (cargo.tile != null && cargo.tile.occupier == cargo) cargo.tile.occupier = null;
         cargo.tile = transport.tile;
         cargo.trasnporter = transport;
@@ -128,6 +142,7 @@ public static class Transporting {
         cargo.active = false;
         cargo.OnBoarded(transport);
         FogOfWar.Changed();
+        if (Boarded != null && BoardView.current == null) Boarded(transport, cargo, stoodOn);
         return true;
     }
 
@@ -171,7 +186,15 @@ public static class Transporting {
         if (!cargo.CanEnter(onto)) return false;
         if (!LocomotionRules.BridgeStep(transport.tile, onto, cargo.locomotion)) return false;
         if (!transport.tile.neighbors.Contains(onto) && onto != transport.tile) return false;
+        return Disembark(transport, cargo, onto);
+    }
 
+    /// <summary>
+    /// The getting off itself, unchecked but for the tile being free: Unload after its checks, and a recorded one
+    /// played again (a replay), where the recording is the authority on where the unit came to stand.
+    /// </summary>
+    internal static bool Disembark(Unit transport, Unit cargo, HexTile onto) {
+        if (transport == null || cargo == null || onto == null || onto.occupier != null || !transport.transported.Contains(cargo)) return false;
         transport.transported.Remove(cargo);
         cargo.trasnporter = null;
         cargo.tile = onto;
@@ -180,6 +203,7 @@ public static class Transporting {
         // turn can still move and fight; one that boarded this turn has already used its turn).
         cargo.OnUnloaded(transport);
         FogOfWar.Changed();
+        if (Unloaded != null && BoardView.current == null) Unloaded(transport, cargo, onto);
         return true;
     }
 

@@ -162,17 +162,17 @@ MonoBehaviour:
   lower: {fileID: 0}
   weaponImpact: {fileID: 3652074506526222895, guid: 237dda73323d86848bef36528bce2bd2, type: 3}
   deathExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
-  orderSound: {fileID: 0}
+  orderSound: {fileID: 8300000, guid: 7cb37c585bf948b428971332a2d3e41d, type: 3}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 8300000, guid: ee0601ce645845047a841abf966c5814, type: 3}
-  fireSound: {fileID: 8300000, guid: 9e2366ba9382dba4fbe2a837e1eef53e, type: 3}
+  fireSound: {fileID: 8300000, guid: 7957535870c561d40976e3a0ffa19295, type: 3}
   dieSound: {fileID: 8300000, guid: 34e2b69fe32887a4589eaee49c28da99, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 6000
-  description: 
+  description: Artillery is the king of the battlefield, able to inflict casualties at range without being shot back. It is best against exposed targets, and cannot move and shoot.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -196,6 +196,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 2
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 2
   moveRange: 6

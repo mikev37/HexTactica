@@ -12,6 +12,8 @@ public class GameFile {
     public DateTime modified;
     /// <summary>Made by the player (the map editor's folder) rather than shipped with the game.</summary>
     public bool user;
+    /// <summary>A campaign mission's scenario (the campaign's own folder): never listed under Load Scenario.</summary>
+    public bool campaign;
 }
 
 /// <summary>
@@ -38,12 +40,89 @@ public static class GameFiles {
         return list;
     }
 
+    /// <summary>The campaign missions' scenario files (FrontEndSettings.campaignFolders), by name: for the map editor, never for Load Scenario.</summary>
+    public static List<GameFile> CampaignScenarios() {
+        List<GameFile> list = new List<GameFile>();
+        foreach (string rel in S.campaignFolders) {
+            if (string.IsNullOrEmpty(rel)) continue;
+            List<GameFile> found = new List<GameFile>();
+            List(Path.Combine(Application.dataPath, rel), false, found);
+            foreach (GameFile f in found) if (!list.Exists(x => x.name == f.name)) { f.campaign = true; list.Add(f); }
+        }
+        list.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.OrdinalIgnoreCase));
+        return list;
+    }
+
+    /// <summary>What the map editor can open: every scenario, then the campaign's missions.</summary>
+    public static List<GameFile> Editable() {
+        List<GameFile> list = Scenarios();
+        list.AddRange(CampaignScenarios());
+        return list;
+    }
+
+    /// <summary>The file of the campaign mission scenario of this name (the first campaign folder that has it), or null.</summary>
+    public static string CampaignScenarioPath(string name) {
+        if (string.IsNullOrEmpty(name)) return null;
+        foreach (string rel in S.campaignFolders) {
+            if (string.IsNullOrEmpty(rel)) continue;
+            string path = Path.Combine(Path.Combine(Application.dataPath, rel), name + S.fileExtension);
+            if (File.Exists(path)) return path;
+        }
+        return null;
+    }
+
     /// <summary>Every saved game, the newest first.</summary>
     public static List<GameFile> Saves() {
         List<GameFile> list = new List<GameFile>();
         List(SavesFolder, true, list);
         list.Sort((a, b) => b.modified.CompareTo(a.modified));
         return list;
+    }
+
+    /// <summary>Every recorded game that can be watched again (a game log folder with its log and turn boards), the newest first.</summary>
+    public static List<GameFile> Recordings() {
+        List<GameFile> list = new List<GameFile>();
+        string root = HexTactica.Harness.GameLog.DefaultRoot;
+        if (!Directory.Exists(root)) return list;
+        foreach (string d in Directory.GetDirectories(root)) {
+            // A game: a log and more than its first turn's board (the scene opened and left is not one).
+            if (!File.Exists(Path.Combine(d, "game.log")) || Directory.GetFiles(d, "turn-*.dat").Length < 2) continue;
+            list.Add(new GameFile { name = Path.GetFileName(d), path = d, modified = Directory.GetLastWriteTime(d), user = true });
+        }
+        list.Sort((a, b) => b.modified.CompareTo(a.modified));
+        return list;
+    }
+
+    /// <summary>What a recording holds: the scenario it was played on, its sides, how many turns, and how it ended.</summary>
+    static string DescribeRecording(string folder) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            List<string> sides = new List<string>();
+            string log = Path.Combine(folder, "game.log");
+            using (FileStream fs = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (StreamReader r = new StreamReader(fs)) {
+                string line; int n = 0;
+                while ((line = r.ReadLine()) != null && n++ < 40) {
+                    string from; long id; string name, faction; bool ai;
+                    if (HexTactica.Harness.GameLog.Lines.ReadSource(line, out from)) sb.Append(Path.GetFileNameWithoutExtension(from)).Append('\n');
+                    else if (HexTactica.Harness.GameLog.Lines.ReadSide(line, out id, out name, out faction, out ai))
+                        sides.Add(name + (faction.Length > 0 ? " (" + faction + ")" : "") + (ai ? ", AI" : ""));
+                    else if (line.StartsWith("== round ")) break;
+                }
+                // How it ended: in the last stretch of the log.
+                if (fs.Length > 4096) { fs.Seek(-4096, SeekOrigin.End); r.DiscardBufferedData(); }
+                string ending = null; int round; string winner;
+                while ((line = r.ReadLine()) != null)
+                    if (HexTactica.Harness.GameLog.Lines.ReadGameOver(line, out round, out winner)) ending = (winner != null ? winner + " won" : "No winner") + " in round " + round;
+                if (sides.Count > 0) sb.Append(string.Join(" v ", sides.ToArray())).Append('\n');
+                sb.Append(Directory.GetFiles(folder, "turn-*.dat").Length).Append(" turns\n");
+                sb.Append(ending ?? "Not finished").Append('\n');
+            }
+            sb.Append(Directory.GetLastWriteTime(folder).ToString("yyyy-MM-dd HH:mm"));
+            return sb.ToString();
+        } catch (Exception e) {
+            return "Could not read this recording: " + e.Message;
+        }
     }
 
     static void List(string folder, bool user, List<GameFile> into) {
@@ -77,6 +156,7 @@ public static class GameFiles {
     /// the round it was saved on. Empty if it cannot be read.
     /// </summary>
     public static string Describe(string path) {
+        if (Directory.Exists(path)) return DescribeRecording(path);
         try {
             JSONObject obj = new JSONObject(File.ReadAllText(path));
             StringBuilder sb = new StringBuilder();

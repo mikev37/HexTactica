@@ -71,6 +71,10 @@ public enum TriggerCondition {
     UnitSpent = 28,
     /// <summary>A unit matching the unit filter comes into Seen By's sight (it was hidden by the fog, or new): Count times. With no fog, units are in sight as they appear.</summary>
     UnitSpotted = 29,
+    /// <summary>A unit matching the unit filter has got into a transport (In Area: the transport's tile within the area): Count times.</summary>
+    UnitBoarded = 30,
+    /// <summary>A unit matching the unit filter has got out of a transport (In Area: the tile it got out onto within the area): Count times.</summary>
+    UnitUnloaded = 31,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>

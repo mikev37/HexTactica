@@ -67,6 +67,8 @@ public class GameRecord {
     public List<Loss> losses = new List<Loss>();
     public List<Attack> attacks = new List<Attack>();
     public List<Capture> captures = new List<Capture>();
+    /// <summary>The sides that gave the game up.</summary>
+    public List<long> resigned = new List<long>();
     public bool over;
     public long winner = -1;
     public int lastRound;
@@ -114,6 +116,7 @@ public class GameRecord {
                 continue;
             }
             if (GameLog.Lines.ReadAxis(line, out n)) { g.axisLength = n; continue; }
+            if (GameLog.Lines.ReadResigns(line, names, out sideName)) { Side q = g.SideNamed(sideName); if (q != null) g.resigned.Add(q.id); continue; }
             if (g.source.Length == 0 && GameLog.Lines.ReadSource(line, out from)) { g.source = from; continue; }
             int newRound;
             if (GameLog.Lines.ReadRound(line, out newRound, out sideName)) {

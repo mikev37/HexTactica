@@ -58,7 +58,8 @@ public class GameSession : MonoBehaviour {
                 // scenario again, with the fog the pre-game screen chose).
                 if (GameController.gc != null) { GameController.gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); }
                 Frame();
-                SceneManager.LoadScene(s.preGameScene, LoadSceneMode.Additive);
+                // A campaign mission is briefed, not set up: no choices to make.
+                SceneManager.LoadScene(MatchSetup.Mission != null ? s.missionBriefScene : s.preGameScene, LoadSceneMode.Additive);
                 break;
             case SessionMode.Play:
                 GameController.Paused = false;
@@ -70,6 +71,19 @@ public class GameSession : MonoBehaviour {
                 if (!string.IsNullOrEmpty(MatchSetup.FilePath)) MatchSetup.LoadForEditing(MatchSetup.FilePath);
                 Frame();
                 SceneManager.LoadScene(s.mapEditorScene, LoadSceneMode.Additive);
+                break;
+            case SessionMode.Replay:
+                // Nobody plays: the game is held, and the Replay scene's controls step through the recording.
+                GameController.Paused = true;
+                HexTactica.Harness.Replay.BuiltInPanel = false;
+                // Whatever goes wrong opening the recording, the controls still come up (their Exit leads back).
+                bool opened = false;
+                try { opened = HexTactica.Harness.Replay.Open(MatchSetup.FilePath); }
+                catch (System.Exception e) { Debug.LogError("Could not open the recording " + MatchSetup.FilePath + ": " + e); opened = HexTactica.Harness.Replay.Active; }
+                if (opened) {
+                    Frame();
+                    SceneManager.LoadScene(s.replayScene, LoadSceneMode.Additive);
+                } else MatchSetup.ToMainMenu();
                 break;
             default:
                 GameController.Paused = false;
@@ -103,7 +117,9 @@ public class GameSession : MonoBehaviour {
         yield return null;   // the banner starts the frame after the game ends
         TurnBanner banner = FindAnyObjectByType<TurnBanner>();
         while (banner != null && banner.BannerShowing) yield return null;
-        SceneManager.LoadScene(FrontEndSettings.Get.postGameScene, LoadSceneMode.Additive);
+        // A campaign mission ends on its result (pars and stars), and from there on the campaign screen.
+        FrontEndSettings s = FrontEndSettings.Get;
+        SceneManager.LoadScene(MatchSetup.Mission != null ? s.missionResultScene : s.postGameScene, LoadSceneMode.Additive);
     }
 
     /// <summary>The in-game menu over the game (the game is held while it is open).</summary>
@@ -118,12 +134,12 @@ public class GameSession : MonoBehaviour {
     public void CloseMenu() {
         if (!menuOpen) return;
         menuOpen = false;
-        GameController.Paused = mode == SessionMode.Setup || mode == SessionMode.Editor;
+        GameController.Paused = mode != SessionMode.Play && mode != SessionMode.None;
         Unload(FrontEndSettings.Get.inGameMenuScene);
     }
 
     /// <summary>The post-game screen closed: the board stays to look at (the menu key opens the in-game menu).</summary>
-    public void ClosePostGame() { Unload(FrontEndSettings.Get.postGameScene); }
+    public void ClosePostGame() { Unload(FrontEndSettings.Get.postGameScene); Unload(FrontEndSettings.Get.missionResultScene); }
 
     /// <summary>A game was loaded or started again: the post-game screen may show again when it ends.</summary>
     public void NewGame() { postShown = false; mode = SessionMode.Play; }
@@ -134,6 +150,7 @@ public class GameSession : MonoBehaviour {
         mode = SessionMode.Play;
         ShowGamePanels(mode);
         Unload(FrontEndSettings.Get.preGameScene);
+        Unload(FrontEndSettings.Get.missionBriefScene);
     }
 
     /// <summary>
@@ -141,7 +158,7 @@ public class GameSession : MonoBehaviour {
     /// unit and tile panels (they show the pick) without the turn controls (gold, next unit, end turn) or the banner.
     /// </summary>
     static void ShowGamePanels(SessionMode m) {
-        bool hud = m != SessionMode.Setup, turns = m != SessionMode.Setup && m != SessionMode.Editor;
+        bool hud = m != SessionMode.Setup, turns = m == SessionMode.Play || m == SessionMode.None;
         foreach (Hud h in Resources.FindObjectsOfTypeAll<Hud>()) if (h != null && h.gameObject.scene.IsValid()) h.gameObject.SetActive(hud);
         foreach (TurnControls c in Resources.FindObjectsOfTypeAll<TurnControls>()) if (c != null && c.gameObject.scene.IsValid()) c.gameObject.SetActive(turns);
         foreach (TurnBanner b in Resources.FindObjectsOfTypeAll<TurnBanner>()) if (b != null && b.gameObject.scene.IsValid()) b.gameObject.SetActive(turns);

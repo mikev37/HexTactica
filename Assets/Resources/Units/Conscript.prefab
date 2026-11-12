@@ -456,14 +456,14 @@ MonoBehaviour:
   orderSound: {fileID: 0}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 8300000, guid: 081f115199875ba41b437c67555b24de, type: 3}
-  fireSound: {fileID: 8300000, guid: 326599adbd6c0164f90be5f2758139f7, type: 3}
+  fireSound: {fileID: 8300000, guid: 3563de985e7acf94fa0b75044b3f539f, type: 3}
   dieSound: {fileID: 8300000, guid: c520ae0e1c435444bae002c133bdfe45, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 1500
-  description: 
+  description: The cheapest infantry that you can buy. They haev limited vision and movement, but a bullet from a conscript will kill you just as easily as a bullet from a trained soldier.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -487,6 +487,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 2
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 0
   moveRange: 2

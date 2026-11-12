@@ -1,0 +1,1919 @@
+{
+ "width": 13,
+ "tiles": [
+  {
+   "x": -6,
+   "y": 0,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 1,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 2,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 3,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 4,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 5,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -6,
+   "y": 6,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": -1,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 0,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 1,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 2,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 3,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 4,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 5,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -5,
+   "y": 6,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": -2,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": -1,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 0,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 1,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 2,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 3,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 4,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 5,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -4,
+   "y": 6,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": -3,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": -2,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": -1,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 0,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 1,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 2,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Road",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 3,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 4,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 5,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -3,
+   "y": 6,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -4,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -3,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -2,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": -1,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 0,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 1,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 2,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Road",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 3,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 4,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 5,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -2,
+   "y": 6,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -5,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -4,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -3,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -2,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": -1,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 0,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 1,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 2,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Road",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 3,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 4,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 5,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": -1,
+   "y": 6,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -6,
+   "z": 6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -5,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -4,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -3,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -2,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": -1,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 1,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 2,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 3,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 4,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 5,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 0,
+   "y": 6,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -6,
+   "z": 5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -5,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -4,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -3,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -2,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": -1,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 0,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 4,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 1,
+   "y": 5,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -6,
+   "z": 4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -5,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -4,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -3,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -2,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": -1,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 0,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 2,
+   "y": 4,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -6,
+   "z": 3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -5,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -4,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -3,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -2,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": -1,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 0,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -6,
+   "z": 2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -5,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -4,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -3,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -2,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": -1,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": 0,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": 1,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 4,
+   "y": 2,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -6,
+   "z": 1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -5,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Hills",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -4,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -3,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -2,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": -1,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": 0,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 5,
+   "y": 1,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -6,
+   "z": 0,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -5,
+   "z": -1,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -4,
+   "z": -2,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -3,
+   "z": -3,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Forest",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -2,
+   "z": -4,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": -1,
+   "z": -5,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  },
+  {
+   "x": 6,
+   "y": 0,
+   "z": -6,
+   "damage": 0,
+   "combatCount": 0,
+   "terrain": "Grassland",
+   "destroyedFrom": "",
+   "under": ""
+  }
+ ],
+ "players": [
+  {
+   "personal_name": "Recruits",
+   "id": 0,
+   "displayColor": {
+    "r": 0.2,
+    "g": 0.45,
+    "b": 1.0,
+    "a": 1.0
+   },
+   "factionName": "",
+   "AI": false,
+   "aiProfile": "",
+   "factionLocked": false,
+   "money": 0,
+   "eliminated": false,
+   "eliminable": true
+  },
+  {
+   "personal_name": "Raiders",
+   "id": 112,
+   "displayColor": {
+    "r": 0.85,
+    "g": 0.2,
+    "b": 0.15,
+    "a": 1.0
+   },
+   "factionName": "",
+   "AI": true,
+   "aiProfile": "",
+   "factionLocked": false,
+   "money": 0,
+   "eliminated": false,
+   "eliminable": false
+  }
+ ],
+ "active": 0,
+ "day": 0,
+ "purchases": "off",
+ "allowedUnits": "",
+ "fog": "on",
+ "factionSpecialUnits": "off",
+ "fixedRules": "fog,purchases,factionSpecialUnits",
+ "rules": "standard",
+ "description": "Tutorial 2: wheels and supply. Load a truck, carry supply to the front, bring up a recon car, and take the village at the end of the road.",
+ "winText": "The village is ours. You've learned to load and unload transports, to carry supply with you, and to use a recon car.",
+ "lossText": "We have nobody left to take the village. Try again: keep the squads near the supply truck, and let the recon car shoot first.",
+ "buildings": [
+  {
+   "x": -4,
+   "y": 2,
+   "z": 2,
+   "gameobject_name": "HQ(Clone)",
+   "personal_name": "Headquarters",
+   "type": 0,
+   "owner_id": 0,
+   "income": 1000,
+   "producesSupply": true,
+   "supplyRange": 3,
+   "supplies": 0,
+   "suppliesMax": 0,
+   "damageLevel": 0,
+   "capturePoints": 0,
+   "capturingPlayerId": -1,
+   "hasHome": true,
+   "home_id": 0
+  },
+  {
+   "x": 4,
+   "y": 2,
+   "z": -6,
+   "gameobject_name": "Village(Clone)",
+   "personal_name": "Village",
+   "type": 4,
+   "owner_id": 112,
+   "income": 500,
+   "producesSupply": false,
+   "supplyRange": 0,
+   "supplies": 0,
+   "suppliesMax": 0,
+   "damageLevel": 0,
+   "capturePoints": 0,
+   "capturingPlayerId": -1,
+   "hasHome": true,
+   "home_id": 112
+  }
+ ],
+ "units": [
+  {
+   "x": -3,
+   "y": 2,
+   "z": 1,
+   "Strength": 6,
+   "Veterancy": 0,
+   "personalName": "Truck",
+   "active": true,
+   "owner_id": 0,
+   "supplies": 3,
+   "fuel": 30,
+   "ammo": 6,
+   "gameobject_name": "Truck(Clone)",
+   "transporterIndexPlusOne": 0,
+   "suppressed": 0
+  },
+  {
+   "x": -3,
+   "y": 1,
+   "z": 2,
+   "Strength": 6,
+   "Veterancy": 0,
+   "personalName": "Rifles",
+   "active": true,
+   "owner_id": 0,
+   "supplies": 3,
+   "fuel": 30,
+   "ammo": 6,
+   "gameobject_name": "Grunt(Clone)",
+   "transporterIndexPlusOne": 0,
+   "suppressed": 0
+  },
+  {
+   "x": -3,
+   "y": 3,
+   "z": 0,
+   "Strength": 6,
+   "Veterancy": 0,
+   "personalName": "Supply",
+   "active": true,
+   "owner_id": 0,
+   "supplies": 3,
+   "fuel": 30,
+   "ammo": 6,
+   "gameobject_name": "Supplies(Clone)",
+   "transporterIndexPlusOne": 0,
+   "suppressed": 0
+  },
+  {
+   "x": 4,
+   "y": 2,
+   "z": -6,
+   "Strength": 3,
+   "Veterancy": 0,
+   "personalName": "Lookout",
+   "active": true,
+   "owner_id": 112,
+   "supplies": 3,
+   "fuel": 30,
+   "ammo": 6,
+   "gameobject_name": "Grunt(Clone)",
+   "transporterIndexPlusOne": 0,
+   "suppressed": 0
+  }
+ ],
+ "script": {
+  "Version": 1,
+  "Triggers": [
+   {
+    "Name": "Welcome",
+    "Enabled": true,
+    "Condition": 0,
+    "Actions": [
+     {
+      "Type": 1,
+      "Zoom": 0,
+      "Seconds": 1.0,
+      "AtUnit": "Truck"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "The raiders hold the village at the end of this road, recruit. It is a long walk, so we drive.",
+        "Sound": "",
+        "Portrait": 0
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "This is a truck. It can't fight, but it carries two squads on foot, and it is fast on a road.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Select the grunt, then click the truck: he climbs aboard.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "rifles",
+      "Text": "Select me, then click the truck",
+      "AtUnit": "Rifles"
+     }
+    ]
+   },
+   {
+    "Name": "Rifles aboard",
+    "Enabled": true,
+    "Condition": 30,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "rifles"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "He's aboard. Boarding used his turn, but not the truck's.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Away from the HQ our units run out of supplies, so we take supply along. Put the supply unit in the truck too: select it, then click the truck.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "supply",
+      "Text": "Load me too",
+      "AtUnit": "Supply"
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Rifles"
+   },
+   {
+    "Name": "Supply aboard",
+    "Enabled": true,
+    "Condition": 30,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "supply"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Supply aboard. While the truck stays within one drive of supplied ground, everyone around the truck is in supply.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Supply"
+   },
+   {
+    "Name": "Loaded",
+    "Enabled": true,
+    "Condition": 18,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "rifles"
+     },
+     {
+      "Type": 3,
+      "MarkerId": "supply"
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "front",
+      "Text": "Drive here",
+      "TileX": 2,
+      "TileY": 2
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Both aboard. Select the truck and drive it up the road to the marked tile.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     },
+     {
+      "Type": 17,
+      "Trigger": "At the front"
+     }
+    ],
+    "Parts": [
+     "Rifles aboard",
+     "Supply aboard"
+    ]
+   },
+   {
+    "Name": "At the front",
+    "Enabled": false,
+    "Condition": 1,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "front"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Here we are. The lit ground around the truck is in supply, thanks to the supply unit aboard: leave it in the truck.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Now put the grunt down. Click the truck: its panel shows who is aboard. Click the grunt there, then a tile beside the truck.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Truck",
+    "TileX": 2,
+    "TileY": 2,
+    "Radius": 1
+   },
+   {
+    "Name": "Rifles out",
+    "Enabled": true,
+    "Condition": 31,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "On foot again. Getting out costs nothing, but he boarded this turn, so he is done for now.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Commander",
+        "Text": "End your turn. Help is on its way.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Rifles"
+   },
+   {
+    "Name": "Lookout spotted",
+    "Enabled": true,
+    "Condition": 29,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Enemy spotted! A lookout, dug in on the village.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "SeenBy": -2,
+    "Side": -3,
+    "UnitTag": "Lookout"
+   },
+   {
+    "Name": "Lookout holds",
+    "Enabled": true,
+    "Condition": 21,
+    "Actions": [
+     {
+      "Type": 16,
+      "UnitSide": 112,
+      "UnitTag": "Lookout",
+      "Stat": 3,
+      "Mode": 0,
+      "Value": 3
+     },
+     {
+      "Type": 16,
+      "UnitSide": 112,
+      "UnitTag": "Lookout",
+      "Stat": 1,
+      "Mode": 0,
+      "Value": 6
+     },
+     {
+      "Type": 23,
+      "UnitSide": 112,
+      "UnitTag": "Lookout",
+      "Value": 0
+     }
+    ],
+    "Repeat": true,
+    "Side": -3,
+    "Count": 1
+   },
+   {
+    "Name": "Reinforcements",
+    "Enabled": true,
+    "Condition": 21,
+    "Actions": [
+     {
+      "Type": 8,
+      "Side": -2,
+      "UnitKind": "Recon",
+      "TileX": -3,
+      "TileY": 2,
+      "Count": 1,
+      "Value": 6,
+      "Veterancy": 0,
+      "UnitTag": "Recon",
+      "ReadyToAct": true
+     },
+     {
+      "Type": 8,
+      "Side": -2,
+      "UnitKind": "Grunt",
+      "TileX": -3,
+      "TileY": 1,
+      "Count": 1,
+      "Value": 6,
+      "Veterancy": 0,
+      "UnitTag": "Scouts",
+      "ReadyToAct": true
+     },
+     {
+      "Type": 1,
+      "Zoom": 0,
+      "Seconds": 0.8,
+      "AtUnit": "Recon"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Reinforcements at the HQ: a recon car and another squad.",
+        "Sound": "",
+        "Portrait": 0
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "A recon car is fast and sees a long way through the fog. It is armed, and it carries one squad.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Put the new squad in the recon car, then drive it to the front.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "recon",
+      "Text": "Load the squad, then drive east",
+      "AtUnit": "Recon"
+     }
+    ],
+    "Side": -2,
+    "Count": 2
+   },
+   {
+    "Name": "Scouts aboard",
+    "Enabled": true,
+    "Condition": 30,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "recon"
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Aboard. A recon car can drive up, shoot, and still put its squad down beside it.",
+        "Sound": "",
+        "Portrait": 1
+       },
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Deal with that lookout. To attack, select a unit, click a lit tile next to the enemy, then click the enemy.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "lookout",
+      "Text": "Attack",
+      "AtUnit": "Lookout"
+     }
+    ],
+    "Side": -2,
+    "UnitTag": "Scouts"
+   },
+   {
+    "Name": "Out of supply",
+    "Enabled": true,
+    "Condition": 24,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "One of our units is out of supply: the ground it stands on is not lit. It will use up its supplies and then lose strength every turn.",
+        "Sound": "",
+        "Portrait": 0
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "Bring it back near the HQ or the supply truck.",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     }
+    ],
+    "Side": -2,
+    "Delay": 1
+   },
+   {
+    "Name": "Lookout down",
+    "Enabled": true,
+    "Condition": 2,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": "lookout"
+     },
+     {
+      "Type": 3,
+      "MarkerId": "recon"
+     },
+     {
+      "Type": 2,
+      "Marker": "Marker",
+      "MarkerId": "village",
+      "Text": "Capture",
+      "TileX": 4,
+      "TileY": 2
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "Lookout down! Now take the village: move a grunt onto it and keep him there. Vehicles can't capture.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     }
+    ],
+    "Side": -3,
+    "UnitTag": "Lookout"
+   },
+   {
+    "Name": "Village captured",
+    "Enabled": true,
+    "Condition": 3,
+    "Actions": [
+     {
+      "Type": 3,
+      "MarkerId": ""
+     },
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "The village is ours! That's transports and supply: load up, bring supply along, and let the wheels do the walking.",
+        "Sound": "",
+        "Portrait": 0
+       },
+       {
+        "Character": "Placeholder Scout",
+        "Text": "See you at the next one!",
+        "Sound": "",
+        "Portrait": 1
+       }
+      ]
+     },
+     {
+      "Type": 6,
+      "Side": -2
+     }
+    ],
+    "Side": -2,
+    "BuildingKind": "Village"
+   },
+   {
+    "Name": "No squads left",
+    "Enabled": true,
+    "Condition": 22,
+    "Actions": [
+     {
+      "Type": 0,
+      "Lines": [
+       {
+        "Character": "Placeholder Commander",
+        "Text": "We have no squads left to take the village. Let's try that again.",
+        "Sound": "",
+        "Portrait": 0
+       }
+      ]
+     },
+     {
+      "Type": 7,
+      "Side": -2
+     }
+    ],
+    "Side": -2,
+    "UnitKind": "Grunt",
+    "Value": 0
+   }
+  ]
+ },
+"test": {"name": "tutorial2-playthrough", "kind": "rules", "opponent": "Human", "rounds": "10", "rules": "standard", "check": "scriptTutorial2", "question": "The second tutorial mission (Resources/Campaign/Scenarios/Tutorial 2.dat), played with the player's orders and recorded as a game is: the grunt boards the truck (told to load the supply unit), the supply unit boards (told to drive); the marked tile is outside the HQ's supply until the truck with supply aboard stands there; the grunt is put down in supply; the lookout (held, fed) is spotted; on turn 2 a recon car and a squad arrive, the squad boards the car; the lookout is destroyed, a grunt takes the village: the player wins. Then the campaign, on the mission assets as they are (Resources/Campaign/Missions): the result read from the game log earns its stars against Tutorial 2's pars; only Tutorial 1's flag is on the map at first, winning it unlocks Tutorial 2, stars once earned are kept, a mission blocked by an attempt is closed, and progress survives being saved and read back."}
+}

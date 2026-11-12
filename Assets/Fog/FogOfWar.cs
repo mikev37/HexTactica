@@ -22,7 +22,7 @@ using UnityEngine;
 /// Seeing a unit. An enemy unit is seen when it stands on a tile its owner's opponent sees, unless it
 /// is stealthy (Unit.stealthRange X): then it is seen only by an observer of its own kind (land —
 /// buildings count as land — air or sea) fewer than X steps away, or by a detector: a building of the
-/// observer's within its detectRange of it sees a stealthy unit of any kind. A building with
+/// observer's (or a unit: Unit.detectRange) within its detectRange of it sees a stealthy unit of any kind. A building with
 /// visionOverTerrain sees over higher ground. An enemy is also seen (a stealthy one only by its own
 /// kind, as above):
 ///   - when one of the player's units stands next to it;
@@ -183,6 +183,43 @@ public static class FogOfWar {
         if (gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null) next[p] = Compute(p, null);
         sights = next;
         if (On && gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null) Remember(p);
+        NoteSpotted(gc);
+    }
+
+    /// <summary>A stealthy unit an enemy side did not see is seen by it now: the unit, the side. For sounds, logs and tests.</summary>
+    public static event Action<Unit, Player> StealthSpotted;
+
+    /// <summary>Which enemy sides saw each stealthy unit when sight was last worked out.</summary>
+    static readonly Dictionary<Unit, HashSet<Player>> spottedBy = new Dictionary<Unit, HashSet<Player>>();
+
+    /// <summary>
+    /// After sight is worked out: every stealthy unit an enemy side sees now and did not before is announced
+    /// (StealthSpotted), with GameSounds.stealthDetected when whoever is watching is that side or the unit's owner.
+    /// A unit met for the first time (the game just loaded, it was just built) is only recorded.
+    /// </summary>
+    static void NoteSpotted(GameController gc) {
+        if (!On || gc == null || gc.players == null) { spottedBy.Clear(); return; }
+        List<Unit> gone = null;
+        foreach (Unit k in spottedBy.Keys) if (k == null || k.Strength <= 0 || k.tile == null) (gone ?? (gone = new List<Unit>())).Add(k);
+        if (gone != null) foreach (Unit k in gone) spottedBy.Remove(k);
+        bool sounded = false;
+        foreach (Player owner in gc.players) {
+            if (owner == null) continue;
+            foreach (Unit u in owner.units) {
+                if (u == null || u.stealthRange <= 0 || u.tile == null || u.Strength <= 0 || u.trasnporter != null) continue;
+                HashSet<Player> was; bool known = spottedBy.TryGetValue(u, out was);
+                HashSet<Player> now = new HashSet<Player>();
+                foreach (Player q in gc.players) if (q != null && q != owner && !q.eliminated && Sees(q, u)) now.Add(q);
+                spottedBy[u] = now;
+                if (!known) continue;
+                foreach (Player q in now) {
+                    if (was.Contains(q)) continue;
+                    if (StealthSpotted != null) StealthSpotted(u, q);
+                    Player v = Viewer;
+                    if (!sounded && (v == q || v == owner)) { GameSounds.Play(GameSounds.Instance.stealthDetected); sounded = true; }
+                }
+            }
+        }
     }
 
     /// <summary>Sight as it is now, for a copy of the board to keep (main thread).</summary>
@@ -211,6 +248,8 @@ public static class FogOfWar {
         foreach (Unit u in p.units) {
             if (u == null || u.tile == null || u.Strength <= 0 || u.trasnporter != null) continue;
             Cover(s, u.tile, VisionFrom(u, u.tile), DomainOf(u));
+            if (u.detectRange > 0)
+                foreach (HexTile t in HexTactica.AI.AIPath.TilesInRangeShared(u.tile, -1, u.detectRange)) s.detected.Add(t);
         }
         for (int i = 0; i < Building.all.Count; i++) {
             Building b = Building.all[i];

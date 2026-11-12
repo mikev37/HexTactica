@@ -69,6 +69,18 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
+      propertyPath: moveRange
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
+      propertyPath: orderSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 893cf6a940c498f47a79620ca1919527, type: 3}
+    - target: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
+      propertyPath: description
+      value: The Rebel cheap infantry unit, it is hidden when away from enemy units, carries more supplies and more mobile than a conscript
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}
       propertyPath: suppliesMax
       value: 5
       objectReference: {fileID: 0}

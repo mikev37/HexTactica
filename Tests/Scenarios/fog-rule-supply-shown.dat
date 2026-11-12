@@ -1,7 +1,7 @@
 {
 "width":29,
 "active":112,
-"test":{"name":"fog-rule-supply-shown","kind":"rules","opponent":"Human","rounds":"4","check":"fogSupplyShown","question":"Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is.","rules":"standard"},
+"test":{"name":"fog-rule-supply-shown","kind":"rules","opponent":"Human","rounds":"4","check":"fogSupplyShown","question":"Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is. An enemy's supply is shown as it is on tiles Blue sees: a tile a Blue recon sees shows in Red's supply, though the Red supply unit giving it is in the fog.","rules":"standard"},
 "tiles":[
 {"x":-14,"y":0,"z":14,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-14,"y":1,"z":13,"damage":0,"combatCount":0,"terrain":"Grassland"},
