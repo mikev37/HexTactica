@@ -73,6 +73,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: 4428a67facb02424c922685541318327, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: description
+      value: The Tank is the main frontline unit. It has enough armor to survive a few shots, although it is still vulnerable. It's best at fighting in open terrain like grassland and deserts, and struggles in forests and cities. Rebel tanks carry more supplies.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: suppliesMax
       value: 4
       objectReference: {fileID: 0}

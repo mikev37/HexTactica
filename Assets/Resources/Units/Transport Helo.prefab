@@ -1119,6 +1119,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
+      propertyPath: description
+      value: Transport Helicopters allow you to move infantry and supplies over otherwise impassible terrain, although they are more expensive than trucks and cannot carry as much as boats.
+      objectReference: {fileID: 0}
+    - target: {fileID: 8432488233660739947, guid: eb46c9517598c8946b9abfc35d3c2c60, type: 3}
       propertyPath: Vulnerability
       value: 1
       objectReference: {fileID: 0}

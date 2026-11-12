@@ -2005,6 +2005,10 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
+      propertyPath: description
+      value: Heavy Artillery has longer range, is tougher and stronger than regular artillery, although it has less ammo and move range.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: weaponImpact
       value: 
       objectReference: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}

@@ -767,6 +767,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: description
+      value: The Anti Air Gunner is a mid range mobile defensive unit primarily aimed at quickly downing low flying aircraft and helicopter, but also able to chew up unarmored targets like infantry and cars. It cannot shoot over elevation taller than it.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: weaponImpact
       value: 
       objectReference: {fileID: 158503137770955053, guid: 4c9c08dca2d76ee4295c6a46d7725af4, type: 3}

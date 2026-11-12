@@ -1155,6 +1155,10 @@ PrefabInstance:
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
+      propertyPath: description
+      value: A medium range sea surface combatant, the destroyer's strength is its versitility and ability to detect stealth units, including submarines and cloaked aircraft.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
       propertyPath: detectRange
       value: 2
       objectReference: {fileID: 0}

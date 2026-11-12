@@ -53,6 +53,10 @@ PrefabInstance:
       value: Supplies Cache
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: bef79f3571dc6a548ad283decf31b0d7, type: 3}
+      propertyPath: description
+      value: Logistics win wars. Supply hubs spread the supplies that originate at your HQ, as long as they are connected to the supply. If transported, they can be connected by the range of the transport. Rebel supplies are hidden until a unit approachest them.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: bef79f3571dc6a548ad283decf31b0d7, type: 3}
       propertyPath: stealthRange
       value: 1
       objectReference: {fileID: 0}

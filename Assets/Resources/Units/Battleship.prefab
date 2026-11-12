@@ -1010,6 +1010,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
+      propertyPath: description
+      value: The battleship is a monster of a ship, able to move and shoot at range. It is unable to target air units, but is very powerful against most everything else.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
       propertyPath: visionRange
       value: 2
       objectReference: {fileID: 0}

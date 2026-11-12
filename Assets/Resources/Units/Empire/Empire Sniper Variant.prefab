@@ -177,12 +177,16 @@ PrefabInstance:
       value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
+      propertyPath: description
+      value: An expensive specialist able to attack at range and be hidden from enemy units.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: ignoresCover
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 7f02f41ed80d9a14d93b2bbc3398a2ad, type: 3}
       propertyPath: stealthRange
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

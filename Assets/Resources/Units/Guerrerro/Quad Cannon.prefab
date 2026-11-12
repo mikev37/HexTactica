@@ -1431,6 +1431,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: 7a058194afc3d454893045d76617a60c, type: 3}
     - target: {fileID: 5786757235081426029, guid: ec4cacc99bc3af24c8e309edd7a8398f, type: 3}
+      propertyPath: description
+      value: The Rebel Anti Air Gunner, it moves like a truck instead of on treads, but is vulnerable.
+      objectReference: {fileID: 0}
+    - target: {fileID: 5786757235081426029, guid: ec4cacc99bc3af24c8e309edd7a8398f, type: 3}
       propertyPath: elevationMax
       value: 1
       objectReference: {fileID: 0}

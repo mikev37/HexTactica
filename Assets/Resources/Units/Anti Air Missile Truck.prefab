@@ -1860,6 +1860,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
+      propertyPath: description
+      value: Anti Air Missile is the most powerful ranged ground to air unit, able to shoot down planes and helicopters at a far range.
+      objectReference: {fileID: 0}
+    - target: {fileID: 3311015450562845026, guid: af5afc7cb5f813f4ba96937fca4a18ab, type: 3}
       propertyPath: elevationMax
       value: 2
       objectReference: {fileID: 0}

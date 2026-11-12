@@ -1366,6 +1366,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: description
+      value: The gunship is a very mobile and capable platform able to put firepower where and when you need it. It's best against armored land targets, but also capable against low flying aircraft and ships.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: visionRange
       value: 5
       objectReference: {fileID: 0}

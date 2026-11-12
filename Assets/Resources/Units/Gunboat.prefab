@@ -378,7 +378,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 13000
-  description: 
+  description: A jack of all trades, the gunboat can shoot back, but also transport land units and supply across water.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -402,6 +402,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 3
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 6
   moveRange: 6

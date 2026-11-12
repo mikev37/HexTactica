@@ -455,7 +455,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 8000
-  description: 
+  description: The tanker is used to re-fuel and resupply air units that are far from their base. End an air unit's turn next to the tanker to refresh it's supply and fuel.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -479,6 +479,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 5
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 5
   moveRange: 8

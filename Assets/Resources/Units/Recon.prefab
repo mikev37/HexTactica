@@ -911,8 +911,8 @@ MonoBehaviour:
   moveLoopEndPitch: 0.6
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
-  cost: 4000
-  description: 
+  cost: 4500
+  description: Recons have the farthest vision of land units, and are quick and able to traverse reasonably rough terrain. They can bring 1 infantry unit with them.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -936,6 +936,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 5
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 1
   moveRange: 9

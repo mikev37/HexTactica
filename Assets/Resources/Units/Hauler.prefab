@@ -240,7 +240,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 9000
-  description: 
+  description: The Hauler is a massive transport freighter, able to take up to four infantry or two vehicles at a time in its hold, and transit supply across convoys.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -264,6 +264,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 2
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 6
   moveRange: 6

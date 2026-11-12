@@ -426,6 +426,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: 2bdfa621ce676b6449193c39c7dd96c6, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: description
+      value: The Flame Tank is a specialist that ignores enemy terrain, able to attack at full power into defensive terrain.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: ignoresCover
       value: 1
       objectReference: {fileID: 0}

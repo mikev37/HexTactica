@@ -478,7 +478,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 5000
-  description: 
+  description: The APC is reasonably armored vehicle able to traverse difficult terrain and transport up to 2 infantry units.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -502,6 +502,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 2
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 1
   moveRange: 6

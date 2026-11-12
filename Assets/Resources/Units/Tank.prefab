@@ -172,7 +172,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 7000
-  description: 
+  description: The Tank is the main frontline unit. It has enough armor to survive a few shots, although it is still vulnerable. It's best at fighting in open terrain like grassland and deserts, and struggles in forests and cities.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -196,6 +196,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 2
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 2
   moveRange: 6

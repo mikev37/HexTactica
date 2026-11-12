@@ -788,7 +788,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 3500
-  description: 
+  description: A Marine is a specialist infantry unit that is able to traverse water tiles as long as they are adjacent to land, making them ideal for riverine or sea-land operatons. Otherwise they are as good as a grunt.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -812,6 +812,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 3
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 0
   moveRange: 3

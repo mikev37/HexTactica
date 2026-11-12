@@ -979,6 +979,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
+      propertyPath: description
+      value: Trucks are a cheap way to move infantry and supplies around. Across roads, they can even move them farther than helicopters and APCs, although they struggle over rough terrain.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: elevationMax
       value: 1
       objectReference: {fileID: 0}

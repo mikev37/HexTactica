@@ -1388,6 +1388,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: 3d2a0199c44057043b0d55c598944641, type: 3}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: description
+      value: The Jump Jet can target land and air targets, and does not waste fuel idling, although it can still only refuel and re arm on airfields.
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: attacksLocomotion.Array.size
       value: 6
       objectReference: {fileID: 0}

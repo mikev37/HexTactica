@@ -463,7 +463,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 1500
-  description: 
+  description: The cheapest infantry that you can buy. They haev limited vision and movement, but a bullet from a conscript will kill you just as easily as a bullet from a trained soldier.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -487,6 +487,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 2
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 0
   moveRange: 2

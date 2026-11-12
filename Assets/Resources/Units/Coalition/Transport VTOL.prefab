@@ -1451,6 +1451,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: 1c9f82d00ba791440817689655b4e375, type: 3}
     - target: {fileID: 6711033188123618812, guid: 0ce975b05de89eb41b42a36469e4dd0c, type: 3}
+      propertyPath: description
+      value: Transport VTOL move 1 tile farther than a helicopter, but still allow you to move infantry and supplies over otherwise impassible terrain.
+      objectReference: {fileID: 0}
+    - target: {fileID: 6711033188123618812, guid: 0ce975b05de89eb41b42a36469e4dd0c, type: 3}
       propertyPath: 'cargoSlots.Array.data[0]'
       value: 
       objectReference: {fileID: 8106219354607347}

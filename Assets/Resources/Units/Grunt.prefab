@@ -632,7 +632,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 2500
-  description: 
+  description: 'A standard infantry unit, moderately effective at fighting, best in cover, and able to capture buildings. '
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -656,6 +656,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 3
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 0
   moveRange: 3

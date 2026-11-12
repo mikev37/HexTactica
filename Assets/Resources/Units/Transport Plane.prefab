@@ -132,6 +132,10 @@ PrefabInstance:
       value: 1.6
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
+      propertyPath: description
+      value: 'Transport planes are even farther moving than helicopters, but they have several limitations: They need to be loaded on a runway, and they run out of supplies while flying, so they cannot indefinetely supply a frontline. Still, their long range make them valuable for deep strikes.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 09f13cd9566ccb9cd74fd3561c0db60c, type: 3}
       propertyPath: visionRange
       value: 5
       objectReference: {fileID: 0}

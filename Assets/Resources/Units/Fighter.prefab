@@ -67,7 +67,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 15000
-  description: 
+  description: The Fighter Jet is the premier air to air unit; able to traverse great distances, shoot down enemy aircraft at range. Unfortunately it is also vulnerable to anything that targets aircraf, and has limited range, so it must return to refuel often.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -76,9 +76,9 @@ MonoBehaviour:
   _tile: {fileID: 0}
   amphibious: 0
   airTanker: 0
-  Firepower: 7
+  Firepower: 6
   Evasion: 6
-  Targeting: 6
+  Targeting: 5
   Armor: 1
   Piercing: 0
   Concealment: 0
@@ -91,6 +91,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 6
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 5
   moveRange: 10

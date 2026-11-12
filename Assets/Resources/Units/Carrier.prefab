@@ -597,6 +597,10 @@ PrefabInstance:
       value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4a7ff6334a729056845bf7af9c0f02e9, type: 3}
+      propertyPath: description
+      value: 'The Aircraft Carrier carries planes and helicopters. Land them on it to refuel and resupply them. '
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 4a7ff6334a729056845bf7af9c0f02e9, type: 3}
       propertyPath: visionRange
       value: 4
       objectReference: {fileID: 0}

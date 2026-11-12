@@ -66,7 +66,7 @@ MonoBehaviour:
   textArea: {fileID: 2292730749608960515}
   animator: {fileID: 1922176808774982529}
   cost: 6500
-  description: 
+  description: Logistics win wars. Supply hubs spread the supplies that originate at your HQ, as long as they are connected to the supply. If transported, they can be connected by the range of the transport.
   personal_name: 
   active: 1
   owner: {fileID: 0}
@@ -90,6 +90,7 @@ MonoBehaviour:
   ignoresCover: 0
   visionRange: 1
   stealthRange: 0
+  detectRange: 0
   move_display: {fileID: 0}
   locomotion: 0
   moveRange: 2

@@ -135,6 +135,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8300000, guid: ee993aa1de2383c4ab81bcaa74c71f82, type: 3}
     - target: {fileID: 7449712608029447455, guid: dbb30092720cd474980b26d55a460bf3, type: 3}
+      propertyPath: description
+      value: The massive Cargo plane allows you to transport up to 2 infantry, or even a vehicle, like a transport plane.
+      objectReference: {fileID: 0}
+    - target: {fileID: 7449712608029447455, guid: dbb30092720cd474980b26d55a460bf3, type: 3}
       propertyPath: moveLoopSound
       value: 
       objectReference: {fileID: 0}
