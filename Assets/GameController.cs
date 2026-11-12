@@ -14,6 +14,11 @@ public enum RuleSet { Standard, Attrition, Sandbox }
 
 public class GameController : MonoBehaviour
 {
+    /// <summary>The game's rule, the same for every side: strength a unit in its side's supply heals at the start of its
+    /// turn (on a building that services it, the larger of this and the building's heal, or both when the building's
+    /// stacks). Player's turn start applies it; the AI reads it.</summary>
+    public const int NetworkHealPerTurn = 1;
+
     [Header("Rules")]
     public RuleSet rules = RuleSet.Standard;
     [Tooltip("Attrition: rounds before the game is decided on what is left.")]
