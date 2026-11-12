@@ -468,9 +468,13 @@ public class Unit : MonoBehaviour
 
     bool SoundsOn { get { return GameSounds.On; } }
 
-    /// <summary>Can whoever is watching see this unit (fog of war)? Unseen units make no sound, as they show no explosion.</summary>
+    /// <summary>
+    /// Can whoever is watching see this unit (fog of war)? Unseen units make no sound, as they show no explosion.
+    /// Asked of the fog itself as well as the fader: the fader only catches up at the end of the frame, and a unit
+    /// that fires from the fog is revealed (FogOfWar.Reveal) in the same frame its shot sounds.
+    /// </summary>
     bool Audible {
-        get { FogFader f = GetComponent<FogFader>(); return f == null || f.Shown; }
+        get { FogFader f = GetComponent<FogFader>(); return f == null || f.Shown || FogOfWar.ShownToViewer(this); }
     }
 
     AudioSource oneShotSource, moveLoopSource;
