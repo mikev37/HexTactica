@@ -5,8 +5,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// The campaign screen (the Campaign scene): the campaign's map with a flag for every mission the player can see
-/// (a copy of the Mission Flag prefab each, placed by Mission.mapPosition). Picking a flag plays the mission's intro
+/// The campaign screen (a campaign scene: the Campaign scene, or any other made like it): the campaign's map with
+/// its missions on it, each a Mission Flag (Mission + MissionFlag) placed under Flags where it stands on the map.
+/// Flags of missions the player cannot see yet are hidden while the game runs. Picking a flag plays the mission's intro
 /// lines in the dialogue box, then shows its briefing with Start. Coming back from a mission, its result is played
 /// out: the stars it gained on its flag, each newly unlocked mission's flag appearing with the view zoomed onto it,
 /// then the mission's closing lines.
@@ -20,10 +21,8 @@ public class CampaignScreen : MonoBehaviour {
     [Header("The map")]
     [Tooltip("The campaign's picture: the flags stand on it, and it is what zooms and pans. Its parent is the window it is seen through.")]
     public RectTransform map;
-    [Tooltip("Where the flags go: a child of the map, stretched over it.")]
+    [Tooltip("Where the missions are: a child of the map, stretched over it, holding a Mission Flag for every mission of this campaign.")]
     public RectTransform flags;
-    [Tooltip("The flag copied for every mission the player can see (the Mission Flag prefab).")]
-    public MissionFlag flagPrefab;
     [Tooltip("The flag colour of a mission with no faction.")]
     public Color noFactionColor = Color.white;
     [Tooltip("Catches clicks while a result is being played out. Optional.")]
@@ -73,7 +72,9 @@ public class CampaignScreen : MonoBehaviour {
     [Tooltip("Seconds the view rests on a new flag once it has appeared.")]
     public float unlockHold = 0.7f;
 
+    /// <summary>Every mission flag of this campaign (the Flags object's), shown or not.</summary>
     readonly List<MissionFlag> made = new List<MissionFlag>();
+    readonly Dictionary<Mission, MissionInfo> infos = new Dictionary<Mission, MissionInfo>();
     /// <summary>Missions whose intro lines have been heard since the game was started (they are not said again on every click).</summary>
     static readonly HashSet<string> heard = new HashSet<string>();
     Mission picked;
@@ -98,31 +99,42 @@ public class CampaignScreen : MonoBehaviour {
         if (map != null) { mapScale = map.localScale; mapAt = map.anchoredPosition; }
         canvas = GetComponentInParent<Canvas>();
         if (missionPanel != null) missionPanel.SetActive(false);
-        if (flagPrefab != null && flagPrefab.gameObject.scene.IsValid()) flagPrefab.gameObject.SetActive(false);   // a template in the scene; a prefab is left alone
         CampaignProgress.Outcome result = CampaignProgress.TakePending();
-        foreach (Mission m in Mission.All) {
-            if (!CampaignProgress.Visible(m)) continue;
-            if (result != null && result.unlocked.Contains(m)) continue;   // appears when the result is played out
-            // The stars the last mission just gained are held back: they are gained on screen.
-            Place(m, result != null && result.mission == m ? CampaignProgress.Get(m).stars & ~result.gained : CampaignProgress.Get(m).stars);
+        Mission played = null;
+        if (flags != null) foreach (Mission m in flags.GetComponentsInChildren<Mission>(true)) {
+            MissionFlag f = m.GetComponent<MissionFlag>();
+            if (f == null) { Debug.LogWarning(m.name + " has no MissionFlag: it can't be shown on the campaign map.", m); continue; }
+            MissionInfo info = m.Info;
+            infos[m] = info;
+            made.Add(f);
+            if (f.button != null) { Mission mission = m; f.button.onClick.AddListener(() => Pick(mission)); }
+            if (result != null && result.mission != null && result.mission.key == info.key) played = m;
+            // A mission just unlocked appears when the result is played out; the stars just gained are gained on screen.
+            bool appearing = result != null && result.unlocked.Contains(info.key) && !CampaignProgress.Get(info).attempted && !info.availableAtStart;
+            MissionStars stars = CampaignProgress.Get(info).stars;
+            if (m == played) stars &= ~result.gained;
+            Show(m, stars);
+            if (appearing) f.gameObject.SetActive(false);
         }
         Busy(false);
-        if (result != null && result.mission != null) StartCoroutine(PlayResult(result));
+        if (played != null) StartCoroutine(PlayResult(result, played));
     }
 
-    MissionFlag Place(Mission m, MissionStars shown) {
-        if (flagPrefab == null || flags == null) return null;
-        MissionFlag f = Instantiate(flagPrefab, flags);
-        f.gameObject.SetActive(true);
-        RectTransform rt = (RectTransform)f.transform;
-        rt.anchorMin = rt.anchorMax = m.mapPosition;
-        rt.anchoredPosition = Vector2.zero;
-        f.Show(m, m.faction != null ? m.faction.flagColor : noFactionColor, CampaignProgress.Get(m).completed, CampaignProgress.Blocked(m), shown);
+    /// <summary>Show the mission's flag as its progress stands (hidden while the player cannot see it).</summary>
+    void Show(Mission m, MissionStars stars) {
+        MissionFlag f = m.GetComponent<MissionFlag>();
+        MissionInfo info = Info(m);
+        bool visible = CampaignProgress.Visible(info);
+        f.gameObject.SetActive(visible);
+        if (!visible) return;
+        f.Show(m, m.faction != null ? m.faction.flagColor : noFactionColor, CampaignProgress.Get(info).completed, CampaignProgress.Blocked(info), stars);
         f.SetSize(flagsKeepSize ? 1f / ZoomNow : 1f);
-        Mission mission = m;
-        if (f.button != null) f.button.onClick.AddListener(() => Pick(mission));
-        made.Add(f);
-        return f;
+    }
+
+    MissionInfo Info(Mission m) {
+        MissionInfo i;
+        if (!infos.TryGetValue(m, out i)) { i = m.Info; infos[m] = i; }
+        return i;
     }
 
     MissionFlag FlagOf(Mission m) { return made.Find(f => f != null && f.Mission == m); }
@@ -136,7 +148,7 @@ public class CampaignScreen : MonoBehaviour {
 
     /// <summary>A flag was clicked: the mission's intro lines (the first time), then its briefing.</summary>
     public void Pick(Mission m) {
-        if (busy || m == null || !CampaignProgress.Playable(m)) return;
+        if (busy || m == null || !CampaignProgress.Playable(Info(m))) return;
         picked = m;
         foreach (MissionFlag f in made) if (f != null) f.Picked(f.Mission == m);
         if (missionPanel != null) missionPanel.SetActive(false);
@@ -159,9 +171,10 @@ public class CampaignScreen : MonoBehaviour {
     }
 
     void ShowMission(Mission m) {
-        CampaignProgress.Entry e = CampaignProgress.Get(m);
-        bool file = GameFiles.CampaignScenarioPath(m.ScenarioName) != null;
-        if (missionTitle != null) missionTitle.text = m.Title;
+        CampaignProgress.Entry e = CampaignProgress.Get(Info(m));
+        MissionInfo info = Info(m);
+        bool file = GameFiles.CampaignScenarioPath(info.ScenarioName) != null;
+        if (missionTitle != null) missionTitle.text = info.Title;
         if (missionFaction != null) {
             missionFaction.text = m.faction != null ? (string.IsNullOrEmpty(m.faction.campaignName) ? m.faction.name : m.faction.campaignName) : "";
             missionFaction.color = m.faction != null ? m.faction.flagColor : noFactionColor;
@@ -170,7 +183,7 @@ public class CampaignScreen : MonoBehaviour {
         if (missionPars != null) {
             string pars = string.Format(m.parTurns > 0 ? parsFormat : parsFormatNoSpeed, m.parTurns, m.parKills, m.parLosses);
             if (e.completed) pars += string.Format(completedFormat, MissionRating.Count(e.stars), e.bestTurns);
-            if (!file) pars += string.Format(missingScenario, m.ScenarioName);
+            if (!file) pars += string.Format(missingScenario, info.ScenarioName);
             missionPars.text = pars;
         }
         for (int i = 0; i < missionStars.Length && i < MissionRating.Each.Length; i++)
@@ -182,7 +195,7 @@ public class CampaignScreen : MonoBehaviour {
     /// <summary>The briefing's Start: the game scene on the mission's scenario, under the mission's own pre-game screen.</summary>
     public void StartMission() {
         if (busy || picked == null) return;
-        MatchSetup.PlayMission(picked);
+        MatchSetup.PlayMission(Info(picked));
     }
 
     /// <summary>The briefing's Close.</summary>
@@ -196,35 +209,38 @@ public class CampaignScreen : MonoBehaviour {
 
     // ------------------------------------------------------------------ a mission's result, played out
 
-    IEnumerator PlayResult(CampaignProgress.Outcome o) {
+    IEnumerator PlayResult(CampaignProgress.Outcome o, Mission played) {
         Busy(true);
         if (resultDelay > 0f) yield return new WaitForSecondsRealtime(resultDelay);
-        MissionFlag flag = FlagOf(o.mission);
+        MissionFlag flag = FlagOf(played);
         if (flag != null) {
             // Its first win: the complete mark was shown with the flag; the stars come one by one.
             yield return flag.GainStars(o.gained, starInterval);
         }
         Vector3 viewScale = map != null ? map.localScale : Vector3.one;
         Vector2 viewAt = map != null ? map.anchoredPosition : Vector2.zero;
-        foreach (Mission m in o.unlocked) {
-            yield return Zoom(m.mapPosition, Mathf.Max(unlockZoom, ZoomNow));
-            MissionFlag f = Place(m, CampaignProgress.Get(m).stars);
-            if (f != null) yield return f.Appear();
+        bool zoomed = false;
+        foreach (MissionFlag f in made) {
+            if (f == null || f.gameObject.activeSelf || !o.unlocked.Contains(Info(f.Mission).key)) continue;
+            zoomed = true;
+            yield return Zoom(map != null ? (Vector2)map.InverseTransformPoint(f.transform.position) : Vector2.zero, Mathf.Max(unlockZoom, ZoomNow));
+            Show(f.Mission, CampaignProgress.Get(Info(f.Mission)).stars);
+            if (f.gameObject.activeSelf) yield return f.Appear();
             if (unlockHold > 0f) yield return new WaitForSecondsRealtime(unlockHold);
         }
-        if (o.unlocked.Count > 0) yield return Glide(viewScale, viewAt);   // back to where the player was looking
+        if (zoomed) yield return Glide(viewScale, viewAt);   // back to where the player was looking
         // Missions this attempt closed off show it now (their flags were made as they stand).
-        List<DialogueLine> lines = o.tally.won ? o.mission.outro : o.mission.outroLost;
+        List<DialogueLine> lines = o.tally.won ? played.outro : played.outroLost;
         if (lines != null && lines.Count > 0) yield return Say(lines);
         Busy(false);
     }
 
-    /// <summary>The view glides so that <paramref name="point"/> of the map (0,0 bottom left, 1,1 top right) is in the middle (as near as the map's edges allow), at <paramref name="zoom"/> times the map's own size.</summary>
-    IEnumerator Zoom(Vector2 point, float zoom) {
+    /// <summary>The view glides so that <paramref name="local"/> (a point on the map, in its own units from its pivot) is in the middle (as near as the map's edges allow), at <paramref name="zoom"/> times the map's own size.</summary>
+    IEnumerator Zoom(Vector2 local, float zoom) {
         if (map == null) yield break;
         zoom = Mathf.Clamp(zoom, 1f, Mathf.Max(1f, maxZoom));
         Vector3 toScale = mapScale * zoom;
-        Vector2 toAt = MapView.CentreOn(mapAt, MapView.Local(point, map.pivot, map.rect.size), toScale.x);
+        Vector2 toAt = MapView.CentreOn(mapAt, local, toScale.x);
         yield return Glide(toScale, toAt);
     }
 

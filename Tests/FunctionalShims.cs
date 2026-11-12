@@ -46,10 +46,13 @@ namespace UnityEngine {
         public static T Instantiate<T>(T o, Vector3 at, Quaternion q, Transform p) where T : Object { return GameObject.Instantiate(o, at, q, p); }
         public static T FindObjectOfType<T>() where T : class { return null; }
         public static T FindAnyObjectByType<T>() where T : class { return null; }
+        public static T FindAnyObjectByType<T>(FindObjectsInactive i) where T : class { return null; }
+        public static T[] FindObjectsByType<T>(FindObjectsInactive i, FindObjectsSortMode m) where T : class { return new T[0]; }
         public static T[] FindObjectsByType<T>(FindObjectsSortMode m) where T : class { return new T[0]; }
         public HideFlags hideFlags;
     }
     public enum FindObjectsSortMode { None, InstanceID }
+    public enum FindObjectsInactive { Exclude, Include }
     [Flags] public enum HideFlags { None = 0, DontSave = 52 }
     public class ParticleSystem : Component { public void Clear() { } public void Play() { } }
 
@@ -247,6 +250,7 @@ namespace UnityEngine {
         public Transform GetChild(int i) { return null; }
         public void SetSiblingIndex(int i) { }
         public void SetAsLastSibling() { }
+        public bool IsChildOf(Transform p) { for (Transform t = this; t != null; t = t.parent) if (t == p) return true; return false; }
         public int GetSiblingIndex() { return 0; }
         public Matrix4x4 worldToLocalMatrix, localToWorldMatrix;
         public IEnumerator GetEnumerator() { return new List<Transform>().GetEnumerator(); }
@@ -416,6 +420,8 @@ namespace UnityEngine {
         public static bool verbose = false;
         public static void Log(object o) { if (verbose) Console.WriteLine("[log] " + o); }
         public static void LogWarning(object o) { Console.WriteLine("[warn] " + o); }
+        public static void LogWarning(object o, Object context) { LogWarning(o); }
+        public static void Log(object o, Object context) { Log(o); }
         public static int errors;
         public static void LogError(object o) { System.Threading.Interlocked.Increment(ref errors); Console.WriteLine("[error] " + o); }
     }
@@ -527,8 +533,10 @@ namespace UnityEngine {
 }
 
 namespace UnityEngine {
+    [AttributeUsage(AttributeTargets.Class)] public class DisallowMultipleComponent : Attribute { }
     public class RectTransform : Transform {
         public Vector2 anchorMin, anchorMax, pivot, anchoredPosition, sizeDelta, offsetMin, offsetMax;
+        public Vector3 InverseTransformPoint(Vector3 world) { return world; }
         public Rect rect { get { return new Rect(0, 0, sizeDelta.x, sizeDelta.y); } }
     }
     public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }

@@ -35,7 +35,7 @@ public static class MissionRating {
     public static readonly MissionStars[] Each = { MissionStars.Speed, MissionStars.Aggression, MissionStars.Defense };
 
     /// <summary>The stars this result earns: none unless the mission was won and its numbers are known.</summary>
-    public static MissionStars Stars(Mission m, MissionTally t) {
+    public static MissionStars Stars(MissionInfo m, MissionTally t) {
         if (m == null || !t.won || !t.recorded) return MissionStars.None;
         MissionStars s = MissionStars.None;
         if (m.parTurns > 0 && t.turns <= m.parTurns) s |= MissionStars.Speed;
