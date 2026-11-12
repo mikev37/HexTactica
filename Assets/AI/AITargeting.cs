@@ -75,9 +75,9 @@ namespace HexTactica.AI {
             // all of it.
             // (Supply units heal too, unless cut off — the 25,000 hub healed its 3 points back while the
             // tank that hit it was lost for good. It used to be exempt here.)
-            // The game heals Player.NetworkHealPerTurn a turn in supply: that much doesn't count.
+            // The game heals GameController.NetworkHealPerTurn a turn in supply: that much doesn't count.
             if (!o.defenderDies && o.damageToDefender > 0 && defender.Strength - o.damageToDefender >= profile.healMinStrength && map.Heals(defender, defender.tile))
-                value *= Mathf.Max(0f, o.damageToDefender - Player.NetworkHealPerTurn) / o.damageToDefender;
+                value *= Mathf.Max(0f, o.damageToDefender - GameController.NetworkHealPerTurn) / o.damageToDefender;
 
             // An HQ is priced by what attacking it achieves: the win, or nothing lasting.
             if (IsHQ(defender)) {
