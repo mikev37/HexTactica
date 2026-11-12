@@ -23,12 +23,13 @@ public class FogFader : MonoBehaviour {
     bool started, idle = true;
     float rescanAt;
 
-    class Tint { public Color baseColor, applied; }
+    class Tint { public Color baseColor, applied; public bool ui; }
     class Line { public Gradient baseGradient; }
 
     readonly Dictionary<SpriteRenderer, Tint> sprites = new Dictionary<SpriteRenderer, Tint>();
     readonly Dictionary<LineRenderer, Line> lines = new Dictionary<LineRenderer, Line>();
     readonly Dictionary<CanvasGroup, float> groups = new Dictionary<CanvasGroup, float>();
+    readonly HashSet<CanvasGroup> uiGroups = new HashSet<CanvasGroup>();
     readonly List<Renderer> switchedOff = new List<Renderer>();
     readonly List<Renderer> others = new List<Renderer>();
     /// <summary>Shadow sprites (SpriteShadow's copies, the ground shadow): switched off while the unit is faded at all — at part opacity their stacked copies only darken it.</summary>
@@ -41,6 +42,20 @@ public class FogFader : MonoBehaviour {
     public float Alpha { get { return alpha; } }
 
     void Awake() { unit = GetComponent<Unit>(); }
+
+    /// <summary>
+    /// The opacity of the unit's own UI (strength pips, veterancy chevrons, status icons): as the unit, except that the
+    /// half-fade a stealthy unit of the viewer's own gets (no enemy sees it) is for its body only: its owner reads its UI in full.
+    /// </summary>
+    float UIAlpha(float a) {
+        return unit != null && FogOfWar.On && unit.owner == FogOfWar.Viewer && a > 0f ? 1f : a;
+    }
+
+    /// <summary>Drawn as part of the unit's own UI (under a child Unit.IsOwnUI says is).</summary>
+    bool IsUI(Component c) {
+        for (Transform t = c.transform; t != null && t != unit.transform; t = t.parent) if (Unit.IsOwnUI(t)) return true;
+        return false;
+    }
 
     /// <summary>Where the unit's opacity should be heading.</summary>
     public static float TargetFor(Unit u) {
@@ -79,7 +94,7 @@ public class FogFader : MonoBehaviour {
         foreach (SpriteRenderer r in GetComponentsInChildren<SpriteRenderer>(true)) {
             if (r == null || !Mine(r)) continue;
             if (IsShadow(r)) { if (!shadows.Contains(r)) shadows.Add(r); continue; }
-            if (!sprites.ContainsKey(r)) sprites[r] = new Tint { baseColor = r.color, applied = r.color };
+            if (!sprites.ContainsKey(r)) sprites[r] = new Tint { baseColor = r.color, applied = r.color, ui = IsUI(r) };
         }
         foreach (LineRenderer r in GetComponentsInChildren<LineRenderer>(true))
             if (r != null && Mine(r) && !lines.ContainsKey(r)) lines[r] = new Line { baseGradient = Copy(r.colorGradient) };
@@ -88,6 +103,7 @@ public class FogFader : MonoBehaviour {
             CanvasGroup g = c.GetComponent<CanvasGroup>();
             if (g == null) { g = c.gameObject.AddComponent<CanvasGroup>(); g.alpha = 1f; g.blocksRaycasts = false; g.interactable = false; }
             if (!groups.ContainsKey(g)) groups[g] = g.alpha;
+            if (IsUI(c)) uiGroups.Add(g);
         }
         others.Clear();
         foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
@@ -111,7 +127,7 @@ public class FogFader : MonoBehaviour {
             // Another script set the colour since we last did: that is the colour to fade.
             if (r.color != t.applied) t.baseColor = r.color;
             Color c = t.baseColor;
-            c.a *= a;
+            c.a *= t.ui ? UIAlpha(a) : a;
             r.color = c;
             t.applied = c;
         }
@@ -119,7 +135,7 @@ public class FogFader : MonoBehaviour {
             if (kv.Key == null || kv.Value.baseGradient == null) continue;
             kv.Key.colorGradient = Faded(kv.Value.baseGradient, a);
         }
-        foreach (KeyValuePair<CanvasGroup, float> kv in groups) if (kv.Key != null) kv.Key.alpha = kv.Value * a;
+        foreach (KeyValuePair<CanvasGroup, float> kv in groups) if (kv.Key != null) kv.Key.alpha = kv.Value * (uiGroups.Contains(kv.Key) ? UIAlpha(a) : a);
         // Shadows go while it is faded at all; they come back with it.
         bool shadowOff = a < 0.999f;
         foreach (SpriteRenderer r in shadows) {
@@ -140,6 +156,7 @@ public class FogFader : MonoBehaviour {
         sprites.Clear();
         lines.Clear();
         groups.Clear();
+        uiGroups.Clear();
         for (int i = switchedOff.Count - 1; i >= 0; i--) if (switchedOff[i] != null) switchedOff[i].enabled = true;
         switchedOff.Clear();
         others.Clear();

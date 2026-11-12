@@ -612,7 +612,7 @@ public class Unit : MonoBehaviour
     }
 
     /// <summary>A child that is this unit's own UI: strength pips, veterancy, status icons.</summary>
-    static bool IsOwnUI(Transform t) {
+    internal static bool IsOwnUI(Transform t) {
         if (t.GetComponent<Canvas>() != null || t.name == "HealthCircles" || t.name == "Veterancy" || t.name == "Canvas") return true;
         foreach (MonoBehaviour m in t.GetComponents<MonoBehaviour>())
             if (m != null && (m.GetType().Name == "UnitStatusIcon" || m.GetType().Name == "HealthDot" || m.GetType().Name == "VeterancyChevron")) return true;
