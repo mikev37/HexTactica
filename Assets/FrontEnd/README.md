@@ -76,6 +76,12 @@ building registry and camera rig now install only in a scene with a GameControll
   what it blocks) → game → MissionResult (stars gained one by one) → Return → Campaign: the flag gains its new stars,
   the view zooms onto each mission just unlocked as its flag appears, then the outro lines play.
 - A save made during a mission remembers the mission (`"mission"` in the file), so loading it goes on as that mission.
+- **Moving around the map** works as on the game board: the wheel (or + / -) zooms about the cursor, the right or
+  middle mouse button drags it, the arrow keys pan, and Home shows the whole map. The view never leaves the picture.
+  Flags keep their size on screen as you zoom (*Flags Keep Size*), so zooming in spreads crowded flags apart: place
+  missions closer together (a finer *Map Position*, e.g. 0.512) and they separate once zoomed in. *Max Zoom* (4 by
+  default), *Zoom Step* and *Pan Speed* are on the scene's CampaignScreen. When a mission unlocks another, the view
+  zooms onto it and then glides back to where you were looking.
 - **The map picture** is a placeholder colour: give the Campaign scene's *Map* object's Image your picture (and
   delete the *Placeholder Note*). Flag, star, tick and cross art are white placeholders in `Sprites/UI/Widgets`.
 - The Campaign, MissionBrief and MissionResult scenes and the *Mission Flag* prefab are made by the front end's

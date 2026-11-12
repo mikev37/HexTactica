@@ -227,6 +227,8 @@ public static partial class Scenarios {
         return list;
     }
 
+    static bool Near(Vector2 a, Vector2 b) { return Math.Abs(a.x - b.x) < 0.01f && Math.Abs(a.y - b.y) < 0.01f; }
+
     static string Yaml(string yaml, string key) {
         System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(yaml, @"^  " + key + @": ?(.*)$", System.Text.RegularExpressions.RegexOptions.Multiline);
         return m.Success ? m.Groups[1].Value.Trim() : "";
@@ -301,13 +303,25 @@ public static partial class Scenarios {
             CampaignProgress.Load();
             bool saved = File.Exists(file) && CampaignProgress.Get(t1).completed && MissionRating.Count(CampaignProgress.Get(t1).stars) == 3 && CampaignProgress.Get(t1).bestTurns == t1.parTurns
                       && CampaignProgress.Playable(t2) && CampaignProgress.Get(t2).stars == expected && CampaignProgress.Blocked(right) && CampaignProgress.Get(left).attempted;
+            // The map's pan and zoom (MapView): a 1920x1080 map in a view its size.
+            Vector2 view = new Vector2(1920f, 1080f);
+            bool pinned = Near(MapView.Clamp(new Vector2(300f, -200f), new Vector2(0f, 0f), view, 1f, view), new Vector2(0f, 0f));              // unzoomed: no room to pan
+            Vector2 edge = MapView.Clamp(new Vector2(5000f, -5000f), new Vector2(0f, 0f), view, 2f, view);                         // at 2x: half a view each way
+            bool panRoom = Near(edge, new Vector2(960f, -540f));
+            Vector2 cursor = new Vector2(400f, 100f);                                                                         // a point on the map, from its middle
+            Vector2 zoomed = MapView.ZoomAbout(new Vector2(0f, 0f), cursor, 1f, 2f);
+            bool aboutCursor = Near(zoomed + cursor * 2f, cursor);                                                                 // still under the cursor
+            Vector2 centred = MapView.CentreOn(new Vector2(0f, 0f), MapView.Local(new Vector2(0.75f, 0.25f), new Vector2(0.5f, 0.5f), view), 2f);
+            bool centres = Near(centred + MapView.Local(new Vector2(0.75f, 0.25f), new Vector2(0.5f, 0.5f), view) * 2f, new Vector2(0f, 0f));
+            bool mapView = pinned && panRoom && aboutCursor && centres;
             CampaignProgress.Reset();
             bool reset = !CampaignProgress.Visible(t2) && !CampaignProgress.Get(t1).completed && CampaignProgress.Playable(t1);
             detail = "mission files in the campaign folder, not among the scenarios " + files + "; Tutorial 1 unlocks Tutorial 2 (the assets' links) " + linked + "; only Tutorial 1 on the map at first " + atFirst
                    + "; lost: nothing " + lostNothing + "; won: one star, Tutorial 2 unlocked, handed to the campaign screen once " + unlocked + "; won again: stars added, kept " + kept + ", not lost by a worse win " + notLost
                    + "; this game against Tutorial 2's pars (" + t2.parTurns + " turns, " + t2.parKills + " killed, " + t2.parLosses + " lost): " + MissionRating.Count(played.earned) + " stars " + rated
-                   + "; a fork closes the other mission, not one already won " + fork + "; saved and read back " + saved + "; reset " + reset;
-            return files && linked && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset;
+                   + "; a fork closes the other mission, not one already won " + fork + "; saved and read back " + saved + "; reset " + reset
+                   + "; map pan and zoom: pinned unzoomed " + pinned + ", room at 2x " + panRoom + ", zooms about the cursor " + aboutCursor + ", centres a mission " + centres;
+            return files && linked && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView;
         } finally {
             Mission.All = was;
             CampaignProgress.FilePath = fileWas;
