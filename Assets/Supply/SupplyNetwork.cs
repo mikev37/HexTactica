@@ -197,6 +197,10 @@ public static class SupplyNetwork {
 
         // Relay: any hub sitting in supplied territory joins the network and extends it.
         // Iterate to a fixed point so chains of arbitrary length resolve.
+        // (Run again below once cut-off supply buildings give out of their store: supply units in their ground relay it.)
+        HashSet<SupplyPoint> relayedFromStore = new HashSet<SupplyPoint>();
+        bool fromStore = false;
+        System.Action relay = () => {
         bool progress = true;
         int guard = 0;
         while (progress && guard++ < 64) {
@@ -226,12 +230,13 @@ public static class SupplyNetwork {
 
                 activated.Add(hub);
                 result.connectedHubs.Add(hub);
+                if (fromStore) relayedFromStore.Add(hub);
                 FloodFromHub(hub, at, result, carrier);
                 progress = true;
             }
             for (int i = 0; i < relayBuildings.Count; i++) {
                 Building b = relayBuildings[i];
-                if (buildingsOn.Contains(b)) continue;
+                if (buildingsOn.Contains(b) || fromStore) continue;
                 bool reached = false;
                 if (result.IsSupplied(b.tile)) reached = true;
                 if (!reached) continue;
@@ -241,6 +246,8 @@ public static class SupplyNetwork {
                 progress = true;
             }
         }
+        };
+        relay();
 
         // Water is never supplied ground (a harbor is: it stands on bridge ground). A ship carrying supply covers the
         // water it floats on as it spreads (its flood starts there), but neither it nor anything else takes supply from
@@ -258,6 +265,8 @@ public static class SupplyNetwork {
                 result.strandedBuildings.Add(b);
                 FloodFromBuilding(b, result);
             }
+            // Supply units standing in a cut-off building's ground relay its supply on, as they do the HQ's.
+            if (result.strandedBuildings.Count > 0) { fromStore = true; relay(); StripWater(result); }
         }
         // Which cut-off buildings actually feed someone this turn: only those spend (the HQ's network first, then
         // the buildings in order, each for the units nothing before it supplies).
@@ -271,6 +280,11 @@ public static class SupplyNetwork {
             foreach (Building b in result.strandedBuildings) {
                 Result own = new Result();
                 FloodFromBuilding(b, own);
+                // Its ground, and what supply units in it relay on.
+                foreach (SupplyPoint h in relayedFromStore) {
+                    HexTile at = TileOf(h, movedHub, hypotheticalTile, moved);
+                    if (at != null && own.IsSupplied(at)) FloodFromHub(h, at, own, CarrierOf(h, moved));
+                }
                 bool needed = false;
                 foreach (HexTile t in standing) if (!fed.Contains(t) && own.IsSupplied(t)) { needed = true; fed.Add(t); }
                 if (needed) spending.Add(b);
