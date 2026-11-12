@@ -10,7 +10,7 @@ using UnityEngine.UI;
 /// Play / Load / Edit button is pressed.
 /// </summary>
 public class FileList : MonoBehaviour {
-    public enum Source { Scenarios, Saves, Recordings }
+    public enum Source { Scenarios, Saves, Recordings, Editable }
 
     [Tooltip("Which files it lists when it opens (ShowScenarios and ShowSaves switch).")]
     public Source source = Source.Scenarios;
@@ -26,6 +26,8 @@ public class FileList : MonoBehaviour {
     public string empty = "Nothing here yet.";
     [Tooltip("Shown on a row of a file the player made (not shipped with the game).")]
     public string userTag = "yours";
+    [Tooltip("Shown on a row of a campaign mission's scenario (the map editor's lists).")]
+    public string campaignTag = "campaign";
     public Color rowColor = new Color(1f, 1f, 1f, 0.08f);
     public Color pickedColor = new Color(0.36f, 0.62f, 0.95f, 0.55f);
     [Tooltip("Called when the pick changes (to enable the panel's buttons).")]
@@ -44,6 +46,8 @@ public class FileList : MonoBehaviour {
     public void ShowScenarios() { source = Source.Scenarios; Refresh(); }
     public void ShowSaves() { source = Source.Saves; Refresh(); }
     public void ShowRecordings() { source = Source.Recordings; Refresh(); }
+    /// <summary>What the map editor can open: the scenarios and the campaign's missions.</summary>
+    public void ShowEditable() { source = Source.Editable; Refresh(); }
 
     /// <summary>Read the folder again (a file saved meanwhile shows; the pick is kept if it is still there).</summary>
     public void Refresh() {
@@ -52,12 +56,12 @@ public class FileList : MonoBehaviour {
         rows.Clear();
         picked = null;
         if (rowTemplate == null || content == null) return;
-        List<GameFile> files = source == Source.Saves ? GameFiles.Saves() : source == Source.Recordings ? GameFiles.Recordings() : GameFiles.Scenarios();
+        List<GameFile> files = source == Source.Saves ? GameFiles.Saves() : source == Source.Recordings ? GameFiles.Recordings() : source == Source.Editable ? GameFiles.Editable() : GameFiles.Scenarios();
         foreach (GameFile f in files) {
             FileListRow row = Instantiate(rowTemplate, content);
             row.gameObject.SetActive(true);
             row.name = f.name;
-            row.Show(f, f.user && source == Source.Scenarios ? userTag : "", rowColor);
+            row.Show(f, f.campaign ? campaignTag : f.user && source != Source.Saves && source != Source.Recordings ? userTag : "", rowColor);
             GameFile file = f;
             if (row.button != null) row.button.onClick.AddListener(() => Pick(file));
             rows.Add(row);

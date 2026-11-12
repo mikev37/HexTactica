@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
   description: Evil War crimes advanced technology
+  campaignName: Red Wolf Empire
+  flagColor: {r: 0.85, g: 0.2, b: 0.15, a: 1}
   unitlist: []
   replacements:
   - original: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}

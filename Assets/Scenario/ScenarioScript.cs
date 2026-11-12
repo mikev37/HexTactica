@@ -82,6 +82,8 @@ public class ScenarioScript : MonoBehaviour {
         GameController.TurnStarted += OnTurnStarted;
         HexTile.UnitSelected += OnUnitSelected;
         HexTile.BuildingOpened += OnBuildingOpened;
+        Transporting.Boarded += OnBoarded;
+        Transporting.Unloaded += OnUnloaded;
     }
 
     void OnDestroy() {
@@ -94,6 +96,8 @@ public class ScenarioScript : MonoBehaviour {
             GameController.TurnStarted -= OnTurnStarted;
             HexTile.UnitSelected -= OnUnitSelected;
             HexTile.BuildingOpened -= OnBuildingOpened;
+            Transporting.Boarded -= OnBoarded;
+            Transporting.Unloaded -= OnUnloaded;
             registered = false;
         }
         if (Instance == this) Instance = null;
@@ -180,6 +184,8 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitSelected:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.UnitSpotted:
+            case TriggerCondition.UnitBoarded:
+            case TriggerCondition.UnitUnloaded:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
             case TriggerCondition.TurnOver:
@@ -375,6 +381,16 @@ public class ScenarioScript : MonoBehaviour {
     void OnUnitSelected(Unit u) {
         if (!Counting || u == null) return;
         Count(TriggerCondition.UnitSelected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
+    }
+
+    void OnBoarded(Unit transport, Unit cargo, HexTile from) {
+        if (!Counting || cargo == null || transport == null) return;
+        Count(TriggerCondition.UnitBoarded, t => ScenarioGame.MatchesAt(cargo, transport.RealTile, UnitFilter.Of(t)));
+    }
+
+    void OnUnloaded(Unit transport, Unit cargo, HexTile onto) {
+        if (!Counting || cargo == null) return;
+        Count(TriggerCondition.UnitUnloaded, t => ScenarioGame.MatchesAt(cargo, onto, UnitFilter.Of(t)));
     }
 
     void OnBuildingOpened(Building b) {

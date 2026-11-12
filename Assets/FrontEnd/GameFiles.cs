@@ -12,6 +12,8 @@ public class GameFile {
     public DateTime modified;
     /// <summary>Made by the player (the map editor's folder) rather than shipped with the game.</summary>
     public bool user;
+    /// <summary>A campaign mission's scenario (the campaign's own folder): never listed under Load Scenario.</summary>
+    public bool campaign;
 }
 
 /// <summary>
@@ -36,6 +38,37 @@ public static class GameFiles {
         List(UserScenarioFolder, true, list);
         list.Sort((a, b) => a.user != b.user ? (a.user ? 1 : -1) : string.Compare(a.name, b.name, StringComparison.OrdinalIgnoreCase));
         return list;
+    }
+
+    /// <summary>The campaign missions' scenario files (FrontEndSettings.campaignFolders), by name: for the map editor, never for Load Scenario.</summary>
+    public static List<GameFile> CampaignScenarios() {
+        List<GameFile> list = new List<GameFile>();
+        foreach (string rel in S.campaignFolders) {
+            if (string.IsNullOrEmpty(rel)) continue;
+            List<GameFile> found = new List<GameFile>();
+            List(Path.Combine(Application.dataPath, rel), false, found);
+            foreach (GameFile f in found) if (!list.Exists(x => x.name == f.name)) { f.campaign = true; list.Add(f); }
+        }
+        list.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.OrdinalIgnoreCase));
+        return list;
+    }
+
+    /// <summary>What the map editor can open: every scenario, then the campaign's missions.</summary>
+    public static List<GameFile> Editable() {
+        List<GameFile> list = Scenarios();
+        list.AddRange(CampaignScenarios());
+        return list;
+    }
+
+    /// <summary>The file of the campaign mission scenario of this name (the first campaign folder that has it), or null.</summary>
+    public static string CampaignScenarioPath(string name) {
+        if (string.IsNullOrEmpty(name)) return null;
+        foreach (string rel in S.campaignFolders) {
+            if (string.IsNullOrEmpty(rel)) continue;
+            string path = Path.Combine(Path.Combine(Application.dataPath, rel), name + S.fileExtension);
+            if (File.Exists(path)) return path;
+        }
+        return null;
     }
 
     /// <summary>Every saved game, the newest first.</summary>

@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f12e048022d4e9682801042839c042d, type: 3}
+  m_Name: Tutorial 2
+  m_EditorClassIdentifier: 
+  title: 'Tutorial 2: Wheels and Supply'
+  scenario: Tutorial 2
+  faction: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
+  mapPosition: {x: 0.5, y: 0.55}
+  availableAtStart: 0
+  intro:
+  - Character: Placeholder Commander
+    Text: 'The raiders hold a village down the road. Too far to walk, and too far from the HQ to stay supplied.'
+    Sound: 
+    Portrait: 0
+  - Character: Placeholder Scout
+    Text: 'So we take a truck, and we take supply with us.'
+    Sound: 
+    Portrait: 1
+  briefing: 'The raiders hold the village at the end of the road. It is too far to walk and beyond the HQ''s supply: load a truck, carry supply to the front, bring up a recon car, and take the village.'
+  objectives: "Carry a squad and the supply unit to the front by truck.\nDestroy the lookout.\nCapture the village with a grunt."
+  outro:
+  - Character: Placeholder Commander
+    Text: 'That''s how an army moves: on wheels, with its supply behind it.'
+    Sound: 
+    Portrait: 0
+  - Character: Placeholder Scout
+    Text: 'You''re ready for the real thing.'
+    Sound: 
+    Portrait: 1
+  outroLost:
+  - Character: Placeholder Commander
+    Text: 'No squads left, no village. Keep them near the supply truck next time.'
+    Sound: 
+    Portrait: 0
+  unlocks: []
+  blocks: []
+  parTurns: 6
+  parKills: 1
+  parLosses: 0

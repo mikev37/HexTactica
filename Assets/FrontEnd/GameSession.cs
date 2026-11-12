@@ -58,7 +58,8 @@ public class GameSession : MonoBehaviour {
                 // scenario again, with the fog the pre-game screen chose).
                 if (GameController.gc != null) { GameController.gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); }
                 Frame();
-                SceneManager.LoadScene(s.preGameScene, LoadSceneMode.Additive);
+                // A campaign mission is briefed, not set up: no choices to make.
+                SceneManager.LoadScene(MatchSetup.Mission != null ? s.missionBriefScene : s.preGameScene, LoadSceneMode.Additive);
                 break;
             case SessionMode.Play:
                 GameController.Paused = false;
@@ -116,7 +117,9 @@ public class GameSession : MonoBehaviour {
         yield return null;   // the banner starts the frame after the game ends
         TurnBanner banner = FindAnyObjectByType<TurnBanner>();
         while (banner != null && banner.BannerShowing) yield return null;
-        SceneManager.LoadScene(FrontEndSettings.Get.postGameScene, LoadSceneMode.Additive);
+        // A campaign mission ends on its result (pars and stars), and from there on the campaign screen.
+        FrontEndSettings s = FrontEndSettings.Get;
+        SceneManager.LoadScene(MatchSetup.Mission != null ? s.missionResultScene : s.postGameScene, LoadSceneMode.Additive);
     }
 
     /// <summary>The in-game menu over the game (the game is held while it is open).</summary>
@@ -136,7 +139,7 @@ public class GameSession : MonoBehaviour {
     }
 
     /// <summary>The post-game screen closed: the board stays to look at (the menu key opens the in-game menu).</summary>
-    public void ClosePostGame() { Unload(FrontEndSettings.Get.postGameScene); }
+    public void ClosePostGame() { Unload(FrontEndSettings.Get.postGameScene); Unload(FrontEndSettings.Get.missionResultScene); }
 
     /// <summary>A game was loaded or started again: the post-game screen may show again when it ends.</summary>
     public void NewGame() { postShown = false; mode = SessionMode.Play; }
@@ -147,6 +150,7 @@ public class GameSession : MonoBehaviour {
         mode = SessionMode.Play;
         ShowGamePanels(mode);
         Unload(FrontEndSettings.Get.preGameScene);
+        Unload(FrontEndSettings.Get.missionBriefScene);
     }
 
     /// <summary>

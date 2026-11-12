@@ -503,7 +503,7 @@ public class MapEditorPanel : MonoBehaviour {
         return path;
     }
 
-    public void ShowLoad() { if (loadPanel != null) loadPanel.SetActive(true); if (loadList != null) loadList.ShowScenarios(); }
+    public void ShowLoad() { if (loadPanel != null) loadPanel.SetActive(true); if (loadList != null) loadList.ShowEditable(); }
     public void HideLoad() { if (loadPanel != null) loadPanel.SetActive(false); }
 
     public void LoadPicked() {
