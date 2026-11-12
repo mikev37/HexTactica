@@ -249,9 +249,10 @@ namespace HexTactica.Harness {
         }
 
         /// <summary>
-        /// A recording from before getting off was logged says nothing of a unit set down that did nothing after. Each
-        /// unit the turn's recorded board has standing where this board has none, while one of that side and kind rides
-        /// a transport, is set down there (from the nearest such transport). True if any was.
+        /// A recording from before getting off and purchases were logged says nothing of a unit set down that did
+        /// nothing after, or of a unit bought. Each unit the turn's recorded board has standing where this board has
+        /// none is set down there from the nearest transport of its side carrying one of its kind — or, with none
+        /// aboard anything, made there (it was bought). True if anything was done.
         /// </summary>
         static bool SetDown(string file) {
             GameController gc = GameController.gc;
@@ -273,7 +274,19 @@ namespace HexTactica.Harness {
                         int d = x.tile.Distance(t);
                         if (c != null && d < best) { best = d; transport = x; rider = c; }
                     }
-                    if (rider != null && (Transporting.Unload(transport, rider, t) || Transporting.Disembark(transport, rider, t))) any = true;
+                    if (rider != null && (Transporting.Unload(transport, rider, t) || Transporting.Disembark(transport, rider, t))) { any = true; continue; }
+                    // No such unit aboard anything: it was bought, and the log has no line for the purchase (a recording
+                    // from before purchases were logged, where a human's are not there at all). Made where it stands.
+                    if (rider != null) continue;
+                    Player p = null;
+                    foreach (Player q in gc.players) if (q != null && q.id == owner) p = q;
+                    Unit prefab = GameAssets.Unit(kind);
+                    if (p == null || prefab == null) continue;
+                    Unit made = UnitController.uc.CreateUnit(p, prefab, t);
+                    if (made == null) continue;
+                    made.Strength = uj.GetField("Strength").intValue;
+                    made.StrengthDisplay = made.Strength;
+                    any = true;
                 }
             } catch (Exception e) { Debug.LogWarning("Replay: " + e.Message); }
             return any;
