@@ -12,6 +12,9 @@ public class GameSounds : ScriptableObject {
     [Tooltip("A building changes hands (captured by anyone the viewer can see it happen to).")]
     public AudioClip buildingCaptured;
 
+    [Tooltip("A stealthy unit is spotted (fog of war): an enemy's by the side watching, or one of the watcher's own by an enemy.")]
+    public AudioClip stealthDetected;
+
     [Header("Music (MusicManager: the tracks are in Resources/Music)")]
     [Tooltip("Music volume, under the options menu's volume (0 to 1).")]
     [Range(0, 1)] public float musicVolume = 0.6f;

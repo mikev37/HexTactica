@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: GameSounds
   m_EditorClassIdentifier: Assembly-CSharp::GameSounds
   buildingCaptured: {fileID: 0}
+  stealthDetected: {fileID: 0}

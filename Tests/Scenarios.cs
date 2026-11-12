@@ -605,6 +605,8 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
+        makeFog("fog-rule-unit-detector", "fogUnitDetect", (a, o) => { Put("Grunt", a, -4, 0); Put("Recon", o, 1, 0); },
+             "A unit's detectRange works as a Radar's: a stealthy Red recon (stealth 3) five tiles from a Blue grunt (vision 2) is unseen; with the grunt's detectRange 5 it is seen, and six tiles off it is not. Each time it goes from unseen to seen it is announced once (FogOfWar.StealthSpotted, the cue for the detection sound), not again while it stays seen.", "Human");
         makeFog("fog-rule-int-ops", "fogIntOps", (a, o) => {
                  Rig.PlaceBuilding("Int. Ops", a, -4, 0); Put("Grunt", a, -7, 3);
                  Rig.At(-3, 0).terrain = T("Mountains");
@@ -625,6 +627,8 @@ public static partial class Scenarios {
                  foreach (int[] w in new[] { new[] { 4, 2 }, new[] { 5, 2 }, new[] { 4, 3 }, new[] { 5, 1 } }) Rig.At(w[0], w[1]).terrain = T("Water");
                  Put("Gunboat", a, 4, 2); Put("Grunt", o, 2, 4); Rig.PlaceBuilding("City", a, -3, 3); },
              "High ground and kinds of unit: a land unit sees one tile further from hills and two from mountains (an aircraft gets nothing from them). A stealthy unit is seen only by observers of its own kind (land — buildings count as land — air, sea): a stealth jet next to a grunt or over our city goes unseen, a fighter two tiles off sees it; a stealthy grunt next to a gunboat goes unseen, a grunt two tiles off sees it, and on our city it is seen.", "Human");
+        makeFog("fog-rule-bump-artillery", "fogBumpArt", (a, o) => { Put("Artillery", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, -2, 3); Put("Artillery", o, 0, 3); },
+             "Artillery (no close-range fire, never answers) running into a hidden grunt: the grunt fires on it, and the artillery plays no shot back.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
              "Running into a hidden enemy: a Blue grunt (vision 1) moving through a Red grunt it cannot see stops on the tile before it; its move is over; the Red grunt fires first (whatever the ground) and the Blue grunt answers; the Red grunt is seen from then. The move range shown is the same as if the hidden unit were not there (its tile can be ended on as far as Blue knows).", "Human");
         makeFog("fog-view-after-load", "fogViewLoad", (a, o) => { Put("Grunt", o, -3, 0); Put("Grunt", a, 3, 0); },
@@ -2254,6 +2258,27 @@ public static partial class Scenarios {
                        + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
                 return hull && turret && flag && none;
             }
+            case "fogUnitDetect": {
+                PinVision();
+                Unit g = Rig.At(-4, 0).occupier, rc = Rig.At(1, 0).occupier;
+                rc.stealthRange = 3; g.visionRange = 2;
+                int spotted = 0;
+                Action<Unit, Player> hook = (u, q) => { if (u == rc && q == a) spotted++; };
+                FogOfWar.StealthSpotted += hook;
+                try {
+                    Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
+                    moved();
+                    bool plain = FogOfWar.Sees(a, rc);
+                    g.detectRange = 5; moved();
+                    bool at5 = FogOfWar.Sees(a, rc); int first = spotted;
+                    moved(); int still = spotted;
+                    rc.TeleportTo(Rig.At(2, 0), 0); moved();
+                    bool at6 = FogOfWar.Sees(a, rc);
+                    rc.TeleportTo(Rig.At(1, 0), 0); moved();
+                    detail = "no detector: seen " + plain + "; detectRange 5: 5 off seen " + at5 + ", 6 off seen " + at6 + "; announced " + first + " on first sight, " + still + " while still seen, " + spotted + " after leaving and coming back";
+                    return !plain && at5 && !at6 && first == 1 && still == 1 && spotted == 2;
+                } finally { FogOfWar.StealthSpotted -= hook; }
+            }
             case "fogIntOps": {
                 PinVision();
                 Unit rc = Rig.At(1, 0).occupier;
@@ -2439,6 +2464,28 @@ public static partial class Scenarios {
                 res.Add("stealthy grunt: next to the gunboat unseen " + boatBlind + ", grunt at 2 sees it " + gruntSees + ", on our city seen " + onCity);
                 detail = string.Join("; ", res.ToArray());
                 return flat && hills && mountains && beyond && air && jetHidden && jetSeen && jetFar && jetOverCity && boatBlind && gruntSees && onCity;
+            }
+            case "fogBumpArt": {
+                Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier;
+                foreach (Unit u in a.units) if (u != null) u.visionRange = 1;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                int before = m.Strength, hb = h.Strength;
+                CombatOutcome seen = new CombatOutcome();
+                System.Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (att, def, f, t, oc) => { seen = oc; };
+                Unit.Attacked += hook;
+                try { m.MoveAlong(new List<HexTile> { Rig.At(-2, 0), Rig.At(-1, 0), Rig.At(0, 0), Rig.At(1, 0) }, false, false); }
+                finally { Unit.Attacked -= hook; }
+                detail = "artillery " + before + "->" + m.Strength + ", grunt " + hb + "->" + h.Strength + "; retaliation " + seen.retaliationHappens + ", damage back " + seen.damageToAttacker
+                       + "; grunt answeredBy " + (h.answeredBy != null) + "; artillery attacking " + m.attacking + " firing " + m.firing;
+                Unit g = Rig.At(-2, 3).occupier, ha = Rig.At(0, 3).occupier; int gb = g.Strength; bool shot = false;
+                System.Action<Unit, Unit, bool> sh = (x, y, z) => { if (x == ha) shot = true; };
+                Unit.Attacking += sh;
+                try { g.MoveAlong(new List<HexTile> { Rig.At(-2, 3), Rig.At(-1, 3), Rig.At(0, 3), Rig.At(1, 3) }, false, false); } finally { Unit.Attacking -= sh; }
+                detail += " | grunt into hidden artillery: artillery shot " + shot + ", grunt " + gb + "->" + g.Strength + " at " + Pos(g.tile) + " art attacking " + ha.attacking;
+                m.tile.terrain = T("Forest"); m.Veterancy = 3;
+                CombatOutcome o2 = h.OrderAttack(m);
+                detail += " | plain attack on it in forest: firesFirst " + o2.defenderFiresFirst + " retaliation " + o2.retaliationHappens + " back " + o2.damageToAttacker + " art attacking " + m.attacking + " grunt attacking " + h.attacking + " answeredBy " + (h.answeredBy != null) + "/" + (m.answeredBy != null);
+                return m.Strength < before && h.Strength == hb && !seen.retaliationHappens && h.answeredBy == null && !m.attacking && !m.firing;
             }
             case "fogBump": {
                 Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier, p = Rig.At(0, 3).occupier, q = Rig.At(2, 3).occupier;
