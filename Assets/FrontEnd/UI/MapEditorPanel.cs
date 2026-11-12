@@ -211,7 +211,14 @@ public class MapEditorPanel : MonoBehaviour {
     /// <summary>The next colour of the list that no other side is near (units and buildings take it at once: ColorObjectUnit).</summary>
     void NextColour(Player p) {
         if (extraSideColors.Count == 0) return;
-        int i = extraSideColors.FindIndex(c => Near(c, p.displayColor));
+        // Where it is in the list: the colour it has, not the first one near it (yellow is near orange: from orange
+        // the step went back to the colour after yellow, and the swatch went round two or three colours).
+        int i = -1; float best = 0.02f;
+        for (int k = 0; k < extraSideColors.Count; k++) {
+            Color c = extraSideColors[k];
+            float d = Mathf.Abs(c.r - p.displayColor.r) + Mathf.Abs(c.g - p.displayColor.g) + Mathf.Abs(c.b - p.displayColor.b);
+            if (d < best) { best = d; i = k; }
+        }
         for (int step = 1; step <= extraSideColors.Count; step++) {
             Color c = extraSideColors[(i + step + extraSideColors.Count) % extraSideColors.Count];
             if (Players.Exists(x => x != p && Near(x.displayColor, c))) continue;
