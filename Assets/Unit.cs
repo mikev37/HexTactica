@@ -142,6 +142,9 @@ public class Unit : MonoBehaviour
     [Range(0, 10)]
     [Tooltip("Stealth: an enemy observer this many steps away or more does not see it, even inside its vision (0: no stealth). A unit next to an enemy unit, or on an enemy building, is always seen.")]
     public int stealthRange = 0;
+    [Range(0, 10)]
+    [Tooltip("Stealth detection, as a Radar's (Building.detectRange): a stealthy enemy unit of any kind (land, air or sea) this many steps from it or fewer is seen by its owner, whether its own vision reaches or not (0: none). Fog of war only.")]
+    public int detectRange = 0;
 
 
     [Header("Movement Variables")]

@@ -605,6 +605,8 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
+        makeFog("fog-rule-unit-detector", "fogUnitDetect", (a, o) => { Put("Grunt", a, -4, 0); Put("Recon", o, 1, 0); },
+             "A unit's detectRange works as a Radar's: a stealthy Red recon (stealth 3) five tiles from a Blue grunt (vision 2) is unseen; with the grunt's detectRange 5 it is seen, and six tiles off it is not. Each time it goes from unseen to seen it is announced once (FogOfWar.StealthSpotted, the cue for the detection sound), not again while it stays seen.", "Human");
         makeFog("fog-rule-int-ops", "fogIntOps", (a, o) => {
                  Rig.PlaceBuilding("Int. Ops", a, -4, 0); Put("Grunt", a, -7, 3);
                  Rig.At(-3, 0).terrain = T("Mountains");
@@ -2255,6 +2257,27 @@ public static partial class Scenarios {
                 detail = "hull " + p[0].size.x + "x" + p[0].size.y + " at " + p[0].position.x + "," + p[0].position.y + "; turret at " + p[1].position.x + "," + p[1].position.y + " " + p[1].angle
                        + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
                 return hull && turret && flag && none;
+            }
+            case "fogUnitDetect": {
+                PinVision();
+                Unit g = Rig.At(-4, 0).occupier, rc = Rig.At(1, 0).occupier;
+                rc.stealthRange = 3; g.visionRange = 2;
+                int spotted = 0;
+                Action<Unit, Player> hook = (u, q) => { if (u == rc && q == a) spotted++; };
+                FogOfWar.StealthSpotted += hook;
+                try {
+                    Action moved = () => { FogOfWar.Changed(); FogOfWar.Refresh(); };
+                    moved();
+                    bool plain = FogOfWar.Sees(a, rc);
+                    g.detectRange = 5; moved();
+                    bool at5 = FogOfWar.Sees(a, rc); int first = spotted;
+                    moved(); int still = spotted;
+                    rc.TeleportTo(Rig.At(2, 0), 0); moved();
+                    bool at6 = FogOfWar.Sees(a, rc);
+                    rc.TeleportTo(Rig.At(1, 0), 0); moved();
+                    detail = "no detector: seen " + plain + "; detectRange 5: 5 off seen " + at5 + ", 6 off seen " + at6 + "; announced " + first + " on first sight, " + still + " while still seen, " + spotted + " after leaving and coming back";
+                    return !plain && at5 && !at6 && first == 1 && still == 1 && spotted == 2;
+                } finally { FogOfWar.StealthSpotted -= hook; }
             }
             case "fogIntOps": {
                 PinVision();
