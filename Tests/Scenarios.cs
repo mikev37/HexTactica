@@ -423,7 +423,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, -4, 0);
-            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is.");
+            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is. An enemy's supply is shown as it is on tiles Blue sees: a tile a Blue recon sees shows in Red's supply, though the Red supply unit giving it is in the fog.");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "fog-rule-supply-shown.dat"), test, ai, other, ai);
             n++;
@@ -627,6 +627,8 @@ public static partial class Scenarios {
                  foreach (int[] w in new[] { new[] { 4, 2 }, new[] { 5, 2 }, new[] { 4, 3 }, new[] { 5, 1 } }) Rig.At(w[0], w[1]).terrain = T("Water");
                  Put("Gunboat", a, 4, 2); Put("Grunt", o, 2, 4); Rig.PlaceBuilding("City", a, -3, 3); },
              "High ground and kinds of unit: a land unit sees one tile further from hills and two from mountains (an aircraft gets nothing from them). A stealthy unit is seen only by observers of its own kind (land — buildings count as land — air, sea): a stealth jet next to a grunt or over our city goes unseen, a fighter two tiles off sees it; a stealthy grunt next to a gunboat goes unseen, a grunt two tiles off sees it, and on our city it is seen.", "Human");
+        makeFog("rule-combat-scars-target", "combatScars", (a, o) => { Put("Tank", a, -2, 0); Put("Grunt", o, -1, 0); Put("Grunt", a, -2, 3); Put("Grunt", o, 0, 3); },
+             "Combat damages the ground fought over, the target's tile, never the tile fired from: a Blue tank attacks a Red grunt beside it (the grunt answers); a Blue grunt walks into a hidden Red grunt (the ambusher fires first). The tile of the unit fired on takes damage: the Red grunt's in the attack, the walker's in the ambush; never the tile of the one that fired, and an answer (retaliation) damages nothing.", "Human");
         makeFog("fog-rule-bump-artillery", "fogBumpArt", (a, o) => { Put("Artillery", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, -2, 3); Put("Artillery", o, 0, 3); },
              "Artillery (no close-range fire, never answers) running into a hidden grunt: the grunt fires on it, and the artillery plays no shot back.", "Human");
         makeFog("fog-rule-bump", "fogBump", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 0, 3); Put("Grunt", o, 2, 3); },
@@ -1764,6 +1766,15 @@ public static partial class Scenarios {
                 SupplyNetwork.Solve(a, false);
                 bool seenNow = FogOfWar.Sees(a, wall[3]), shownCut = !g.tile.isSuppliedShown(a);
                 r.Add("a Blue recon beside it sees the wall " + seenNow + ": shown cut off " + shownCut);
+                // Red's supply: a Red supply unit at (10,0) linked to Red's HQ, out of Blue's sight, supplies (7,0), which a
+                // Blue recon at (5,0) sees: it shows in Red's supply.
+                Unit rs = Put("Supplies", o, 10, 0); Unit rec2 = Put("Recon", a, 5, 0); rec2.visionRange = 2;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                SupplyNetwork.Solve(o, false);
+                HexTile wallTile = Rig.At(7, 0);
+                bool rsHidden = !FogOfWar.Sees(a, rs), wallSeen = FogOfWar.TileVisible(a, wallTile);
+                bool redTrue = wallTile.isSupplied(o), redShown = wallTile.isSuppliedShown(o);
+                r.Add("Red supplies at (10,0) hidden from Blue " + rsHidden + "; (7,0) seen " + wallSeen + ", truly in Red supply " + redTrue + ", shown in Red supply " + redShown);
                 // Fog off: the screen shows the true network.
                 gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
                 SupplyNetwork.Solve(a, false);
@@ -1771,7 +1782,7 @@ public static partial class Scenarios {
                 r.Add("fog off: shown as it is " + fogOff);
                 if (blueAI != null) blueAI.enabled = true;
                 detail = string.Join(" | ", r.ToArray());
-                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff;
+                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff && rsHidden && wallSeen && redTrue && redShown;
             }
             case "fobStorePips": {
                 // A FOB (Blue) with 3 of 6 in store, Blue's HQ, and a Red FOB with 5. Blue is the screen's player.
@@ -2464,6 +2475,23 @@ public static partial class Scenarios {
                 res.Add("stealthy grunt: next to the gunboat unseen " + boatBlind + ", grunt at 2 sees it " + gruntSees + ", on our city seen " + onCity);
                 detail = string.Join("; ", res.ToArray());
                 return flat && hills && mountains && beyond && air && jetHidden && jetSeen && jetFar && jetOverCity && boatBlind && gruntSees && onCity;
+            }
+            case "combatScars": {
+                Unit tank = Rig.At(-2, 0).occupier, g1 = Rig.At(-1, 0).occupier, b = Rig.At(-2, 3).occupier;
+                HexTile from = tank.tile, to = g1.tile;
+                foreach (HexTile t in new[] { from, to, Rig.At(-2, 3), Rig.At(-1, 3), Rig.At(0, 3) }) { t.terrain = T("Grassland"); t.damage = 0; }
+                g1.Strength = 6;
+                CombatOutcome oc = tank.OrderAttack(g1);
+                string d1 = "attack: from " + from.damage + ", target " + to.damage + " (answered " + oc.retaliationHappens + ")";
+                foreach (Unit u in a.units) if (u != null) u.visionRange = 1;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                CombatOutcome amb = new CombatOutcome(); HexTile ambFrom = null, ambAt = null;
+                System.Action<Unit, Unit, HexTile, HexTile, CombatOutcome> hook = (att, def, f, t, x) => { amb = x; ambFrom = f; ambAt = t; };
+                Unit.Attacked += hook;
+                try { b.MoveAlong(new List<HexTile> { Rig.At(-2, 3), Rig.At(-1, 3), Rig.At(0, 3), Rig.At(1, 3) }, false, false); } finally { Unit.Attacked -= hook; }
+                string d2 = "ambush: walker's tile " + Rig.At(-1, 3).damage + ", ambusher's " + Rig.At(0, 3).damage + ", start " + Rig.At(-2, 3).damage + " (fired first " + amb.defenderFiresFirst + ")";
+                detail = d1 + "; " + d2;
+                return from.damage == 0 && to.damage == 1 && Rig.At(-2, 3).damage == 0 && Rig.At(-1, 3).damage == 1 && Rig.At(0, 3).damage == 0;
             }
             case "fogBumpArt": {
                 Unit m = Rig.At(-2, 0).occupier, h = Rig.At(0, 0).occupier;
