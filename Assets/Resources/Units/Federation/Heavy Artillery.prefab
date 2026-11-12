@@ -1969,6 +1969,10 @@ PrefabInstance:
       value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
+      propertyPath: Armor
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: ammoMax
       value: 4
       objectReference: {fileID: 0}
@@ -1978,11 +1982,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: Piercing
-      value: 4
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: Firepower
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: e00697515984ac642ad2ac9008b6120c, type: 3}
       propertyPath: fireSound
