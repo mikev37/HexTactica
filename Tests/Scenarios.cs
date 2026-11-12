@@ -765,6 +765,12 @@ public static partial class Scenarios {
                  Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
                  Put("Grunt", o, 6, -5); },
              "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
+        make("ai-no-ghost-from-nested-transport", "nestedGhost", (a, o) => {
+                 water(-3, 2, -7, 7);
+                 Unit d = Put("Destroyer", a, 0, 0); Unit v = Put("Transport Helo", a, 4, 0); Unit su = Put("Supplies", a, 6, 0);
+                 Aboard(v, su); Aboard(d, v);
+                 Put("Grunt", a, -5, 2); Put("Grunt", o, 6, -2); Put("Grunt", o, 5, 2); },
+             "From a game (Mekong Delta): a transport VTOL carrying a supply unit had landed on a destroyer, and the AI moved the VTOL as the supply unit's ride while it was still aboard. Each such move left the tile it went to naming it as the occupier while it stayed aboard (a ghost that blocked paths, supply and could be attacked). Over Blue's turns no unit aboard is moved, and every tile's occupier stands on it and is not aboard anything.");
         make("ai-carrier-keeps-unrefuelled", "carrierKeeps", (a, o) => {
                  water(-4, 4, -7, 7);
                  Put("Carrier", a, 1, 0); Put("Bomber", a, 2, 0);
@@ -3655,6 +3661,34 @@ public static partial class Scenarios {
                 }
                 detail = string.Join(" | ", r.ToArray());
                 return supplied > 0 && supplied <= 3;
+            }
+            case "nestedGhost": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                List<string> bad = new List<string>(), trail = new List<string>();
+                Unit v = null; foreach (Unit u in a.units) if (u != null && u.name.StartsWith("Transport Helo")) v = u;
+                // The order the AI gave in that game, carried out as it was: the VTOL told to fly on while aboard.
+                if (v != null && gc.activePlayer == a) {
+                    HexTile to = null;
+                    foreach (HexTile n in v.tile.neighbors) if (n != null && n.occupier == null && v.CanEnter(n) && (to == null || CombatMath.Precedes(n, to))) to = n;
+                    if (to != null) {
+                        // (Given on purpose: not counted among the AI's illegal orders.)
+                        var illegal = AIExecutor.OnIllegal; AIExecutor.OnIllegal = null;
+                        try { AIExecutor.Execute(AIAction.Move(v, to, 0f, "test: the order from the game"), new AIMap(a, a.GetComponent<AIPlayer>().Profile), true); }
+                        finally { AIExecutor.OnIllegal = illegal; }
+                        trail.Add("ordered to fly to " + Pos(to) + " while aboard: " + (v.trasnporter != null ? "stays aboard" : "LEFT at " + Pos(v.tile)) + ", tile names " + (to.occupier != null ? to.occupier.name.Replace("(Clone)", "") : "nobody"));
+                    }
+                }
+                for (int turn = 0; turn < 8 && !gc.gameOver; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    foreach (HexTile t in Rig.hg.tiles) {
+                        Unit oc = t.occupier;
+                        if (oc != null && (oc.tile != t || oc.trasnporter != null || oc.Strength <= 0)) bad.Add("turn " + turn + ": (" + t.x + "," + t.y + ") names " + oc.name.Replace("(Clone)", "") + (oc.trasnporter != null ? " (aboard)" : " (at " + Pos(oc.tile) + ")"));
+                    }
+                    if (blue && v != null) trail.Add("VTOL " + (v.Strength <= 0 ? "lost" : v.trasnporter != null ? "aboard at " + Pos(v.tile) : Pos(v.tile)) + " carrying " + v.transported.Count);
+                }
+                detail = string.Join(" | ", trail.ToArray()) + (bad.Count > 0 ? "; GHOSTS: " + string.Join("; ", bad.ToArray()) : "; no ghosts");
+                return bad.Count == 0;
             }
             case "carrierKeeps": {
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;

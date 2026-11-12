@@ -657,6 +657,8 @@ public class Unit : MonoBehaviour
         // Supplies aboard are shown like any cargo; a transport whose animator has a "CarryingSupply"
         // bool is told, in case its art wants to react.
         if (Hub != null) transport.SetAnimatorBool("CarryingSupply", true);
+        // Settled in its slot: a unit whose animator has an "Aboard" bool is told (an aircraft's landing pose, say).
+        SetAnimatorBool("Aboard", true);
     }
 
     static bool Finite(Vector3 v) {
@@ -703,6 +705,7 @@ public class Unit : MonoBehaviour
         cargoSlot = -1;
         foreach (GameObject g in hiddenUI) if (g != null) g.SetActive(true);
         hiddenUI.Clear();
+        SetAnimatorBool("Aboard", false);
         // ... and the strength pips whatever happened in between (a supply unit was put down without them).
         foreach (Transform t in GetComponentsInChildren<Transform>(true)) if (t != transform && t.name == "HealthCircles" && !t.gameObject.activeSelf) t.gameObject.SetActive(true);
         transform.SetParent(null, true);
@@ -792,6 +795,9 @@ public class Unit : MonoBehaviour
     internal bool MoveAlong(List<HexTile> steps, bool thenAttacks, bool animate) {
         ambushedBy = null;
         if (steps == null || steps.Count == 0 || tile == null) return false;
+        // Aboard a transport it does not move by itself: it gets off (Transporting.Unload). (A move from aboard left
+        // its new tile naming it as the occupier while it stayed aboard: a ghost there once the transport moved on.)
+        if (trasnporter != null) { Debug.LogWarning(name + " was told to move while aboard " + trasnporter.name + ": it stays aboard"); return false; }
         HexTile start = tile;
         int stop = steps.Count - 1;
         Unit ambusher = null;
@@ -970,6 +976,7 @@ public class Unit : MonoBehaviour
 
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
     internal void TeleportTo(HexTile hexTile, int tilesEntered, bool thenAttacks = false) {
+        if (trasnporter != null) { Debug.LogWarning(name + " was told to move while aboard " + trasnporter.name + ": it stays aboard"); return; }
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
         // they are away from base (Player.StartTurn).
         if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
@@ -1268,7 +1275,7 @@ public class Unit : MonoBehaviour
     public void ApplyPendingRetreat() {
         HexTile to = pendingRetreat;
         pendingRetreat = null;
-        if (to == null || Strength <= 0) return;
+        if (to == null || Strength <= 0 || trasnporter != null) return;
         if (to.occupier != null) return;
         if (!CanEnter(to)) return;
 

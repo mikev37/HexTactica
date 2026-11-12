@@ -163,6 +163,7 @@ namespace HexTactica.AI {
 
         static bool DoMove(Unit unit, HexTile dest, bool headless, AIMap map, bool thenAttacks = false) {
             if (unit == null || dest == null || dest == unit.tile) return false;
+            if (unit.trasnporter != null) { Debug.LogWarning("AI: " + unit.name + " is aboard " + unit.trasnporter.name + ": a move for it is not carried out"); return false; }
             // (An enemy its side does not see is not in the way as far as it knows: under fog of war
             // the move goes ahead, and running into it ends it — Unit.MoveAlong.)
             if (FogOfWar.ApparentOccupier(dest, unit.owner) != null) return false;
