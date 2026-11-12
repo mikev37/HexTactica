@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -140,7 +141,8 @@ public class Faction : ScriptableObject {
         }
         if (f != null && SpecialUnits && f.extras != null && baseList != null && baseList.Count > 0)
             foreach (Extra e in f.extras) if (e != null && e.unit != null && e.builtAt != null && e.builtAt.Contains(type) && !list.Exists(x => Same(x, e.unit))) list.Add(e.unit);
-        return list;
+        // Cheapest first, a faction's own units among the rest by their cost; equal costs keep the building's order.
+        return list.Select((u, i) => new { u, i }).OrderBy(x => x.u.cost).ThenBy(x => x.i).Select(x => x.u).ToList();
     }
 
     /// <summary>Every unit this faction can field that is not a base unit (its versions and extras): what a save may name.</summary>
