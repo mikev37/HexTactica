@@ -657,6 +657,8 @@ public class Unit : MonoBehaviour
         // Supplies aboard are shown like any cargo; a transport whose animator has a "CarryingSupply"
         // bool is told, in case its art wants to react.
         if (Hub != null) transport.SetAnimatorBool("CarryingSupply", true);
+        // Settled in its slot: a unit whose animator has an "Aboard" bool is told (an aircraft's landing pose, say).
+        SetAnimatorBool("Aboard", true);
     }
 
     static bool Finite(Vector3 v) {
@@ -703,6 +705,7 @@ public class Unit : MonoBehaviour
         cargoSlot = -1;
         foreach (GameObject g in hiddenUI) if (g != null) g.SetActive(true);
         hiddenUI.Clear();
+        SetAnimatorBool("Aboard", false);
         // ... and the strength pips whatever happened in between (a supply unit was put down without them).
         foreach (Transform t in GetComponentsInChildren<Transform>(true)) if (t != transform && t.name == "HealthCircles" && !t.gameObject.activeSelf) t.gameObject.SetActive(true);
         transform.SetParent(null, true);
