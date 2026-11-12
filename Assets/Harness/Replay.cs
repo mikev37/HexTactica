@@ -232,6 +232,7 @@ namespace HexTactica.Harness {
             try { gc.EndTurn(); }
             catch (Exception e) { Debug.LogWarning("Replay: ending the turn failed (" + e.Message + "): the next turn's board is loaded."); Show(next); return; }
             string why = Differs(turns[next].file);
+            if (why != null && SetDown(turns[next].file)) why = Differs(turns[next].file);
             if (why != null) {
                 Reloads++;
                 Debug.LogWarning("Replay: after turn " + (Index + 1) + " the board is not the recording's (" + why + "): turn " + (next + 1) + "'s board is loaded.");
@@ -242,6 +243,37 @@ namespace HexTactica.Harness {
             Freeze();
             Prepare(turns[next]);
             if (Changed != null) Changed();
+        }
+
+        /// <summary>
+        /// A recording from before getting off was logged says nothing of a unit set down that did nothing after. Each
+        /// unit the turn's recorded board has standing where this board has none, while one of that side and kind rides
+        /// a transport, is set down there (from the nearest such transport). True if any was.
+        /// </summary>
+        static bool SetDown(string file) {
+            GameController gc = GameController.gc;
+            bool any = false;
+            try {
+                Defective.JSON.JSONObject units = new Defective.JSON.JSONObject(File.ReadAllText(file)).GetField("units");
+                if (units == null || units.list == null || UnitController.uc == null) return false;
+                foreach (Defective.JSON.JSONObject uj in units.list) {
+                    Defective.JSON.JSONObject carried = uj.GetField("transporterIndexPlusOne");
+                    if (carried != null && carried.intValue > 0) continue;
+                    HexTile t = Tile(uj.GetField("x").intValue, uj.GetField("y").intValue);
+                    if (t == null || t.occupier != null) continue;
+                    string kind = uj.GetField("gameobject_name").stringValue;
+                    long owner = uj.GetField("owner_id").intValue;
+                    Unit transport = null, rider = null; int best = int.MaxValue;
+                    foreach (Unit x in UnitController.uc.units) {
+                        if (x == null || x.owner == null || x.owner.id != owner || x.tile == null || x.Strength <= 0) continue;
+                        Unit c = x.transported.Find(q => q != null && GameLog.Lines.UnitName(q) == kind);
+                        int d = x.tile.Distance(t);
+                        if (c != null && d < best) { best = d; transport = x; rider = c; }
+                    }
+                    if (rider != null && (Transporting.Unload(transport, rider, t) || Transporting.Disembark(transport, rider, t))) any = true;
+                }
+            } catch (Exception e) { Debug.LogWarning("Replay: " + e.Message); }
+            return any;
         }
 
         /// <summary>
@@ -423,6 +455,21 @@ namespace HexTactica.Harness {
                     attacker = UnitAt(at.side, at.unit, at.fromX, at.fromY);
                 }
                 Unit defender = UnitAt(at.targetSide, at.targetUnit, at.atX, at.atY);
+                if (defender == null) {
+                    // The target walked into this (it ran into a unit it had not seen, which fired): its move is
+                    // logged after. Play that move first.
+                    for (int j = t.actions.IndexOf(e) + 1; j < t.actions.Count; j++) {
+                        int k = t.actions[j];
+                        if (played.Contains(k)) continue;
+                        if (GameLog.Lines.ReadMoved(t.events[k], sides, out side, out unit, out x1, out y1, out x2, out y2)
+                            && side == at.targetSide && unit == at.targetUnit && x2 == at.atX && y2 == at.atY) {
+                            MoveOrCargo(t, k, side, unit, x1, y1, Tile(x2, y2), false);
+                            played.Add(k);
+                            break;
+                        }
+                    }
+                    defender = UnitAt(at.targetSide, at.targetUnit, at.atX, at.atY);
+                }
                 if (defender == null) { Warn("no " + at.targetSide + " " + at.targetUnit + " at (" + at.atX + "," + at.atY + ") to be attacked"); return; }
                 HexTile back = at.retreated ? Tile(at.retreatX, at.retreatY) : null;
                 if (attacker == null || attacker == defender) {
@@ -518,8 +565,20 @@ namespace HexTactica.Harness {
                     if (c != null) { transport = x; rider = c; break; }
                 }
             }
+            if (rider == null && UnitController.uc != null) {
+                // ... or one further off (it got off and walked on): the nearest transport of the side's carrying one.
+                int best = int.MaxValue;
+                foreach (Unit x in UnitController.uc.units) {
+                    if (x == null || x.owner != owner || x.tile == null || x.Strength <= 0) continue;
+                    Unit c = x.transported.Find(q => q != null && GameLog.Lines.UnitName(q) == kind);
+                    int d = x.tile.Distance(to);
+                    if (c != null && d < best) { best = d; transport = x; rider = c; }
+                }
+            }
             if (rider != null) {
-                if (!Transporting.Unload(transport, rider, to)) Warn(kind + " could not get off at (" + to.x + "," + to.y + ")");
+                // Off as in play where the game allows it; else set down where the recording has it.
+                if (!Transporting.Unload(transport, rider, to) && !Transporting.Disembark(transport, rider, to))
+                    Warn(kind + " could not get off at (" + to.x + "," + to.y + ")");
                 return;
             }
             Warn("no " + side + " " + kind + " at (" + x1 + "," + y1 + ") or aboard a transport there");
