@@ -148,106 +148,11 @@ namespace HexTactica.AI {
         }
 
         static float ExactValueOf(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
-            float dSupplied = 0f, dForward = 0f, dIntent = 0f, dConnect = 0f, dRisk = 0f;
-
             SupplyNetwork.Result hypothetical =
                 SupplyNetwork.Solve(map.player, false, hub, at);
-
-            // Everything below is gold per turn, so gains and costs are comparable.
-            //
-            // Supplying a unit is worth roughly one strength per turn, since that is what
-            // attrition takes once its own supplies run out,
-            // and what resupply heals. Urgency scales it: a unit already out of supplies,
-            // ammo or fuel needs it now. (An earlier version priced this as a change in a
-            // 0..1 desirability curve times the unit's *entire* value, and compared that
-            // with a hub's drain of a sixth of its value per turn — two different units.
-            // It sent hubs out of the network to die beside a few cheap squads.)
-            if (profile.hubPricing == 1) return ValueAdded(hub, at, map, profile, hypothetical);
-
-            float total = 0;
-            for (int i = 0; i < map.ownUnits.Count; i++) {
-                Unit u = map.ownUnits[i];
-                if (u == null || u.tile == null || u == hub.myUnit) continue;
-                SupplyPoint otherHub = u.Hub;
-                if (otherHub != null && otherHub.producer) continue;
-
-                int before = map.SupplyDepth(u.tile);
-                int after = hypothetical.DepthAt(u.tile);
-                float perTurn = AIScore.Worth(u);              // one strength
-
-                if ((before > 0) != (after > 0)) {
-                    float need = 1f
-                               + (u.OutOfSupplies ? 2f : 0f)
-                               + (u.OutOfAmmo ? 1f : 0f)
-                               + (u.OutOfFuel ? 1f : 0f)
-                               + (6 - Mathf.Clamp(u.Strength, 0, 6)) / 6f;
-                    total += (after > 0 ? 1f : -1f) * perTurn * need;
-                }
-
-                // Depth inside supply is a margin against falling out of it as the line moves.
-                total += (AIScore.Depth(after, profile) - AIScore.Depth(before, profile)) * perTurn * 0.25f;
-
-                // Moving this hub can also strand or reconnect another relay downstream.
-                if (otherHub != null) {
-                    bool wasConnected = map.supply.connectedHubs.Contains(otherHub);
-                    bool isConnected = hypothetical.connectedHubs.Contains(otherHub);
-                    if (wasConnected != isConnected) total += (isConnected ? 1f : -1f) * perTurn;
-                }
-            }
-
-            dSupplied = total;
-            dForward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-            total += dForward;
-            // Following the army is worth something only from positions that keep the hub
-            // connected. Crediting it from anywhere sent the hub out of the network to burn
-            // through its six-turn fuse in front of the enemy.
-            if (hypothetical.connectedHubs.Contains(hub)) {
-                dIntent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                total += dIntent;
-            }
-            float beforeConnect = total;
-
-            // Connection, priced as what it actually saves: a stranded hub pays a strength
-            // per turn, and that hurts more as it nears burning out.
-            // Being connected is worth exactly the absence of that cost. An earlier version
-            // also *added* half the hub's worth for being connected, which double-counted
-            // the same thing and pinned every hub inside HQ range even when it was
-            // sustaining nobody there.
-            float hubWorth = AIScore.Worth(hub.myUnit);
-            bool connectedAfter = hypothetical.connectedHubs.Contains(hub);
-            if (!connectedAfter) {
-                int autonomy = Mathf.Max(1, hub.TurnsOfAutonomy);
-                total -= hubWorth;
-                if (autonomy <= profile.hubPanicThreshold) {
-                    total -= hubWorth * (profile.hubPanicThreshold - autonomy + 1) * 0.5f;
-                }
-            }
-
-            // And it gets shot at like anything else. This term was missing entirely: the
-            // planner would park the most expensive mobile unit in the army anywhere that
-            // improved coverage.
-            dConnect = total - beforeConnect;
-            // Risk where it will actually stand. The fire field was computed with the hub on its old
-            // tile — which, more than once, was the tile blocking the enemy tank's way to the new
-            // one: the planner saw no danger, the hub stepped forward, and the path it had been
-            // blocking opened onto itself. So the enemy's reply is simulated with the hub moved,
-            // and a real opponent's choice of target (the most valuable thing in reach, which a
-            // 25,000-gold truck usually is) replaces the share-of-fire average when it is worse.
-            float simulated = 0f;
-            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, map.replyCache, false);
-            reply.lost.TryGetValue(hub.myUnit, out simulated);
-            dRisk = Mathf.Max(map.ExpectedLoss(hub.myUnit, at), simulated) * AIScore.Worth(hub.myUnit) * profile.riskWeight;
-            total -= dRisk;
-            if (DebugLog != null) {
-                string line = string.Format("({0},{1}) total {2:0} = supplied {3:0} + forward {4:0} + intent {5:0} + connection {6:0} - risk {7:0} (expected loss {8:0.0}, simulated {9:0.0})",
-                    at.x, at.y, total, dSupplied, dForward, dIntent, dConnect, dRisk, map.ExpectedLoss(hub.myUnit, at), simulated);
-                lock (breakdown) breakdown[at] = line;
-            }
-
-            // Restore the real field, since the solve above published onto the board.
-            SupplyNetwork.Solve(map.player, false);
-
-            return total;
+            // Gold per turn, so gains and costs are comparable: supplying a unit is worth about one strength per
+            // turn (what attrition takes once its own supplies run out, and what resupply heals).
+            return ValueAdded(hub, at, map, profile, hypothetical);
         }
 
         /// <summary>

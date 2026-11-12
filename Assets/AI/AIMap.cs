@@ -446,16 +446,12 @@ namespace HexTactica.AI {
                 if (damage <= 0) continue;
                 float mine, others;
                 float share = ShareOf(ef, u, at, out mine, out others);   // own prior share replaced, not added
-                // dangerModel 1: every enemy that can reach the tile is assumed to fire on it, in full.
-                if (profile.dangerModel == 1) share = 1f;
-                // dangerModel 2: each enemy puts its whole attack into the most valuable target it can
-                // reach — the same rule the simulated reply (AIWorld) and the original AI use.
-                else if (profile.dangerModel == 2) {
-                    float bestOther = 0f;
-                    foreach (KeyValuePair<Unit, float> kv in ef.attractionOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
-                    foreach (KeyValuePair<Unit, float> kv in ef.committedOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
-                    share = mine >= bestOther ? 1f : 0f;
-                }
+                // Each enemy puts its whole attack into the most valuable target it can reach: the same rule
+                // the simulated reply (AIWorld) uses.
+                float bestOther = 0f;
+                foreach (KeyValuePair<Unit, float> kv in ef.attractionOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
+                foreach (KeyValuePair<Unit, float> kv in ef.committedOf) if (kv.Key != u && kv.Value > bestOther) bestOther = kv.Value;
+                share = mine >= bestOther ? 1f : 0f;
                 loss += damage * share;
             }
             return Mathf.Min(u.Strength, loss);

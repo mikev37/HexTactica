@@ -58,7 +58,7 @@ namespace HexTactica.AI {
         public bool ordinaryFront;
         /// <summary>Hold: what kind of place (chokepoint end, road junction).</summary>
         public string placeKind;
-        /// <summary>Turns this task force has been out (0 the turn it formed), whether it has gone in yet, and the turns from its staging tile to its target when it formed (time boxes: AIProfile.campaignTimeBox).</summary>
+        /// <summary>Turns this task force has been out (0 the turn it formed), and whether it has gone in yet.</summary>
         public int age;
         public bool went;
         /// <summary>Last turn's pace (AIStrategic.Pace) for this task force: no nearer since, it has stalled.</summary>
@@ -234,29 +234,22 @@ namespace HexTactica.AI {
             foreach (Unit t in map.ownUnits) if (IsSeatCarrier(t)) seats[t] = Mathf.Max(1, t.transportSlots);
             List<CampaignObjective> candidates = Candidates(map, p);
 
-            // Time boxes (AIProfile.campaignTimeBox): a task force that has not gathered on its staging
-            // ground by its campaignDrawTurns-th turn is dissolved; one that has not achieved its
-            // objective in campaignTimeBox turns (more for one further off) gives it up. Either way the
-            // objective is left alone for campaignTimeBox turns and its units go to other objectives
-            // and to the fighting.
+            // A task force that has not gathered on its staging ground in DrawTurns turns is dissolved, and
+            // its objective formed again from the units best placed for it now.
             string timedOut = null;
             HashSet<string> timedOutIds = new HashSet<string>();
             if (last != null) {
                 foreach (KeyValuePair<string, int> kv in last.givenUp) if (kv.Value > c.turn) c.givenUp[kv.Key] = kv.Value;
                 int draw = DrawTurns(p);
                 foreach (CampaignObjective o in last.objectives) {
-                    if (o.kind == CampaignKind.DefendHQ || o.respond || p.campaignTimeBox <= 0) continue;
+                    if (o.kind == CampaignKind.DefendHQ || o.respond) continue;
                     // Being taken (one of ours on it, or our capture under way): never given up now.
                     // (The HQ push was given up on the turn its grunt was finishing the capture.)
                     if (o.building != null && o.building.tile != null && ((o.building.tile.occupier != null && o.building.tile.occupier.owner == map.player) || (o.building.capturingPlayer == map.player && o.building.capturePoints > 0))) continue;
                     int age = o.age + 1;
                     string why = null;
                     if (!o.went && o.staging != null && age >= draw && !GatheredEnough(o, map, p)) why = "did not gather in " + draw + " turns";
-
-
                     if (why == null) continue;
-                    // Left alone for campaignGiveUpTurns (0: not at all — the task force is dissolved and the
-                    // objective formed again from whatever units are best placed for it now).
                     timedOutIds.Add(o.Id);
                     if (timedOut == null) timedOut = o.Id + " " + why + ", given up";
                 }
