@@ -52,7 +52,8 @@ public static class GameFiles {
         string root = HexTactica.Harness.GameLog.DefaultRoot;
         if (!Directory.Exists(root)) return list;
         foreach (string d in Directory.GetDirectories(root)) {
-            if (!File.Exists(Path.Combine(d, "game.log")) || Directory.GetFiles(d, "turn-*.dat").Length == 0) continue;
+            // A game: a log and more than its first turn's board (the scene opened and left is not one).
+            if (!File.Exists(Path.Combine(d, "game.log")) || Directory.GetFiles(d, "turn-*.dat").Length < 2) continue;
             list.Add(new GameFile { name = Path.GetFileName(d), path = d, modified = Directory.GetLastWriteTime(d), user = true });
         }
         list.Sort((a, b) => b.modified.CompareTo(a.modified));

@@ -135,6 +135,7 @@ namespace HexTactica.Harness {
             if (obj.GetField("buildings")) {
                 JSONObjectEnumerator buildings = obj.GetField("buildings").GetEnumerator();
                 while (buildings.MoveNext()) {
+                    if (buildings.Current == null || buildings.Current.type != JSONObject.Type.Object) continue;
                     BuildingData bd = JsonUtility.FromJson<BuildingData>(buildings.Current.Print());
                     bd.load();
                 }
@@ -144,7 +145,8 @@ namespace HexTactica.Harness {
             List<UnitData> unitData = new List<UnitData>();
             if (obj.GetField("units")) {
                 JSONObjectEnumerator units = obj.GetField("units").GetEnumerator();
-                while (units.MoveNext()) unitData.Add(JsonUtility.FromJson<UnitData>(units.Current.Print()));
+                // (An entry that is not an object — an empty list written as "[\n]" reads as one — is not a unit.)
+                while (units.MoveNext()) if (units.Current != null && units.Current.type == JSONObject.Type.Object) unitData.Add(JsonUtility.FromJson<UnitData>(units.Current.Print()));
             }
             UnitData.LoadAll(unitData);
 

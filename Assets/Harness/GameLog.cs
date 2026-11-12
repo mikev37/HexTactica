@@ -527,6 +527,7 @@ namespace HexTactica.Harness {
 
             List<Unit> units = new List<Unit>();
             foreach (Unit u in AllUnits()) if (u != null && u.tile != null && u.Strength > 0) units.Add(u);
+            if (units.Count == 0) { sb.Append(",\n\"units\":[]\n}\n"); return sb.ToString(); }   // (the JSON reader does not take "[\n]")
             sb.Append(",\n\"units\":[");
             first = true;
             foreach (Unit u in units) {

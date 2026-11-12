@@ -75,7 +75,11 @@ public class GameSession : MonoBehaviour {
                 // Nobody plays: the game is held, and the Replay scene's controls step through the recording.
                 GameController.Paused = true;
                 HexTactica.Harness.Replay.BuiltInPanel = false;
-                if (HexTactica.Harness.Replay.Open(MatchSetup.FilePath)) {
+                // Whatever goes wrong opening the recording, the controls still come up (their Exit leads back).
+                bool opened = false;
+                try { opened = HexTactica.Harness.Replay.Open(MatchSetup.FilePath); }
+                catch (System.Exception e) { Debug.LogError("Could not open the recording " + MatchSetup.FilePath + ": " + e); opened = HexTactica.Harness.Replay.Active; }
+                if (opened) {
                     Frame();
                     SceneManager.LoadScene(s.replayScene, LoadSceneMode.Additive);
                 } else MatchSetup.ToMainMenu();
