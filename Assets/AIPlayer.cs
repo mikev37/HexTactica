@@ -1311,6 +1311,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
     bool CarriesSupply(Unit truck, out AIAction action) {
         action = default(AIAction);
         if (logistics == null || truck == null || truck.tile == null || !Transporting.IsTransport(truck)) return false;
+        // Aboard another transport (a helicopter landed on a ship): it cannot drive anywhere; it decides as cargo.
+        if (truck.trasnporter != null) return false;
         Unit cargo = null;
         foreach (Unit c in truck.transported) if (c != null && c.Hub != null && !c.Hub.producer) { cargo = c; break; }
         if (cargo == null) return false;

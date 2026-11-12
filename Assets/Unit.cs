@@ -795,6 +795,9 @@ public class Unit : MonoBehaviour
     internal bool MoveAlong(List<HexTile> steps, bool thenAttacks, bool animate) {
         ambushedBy = null;
         if (steps == null || steps.Count == 0 || tile == null) return false;
+        // Aboard a transport it does not move by itself: it gets off (Transporting.Unload). (A move from aboard left
+        // its new tile naming it as the occupier while it stayed aboard: a ghost there once the transport moved on.)
+        if (trasnporter != null) { Debug.LogWarning(name + " was told to move while aboard " + trasnporter.name + ": it stays aboard"); return false; }
         HexTile start = tile;
         int stop = steps.Count - 1;
         Unit ambusher = null;
@@ -973,6 +976,7 @@ public class Unit : MonoBehaviour
 
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
     internal void TeleportTo(HexTile hexTile, int tilesEntered, bool thenAttacks = false) {
+        if (trasnporter != null) { Debug.LogWarning(name + " was told to move while aboard " + trasnporter.name + ": it stays aboard"); return; }
         // Movement burns fuel per tile entered; air units also burn minFuelPerTurn every turn
         // they are away from base (Player.StartTurn).
         if (fuelMax > 0) fuel = Mathf.Max(0, fuel - tilesEntered * minFuelPerTile);
@@ -1271,7 +1275,7 @@ public class Unit : MonoBehaviour
     public void ApplyPendingRetreat() {
         HexTile to = pendingRetreat;
         pendingRetreat = null;
-        if (to == null || Strength <= 0) return;
+        if (to == null || Strength <= 0 || trasnporter != null) return;
         if (to.occupier != null) return;
         if (!CanEnter(to)) return;
 

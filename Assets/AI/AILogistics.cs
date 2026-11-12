@@ -124,7 +124,7 @@ namespace HexTactica.AI {
         }
 
         public static bool IsCarrier(Unit t) {
-            return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1 && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion);
+            return t != null && t.tile != null && t.trasnporter == null && Transporting.IsTransport(t) && t.Firepower <= 1 && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion);
         }
 
         /// <summary>
@@ -132,6 +132,7 @@ namespace HexTactica.AI {
         ///, a ship too, or an aircraft that holds where it stops (not one that must go back to a runway).
         /// </summary>
         public static bool IsCarrierFor(Unit c, Task t) {
+            if (c != null && c.trasnporter != null) return false;   // aboard another transport: it goes where that one goes
             if (IsCarrier(c)) return true;
             if (t == null || !t.acrossWater || c == null || c.tile == null || !Transporting.IsTransport(c) || c.Firepower > 1 || c.Hub != null) return false;
             if (LocomotionRules.IsNaval(c.locomotion)) return true;
