@@ -423,7 +423,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, -4, 0);
-            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is.");
+            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that) but shown supplied; once a Blue recon sees the line, shown cut off; with fog off the screen shows the network as it is. An enemy's supply is shown as it is on tiles Blue sees: a tile a Blue recon sees shows in Red's supply, though the Red supply unit giving it is in the fog.");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "fog-rule-supply-shown.dat"), test, ai, other, ai);
             n++;
@@ -1764,6 +1764,15 @@ public static partial class Scenarios {
                 SupplyNetwork.Solve(a, false);
                 bool seenNow = FogOfWar.Sees(a, wall[3]), shownCut = !g.tile.isSuppliedShown(a);
                 r.Add("a Blue recon beside it sees the wall " + seenNow + ": shown cut off " + shownCut);
+                // Red's supply: a Red supply unit at (10,0) linked to Red's HQ, out of Blue's sight, supplies (7,0), which a
+                // Blue recon at (5,0) sees: it shows in Red's supply.
+                Unit rs = Put("Supplies", o, 10, 0); Unit rec2 = Put("Recon", a, 5, 0); rec2.visionRange = 2;
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                SupplyNetwork.Solve(o, false);
+                HexTile wallTile = Rig.At(7, 0);
+                bool rsHidden = !FogOfWar.Sees(a, rs), wallSeen = FogOfWar.TileVisible(a, wallTile);
+                bool redTrue = wallTile.isSupplied(o), redShown = wallTile.isSuppliedShown(o);
+                r.Add("Red supplies at (10,0) hidden from Blue " + rsHidden + "; (7,0) seen " + wallSeen + ", truly in Red supply " + redTrue + ", shown in Red supply " + redShown);
                 // Fog off: the screen shows the true network.
                 gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
                 SupplyNetwork.Solve(a, false);
@@ -1771,7 +1780,7 @@ public static partial class Scenarios {
                 r.Add("fog off: shown as it is " + fogOff);
                 if (blueAI != null) blueAI.enabled = true;
                 detail = string.Join(" | ", r.ToArray());
-                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff;
+                return before && unseen && trulyCut && shownSupplied && seenNow && shownCut && fogOff && rsHidden && wallSeen && redTrue && redShown;
             }
             case "fobStorePips": {
                 // A FOB (Blue) with 3 of 6 in store, Blue's HQ, and a Red FOB with 5. Blue is the screen's player.

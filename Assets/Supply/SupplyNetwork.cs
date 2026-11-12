@@ -31,7 +31,7 @@ public static class SupplyNetwork {
     /// </summary>
     public static bool StoreOnlyWhenNeeded = true;
 
-    /// <summary>Under fog, the supply the screen shows (borders, out-of-supply icons) is worked out on the board as the screen's player knows it (HexTile.supplyShown): enemy units it does not see do not cut it. Off: the true network is shown.</summary>
+    /// <summary>Under fog, the screen's player's own supply as the screen shows it (borders, out-of-supply icons) is worked out on the board as it knows it (HexTile.supplyShown): enemy units it does not see do not cut it. Other sides' supply is shown as it truly is, on the tiles the viewer sees. Off: the true network is shown.</summary>
     public static bool ShownAsKnown = true;
 
     /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
@@ -319,12 +319,14 @@ public static class SupplyNetwork {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });
-        // What the screen shows (real board only): the same network worked out on the board as the screen's player
-        // knows it, under fog — an enemy it does not see neither cuts supply nor gives it (it would give it away).
+        // What the screen shows (real board only). The screen's player's own network is worked out on the board as it
+        // knows it, under fog: an enemy it does not see does not cut it (that would give the enemy away). Another side's
+        // network is the true one: a tile of it the viewer sees shows supplied when it is, though the supplier and the
+        // chain up to it are in the fog (HexTilePlayerSupplyDisplay draws it only on tiles the viewer sees).
         if (BoardView.current == null) {
             Result shown = result;
             Player viewer = ShownAsKnown && FogOfWar.On ? FogOfWar.Viewer : null;
-            if (viewer != null && again != null) using (FogOfWar.Concealing(viewer)) shown = again();
+            if (viewer != null && viewer == player && again != null) using (FogOfWar.Concealing(viewer)) shown = again();
             // Borders to redraw: only where being supplied (as shown) changed, and beside it.
             List<HexTile> flipped = new List<HexTile>();
             HexGenerator.forAllTiles(t => {
