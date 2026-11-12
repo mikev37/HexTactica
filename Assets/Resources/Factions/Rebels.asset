@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   icon: {fileID: 0}
   description: Low Tech but sneaky
+  campaignName: Rebels
+  flagColor: {r: 0.55, g: 0.36, b: 0.2, a: 1}
   unitlist: []
   replacements:
   - original: {fileID: 9081080694409079478, guid: 1a9c0714e7151f148bc137617e2a7b22, type: 3}

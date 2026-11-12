@@ -83,6 +83,8 @@ units or buildings must match at least.
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
 | Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
+| Unit Boarded (30) | a matching unit gets into a transport (*In area*: where the transport stands): *Count* times | side, kind, name, in area |
+| Unit Unloaded (31) | a matching unit gets out of a transport (*In area*: the tile it gets out onto): *Count* times | side, kind, name, in area |
 | Units At Least (25) | now: at least *Value* matching units are alive (as in "when you have 3 tanks"; with no kind, any units) | side, kind, name, in area |
 
 A **kind** is a unit or building prefab's name (Grunt, Tank, City, HQ…). A faction's version of a unit counts as its
@@ -198,9 +200,10 @@ the first time Unity opens the project, and every Show Marker action uses it unl
   at the end. A number is never reordered, renumbered or reused (see `ScenarioTrigger.cs`). Renaming a field drops
   its value from existing files, so keep field names.
 
-## The tutorial mission
+## The tutorial missions
 
-`Assets/Resources/Scenarios/Tutorial.dat` is a complete example, and the test `tutorial-playthrough` plays it
+The tutorials are campaign missions (see `Assets/FrontEnd/README.md`, *Campaign*), so their files are in
+`Assets/Resources/Campaign/Scenarios`, not with the scenarios. `Tutorial.dat` is a complete example, and the test `tutorial-playthrough` plays it
 through:
 - **Turn 1:** the scout introduces the grunt, with a marker on him. Selecting him moves the marker to a target tile
   and explains the two-click move. The lesson goes on only once he stands on that tile: "Good job!", then the
@@ -212,6 +215,15 @@ through:
 - **Turn 3:** if the HQ was never opened, a hint points at it. Buying a grunt and a supply truck are each explained.
   A bought grunt is pointed at the neutral city to capture.
 - **The end:** the attack hint comes once the truck is bought (or on turn 4), and killing the raider wins.
+
+`Tutorial 2.dat` (test `tutorial2-playthrough`) teaches transports and supply, on Tutorial 1's ground with a short
+road east from the HQ to a raider-held village:
+- **Turn 1:** load the grunt into the truck (*Unit Boarded*), then the supply unit; only then is the drive asked for.
+  The marked tile is beyond the HQ's supply: the supply unit aboard the truck is what supplies it. Unloading the grunt
+  (*Unit Unloaded*) ends the lesson's first part.
+- **Turn 2:** a recon car and a second squad arrive; the squad boards the car. The lookout on the village is held
+  and fed every turn. Destroying it, then standing a grunt on the village, wins. Losing every grunt loses.
+- A unit out of supply brings a reminder to get back near the HQ or the truck.
 
 The raiders' side starts with nothing. It isn't knocked out because it isn't *eliminable* (below). Losing every unit is
 the tutorial's own loss trigger.

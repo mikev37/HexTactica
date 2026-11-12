@@ -73,6 +73,7 @@ public class InGameMenu : MonoBehaviour {
         if (name.Length == 0) { Say("Give the save a name."); return; }
         string path = GameFiles.SavePath(name);
         LevelEditor.SaveGame(path);
+        MatchSetup.StampMission(path);   // a campaign mission's save goes on as that mission
         if (saves != null) { saves.Refresh(); saves.PickNamed(name); }
         Say("Saved " + name + ".");
     }

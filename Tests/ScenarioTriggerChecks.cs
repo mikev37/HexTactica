@@ -157,16 +157,23 @@ public static partial class Scenarios {
         make("script-not-eliminable", "scriptEliminable", (a, o) => { Put("Grunt", o, 0, 0); },
              "A side that is not eliminable (Player.eliminable off, as a scenario's enemy that starts with nothing) is not knocked out by losing its HQ and every unit, and the game goes on; the same side eliminable is knocked out, and the game ends.");
         n++;
-        // The tutorial mission itself (Assets/Resources/Scenarios/Tutorial.dat), with a test block: played through below.
-        string tutorial = Path.Combine(PrefabLoader.Root("Scenarios"), "Tutorial.dat");
-        if (File.Exists(tutorial)) {
-            string text = File.ReadAllText(tutorial).TrimEnd();
-            text = text.Substring(0, text.LastIndexOf('}')) + ",\n\"test\": {\"name\": \"tutorial-playthrough\", \"kind\": \"rules\", \"opponent\": \"Human\", \"rounds\": \"8\", \"rules\": \"standard\", \"check\": \"scriptTutorial\", "
-                 + "\"question\": \"The tutorial mission (Resources/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.\"}\n}\n";
-            File.WriteAllText(Path.Combine(Dir, "tutorial-playthrough.dat"), text);
-            n++;
-        }
+        // The campaign's tutorial missions themselves (Assets/Resources/Campaign/Scenarios), each with a test block: played through below.
+        n += ExportMission("Tutorial", "tutorial-playthrough", "scriptTutorial", 8,
+            "The tutorial mission (Resources/Campaign/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.");
+        n += ExportMission("Tutorial 2", "tutorial2-playthrough", "scriptTutorial2", 10,
+            "The second tutorial mission (Resources/Campaign/Scenarios/Tutorial 2.dat), played with the player's orders and recorded as a game is: the grunt boards the truck (told to load the supply unit), the supply unit boards (told to drive); the marked tile is outside the HQ's supply until the truck with supply aboard stands there; the grunt is put down in supply; the lookout (held, fed) is spotted; on turn 2 a recon car and a squad arrive, the squad boards the car; the lookout is destroyed, a grunt takes the village: the player wins. Then the campaign, on the mission assets as they are (Resources/Campaign/Missions): the result read from the game log earns its stars against Tutorial 2's pars; only Tutorial 1's flag is on the map at first, winning it unlocks Tutorial 2, stars once earned are kept, a mission blocked by an attempt is closed, and progress survives being saved and read back.");
         return n;
+    }
+
+    /// <summary>A campaign mission's scenario file (Resources/Campaign/Scenarios) as a test scenario: the file as it is, with a test block.</summary>
+    static int ExportMission(string scenario, string name, string check, int rounds, string question) {
+        string file = Path.Combine(PrefabLoader.Root("Campaign/Scenarios"), scenario + ".dat");
+        if (!File.Exists(file)) return 0;
+        string text = File.ReadAllText(file).TrimEnd();
+        text = text.Substring(0, text.LastIndexOf('}')).TrimEnd() + ",\n\"test\": {\"name\": \"" + name + "\", \"kind\": \"rules\", \"opponent\": \"Human\", \"rounds\": \"" + rounds + "\", \"rules\": \"standard\", \"check\": \"" + check + "\", "
+             + "\"question\": \"" + question + "\"}\n}\n";
+        File.WriteAllText(Path.Combine(Dir, name + ".dat"), text);
+        return 1;
     }
 
     /// <summary>Stand <paramref name="u"/> on (x, y), as a move leaves it.</summary>
@@ -182,6 +189,132 @@ public static partial class Scenarios {
         public int closed;
         public void ShowLine(DialogueLine line) { shown.Add(line.Text); }
         public void Close() { closed++; }
+    }
+
+    // ------------------------------------------------------------------ the campaign (Assets/FrontEnd/Campaign)
+
+    /// <summary>
+    /// The mission assets as they are on disk (Assets/Resources/Campaign/Missions/*.asset): their plain fields, and
+    /// their unlocks and blocks followed through the assets' GUIDs (their .meta files), as Unity links them.
+    /// </summary>
+    static List<Mission> MissionAssets() {
+        string dir = PrefabLoader.Root(Mission.Folder);
+        List<Mission> list = new List<Mission>();
+        if (!Directory.Exists(dir)) return list;
+        Dictionary<string, Mission> byGuid = new Dictionary<string, Mission>();
+        Dictionary<Mission, string> text = new Dictionary<Mission, string>();
+        string[] files = Directory.GetFiles(dir, "*.asset");
+        Array.Sort(files, StringComparer.Ordinal);
+        foreach (string f in files) {
+            string yaml = File.ReadAllText(f);
+            Mission m = ScriptableObject.CreateInstance<Mission>();
+            m.name = Path.GetFileNameWithoutExtension(f);
+            m.title = Yaml(yaml, "title").Trim('\'', '"');
+            m.scenario = Yaml(yaml, "scenario");
+            m.availableAtStart = Yaml(yaml, "availableAtStart") == "1";
+            int.TryParse(Yaml(yaml, "parTurns"), out m.parTurns);
+            int.TryParse(Yaml(yaml, "parKills"), out m.parKills);
+            int.TryParse(Yaml(yaml, "parLosses"), out m.parLosses);
+            System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(f + ".meta"), @"^guid: (\w+)", System.Text.RegularExpressions.RegexOptions.Multiline);
+            if (g.Success) byGuid[g.Groups[1].Value] = m;
+            text[m] = yaml;
+            list.Add(m);
+        }
+        foreach (Mission m in list) {
+            m.unlocks = Linked(text[m], "unlocks", byGuid);
+            m.blocks = Linked(text[m], "blocks", byGuid);
+        }
+        return list;
+    }
+
+    static string Yaml(string yaml, string key) {
+        System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(yaml, @"^  " + key + @": ?(.*)$", System.Text.RegularExpressions.RegexOptions.Multiline);
+        return m.Success ? m.Groups[1].Value.Trim() : "";
+    }
+
+    /// <summary>The assets a list field links ("  key:" followed by "  - {fileID: ..., guid: ..., type: 2}" lines).</summary>
+    static List<Mission> Linked(string yaml, string key, Dictionary<string, Mission> byGuid) {
+        List<Mission> r = new List<Mission>();
+        System.Text.RegularExpressions.Match block = System.Text.RegularExpressions.Regex.Match(yaml, @"^  " + key + @":\n((?:  - \{.*\}\n?)*)", System.Text.RegularExpressions.RegexOptions.Multiline);
+        if (!block.Success) return r;
+        foreach (System.Text.RegularExpressions.Match g in System.Text.RegularExpressions.Regex.Matches(block.Groups[1].Value, @"guid: (\w+)")) {
+            Mission m;
+            r.Add(byGuid.TryGetValue(g.Groups[1].Value, out m) ? m : null);   // (a link to nothing shows as null, and fails the check)
+        }
+        return r;
+    }
+
+    /// <summary>
+    /// The campaign's rules on the real mission assets, with <paramref name="tally"/> (a won game of Tutorial 2) as
+    /// the result: what is on the map at first, unlocking, stars against the pars, stars kept, a fork (a fixture: no
+    /// real mission blocks another yet), and progress saved and read back.
+    /// </summary>
+    static bool CampaignCheck(MissionTally tally, out string detail) {
+        List<Mission> missions = MissionAssets();
+        Mission t1 = missions.Find(m => m.name == "Tutorial 1"), t2 = missions.Find(m => m.name == "Tutorial 2");
+        if (t1 == null || t2 == null) { detail = "the mission assets Tutorial 1 and Tutorial 2 were not found (" + missions.Count + " in " + PrefabLoader.Root(Mission.Folder) + ")"; return false; }
+        List<Mission> was = null;
+        string file = Path.Combine(Path.GetTempPath(), "hextactica-campaign-" + Guid.NewGuid().ToString("N") + ".dat");
+        string fileWas = CampaignProgress.FilePath;
+        try {
+            Mission.All = missions;
+            CampaignProgress.FilePath = file;
+            CampaignProgress.Load();
+            string scenarios = PrefabLoader.Root("Campaign/Scenarios");
+            bool files = File.Exists(Path.Combine(scenarios, t1.ScenarioName + ".dat")) && File.Exists(Path.Combine(scenarios, t2.ScenarioName + ".dat"))
+                      && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t1.ScenarioName + ".dat")) && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t2.ScenarioName + ".dat"));
+            bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2 && t1.availableAtStart && !t2.availableAtStart;
+            bool atFirst = CampaignProgress.Playable(t1) && !CampaignProgress.Visible(t2);
+            // Tutorial 1 lost: attempted, nothing unlocked, no stars.
+            CampaignProgress.Attempt(t1);
+            CampaignProgress.Outcome lost = CampaignProgress.Finish(t1, new MissionTally { recorded = true, won = false, turns = 3, kills = 5, losses = 0 });
+            bool lostNothing = lost.earned == MissionStars.None && lost.unlocked.Count == 0 && !CampaignProgress.Get(t1).completed && !CampaignProgress.Visible(t2);
+            // Tutorial 1 won slowly, with a loss, its raider destroyed: one star (aggression), and Tutorial 2 appears.
+            CampaignProgress.Outcome slow = CampaignProgress.Finish(t1, new MissionTally { recorded = true, won = true, turns = t1.parTurns + 1, kills = t1.parKills, losses = t1.parLosses + 1 });
+            bool unlocked = slow.firstWin && slow.unlocked.Count == 1 && slow.unlocked[0] == t2 && CampaignProgress.Playable(t2) && slow.earned == MissionStars.Aggression && slow.gained == MissionStars.Aggression
+                         && CampaignProgress.Pending == slow && CampaignProgress.TakePending() == slow && CampaignProgress.Pending == null;
+            // Won again within every par: the two new stars are gained, the old one kept, nothing unlocked twice.
+            CampaignProgress.Outcome fast = CampaignProgress.Finish(t1, new MissionTally { recorded = true, won = true, turns = t1.parTurns, kills = t1.parKills, losses = t1.parLosses });
+            bool kept = !fast.firstWin && fast.unlocked.Count == 0 && MissionRating.Count(fast.earned) == 3 && fast.gained == (MissionStars.Speed | MissionStars.Defense)
+                     && MissionRating.Count(CampaignProgress.Get(t1).stars) == 3 && CampaignProgress.Get(t1).bestTurns == t1.parTurns;
+            // A worse win later takes nothing away; a win that was not recorded earns no stars.
+            CampaignProgress.Finish(t1, new MissionTally { recorded = false, won = true });
+            bool notLost = MissionRating.Count(CampaignProgress.Get(t1).stars) == 3;
+            // Tutorial 2, with the result of the game just played.
+            CampaignProgress.Attempt(t2);
+            CampaignProgress.Outcome played = CampaignProgress.Finish(t2, tally);
+            MissionStars expected = MissionStars.None;
+            if (tally.won && t2.parTurns > 0 && tally.turns <= t2.parTurns) expected |= MissionStars.Speed;
+            if (tally.won && tally.kills >= t2.parKills) expected |= MissionStars.Aggression;
+            if (tally.won && tally.losses <= t2.parLosses) expected |= MissionStars.Defense;
+            bool rated = played.earned == expected && MissionRating.Count(played.earned) == 3 && CampaignProgress.Get(t2).completed;
+            // A fork (fixture missions: the campaign has none yet): attempting one closes the other, for good unless it was already won.
+            Mission left = ScriptableObject.CreateInstance<Mission>(), right = ScriptableObject.CreateInstance<Mission>(), done = ScriptableObject.CreateInstance<Mission>();
+            left.name = "Fixture Left"; right.name = "Fixture Right"; done.name = "Fixture Done";
+            left.availableAtStart = right.availableAtStart = done.availableAtStart = true;
+            left.blocks.Add(right); left.blocks.Add(done);
+            CampaignProgress.Finish(done, new MissionTally { recorded = true, won = true });
+            bool open = CampaignProgress.Playable(left) && CampaignProgress.Playable(right);
+            CampaignProgress.Attempt(left);
+            bool fork = open && CampaignProgress.Blocked(right) && !CampaignProgress.Playable(right) && CampaignProgress.Visible(right) && !CampaignProgress.Blocked(done) && CampaignProgress.Playable(left);
+            // Read back from its file.
+            CampaignProgress.Load();
+            bool saved = File.Exists(file) && CampaignProgress.Get(t1).completed && MissionRating.Count(CampaignProgress.Get(t1).stars) == 3 && CampaignProgress.Get(t1).bestTurns == t1.parTurns
+                      && CampaignProgress.Playable(t2) && CampaignProgress.Get(t2).stars == expected && CampaignProgress.Blocked(right) && CampaignProgress.Get(left).attempted;
+            CampaignProgress.Reset();
+            bool reset = !CampaignProgress.Visible(t2) && !CampaignProgress.Get(t1).completed && CampaignProgress.Playable(t1);
+            detail = "mission files in the campaign folder, not among the scenarios " + files + "; Tutorial 1 unlocks Tutorial 2 (the assets' links) " + linked + "; only Tutorial 1 on the map at first " + atFirst
+                   + "; lost: nothing " + lostNothing + "; won: one star, Tutorial 2 unlocked, handed to the campaign screen once " + unlocked + "; won again: stars added, kept " + kept + ", not lost by a worse win " + notLost
+                   + "; this game against Tutorial 2's pars (" + t2.parTurns + " turns, " + t2.parKills + " killed, " + t2.parLosses + " lost): " + MissionRating.Count(played.earned) + " stars " + rated
+                   + "; a fork closes the other mission, not one already won " + fork + "; saved and read back " + saved + "; reset " + reset;
+            return files && linked && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset;
+        } finally {
+            Mission.All = was;
+            CampaignProgress.FilePath = fileWas;
+            CampaignProgress.Pending = null;
+            CampaignProgress.Load();
+            try { File.Delete(file); } catch (Exception) { }
+        }
     }
 
     static int Fired(ScenarioScript s, string name) { ScenarioTrigger t = s.Find(name); return t != null ? t.TimesFired : -1; }
@@ -450,6 +583,97 @@ public static partial class Scenarios {
                        + "; raider killed in " + rounds + " round(s), player wins " + won + "; description, win and loss text " + words + (won ? "" : " [last lines: " + end + "]");
                 ScenarioDialogue.Presenter = null;
                 return ok && words && holds && keptIn && waits && noAmbush && step1 && step2 && step3 && step4 && back && healed && step5 && step6 && step7 && step8 && won;
+            }
+            case "scriptTutorial2": {
+                Player human = o, raiders = a;
+                FakeBox box = new FakeBox();
+                ScenarioDialogue.Presenter = box;
+                foreach (MonoBehaviour m in raiders.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
+                AIPlayer ai = raiders.GetComponent<AIPlayer>();
+                List<string> transcript = new List<string>();
+                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
+                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
+                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
+                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == raiders && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == raiders) gc.EndTurn(); settle(); };
+                // Boarding as the board's click does it (HexTile.ClickBoard): the walk in, then aboard, the unit's turn over.
+                Func<Unit, Unit, bool> board = (cargo, transport) => {
+                    if (cargo == null || transport == null) return false;
+                    List<HexTile> steps = HexTile.BoardingPath(cargo, transport);
+                    if (steps == null || !cargo.WalkAndBoard(steps, transport, true)) return false;
+                    cargo.FinishActive();
+                    return true;
+                };
+                Func<Unit, bool> supplied = u => { SupplyNetwork.Solve(human, false); return u != null && !ScenarioGame.CutOff(u); };
+                // Recorded as a game is (the game log): the mission's result is read from it at the end.
+                string logRoot = Path.Combine(Path.GetTempPath(), "hextactica-tutorial2-" + Guid.NewGuid().ToString("N"));
+                HexTactica.Harness.GameLog.Start(l.path, "Human", logRoot);
+
+                Unit truck = ScenarioGame.Named("Truck"), rifles = ScenarioGame.Named("Rifles"), supply = ScenarioGame.Named("Supply"), lookout = ScenarioGame.Named("Lookout");
+                HexTile front = Rig.At(2, 2), village = Rig.At(4, 2);
+                bool ok = truck != null && rifles != null && supply != null && lookout != null && human.units.Contains(truck) && lookout.owner == raiders
+                       && village.building != null && village.building.owner == raiders && !raiders.eliminable && !gc.purchasesAllowed;
+                settle();
+                string welcome = said(); bool step1 = welcome.Contains("climbs aboard") && s.markers.Exists(m => m.Id == "rifles");
+                // Turn 1: the grunt boards, then the supply unit; only then the drive is asked for.
+                bool aboard1 = board(rifles, truck); settle();
+                string first = said(); bool step2 = aboard1 && rifles.trasnporter == truck && first.Contains("Boarding used his turn") && s.markers.Exists(m => m.Id == "supply") && Fired(s, "Loaded") == 0;
+                bool aboard2 = board(supply, truck); settle();
+                string second = said(); bool step3 = aboard2 && supply.trasnporter == truck && second.Contains("Supply aboard") && second.Contains("Both aboard") && s.markers.Exists(m => m.Id == "front");
+                // The marked tile is beyond the HQ's own supply: what supplies it is the supply unit aboard the truck.
+                bool beyond = !SupplyNetwork.Solve(human, false).IsSupplied(front);
+                bool drove = ScenarioGame.Order(truck, null, front); settle();
+                string arrived = said();
+                bool carried = SupplyNetwork.Solve(human, false).IsSupplied(front) && SupplyNetwork.Solve(human, false).IsSupplied(Rig.At(3, 2));
+                bool step4 = drove && truck.tile == front && arrived.Contains("put the grunt down") && !s.markers.Exists(m => m.Id == "front");
+                bool put = Transporting.Unload(truck, rifles, Rig.At(3, 2)); settle();
+                string down = said(); bool step5 = put && rifles.tile == Rig.At(3, 2) && down.Contains("On foot again") && supplied(rifles) && !rifles.active;
+                gc.EndTurn(); settle(); aiTurn();
+                // Turn 2: the lookout has held (fed, its turn used), reinforcements at the HQ.
+                bool held = lookout.Strength > 0 && lookout.tile == village && lookout.supplies > 0;
+                bool spotted = everSaid("Enemy spotted");
+                Unit recon = ScenarioGame.Named("Recon"), scouts = ScenarioGame.Named("Scouts");
+                bool step6 = recon != null && scouts != null && recon.owner == human && everSaid("Reinforcements") && s.markers.Exists(m => m.Id == "recon") && Fired(s, "Reinforcements") == 1;
+                bool aboard3 = board(scouts, recon); settle();
+                bool step7 = aboard3 && scouts != null && scouts.trasnporter == recon && everSaid("Deal with that lookout") && s.markers.Exists(m => m.Id == "lookout");
+                // The lookout is destroyed (the recon car and the grunt, as many attacks as it takes), nobody cut off meanwhile.
+                int rounds = 0;
+                while (lookout != null && lookout.Strength > 0 && !gc.gameOver && rounds++ < 6) {
+                    foreach (Unit u in new List<Unit> { recon, rifles }) if (u != null && u.Strength > 0 && u.active && u.trasnporter == null && lookout.Strength > 0 && u.CanAttack(lookout)) { ScenarioGame.Order(u, lookout, null); settle(); }
+                    if (lookout.Strength <= 0 || gc.gameOver) break;
+                    gc.EndTurn(); settle(); aiTurn();
+                }
+                bool down2 = lookout.Strength <= 0 && everSaid("Lookout down") && s.markers.Exists(m => m.Id == "village") && !s.markers.Exists(m => m.Id == "lookout");
+                // A grunt takes the village and holds it.
+                int holdTurns = 0;
+                while (!gc.gameOver && holdTurns++ < 8) {
+                    if (rifles.Strength > 0 && rifles.active && rifles.tile != village) { ScenarioGame.Order(rifles, null, village); settle(); }
+                    if (gc.gameOver) break;
+                    gc.EndTurn(); settle(); aiTurn();
+                }
+                bool won = gc.gameOver && gc.winner == human && everSaid("The village is ours") && village.building.owner == human;
+                bool neverCutOff = Fired(s, "Out of supply") == 0;
+                bool words = s.description.StartsWith("Tutorial 2") && ScenarioScript.EndText(true).Length > 0 && ScenarioScript.EndText(false).Length > 0;
+                int humanTurns = s.TurnsOf(human.id);
+
+                // The result, as the mission's result screen reads it: from the game log.
+                HexTactica.Harness.GameLog.EndIfOver();
+                string folder = HexTactica.Harness.GameLog.Folder;
+                HexTactica.Harness.GameLog.Stop();
+                GameRecord record = GameRecord.Read(folder);
+                MissionTally tally = MissionRating.Tally(record, human.id, won);
+                try { Directory.Delete(logRoot, true); } catch (Exception) { }
+                bool tallied = tally.recorded && tally.turns == humanTurns && tally.kills == 1 && tally.losses == 0;
+
+                string campaign;
+                bool campaignOk = CampaignCheck(tally, out campaign);
+                detail = "start " + ok + "; welcome and marker " + step1 + "; grunt aboard, told to load supply, no drive yet " + step2 + "; supply aboard, told to drive " + step3
+                       + "; the mark is beyond the HQ's supply " + beyond + "; drove there, told to unload " + step4 + ", supply reaches round the truck " + carried + "; grunt put down in supply, its turn used " + step5
+                       + "; lookout held, fed " + held + ", spotted " + spotted + "; reinforcements on turn 2 " + step6 + "; squad aboard the recon car, attack hint " + step7
+                       + "; lookout destroyed in " + rounds + " round(s) " + down2 + "; village taken, player wins " + won + " (player turns " + humanTurns + "), nobody ever out of supply " + neverCutOff + "; words " + words
+                       + "; from the game log: " + tally.turns + " turns, " + tally.kills + " killed, " + tally.losses + " lost " + tallied + "; campaign: " + campaign
+                       + (won ? "" : " [last lines: " + string.Join(" | ", transcript.GetRange(Math.Max(0, transcript.Count - 4), Math.Min(4, transcript.Count)).ToArray()) + "]");
+                ScenarioDialogue.Presenter = null;
+                return ok && words && step1 && step2 && step3 && beyond && step4 && carried && step5 && held && spotted && step6 && step7 && down2 && won && neverCutOff && tallied && campaignOk;
             }
             case "scriptSave": {
                 bool fromFile = s.triggers.Count == 4 && s.Find("Two kills") != null && s.Find("Two kills").Count == 2 && !s.Find("In area").Enabled;
