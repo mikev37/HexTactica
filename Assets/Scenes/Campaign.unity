@@ -500,8 +500,12 @@ MonoBehaviour:
   campaigns:
   - scene: Campaign 2
     at: {x: 1, y: 0}
+  mapGap: 0.08
   noFactionColor: {r: 1, g: 1, b: 1, a: 1}
   busyBlocker: {fileID: 515422785}
+  tabs: {fileID: 0}
+  tabTemplate: {fileID: 0}
+  campaignTitle: {fileID: 0}
   missionPanel: {fileID: 879668372}
   missionTitle: {fileID: 1878914510}
   missionFaction: {fileID: 1530097122}
@@ -1775,7 +1779,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.16, g: 0.22, b: 0.3, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1792,6 +1796,14 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!222 &1267999782
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1267999779}
+  m_CullTransparentMesh: 1
 --- !u!114 &1267999783
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1807,14 +1819,6 @@ MonoBehaviour:
   title: Training
   availableAtStart: 1
   flags: {fileID: 733062130}
---- !u!222 &1267999782
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1267999779}
-  m_CullTransparentMesh: 1
 --- !u!1 &1271374515
 GameObject:
   m_ObjectHideFlags: 0
@@ -2825,6 +2829,14 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -2849,6 +2861,14 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -2871,6 +2891,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3718294514905684263, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
@@ -3117,6 +3145,14 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -3141,6 +3177,14 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -3163,6 +3207,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3718294514905684263, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
@@ -3238,6 +3290,10 @@ PrefabInstance:
       value: You're ready for the real thing.
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: unlocksCampaigns.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.data[0].Portrait
       value: 0
       objectReference: {fileID: 0}
@@ -3274,20 +3330,16 @@ PrefabInstance:
       value: Placeholder Scout
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: 'unlocksCampaigns.Array.data[0]'
+      value: Campaign 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outroLost.Array.data[0].Portrait
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outroLost.Array.data[0].Character
       value: Placeholder Commander
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: unlocksCampaigns.Array.size
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: 'unlocksCampaigns.Array.data[0]'
-      value: Campaign 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
