@@ -215,6 +215,9 @@ public static partial class Scenarios {
         Match mc = Regex.Match(prefab, @"--- !u!114 &(\d+)\nMonoBehaviour:\n(?:  .*\n)*?  m_Script: \{fileID: 11500000, guid: " + missionGuid);
         if (!mc.Success) return list;
         string missionId = mc.Groups[1].Value;
+        // The prefab's root RectTransform (the one with no parent): where a flag's anchors are.
+        Match rr = Regex.Match(prefab, @"--- !u!224 &(\d+)\nRectTransform:\n(?:  .*\n)*?  m_Father: \{fileID: 0\}");
+        string rootRect = rr.Success ? rr.Groups[1].Value : "";
         string text = File.ReadAllText(path).Replace("\r\n", "\n");
         // A reference to another flag's Mission is to a stripped MonoBehaviour standing for it: which instance.
         Dictionary<string, string> strippedOf = new Dictionary<string, string>();
@@ -222,13 +225,30 @@ public static partial class Scenarios {
             strippedOf[st.Groups[1].Value] = st.Groups[2].Value;
         Dictionary<string, MissionInfo> byInstance = new Dictionary<string, MissionInfo>();
         Dictionary<MissionInfo, List<string>[]> refs = new Dictionary<MissionInfo, List<string>[]>();
-        foreach (Match inst in Regex.Matches(text, @"--- !u!1001 &(\d+)\nPrefabInstance:\n(?:  .*\n|    .*\n|      .*\n)*?  m_SourcePrefab: \{fileID: 100100000, guid: " + prefabGuid + @", type: 3\}")) {
+        // Each prefab instance of the flag, read line by line (Unity may quote a property path or a value).
+        foreach (string block in text.Split(new[] { "\n--- " }, StringSplitOptions.None)) {
+            Match head = Regex.Match(block, @"^(?:--- )?!u!1001 &(\d+)\n");
+            if (!head.Success || !block.Contains("m_SourcePrefab: {fileID: 100100000, guid: " + prefabGuid + ",")) continue;
             Dictionary<string, string> value = new Dictionary<string, string>(), reference = new Dictionary<string, string>();
-            foreach (Match m in Regex.Matches(inst.Value, @"    - target: \{fileID: (\d+), guid: \w+, type: 3\}\n      propertyPath: (.*)\n      value: ?(.*)\n      objectReference: \{fileID: (\d+)(?:, guid: (\w+))?")) {
-                string key = (m.Groups[1].Value == missionId ? "" : m.Groups[1].Value + ":") + m.Groups[2].Value;
-                value[key] = Scalar(m.Groups[3].Value);
-                reference[key] = m.Groups[4].Value;
+            string[] lines = block.Split('\n');
+            for (int li = 0; li + 3 < lines.Length; li++) {
+                Match t = Regex.Match(lines[li], @"^    - target: \{fileID: (\d+),");
+                if (!t.Success || !lines[li + 1].StartsWith("      propertyPath: ") || !lines[li + 2].StartsWith("      value:")) continue;
+                // A value may run over several lines (Unity folds long or multi-line text): up to the objectReference line.
+                int end = li + 3;
+                while (end < lines.Length && !lines[end].StartsWith("      objectReference: ")) end++;
+                if (end >= lines.Length) continue;
+                List<string> raw = new List<string> { lines[li + 2].Substring("      value:".Length) };
+                for (int k = li + 3; k < end; k++) raw.Add(lines[k]);
+                string property = Scalar(lines[li + 1].Substring("      propertyPath: ".Length));
+                string target = t.Groups[1].Value;
+                // The flag's own Mission is keyed by its property alone, its root RectTransform as "root:", other parts by their file ID.
+                string key = (target == missionId ? "" : target == rootRect ? "root:" : target + ":") + property;
+                value[key] = Scalar(Fold(raw));
+                reference[key] = Regex.Match(lines[end], @"fileID: (-?\d+)").Groups[1].Value;
+                li = end - 1;
             }
+            Match inst = head;
             string name = "";
             foreach (KeyValuePair<string, string> kv in value) if (kv.Key.EndsWith(":m_Name")) name = kv.Value;
             Func<string, string> v = k => { string x; return value.TryGetValue(k, out x) ? x : ""; };
@@ -247,8 +267,8 @@ public static partial class Scenarios {
             refs[info] = links;
             byInstance[inst.Groups[1].Value] = info;
             float ax, ay;
-            foreach (KeyValuePair<string, string> kv in value) if (kv.Key.EndsWith(":m_AnchorMin.x")) { float.TryParse(kv.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ax); anchors[info.key] = new Vector2(ax, anchors.ContainsKey(info.key) ? anchors[info.key].y : 0f); }
-            foreach (KeyValuePair<string, string> kv in value) if (kv.Key.EndsWith(":m_AnchorMin.y")) { float.TryParse(kv.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ay); anchors[info.key] = new Vector2(anchors.ContainsKey(info.key) ? anchors[info.key].x : 0f, ay); }
+            foreach (KeyValuePair<string, string> kv in value) if (kv.Key == "root:m_AnchorMin.x") { float.TryParse(kv.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ax); anchors[info.key] = new Vector2(ax, anchors.ContainsKey(info.key) ? anchors[info.key].y : 0f); }
+            foreach (KeyValuePair<string, string> kv in value) if (kv.Key == "root:m_AnchorMin.y") { float.TryParse(kv.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out ay); anchors[info.key] = new Vector2(anchors.ContainsKey(info.key) ? anchors[info.key].x : 0f, ay); }
             list.Add(info);
         }
         foreach (MissionInfo info in list) {
@@ -265,6 +285,24 @@ public static partial class Scenarios {
     }
 
     static bool Near(Vector2 a, Vector2 b) { return Math.Abs(a.x - b.x) < 0.01f && Math.Abs(a.y - b.y) < 0.01f; }
+
+    /// <summary>
+    /// A YAML scalar written over several lines, as one line again: a quoted scalar's line breaks fold to spaces, an
+    /// empty line in it is a line break.
+    /// </summary>
+    static string Fold(List<string> raw) {
+        if (raw.Count == 1) return raw[0];
+        System.Text.StringBuilder b = new System.Text.StringBuilder(raw[0].Trim());
+        bool broke = false;
+        for (int i = 1; i < raw.Count; i++) {
+            string l = raw[i].Trim();
+            if (l.Length == 0) { b.Append("\n"); broke = true; continue; }
+            if (!broke) b.Append(' ');
+            b.Append(l);
+            broke = false;
+        }
+        return b.ToString();
+    }
 
     /// <summary>A YAML scalar as Unity writes one in an override: plain, or double-quoted with escapes.</summary>
     static string Scalar(string raw) {
