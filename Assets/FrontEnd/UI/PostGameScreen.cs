@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -29,12 +30,15 @@ public class PostGameScreen : MonoBehaviour {
         // The report is read from the game log (GameLog.Folder), the one record of the game.
         GameRecord s = GameRecord.Read(HexTactica.Harness.GameLog.Folder);
         long viewer = GameInsights.ViewerId(s);
-        if (headline != null) headline.text = s != null ? GameInsights.Headline(s, viewer) : noStatistics;
-        // The scenario's own words for how it went (its win or loss text), above the findings.
+        // The winning side as the game has it (the winner and its allies).
         GameController gc = GameController.gc;
+        List<long> side = null;
+        if (gc != null && gc.gameOver && gc.winner != null) { side = new List<long>(); foreach (Player p in gc.players) if (p != null && gc.Won(p)) side.Add(p.id); }
+        if (headline != null) headline.text = s != null ? GameInsights.Headline(s, viewer, side) : noStatistics;
+        // The scenario's own words for how it went (its win or loss text), above the findings.
         Player me = FogOfWar.Viewer;
         if (me == null && gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) { me = p; break; }
-        string said = gc != null ? ScenarioScript.EndText(gc.winner != null && gc.winner == me) : "";
+        string said = gc != null ? ScenarioScript.EndText(gc.Won(me)) : "";
         string top = string.IsNullOrEmpty(said) ? "" : said + "\n\n";
         if (findings != null) {
             if (s == null) findings.text = top + noStatistics;

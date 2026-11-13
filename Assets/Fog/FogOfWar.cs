@@ -209,7 +209,7 @@ public static class FogOfWar {
                 if (u == null || u.stealthRange <= 0 || u.tile == null || u.Strength <= 0 || u.trasnporter != null) continue;
                 HashSet<Player> was; bool known = spottedBy.TryGetValue(u, out was);
                 HashSet<Player> now = new HashSet<Player>();
-                foreach (Player q in gc.players) if (q != null && q != owner && !q.eliminated && Sees(q, u)) now.Add(q);
+                foreach (Player q in gc.players) if (q != null && Player.Hostile(q, owner) && !q.eliminated && Sees(q, u)) now.Add(q);
                 spottedBy[u] = now;
                 if (!known) continue;
                 foreach (Player q in now) {
@@ -245,7 +245,12 @@ public static class FogOfWar {
     static Sight Compute(Player p, Func<Building, Player> buildingOwner) {
         Sight s = new Sight();
         if (p == null) return s;
-        foreach (Unit u in p.units) {
+        // Allies see what each other sees: their units and buildings are observers for us too.
+        List<Player> side = new List<Player> { p };
+        GameController gc = GameController.gc;
+        if (p.team != 0 && gc != null && gc.players != null) foreach (Player q in gc.players) if (Player.Allied(q, p) && !q.eliminated) side.Add(q);
+        foreach (Player q in side)
+        foreach (Unit u in q.units) {
             if (u == null || u.tile == null || u.Strength <= 0 || u.trasnporter != null) continue;
             Cover(s, u.tile, VisionFrom(u, u.tile), DomainOf(u));
             if (u.detectRange > 0)
@@ -255,7 +260,7 @@ public static class FogOfWar {
             Building b = Building.all[i];
             if (b == null || b.tile == null || !b.Functioning) continue;   // a destroyed building sees nothing
             Player owner = buildingOwner != null ? buildingOwner(b) : b.owner;
-            if (owner != p) continue;
+            if (owner == null || !Player.Friendly(owner, p)) continue;
             Cover(s, b.tile, Mathf.Max(0, b.visionRange), Domain.Land, b.visionOverTerrain);
             if (b.detectRange > 0)
                 foreach (HexTile t in HexTactica.AI.AIPath.TilesInRangeShared(b.tile, -1, b.detectRange)) s.detected.Add(t);
@@ -295,7 +300,7 @@ public static class FogOfWar {
     /// <summary>Does <paramref name="p"/> see <paramref name="u"/> (the rules: where it stands)?</summary>
     public static bool Sees(Player p, Unit u) {
         if (!On || p == null || u == null) return true;
-        if (u.owner == p) return true;
+        if (Player.Friendly(u.owner, p)) return true;   // our own, and our allies'
         if (KnowsAll(p)) return true;
         Knowledge k = current;
         if (k != null && k.player == p) return k.visible.Contains(u);
@@ -310,11 +315,11 @@ public static class FogOfWar {
     /// </summary>
     public static bool SeesAt(Player p, Unit u, HexTile at) {
         if (!On || p == null || u == null) return true;
-        if (u.owner == p) return true;
+        if (Player.Friendly(u.owner, p)) return true;
         if (at == null) return false;
         if (Revealed(u, p)) return true;
         Sight s = SightOf(p);
-        return s != null && Spotted(s, u, at, o => o == p, b => b.owner);
+        return s != null && Spotted(s, u, at, o => o != null && Player.Friendly(o, p), b => b.owner);
     }
 
     /// <summary>
@@ -350,7 +355,7 @@ public static class FogOfWar {
         if (!On || u == null || u.owner == null || GameController.gc == null) return false;
         bool any = false;
         foreach (Player q in GameController.gc.players) {
-            if (q == null || q == u.owner || q.eliminated) continue;
+            if (q == null || !Player.Hostile(q, u.owner) || q.eliminated) continue;
             any = true;
             if (Sees(q, u)) return false;
         }
@@ -363,7 +368,7 @@ public static class FogOfWar {
 
     /// <summary><paramref name="u"/> gave itself away to <paramref name="to"/> (it fired on them, or they ran into it): seen by them until the end of their next turn (or of this one).</summary>
     public static void Reveal(Unit u, Player to) {
-        if (u == null || to == null || u.owner == to) return;
+        if (u == null || to == null || Player.Friendly(u.owner, to)) return;
         HashSet<Player> set;
         if (!revealed.TryGetValue(u, out set)) { set = new HashSet<Player>(); revealed[u] = set; }
         if (set.Add(to)) Changed();
@@ -487,7 +492,7 @@ public static class FogOfWar {
         Dictionary<Unit, Sighting> mem = For(units, p);
         if (UnitController.uc != null) {
             foreach (Unit u in UnitController.uc.units) {
-                if (u == null || u.owner == p || u.tile == null || u.Strength <= 0) continue;
+                if (u == null || Player.Friendly(u.owner, p) || u.tile == null || u.Strength <= 0) continue;
                 if (!Sees(p, u)) continue;
                 Sighting g;
                 if (!mem.TryGetValue(u, out g)) { g = new Sighting(); mem[u] = g; }
@@ -513,7 +518,7 @@ public static class FogOfWar {
             if (b == null) continue;
             BuildingSighting g;
             bool known = bm.TryGetValue(b, out g);
-            bool look = !known || b.owner == p || g.owner == p;
+            bool look = !known || Player.Friendly(b.owner, p) || Player.Friendly(g.owner, p);
             if (!look && b.tile != null && s.cover.ContainsKey(b.tile)) look = true;
             if (!look) continue;
             if (!known) { g = new BuildingSighting(); bm[b] = g; }
@@ -630,7 +635,7 @@ public static class FogOfWar {
     /// </summary>
     public static bool ShownToViewer(Unit u) {
         Player v = Viewer;
-        if (v == null || u == null || u.owner == v) return true;
+        if (v == null || u == null || Player.Friendly(u.owner, v)) return true;
         // Getting on or off: judged by the tile under its sprite, as a marine's boat is.
         // (Unseen enemy supply units were seen walking into and out of trucks in the fog.)
         if (u.GettingOnOrOff) { HexTile under = u.TileUnderSprite(); return under != null && SeesAt(v, u, under); }
@@ -722,7 +727,7 @@ public static class FogOfWar {
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : new List<Unit>();
             List<Unit> toBelieve = new List<Unit>();
             foreach (Unit u in all) {
-                if (u == null || u.owner == player || u.tile == null) continue;
+                if (u == null || Player.Friendly(u.owner, player) || u.tile == null) continue;   // ours and our allies': always known
                 if (u.Strength > 0 && Sees(player, u)) { visible.Add(u); continue; }
                 if (u.tile.occupier == u) u.tile.occupier = null;
                 u.tile = null;
@@ -750,7 +755,7 @@ public static class FogOfWar {
             }
             // The enemy's sight as known: its units where they are thought to be, its buildings as last seen.
             foreach (Player q in GameController.gc.players) {
-                if (q == null || q == player) continue;
+                if (q == null || !Player.Hostile(q, player)) continue;
                 Player me = player;
                 enemySight.Merge(Compute(q, b => OwnerAsSeenNow(me, b)));
             }
@@ -763,7 +768,7 @@ public static class FogOfWar {
         public bool EnemySees(Unit u, HexTile at) {
             if (u == null || at == null) return true;
             Player me = player;
-            return Spotted(enemySight, u, at, o => o != null && o != me, b => OwnerAsSeen(me, b));
+            return Spotted(enemySight, u, at, o => o != null && Player.Hostile(o, me), b => OwnerAsSeen(me, b));
         }
     }
 

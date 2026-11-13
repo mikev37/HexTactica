@@ -115,7 +115,20 @@ namespace HexTactica.AI {
             }
             lastGhosts = ghosts;
             ComputeSupplyRead();
+            // Our allies' networks together: our units live on them too (HexTile.isSupplied), though our supply units
+            // do not relay from them. Read for healing and feeding only (Heals); our own network stays ours.
+            alliedSupply = null;
+            if (player.team != 0 && GameController.gc != null && GameController.gc.players != null)
+                foreach (Player a in GameController.gc.players) {
+                    if (!Player.Allied(a, player) || a.eliminated) continue;
+                    SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                    if (alliedSupply == null) alliedSupply = new SupplyNetwork.Result();
+                    foreach (KeyValuePair<HexTile, int> kv in r.depth) if (kv.Value > alliedSupply.DepthAt(kv.Key)) alliedSupply.depth[kv.Key] = kv.Value;
+                }
         }
+        /// <summary>Our allies' supply, as this board read found it (null: we have no allies). See SolveOurSupply.</summary>
+        SupplyNetwork.Result alliedSupply;
+        bool AlliedSupplied(HexTile at) { return alliedSupply != null && alliedSupply.DepthAt(at) > 0; }
         SupplyNetwork.Result realSupply;
         string lastGhosts;
         bool supplyChanged = true;
@@ -158,7 +171,7 @@ namespace HexTactica.AI {
         }
 
         bool SuppliedFor(Unit x, HexTile at) {
-            if (x.owner == player) return supply != null && supply.DepthAt(at) > 0;
+            if (x.owner == player) return (supply != null && supply.DepthAt(at) > 0) || AlliedSupplied(at);
             return theirSupply != null && theirSupply.DepthAt(at) > 0;
         }
 
@@ -173,6 +186,8 @@ namespace HexTactica.AI {
             }
             SupplyPoint sp = x.Hub;
             if (x.owner == player) {
+                // On an ally's supply: fed and healed as on our own (a supply unit too: it is not spending its health).
+                if (AlliedSupplied(at) && (supply == null || supply.DepthAt(at) <= 0)) return true;
                 if (supply == null || supply.DepthAt(at) <= 0) return false;
                 return sp == null || sp.producer || supply.connectedHubs.Contains(sp);
             }
@@ -310,7 +325,7 @@ namespace HexTactica.AI {
             enemySpace.Clear();
             HashSet<Player> enemies = new HashSet<Player>();
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
-            if (all != null) for (int i = 0; i < all.Count; i++) if (all[i] != null && all[i].owner != null && all[i].owner != player) enemies.Add(all[i].owner);
+            if (all != null) for (int i = 0; i < all.Count; i++) if (all[i] != null && all[i].owner != null && Player.Hostile(all[i].owner, player)) enemies.Add(all[i].owner);
             bool theirsChanged = !keep;
             List<Player> order = new List<Player>(enemies);
             foreach (Player o in order) {

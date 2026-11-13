@@ -1206,7 +1206,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (overWater && ground == null) ground = wants;
         if (!hurt && onFoot.kind != AIActionKind.Move && !overWater) return onFoot;   // holding where it is (its objective, its line) is its task
         // Walking onto a building to take: its task, if it lives to take it (else a wounded one rides to mend).
-        if (onFoot.kind == AIActionKind.Move && onFoot.destination != null && onFoot.destination.building != null && onFoot.destination.building.owner != player && Building.CanCapture(unit)) {
+        if (onFoot.kind == AIActionKind.Move && onFoot.destination != null && onFoot.destination.building != null && Player.Hostile(onFoot.destination.building.owner, player) && Building.CanCapture(unit)) {
             int take = AIAssault.TurnsToTake(unit, onFoot.destination.building, map);
             if (take >= 0 || !hurt) return onFoot;
             if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": would go to take " + onFoot.destination.building.name.Replace("(Clone)", "") + D(onFoot.destination) + " but would be gone before it fell: rides to mend instead");
@@ -1543,7 +1543,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile best = null; bool bestHQ = false;
                 foreach (HexTile n in Transporting.UnloadOptions(unit, r)) {
                     Building b = n.building;
-                    if (b == null || b.owner == player || !b.Capturable) continue;
+                    if (b == null || !Player.Hostile(b.owner, player) || !b.Capturable) continue;
                     if (best == null || (b.IsHQ && !bestHQ) || (b.IsHQ == bestHQ && CombatMath.Precedes(n, best))) { best = n; bestHQ = b.IsHQ; }
                 }
                 if (best != null) return AIAction.Disembark(unit, r, best, "lets its rider off onto " + best.building.name.Replace("(Clone)", "") + " (" + best.x + "," + best.y + ") to take it");

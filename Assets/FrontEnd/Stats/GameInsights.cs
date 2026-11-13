@@ -66,15 +66,26 @@ public static class GameInsights {
         return sb.ToString();
     }
 
-    /// <summary>"Blue won in round 31." / "No winner after 30 rounds."</summary>
-    public static string Headline(GameRecord s, long viewer) {
+    /// <summary>
+    /// "Blue won in round 31." / "No winner after 30 rounds." <paramref name="side"/>: the players who won together, by id
+    /// (the winner and its allies: the game knows who is allied, the log does not); null: the log's winner alone.
+    /// </summary>
+    public static string Headline(GameRecord s, long viewer, ICollection<long> side = null) {
         if (s == null) return "No statistics were recorded for this game.";
         Ctx c = new Ctx(s, viewer);
         int rounds = s.lastRound + 1;
         string gaveUp = "";
         foreach (long id in s.resigned) gaveUp += " " + Cap(c.Name(id)) + " resigned.";
-        if (s.over && s.winner >= 0)
-            return (c.ViewerHuman && s.winner != c.Viewer ? "Defeat. " : c.ViewerHuman ? "Victory. " : "") + Cap(c.Name(s.winner)) + " won in round " + s.lastRound + "." + gaveUp;
+        if (s.over && s.winner >= 0) {
+            bool viewerWon = side != null ? side.Contains(c.Viewer) : s.winner == c.Viewer;
+            string who = Cap(c.Name(s.winner));
+            if (side != null && side.Count > 1) {
+                List<string> names = new List<string>();
+                foreach (long id in side) names.Add(Cap(c.Name(id)));
+                who = string.Join(", ", names.GetRange(0, names.Count - 1).ToArray()) + " and " + names[names.Count - 1];
+            }
+            return (c.ViewerHuman && !viewerWon ? "Defeat. " : c.ViewerHuman ? "Victory. " : "") + who + (side != null && side.Count > 1 ? " won together" : " won") + " in round " + s.lastRound + "." + gaveUp;
+        }
         if (s.over) return "The game ended without a winner after " + rounds + " rounds.";
         return "Round " + s.lastRound + ": the game is still going.";
     }

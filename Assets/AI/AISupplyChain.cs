@@ -152,7 +152,7 @@ namespace HexTactica.AI {
             if (from == null) return null;
             HexTile best = null; int bestD = int.MaxValue;
             foreach (Building b in Building.all) {
-                if (b == null || !b.IsHQ || b.owner == null || b.owner == map.player || b.tile == null) continue;
+                if (b == null || !b.IsHQ || b.owner == null || !Player.Hostile(b.owner, map.player) || b.tile == null) continue;
                 int d = map.Travel(null, from, b.tile);
                 if (d < bestD || (d == bestD && CombatMath.Precedes(b.tile, best))) { best = b.tile; bestD = d; }
             }

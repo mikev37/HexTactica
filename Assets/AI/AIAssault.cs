@@ -55,9 +55,9 @@ namespace HexTactica.AI {
             if (Building.ServicingUnder(u) != null) return false;
             if (Building.CanCapture(u)) {
                 Building on = u.tile.building;
-                if (on != null && on.owner != u.owner && on.Capturable && (map == null || TurnsToTake(u, on, map) >= 0)) return false;
+                if (on != null && Player.Hostile(on.owner, u.owner) && on.Capturable && (map == null || TurnsToTake(u, on, map) >= 0)) return false;
                 foreach (HexTile n in u.tile.neighbors)
-                    if (n != null && n.building != null && n.building.owner != u.owner && n.building.Capturable && n.occupier == null && (map == null || TurnsToTake(u, n.building, map) >= 0)) return false;
+                    if (n != null && n.building != null && Player.Hostile(n.building.owner, u.owner) && n.building.Capturable && n.occupier == null && (map == null || TurnsToTake(u, n.building, map) >= 0)) return false;
             }
             return true;
         }
@@ -72,7 +72,7 @@ namespace HexTactica.AI {
         /// </summary>
         public static int TurnsToTake(Unit u, Building b, AIMap map, bool? supplied = null, int horizon = 10) {
             if (u == null || b == null || b.tile == null || u.tile == null || !Building.CanCapture(u)) return -1;
-            if (b.owner == u.owner) return 0;
+            if (!Player.Hostile(b.owner, u.owner)) return 0;
             int threshold = b.CaptureThreshold;
             // From 0, or from our own progress there (anyone else's is lost: Building.CaptureStep).
             int need = threshold - (b.capturingPlayer == u.owner ? Mathf.Max(0, b.capturePoints) : 0);
@@ -182,14 +182,14 @@ namespace HexTactica.AI {
 
         /// <summary>A building <paramref name="c"/> could go and take: not ours, capturable, and nobody of ours already on it.</summary>
         static bool Takeable(Building b, Unit c) {
-            return b != null && b.tile != null && b.owner != c.owner && b.Capturable && (b.tile.occupier == null || b.tile.occupier == c || b.tile.occupier.owner != c.owner);
+            return b != null && b.tile != null && Player.Hostile(b.owner, c.owner) && b.Capturable && (b.tile.occupier == null || b.tile.occupier == c || b.tile.occupier.owner != c.owner);
         }
 
         /// <summary>Is <paramref name="c"/> taking a building: on one not ours that it can capture?</summary>
         public static bool Capturing(Unit c) {
             if (c == null || c.tile == null || c.tile.building == null || !Building.CanCapture(c)) return false;
             Building b = c.tile.building;
-            return b.owner != c.owner && b.Capturable;
+            return Player.Hostile(b.owner, c.owner) && b.Capturable;
         }
 
         /// <summary>Does the wave go in at <paramref name="at"/>: the front attacking (if they have one), else as many of ours (with <paramref name="landing"/> units landing) as theirs within three tiles?</summary>
@@ -239,7 +239,7 @@ namespace HexTactica.AI {
             foreach (Unit c in riders) strikeReach = Mathf.Max(strikeReach, 1 + (c.moveAndAttack ? c.moveRange : 0) + Mathf.Max(1, c.AttackRange));
             List<HexTile> targets = new List<HexTile>();
             foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0) targets.Add(e.tile);
-            foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != t.owner && b.Capturable && (b.tile.occupier == null || b.tile.occupier.owner != t.owner)) targets.Add(b.tile);
+            foreach (Building b in Building.all) if (b != null && b.tile != null && Player.Hostile(b.owner, t.owner) && b.Capturable && (b.tile.occupier == null || b.tile.occupier.owner != t.owner)) targets.Add(b.tile);
             // (Neighbouring stops share landing tiles: each rider's strike from each tile is worked out once.)
             Dictionary<long, Strike> strikeAt = new Dictionary<long, Strike>();
             foreach (HexTile via in stops) {

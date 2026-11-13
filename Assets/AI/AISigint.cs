@@ -254,7 +254,7 @@ namespace HexTactica.AI {
                 foreach (Building b in Building.all) {
                     if (b == null || b.tile == null) continue;
                     Player owner = FogOfWar.OwnerAsSeen(map.player, b);
-                    if (owner == null || owner == map.player) continue;
+                    if (owner == null || !Player.Hostile(owner, map.player)) continue;
                     if (b.IsHQ) { anchors.Add(new KeyValuePair<HexTile, float>(b.tile, profile.fogHQWeight)); hqs++; }
                     else if (buys && b.CanProduce) { anchors.Add(new KeyValuePair<HexTile, float>(b.tile, profile.fogProductionWeight)); sites++; }
                 }

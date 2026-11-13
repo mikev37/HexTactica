@@ -51,13 +51,13 @@ namespace HexTactica.AI {
                     startKinds[p] = names = new HashSet<string>();
                     if (GameController.gc != null && GameController.gc.players != null)
                         foreach (Player o in GameController.gc.players)
-                            if (o != null && o != p && o.units != null) foreach (Unit u in o.units) if (u != null) names.Add(GameController.UnitName(u));
+                            if (o != null && Player.Hostile(o, p) && o.units != null) foreach (Unit u in o.units) if (u != null) names.Add(GameController.UnitName(u));
                 }
             }
             Dictionary<string, Unit> kinds = new Dictionary<string, Unit>();
             foreach (string n in names) { Unit u = GameAssets.Unit(n); if (u != null) kinds[n] = u; }
             foreach (Building b in Building.all) {
-                if (b == null || b.owner == null || b.owner == p || !b.CanProduce) continue;
+                if (b == null || b.owner == null || !Player.Hostile(b.owner, p) || !b.CanProduce) continue;
                 foreach (Unit u in b.Purchasable()) if (u != null) kinds[GameController.UnitName(u)] = u;
             }
             foreach (Unit e in map.enemyUnits) if (e != null) kinds[GameController.UnitName(e)] = e;
@@ -371,7 +371,7 @@ namespace HexTactica.AI {
             foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Firepower > 0) fight.Add(e.tile);
             FogOfWar.Knowledge fk = FogOfWar.current;
             if (fk != null) foreach (FogOfWar.Phantom ph in fk.phantoms) if (ph.last != null && ph.kind != null && ph.kind.firepower > 0) fight.Add(ph.last);
-            if (fight.Count == 0) foreach (Building b in Building.all) if (b != null && b.IsHQ && b.tile != null && (FogOfWar.OwnerAsSeen(p, b) ?? b.owner) != p && b.owner != null) fight.Add(b.tile);
+            if (fight.Count == 0) foreach (Building b in Building.all) if (b != null && b.IsHQ && b.tile != null && (FogOfWar.OwnerAsSeen(p, b) ?? b.owner) != null && Player.Hostile(FogOfWar.OwnerAsSeen(p, b) ?? b.owner, p) && b.owner != null) fight.Add(b.tile);
             Dictionary<string, float> timeFactor = new Dictionary<string, float>();
             Reach reach = new Reach(fight);
             // Turns over land at a unit's own speed and over water by ship, from each tile to the fight; one field a speed.
@@ -1281,7 +1281,7 @@ namespace HexTactica.AI {
                     if (b == null) continue;
                     mapIncome += Mathf.Max(0, b.income);
                     if (b.owner == p && b.Functioning) income += b.income;
-                    else if (b.owner != null && b.owner != p) enemyIncome += b.income;
+                    else if (b.owner != null && Player.Hostile(b.owner, p)) enemyIncome += b.income;
                 }
                 supplyCost = int.MaxValue; cheapest = int.MaxValue;
                 foreach (Slot sl in slots) foreach (Unit t in sl.b.Purchasable()) {
@@ -1316,7 +1316,7 @@ namespace HexTactica.AI {
                         float cap = 0f;
                         if (!o.units.Exists(u => u != null && u.tile != null && Building.CanCapture(u)))
                             foreach (Building b in Building.all)
-                                if (b != null && b.tile != null && b.Capturable && b.owner != p && b.tile.Distance(o.target) <= 3)
+                                if (b != null && b.tile != null && b.Capturable && Player.Hostile(b.owner, p) && b.tile.Distance(o.target) <= 3)
                                     cap += CaptureValue(b);
                         askCapture[o] = cap;
                         askCombat[o] = Mathf.Max(0f, o.needPower - o.assignedPower);
@@ -1328,7 +1328,7 @@ namespace HexTactica.AI {
                     // Locked down: the enemy we see or remember would destroy what is built there next turn.
                     Unit cheap = null; foreach (Unit t in sl.b.Purchasable()) if (t.cost > 0 && t.CanEnter(sl.tile) && Kind(t) == 0 && (cheap == null || t.cost < cheap.cost)) cheap = t;
                     // The enemy on it, or able to destroy a new unit there outright (it gives its budget up).
-                    bool enemyOn = sl.tile.occupier != null && sl.tile.occupier.owner != null && sl.tile.occupier.owner != p;
+                    bool enemyOn = sl.tile.occupier != null && sl.tile.occupier.owner != null && Player.Hostile(sl.tile.occupier.owner, p);
                     float lossLimit = cheap != null ? Mathf.Max(1, cheap.Strength > 0 ? cheap.Strength : 6) : 3f;
                     locked[sl] = (enemyOn) || cheap != null && map.KnownLoss(cheap, sl.tile) >= lossLimit;
                     // The front it serves: the most priority for the distance (of the fronts asking for something it
@@ -1351,7 +1351,7 @@ namespace HexTactica.AI {
                     // Buildings we could take within two turns of it (for those that capture).
                     float cv = 0f;
                     foreach (Building b in Building.all) {
-                        if (b == null || b.tile == null || !b.Capturable || b.owner == p) continue;
+                        if (b == null || b.tile == null || !b.Capturable || !Player.Hostile(b.owner, p)) continue;
                         if (cheap == null || map.Travel(cheap, sl.tile, b.tile) > 2 * Mathf.Max(1, cheap.moveRange)) continue;
                         cv += CaptureValue(b);
                     }

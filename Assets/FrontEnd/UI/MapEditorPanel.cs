@@ -79,6 +79,8 @@ public class MapEditorPanel : MonoBehaviour {
     public TMP_Dropdown buildRule;
     [Tooltip("Faction special units: players choose, or the map fixes them.")]
     public TMP_Dropdown specialRule;
+    [Tooltip("Allies: players choose, or the map fixes them on or off. Which sides are allies is the scenario's (each Player's Team, in the inspector), not edited here.")]
+    public TMP_Dropdown alliesRule;
     [Tooltip("The rule lists' choices, in this order: players choose (starting on), players choose (starting off), always on, always off.")]
     public List<string> ruleChoices = new List<string> { "Players choose (on)", "Players choose (off)", "Always on", "Always off" };
     [Tooltip("What was just done (saved, loaded, or why not).")]
@@ -111,6 +113,7 @@ public class MapEditorPanel : MonoBehaviour {
         Rule(fogRule, (gc, on, fixd) => { gc.fogOfWar = on; gc.fogFixed = fixd; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); });
         Rule(buildRule, (gc, on, fixd) => { gc.purchasesAllowed = on; gc.purchasesFixed = fixd; });
         Rule(specialRule, (gc, on, fixd) => { gc.factionSpecialUnits = on; gc.specialUnitsFixed = fixd; });
+        Rule(alliesRule, (gc, on, fixd) => { gc.alliances = on; gc.alliancesFixed = fixd; FogOfWar.Changed(); FogOfWar.Refresh(); });
         if (unitFilter != null) {
             unitFilter.ClearOptions();
             List<string> opts = new List<string> { baseUnitsLabel };
@@ -151,6 +154,7 @@ public class MapEditorPanel : MonoBehaviour {
         if (fogRule != null) fogRule.SetValueWithoutNotify(RuleChoice(gc.fogOfWar, gc.fogFixed));
         if (buildRule != null) buildRule.SetValueWithoutNotify(RuleChoice(gc.purchasesAllowed, gc.purchasesFixed));
         if (specialRule != null) specialRule.SetValueWithoutNotify(RuleChoice(gc.factionSpecialUnits, gc.specialUnitsFixed));
+        if (alliesRule != null) alliesRule.SetValueWithoutNotify(RuleChoice(gc.alliances, gc.alliancesFixed));
         ShowSides();
     }
 
@@ -462,12 +466,16 @@ public class MapEditorPanel : MonoBehaviour {
     public void Resize() {
         int w;
         if (boardWidth == null || !int.TryParse(boardWidth.text, out w) || w < 3) { Say("The width is a number, 3 or more."); return; }
-        if (HexGenerator.hg == null || w == HexGenerator.hg.width) return;
+        // Odd only: a board w wide holds the tiles with every coordinate from -w/2 to w-1-w/2, a regular hexagon only
+        // when w is odd (20 wide gave sides of 9 and 12 tiles, by turns).
+        bool even = w % 2 == 0;
+        if (even) { w++; boardWidth.text = w.ToString(); }
+        if (HexGenerator.hg == null || w == HexGenerator.hg.width) { if (even) Say("Widths are odd (an even one is not a regular hexagon): " + w + "."); return; }
         Clear();
         HexGenerator.hg.SetWidth(w);
         GameController.BoardLoaded();
         GameSession.Frame();
-        Say("The board is " + w + " wide (units and buildings cleared).");
+        Say("The board is " + w + " wide" + (even ? " (odd widths only: an even one is not a regular hexagon)" : "") + " (units and buildings cleared).");
     }
 
     /// <summary>The Save button (Save returns where it saved, for Play).</summary>

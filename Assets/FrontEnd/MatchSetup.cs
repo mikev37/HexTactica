@@ -19,7 +19,7 @@ public enum SessionMode {
 
 /// <summary>
 /// The hand-over between the menus and the game scene: which file to open and how, and the choices made on the
-/// pre-game screen (who plays each side, factions, fog, purchases, faction special units). The game scene's
+/// pre-game screen (who plays each side, factions, fog, purchases, faction special units, allies). The game scene's
 /// GameSession reads it when it opens; loading goes through ScenarioLoader with these choices as its overrides.
 /// </summary>
 public static class MatchSetup {
@@ -35,17 +35,23 @@ public static class MatchSetup {
         public bool factionLocked;
         /// <summary>A Resources/Factions asset name; "" no faction (the base units).</summary>
         public string faction = "";
+        /// <summary>The side it fights on (Player.team, set by the scenario): the same number, not 0, are allies.</summary>
+        public int team;
     }
 
     public static SessionMode Mode;
     /// <summary>The campaign mission being played (null: an ordinary game): the briefing and result screens stand in for the pre-game and post-game ones, and the way out leads to the campaign screen.</summary>
-    public static Mission Mission;
+    public static MissionInfo Mission;
+    /// <summary>The campaign last looked at or played (its scene's name): the campaign hub opens looking at it ("": the first open one).</summary>
+    public static string CampaignScene { get { return CampaignProgress.Focus; } set { CampaignProgress.Focus = value ?? ""; } }
     /// <summary>The scenario or save being set up, played or edited ("" none: the map editor on the scene's own board).</summary>
     public static string FilePath = "";
     public static readonly List<Side> Sides = new List<Side>();
-    public static bool Fog, Purchases = true, SpecialUnits = true;
+    public static bool Fog, Purchases = true, SpecialUnits = true, Allies = true;
     /// <summary>The rules the map fixes (GameController.fogFixed and the rest): the pre-game screen shows them, cannot change them, and the file's stand.</summary>
-    public static bool FogFixed, PurchasesFixed, SpecialUnitsFixed;
+    public static bool FogFixed, PurchasesFixed, SpecialUnitsFixed, AlliesFixed;
+    /// <summary>The scenario has allies to offer: two or more of its sides share a team (GameController.HasTeams).</summary>
+    public static bool HasTeams;
 
     // ------------------------------------------------------------------ from the menus
 
@@ -65,17 +71,23 @@ public static class MatchSetup {
     /// Open the game scene on a campaign mission's scenario, with the mission's briefing over it. False (and nothing
     /// opened) when its scenario file is not in the campaign's folders.
     /// </summary>
-    public static bool PlayMission(Mission mission) {
+    public static bool PlayMission(MissionInfo mission) {
         string path = mission != null ? GameFiles.CampaignScenarioPath(mission.ScenarioName) : null;
         if (path == null) return false;
         Open(SessionMode.Setup, path, mission);
         return true;
     }
 
-    /// <summary>Leave the game (or the main menu) for the campaign screen.</summary>
-    public static void ToCampaign() { Leave(FrontEndSettings.Get.campaignScene); }
+    /// <summary>Leave the game for the campaign hub (FrontEndSettings.campaignScene), looking at the mission's campaign.</summary>
+    public static void ToCampaign() {
+        if (Mission != null && !string.IsNullOrEmpty(Mission.campaignScene)) CampaignScene = Mission.campaignScene;
+        Leave(FrontEndSettings.Get.campaignScene);
+    }
 
-    static void Open(SessionMode mode, string path, Mission mission = null) {
+    /// <summary>The main menu's Campaign button: the campaign hub, looking at the campaign last looked at.</summary>
+    public static void ToDefaultCampaign() { Leave(FrontEndSettings.Get.campaignScene); }
+
+    static void Open(SessionMode mode, string path, MissionInfo mission = null) {
         Mission = mission;
         Mode = mode;
         FilePath = path ?? "";
@@ -123,6 +135,7 @@ public static class MatchSetup {
             if (!FogFixed) ScenarioLoader.FogOverride = Fog ? "on" : "off";
             if (!PurchasesFixed) ScenarioLoader.PurchasesOverride = Purchases ? "on" : "off";
             if (!SpecialUnitsFixed) ScenarioLoader.SpecialUnitsOverride = SpecialUnits ? "on" : "off";
+            if (!AlliesFixed && HasTeams) ScenarioLoader.AlliesOverride = Allies ? "on" : "off";
         });
         if (ok) { Mode = SessionMode.Play; GameController.Paused = false; }
         return ok;
@@ -135,7 +148,7 @@ public static class MatchSetup {
         return ok;
     }
 
-    /// <summary>The key a saved game keeps its campaign mission under (the mission asset's name).</summary>
+    /// <summary>The key a saved game keeps its campaign mission under (the whole MissionInfo: the campaign scene is not loaded then).</summary>
     public const string MissionKey = "mission";
 
     /// <summary>
@@ -147,15 +160,13 @@ public static class MatchSetup {
         string text = System.IO.File.ReadAllText(path).TrimEnd();
         int end = text.LastIndexOf('}');
         if (end < 0) return;
-        string key = Mission.Key.Replace("\\", "").Replace("\"", "");
-        System.IO.File.WriteAllText(path, text.Substring(0, end).TrimEnd() + ",\n\"" + MissionKey + "\": \"" + key + "\"\n}\n");
+        System.IO.File.WriteAllText(path, text.Substring(0, end).TrimEnd() + ",\n\"" + MissionKey + "\": " + Mission.ToJson().Print() + "\n}\n");
     }
 
     /// <summary>The campaign mission a saved game was saved in (StampMission), or null.</summary>
-    static Mission MissionStamped(string path) {
+    static MissionInfo MissionStamped(string path) {
         try {
-            Defective.JSON.JSONObject key = new Defective.JSON.JSONObject(System.IO.File.ReadAllText(path)).GetField(MissionKey);
-            return key != null && key.isString ? Mission.Named(key.stringValue) : null;
+            return MissionInfo.FromJson(new Defective.JSON.JSONObject(System.IO.File.ReadAllText(path)).GetField(MissionKey));
         } catch (Exception) { return null; }
     }
 
@@ -172,7 +183,7 @@ public static class MatchSetup {
     static bool Load(string path, Action choices, bool record = true) {
         if (string.IsNullOrEmpty(path)) return false;
         string red = ScenarioLoader.RedOverride, rules = ScenarioLoader.RulesOverride, buy = ScenarioLoader.PurchasesOverride,
-               fog = ScenarioLoader.FogOverride, special = ScenarioLoader.SpecialUnitsOverride;
+               fog = ScenarioLoader.FogOverride, special = ScenarioLoader.SpecialUnitsOverride, allies = ScenarioLoader.AlliesOverride;
         Dictionary<long, bool> control = ScenarioLoader.ControlOverride;
         Dictionary<long, string> profilesWere = ScenarioLoader.ProfileOverride;
         Dictionary<long, string> factions = ScenarioLoader.FactionOverride;
@@ -181,14 +192,14 @@ public static class MatchSetup {
             // A board only looked at (the pre-game screen's, the map editor's) is not a game: no game log for it.
             ScenarioLoader.RecordGames = recording && record;
             ScenarioLoader.RedOverride = null; ScenarioLoader.RulesOverride = null; ScenarioLoader.PurchasesOverride = null;
-            ScenarioLoader.FogOverride = null; ScenarioLoader.SpecialUnitsOverride = null;
+            ScenarioLoader.FogOverride = null; ScenarioLoader.SpecialUnitsOverride = null; ScenarioLoader.AlliesOverride = null;
             ScenarioLoader.ControlOverride = null; ScenarioLoader.FactionOverride = null; ScenarioLoader.ControlFromFile = false;
             ScenarioLoader.ProfileOverride = null;
             choices();
             return ScenarioLoader.LoadBoardFromPath(path);
         } finally {
             ScenarioLoader.RedOverride = red; ScenarioLoader.RulesOverride = rules; ScenarioLoader.PurchasesOverride = buy;
-            ScenarioLoader.FogOverride = fog; ScenarioLoader.SpecialUnitsOverride = special;
+            ScenarioLoader.FogOverride = fog; ScenarioLoader.SpecialUnitsOverride = special; ScenarioLoader.AlliesOverride = allies;
             ScenarioLoader.ControlOverride = control; ScenarioLoader.FactionOverride = factions; ScenarioLoader.ControlFromFile = fromFile;
             ScenarioLoader.ProfileOverride = profilesWere;
             ScenarioLoader.SidesAsFiled = false;
@@ -206,7 +217,8 @@ public static class MatchSetup {
             AIPlayer full = p.GetComponent<AIPlayer>();
             Sides.Add(new Side {
                 id = p.id, name = p.personal_name, ai = AIControl.Of(p) != null, faction = p.faction != null ? p.faction.name : "",
-                profile = full != null && full.profile != null ? full.profile.profileName : "", factionLocked = p.factionLocked
+                profile = full != null && full.profile != null ? full.profile.profileName : "", factionLocked = p.factionLocked,
+                team = p.team
             });
         }
         Fog = gc.fogOfWar;
@@ -215,5 +227,8 @@ public static class MatchSetup {
         FogFixed = gc.fogFixed;
         PurchasesFixed = gc.purchasesFixed;
         SpecialUnitsFixed = gc.specialUnitsFixed;
+        Allies = gc.alliances;
+        AlliesFixed = gc.alliancesFixed;
+        HasTeams = gc.HasTeams;
     }
 }

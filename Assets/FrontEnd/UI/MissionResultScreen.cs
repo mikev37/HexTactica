@@ -53,12 +53,12 @@ public class MissionResultScreen : MonoBehaviour {
     void Awake() { TransportPanel.EnsureEventSystem(); }
 
     void Start() {
-        Mission m = MatchSetup.Mission;
+        MissionInfo m = MatchSetup.Mission;
         GameController gc = GameController.gc;
         GameRecord record = GameRecord.Read(HexTactica.Harness.GameLog.Folder);
         Player me = FogOfWar.Viewer;
         if (me == null && gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) { me = p; break; }
-        bool won = gc != null && me != null && gc.winner == me;
+        bool won = gc != null && gc.Won(me);   // the winner, or one of its allies
         MissionTally tally = MissionRating.Tally(record, me != null ? me.id : GameInsights.ViewerId(record), won);
         CampaignProgress.Outcome o = CampaignProgress.Finish(m, tally);
 

@@ -41,6 +41,7 @@ namespace UnityEditor {
         public static string OpenFilePanel(string title, string dir, string ext) { return ""; }
         public static string OpenFolderPanel(string title, string dir, string name) { return ""; }
         public static string SaveFilePanel(string title, string dir, string name, string ext) { return ""; }
+        public static string SaveFilePanelInProject(string title, string name, string ext, string message, string path) { return ""; }
     }
     public static class AssetDatabase {
         public static string[] FindAssets(string filter) { return new string[0]; }
@@ -50,6 +51,7 @@ namespace UnityEditor {
         public static T GetBuiltinExtraResource<T>(string path) where T : UnityEngine.Object { return null; }
         public static void CreateAsset(UnityEngine.Object o, string path) { }
         public static bool DeleteAsset(string path) { return true; }
+        public static bool CopyAsset(string from, string to) { return false; }
         public static void SaveAssets() { }
         public static void Refresh() { }
         public static string GetAssetPath(UnityEngine.Object o) { return ""; }

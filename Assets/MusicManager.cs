@@ -181,7 +181,10 @@ public class MusicManager : MonoBehaviour {
         if (gc.winner == null) return false;
         bool anyHuman = false;
         if (gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) anyHuman = true;
-        return !anyHuman || FogOfWar.IsHuman(gc.winner);
+        if (!anyHuman) return true;
+        // A human on the winning side (the winner, or one of its allies).
+        foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p) && gc.Won(p)) return true;
+        return false;
     }
 
     /// <summary>The next track for <paramref name="k"/>: at random, not the one just played if there is another.</summary>

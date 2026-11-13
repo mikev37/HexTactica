@@ -31,13 +31,13 @@ methods through their On Click lists. Lists such as files, units, sides and pale
 | Scene | Component | What it does |
 |---|---|---|
 | MainMenu | `MainMenu` | **Campaign** opens the campaign screen. **Load Scenario** has two tabs. Scenarios: sets one up on the pre-game screen. Saved games: continues one. **Map Editor** edits a scenario or starts a new map. **Unit Explorer** (`UnitExplorer`, `UnitPreview`) and **Options** (`OptionsPanel`) open panels. **Exit** quits. |
-| PreGame (over SampleScene) | `PreGameMenu`, `PlayerSetupRow` | Shows the scenario's board. Each side gets **who plays it** (Human, AI with the default profile, or AI with a profile from `FrontEndSettings.aiProfiles`) and a **faction** (fixed if the map sets it). Also **Fog of war**, **Build units** (purchases) and **Faction special units**. **Start** reloads the scenario with these choices and the game plays. |
+| PreGame (over SampleScene) | `PreGameMenu`, `PlayerSetupRow` | Shows the scenario's board. Each side gets **who plays it** (Human, AI with the default profile, or AI with a profile from `FrontEndSettings.aiProfiles`) and a **faction** (fixed if the map sets it). Also **Fog of war**, **Build units** (purchases) and **Faction special units**. When two or more sides are on one team, **Allies**: on, the sides are listed team by team with a divider (the *Side Divider* prefab) between teams; fixed when the map fixes it. **Start** reloads the scenario with these choices and the game plays. |
 | PostGame (over the game, when it ends) | `PostGameScreen` | Shows who won and **What happened**, the findings from `GameInsights`. It also has a **Units** table for each side. **View board**, **Play again** and **Main menu** close it. |
-| Campaign | `CampaignScreen`, `MissionFlag`, `StarPip` | The campaign map with a flag per visible mission. Picking one plays its intro lines, then shows its briefing, pars and **Start**. See *Campaign* below. |
+| Campaign | `CampaignScreen`, `Mission`, `MissionFlag`, `StarPip` | The campaign map with its mission flags placed in the scene (hidden until the player can see them). Picking one plays its intro lines, then shows its briefing, pars and **Start**. See *Campaign* below. |
 | MissionBrief (over SampleScene) | `MissionBriefing` | A campaign mission's pre-game screen: introduction, objectives and pars. No choices. **Start** / **Back**. |
 | MissionResult (over the game, when a mission ends) | `MissionResultScreen` | Won or lost, the scenario's words, each par with the result and its star (gained one by one). **Return to campaign** / **View board**. |
 | InGameMenu (Esc, over the game) | `InGameMenu` | **Resume**, **Save** (named, into the saves folder), **Load** a saved game, **Exit to main menu**. The game is held while it is open. |
-| MapEditor (over SampleScene) | `MapEditorPanel`, `PaletteButton`, `MapPlayerRow` | Tools: **Look**, **Terrain** (click or drag), **Units** (shown by base units, one faction's, or all), **Buildings**. Placement uses the chosen side, or neutral for buildings; clicking a unit or building again removes it. **Sides**: add or remove sides, rename them, change their colour, and fix a side's faction or leave it "Any". Also sets the name, width (**Resize**), fog and purchases. **New**, **Load**, **Save**, **Play** (pre-game on it) and **Exit**. |
+| MapEditor (over SampleScene) | `MapEditorPanel`, `PaletteButton`, `MapPlayerRow` | Tools: **Look**, **Terrain** (click or drag), **Units** (shown by base units, one faction's, or all), **Buildings**. Placement uses the chosen side, or neutral for buildings; clicking a unit or building again removes it. **Sides**: add or remove sides, rename them, change their colour, and fix a side's faction or leave it "Any". Also sets the name, width (**Resize**), fog, purchases, special units and **Allies** (players choose, or always on or off). Which sides are allies is not edited here: set each Player's *Team* in the inspector and save. **New**, **Load**, **Save**, **Play** (pre-game on it) and **Exit**. |
 
 `GameSession` is created in every game scene, never in the menus. It opens what the menu asked for (`MatchSetup`),
 loads the overlays, and holds the game while one is open (`GameController.Paused`). The HUD, turn banner, fog view,
@@ -58,36 +58,60 @@ building registry and camera rig now install only in a scene with a GameControll
 
 ## Campaign
 
-- **Missions** are `Mission` assets in `Assets/Resources/Campaign/Missions` (*Create ▸ HexTactica ▸ Campaign Mission*).
-  Each names a scenario file in `Assets/Resources/Campaign/Scenarios` (`FrontEndSettings.campaignFolders`), so
-  missions never appear under Load Scenario. The map editor's Load lists them too, tagged *campaign*.
-- **Fields:** title, scenario, faction (the flag's colour: `Faction.flagColor`; the factions now carry their campaign
-  names and colours: Blue Sun Federation, Red Wolf Empire, Green World Union, Golden Eagle Coalition, Rebels brown),
-  map position (0–1 over the map image), *Available At Start*, intro lines, briefing, objectives, outro lines (won)
-  and lost lines, *Unlocks* (appear on a win), *Blocks* (closed for good on attempting; one already won stays won),
-  and three pars.
+- **Campaigns are scenes; the Campaign scene is the hub.** Its own map is one campaign (the tutorials, *Training*).
+  Its CampaignScreen's **Campaigns** list names other campaign scenes (picked from the scenes in the build) and
+  where each map stands, in steps of the hub's own map's size: 1,0 is just right of the hub's own map, 0,-1 just
+  below it (*Map Gap* apart). Each map keeps its own size (the hub's is a 1920x1920 square; a map stretched over its
+  window takes the window's size). The hub loads them all with itself, moves their maps into one view, and lets the
+  rest of each scene go.
+  - Each campaign's **Map** has a **CampaignMap**: its tab name (*Title*), *Available At Start*, and its *Flags*.
+    A campaign not available at start opens when a mission whose **Unlocks Campaigns** names it is won: the
+    view is taken to its map as it appears, with its tab, then back.
+  - **Tabs** across the top, one per open campaign (hidden while only one is open), jump to that campaign; panning
+    goes straight across from one map to the next. The tab of the campaign in view is greyed. The tabs copy the
+    screen's Main menu button unless *Tab Template* (and *Tabs*, the row) are set.
+  - The hub opens on the campaign of the mission just played, else the one last looked at, else the first open.
+    Playing a campaign scene on its own opens the hub looking at it.
+  - *HexTactica ▸ Campaign ▸ New Campaign Scene...* makes a campaign scene (a canvas with a placeholder map, its
+    Flags and its CampaignMap, closed at start), adds it to the build and to the hub's Campaigns to the right of
+    the last one. The main menu's Campaign button opens the hub (`FrontEndSettings.campaignScene`).
+- **A mission is a flag placed in that scene:** drag the *Mission Flag* prefab (`FrontEnd/Prefabs`) under the map's
+  **Flags** object and put it where it belongs on the picture. Its **Mission** component holds the rest:
+  - title, scenario (a file in `Assets/Resources/Campaign/Scenarios`, `FrontEndSettings.campaignFolders`, so
+    missions never appear under Load Scenario; the map editor's Load lists them, tagged *campaign*), faction (the
+    flag's colour: `Faction.flagColor`; the factions carry their campaign names and colours: Blue Sun Federation, Red
+    Wolf Empire, Green World Union, Golden Eagle Coalition, Rebels brown), *Available At Start*;
+  - intro lines, briefing, objectives, outro lines (won) and lost lines;
+  - *Unlocks* (appear on a win) and *Blocks* (closed for good on attempting; one already won stays won): drag other
+    flags of the same scene in;
+  - three pars.
+  Each flag is a prefab instance, so its look can be overridden flag by flag. In the editor every flag shows; in play,
+  flags the player can't see yet are hidden.
+- **Placing:** the map stretches with the screen's shape, so a flag keeps its exact spot on the picture when its
+  anchors sit on it. The Tutorial flags are set that way (anchors on the spot, position 0). After dragging a flag, use
+  **Pin To Map** on the Mission component's ⋮ menu to move its anchors to where it stands.
+- **Progress is kept by campaign scene and object name** ("Campaign/Tutorial 1"): renaming a mission's object or its
+  scene forgets its progress. Opened campaigns are kept by scene name in the same file. Two missions in one scene must not share a name (*Check Missions* says so).
 - **Stars** (only for a win): **Speed** — won within *Par Turns* of the player's turns (0: no speed star);
   **Aggression** — at least *Par Kills* enemy units destroyed; **Defense** — at most *Par Losses* own units lost.
   Read from the game log (`GameRecord`), as the post-game report is, so they hold across saves. A game that was not
   recorded counts as won but earns no stars. Stars once earned are kept (`CampaignProgress`).
 - **Progress** is `<persistentDataPath>/campaign.dat`. *HexTactica ▸ Campaign ▸ Reset Campaign Progress* clears it
-  (asks first); *Check Missions* lists missing scenario files and missions nothing unlocks.
+  (asks first). *Check Missions* (with a campaign scene open) lists missing scenario files, missions nothing unlocks,
+  duplicate names and links to flags outside the campaign.
 - **Flow:** flag → intro lines (once per run) → briefing → Start → MissionBrief → Start (counts as attempted, closes
-  what it blocks) → game → MissionResult (stars gained one by one) → Return → Campaign: the flag gains its new stars,
-  the view zooms onto each mission just unlocked as its flag appears, then the outro lines play.
-- A save made during a mission remembers the mission (`"mission"` in the file), so loading it goes on as that mission.
+  what it blocks) → game → MissionResult (stars gained one by one) → Return → the campaign scene: the flag gains its
+  new stars, the view zooms onto each mission just unlocked as its flag appears, then the outro lines play.
+- While the campaign scene is unloaded, the mission travels as a `MissionInfo` (its fields, unlocks and blocks by
+  key). A save made during a mission keeps it whole (`"mission"` in the file), so loading it goes on as that mission.
 - **Moving around the map** works as on the game board: the wheel (or + / -) zooms about the cursor, the right or
   middle mouse button drags it, the arrow keys pan, and Home shows the whole map. The view never leaves the picture.
-  Flags keep their size on screen as you zoom (*Flags Keep Size*), so zooming in spreads crowded flags apart: place
-  missions closer together (a finer *Map Position*, e.g. 0.512) and they separate once zoomed in. *Max Zoom* (4 by
-  default), *Zoom Step* and *Pan Speed* are on the scene's CampaignScreen. When a mission unlocks another, the view
-  zooms onto it and then glides back to where you were looking.
+  Flags keep their size on screen as you zoom (*Flags Keep Size*), so zooming in spreads crowded flags apart.
+  *Max Zoom* (4 by default), *Zoom Step* and *Pan Speed* are on the hub's CampaignScreen; Home shows the whole of
+  the campaign in view. When a mission unlocks
+  another, the view zooms onto it and then glides back to where you were looking.
 - **The map picture** is a placeholder colour: give the Campaign scene's *Map* object's Image your picture (and
   delete the *Placeholder Note*). Flag, star, tick and cross art are white placeholders in `Sprites/UI/Widgets`.
-- The Campaign, MissionBrief and MissionResult scenes and the *Mission Flag* prefab are made by the front end's
-  first-layout tool when missing (on opening the project, or *HexTactica ▸ Front End ▸ Create Missing Scenes*).
-  *HexTactica ▸ Front End ▸ Update Scenes* adds the **Campaign** button to an existing main menu (a copy of its
-  Load Scenario button, placed before it). Nothing that already exists is changed.
 
 ## Replay
 

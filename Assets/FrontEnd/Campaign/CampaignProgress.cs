@@ -5,7 +5,7 @@ using Defective.JSON;
 using UnityEngine;
 
 /// <summary>
-/// How far the player has got in the campaign: for each mission, whether its flag has been unlocked, whether it is
+/// How far the player has got in the campaigns: for each mission (by its key, MissionInfo.key: its scene and name), whether its flag has been unlocked, whether it is
 /// closed off, attempted, won, and the stars earned so far (the best of every attempt: a star once earned is kept).
 /// Kept in one file in the player's data folder (campaign.dat), written whenever it changes.
 /// </summary>
@@ -20,61 +20,68 @@ public static class CampaignProgress {
 
     /// <summary>What finishing a mission changed: shown on the result screen, then played out on the campaign screen.</summary>
     public class Outcome {
-        public Mission mission;
+        public MissionInfo mission;
         public MissionTally tally;
         /// <summary>The stars this attempt earned, and those of them the mission did not have before.</summary>
         public MissionStars earned, gained;
         /// <summary>Its first win.</summary>
         public bool firstWin;
-        /// <summary>The missions whose flags this win put on the map.</summary>
-        public List<Mission> unlocked = new List<Mission>();
+        /// <summary>The campaigns (scene names) this win opened for the first time.</summary>
+        public List<string> unlockedCampaigns = new List<string>();
+        /// <summary>The keys of the missions this win unlocked for the first time (the campaign screen shows the flags of those not already on the map appearing).</summary>
+        public List<string> unlocked = new List<string>();
     }
 
     public const string FileName = "campaign.dat";
 
     static Dictionary<string, Entry> entries;
+    /// <summary>Campaigns (scene names) opened by a mission won.</summary>
+    static HashSet<string> campaigns = new HashSet<string>();
 
     /// <summary>The file progress is kept in. Set to "" to keep it in memory only (the headless checks).</summary>
     public static string FilePath = null;
     static string Path_ { get { return FilePath ?? Path.Combine(Application.persistentDataPath, FileName); } }
+
+    /// <summary>The campaign (scene name) last looked at or played, for this run: the hub opens looking at it.</summary>
+    public static string Focus = "";
 
     /// <summary>The result of the mission just played, waiting for the campaign screen to show it (null: nothing new).</summary>
     public static Outcome Pending;
 
     static Dictionary<string, Entry> Entries { get { if (entries == null) Load(); return entries; } }
 
-    static Entry Of(Mission m, bool make) {
+    static Entry Of(string key, bool make) {
         Entry e;
-        if (Entries.TryGetValue(m.Key, out e)) return e;
+        if (Entries.TryGetValue(key ?? "", out e)) return e;
         e = new Entry();
-        if (make) entries[m.Key] = e;
+        if (make) entries[key ?? ""] = e;
         return e;
     }
 
     /// <summary>The mission's progress (all false for one never touched).</summary>
-    public static Entry Get(Mission m) { return m != null ? Of(m, false) : new Entry(); }
+    public static Entry Get(MissionInfo m) { return m != null ? Of(m.key, false) : new Entry(); }
 
     /// <summary>Its flag is on the map: there from the start, unlocked by a win, or already played.</summary>
-    public static bool Visible(Mission m) {
+    public static bool Visible(MissionInfo m) {
         if (m == null) return false;
         Entry e = Get(m);
         return m.availableAtStart || e.unlocked || e.attempted || e.completed;
     }
 
     /// <summary>Closed off by another mission having been attempted (one already won is never closed).</summary>
-    public static bool Blocked(Mission m) {
+    public static bool Blocked(MissionInfo m) {
         Entry e = Get(m);
         return e.blocked && !e.completed;
     }
 
     /// <summary>Its flag is on the map and it can be started.</summary>
-    public static bool Playable(Mission m) { return Visible(m) && !Blocked(m); }
+    public static bool Playable(MissionInfo m) { return Visible(m) && !Blocked(m); }
 
     /// <summary>The mission is being started: it counts as attempted, and the missions it blocks are closed.</summary>
-    public static void Attempt(Mission m) {
+    public static void Attempt(MissionInfo m) {
         if (m == null) return;
-        Of(m, true).attempted = true;
-        if (m.blocks != null) foreach (Mission b in m.blocks) if (b != null && b != m) Of(b, true).blocked = true;
+        Of(m.key, true).attempted = true;
+        if (m.blocks != null) foreach (string b in m.blocks) if (!string.IsNullOrEmpty(b) && b != m.key) Of(b, true).blocked = true;
         Save();
     }
 
@@ -82,10 +89,10 @@ public static class CampaignProgress {
     /// The mission has ended with this result: a win is kept with its stars (added to those it had) and unlocks its
     /// missions. Returns what changed, also left in <see cref="Pending"/> for the campaign screen.
     /// </summary>
-    public static Outcome Finish(Mission m, MissionTally tally) {
+    public static Outcome Finish(MissionInfo m, MissionTally tally) {
         Outcome o = new Outcome { mission = m, tally = tally };
         if (m == null) return o;
-        Entry e = Of(m, true);
+        Entry e = Of(m.key, true);
         e.attempted = true;
         if (tally.won) {
             o.earned = MissionRating.Stars(m, tally);
@@ -94,17 +101,23 @@ public static class CampaignProgress {
             e.completed = true;
             e.stars |= o.earned;
             if (tally.recorded && tally.turns > 0 && (e.bestTurns == 0 || tally.turns < e.bestTurns)) e.bestTurns = tally.turns;
-            if (m.unlocks != null) foreach (Mission u in m.unlocks) {
-                if (u == null || u == m) continue;
-                bool was = Playable(u);
-                Of(u, true).unlocked = true;
-                if (!was && Playable(u) && !o.unlocked.Contains(u)) o.unlocked.Add(u);
+            if (m.unlocks != null) foreach (string u in m.unlocks) {
+                if (string.IsNullOrEmpty(u) || u == m.key) continue;
+                Entry ue = Of(u, true);
+                bool was = ue.unlocked;
+                ue.unlocked = true;
+                if (!was && !ue.blocked && !o.unlocked.Contains(u)) o.unlocked.Add(u);
             }
+            if (m.unlocksCampaigns != null) foreach (string c in m.unlocksCampaigns)
+                if (!string.IsNullOrEmpty(c) && campaigns.Add(c)) o.unlockedCampaigns.Add(c);
         }
         Save();
         Pending = o;
         return o;
     }
+
+    /// <summary>A campaign (its scene's name) opened by a mission won.</summary>
+    public static bool CampaignUnlocked(string campaign) { if (entries == null) Load(); return !string.IsNullOrEmpty(campaign) && campaigns.Contains(campaign); }
 
     /// <summary>The pending result, handed over once (the campaign screen plays it out).</summary>
     public static Outcome TakePending() { Outcome o = Pending; Pending = null; return o; }
@@ -112,6 +125,7 @@ public static class CampaignProgress {
     /// <summary>Forget everything: the campaign as new. (The file is rewritten empty, not deleted.)</summary>
     public static void Reset() {
         entries = new Dictionary<string, Entry>();
+        campaigns = new HashSet<string>();
         Pending = null;
         Save();
     }
@@ -119,10 +133,13 @@ public static class CampaignProgress {
     /// <summary>Read the file again (missing or unreadable: no progress).</summary>
     public static void Load() {
         entries = new Dictionary<string, Entry>();
+        campaigns = new HashSet<string>();
         string path = Path_;
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
         try {
             JSONObject obj = new JSONObject(File.ReadAllText(path));
+            JSONObject open = obj.GetField("campaigns");
+            if (open != null && open.list != null) foreach (JSONObject c in open.list) if (c != null && c.isString && !string.IsNullOrEmpty(c.stringValue)) campaigns.Add(c.stringValue);
             JSONObject list = obj.GetField("missions");
             if (list == null || list.list == null) return;
             foreach (JSONObject j in list.list) {
@@ -160,6 +177,11 @@ public static class CampaignProgress {
             JSONObject obj = new JSONObject(JSONObject.Type.Object);
             obj.AddField("version", 1);
             obj.AddField("missions", list);
+            JSONObject open = new JSONObject(JSONObject.Type.Array);
+            List<string> names = new List<string>(campaigns);
+            names.Sort(StringComparer.Ordinal);
+            foreach (string c in names) open.Add(JSONObject.CreateStringObject(c));
+            obj.AddField("campaigns", open);
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, obj.Print(true));
         } catch (Exception e) {

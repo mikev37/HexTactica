@@ -166,7 +166,7 @@ namespace HexTactica.AI {
             if (!mover.CanEnter(t)) return false;
             if (t.occupier == null) return true;
             if (t.occupier == mover) return true;
-            if (t.occupier.owner == mover.owner) return true;
+            if (Player.Friendly(t.occupier.owner, mover.owner)) return true;   // our own, or an ally's: passed through
             return ignoreEnemies;
         }
 

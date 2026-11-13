@@ -306,7 +306,7 @@ namespace HexTactica.AI {
             int bestDistance = int.MaxValue;
             for (int i = 0; i < Building.all.Count; i++) {
                 Building b = Building.all[i];
-                if (b == null || b.tile == null || b.owner == map.player) continue;
+                if (b == null || b.tile == null || !Player.Hostile(b.owner, map.player)) continue;
                 int d = map.Travel(null, from, b.tile);
                 if (d < bestDistance) { best = b; bestDistance = d; }
             }

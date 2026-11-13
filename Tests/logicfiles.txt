@@ -134,6 +134,8 @@ Scenario/ScenarioScript.cs
 Scenario/ScenarioAssets.cs
 Scenario/DialogueCharacter.cs
 FrontEnd/Campaign/Mission.cs
+FrontEnd/Campaign/MissionInfo.cs
+FrontEnd/Campaign/CampaignMap.cs
 FrontEnd/Campaign/MissionRating.cs
 FrontEnd/Campaign/CampaignProgress.cs
 FrontEnd/Campaign/MapView.cs

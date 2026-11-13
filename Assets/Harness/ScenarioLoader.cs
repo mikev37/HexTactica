@@ -249,6 +249,9 @@ namespace HexTactica.Harness {
             // Faction special units: the pre-game screen's choice, else the file's, else on.
             string special = SpecialUnitsOverride ?? Setting(obj, test, "factionSpecialUnits");
             GameController.gc.factionSpecialUnits = string.IsNullOrEmpty(special) || GameController.ParseFog(special);
+            // Allies: the pre-game screen's choice, else the file's, else on (players on the same team are allies).
+            string allies = AlliesOverride ?? Setting(obj, test, "allies");
+            GameController.gc.alliances = string.IsNullOrEmpty(allies) || GameController.ParseFog(allies);
             // The rules the map fixes (the pre-game screen leaves them as the file has them).
             GameController.gc.ParseFixedRules(Setting(obj, test, "fixedRules"));
             FogOfWar.Reset();
@@ -294,6 +297,9 @@ namespace HexTactica.Harness {
             UnityEngine.Debug.Log("Scenario: " + q + "(Blue: this AI; Red: " + (kind == "Full" ? "this AI" : kind) + "; rules: " + GameController.gc.rules + ")");
             return kind;
         }
+
+        /// <summary>"on", "off", or null to use the file (allies: players on the same team fight on one side; on when the file says nothing). Set by the pre-game screen.</summary>
+        public static string AlliesOverride;
 
         /// <summary>"on", "off", or null to use the file (faction special units; on when the file says nothing). Set by the pre-game screen.</summary>
         public static string SpecialUnitsOverride;

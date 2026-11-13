@@ -804,7 +804,7 @@ public class Unit : MonoBehaviour
         if (FogOfWar.On) {
             for (int i = 1; i < steps.Count; i++) {
                 Unit o = steps[i] != null ? steps[i].occupier : null;
-                if (o != null && o != this && o.owner != owner) { ambusher = o; stop = i - 1; break; }
+                if (o != null && o != this && Player.Hostile(o.owner, owner)) { ambusher = o; stop = i - 1; break; }
             }
             if (ambusher != null) while (stop > 0 && steps[stop].occupier != null && steps[stop].occupier != this) stop--;
         }
@@ -898,7 +898,7 @@ public class Unit : MonoBehaviour
     /// </summary>
     public bool WouldDitchFrom(HexTile end) {
         if (end == null || tile == null || fuelMax <= 0) return false;
-        if (end.building != null && end.building.owner == owner && end.building.Services(this)) return false;
+        if (end.building != null && end.building.owner != null && Player.Friendly(end.building.owner, owner) && end.building.Services(this)) return false;
         if (locomotion != Locomotion.Jet) return false;
         int flown = tile.Distance(end);
         int left = fuel - flown * minFuelPerTile - (LocomotionRules.IsAirborne(locomotion) ? minFuelPerTurn : 0);
@@ -907,7 +907,7 @@ public class Unit : MonoBehaviour
         int reach = left / minFuelPerTile;
         int nearest = int.MaxValue;
         foreach (Building b in Building.all) {
-            if (b == null || b.owner != owner || !b.Services(this)) continue;
+            if (b == null || b.owner == null || !Player.Friendly(b.owner, owner) || !b.Services(this)) continue;
             if (b.tile != null) nearest = Mathf.Min(nearest, b.tile.Distance(end));
         }
         // A carrier of ours it could land on and be refuelled aboard (afloat, room for it, stocked) is a base too,
@@ -961,7 +961,7 @@ public class Unit : MonoBehaviour
         if (FogOfWar.On) {
             for (int i = 1; i < steps.Count; i++) {
                 Unit o = steps[i] != null ? steps[i].occupier : null;
-                if (o != null && o != this && o.owner != owner) { MoveAlong(steps, false, animate); return false; }
+                if (o != null && o != this && Player.Hostile(o.owner, owner)) { MoveAlong(steps, false, animate); return false; }
             }
         }
         int entered = steps.Count - 1;
@@ -1521,7 +1521,7 @@ public class Unit : MonoBehaviour
     }
 
     internal bool validTarget(HexTile position) {
-        return position.occupier != null && position.occupier.owner != owner && GameController.Targetable(position.occupier)
+        return position.occupier != null && Player.Hostile(position.occupier.owner, owner) && GameController.Targetable(position.occupier)
             && FogOfWar.CanTarget(owner, position.occupier) && CanTarget(position.occupier);
     }
 }

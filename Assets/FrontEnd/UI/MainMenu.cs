@@ -58,7 +58,7 @@ public class MainMenu : MonoBehaviour {
     public void ShowReplays() { Show(replayPanel); if (replayList != null) replayList.ShowRecordings(); UpdateButtons(); }
 
     /// <summary>The campaign screen: the map and its mission flags.</summary>
-    public void Campaign() { MatchSetup.ToCampaign(); }
+    public void Campaign() { MatchSetup.ToDefaultCampaign(); }
 
     /// <summary>Watch the picked recording.</summary>
     public void Watch() { if (replayList != null && replayList.Selected != null) MatchSetup.Watch(replayList.Selected); }
