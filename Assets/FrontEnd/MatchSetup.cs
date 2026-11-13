@@ -40,8 +40,8 @@ public static class MatchSetup {
     public static SessionMode Mode;
     /// <summary>The campaign mission being played (null: an ordinary game): the briefing and result screens stand in for the pre-game and post-game ones, and the way out leads to the campaign screen.</summary>
     public static MissionInfo Mission;
-    /// <summary>The campaign scene the last mission was started from: where the way out of a mission leads ("" none: FrontEndSettings.campaignScene).</summary>
-    public static string CampaignScene = "";
+    /// <summary>The campaign last looked at or played (its scene's name): the campaign hub opens looking at it ("": the first open one).</summary>
+    public static string CampaignScene { get { return CampaignProgress.Focus; } set { CampaignProgress.Focus = value ?? ""; } }
     /// <summary>The scenario or save being set up, played or edited ("" none: the map editor on the scene's own board).</summary>
     public static string FilePath = "";
     public static readonly List<Side> Sides = new List<Side>();
@@ -70,20 +70,18 @@ public static class MatchSetup {
     public static bool PlayMission(MissionInfo mission) {
         string path = mission != null ? GameFiles.CampaignScenarioPath(mission.ScenarioName) : null;
         if (path == null) return false;
-        if (!string.IsNullOrEmpty(mission.campaignScene)) CampaignScene = mission.campaignScene;
         Open(SessionMode.Setup, path, mission);
         return true;
     }
 
-    /// <summary>Leave the game for the campaign screen the mission came from (from the main menu: the default campaign).</summary>
+    /// <summary>Leave the game for the campaign hub (FrontEndSettings.campaignScene), looking at the mission's campaign.</summary>
     public static void ToCampaign() {
-        string scene = Mission != null && !string.IsNullOrEmpty(Mission.campaignScene) ? Mission.campaignScene
-                     : !string.IsNullOrEmpty(CampaignScene) ? CampaignScene : FrontEndSettings.Get.campaignScene;
-        Leave(scene);
+        if (Mission != null && !string.IsNullOrEmpty(Mission.campaignScene)) CampaignScene = Mission.campaignScene;
+        Leave(FrontEndSettings.Get.campaignScene);
     }
 
-    /// <summary>The main menu's Campaign button: the default campaign scene (FrontEndSettings.campaignScene).</summary>
-    public static void ToDefaultCampaign() { CampaignScene = ""; Leave(FrontEndSettings.Get.campaignScene); }
+    /// <summary>The main menu's Campaign button: the campaign hub, looking at the campaign last looked at.</summary>
+    public static void ToDefaultCampaign() { Leave(FrontEndSettings.Get.campaignScene); }
 
     static void Open(SessionMode mode, string path, MissionInfo mission = null) {
         Mission = mission;

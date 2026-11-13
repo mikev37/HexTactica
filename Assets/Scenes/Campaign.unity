@@ -497,6 +497,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CampaignScreen
   map: {fileID: 1267999780}
   flags: {fileID: 733062130}
+  campaigns:
+  - scene: Campaign 2
+    at: {x: 1, y: 0}
   noFactionColor: {r: 1, g: 1, b: 1, a: 1}
   busyBlocker: {fileID: 515422785}
   missionPanel: {fileID: 879668372}
@@ -1727,6 +1730,7 @@ GameObject:
   - component: {fileID: 1267999780}
   - component: {fileID: 1267999782}
   - component: {fileID: 1267999781}
+  - component: {fileID: 1267999783}
   m_Layer: 5
   m_Name: Map
   m_TagString: Untagged
@@ -1786,6 +1790,21 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &1267999783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1267999779}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 435b4189c6aa47debdda2dd27f7029b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CampaignMap
+  title: Training
+  availableAtStart: 1
+  flags: {fileID: 733062130}
 --- !u!222 &1267999782
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4234,6 +4253,14 @@ PrefabInstance:
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parLosses
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: unlocksCampaigns.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: unlocksCampaigns.Array.data[0]
+      value: Campaign 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

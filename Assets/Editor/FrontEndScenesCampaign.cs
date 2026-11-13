@@ -41,38 +41,89 @@ static partial class FrontEndScenes {
     }
 
     /// <summary>
-    /// A new campaign: a copy of a campaign scene (the open one if it is a campaign, else the default Campaign scene)
-    /// with its missions taken off the map, saved where you choose and added to the build. Nothing else changes.
+    /// A new campaign: a scene holding only its map (a placeholder picture, a Flags object for its missions, a
+    /// CampaignMap), saved where you choose, added to the build, and added to the campaign hub's Campaigns, placed
+    /// to the right of the last one. Nothing else changes. Its missions are Mission Flags dragged under its Flags.
     /// </summary>
     [MenuItem("HexTactica/Campaign/New Campaign Scene...")]
     static void NewCampaignScene() {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-        string from = Object.FindAnyObjectByType<CampaignScreen>() != null ? UnityEngine.SceneManagement.SceneManager.GetActiveScene().path : SceneFolder + Settings().campaignScene + ".unity";
-        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(from) == null) { Debug.LogWarning("No campaign scene to copy (" + from + "): run HexTactica > Front End > Create Missing Scenes first."); return; }
+        string hubPath = SceneFolder + Settings().campaignScene + ".unity";
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(hubPath) == null) { Debug.LogWarning("No campaign hub (" + hubPath + "): run HexTactica > Front End > Create Missing Scenes first."); return; }
         string to = EditorUtility.SaveFilePanelInProject("New Campaign Scene", "New Campaign", "unity", "Where to save the new campaign scene", SceneFolder.TrimEnd('/'));
         if (string.IsNullOrEmpty(to)) return;
         if (AssetDatabase.LoadAssetAtPath<SceneAsset>(to) != null) { Debug.LogWarning(to + " already exists: nothing was changed."); return; }
-        if (!AssetDatabase.CopyAsset(from, to)) { Debug.LogWarning("Could not copy " + from + " to " + to + "."); return; }
-        UnityEngine.SceneManagement.Scene scene = EditorSceneManager.OpenScene(to, OpenSceneMode.Single);
-        int removed = 0;
-        foreach (CampaignScreen screen in Object.FindObjectsByType<CampaignScreen>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            if (screen.flags != null) foreach (Mission m in screen.flags.GetComponentsInChildren<Mission>(true)) { Object.DestroyImmediate(m.gameObject); removed++; }
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene);
+
+        UnityEngine.SceneManagement.Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        BuildCampaignMapScene();
+        EditorSceneManager.SaveScene(scene, to);
         List<EditorBuildSettingsScene> build = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (!build.Exists(b => b.path == to)) { build.Add(new EditorBuildSettingsScene(to, true)); EditorBuildSettings.scenes = build.ToArray(); }
-        Debug.Log("New campaign scene " + to + " (copied from " + from + ", " + removed + " mission(s) taken off its map; added to the build). Drag the Mission Flag prefab under its Flags object to add missions.");
+
+        // The hub lists it, to the right of the rightmost map.
+        string name = Path.GetFileNameWithoutExtension(to);
+        UnityEngine.SceneManagement.Scene hub = EditorSceneManager.OpenScene(hubPath, OpenSceneMode.Additive);
+        CampaignScreen screen = null;
+        foreach (GameObject root in hub.GetRootGameObjects()) if (screen == null) screen = root.GetComponentInChildren<CampaignScreen>(true);
+        if (screen != null) {
+            Undo.RecordObject(screen, "Add campaign");
+            float right = 0f;
+            foreach (CampaignScreen.CampaignSlot c in screen.campaigns) if (c != null) right = Mathf.Max(right, c.at.x);
+            screen.campaigns.Add(new CampaignScreen.CampaignSlot { scene = name, at = new Vector2(right + 1f, 0f) });
+            EditorUtility.SetDirty(screen);
+            EditorSceneManager.MarkSceneDirty(hub);
+            EditorSceneManager.SaveScene(hub);
+        }
+        EditorSceneManager.CloseScene(hub, true);
+        Debug.Log("New campaign scene " + to + " (added to the build" + (screen != null ? " and to the hub's Campaigns" : "; no CampaignScreen found in the hub to list it") + "). Drag the Mission Flag prefab under its Map > Flags to add missions; untick Available At Start on its Map's CampaignMap if a mission is to open it (that mission's Unlocks Campaigns).");
     }
 
-    /// <summary>Read-only: says what is wrong with the open campaign scene's missions (a scenario file that is not there, a mission that can never appear, two with one name).</summary>
+    /// <summary>A campaign scene's contents, in the open (empty) scene: a canvas with the map, its Flags and its CampaignMap.</summary>
+    static void BuildCampaignMapScene() {
+        Canvas canvas = MakeCanvas("Campaign Map", 0);
+        GameObject view = Go("View", canvas.transform);
+        Fill((RectTransform)view.transform);
+        GameObject map = Go("Map", view.transform, typeof(Image));
+        Fill((RectTransform)map.transform);
+        Image picture = map.GetComponent<Image>();
+        picture.color = MapPlaceholder;
+        picture.raycastTarget = false;
+        Text(map.transform, "Placeholder Note", "Campaign map: give the Map object's Image your picture, then delete this note.", 26, TextAlignmentOptions.Center, FontStyles.Italic)
+            .rectTransform.Let(rt => Place(rt, new Vector2(0.5f, 0.08f), Vector2.zero, new Vector2(1400f, 60f)));
+        GameObject flags = Go("Flags", map.transform);
+        Fill((RectTransform)flags.transform);
+        CampaignMap cm = map.AddComponent<CampaignMap>();
+        cm.flags = (RectTransform)flags.transform;
+        cm.availableAtStart = false;
+    }
+
+    /// <summary>
+    /// Read-only: says what is wrong with the campaigns (the hub's list of campaign scenes) and the open campaign
+    /// scene's missions: a campaign scene not in the build or with no CampaignMap, a scenario file that is not there,
+    /// a mission that can never appear, two with one name, a campaign no mission opens.
+    /// </summary>
     [MenuItem("HexTactica/Campaign/Check Missions")]
     static void CheckMissions() {
-        CampaignScreen screen = Object.FindAnyObjectByType<CampaignScreen>(FindObjectsInactive.Include);
-        if (screen == null || screen.flags == null) { Debug.LogWarning("Open a campaign scene (one with a CampaignScreen and its Flags) to check its missions."); return; }
-        List<Mission> all = new List<Mission>(screen.flags.GetComponentsInChildren<Mission>(true));
         int problems = 0;
-        if (all.Count == 0) { Debug.LogWarning("No missions under " + screen.flags.name + ": drag the Mission Flag prefab there to add one."); return; }
-        if (!all.Exists(m => m.availableAtStart)) { Debug.LogWarning("No mission is Available At Start: the campaign map starts empty."); problems++; }
+        HashSet<string> inBuild = new HashSet<string>();
+        foreach (EditorBuildSettingsScene b in EditorBuildSettings.scenes) if (b.enabled) inBuild.Add(Path.GetFileNameWithoutExtension(b.path));
+        CampaignScreen hub = Object.FindAnyObjectByType<CampaignScreen>(FindObjectsInactive.Include);
+        if (hub != null) {
+            foreach (CampaignScreen.CampaignSlot c in hub.campaigns) {
+                if (c == null || string.IsNullOrEmpty(c.scene)) { Debug.LogWarning("The hub's Campaigns has an empty entry.", hub); problems++; continue; }
+                if (!inBuild.Contains(c.scene)) { Debug.LogWarning("Campaign scene \"" + c.scene + "\" is not in the build (File > Build Profiles), so the hub can't load it.", hub); problems++; }
+            }
+        }
+        List<CampaignMap> here = new List<CampaignMap>(Object.FindObjectsByType<CampaignMap>(FindObjectsInactive.Include, FindObjectsSortMode.None));
+        if (here.Count == 0 && hub != null && hub.map != null) Debug.LogWarning("The hub's Map has no CampaignMap: add one (it is made while playing otherwise, open from the start).", hub);
+        List<Mission> all = new List<Mission>();
+        foreach (CampaignMap cm in here) {
+            if (cm.flags == null) { Debug.LogWarning(cm.name + ": its CampaignMap has no Flags.", cm); problems++; continue; }
+            all.AddRange(cm.Missions);
+        }
+        if (all.Count == 0 && hub != null && hub.flags != null) all.AddRange(hub.flags.GetComponentsInChildren<Mission>(true));
+        if (all.Count == 0) { Debug.Log(problems == 0 ? "No missions in the open scene (open a campaign scene to check its missions); nothing else wrong." : problems + " problem(s) above."); return; }
+        if (!all.Exists(m => m.availableAtStart)) Debug.Log("No mission here is Available At Start: this campaign's map starts empty when it opens.");
         HashSet<string> names = new HashSet<string>();
         foreach (Mission m in all) {
             if (!names.Add(m.name)) { Debug.LogWarning("Two missions are named \"" + m.name + "\": progress is kept by name, so they would share it. Rename one.", m); problems++; }
@@ -86,7 +137,8 @@ static partial class FrontEndScenes {
                 Debug.LogWarning(m.name + ": not Available At Start and no mission unlocks it, so its flag never appears.", m);
                 problems++;
             }
-            foreach (Mission x in m.unlocks) if (x != null && x.transform.IsChildOf(screen.flags) == false) { Debug.LogWarning(m.name + ": unlocks " + x.name + ", which is not one of this campaign's missions.", m); problems++; }
+            foreach (Mission x in m.unlocks) if (x != null && !all.Contains(x)) { Debug.LogWarning(m.name + ": unlocks " + x.name + ", which is not one of this campaign's missions.", m); problems++; }
+            foreach (string c in m.unlocksCampaigns) if (!string.IsNullOrEmpty(c) && !inBuild.Contains(c)) { Debug.LogWarning(m.name + ": opens campaign \"" + c + "\", which is not a scene in the build.", m); problems++; }
             if (m.faction == null) Debug.Log(m.name + ": no faction (its flag takes the campaign screen's No Faction colour).", m);
         }
         Debug.Log(problems == 0 ? "Missions checked: " + all.Count + ", nothing wrong." : "Missions checked: " + all.Count + ", " + problems + " problem(s) above.");
@@ -120,6 +172,9 @@ static partial class FrontEndScenes {
             .rectTransform.Let(rt => Place(rt, new Vector2(0.5f, 0.08f), Vector2.zero, new Vector2(1400f, 60f)));
         GameObject flags = Go("Flags", map.transform);
         Fill((RectTransform)flags.transform);
+        CampaignMap own = map.AddComponent<CampaignMap>();
+        own.flags = (RectTransform)flags.transform;
+        own.availableAtStart = true;
         m.map = (RectTransform)map.transform;
         m.flags = (RectTransform)flags.transform;
         RowPrefab(MissionFlagPrefab, MissionFlagRow);   // (made for you to drag onto Flags: one per mission)

@@ -70,6 +70,11 @@ namespace UnityEngine {
         public static Vector2 Lerp(Vector2 a, Vector2 b, float t) { return new Vector2(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t); }
         public static Vector2 operator +(Vector2 a, Vector2 b) { return new Vector2(a.x + b.x, a.y + b.y); }
         public static Vector2 operator -(Vector2 a, Vector2 b) { return new Vector2(a.x - b.x, a.y - b.y); }
+        public static Vector2 operator -(Vector2 a) { return new Vector2(-a.x, -a.y); }
+        public static Vector2 operator /(Vector2 a, float f) { return new Vector2(a.x / f, a.y / f); }
+        public float sqrMagnitude { get { return x * x + y * y; } }
+        public static Vector2 Min(Vector2 a, Vector2 b) { return new Vector2(Math.Min(a.x, b.x), Math.Min(a.y, b.y)); }
+        public static Vector2 Max(Vector2 a, Vector2 b) { return new Vector2(Math.Max(a.x, b.x), Math.Max(a.y, b.y)); }
         public static Vector2 operator *(Vector2 a, float f) { return new Vector2(a.x * f, a.y * f); }
         public static Vector2 operator *(float f, Vector2 a) { return new Vector2(a.x * f, a.y * f); }
         public static implicit operator Vector3(Vector2 v) { return new Vector3(v.x, v.y, 0); }
@@ -223,6 +228,7 @@ namespace UnityEngine {
         public T GetComponentInParent<T>() where T : class { return gameObject.GetComponent<T>(); }
         public T GetComponentInParent<T>(bool includeInactive) where T : class { return gameObject.GetComponent<T>(); }
         public T GetComponentInChildren<T>() where T : class { return gameObject.GetComponent<T>(); }
+        public T GetComponentInChildren<T>(bool includeInactive) where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
         public T[] GetComponents<T>() where T : class { return gameObject.GetComponents<T>(); }
@@ -487,6 +493,7 @@ namespace UnityEngine {
         public static string persistentDataPath { get { return "/tmp/hextactica"; } }
         public static string dataPath { get { return "/tmp/hextactica"; } }
         public static bool isPlaying { get { return true; } }
+        public static bool CanStreamedLevelBeLoaded(string scene) { return false; }
         public static bool isFocused { get { return true; } }
         public static bool isEditor { get { return false; } }
         public static string streamingAssetsPath { get { return "/tmp/hextactica/StreamingAssets"; } }
@@ -581,9 +588,10 @@ namespace UnityEngine.SceneManagement {
         public static Scene GetSceneByPath(string p) { return new Scene(); }
         public static void LoadScene(string n, LoadSceneMode m) { if (sceneLoaded != null) sceneLoaded(new Scene(), m); }
         public static UnityEngine.AsyncOperation UnloadSceneAsync(Scene s) { return null; }
+        public static UnityEngine.AsyncOperation LoadSceneAsync(string n, LoadSceneMode m) { return null; }
     }
 }
-namespace UnityEngine { public class AsyncOperation { } }
+namespace UnityEngine { public class AsyncOperation { public bool isDone { get { return true; } } } }
 namespace UnityEngine.UI {
     public class ButtonClickedEvent : UnityEngine.Events.UnityEvent { }
     public struct ColorBlock { public UnityEngine.Color normalColor, highlightedColor, pressedColor, selectedColor, disabledColor; }
@@ -591,7 +599,7 @@ namespace UnityEngine.UI {
     public class Graphic : UnityEngine.Behaviour { public UnityEngine.Color color; public bool raycastTarget; }
     public class Text : Graphic { string _text = ""; public string text { get { UnityEngine.MainThreadOnly.Check("Text.get_text"); return _text; } set { UnityEngine.MainThreadOnly.Check("Text.set_text"); _text = value; } } public int fontSize; public UnityEngine.Font font; public UnityEngine.TextAnchor alignment; }
     public class Image : Graphic { public enum Type { Simple, Sliced, Tiled, Filled } public Type type; public UnityEngine.Sprite sprite; public bool preserveAspect; public UnityEngine.RectTransform rectTransform; }
-    public class Button : Selectable { public ButtonClickedEvent onClick = new ButtonClickedEvent(); }
+    public class Button : Selectable { public class ButtonClickedEvent : UnityEngine.UI.ButtonClickedEvent { } public UnityEngine.UI.ButtonClickedEvent onClick = new ButtonClickedEvent(); }
 }
 
 namespace UnityEngine.Rendering {

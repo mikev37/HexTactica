@@ -26,6 +26,8 @@ public static class CampaignProgress {
         public MissionStars earned, gained;
         /// <summary>Its first win.</summary>
         public bool firstWin;
+        /// <summary>The campaigns (scene names) this win opened for the first time.</summary>
+        public List<string> unlockedCampaigns = new List<string>();
         /// <summary>The keys of the missions this win unlocked for the first time (the campaign screen shows the flags of those not already on the map appearing).</summary>
         public List<string> unlocked = new List<string>();
     }
@@ -33,10 +35,15 @@ public static class CampaignProgress {
     public const string FileName = "campaign.dat";
 
     static Dictionary<string, Entry> entries;
+    /// <summary>Campaigns (scene names) opened by a mission won.</summary>
+    static HashSet<string> campaigns = new HashSet<string>();
 
     /// <summary>The file progress is kept in. Set to "" to keep it in memory only (the headless checks).</summary>
     public static string FilePath = null;
     static string Path_ { get { return FilePath ?? Path.Combine(Application.persistentDataPath, FileName); } }
+
+    /// <summary>The campaign (scene name) last looked at or played, for this run: the hub opens looking at it.</summary>
+    public static string Focus = "";
 
     /// <summary>The result of the mission just played, waiting for the campaign screen to show it (null: nothing new).</summary>
     public static Outcome Pending;
@@ -101,11 +108,16 @@ public static class CampaignProgress {
                 ue.unlocked = true;
                 if (!was && !ue.blocked && !o.unlocked.Contains(u)) o.unlocked.Add(u);
             }
+            if (m.unlocksCampaigns != null) foreach (string c in m.unlocksCampaigns)
+                if (!string.IsNullOrEmpty(c) && campaigns.Add(c)) o.unlockedCampaigns.Add(c);
         }
         Save();
         Pending = o;
         return o;
     }
+
+    /// <summary>A campaign (its scene's name) opened by a mission won.</summary>
+    public static bool CampaignUnlocked(string campaign) { if (entries == null) Load(); return !string.IsNullOrEmpty(campaign) && campaigns.Contains(campaign); }
 
     /// <summary>The pending result, handed over once (the campaign screen plays it out).</summary>
     public static Outcome TakePending() { Outcome o = Pending; Pending = null; return o; }
@@ -113,6 +125,7 @@ public static class CampaignProgress {
     /// <summary>Forget everything: the campaign as new. (The file is rewritten empty, not deleted.)</summary>
     public static void Reset() {
         entries = new Dictionary<string, Entry>();
+        campaigns = new HashSet<string>();
         Pending = null;
         Save();
     }
@@ -120,10 +133,13 @@ public static class CampaignProgress {
     /// <summary>Read the file again (missing or unreadable: no progress).</summary>
     public static void Load() {
         entries = new Dictionary<string, Entry>();
+        campaigns = new HashSet<string>();
         string path = Path_;
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
         try {
             JSONObject obj = new JSONObject(File.ReadAllText(path));
+            JSONObject open = obj.GetField("campaigns");
+            if (open != null && open.list != null) foreach (JSONObject c in open.list) if (c != null && c.isString && !string.IsNullOrEmpty(c.stringValue)) campaigns.Add(c.stringValue);
             JSONObject list = obj.GetField("missions");
             if (list == null || list.list == null) return;
             foreach (JSONObject j in list.list) {
@@ -161,6 +177,11 @@ public static class CampaignProgress {
             JSONObject obj = new JSONObject(JSONObject.Type.Object);
             obj.AddField("version", 1);
             obj.AddField("missions", list);
+            JSONObject open = new JSONObject(JSONObject.Type.Array);
+            List<string> names = new List<string>(campaigns);
+            names.Sort(StringComparer.Ordinal);
+            foreach (string c in names) open.Add(JSONObject.CreateStringObject(c));
+            obj.AddField("campaigns", open);
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, obj.Print(true));
         } catch (Exception e) {
