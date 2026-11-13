@@ -3281,6 +3281,14 @@ PrefabInstance:
       propertyPath: outroLost.Array.data[0].Character
       value: Placeholder Commander
       objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: unlocksCampaigns.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: 'unlocksCampaigns.Array.data[0]'
+      value: Campaign 2
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
