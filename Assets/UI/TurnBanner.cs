@@ -49,7 +49,10 @@ public class TurnBanner : MonoBehaviour {
     /// </summary>
     /// <summary>What the end of the game says: "<paramref name="winner"/> wins", or "Draw" (no winner).</summary>
     public static string EndLine(Player winner) {
-        return winner != null ? winner.personal_name + " wins" : "Draw";
+        if (winner == null) return "Draw";
+        // Allies win together: "Blue and Green win".
+        string side = GameController.gc != null ? GameController.gc.WinnersName() : winner.personal_name;
+        return side != winner.personal_name && side.Length > 0 ? side + " win" : winner.personal_name + " wins";
     }
 
     public static string Line(Player p, int day, bool human, bool thinking = false) {

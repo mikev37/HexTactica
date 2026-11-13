@@ -411,7 +411,7 @@ namespace HexTactica.AI {
             foreach (Building b in Building.all) {
                 if (b == null || b.tile == null) continue;
                 Player owner = FogOfWar.OwnerAsSeen(map.player, b);
-                if (owner == map.player) continue;
+                if (!Player.Hostile(owner, map.player)) continue;   // ours, or an ally's
                 if (b.IsHQ && attrition) continue;   // out of play
                 list.Add(new CampaignObjective { kind = CampaignKind.Secure, target = b.tile, building = b, lasting = true });
             }
@@ -649,7 +649,7 @@ namespace HexTactica.AI {
                 enemyLand = new HashSet<int>();
                 foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) enemyLand.Add(map.LandOf(e.tile));
                 foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null) enemyLand.Add(map.LandOf(ph.last));
-                foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != null && b.owner != map.player) enemyLand.Add(map.LandOf(b.tile));
+                foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner != null && Player.Hostile(b.owner, map.player)) enemyLand.Add(map.LandOf(b.tile));
                 int all = 0; float dark = 0f;
                 foreach (HexTile t in AIPath.TilesInRangeShared(o.target, 0, far)) {
                     if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;

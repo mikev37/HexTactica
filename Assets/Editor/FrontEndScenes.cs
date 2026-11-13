@@ -26,7 +26,7 @@ static partial class FrontEndScenes {
     const string SettingsPath = "Assets/Resources/" + FrontEndSettings.ResourceName + ".asset";
     const string PreviewTexturePath = "Assets/FrontEnd/UnitPreview.renderTexture";
     const string PrefabFolder = "Assets/FrontEnd/Prefabs/";
-    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row", MissionFlagPrefab };
+    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Side Divider", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row", MissionFlagPrefab };
 
     static FrontEndScenes() { EditorApplication.delayCall += () => CreateMissing(false); }
 
@@ -72,6 +72,7 @@ static partial class FrontEndScenes {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
         FrontEndSettings s = Settings();
         UpdateScene<MapEditorPanel>(s.mapEditorScene, UpdateMapEditor);
+        UpdateScene<PreGameMenu>(s.preGameScene, UpdatePreGame);
         UpdateScene<PostGameScreen>(s.postGameScene, UpdatePostGame);
         UpdateScene<OptionsPanel>(s.mainMenuScene, UpdateOptions);
         UpdateScene<MainMenu>(s.mainMenuScene, UpdateMainMenu);
@@ -138,6 +139,13 @@ static partial class FrontEndScenes {
             if (rules != null) { Object.DestroyImmediate(rules.gameObject); m.fog = null; m.build = null; }
             done.Add("rule lists for fog, purchases and special units (players choose, or the map fixes them)");
         }
+        if (m.alliesRule == null && m.specialRule != null) {
+            // The Allies rule list, under the special units one.
+            Transform special = m.specialRule.transform.parent;
+            m.alliesRule = RuleRow(special.parent, "Allies Rule", "Allies");
+            m.alliesRule.transform.parent.SetSiblingIndex(special.GetSiblingIndex() + 1);
+            done.Add("Allies rule list (players choose, or the map fixes allies on or off)");
+        }
         Transform neutral = m.sideRow != null ? m.sideRow.transform.Find("Neutral") : null;
         if (neutral != null) { Object.DestroyImmediate(neutral.gameObject); done.Add("Neutral checkbox removed (Neutral is in the For list)"); }
     }
@@ -194,6 +202,18 @@ static partial class FrontEndScenes {
         m.fogRule = RuleRow(parent, "Fog Rule", "Fog of war");
         m.buildRule = RuleRow(parent, "Purchases Rule", "Purchases");
         m.specialRule = RuleRow(parent, "Special Units Rule", "Special units");
+        m.alliesRule = RuleRow(parent, "Allies Rule", "Allies");
+    }
+
+    /// <summary>The pre-game screen's Allies checkbox (under Faction special units) and the divider drawn between teams.</summary>
+    static void UpdatePreGame(PreGameMenu m, List<string> done) {
+        if (m.allies == null && m.specialUnits != null) {
+            Transform parent = m.specialUnits.transform.parent;
+            m.allies = Tog(parent, "Allies (sides on one team fight together)");
+            m.allies.transform.SetSiblingIndex(m.specialUnits.transform.GetSiblingIndex() + 1);
+            done.Add("Allies checkbox added");
+        }
+        if (m.sideDivider == null) { m.sideDivider = RowPrefab("Side Divider", DividerRow); done.Add("side divider prefab linked"); }
     }
 
     static TMP_Dropdown RuleRow(Transform parent, string name, string label) {
@@ -451,6 +471,8 @@ static partial class FrontEndScenes {
         m.fog = Tog(panel.transform, "Fog of war");
         m.build = Tog(panel.transform, "Build units (purchases at buildings)");
         m.specialUnits = Tog(panel.transform, "Faction special units");
+        m.allies = Tog(panel.transform, "Allies (sides on one team fight together)");
+        m.sideDivider = RowPrefab("Side Divider", DividerRow);
         m.specialNote = Text(panel.transform, "Special note", "", 20, TextAlignmentOptions.TopLeft, FontStyles.Italic);
         Spacer(panel.transform, true);
         GameObject buttons = Row(panel.transform, "Buttons", 64f);
@@ -814,6 +836,15 @@ static partial class FrontEndScenes {
         Size(locked.gameObject, 50f, -1f);
         r.lockedMark = locked.gameObject;
         return r;
+    }
+
+    /// <summary>The line drawn between one team's side rows and the next on the pre-game screen.</summary>
+    static RectTransform DividerRow(Transform parent) {
+        GameObject g = Go("Side Divider", parent, typeof(Image));
+        Image line = g.GetComponent<Image>();
+        line.sprite = Builtin("UISprite"); line.type = Image.Type.Sliced; line.color = new Color(Accent.r, Accent.g, Accent.b, 0.6f);
+        Size(g, -1f, 4f);
+        return (RectTransform)g.transform;
     }
 
     static PaletteButton PaletteRow(Transform parent) {

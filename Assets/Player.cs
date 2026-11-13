@@ -21,6 +21,27 @@ public class Player : MonoBehaviour
     [Tooltip("Off: this side is never knocked out (losing its HQ or its last unit does not end it), as a scenario's enemy that starts with nothing and is sent in by triggers. Saved with the scenario.")]
     public bool eliminable = true;
 
+    [Header("Allies")]
+    [Tooltip("The side this player fights on: players with the same number (not 0) are allies while the game's Allies rule is on (GameController.alliances). 0: on nobody's side but its own. Saved with the scenario.")]
+    public int team;
+
+    /// <summary>
+    /// Allies: two different players on the same team (not 0), while the game's Allies rule is on. Allies do not attack
+    /// each other or take each other's buildings, live on each other's supply, see what each other sees, and win together.
+    /// </summary>
+    public static bool Allied(Player a, Player b) {
+        return a != null && b != null && a != b && a.team != 0 && a.team == b.team && GameController.AlliancesOn;
+    }
+
+    /// <summary>The same player, or allies. (Nobody and nobody: true, as == is.)</summary>
+    public static bool Friendly(Player a, Player b) { return a == b || Allied(a, b); }
+
+    /// <summary>Not the same player and not allies: who may be fought and taken from. (A player and nobody: true, as != is.)</summary>
+    public static bool Hostile(Player a, Player b) { return a != b && !Allied(a, b); }
+
+    /// <summary>What players on one side share (the same for allies, different for everyone else): the team, or the player itself with none.</summary>
+    public object Side { get { return team != 0 && GameController.AlliancesOn ? (object)team : this; } }
+
     [Header("Turn telemetry (read by the harness)")]
     public int unitTurnsOutOfSupply;
     public int unitsLostToAttrition;
@@ -33,6 +54,9 @@ public class Player : MonoBehaviour
 
         SupplyNetwork.Result supply = SupplyNetwork.Solve(this, true);
         hubsStranded = supply.strandedHubs.Count;
+        // Our allies' supply as the board now stands: our units live on it too (HexTile.isSupplied).
+        if (team != 0 && GameController.gc != null && GameController.gc.players != null)
+            foreach (Player ally in GameController.gc.players) if (Allied(ally, this) && !ally.eliminated) ally.Resupply();
 
         // A stranded hub stands inside its own supply bubble, so a naive resupply
         // pass heals it by exactly the 1 point the drain just took — and it sustains
@@ -326,6 +350,8 @@ public struct PlayerData {
     public bool eliminated;
     /// <summary>The side can be knocked out (Player.eliminable). A file without it: true (ScenarioLoader reads it so).</summary>
     public bool eliminable;
+    /// <summary>The side it fights on (Player.team): players with the same number, not 0, are allies. A file without it: 0.</summary>
+    public int team;
     public PlayerData(Player t) {
         personal_name = t.personal_name;
         id = t.id;
@@ -338,6 +364,7 @@ public struct PlayerData {
         money = t.money;
         eliminated = t.eliminated;
         eliminable = t.eliminable;
+        team = t.team;
     }
 
     public Player load() {
@@ -364,6 +391,7 @@ public struct PlayerData {
         output.money = that.money;
         output.eliminated = that.eliminated;
         output.eliminable = that.eliminable;
+        output.team = that.team;
         if (AI && AIControl.Of(output) == null) {
             output.gameObject.AddComponent<AIPlayer>();
         }

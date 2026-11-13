@@ -15,6 +15,26 @@ A scenario file can carry a script: triggers (*when this happens, do these thing
 dialogue box, markers on tiles, camera moves, music, spawns, ownership changes and win or loss. See
 `Assets/Scenario/README.md`.
 
+## Allies
+
+A scenario can put sides on one team: each player's **Team** (on the Player, in the inspector; `"team"` in the file's
+players). Sides with the same number, not 0, are allies; 0 is on nobody's side. Teams are the scenario's, fixed for the
+game: there is no changing sides in play. The **Allies** rule (`"allies": "on"/"off"`, on by default; map editor ▸ Look ▸
+Allies: players choose, or the map fixes it on or off) turns them on or off as a whole. While it is on, allies:
+
+- do not fire on each other's units (`Player.Hostile`), and pass through each other's tiles as through their own;
+- do not take each other's buildings: an ally's infantry on a building counts as the owner's (it wears a capture down);
+- live on each other's supply: a unit in an ally's network is fed, healed and rearmed as in its own
+  (`HexTile.isSupplied`). Supply units relay only their own side's network, and a building services its owner's allies;
+- see what each other sees under fog of war, and always see each other's units;
+- win together: the game is over when the sides left are all allies (enemy HQs taken or enemy sides eliminated), and every
+  side of the winning team has won (`GameController.Won`), including one already knocked out.
+
+The AI treats an ally as neither friend to command nor enemy: it never targets an ally's units, HQ or buildings, does not
+count them in its forecasts or estimates of the enemy, and knows its units are fed on an ally's supply. It does not plan
+with its allies. Where allies come into the code: `Player.Allied/Friendly/Hostile`; tests `rule-allies`,
+`ai-allies-hold-fire`, `ai-allies-battle` (Blue and Green, a third side, against Red).
+
 ## Supply carried by transports, ships and aircraft
 
 A supply unit aboard something links to its side's network through what carries it (SupplyNetwork.CarriedLinked):

@@ -429,7 +429,7 @@ namespace HexTactica.AI {
         public static float CaptureBlockCost(Unit unit, HexTile stop, AIMap map) {
             return 0f;
             Building b = stop.building;
-            if (b == null || !b.Capturable || b.owner == unit.owner) return 0f;
+            if (b == null || !b.Capturable || !Player.Hostile(b.owner, unit.owner)) return 0f;
             foreach (Unit c in map.ownUnits) {
                 if (c == null || c == unit || c.tile == null || !Building.CanCapture(c) || c.moveRange <= 0) continue;
                 if (map.Travel(c, c.tile, stop) <= 2 * c.moveRange) return 0.5f * AIWorld.BuildingWorth(b, map);
@@ -767,7 +767,7 @@ namespace HexTactica.AI {
                 v += AIScore.Relief(map.Distress(t)) * worth;           // screen whoever is cut off
                 v += AIScore.Depth(map.SupplyDepth(t), profile) * worth * 0.1f;
                 if (objective != null && objective.tile != null) v += worth * 0.6f / (1 + t.Distance(objective.tile));
-                if (t.building != null && t.building.owner != unit.owner) v += worth * 0.4f;
+                if (t.building != null && Player.Hostile(t.building.owner, unit.owner)) v += worth * 0.4f;
                 v += StrategicBonus(unit, t, posture) * 0.6f;
                 // Fog of war: going to look at what nobody has seen lately.
                 v += AIFog.ScoutValue(unit, t, profile, map);

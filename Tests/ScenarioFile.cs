@@ -39,6 +39,8 @@ public static class ScenarioFile {
     public class Loaded {
         public Meta meta;
         public Player ai, other;
+        /// <summary>Every side the file has, Blue and Red first, then any others (a third side, allies), in file order.</summary>
+        public List<Player> sides = new List<Player>();
         public string path;
     }
 
@@ -117,7 +119,25 @@ public static class ScenarioFile {
             f = false;
             sb.Append('"').Append(kv.Key).Append("\":\"").Append(kv.Value.Replace("\"", "'")).Append('"');
         }
-        sb.Append("},\n\"tiles\":[");
+        sb.Append("}");
+        // Every side: Blue and Red, and any others the board has (a third side; teams for allies). Written as the game
+        // writes its players (PlayerData), only when there is more than Blue and Red to say, so older files stay as they were.
+        List<Player> sides = new List<Player> { ai, other };
+        foreach (Player p in Rig.gc.players) if (p != null && !sides.Contains(p)) sides.Add(p);
+        bool teams = sides.Exists(p => p.team != 0);
+        if (sides.Count > 2 || teams) {
+            sb.Append(",\n\"players\":[");
+            for (int i = 0; i < sides.Count; i++) {
+                Player p = sides[i];
+                Color c = p.id == AI_ID ? new Color(0.2f, 0.4f, 1f, 1f) : p.id == OTHER_ID ? new Color(1f, 0.25f, 0.2f, 1f) : SideColour(i);
+                sb.Append(i > 0 ? "," : "").Append(string.Format(CultureInfo.InvariantCulture,
+                    "\n{{\"personal_name\":\"{0}\",\"id\":{1},\"displayColor\":{{\"r\":{2},\"g\":{3},\"b\":{4},\"a\":1.0}},\"factionName\":\"\",\"AI\":{5},\"aiProfile\":\"\",\"factionLocked\":false,\"money\":{6},\"eliminated\":false,\"eliminable\":{7},\"team\":{8}}}",
+                    p.personal_name, p.id, c.r, c.g, c.b, p.id == AI_ID ? "true" : "false", p.money, p.eliminable ? "true" : "false", p.team));
+            }
+            sb.Append("\n]");
+            if (teams) sb.Append(",\n\"allies\":\"").Append(Rig.gc.AlliesSetting).Append("\"");
+        }
+        sb.Append(",\n\"tiles\":[");
         f = true;
         for (int x = -Board; x <= Board; x++) for (int y = -Board; y <= Board; y++) {
             int z = -x - y;
@@ -135,8 +155,8 @@ public static class ScenarioFile {
             if (b == null || b.tile == null) continue;
             if (!f) sb.Append(',');
             f = false;
-            long oid = b.owner == ai ? AI_ID : b.owner == other ? OTHER_ID : -1;
-            long cid = b.capturingPlayer == ai ? AI_ID : b.capturingPlayer == other ? OTHER_ID : -1;
+            long oid = b.owner != null ? b.owner.id : -1;
+            long cid = b.capturingPlayer != null ? b.capturingPlayer.id : -1;
             sb.Append(string.Format("\n{{\"x\":{0},\"y\":{1},\"z\":{2},\"gameobject_name\":\"{3}\",\"personal_name\":\"{4}\",\"type\":{5},\"owner_id\":{6},\"income\":{7},\"producesSupply\":{8},\"supplyRange\":{9},\"supplies\":{10},\"suppliesMax\":{11},\"damageLevel\":0,\"capturePoints\":{12},\"capturingPlayerId\":{13}}}",
                 b.tile.x, b.tile.y, b.tile.z, b.name.Replace("(Clone)", ""), b.personal_name, (int)b.type, oid, b.income, b.producesSupply ? "true" : "false", b.supplyRange, b.supplies, b.suppliesMax, b.capturePoints, cid));
         }
@@ -144,9 +164,9 @@ public static class ScenarioFile {
         f = true;
         // Every unit in file order first, so cargo can name its transport's place (transporterIndexPlusOne, as the game writes it).
         List<Unit> order = new List<Unit>();
-        foreach (Player p in new[] { ai, other }) foreach (Unit u in p.units) if (u != null && u.tile != null) order.Add(u);
+        foreach (Player p in sides) foreach (Unit u in p.units) if (u != null && u.tile != null) order.Add(u);
         foreach (Unit u in order) {
-            long id = u.owner == ai ? AI_ID : OTHER_ID;
+            long id = u.owner != null ? u.owner.id : OTHER_ID;
             if (!f) sb.Append(',');
             f = false;
             string prefab = u.name.Replace("(Clone)", "");
@@ -160,6 +180,12 @@ public static class ScenarioFile {
         sb.Append("\n}\n");
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         File.WriteAllText(path, sb.ToString());
+    }
+
+    /// <summary>A third side's colour onward (Blue and Red have theirs): green, gold, purple, ...</summary>
+    static Color SideColour(int i) {
+        Color[] c = { new Color(0.25f, 0.8f, 0.3f, 1f), new Color(0.95f, 0.8f, 0.2f, 1f), new Color(0.7f, 0.35f, 0.9f, 1f), new Color(0.2f, 0.85f, 0.85f, 1f) };
+        return c[Math.Max(0, i - 2) % c.Length];
     }
 
     // ------------------------------------------------------------------ reading
@@ -227,17 +253,27 @@ public static class ScenarioFile {
         }
         l.ai = Rig.AddPlayer("Blue", AI_ID);
         l.other = Rig.AddPlayer("Red", OTHER_ID);
+        // Any other sides, and every side's team (allies), from the file's players (older files: Blue and Red, no teams).
+        Dictionary<long, Player> byId = new Dictionary<long, Player> { { AI_ID, l.ai }, { OTHER_ID, l.other } };
+        l.sides.Add(l.ai); l.sides.Add(l.other);
+        foreach (Dictionary<string, string> pd in Array(json, "players")) {
+            long id; if (!pd.ContainsKey("id") || !long.TryParse(pd["id"], out id)) continue;
+            Player side;
+            if (!byId.TryGetValue(id, out side)) { side = Rig.AddPlayer(pd.ContainsKey("personal_name") ? pd["personal_name"] : "Side " + id, id); byId[id] = side; l.sides.Add(side); }
+            int team; if (pd.ContainsKey("team") && int.TryParse(pd["team"], out team)) side.team = team;
+        }
+        Func<long, Player> sideOf = id => { Player s; return byId.TryGetValue(id, out s) ? s : null; };
         foreach (Dictionary<string, string> b in Array(json, "buildings")) {
             HexTile at = Rig.hg.get(int.Parse(b["x"]), int.Parse(b["y"]), int.Parse(b["z"]));
             if (at == null || at.building != null) continue;
             long oid = b.ContainsKey("owner_id") ? long.Parse(b["owner_id"]) : -1;
-            Player owner = oid == AI_ID ? l.ai : oid == OTHER_ID ? l.other : null;
+            Player owner = sideOf(oid);
             Building made = Rig.PlaceBuilding(b["gameobject_name"].Replace("(Clone)", "").Trim(), owner, at.x, at.y);
             int n;
             if (b.ContainsKey("capturePoints") && int.TryParse(b["capturePoints"], out n) && (n > 0 || owner == null)) made.capturePoints = n;
             if (b.ContainsKey("supplies") && int.TryParse(b["supplies"], out n)) made.supplies = n;
             long cid = b.ContainsKey("capturingPlayerId") ? long.Parse(b["capturingPlayerId"]) : -1;
-            made.capturingPlayer = cid == AI_ID ? l.ai : cid == OTHER_ID ? l.other : null;
+            made.capturingPlayer = sideOf(cid);
         }
         foreach (HexTile c in cities) if (c.building == null) Rig.PlaceBuilding("City", null, c.x, c.y);
         // Units by their place in the file (null: none made); cargo (transporterIndexPlusOne, as the
@@ -245,7 +281,7 @@ public static class ScenarioFile {
         List<Unit> byIndex = new List<Unit>();
         List<KeyValuePair<Unit, int>> aboard = new List<KeyValuePair<Unit, int>>();
         foreach (Dictionary<string, string> u in Array(json, "units")) {
-            Player owner = long.Parse(u["owner_id"]) == AI_ID ? l.ai : l.other;
+            Player owner = sideOf(long.Parse(u["owner_id"])) ?? l.other;
             string prefab = u["gameobject_name"].Replace("(Clone)", "").Trim();
             HexTile at = Rig.hg.get(int.Parse(u["x"]), int.Parse(u["y"]), int.Parse(u["z"]));
             // TempHQ is retired: an HQ unit in an older file becomes the HQ building.
@@ -301,8 +337,11 @@ public static class ScenarioFile {
         // Fog of war: FOG=on|off, else the file's (test block or top level), else off.
         Rig.gc.fogOfWar = GameController.ParseFog(Environment.GetEnvironmentVariable("FOG") ?? l.meta.Get("fog", null) ?? top("fog"));
         FogOfWar.Reset();
+        // Allies: ALLIES=on|off, else the file's, else on (sides on one team are allies).
+        string allies = Environment.GetEnvironmentVariable("ALLIES") ?? top("allies");
+        Rig.gc.alliances = string.IsNullOrEmpty(allies) || GameController.ParseFog(allies);
         // A side the scenario keeps in (Player.eliminable: false in its players entry).
-        foreach (Player side in new[] { l.ai, l.other }) {
+        foreach (Player side in l.sides) {
             Match e = Regex.Match(json, "\"id\"\\s*:\\s*" + side.id + "\\s*,[^\\]]*?\"eliminable\"\\s*:\\s*(true|false)");
             if (e.Success) side.eliminable = e.Groups[1].Value == "true";
         }

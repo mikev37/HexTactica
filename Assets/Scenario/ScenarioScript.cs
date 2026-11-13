@@ -321,7 +321,7 @@ public class ScenarioScript : MonoBehaviour {
         long bits = 0;
         for (int i = 0; i < gc.players.Count && i < 63; i++) {
             Player p = gc.players[i];
-            if (p == null || p == u.owner) continue;
+            if (p == null || !Player.Hostile(p, u.owner)) continue;   // spotted by its enemies (allies always see it)
             if (FogOfWar.SeesAt(p, u, at)) bits |= 1L << i;
         }
         return bits;

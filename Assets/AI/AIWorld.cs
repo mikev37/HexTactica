@@ -558,7 +558,7 @@ namespace HexTactica.AI {
             lock (stealthSeen) any = stealthSeen.Contains(us);
             if (!any) foreach (Unit e in map.enemyUnits) if (e != null && e.stealthRange > 0) { any = true; lock (stealthSeen) stealthSeen.Add(us); break; }
             if (!any) foreach (Building x in Building.all) {
-                if (x == null || x.owner == null || x.owner == us || !x.CanProduce) continue;
+                if (x == null || x.owner == null || !Player.Hostile(x.owner, us) || !x.CanProduce) continue;
                 foreach (Unit t in x.Purchasable()) if (t != null && t.stealthRange > 0) { any = true; break; }
                 if (any) break;
             }
@@ -676,7 +676,7 @@ namespace HexTactica.AI {
                 // (buildingVacantShare of it), one where our infantry stands on it more (buildingOccupyShare), and
                 // twice that where it is capturing (on it without having attacked). The enemy HQ, worth the board,
                 // counts most. (A grunt had to be told to stay on the enemy HQ; the world did not say so.)
-                if (b.owner != us && (map.profile.buildingVacantShare > 0f || map.profile.buildingOccupyShare > 0f)) {
+                if (Player.Hostile(b.owner, us) && (map.profile.buildingVacantShare > 0f || map.profile.buildingOccupyShare > 0f)) {
                     bool enemyOn = bs.enemyEnds.Contains(bt);
                     bool capturing = ourStrength > 0 || (ourInfantry && !touched);
                     float hold = (enemyOn ? 0f : map.profile.buildingVacantShare) + (ourInfantry ? map.profile.buildingOccupyShare * (capturing ? 2f : 1f) : 0f);

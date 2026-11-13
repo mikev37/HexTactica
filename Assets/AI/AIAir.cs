@@ -308,7 +308,7 @@ namespace HexTactica.AI {
                 HexTile t = q.Dequeue();
                 foreach (HexTile n in t.neighbors) {
                     if (n == null || d.ContainsKey(n) || !u.CanEnter(n)) continue;
-                    if (n.occupier != null && n.occupier.owner != u.owner) continue;
+                    if (n.occupier != null && Player.Hostile(n.occupier.owner, u.owner)) continue;
                     d[n] = d[t] + 1;
                     q.Enqueue(n);
                 }

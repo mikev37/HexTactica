@@ -90,6 +90,8 @@ public class LevelEditor : MonoBehaviour
             json += ",\n\"fog\":\"" + GameController.gc.FogSetting + "\"";
             // Faction special units (GameController inspector, the pre-game screen).
             json += ",\n\"factionSpecialUnits\":\"" + GameController.gc.SpecialUnitsSetting + "\"";
+            // Allies: players on the same team (each player's "team") fight on one side (GameController inspector, the pre-game screen).
+            json += ",\n\"allies\":\"" + GameController.gc.AlliesSetting + "\"";
             // The rules the map fixes (the pre-game screen shows them and cannot change them).
             json += ",\n\"fixedRules\":\"" + GameController.gc.FixedRulesSetting + "\"";
             // The rule set (standard, attrition, sandbox: GameController inspector).

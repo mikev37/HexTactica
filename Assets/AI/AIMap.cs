@@ -289,11 +289,11 @@ namespace HexTactica.AI {
             for (int i = 0; i < all.Count; i++) {
                 Unit u = all[i];
                 if (u == null || u.tile == null || u.Strength <= 0) continue;
-                if (u.owner == player) ownUnits.Add(u); else enemyUnits.Add(u);
+                if (u.owner == player) ownUnits.Add(u); else if (Player.Hostile(u.owner, player)) enemyUnits.Add(u);   // (an ally's: neither)
 
                 SupplyPoint sp = u.Hub;
                 if (sp != null) {
-                    if (u.owner == player) ownHubs.Add(sp); else enemyHubs.Add(sp);
+                    if (u.owner == player) ownHubs.Add(sp); else if (Player.Hostile(u.owner, player)) enemyHubs.Add(sp);
                 }
             }
 
@@ -1153,7 +1153,7 @@ namespace HexTactica.AI {
                 float mine = 0, theirs = 0;
                 foreach (KeyValuePair<Player, Heat> kv in t.threat) {
                     if (kv.Key == player) mine += kv.Value.firepower;
-                    else theirs += kv.Value.firepower;
+                    else if (Player.Hostile(kv.Key, player)) theirs += kv.Value.firepower;
                 }
                 float c = mine * theirs;
                 if (c > 0) conflict[t] = c;
@@ -1309,7 +1309,7 @@ namespace HexTactica.AI {
             int bestDistance = int.MaxValue;
             for (int i = 0; i < Building.all.Count; i++) {
                 Building b = Building.all[i];
-                if (b == null || b.tile == null || b.owner == player) continue;
+                if (b == null || b.tile == null || !Player.Hostile(b.owner, player)) continue;
                 int d = from.Distance(b.tile);
                 if (d < bestDistance || (d == bestDistance && best != null && CombatMath.Precedes(b.tile, best.tile))) {
                     best = b;

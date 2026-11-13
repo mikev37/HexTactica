@@ -452,7 +452,7 @@ namespace HexTactica.AI {
         public static bool Threatened(Unit u, AIMap map) {
             if (u == null || u.tile == null) return false;
             // Capturing a building (standing on one not ours): kept in supply as if in contact.
-            if (Building.CanCapture(u) && u.tile.building != null && u.tile.building.owner != map.player) return true;
+            if (Building.CanCapture(u) && u.tile.building != null && Player.Hostile(u.tile.building.owner, map.player)) return true;
             if (map.TurnsToContact(u) <= 1) return true;
             return map.sigint != null && map.sigint.Loss(u, u.tile, false) > 0f;
         }
