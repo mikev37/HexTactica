@@ -29,7 +29,7 @@ public class CampaignScreen : MonoBehaviour {
     public class CampaignSlot {
         [Tooltip("The campaign's scene (it must be in the build). This scene itself may be listed, to place its own map.")]
         [CampaignScene] public string scene = "";
-        [Tooltip("Where its map stands, in maps: 0,0 is the hub's own map's place, 1,0 the next place to its right, 0,-1 the place below it.")]
+        [Tooltip("Where its map's middle stands, in steps of the hub's own map's size (plus Map Gap): 0,0 is the hub's own map's place, 1,0 the next place to its right, 0,-1 the place below it.")]
         public Vector2 at;
     }
 
@@ -40,7 +40,7 @@ public class CampaignScreen : MonoBehaviour {
     public RectTransform flags;
     [Tooltip("Other campaign scenes, loaded with this one and laid out beside its map. In this order on the tabs, after this scene's own map if it is not listed.")]
     public List<CampaignSlot> campaigns = new List<CampaignSlot>();
-    [Tooltip("The empty space between neighbouring maps, as a fraction of a map's size.")]
+    [Tooltip("The empty space between neighbouring places, as a fraction of the hub's own map's size. Each map keeps its own size: a map larger than the hub's may need its place further out.")]
     public float mapGap = 0.08f;
     [Tooltip("The flag colour of a mission with no faction.")]
     public Color noFactionColor = Color.white;
@@ -176,15 +176,17 @@ public class CampaignScreen : MonoBehaviour {
         }
         map.SetParent(world, false);
 
-        // Lay the maps out, each where its entry puts it (a map's own size, plus the gap, per step).
-        Vector2 size = world.rect.size;
+        // Lay the maps out, each at its own size (a map stretched over its window takes the window's), where its entry
+        // puts it: a step is the hub's own map's size plus the gap.
+        Vector2 step = map.rect.size;
         foreach (CampaignMap m in maps) {
             RectTransform rt = (RectTransform)m.transform;
-            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.offsetMin = rt.offsetMax = Vector2.zero;
+            Vector2 mapSize = rt.rect.size;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = mapSize;
             rt.localScale = Vector3.one;
             Vector2 at = place[m];
-            rt.anchoredPosition = new Vector2(at.x * size.x * (1f + mapGap), at.y * size.y * (1f + mapGap));
+            rt.anchoredPosition = new Vector2(at.x * step.x * (1f + mapGap), at.y * step.y * (1f + mapGap));
         }
 
         // The missions, and what the last one played changed.

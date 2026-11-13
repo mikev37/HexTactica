@@ -60,8 +60,10 @@ building registry and camera rig now install only in a scene with a GameControll
 
 - **Campaigns are scenes; the Campaign scene is the hub.** Its own map is one campaign (the tutorials, *Training*).
   Its CampaignScreen's **Campaigns** list names other campaign scenes (picked from the scenes in the build) and
-  where each map stands, in maps: 1,0 is just right of the hub's own map, 0,-1 just below it (*Map Gap* apart). The
-  hub loads them all with itself, moves their maps into one view, and lets the rest of each scene go.
+  where each map stands, in steps of the hub's own map's size: 1,0 is just right of the hub's own map, 0,-1 just
+  below it (*Map Gap* apart). Each map keeps its own size (the hub's is a 1920x1920 square; a map stretched over its
+  window takes the window's size). The hub loads them all with itself, moves their maps into one view, and lets the
+  rest of each scene go.
   - Each campaign's **Map** has a **CampaignMap**: its tab name (*Title*), *Available At Start*, and its *Flags*.
     A campaign not available at start opens when a mission whose **Unlocks Campaigns** names it is won: the
     view is taken to its map as it appears, with its tab, then back.
