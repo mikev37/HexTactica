@@ -1451,8 +1451,10 @@ namespace HexTactica.AI {
         /// forecasts ask for a reach already worked out. (AIVERIFY checks every remembered one against a fresh one.)
         /// </summary>
         static HashSet<HexTile> ReachAfter(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, AIMap map) {
+            // Its field on the board as read, repaired for each board below.
+            MoveField before = BaseField(e, map);
             // A unit driven back stands elsewhere for this option only: nothing remembered from or for that board.
-            if (knocked != null) return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false);
+            if (knocked != null) return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false, e == knocked ? null : before);
             if (reachMemo == null || reachMemoMap != map || reachMemoVersion != map.SpaceVersion) {
                 reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>();
                 reachMemoMap = map; reachMemoVersion = map.SpaceVersion;
@@ -1470,15 +1472,15 @@ namespace HexTactica.AI {
                 if (moving && t == uAt) filled = null;
                 if (e.tile.Distance(t) <= near) k.Add(t);
             }
-            if (k.overflow) return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false);
+            if (k.overflow) return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false, before);
             // With nothing of ours on the tile it takes: enough unless that tile is one the enemy could stand on.
             HashSet<HexTile> r0;
             if (!reachMemo.TryGetValue(k, out r0)) {
-                if (filled == null) r0 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false);
+                if (filled == null) r0 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false, before);
                 else {
                     // (Our unit off the board for this one: it has left its tile and stands on no other.)
                     HashSet<Unit> g2 = new HashSet<Unit>(gone); g2.Add(u);
-                    r0 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, g2, false);
+                    r0 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, g2, false, before);
                 }
                 reachMemo[k] = r0;
             } else if (AIMap.Verify && filled == null) AIMap.CountCheck("reach after losses", !PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false).SetEquals(r0));
@@ -1488,7 +1490,7 @@ namespace HexTactica.AI {
             }
             k.filled = filled;
             HashSet<HexTile> r1;
-            if (!reachMemo.TryGetValue(k, out r1)) { r1 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false); reachMemo[k] = r1; }
+            if (!reachMemo.TryGetValue(k, out r1)) { r1 = PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false, before); reachMemo[k] = r1; }
             else if (AIMap.Verify) AIMap.CountCheck("reach after losses", !PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, false).SetEquals(r1));
             return r1;
         }
@@ -1526,6 +1528,11 @@ namespace HexTactica.AI {
         [ThreadStatic] static int reachMemoVersion;
 
         static HashSet<HexTile> PositionsOnBoard(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, bool ownSideBlocks = false) {
+            return PositionsOnBoard(e, u, from, uAt, moving, stopWas, gone, ownSideBlocks, null);
+        }
+        /// <param name="before">e's field on the board as read (BaseField), to repair rather than search afresh: the board
+        /// here differs from that one only on the tiles changed here and, with a unit driven back, the two it moved between.</param>
+        static HashSet<HexTile> PositionsOnBoard(Unit e, Unit u, HexTile from, HexTile uAt, bool moving, Unit stopWas, HashSet<Unit> gone, bool ownSideBlocks, MoveField before) {
             Dictionary<HexTile, Unit> restore = new Dictionary<HexTile, Unit>();
             try {
                 if (moving) { restore[from] = from.occupier; restore[uAt] = uAt.occupier; from.occupier = null; uAt.occupier = u; }
@@ -1534,6 +1541,15 @@ namespace HexTactica.AI {
                     if (t == null || t.occupier != g) continue;
                     if (!restore.ContainsKey(t)) restore[t] = t.occupier;
                     t.occupier = null;
+                }
+                if (before != null) {
+                    List<HexTile> changed = new List<HexTile>(restore.Keys);
+                    if (knocked != null) { changed.Add(knockedFrom); changed.Add(knocked.tile); }
+                    MoveField f = AIPath.RepairThisTurn(before, e, changed);
+                    HashSet<HexTile> r;
+                    try { r = PositionsIn(e, f, ownSideBlocks); } finally { AIPath.Release(f); }
+                    if (AIMap.Verify) AIMap.CountCheck("reach repaired", !Positions(e, ownSideBlocks).SetEquals(r));
+                    return r;
                 }
                 return Positions(e, ownSideBlocks);
             } finally {
@@ -1560,18 +1576,41 @@ namespace HexTactica.AI {
         }
 
         internal static HashSet<HexTile> Positions(Unit e, bool ownSideBlocks = false) {
+            if (!e.moveAndAttack) return PositionsIn(e, null, ownSideBlocks);
+            MoveField f = AIPath.ThisTurn(e);
+            try { return PositionsIn(e, f, ownSideBlocks); } finally { AIPath.Release(f); }
+        }
+        static HashSet<HexTile> PositionsIn(Unit e, MoveField f, bool ownSideBlocks) {
             HashSet<HexTile> positions = new HashSet<HexTile>();
             positions.Add(e.tile);
-            if (e.moveAndAttack) {
-                MoveField f = AIPath.ThisTurn(e);
-                foreach (HexTile p in f.Tiles) {
-                    if (p == e.tile || !f.ReachableThisTurn(p) || !e.CanEnter(p)) continue;
-                    // Free, or held by its own side (which can move off).
-                    if (p.occupier == null || (!ownSideBlocks && p.occupier.owner == e.owner)) positions.Add(p);
-                }
-                AIPath.Release(f);
+            if (f == null) return positions;
+            foreach (HexTile p in f.Tiles) {
+                if (p == e.tile || !f.ReachableThisTurn(p) || !e.CanEnter(p)) continue;
+                // Free, or held by its own side (which can move off).
+                if (p.occupier == null || (!ownSideBlocks && p.occupier.owner == e.owner)) positions.Add(p);
             }
             return positions;
         }
+
+        /// <summary>
+        /// <paramref name="e"/>'s field this turn on the board as read, kept for the board read (per thread) to repair
+        /// for each option's board (PositionsOnBoard). Made only on that board: never while a unit is driven back.
+        /// </summary>
+        static MoveField BaseField(Unit e, AIMap map) {
+            if (!e.moveAndAttack) return null;
+            if (baseFields == null || baseFieldsMap != map || baseFieldsVersion != map.SpaceVersion) {
+                baseFields = new Dictionary<Unit, MoveField>();
+                baseFieldsMap = map; baseFieldsVersion = map.SpaceVersion;
+            }
+            MoveField f;
+            if (baseFields.TryGetValue(e, out f)) return f;
+            if (knocked != null) return null;
+            f = AIPath.ThisTurn(e);
+            baseFields[e] = f;
+            return f;
+        }
+        [ThreadStatic] static Dictionary<Unit, MoveField> baseFields;
+        [ThreadStatic] static AIMap baseFieldsMap;
+        [ThreadStatic] static int baseFieldsVersion;
     }
 }

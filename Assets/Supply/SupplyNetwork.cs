@@ -152,13 +152,24 @@ public static class SupplyNetwork {
         // The relay below asks a carrier's move reach again on every pass until nothing changes: worked out once per solve
         // (nothing moves during one).
         Dictionary<ReachKey, HashSet<HexTile>> outer = reachMemo;
-        reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>();
+        if (outer == null) reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>();
         try { return SolveOnce(player, applyDrain, movedHub, hypotheticalTile, excluded, staticOnly, moved, onlyMoved); }
         finally { reachMemo = outer; }
     }
+
+    /// <summary>
+    /// Carriers' move reaches kept until the scope is disposed, across every solve in it: for a planner that solves
+    /// many hypothetical placements on one board (nothing on the board may move inside the scope).
+    /// </summary>
+    public static System.IDisposable KeepReach() { return new ReachScope(); }
+    sealed class ReachScope : System.IDisposable {
+        readonly Dictionary<ReachKey, HashSet<HexTile>> outer = reachMemo;
+        public ReachScope() { if (outer == null) reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>(); }
+        public void Dispose() { reachMemo = outer; }
+    }
     struct ReachKey : System.IEquatable<ReachKey> {
-        public Unit mover; public HexTile at;
-        public bool Equals(ReachKey o) { return ReferenceEquals(mover, o.mover) && ReferenceEquals(at, o.at); }
+        public Unit mover; public HexTile at; public int range, steps;
+        public bool Equals(ReachKey o) { return ReferenceEquals(mover, o.mover) && ReferenceEquals(at, o.at) && range == o.range && steps == o.steps; }
         public override bool Equals(object o) { return o is ReachKey && Equals((ReachKey)o); }
         public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(mover) * 31 + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(at); }
     }
@@ -593,8 +604,11 @@ public static class SupplyNetwork {
     /// </summary>
     static HashSet<HexTile> MoveReach(Unit mover, HexTile at) {
         HashSet<HexTile> reach;
-        ReachKey k = new ReachKey { mover = mover, at = at };
-        if (reachMemo != null && reachMemo.TryGetValue(k, out reach)) return reach;
+        ReachKey k = new ReachKey { mover = mover, at = at, range = HexTactica.AI.AIPath.RangeThisTurn(mover), steps = HexTactica.AI.AIPath.StepBudget(mover) };
+        if (reachMemo != null && reachMemo.TryGetValue(k, out reach)) {
+            if (HexTactica.AI.AIMap.Verify) { Dictionary<ReachKey, HashSet<HexTile>> m = reachMemo; reachMemo = null; HexTactica.AI.AIMap.CountCheck("carrier reach", !MoveReach(mover, at).SetEquals(reach)); reachMemo = m; }
+            return reach;
+        }
         reach = new HashSet<HexTile>();
         reach.Add(at);
         HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurnFrom(mover, at, HexTactica.AI.AIPath.RangeThisTurn(mover));

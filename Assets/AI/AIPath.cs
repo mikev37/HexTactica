@@ -66,6 +66,9 @@ namespace HexTactica.AI {
         public IEnumerable<HexTile> Tiles { get { return eta.Keys; } }
         public int Count { get { return eta.Count; } }
 
+        /// <summary>Every tile's arrival (AIPath.RepairThisTurn copies a field it starts from).</summary>
+        internal Dictionary<HexTile, Eta> Etas { get { return eta; } }
+
         public bool Reachable(HexTile t) {
             return t != null && eta.ContainsKey(t);
         }
@@ -85,6 +88,8 @@ namespace HexTactica.AI {
             HexTile p;
             return (t != null && cameFrom.TryGetValue(t, out p)) ? p : null;
         }
+
+        internal void Remove(HexTile t) { eta.Remove(t); cameFrom.Remove(t); }
 
         internal void Set(HexTile t, Eta e, HexTile from) {
             eta[t] = e;
@@ -336,6 +341,105 @@ namespace HexTactica.AI {
             }
 
             return field;
+        }
+
+        /// <summary>
+        /// ThisTurn(<paramref name="mover"/>) on the board as it is now, from <paramref name="before"/>: the same field
+        /// worked out on a board that differed only in who stands on <paramref name="changed"/> (a single-turn field
+        /// depends on occupants only through which tiles it may pass). A tile it can no longer pass loses its arrival,
+        /// and so does every tile its field reached through it; those, and tiles it may now pass, are searched again
+        /// from the arrivals that stand (Dijkstra from there: the same arrivals as a search from scratch).
+        /// </summary>
+        public static MoveField RepairThisTurn(MoveField before, Unit mover, ICollection<HexTile> changed) {
+            long __p = AIPerf.Begin();
+            try { return Repair(before, mover, changed); }
+            finally { AIPerf.End("path: AIPath.RepairThisTurn", __p); }
+        }
+
+        static MoveField Repair(MoveField before, Unit mover, ICollection<HexTile> changed) {
+            MoveField field;
+            if (pool.Count > 0) { field = pool.Pop(); field.Reset(mover); } else field = new MoveField(mover);
+            foreach (KeyValuePair<HexTile, Eta> kv in before.Etas) field.Set(kv.Key, kv.Value, before.ParentOf(kv.Key));
+            int range = RangeThisTurn(mover);
+            int stepBudget = StepBudget(mover);
+            List<HexTile> again = new List<HexTile>();
+            Dictionary<HexTile, List<HexTile>> children = null;
+            foreach (HexTile c in changed) {
+                if (c == null || c == mover.tile) continue;
+                bool pass = CanPassThrough(mover, c, false);
+                if (pass) { if (!before.Reachable(c)) again.Add(c); continue; }
+                if (!field.Reachable(c)) continue;
+                if (children == null) {
+                    children = new Dictionary<HexTile, List<HexTile>>();
+                    foreach (HexTile t in before.Etas.Keys) {
+                        HexTile p = before.ParentOf(t);
+                        if (p == null) continue;
+                        List<HexTile> l; if (!children.TryGetValue(p, out l)) children[p] = l = new List<HexTile>();
+                        l.Add(t);
+                    }
+                }
+                Stack<HexTile> todo = new Stack<HexTile>();
+                todo.Push(c);
+                while (todo.Count > 0) {
+                    HexTile t = todo.Pop();
+                    if (!field.Reachable(t)) continue;
+                    field.Remove(t);
+                    again.Add(t);
+                    List<HexTile> l; if (children.TryGetValue(t, out l)) foreach (HexTile x in l) todo.Push(x);
+                }
+            }
+            if (again.Count == 0) return field;
+            AIHeap<HexTile> open = scratchOpen;
+            open.Clear();
+            HashSet<HexTile> closed = scratchClosed;
+            closed.Clear();
+            // Each tile to search again starts from its best neighbour whose arrival stands.
+            foreach (HexTile t in again) {
+                if (field.Reachable(t) || !CanPassThrough(mover, t, false)) continue;
+                Eta best = Eta.Unreachable; HexTile from = null;
+                List<HexTile> ns = t.neighbors;
+                for (int i = 0; i < ns.Count; i++) {
+                    HexTile n = ns[i];
+                    if (n == null) continue;
+                    Eta here = field.Get(n);
+                    if (here.IsUnreachable) continue;
+                    Eta cand;
+                    if (!Step(mover, n, t, here, range, stepBudget, out cand)) continue;
+                    if (cand.CompareTo(best) < 0) { best = cand; from = n; }
+                }
+                if (from == null) continue;
+                field.Set(t, best, from);
+                open.Push(t, best.Key);
+            }
+            // Newly passable tiles also improve on what stands: they are sources like the others.
+            while (open.Count > 0) {
+                HexTile current = open.Pop();
+                if (closed.Contains(current)) continue;
+                closed.Add(current);
+                Eta here = field.Get(current);
+                List<HexTile> neighbors = current.neighbors;
+                for (int i = 0; i < neighbors.Count; i++) {
+                    HexTile next = neighbors[i];
+                    if (next == null || closed.Contains(next) || !CanPassThrough(mover, next, false)) continue;
+                    Eta cand;
+                    if (!Step(mover, current, next, here, range, stepBudget, out cand)) continue;
+                    if (cand.CompareTo(field.Get(next)) < 0) {
+                        field.Set(next, cand, current);
+                        open.Push(next, cand.Key);
+                    }
+                }
+            }
+            return field;
+        }
+
+        /// <summary>One step of a single-turn search (ComputeField's rule with no turn after this one).</summary>
+        static bool Step(Unit mover, HexTile from, HexTile to, Eta here, int range, int stepBudget, out Eta cand) {
+            cand = Eta.Unreachable;
+            if (here.turns > 0) return false;
+            int cost = StepCost(mover, from, to);
+            if (cost == int.MaxValue || here.used + cost > range) return false;
+            cand = new Eta { turns = 0, used = here.used + cost, steps = here.steps + 1 };
+            return cand.steps <= stepBudget;
         }
 
         /// <summary>
