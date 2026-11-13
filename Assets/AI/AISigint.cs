@@ -4,8 +4,8 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// What the fog may hide, priced as tonight's risk (AIProfile.fogThreat), for an AI that plays
-    /// by the fog (AIProfile.fogFair). Without it the AI treated every tile it could not see as
+    /// What the fog may hide, priced as tonight's risk, for an AI that plays
+    /// by the fog. Without it the AI treated every tile it could not see as
     /// empty: gunships flew into an anti-air unit it had never seen, and a supply unit parked next
     /// to a wall of fog as if nothing could be in it.
     ///
@@ -57,7 +57,7 @@ namespace HexTactica.AI {
         public static AISigint Build(AIMap map) {
             FogOfWar.Knowledge k = FogOfWar.current;
             AIProfile p = map.profile;
-            if (k == null || k.player != map.player || p == null || !p.fogThreat) return null;
+            if (k == null || k.player != map.player || p == null) return null;
             AISigint s = new AISigint(p);
             s.map = map;
             s.BuildZones(k, map);
@@ -69,10 +69,10 @@ namespace HexTactica.AI {
         AIMap map;
 
         /// <summary>
-        /// How much unknown ground is feared: with fogUncertainty and the turn's estimate of the enemy (AIMap.fogUncertainty),
+        /// How much unknown ground is feared: and the turn's estimate of the enemy (AIMap.fogUncertainty),
         /// the share of the enemy's forces we cannot place; otherwise 1 - fogAggression.
         /// </summary>
-        float UnknownWeight { get { return profile.fogUncertainty && map != null && map.fogUncertainty >= 0f ? map.fogUncertainty : 1f - Mathf.Clamp01(profile.fogAggression); } }
+        float UnknownWeight { get { return map != null && map.fogUncertainty >= 0f ? map.fogUncertainty : 1f - Mathf.Clamp01(profile.fogAggression); } }
 
         void BuildZones(FogOfWar.Knowledge k, AIMap map) {
             foreach (FogOfWar.Phantom ph in k.phantoms) {
@@ -105,7 +105,6 @@ namespace HexTactica.AI {
         }
 
         void BuildUnknown(FogOfWar.Knowledge k, AIMap map) {
-            if (profile.fogAggression >= 1f && !profile.fogUncertainty) return;
             kinds.AddRange(k.enemyKinds);
             if (kinds.Count == 0) {
                 // Nothing of theirs seen yet: assume they field what we do.

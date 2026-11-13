@@ -92,7 +92,7 @@ namespace HexTactica.AI {
             return Evaluate(u, stop, shot, map, cache, narrate, false);
         }
 
-        /// <summary>The enemy unit our shot is forecast to drive back, while Evaluate runs (forecastKnockback).</summary>
+        /// <summary>The enemy unit our shot is forecast to drive back, while Evaluate runs.</summary>
         [ThreadStatic] static Unit knocked;
         [ThreadStatic] static HexTile knockedFrom;
 
@@ -104,9 +104,7 @@ namespace HexTactica.AI {
             // duration of the forecast.
             Unit t = shot.valid ? shot.target : null;
             HexTile rt = null, was = null;
-            if (map.profile.forecastKnockback && t != null && t.tile != null && t.moveRange > 0 && knocked == null
-                && shot.outcome.defenderRetreats && !shot.outcome.defenderPinned && !shot.outcome.defenderDies
-                && t.Strength - shot.outcome.damageToDefender > 0) {
+            if (t != null && t.tile != null && t.moveRange > 0 && knocked == null && shot.outcome.defenderRetreats && !shot.outcome.defenderPinned && !shot.outcome.defenderDies && t.Strength - shot.outcome.damageToDefender > 0) {
                 Dictionary<Unit, float> alive = new Dictionary<Unit, float>();
                 foreach (Unit x in map.ownUnits) if (x != null && x.tile != null) alive[x] = x.Strength;
                 foreach (Unit x in map.enemyUnits) if (x != null && x.tile != null) alive[x] = x.Strength;
@@ -136,7 +134,7 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// The units the forecast plays out (profile.theaterForecast; null: every unit). Units outside
+        /// The units the forecast plays out (null: every unit). Units outside
         /// stand and score as they are, the same for every option of the unit deciding.
         /// </summary>
         [ThreadStatic] static HashSet<Unit> Theater;
@@ -431,7 +429,7 @@ namespace HexTactica.AI {
             AIPerf.End("forecast: next-turn strikes", __t); __t = AIPerf.Begin();
             if (space && (prof.spaceTileValue > 0f || prof.spaceSupplyValue > 0f || prof.enemyUnsuppliedValue > 0f || prof.artilleryCoverValue > 0f || prof.coverTileValue > 0f)) Space(w, u, uAt, from, moving, map, positions, hp);
             AIPerf.End("forecast: space", __t); __t = AIPerf.Begin();
-            if (prof.forecastBuildings && Building.all.Count > 0) Buildings(w, u, uAt, from, shot, map, positions, hp, endsAt, narrate);
+            if (Building.all.Count > 0) Buildings(w, u, uAt, from, shot, map, positions, hp, endsAt, narrate);
             AIPerf.End("forecast: buildings", __t);
             return w;
         }

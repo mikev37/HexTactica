@@ -15,6 +15,10 @@ namespace HexTactica.AI {
     /// or just bought this turn, worth a little less each time, so the army stays mixed.
     /// </summary>
     public static class AIProduction {
+        /// <summary>How a valuation for the sea lift begins its reason: purchasing may save for such a ship (SaveTarget).
+        /// A wrapper that replaces the reason drops that.</summary>
+        const string SeaLiftTag = "sea lift: ";
+
 
         /// <summary>Harness tracing of candidate values.</summary>
         public static System.Action<string> DebugValues;
@@ -583,7 +587,7 @@ namespace HexTactica.AI {
                         // The army short of its share is short because these cannot get there: the same pull.
                         if (ReserveShort > 0f) tv *= (1f + ReserveShort) * profile.productionFrontWeight;
                         if (DebugValues != null) DebugValues(GameController.UnitName(t) + " at " + sl.tile.x + "," + sl.tile.y + " for the sea lift: " + tv.ToString("0") + " (" + counted + " units)");
-                        if (tv > 0f) return new KeyValuePair<float, string>(tv, "sea lift: " + counted + " land units to take across the water");
+                        if (tv > 0f) return new KeyValuePair<float, string>(tv, SeaLiftTag + counted + " land units to take across the water");
                     }
                 }
                 // A troop transport: what it adds to the riders waiting for room (the nearest of them, as many as
@@ -700,6 +704,15 @@ namespace HexTactica.AI {
                 System.Func<Unit, Slot, KeyValuePair<float, string>> baseWorth = worth;
                 worth = (t, sl) => proc.Worth(t, sl, baseWorth(t, sl));
                 if (trace != null) trace("   " + p.personal_name + " procurement: " + proc.Describe());
+            }
+            // The persona's taste in units (AIProfile.BuyPreference, by what a unit can do): 1 changes nothing.
+            {
+                System.Func<Unit, Slot, KeyValuePair<float, string>> plain = worth;
+                worth = (t, sl) => {
+                    KeyValuePair<float, string> w = plain(t, sl);
+                    float k = profile.BuyPreference(t);
+                    return k == 1f || w.Key <= 0f ? w : new KeyValuePair<float, string>(w.Key * k, w.Value);
+                };
             }
             // Each facility buys now or saves, from its own budget (Budgets below); nothing else buys.
             bool budgeted = proc != null;
@@ -1463,7 +1476,7 @@ namespace HexTactica.AI {
                     if (w.Key <= 0f) continue;
                     float r = w.Key / t.cost;
                     if (t.cost <= money) { bestAfford = Mathf.Max(bestAfford, r); continue; }
-                    bool supply = Kind(t) != 0, transit = w.Value != null && w.Value.StartsWith("sea lift"), gap = Kind(t) == 0 && FillsGap(t, sl.tile);
+                    bool supply = Kind(t) != 0, transit = w.Value != null && w.Value.StartsWith(SeaLiftTag, System.StringComparison.Ordinal), gap = Kind(t) == 0 && FillsGap(t, sl.tile);
                     if (!supply && !transit && !gap) continue;
                     int turns = Mathf.CeilToInt((t.cost - money) / (float)Mathf.Max(1, income));
                     // (A supply unit may always be saved for: on a poor map a supply unit is the one thing worth waiting for.)

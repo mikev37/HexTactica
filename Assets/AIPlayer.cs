@@ -120,7 +120,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
 
     /// <summary>Seconds the thought under way has been running, or -1 when none is (the AI is acting, or it is not its turn). For the screen (TurnBanner).</summary>
     public bool IsPlaying { get { return enabled; } }
-    public bool FogFair { get { return Profile != null && Profile.fogFair; } }
+    public bool FogFair { get { return Profile != null; } }
     public float ThinkingFor { get { return thinking != null && !thinking.IsCompleted ? Time.unscaledTime - thinkingSince : -1f; } }
     int thinkingGeneration, generation;
     /// <summary>The last action changed the board: the next thought reads it again first (AIMap.RefreshAfterAction).</summary>
@@ -598,13 +598,13 @@ public class AIPlayer : MonoBehaviour, IAIController {
     }
 
     /// <summary>
-    /// Fog of war, playing by it (AIProfile.fogFair): every decision is made on the board as this
+    /// Fog of war, playing by it: every decision is made on the board as this
     /// side knows it — enemies it does not see are off the board, those seen lately stand where they
     /// were last seen (FogOfWar.Conceal). Actions are carried out on the real board, outside it.
     /// </summary>
     /// <summary>
     /// The board this AI thinks on, copied now (main thread): as this side knows it under fog of war
-    /// (AIProfile.fogFair), else as it is. Its simulations change only the copy.
+    ///, else as it is. Its simulations change only the copy.
     /// </summary>
     /// <summary>Fighting units an empty transport has set out to fetch this turn (AIAssault.Fetch): one transport each.</summary>
     readonly HashSet<Unit> soughtRiders = new HashSet<Unit>();
@@ -880,11 +880,11 @@ public class AIPlayer : MonoBehaviour, IAIController {
         knowledge.Update(map, Profile);
         map.knowledge = knowledge;
         // How much of the enemy we cannot place: the fog's unknown ground is feared by that share (AISigint).
-        if (Profile.fogUncertainty) map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
+        map.fogUncertainty = knowledge.estimate > 0f ? Mathf.Clamp01(1f - knowledge.known / knowledge.estimate) : 0f;
         map.fogUnplacedPower = Mathf.Max(0f, knowledge.estimate - knowledge.known);
         map.fogKnownAtStart = new HashSet<Unit>(map.enemyUnits);
         if (map.sigint != null) { string note = map.sigint.Prime(); if (Trace != null && note != null) Trace("   fog: " + note); }
-        if (Trace != null) Trace("   " + knowledge + (Profile.fogUncertainty ? "; unknown ground feared at " + map.fogUncertainty.ToString("0.00") : ""));
+        if (Trace != null) Trace("   " + knowledge + ("; unknown ground feared at " + map.fogUncertainty.ToString("0.00")));
         // What each unit does for its side, for this turn's forecasts.
         roleWorth = null;
         AIWorld.Roles = roleWorth;
@@ -936,7 +936,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             // The campaign's scouts are pulled to the ground they are to look at.
             foreach (CampaignObjective o in campaign.objectives)
                 if (o.kind == CampaignKind.Scout) foreach (Unit u in o.units) assignments[u] = new Objective { kind = ObjectiveKind.Scout, tile = o.target, value = o.value, committed = true };
-        } else AIObjectives.AssignScouts(assignments, map, Profile);
+        }
         if (Trace != null) foreach (KeyValuePair<Unit, Objective> kv in assignments)
             if (kv.Value.kind == ObjectiveKind.Scout) Trace("   scout " + kv.Key.name.Replace("(Clone)", "") + " (" + kv.Key.tile.x + "," + kv.Key.tile.y + ") -> (" + kv.Value.tile.x + "," + kv.Value.tile.y + ") sees " + kv.Value.value.ToString("0.0"));
         objectivePulls += assignments.Count;
@@ -1179,7 +1179,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         a = map != null && unit != null ? AIAir.Guard(unit, a, map) : a;
         // A transport with riders whose assault move was set aside for the ordinary one (a tile held for a supply link or a
         // landing; the guard): that is a fallback, and its riders decide for themselves.
-        if (unit != null && Transporting.IsTransport(unit) && AIAssault.Riders(unit).Count > 0 && (a.reason == null || !a.reason.StartsWith("assault") && !a.reason.StartsWith("medevac") && !a.reason.StartsWith("holds the line") && !a.reason.StartsWith("sea lift"))) {
+        if (unit != null && Transporting.IsTransport(unit) && AIAssault.Riders(unit).Count > 0 && !a.forRiders) {
             AIAssault.FellBack.Add(unit);
             if (Trace != null) Trace("   " + unit.name.Replace("(Clone)", "") + D(unit.tile) + ": its move is not its assault ride (" + a.reason + "): its riders decide for themselves");
         }
@@ -1580,7 +1580,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 AIAction? ra = AIAssault.TransportAction(unit, goal, rf != null && rf.posture == Posture.Aggressive, map, Profile, !attacking);
                 AIPerf.End("assault: transport with riders", __as);
                 if (Trace != null) Trace("   assault ride: " + unit.name.Replace("(Clone)", "") + " goal " + D(goal) + (ra.HasValue ? " -> " + ra.Value.kind + " (" + ra.Value.reason + ")" : " -> nothing: decides as it would empty"));
-                if (ra.HasValue) return ra.Value;
+                if (ra.HasValue) { AIAction r = ra.Value; r.forRiders = true; return r; }
             }
         }
         if (Transporting.IsTransport(unit) && unit.Firepower > 1) {

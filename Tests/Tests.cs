@@ -90,7 +90,6 @@ public static class Tests {
             return 0;
         }
         if (probe == "accuracy") { Scenarios.Accuracy(tweak); return 0; }
-        if (probe == "equiv") { Scenarios.Equivalence(Environment.GetEnvironmentVariable("FILE")); return 0; }
         if (probe == "export-rules") { Console.WriteLine(Scenarios.ExportBuildingRules() + " rule files"); return 0; }
         if (probe == "export-zigzag") { Scenarios.ExportZigzag(); Console.WriteLine("logistics-zigzag.dat"); return 0; }
         if (probe == "logistics") {
@@ -131,10 +130,6 @@ public static class Tests {
         if (probe == "bench") {
             Scenarios.Bench(Tweak(Environment.GetEnvironmentVariable("SET_A")), Tweak(Environment.GetEnvironmentVariable("SET_B")),
                             Environment.GetEnvironmentVariable("SET_A") ?? "defaults", Environment.GetEnvironmentVariable("SET_B") ?? "defaults");
-            return 0;
-        }
-        if (probe == "analyze") {
-            Scenarios.Analyze(Environment.GetEnvironmentVariable("FILE"), int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"));
             return 0;
         }
         if (probe == "perf") {
