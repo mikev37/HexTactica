@@ -243,6 +243,7 @@ public static partial class Scenarios {
             for (int f = 0; f < 2; f++) for (int k = 0; k < n(fields[f] + ".Array.size"); k++) {
                 string r; links[f].Add(reference.TryGetValue(fields[f] + ".Array.data[" + k + "]", out r) ? r : "0");
             }
+            for (int k = 0; k < n("unlocksCampaigns.Array.size"); k++) info.unlocksCampaigns.Add(v("unlocksCampaigns.Array.data[" + k + "]"));
             refs[info] = links;
             byInstance[inst.Groups[1].Value] = info;
             float ax, ay;
@@ -325,6 +326,7 @@ public static partial class Scenarios {
             CampaignProgress.Finish(t1, new MissionTally { recorded = false, won = true });
             bool notLost = MissionRating.Count(CampaignProgress.Get(t1).stars) == 3;
             // Tutorial 2, with the result of the game just played.
+            bool closedFirst = !CampaignProgress.CampaignUnlocked("Campaign 2");
             CampaignProgress.Attempt(t2);
             CampaignProgress.Outcome played = CampaignProgress.Finish(t2, tally);
             MissionStars expected = MissionStars.None;
@@ -342,8 +344,32 @@ public static partial class Scenarios {
             bool fork = open && CampaignProgress.Blocked(right) && !CampaignProgress.Playable(right) && CampaignProgress.Visible(right) && !CampaignProgress.Blocked(done) && CampaignProgress.Playable(left);
             // Read back from its file.
             CampaignProgress.Load();
-            bool saved = File.Exists(file) && CampaignProgress.Get(t1).completed && MissionRating.Count(CampaignProgress.Get(t1).stars) == 3 && CampaignProgress.Get(t1).bestTurns == t1.parTurns
+            bool savedCampaigns = CampaignProgress.CampaignUnlocked("Campaign 2");
+            bool saved = savedCampaigns && File.Exists(file) && CampaignProgress.Get(t1).completed && MissionRating.Count(CampaignProgress.Get(t1).stars) == 3 && CampaignProgress.Get(t1).bestTurns == t1.parTurns
                       && CampaignProgress.Playable(t2) && CampaignProgress.Get(t2).stars == expected && CampaignProgress.Blocked(right) && CampaignProgress.Get(left).attempted;
+            // Several campaigns: Tutorial 2 opens Campaign 2, a scene of its own the hub lists and loads (the scenes as they are).
+            string scenes = Path.Combine(PrefabLoader.Root(".."), "Scenes");
+            string hub = File.ReadAllText(Path.Combine(scenes, "Campaign.unity")).Replace("\r\n", "\n");
+            string second = File.Exists(Path.Combine(scenes, "Campaign 2.unity")) ? File.ReadAllText(Path.Combine(scenes, "Campaign 2.unity")).Replace("\r\n", "\n") : "";
+            string build = File.ReadAllText(Path.Combine(Path.Combine(Path.Combine(PrefabLoader.Root(".."), ".."), "ProjectSettings"), "EditorBuildSettings.asset"));
+            string mapGuid = Regex.Match(File.ReadAllText(Path.Combine(Path.Combine(Path.Combine(PrefabLoader.Root(".."), "FrontEnd"), "Campaign"), "CampaignMap.cs.meta")), @"^guid: (\w+)", RegexOptions.Multiline).Groups[1].Value;
+            Func<string, string> mapOf = scene => { Match cm = Regex.Match(scene, @"  m_Script: \{fileID: 11500000, guid: " + mapGuid + @", type: 3\}\n(?:  .*\n)*?  availableAtStart: (\d)\n  flags: \{fileID: (\d+)\}"); return cm.Success ? cm.Groups[1].Value + "/" + cm.Groups[2].Value : ""; };
+            bool scenesWired = t2.unlocksCampaigns.Count == 1 && t2.unlocksCampaigns[0] == "Campaign 2" && t1.unlocksCampaigns.Count == 0
+                            && Regex.IsMatch(hub, @"  campaigns:\n  - scene: Campaign 2\n    at: \{x: 1, y: 0\}") && mapOf(hub) == "1/733062130"
+                            && mapOf(second).StartsWith("0/") && second.Contains("--- !u!224 &" + mapOf(second).Substring(2) + "\n")
+                            && build.Contains("path: Assets/Scenes/Campaign 2.unity") && build.IndexOf("Scenes/Campaign.unity") < build.IndexOf("Scenes/Campaign 2.unity");
+            bool opened = played.unlockedCampaigns.Count == 1 && played.unlockedCampaigns[0] == "Campaign 2" && CampaignProgress.CampaignUnlocked("Campaign 2");
+            CampaignProgress.Outcome again = CampaignProgress.Finish(t2, tally);
+            bool openedOnce = again.unlockedCampaigns.Count == 0 && CampaignProgress.CampaignUnlocked("Campaign 2");
+            MissionInfo t2back = MissionInfo.FromJson(new Defective.JSON.JSONObject(t2.ToJson().Print()));
+            bool campaignsKept = t2back != null && t2back.unlocksCampaigns.Count == 1 && t2back.unlocksCampaigns[0] == "Campaign 2";
+            // The view over several maps (MapView.ClampBounds): two 1920x1080 maps side by side, the second at x = 2073.6 (gap 0.08).
+            Vector2 vw = new Vector2(1920f, 1080f);
+            Vector2 lo = new Vector2(-960f, -540f), hi = new Vector2(2073.6f + 960f, 540f);
+            bool reachSecond = Near(MapView.ClampBounds(MapView.CentreOn(new Vector2(0f, 0f), new Vector2(2073.6f, 0f), 1f), lo, hi, 1f, vw), new Vector2(-2073.6f, 0f));   // the second map's middle can be centred
+            bool stopsAtEdges = Near(MapView.ClampBounds(new Vector2(5000f, 0f), lo, hi, 1f, vw), new Vector2(0f, 0f)) && Near(MapView.ClampBounds(new Vector2(-9000f, 0f), lo, hi, 1f, vw), new Vector2(-2073.6f, 0f));
+            bool oneMapPinned = Near(MapView.ClampBounds(new Vector2(300f, -200f), new Vector2(-960f, -540f), new Vector2(960f, 540f), 1f, vw), new Vector2(0f, 0f));   // one map, unzoomed: no room
+            bool campaignsOk = scenesWired && closedFirst && opened && openedOnce && campaignsKept && reachSecond && stopsAtEdges && oneMapPinned;
             // The map's pan and zoom (MapView): a 1920x1080 map in a view its size.
             Vector2 view = new Vector2(1920f, 1080f);
             bool pinned = Near(MapView.Clamp(new Vector2(300f, -200f), new Vector2(0f, 0f), view, 1f, view), new Vector2(0f, 0f));              // unzoomed: no room to pan
@@ -356,13 +382,15 @@ public static partial class Scenarios {
             bool centres = Near(centred + MapView.Local(new Vector2(0.75f, 0.25f), new Vector2(0.5f, 0.5f), view) * 2f, new Vector2(0f, 0f));
             bool mapView = pinned && panRoom && aboutCursor && centres;
             CampaignProgress.Reset();
-            bool reset = !CampaignProgress.Visible(t2) && !CampaignProgress.Get(t1).completed && CampaignProgress.Playable(t1);
+            bool reset = !CampaignProgress.Visible(t2) && !CampaignProgress.Get(t1).completed && CampaignProgress.Playable(t1) && !CampaignProgress.CampaignUnlocked("Campaign 2");
             detail = "mission files in the campaign folder, not among the scenarios " + files + "; the flags in the Campaign scene, Tutorial 1 unlocking Tutorial 2 " + linked + ", each pinned to its spot " + placed + ", kept whole by a save " + stamped + "; only Tutorial 1 on the map at first " + atFirst
                    + "; lost: nothing " + lostNothing + "; won: one star, Tutorial 2 unlocked, handed to the campaign screen once " + unlocked + "; won again: stars added, kept " + kept + ", not lost by a worse win " + notLost
                    + "; this game against Tutorial 2's pars (" + t2.parTurns + " turns, " + t2.parKills + " killed, " + t2.parLosses + " lost): " + MissionRating.Count(played.earned) + " stars " + rated
                    + "; a fork closes the other mission, not one already won " + fork + "; saved and read back " + saved + "; reset " + reset
+                   + "; campaigns: Tutorial 2 opens Campaign 2, listed by the hub, its map closed at first, in the build " + scenesWired + ", closed until won " + closedFirst + ", opened by the win " + opened + ", once " + openedOnce + ", kept by a save " + campaignsKept
+                   + ", the view reaches the second map " + reachSecond + ", stops at the outer edges " + stopsAtEdges + ", one map pinned " + oneMapPinned
                    + "; map pan and zoom: pinned unzoomed " + pinned + ", room at 2x " + panRoom + ", zooms about the cursor " + aboutCursor + ", centres a mission " + centres;
-            return files && linked && placed && stamped && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView;
+            return files && linked && placed && stamped && campaignsOk && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView;
         } finally {
             CampaignProgress.FilePath = fileWas;
             CampaignProgress.Pending = null;

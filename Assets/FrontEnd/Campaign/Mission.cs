@@ -6,6 +6,7 @@ using UnityEngine;
 /// MissionFlag look). Where it stands on the map is where it is placed. It holds the scenario it plays, whose point
 /// of view it is told from (the flag's colour), what it says before and after, what it opens when won and closes when
 /// attempted (other flags of the same scene, dragged in), and the pars its three stars are earned against.
+/// It may also open other campaigns (Unlocks Campaigns: their scenes' names).
 /// Each campaign is its own scene; a mission's progress is kept under its scene and its name (renaming either
 /// forgets it). The scenario itself is a file in the campaign's folder (FrontEndSettings.campaignFolders), so it is
 /// not listed under Load Scenario.
@@ -42,6 +43,8 @@ public class Mission : MonoBehaviour {
     public List<Mission> unlocks = new List<Mission>();
     [Tooltip("Missions (flags in this scene) closed for good once this one is attempted (started, whether won or not): a fork in the road. One already won stays won.")]
     public List<Mission> blocks = new List<Mission>();
+    [Tooltip("Campaigns (their scenes) opened when this one is won: their maps and tabs appear on the campaign screen.")]
+    [CampaignScene] public List<string> unlocksCampaigns = new List<string>();
 
     [Header("Stars (earned only by winning)")]
     [Tooltip("Speed: won within this many of the player's turns. 0: this mission has no speed star.")]
@@ -54,7 +57,14 @@ public class Mission : MonoBehaviour {
     /// <summary>Its name on the flag: Title, or the object's name.</summary>
     public string Title { get { return string.IsNullOrEmpty(title) ? name : title; } }
 
-        string Scene { get { return gameObject.scene.IsValid() ? gameObject.scene.name : ""; } }
+        /// <summary>Its campaign: the CampaignMap it stands on (its scene's name), else its scene's name.</summary>
+    string Scene {
+        get {
+            CampaignMap map = GetComponentInParent<CampaignMap>(true);
+            if (map != null) return map.Id;
+            return gameObject.scene.IsValid() ? gameObject.scene.name : "";
+        }
+    }
 
     /// <summary>What its progress is kept under: its scene and its name.</summary>
     public string Key { get { return MissionInfo.KeyOf(Scene, name); } }
@@ -70,6 +80,7 @@ public class Mission : MonoBehaviour {
             m.faction = faction;
             if (unlocks != null) foreach (Mission u in unlocks) if (u != null && u != this) m.unlocks.Add(u.Key);
             if (blocks != null) foreach (Mission b in blocks) if (b != null && b != this) m.blocks.Add(b.Key);
+            if (unlocksCampaigns != null) foreach (string c in unlocksCampaigns) if (!string.IsNullOrEmpty(c) && !m.unlocksCampaigns.Contains(c)) m.unlocksCampaigns.Add(c);
             return m;
         }
     }

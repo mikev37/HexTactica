@@ -19,6 +19,21 @@ public static class MapView {
     }
 
     /// <summary>
+    /// The position of a world (a rectangle holding several maps, its pivot in the middle of the view) that keeps the
+    /// view over the maps: <paramref name="min"/> and <paramref name="max"/> are the maps' extent in the world's own
+    /// units. Along an axis where they are smaller than the view, they are centred.
+    /// </summary>
+    public static Vector2 ClampBounds(Vector2 at, Vector2 min, Vector2 max, float scale, Vector2 viewSize) {
+        return new Vector2(Axis(at.x, min.x, max.x, scale, viewSize.x), Axis(at.y, min.y, max.y, scale, viewSize.y));
+    }
+
+    static float Axis(float at, float min, float max, float scale, float view) {
+        // A world point p shows at at + p * scale, the view running from -view/2 to view/2.
+        if ((max - min) * scale <= view) return -(min + max) * 0.5f * scale;
+        return Mathf.Clamp(at, view * 0.5f - max * scale, -view * 0.5f - min * scale);
+    }
+
+    /// <summary>
     /// The position that keeps <paramref name="local"/> (a point on the map, in its own unscaled units from its pivot)
     /// where it is on screen when the scale goes from <paramref name="fromScale"/> to <paramref name="toScale"/>:
     /// zooming about the cursor.

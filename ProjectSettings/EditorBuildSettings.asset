@@ -30,6 +30,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Campaign.unity
     guid: b6cb4e2aab36ac64fb7131c7fdaf7380
   - enabled: 1
+    path: Assets/Scenes/Campaign 2.unity
+    guid: 939bc1811d794db889dc31a738cf7d10
+  - enabled: 1
     path: Assets/Scenes/MissionBrief.unity
     guid: fb77c30172214104b982c4b3ae0718ee
   - enabled: 1

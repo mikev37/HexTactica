@@ -21,6 +21,8 @@ public class MissionInfo {
     public bool availableAtStart;
     public List<string> unlocks = new List<string>();
     public List<string> blocks = new List<string>();
+    /// <summary>Campaigns (their scenes' names) opened when it is won.</summary>
+    public List<string> unlocksCampaigns = new List<string>();
     public int parTurns, parKills, parLosses;
 
     [NonSerialized] Faction factionCache;
@@ -49,7 +51,7 @@ public class MissionInfo {
         j.AddField("scenario", Str(scenario)); j.AddField("faction", Str(factionName));
         j.AddField("briefing", Str(briefing)); j.AddField("objectives", Str(objectives));
         j.AddField("availableAtStart", availableAtStart);
-        j.AddField("unlocks", List(unlocks)); j.AddField("blocks", List(blocks));
+        j.AddField("unlocks", List(unlocks)); j.AddField("blocks", List(blocks)); j.AddField("unlocksCampaigns", List(unlocksCampaigns));
         j.AddField("parTurns", parTurns); j.AddField("parKills", parKills); j.AddField("parLosses", parLosses);
         return j;
     }
@@ -61,7 +63,7 @@ public class MissionInfo {
             key = Text(j, "key"), campaignScene = Text(j, "campaignScene"), title = Text(j, "title"), scenario = Text(j, "scenario"),
             factionName = Text(j, "faction"), briefing = Text(j, "briefing"), objectives = Text(j, "objectives"),
             availableAtStart = j.GetField("availableAtStart") != null && j.GetField("availableAtStart").boolValue,
-            unlocks = Texts(j, "unlocks"), blocks = Texts(j, "blocks"),
+            unlocks = Texts(j, "unlocks"), blocks = Texts(j, "blocks"), unlocksCampaigns = Texts(j, "unlocksCampaigns"),
             parTurns = Number(j, "parTurns"), parKills = Number(j, "parKills"), parLosses = Number(j, "parLosses")
         };
         return string.IsNullOrEmpty(m.key) ? null : m;

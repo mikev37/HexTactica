@@ -58,9 +58,21 @@ building registry and camera rig now install only in a scene with a GameControll
 
 ## Campaign
 
-- **A campaign is a scene** (the Campaign scene, or one made with *HexTactica ▸ Campaign ▸ New Campaign Scene...*,
-  which copies a campaign scene with its map emptied and adds it to the build). The main menu's Campaign button opens
-  `FrontEndSettings.campaignScene`; a mission's way out returns to the campaign scene it was started from.
+- **Campaigns are scenes; the Campaign scene is the hub.** Its own map is one campaign (the tutorials, *Training*).
+  Its CampaignScreen's **Campaigns** list names other campaign scenes (picked from the scenes in the build) and
+  where each map stands, in maps: 1,0 is just right of the hub's own map, 0,-1 just below it (*Map Gap* apart). The
+  hub loads them all with itself, moves their maps into one view, and lets the rest of each scene go.
+  - Each campaign's **Map** has a **CampaignMap**: its tab name (*Title*), *Available At Start*, and its *Flags*.
+    A campaign not available at start opens when a mission whose **Unlocks Campaigns** names it is won: the
+    view is taken to its map as it appears, with its tab, then back.
+  - **Tabs** across the top, one per open campaign (hidden while only one is open), jump to that campaign; panning
+    goes straight across from one map to the next. The tab of the campaign in view is greyed. The tabs copy the
+    screen's Main menu button unless *Tab Template* (and *Tabs*, the row) are set.
+  - The hub opens on the campaign of the mission just played, else the one last looked at, else the first open.
+    Playing a campaign scene on its own opens the hub looking at it.
+  - *HexTactica ▸ Campaign ▸ New Campaign Scene...* makes a campaign scene (a canvas with a placeholder map, its
+    Flags and its CampaignMap, closed at start), adds it to the build and to the hub's Campaigns to the right of
+    the last one. The main menu's Campaign button opens the hub (`FrontEndSettings.campaignScene`).
 - **A mission is a flag placed in that scene:** drag the *Mission Flag* prefab (`FrontEnd/Prefabs`) under the map's
   **Flags** object and put it where it belongs on the picture. Its **Mission** component holds the rest:
   - title, scenario (a file in `Assets/Resources/Campaign/Scenarios`, `FrontEndSettings.campaignFolders`, so
@@ -76,8 +88,8 @@ building registry and camera rig now install only in a scene with a GameControll
 - **Placing:** the map stretches with the screen's shape, so a flag keeps its exact spot on the picture when its
   anchors sit on it. The Tutorial flags are set that way (anchors on the spot, position 0). After dragging a flag, use
   **Pin To Map** on the Mission component's ⋮ menu to move its anchors to where it stands.
-- **Progress is kept by scene and object name** ("Campaign/Tutorial 1"): renaming a mission's object or its scene
-  forgets its progress. Two missions in one scene must not share a name (*Check Missions* says so).
+- **Progress is kept by campaign scene and object name** ("Campaign/Tutorial 1"): renaming a mission's object or its
+  scene forgets its progress. Opened campaigns are kept by scene name in the same file. Two missions in one scene must not share a name (*Check Missions* says so).
 - **Stars** (only for a win): **Speed** — won within *Par Turns* of the player's turns (0: no speed star);
   **Aggression** — at least *Par Kills* enemy units destroyed; **Defense** — at most *Par Losses* own units lost.
   Read from the game log (`GameRecord`), as the post-game report is, so they hold across saves. A game that was not
@@ -93,7 +105,8 @@ building registry and camera rig now install only in a scene with a GameControll
 - **Moving around the map** works as on the game board: the wheel (or + / -) zooms about the cursor, the right or
   middle mouse button drags it, the arrow keys pan, and Home shows the whole map. The view never leaves the picture.
   Flags keep their size on screen as you zoom (*Flags Keep Size*), so zooming in spreads crowded flags apart.
-  *Max Zoom* (4 by default), *Zoom Step* and *Pan Speed* are on the scene's CampaignScreen. When a mission unlocks
+  *Max Zoom* (4 by default), *Zoom Step* and *Pan Speed* are on the hub's CampaignScreen; Home shows the whole of
+  the campaign in view. When a mission unlocks
   another, the view zooms onto it and then glides back to where you were looking.
 - **The map picture** is a placeholder colour: give the Campaign scene's *Map* object's Image your picture (and
   delete the *Placeholder Note*). Flag, star, tick and cross art are white placeholders in `Sprites/UI/Widgets`.
