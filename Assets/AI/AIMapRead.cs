@@ -192,15 +192,27 @@ namespace HexTactica.AI {
         /// cache's, for an enemy far from the unit deciding), so each is worked out once per board.
         /// </summary>
         public HashSet<HexTile>[] EnemySpace(Unit e, HashSet<HexTile> positions) {
-            KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]> kv;
             // No move tiles handed in (a unit that does not fire tonight): its reach on the board as
             // it stands, which is the same for every forecast on this board.
-            lock (cacheLock) if (enemySpace.TryGetValue(e, out kv) && ReferenceEquals(kv.Key, positions)) return kv.Value;
-            HashSet<HexTile>[] s = SpaceFrom(e, e.tile, positions);
-            lock (cacheLock) enemySpace[e] = new KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>(positions, s);
+            Dictionary<HashSet<HexTile>, HashSet<HexTile>[]> bySet;
+            HashSet<HexTile>[] s;
+            HashSet<HexTile> key = positions ?? NoPositions;
+            lock (cacheLock) {
+                if (!enemySpace.TryGetValue(e, out bySet)) enemySpace[e] = bySet = new Dictionary<HashSet<HexTile>, HashSet<HexTile>[]>(ReferenceComparer.Instance);
+                if (bySet.TryGetValue(key, out s)) return s;
+            }
+            s = SpaceFrom(e, e.tile, positions);
+            lock (cacheLock) { HashSet<HexTile>[] had; if (bySet.TryGetValue(key, out had)) return had; bySet[key] = s; }
             return s;
         }
-        readonly Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>> enemySpace = new Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>>();
+        static readonly HashSet<HexTile> NoPositions = new HashSet<HexTile>();
+        /// <summary>Move-tile sets by identity (the forecasts hand in the same set objects again).</summary>
+        sealed class ReferenceComparer : IEqualityComparer<HashSet<HexTile>> {
+            public static readonly ReferenceComparer Instance = new ReferenceComparer();
+            public bool Equals(HashSet<HexTile> a, HashSet<HexTile> b) { return ReferenceEquals(a, b); }
+            public int GetHashCode(HashSet<HexTile> a) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(a); }
+        }
+        readonly Dictionary<Unit, Dictionary<HashSet<HexTile>, HashSet<HexTile>[]>> enemySpace = new Dictionary<Unit, Dictionary<HashSet<HexTile>, HashSet<HexTile>[]>>();
 
         public HashSet<HexTile>[] SpaceOf(Unit x) {
             HashSet<HexTile>[] s;
