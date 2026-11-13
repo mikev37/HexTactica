@@ -600,6 +600,7 @@ GameObject:
   - component: {fileID: 4995755912186962340}
   - component: {fileID: 5253454414723984350}
   - component: {fileID: 3389582422068840453}
+  - component: {fileID: 7364205516402891153}
   - component: {fileID: 294179695735563224}
   m_Layer: 5
   m_Name: Mission Flag
@@ -608,6 +609,32 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &7364205516402891153
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3718294514905684263}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f12e048022d4e9682801042839c042d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Mission
+  title: 
+  scenario: 
+  faction: {fileID: 0}
+  availableAtStart: 0
+  intro: []
+  briefing: 
+  objectives: 
+  outro: []
+  outroLost: []
+  unlocks: []
+  blocks: []
+  parTurns: 0
+  parKills: 0
+  parLosses: 0
 --- !u!224 &440116831460846396
 RectTransform:
   m_ObjectHideFlags: 0

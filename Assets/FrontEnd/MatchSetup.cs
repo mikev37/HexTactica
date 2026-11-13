@@ -39,7 +39,9 @@ public static class MatchSetup {
 
     public static SessionMode Mode;
     /// <summary>The campaign mission being played (null: an ordinary game): the briefing and result screens stand in for the pre-game and post-game ones, and the way out leads to the campaign screen.</summary>
-    public static Mission Mission;
+    public static MissionInfo Mission;
+    /// <summary>The campaign scene the last mission was started from: where the way out of a mission leads ("" none: FrontEndSettings.campaignScene).</summary>
+    public static string CampaignScene = "";
     /// <summary>The scenario or save being set up, played or edited ("" none: the map editor on the scene's own board).</summary>
     public static string FilePath = "";
     public static readonly List<Side> Sides = new List<Side>();
@@ -65,17 +67,25 @@ public static class MatchSetup {
     /// Open the game scene on a campaign mission's scenario, with the mission's briefing over it. False (and nothing
     /// opened) when its scenario file is not in the campaign's folders.
     /// </summary>
-    public static bool PlayMission(Mission mission) {
+    public static bool PlayMission(MissionInfo mission) {
         string path = mission != null ? GameFiles.CampaignScenarioPath(mission.ScenarioName) : null;
         if (path == null) return false;
+        if (!string.IsNullOrEmpty(mission.campaignScene)) CampaignScene = mission.campaignScene;
         Open(SessionMode.Setup, path, mission);
         return true;
     }
 
-    /// <summary>Leave the game (or the main menu) for the campaign screen.</summary>
-    public static void ToCampaign() { Leave(FrontEndSettings.Get.campaignScene); }
+    /// <summary>Leave the game for the campaign screen the mission came from (from the main menu: the default campaign).</summary>
+    public static void ToCampaign() {
+        string scene = Mission != null && !string.IsNullOrEmpty(Mission.campaignScene) ? Mission.campaignScene
+                     : !string.IsNullOrEmpty(CampaignScene) ? CampaignScene : FrontEndSettings.Get.campaignScene;
+        Leave(scene);
+    }
 
-    static void Open(SessionMode mode, string path, Mission mission = null) {
+    /// <summary>The main menu's Campaign button: the default campaign scene (FrontEndSettings.campaignScene).</summary>
+    public static void ToDefaultCampaign() { CampaignScene = ""; Leave(FrontEndSettings.Get.campaignScene); }
+
+    static void Open(SessionMode mode, string path, MissionInfo mission = null) {
         Mission = mission;
         Mode = mode;
         FilePath = path ?? "";
@@ -135,7 +145,7 @@ public static class MatchSetup {
         return ok;
     }
 
-    /// <summary>The key a saved game keeps its campaign mission under (the mission asset's name).</summary>
+    /// <summary>The key a saved game keeps its campaign mission under (the whole MissionInfo: the campaign scene is not loaded then).</summary>
     public const string MissionKey = "mission";
 
     /// <summary>
@@ -147,15 +157,13 @@ public static class MatchSetup {
         string text = System.IO.File.ReadAllText(path).TrimEnd();
         int end = text.LastIndexOf('}');
         if (end < 0) return;
-        string key = Mission.Key.Replace("\\", "").Replace("\"", "");
-        System.IO.File.WriteAllText(path, text.Substring(0, end).TrimEnd() + ",\n\"" + MissionKey + "\": \"" + key + "\"\n}\n");
+        System.IO.File.WriteAllText(path, text.Substring(0, end).TrimEnd() + ",\n\"" + MissionKey + "\": " + Mission.ToJson().Print() + "\n}\n");
     }
 
     /// <summary>The campaign mission a saved game was saved in (StampMission), or null.</summary>
-    static Mission MissionStamped(string path) {
+    static MissionInfo MissionStamped(string path) {
         try {
-            Defective.JSON.JSONObject key = new Defective.JSON.JSONObject(System.IO.File.ReadAllText(path)).GetField(MissionKey);
-            return key != null && key.isString ? Mission.Named(key.stringValue) : null;
+            return MissionInfo.FromJson(new Defective.JSON.JSONObject(System.IO.File.ReadAllText(path)).GetField(MissionKey));
         } catch (Exception) { return null; }
     }
 

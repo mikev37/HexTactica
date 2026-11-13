@@ -5,7 +5,7 @@ using Defective.JSON;
 using UnityEngine;
 
 /// <summary>
-/// How far the player has got in the campaign: for each mission, whether its flag has been unlocked, whether it is
+/// How far the player has got in the campaigns: for each mission (by its key, MissionInfo.key: its scene and name), whether its flag has been unlocked, whether it is
 /// closed off, attempted, won, and the stars earned so far (the best of every attempt: a star once earned is kept).
 /// Kept in one file in the player's data folder (campaign.dat), written whenever it changes.
 /// </summary>
@@ -20,14 +20,14 @@ public static class CampaignProgress {
 
     /// <summary>What finishing a mission changed: shown on the result screen, then played out on the campaign screen.</summary>
     public class Outcome {
-        public Mission mission;
+        public MissionInfo mission;
         public MissionTally tally;
         /// <summary>The stars this attempt earned, and those of them the mission did not have before.</summary>
         public MissionStars earned, gained;
         /// <summary>Its first win.</summary>
         public bool firstWin;
-        /// <summary>The missions whose flags this win put on the map.</summary>
-        public List<Mission> unlocked = new List<Mission>();
+        /// <summary>The keys of the missions this win unlocked for the first time (the campaign screen shows the flags of those not already on the map appearing).</summary>
+        public List<string> unlocked = new List<string>();
     }
 
     public const string FileName = "campaign.dat";
@@ -43,38 +43,38 @@ public static class CampaignProgress {
 
     static Dictionary<string, Entry> Entries { get { if (entries == null) Load(); return entries; } }
 
-    static Entry Of(Mission m, bool make) {
+    static Entry Of(string key, bool make) {
         Entry e;
-        if (Entries.TryGetValue(m.Key, out e)) return e;
+        if (Entries.TryGetValue(key ?? "", out e)) return e;
         e = new Entry();
-        if (make) entries[m.Key] = e;
+        if (make) entries[key ?? ""] = e;
         return e;
     }
 
     /// <summary>The mission's progress (all false for one never touched).</summary>
-    public static Entry Get(Mission m) { return m != null ? Of(m, false) : new Entry(); }
+    public static Entry Get(MissionInfo m) { return m != null ? Of(m.key, false) : new Entry(); }
 
     /// <summary>Its flag is on the map: there from the start, unlocked by a win, or already played.</summary>
-    public static bool Visible(Mission m) {
+    public static bool Visible(MissionInfo m) {
         if (m == null) return false;
         Entry e = Get(m);
         return m.availableAtStart || e.unlocked || e.attempted || e.completed;
     }
 
     /// <summary>Closed off by another mission having been attempted (one already won is never closed).</summary>
-    public static bool Blocked(Mission m) {
+    public static bool Blocked(MissionInfo m) {
         Entry e = Get(m);
         return e.blocked && !e.completed;
     }
 
     /// <summary>Its flag is on the map and it can be started.</summary>
-    public static bool Playable(Mission m) { return Visible(m) && !Blocked(m); }
+    public static bool Playable(MissionInfo m) { return Visible(m) && !Blocked(m); }
 
     /// <summary>The mission is being started: it counts as attempted, and the missions it blocks are closed.</summary>
-    public static void Attempt(Mission m) {
+    public static void Attempt(MissionInfo m) {
         if (m == null) return;
-        Of(m, true).attempted = true;
-        if (m.blocks != null) foreach (Mission b in m.blocks) if (b != null && b != m) Of(b, true).blocked = true;
+        Of(m.key, true).attempted = true;
+        if (m.blocks != null) foreach (string b in m.blocks) if (!string.IsNullOrEmpty(b) && b != m.key) Of(b, true).blocked = true;
         Save();
     }
 
@@ -82,10 +82,10 @@ public static class CampaignProgress {
     /// The mission has ended with this result: a win is kept with its stars (added to those it had) and unlocks its
     /// missions. Returns what changed, also left in <see cref="Pending"/> for the campaign screen.
     /// </summary>
-    public static Outcome Finish(Mission m, MissionTally tally) {
+    public static Outcome Finish(MissionInfo m, MissionTally tally) {
         Outcome o = new Outcome { mission = m, tally = tally };
         if (m == null) return o;
-        Entry e = Of(m, true);
+        Entry e = Of(m.key, true);
         e.attempted = true;
         if (tally.won) {
             o.earned = MissionRating.Stars(m, tally);
@@ -94,11 +94,12 @@ public static class CampaignProgress {
             e.completed = true;
             e.stars |= o.earned;
             if (tally.recorded && tally.turns > 0 && (e.bestTurns == 0 || tally.turns < e.bestTurns)) e.bestTurns = tally.turns;
-            if (m.unlocks != null) foreach (Mission u in m.unlocks) {
-                if (u == null || u == m) continue;
-                bool was = Playable(u);
-                Of(u, true).unlocked = true;
-                if (!was && Playable(u) && !o.unlocked.Contains(u)) o.unlocked.Add(u);
+            if (m.unlocks != null) foreach (string u in m.unlocks) {
+                if (string.IsNullOrEmpty(u) || u == m.key) continue;
+                Entry ue = Of(u, true);
+                bool was = ue.unlocked;
+                ue.unlocked = true;
+                if (!was && !ue.blocked && !o.unlocked.Contains(u)) o.unlocked.Add(u);
             }
         }
         Save();

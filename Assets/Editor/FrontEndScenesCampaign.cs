@@ -40,24 +40,54 @@ static partial class FrontEndScenes {
         Debug.Log("Campaign progress reset.");
     }
 
-    /// <summary>Read-only: says what is wrong with the mission assets (a scenario file that is not there, a mission that can never appear).</summary>
+    /// <summary>
+    /// A new campaign: a copy of a campaign scene (the open one if it is a campaign, else the default Campaign scene)
+    /// with its missions taken off the map, saved where you choose and added to the build. Nothing else changes.
+    /// </summary>
+    [MenuItem("HexTactica/Campaign/New Campaign Scene...")]
+    static void NewCampaignScene() {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        string from = Object.FindAnyObjectByType<CampaignScreen>() != null ? UnityEngine.SceneManagement.SceneManager.GetActiveScene().path : SceneFolder + Settings().campaignScene + ".unity";
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(from) == null) { Debug.LogWarning("No campaign scene to copy (" + from + "): run HexTactica > Front End > Create Missing Scenes first."); return; }
+        string to = EditorUtility.SaveFilePanelInProject("New Campaign Scene", "New Campaign", "unity", "Where to save the new campaign scene", SceneFolder.TrimEnd('/'));
+        if (string.IsNullOrEmpty(to)) return;
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(to) != null) { Debug.LogWarning(to + " already exists: nothing was changed."); return; }
+        if (!AssetDatabase.CopyAsset(from, to)) { Debug.LogWarning("Could not copy " + from + " to " + to + "."); return; }
+        UnityEngine.SceneManagement.Scene scene = EditorSceneManager.OpenScene(to, OpenSceneMode.Single);
+        int removed = 0;
+        foreach (CampaignScreen screen in Object.FindObjectsByType<CampaignScreen>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (screen.flags != null) foreach (Mission m in screen.flags.GetComponentsInChildren<Mission>(true)) { Object.DestroyImmediate(m.gameObject); removed++; }
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        List<EditorBuildSettingsScene> build = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        if (!build.Exists(b => b.path == to)) { build.Add(new EditorBuildSettingsScene(to, true)); EditorBuildSettings.scenes = build.ToArray(); }
+        Debug.Log("New campaign scene " + to + " (copied from " + from + ", " + removed + " mission(s) taken off its map; added to the build). Drag the Mission Flag prefab under its Flags object to add missions.");
+    }
+
+    /// <summary>Read-only: says what is wrong with the open campaign scene's missions (a scenario file that is not there, a mission that can never appear, two with one name).</summary>
     [MenuItem("HexTactica/Campaign/Check Missions")]
     static void CheckMissions() {
-        Mission.All = null;
-        List<Mission> all = Mission.All;
+        CampaignScreen screen = Object.FindAnyObjectByType<CampaignScreen>(FindObjectsInactive.Include);
+        if (screen == null || screen.flags == null) { Debug.LogWarning("Open a campaign scene (one with a CampaignScreen and its Flags) to check its missions."); return; }
+        List<Mission> all = new List<Mission>(screen.flags.GetComponentsInChildren<Mission>(true));
         int problems = 0;
-        if (all.Count == 0) { Debug.LogWarning("No missions in Assets/Resources/" + Mission.Folder + "."); return; }
+        if (all.Count == 0) { Debug.LogWarning("No missions under " + screen.flags.name + ": drag the Mission Flag prefab there to add one."); return; }
         if (!all.Exists(m => m.availableAtStart)) { Debug.LogWarning("No mission is Available At Start: the campaign map starts empty."); problems++; }
+        HashSet<string> names = new HashSet<string>();
         foreach (Mission m in all) {
-            if (GameFiles.CampaignScenarioPath(m.ScenarioName) == null) {
-                Debug.LogWarning(m.name + ": no scenario file \"" + m.ScenarioName + "\" in the campaign folders (" + string.Join(", ", Settings().campaignFolders.ToArray()) + ").");
+            if (!names.Add(m.name)) { Debug.LogWarning("Two missions are named \"" + m.name + "\": progress is kept by name, so they would share it. Rename one.", m); problems++; }
+            if (m.GetComponent<MissionFlag>() == null) { Debug.LogWarning(m.name + ": no MissionFlag, so it can't be shown.", m); problems++; }
+            MissionInfo info = m.Info;
+            if (GameFiles.CampaignScenarioPath(info.ScenarioName) == null) {
+                Debug.LogWarning(m.name + ": no scenario file \"" + info.ScenarioName + "\" in the campaign folders (" + string.Join(", ", Settings().campaignFolders.ToArray()) + ").", m);
                 problems++;
             }
             if (!m.availableAtStart && !all.Exists(x => x.unlocks != null && x.unlocks.Contains(m))) {
-                Debug.LogWarning(m.name + ": not Available At Start and no mission unlocks it, so its flag never appears.");
+                Debug.LogWarning(m.name + ": not Available At Start and no mission unlocks it, so its flag never appears.", m);
                 problems++;
             }
-            if (m.faction == null) Debug.Log(m.name + ": no faction (its flag takes the campaign screen's No Faction colour).");
+            foreach (Mission x in m.unlocks) if (x != null && x.transform.IsChildOf(screen.flags) == false) { Debug.LogWarning(m.name + ": unlocks " + x.name + ", which is not one of this campaign's missions.", m); problems++; }
+            if (m.faction == null) Debug.Log(m.name + ": no faction (its flag takes the campaign screen's No Faction colour).", m);
         }
         Debug.Log(problems == 0 ? "Missions checked: " + all.Count + ", nothing wrong." : "Missions checked: " + all.Count + ", " + problems + " problem(s) above.");
     }
@@ -92,7 +122,7 @@ static partial class FrontEndScenes {
         Fill((RectTransform)flags.transform);
         m.map = (RectTransform)map.transform;
         m.flags = (RectTransform)flags.transform;
-        m.flagPrefab = RowPrefab(MissionFlagPrefab, MissionFlagRow);
+        RowPrefab(MissionFlagPrefab, MissionFlagRow);   // (made for you to drag onto Flags: one per mission)
 
         Text(root, "Title", "Campaign", 56, TextAlignmentOptions.Left, FontStyles.Bold).rectTransform.Let(rt => {
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f); rt.pivot = new Vector2(0f, 1f);
@@ -213,6 +243,7 @@ static partial class FrontEndScenes {
         rt.pivot = new Vector2(0.5f, 0.5f);
         Image hit = g.GetComponent<Image>();
         hit.color = new Color(0f, 0f, 0f, 0f);   // the whole flag takes the click
+        g.AddComponent<Mission>();
         MissionFlag f = g.AddComponent<MissionFlag>();
         f.button = g.GetComponent<Button>();
         f.button.targetGraphic = hit;

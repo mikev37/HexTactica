@@ -33,7 +33,7 @@ public class MissionBriefing : MonoBehaviour {
     void Awake() { TransportPanel.EnsureEventSystem(); }
 
     void Start() {
-        Mission m = MatchSetup.Mission;
+        MissionInfo m = MatchSetup.Mission;
         if (m == null) return;
         if (title != null) title.text = m.Title;
         Color colour = m.faction != null ? m.faction.flagColor : noFactionColor;

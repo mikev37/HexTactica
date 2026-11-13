@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// A mission's flag on the campaign map (the Mission Flag prefab, one copy per mission the player can see): the
+/// A mission's flag on the campaign map (the Mission Flag prefab, placed in the campaign scene with its Mission): the
 /// mission's name, the flag in the colour of the faction it is told from, a mark when it is complete, its three
 /// stars (speed, aggression, defense), and a mark when it has been closed off. Clicking it picks the mission.
 /// </summary>
@@ -35,7 +35,9 @@ public class MissionFlag : MonoBehaviour {
     [Tooltip("How long appearing takes, in seconds.")]
     public float appearSeconds = 0.6f;
 
-    public Mission Mission { get; private set; }
+    Mission mission;
+    /// <summary>The mission on the same object.</summary>
+    public Mission Mission { get { if (mission == null) mission = GetComponent<Mission>(); return mission; } }
 
     float size = 1f, appearing = 1f;
 
@@ -46,8 +48,7 @@ public class MissionFlag : MonoBehaviour {
 
     /// <summary>Show <paramref name="m"/> as it stands: <paramref name="stars"/> are the stars shown as earned (the rest empty).</summary>
     public void Show(Mission m, Color colour, bool complete, bool blocked, MissionStars shown) {
-        Mission = m;
-        name = m != null ? m.name : name;
+        mission = m;
         if (title != null) title.text = m != null ? m.Title : "";
         if (flag != null) flag.color = blocked ? new Color(colour.r * blockedTint.r, colour.g * blockedTint.g, colour.b * blockedTint.b, colour.a * blockedTint.a) : colour;
         if (completeMark != null) completeMark.SetActive(complete);
