@@ -68,7 +68,7 @@ public class SupplyDot : MonoBehaviour {
         if (!HasStore(b) || !b.Functioning) return false;
         if (!FogOfWar.On) return true;
         Player viewer = FogOfWar.Viewer;
-        if (viewer == null || b.owner == viewer) return true;
+        if (viewer == null || (b.owner != null && Player.Friendly(b.owner, viewer))) return true;
         if (b.tile != null && FogOfWar.TileVisible(viewer, b.tile)) return true;
         return false;
     }

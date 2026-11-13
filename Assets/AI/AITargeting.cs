@@ -40,7 +40,7 @@ namespace HexTactica.AI {
         /// </summary>
         public static bool CanOrder(Unit attacker, HexTile from, Unit defender) {
             if (attacker == null || from == null || defender == null || defender.tile == null) return false;
-            if (defender.owner == attacker.owner || defender.tile.occupier != defender) return false;
+            if (!Player.Hostile(defender.owner, attacker.owner) || defender.tile.occupier != defender) return false;
             if (!attacker.CanAttack(from) || !attacker.CanTarget(defender)) return false;
             if (!GameController.Targetable(defender) || !FogOfWar.CanTarget(attacker.owner, defender)) return false;
             return CombatMath.InFireRange(attacker, from, defender.tile, defender);
@@ -53,7 +53,7 @@ namespace HexTactica.AI {
 
             if (attacker == null || defender == null || defender.tile == null) return a;
             if (!attacker.CanAttack(from)) return a;
-            if (defender.owner == attacker.owner) return a;
+            if (!Player.Hostile(defender.owner, attacker.owner)) return a;
 
             if (!CombatMath.InFireRange(attacker, from, defender.tile, defender)) return a;   // range, and line of fire
             // The game's own rule for offering an attack (Unit.CanAttack(Unit)): a target it can attack at all, for damage.
@@ -185,7 +185,7 @@ namespace HexTactica.AI {
             List<HexTile> inRange = AIPath.TilesInRange(from, attacker.MinRange, attacker.AttackRange);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
+                if (t.occupier == null || !Player.Hostile(t.occupier.owner, attacker.owner) || !GameController.Targetable(t.occupier)) continue;
 
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (!a.valid) continue;
@@ -206,7 +206,7 @@ namespace HexTactica.AI {
             inRange.Sort(CombatMath.CompareTiles);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
+                if (t.occupier == null || !Player.Hostile(t.occupier.owner, attacker.owner) || !GameController.Targetable(t.occupier)) continue;
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (a.valid) all.Add(a);
             }

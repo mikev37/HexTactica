@@ -79,6 +79,8 @@ public class MapEditorPanel : MonoBehaviour {
     public TMP_Dropdown buildRule;
     [Tooltip("Faction special units: players choose, or the map fixes them.")]
     public TMP_Dropdown specialRule;
+    [Tooltip("Allies: players choose, or the map fixes them on or off. Which sides are allies is the scenario's (each Player's Team, in the inspector), not edited here.")]
+    public TMP_Dropdown alliesRule;
     [Tooltip("The rule lists' choices, in this order: players choose (starting on), players choose (starting off), always on, always off.")]
     public List<string> ruleChoices = new List<string> { "Players choose (on)", "Players choose (off)", "Always on", "Always off" };
     [Tooltip("What was just done (saved, loaded, or why not).")]
@@ -111,6 +113,7 @@ public class MapEditorPanel : MonoBehaviour {
         Rule(fogRule, (gc, on, fixd) => { gc.fogOfWar = on; gc.fogFixed = fixd; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); });
         Rule(buildRule, (gc, on, fixd) => { gc.purchasesAllowed = on; gc.purchasesFixed = fixd; });
         Rule(specialRule, (gc, on, fixd) => { gc.factionSpecialUnits = on; gc.specialUnitsFixed = fixd; });
+        Rule(alliesRule, (gc, on, fixd) => { gc.alliances = on; gc.alliancesFixed = fixd; FogOfWar.Changed(); FogOfWar.Refresh(); });
         if (unitFilter != null) {
             unitFilter.ClearOptions();
             List<string> opts = new List<string> { baseUnitsLabel };
@@ -151,6 +154,7 @@ public class MapEditorPanel : MonoBehaviour {
         if (fogRule != null) fogRule.SetValueWithoutNotify(RuleChoice(gc.fogOfWar, gc.fogFixed));
         if (buildRule != null) buildRule.SetValueWithoutNotify(RuleChoice(gc.purchasesAllowed, gc.purchasesFixed));
         if (specialRule != null) specialRule.SetValueWithoutNotify(RuleChoice(gc.factionSpecialUnits, gc.specialUnitsFixed));
+        if (alliesRule != null) alliesRule.SetValueWithoutNotify(RuleChoice(gc.alliances, gc.alliancesFixed));
         ShowSides();
     }
 

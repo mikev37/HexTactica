@@ -39,7 +39,7 @@ namespace HexTactica.AI {
                 if (u == null) return;
                 Death d = new Death { unit = u, owner = u.owner, cost = u.cost, strength = u.Strength > 0 ? u.Strength : 6, seenBy = new List<Player>() };
                 bool fog = GameController.gc != null && GameController.gc.fogOfWar;
-                if (GameController.gc != null) foreach (Player q in GameController.gc.players) if (q != null && q != u.owner && (!fog || (u.tile != null && (u.trasnporter != null ? u.trasnporter.tile != null && FogOfWar.SeesAt(q, u.trasnporter, u.trasnporter.tile) : FogOfWar.SeesAt(q, u, u.tile))))) d.seenBy.Add(q);
+                if (GameController.gc != null) foreach (Player q in GameController.gc.players) if (q != null && Player.Hostile(q, u.owner) && (!fog || (u.tile != null && (u.trasnporter != null ? u.trasnporter.tile != null && FogOfWar.SeesAt(q, u.trasnporter, u.trasnporter.tile) : FogOfWar.SeesAt(q, u, u.tile))))) d.seenBy.Add(q);
                 lock (deaths) deaths.Add(d);
             };
         }
@@ -49,13 +49,13 @@ namespace HexTactica.AI {
         public void Update(AIMap map, AIProfile p) {
             Player me = map.player;
             List<Player> foes = new List<Player>();
-            if (GameController.gc != null) foreach (Player q in GameController.gc.players) if (q != null && q != me && !q.eliminated) foes.Add(q);
+            if (GameController.gc != null) foreach (Player q in GameController.gc.players) if (q != null && Player.Hostile(q, me) && !q.eliminated) foes.Add(q);
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : new List<Unit>();
             if (!started) {
                 // The starting budget is known: the enemy's gold and its units as the game began.
                 // (Gold counts only where it can buy anything: with purchases off it is worth nothing to either side.)
                 if (Purchases) foreach (Player q in foes) start += q.money;
-                foreach (Unit u in all) if (u != null && u.owner != null && u.owner != me && u.Strength > 0) start += Value(u.cost, 6);
+                foreach (Unit u in all) if (u != null && u.owner != null && Player.Hostile(u.owner, me) && u.Strength > 0) start += Value(u.cost, 6);
                 started = true;
             } else if (Purchases) {
                 // A turn's worth of building: its income, as far as its production slots could spend it.
@@ -86,7 +86,7 @@ namespace HexTactica.AI {
                 if (deathsRead < 0) deathsRead = deaths.Count;   // (deaths before this game began are not ours)
                 for (; deathsRead < deaths.Count; deathsRead++) {
                     Death d = deaths[deathsRead];
-                    if (d.owner == null || d.owner == me || !d.seenBy.Contains(me)) continue;
+                    if (d.owner == null || !Player.Hostile(d.owner, me) || !d.seenBy.Contains(me)) continue;
                     destroyed += Value(d.cost, 6);
                 }
             }
@@ -104,7 +104,7 @@ namespace HexTactica.AI {
             foreach (Building b in Building.all) {
                 if (b == null || b.tile == null) continue;
                 Player owner = FogOfWar.OwnerAsSeen(me, b) ?? b.owner;
-                if (owner == null || owner == me) continue;
+                if (owner == null || !Player.Hostile(owner, me)) continue;
                 theirs++;
                 int last = FogOfWar.TileLastSeen(me, b.tile);
                 if (!fog || (k != null && k.visibleTiles.Contains(b.tile)) || (last >= 0 && FogOfWar.Turn - last < p.fogUnknownTurns)) seen++;

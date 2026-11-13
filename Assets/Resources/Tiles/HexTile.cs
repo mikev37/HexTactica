@@ -52,19 +52,19 @@ public class HexTile : MonoBehaviour
         float outint = 0;
         if(unit.Evasion >= 3) {
             foreach(Player p in threat.Keys) {
-                if(p != unit.owner) {
+                if (Player.Hostile(p, unit.owner)) {
                     outint += threat[p].antiair;
                 }
             }
         } else if(unit.Armor >= 3) {
             foreach (Player p in threat.Keys) {
-                if (p != unit.owner) {
+                if (Player.Hostile(p, unit.owner)) {
                     outint += threat[p].antiarmor;
                 }
             }
         } else {
             foreach (Player p in threat.Keys) {
-                if (p != unit.owner) {
+                if (Player.Hostile(p, unit.owner)) {
                     outint += threat[p].firepower;
                 }
             }
@@ -73,8 +73,13 @@ public class HexTile : MonoBehaviour
 
     }
 
+    /// <summary>In <paramref name="myPlayer"/>'s supply: its own network reaches here, or an ally's does (allies live on each other's supply).</summary>
     internal bool isSupplied(Player myPlayer) {
-        return supply[myPlayer] > 0;
+        Dictionary<Player, int> s = supply;
+        if (s[myPlayer] > 0) return true;
+        if (myPlayer.team == 0 || !GameController.AlliancesOn) return false;
+        foreach (KeyValuePair<Player, int> kv in s) if (kv.Value > 0 && Player.Allied(kv.Key, myPlayer)) return true;
+        return false;
     }
 
     /// <summary>
@@ -87,7 +92,13 @@ public class HexTile : MonoBehaviour
     /// <summary>Supplied as the screen shows it (supply borders, a unit's out-of-supply icon): see supplyShown.</summary>
     internal bool isSuppliedShown(Player myPlayer) {
         int d;
-        if (BoardView.current == null && supplyShown != null && supplyShown.TryGetValue(myPlayer, out d)) return d > 0;
+        if (BoardView.current == null && supplyShown != null && supplyShown.TryGetValue(myPlayer, out d)) {
+            if (d > 0) return true;
+            // An ally's supply does as well (isSupplied).
+            if (myPlayer.team != 0 && GameController.AlliancesOn)
+                foreach (KeyValuePair<Player, int> kv in supplyShown) if (kv.Value > 0 && Player.Allied(kv.Key, myPlayer)) return true;
+            return false;
+        }
         return isSupplied(myPlayer);
     }
 
@@ -574,7 +585,7 @@ public class HexTile : MonoBehaviour
                 if (arrived && attacker.Strength > 0 && defender != null && defender.tile != null) attacker.OrderAttack(defender);
                 attacker.FinishActive();
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
-            } else if (seen != null && (state == UIState.FREE || state == UIState.RANGE) && seen.owner != GameController.gc.activePlayer) {
+            } else if (seen != null && (state == UIState.FREE || state == UIState.RANGE) && Player.Hostile(seen.owner, GameController.gc.activePlayer)) {
                 // An enemy we are not attacking: where it can go and what it can hit (any selection is dropped).
                 GameController.gc.activeUnit = null;
                 SupplyOverlay.ShowEnemy(seen);
@@ -654,7 +665,7 @@ public class HexTile : MonoBehaviour
     /// </summary>
     static bool BoardableFrom(Unit cargo, HexTile n, Unit transport) {
         Unit o = FogOfWar.ApparentOccupier(n, cargo.owner);
-        if (o != null && o != cargo && o.owner != cargo.owner) return false;
+        if (o != null && o != cargo && Player.Hostile(o.owner, cargo.owner)) return false;
         return Transporting.CanBoardOnto(cargo, n, transport.tile, transport);
     }
 

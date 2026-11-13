@@ -113,7 +113,7 @@ public class Building : MonoBehaviour {
         // the tile had the bonuses: a helicopter over a bunker held its ground and hit harder.)
         if (LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return null;
         Building b = at.building;
-        return b != null && b.owner != null && b.owner == u.owner && b.Functioning ? b : null;
+        return b != null && b.owner != null && Player.Friendly(b.owner, u.owner) && b.Functioning ? b : null;
     }
 
     [Header("Economy")]
@@ -321,13 +321,13 @@ public class Building : MonoBehaviour {
 
     /// <summary>
     /// Would <paramref name="u"/> ending its turn on <paramref name="t"/> work toward taking a
-    /// building: its tile, not ours, capturable under the rules,
+    /// building: its tile, not ours or an ally's, capturable under the rules,
     /// and <paramref name="u"/> a unit that captures.
     /// </summary>
     public static bool WouldCapture(Unit u, HexTile t) {
         if (u == null || t == null || t.building == null || u.attackedThisTurn) return false;
         Building b = t.building;
-        return b.Capturable && CanCapture(u) && (b.owner != u.owner || (b.capturingPlayer != null && b.capturingPlayer != u.owner && b.capturePoints > 0));
+        return b.Capturable && CanCapture(u) && (Player.Hostile(b.owner, u.owner) || (b.capturingPlayer != null && Player.Hostile(b.capturingPlayer, u.owner) && b.capturePoints > 0));
     }
 
     /// <summary>
@@ -429,14 +429,15 @@ public class Building : MonoBehaviour {
     /// <summary>
     /// The capture rule, on any state: <paramref name="side"/> captures with <paramref name="strength"/> a building
     /// held by <paramref name="owner"/> (null: nobody) with <paramref name="capturing"/>'s <paramref name="points"/>.
-    /// The owner's own infantry brings a capturer's progress down; anyone else's adds to its own progress, from 0
+    /// The owner's own infantry (or an ally's) brings a capturer's progress down; anyone else's adds to its own progress, from 0
     /// if the progress there was another side's, and at <paramref name="threshold"/> takes it.
     /// </summary>
     public static void CaptureStep(int threshold, Player owner, Player capturing, int points, Player side, int strength,
                                    out Player ownerAfter, out Player capturingAfter, out int pointsAfter) {
         ownerAfter = owner; capturingAfter = capturing; pointsAfter = capturing != null ? Mathf.Max(0, points) : 0;
         if (side == null || strength <= 0) return;
-        if (owner == side) {
+        // The owner's own infantry, or an ally's: nobody takes a building from its own side.
+        if (Player.Friendly(owner, side)) {
             pointsAfter = Mathf.Max(0, pointsAfter - strength);
             if (pointsAfter == 0) capturingAfter = null;
             return;
@@ -534,10 +535,10 @@ public class Building : MonoBehaviour {
         return u != null && Functioning && services != null && services.Contains(u.locomotion);
     }
 
-    /// <summary>The owner's building, if any, that services <paramref name="u"/> where it stands.</summary>
+    /// <summary>The building of its side (its owner's, or an ally's), if any, that services <paramref name="u"/> where it stands.</summary>
     public static Building ServicingUnder(Unit u) {
         if (u == null || u.tile == null) return null;
         Building b = u.tile.building;
-        return b != null && b.owner == u.owner && b.Services(u) ? b : null;
+        return b != null && b.owner != null && Player.Friendly(b.owner, u.owner) && b.Services(u) ? b : null;
     }
 }

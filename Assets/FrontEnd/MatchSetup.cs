@@ -19,7 +19,7 @@ public enum SessionMode {
 
 /// <summary>
 /// The hand-over between the menus and the game scene: which file to open and how, and the choices made on the
-/// pre-game screen (who plays each side, factions, fog, purchases, faction special units). The game scene's
+/// pre-game screen (who plays each side, factions, fog, purchases, faction special units, allies). The game scene's
 /// GameSession reads it when it opens; loading goes through ScenarioLoader with these choices as its overrides.
 /// </summary>
 public static class MatchSetup {
@@ -35,6 +35,8 @@ public static class MatchSetup {
         public bool factionLocked;
         /// <summary>A Resources/Factions asset name; "" no faction (the base units).</summary>
         public string faction = "";
+        /// <summary>The side it fights on (Player.team, set by the scenario): the same number, not 0, are allies.</summary>
+        public int team;
     }
 
     public static SessionMode Mode;
@@ -45,9 +47,11 @@ public static class MatchSetup {
     /// <summary>The scenario or save being set up, played or edited ("" none: the map editor on the scene's own board).</summary>
     public static string FilePath = "";
     public static readonly List<Side> Sides = new List<Side>();
-    public static bool Fog, Purchases = true, SpecialUnits = true;
+    public static bool Fog, Purchases = true, SpecialUnits = true, Allies = true;
     /// <summary>The rules the map fixes (GameController.fogFixed and the rest): the pre-game screen shows them, cannot change them, and the file's stand.</summary>
-    public static bool FogFixed, PurchasesFixed, SpecialUnitsFixed;
+    public static bool FogFixed, PurchasesFixed, SpecialUnitsFixed, AlliesFixed;
+    /// <summary>The scenario has allies to offer: two or more of its sides share a team (GameController.HasTeams).</summary>
+    public static bool HasTeams;
 
     // ------------------------------------------------------------------ from the menus
 
@@ -131,6 +135,7 @@ public static class MatchSetup {
             if (!FogFixed) ScenarioLoader.FogOverride = Fog ? "on" : "off";
             if (!PurchasesFixed) ScenarioLoader.PurchasesOverride = Purchases ? "on" : "off";
             if (!SpecialUnitsFixed) ScenarioLoader.SpecialUnitsOverride = SpecialUnits ? "on" : "off";
+            if (!AlliesFixed && HasTeams) ScenarioLoader.AlliesOverride = Allies ? "on" : "off";
         });
         if (ok) { Mode = SessionMode.Play; GameController.Paused = false; }
         return ok;
@@ -178,7 +183,7 @@ public static class MatchSetup {
     static bool Load(string path, Action choices, bool record = true) {
         if (string.IsNullOrEmpty(path)) return false;
         string red = ScenarioLoader.RedOverride, rules = ScenarioLoader.RulesOverride, buy = ScenarioLoader.PurchasesOverride,
-               fog = ScenarioLoader.FogOverride, special = ScenarioLoader.SpecialUnitsOverride;
+               fog = ScenarioLoader.FogOverride, special = ScenarioLoader.SpecialUnitsOverride, allies = ScenarioLoader.AlliesOverride;
         Dictionary<long, bool> control = ScenarioLoader.ControlOverride;
         Dictionary<long, string> profilesWere = ScenarioLoader.ProfileOverride;
         Dictionary<long, string> factions = ScenarioLoader.FactionOverride;
@@ -187,14 +192,14 @@ public static class MatchSetup {
             // A board only looked at (the pre-game screen's, the map editor's) is not a game: no game log for it.
             ScenarioLoader.RecordGames = recording && record;
             ScenarioLoader.RedOverride = null; ScenarioLoader.RulesOverride = null; ScenarioLoader.PurchasesOverride = null;
-            ScenarioLoader.FogOverride = null; ScenarioLoader.SpecialUnitsOverride = null;
+            ScenarioLoader.FogOverride = null; ScenarioLoader.SpecialUnitsOverride = null; ScenarioLoader.AlliesOverride = null;
             ScenarioLoader.ControlOverride = null; ScenarioLoader.FactionOverride = null; ScenarioLoader.ControlFromFile = false;
             ScenarioLoader.ProfileOverride = null;
             choices();
             return ScenarioLoader.LoadBoardFromPath(path);
         } finally {
             ScenarioLoader.RedOverride = red; ScenarioLoader.RulesOverride = rules; ScenarioLoader.PurchasesOverride = buy;
-            ScenarioLoader.FogOverride = fog; ScenarioLoader.SpecialUnitsOverride = special;
+            ScenarioLoader.FogOverride = fog; ScenarioLoader.SpecialUnitsOverride = special; ScenarioLoader.AlliesOverride = allies;
             ScenarioLoader.ControlOverride = control; ScenarioLoader.FactionOverride = factions; ScenarioLoader.ControlFromFile = fromFile;
             ScenarioLoader.ProfileOverride = profilesWere;
             ScenarioLoader.SidesAsFiled = false;
@@ -212,7 +217,8 @@ public static class MatchSetup {
             AIPlayer full = p.GetComponent<AIPlayer>();
             Sides.Add(new Side {
                 id = p.id, name = p.personal_name, ai = AIControl.Of(p) != null, faction = p.faction != null ? p.faction.name : "",
-                profile = full != null && full.profile != null ? full.profile.profileName : "", factionLocked = p.factionLocked
+                profile = full != null && full.profile != null ? full.profile.profileName : "", factionLocked = p.factionLocked,
+                team = p.team
             });
         }
         Fog = gc.fogOfWar;
@@ -221,5 +227,8 @@ public static class MatchSetup {
         FogFixed = gc.fogFixed;
         PurchasesFixed = gc.purchasesFixed;
         SpecialUnitsFixed = gc.specialUnitsFixed;
+        Allies = gc.alliances;
+        AlliesFixed = gc.alliancesFixed;
+        HasTeams = gc.HasTeams;
     }
 }

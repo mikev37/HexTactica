@@ -522,6 +522,32 @@ public static partial class Scenarios {
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
         make("rule-bunker", "bunker", (a, o) => { Rig.PlaceBuilding("Bunker", a, 0, 0); Put("Grunt", a, 0, 0); Put("Tank", o, 1, 0); Put("Grunt", o, -1, 0); Put("Gunship", a, -3, 3); },
              "A Blue grunt in a Blue bunker (the Bunker prefab: holdsGround, attack and defence bonuses), attacked by a Red tank beside it (made hard-hitting): it is not driven back, takes less and hits a Red grunt beside it harder than on a bunker that is not its side's. A Blue gunship over the bunker has none of it: the garrison is land units only.");
+        // ---- allies: Green (a third side) on Blue's team.
+        make("rule-allies", "allies", (a, o) => {
+                 Player g = Rig.AddPlayer("Green", 7); a.team = 1; g.team = 1;
+                 Put("HQ", g, 3, -6);
+                 Put("Tank", a, 0, 0); Put("Grunt", g, 1, 0); Put("Grunt", o, 0, 1);
+                 Rig.PlaceBuilding("City", g, -3, -3); Put("Grunt", a, -3, -3);
+                 Put("Grunt", a, 4, -6);
+                 Put("Grunt", g, -4, 6); Put("Tank", o, -5, 6); },
+             "Allies: Green, a third side, is on Blue's team. Blue's tank beside a Green grunt and a Red grunt can fire on the Red one only, and passes through the Green one's tile. A Blue grunt ending its turn on a Green city does not take it. A Blue grunt beyond Blue's HQ supply but beside Green's HQ is in supply. Under fog, a Red tank beside a Green grunt is seen by Blue, though no Blue unit is near it. Red knocked out leaves Blue and Green: the game is over, won by both. With the Allies rule off, every one of these goes back to every side for itself.");
+        make("ai-allies-hold-fire", "aiAlliesHoldFire", (a, o) => {
+                 Player g = Rig.AddPlayer("Green", 7); a.team = 1; g.team = 1;
+                 Put("HQ", g, 0, -3);
+                 Put("Tank", a, -1, 0); Put("Artillery", a, -3, 0); Put("Grunt", a, -2, 2); Put("Grunt", a, -1, 2);
+                 Unit gt = Put("Grunt", g, 0, 0); gt.Strength = 1; Unit gs = Put("Supplies", g, -2, -1); gs.Strength = 2;
+                 Rig.PlaceBuilding("City", g, -1, 3); Rig.PlaceBuilding("City", g, -3, 3);
+                 Put("Grunt", o, 2, 0); Put("Tank", o, 3, 1); Rig.PlaceBuilding("City", null, 2, 3); },
+             "Blue's AI beside its ally Green's units (a grunt down to 1 strength, a supply unit down to 2: the easiest kills on the board) and two Green cities next to Blue's grunts, with Red's grunt and tank further off and a neutral city. Over three Blue turns it never fires on a Green unit, never works toward taking a Green building, and does not count Green's HQ or cities among its campaign's objectives.");
+        make("ai-allies-battle", "aiAlliesBattle", (a, o) => {
+                 Player g = Rig.AddPlayer("Green", 7); a.team = 1; g.team = 1;
+                 Put("HQ", g, -3, -4);
+                 Put("Tank", a, -4, 1); Put("Grunt", a, -4, 2); Put("Grunt", a, -3, 1); Put("Supplies", a, -5, 1); Put("Artillery", a, -5, 2);
+                 Put("Tank", g, -2, -3); Put("Grunt", g, -1, -4); Put("Grunt", g, -2, -2); Put("Supplies", g, -3, -3);
+                 Rig.PlaceBuilding("City", null, 0, 0); Rig.PlaceBuilding("City", g, -2, 0); Rig.PlaceBuilding("City", a, -4, -1);
+                 Put("Tank", o, 4, -1); Put("Tank", o, 4, 1); Put("Grunt", o, 3, 0); Put("Grunt", o, 3, 2); Put("Grunt", o, 3, -2);
+                 Put("Artillery", o, 5, 0); Put("Supplies", o, 5, -1); },
+             "Blue and Green, allies, each played by this AI, against Red played by this AI, for six rounds. No unit ever fires on an ally's unit, no side ever makes capture progress on an ally's building, and no AI orders anything a player could not.");
         make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
              "A Red grunt attacked by a Blue tank beside it retreats straight back, to one of the three tiles on its far side; with those three taken it is pinned, never sliding sideways (still beside the tank).");
         make("ai-land-steps-layout", "landStepsLayout", (a, o) => {
@@ -1123,6 +1149,94 @@ public static partial class Scenarios {
                 detail = "prefab holds ground with bonuses " + prefab + "; a gunship over it has no garrison " + airOut + "; in its bunker: retreats " + on.defenderRetreats + " (pinned " + on.defenderPinned + "), takes " + hitOn + ", hits a Red grunt for " + backOn
                        + "; on the enemy's: retreats " + off.defenderRetreats + ", takes " + hitOff + ", hits a Red grunt for " + backOff;
                 return prefab && airOut && !on.defenderRetreats && !on.defenderPinned && off.defenderRetreats && hitOn < hitOff && backOn > backOff;
+            }
+            case "allies": {
+                Player g = l.sides.Find(s => s.id == 7);
+                Unit tank = Rig.At(0, 0).occupier, gg = Rig.At(1, 0).occupier, rg = Rig.At(0, 1).occupier;
+                Unit onCity = Rig.At(-3, -3).occupier, far = Rig.At(4, -6).occupier, gWatch = Rig.At(-4, 6).occupier, rTank = Rig.At(-5, 6).occupier;
+                Building city = Rig.At(-3, -3).building;
+                Func<string> state = () => {
+                    foreach (Player p in gc.players) p.Resupply();
+                    FogOfWar.Changed(); FogOfWar.Refresh();
+                    return "fires on Green " + tank.validTarget(gg.tile) + ", on Red " + tank.validTarget(rg.tile)
+                         + "; through Green's tile " + HexTactica.AI.AIPath.CanPassThrough(tank, gg.tile, false)
+                         + "; would take Green's city " + Building.WouldCapture(onCity, city.tile)
+                         + "; beside Green's HQ: Blue's own supply " + far.tile.supply[a] + ", in supply " + far.tile.isSupplied(a)
+                         + "; Red tank by Green seen by Blue " + FogOfWar.Sees(a, rTank) + "; Green's grunt seen by Blue " + FogOfWar.Sees(a, gWatch);
+                };
+                bool teamsRead = g != null && a.team == 1 && g.team == 1 && o.team == 0 && Player.Allied(a, g) && !Player.Allied(a, o) && gc.HasTeams;
+                gc.fogOfWar = true; FogOfWar.Reset();
+                string on = state();
+                bool okOn = !tank.validTarget(gg.tile) && tank.validTarget(rg.tile) && HexTactica.AI.AIPath.CanPassThrough(tank, gg.tile, false)
+                         && !Building.WouldCapture(onCity, city.tile) && far.tile.supply[a] == 0 && far.tile.isSupplied(a)
+                         && FogOfWar.Sees(a, rTank) && FogOfWar.Sees(a, gWatch);
+                // The Blue grunt on Green's city ends Blue's turn there: the city stays Green's, nobody capturing.
+                Building.ResolveCaptures(a);
+                bool cityKept = city.owner == g && city.capturingPlayer == null && city.capturePoints == 0;
+                gc.alliances = false;
+                string off = state();
+                bool okOff = tank.validTarget(gg.tile) && !HexTactica.AI.AIPath.CanPassThrough(tank, gg.tile, false) && Building.WouldCapture(onCity, city.tile)
+                          && !far.tile.isSupplied(a) && !FogOfWar.Sees(a, rTank);
+                // Victory: Red out. Every side for itself: Blue and Green fight on. Allies: the game is won, by both.
+                gc.fogOfWar = false; FogOfWar.Reset();
+                gc.Eliminate(o); gc.CheckVictory();
+                bool goesOn = !gc.gameOver;
+                gc.alliances = true; gc.CheckVictory();
+                bool won = gc.gameOver && gc.Won(a) && gc.Won(g) && !gc.Won(o);
+                detail = "teams read " + teamsRead + "; allies on: " + on + "; Blue ends its turn on Green's city: " + show(city) + "; allies off: " + off
+                       + "; Red out, allies off: game goes on " + goesOn + "; allies on: over " + gc.gameOver + ", " + gc.WinnersName() + " won (Blue " + gc.Won(a) + ", Green " + gc.Won(g) + ")";
+                return teamsRead && okOn && cityKept && okOff && goesOn && won;
+            }
+            case "aiAlliesHoldFire": {
+                Player g = l.sides.Find(s => s.id == 7);
+                List<string> bad = new List<string>();
+                Action<Unit, Unit, bool> watch = (x, d, s) => { if (x != null && d != null && Player.Allied(x.owner, d.owner)) bad.Add(x.name + " fired on " + d.name); };
+                Action<Building, Player, int, int> taken = (b, side, before, after) => { if (b != null && side != null && b.owner != null && Player.Allied(side, b.owner) && after > 0) bad.Add(side.personal_name + " capturing " + Pos(b.tile)); };
+                Unit.Attacking += watch; Building.Captured += taken;
+                AIPlayer ap = a.GetComponent<AIPlayer>();
+                List<string> objectives = new List<string>();
+                int blueTurns = 0, attacks = 0;
+                Action<Unit, Unit, bool> count = (x, d, s) => { if (x != null && x.owner == a) attacks++; };
+                Unit.Attacking += count;
+                List<string> died = new List<string>();
+                Action<Unit> gone = u => { if (u != null && u.owner == g) died.Add(u.name + " at " + (u.tile != null ? Pos(u.tile) : "?") + " strength " + u.Strength + " supplies " + u.supplies + " on day " + gc.days + " in " + (gc.activePlayer != null ? gc.activePlayer.personal_name : "?") + "'s turn"); };
+                Unit.Died += gone;
+                try {
+                    for (int i = 0; i < 9 && !gc.gameOver; i++) {
+                        bool blue = gc.activePlayer == a;
+                        ScenarioFile.PlayTurn();
+                        if (!blue) continue;
+                        blueTurns++;
+                        if (ap.CurrentCampaign != null) foreach (HexTactica.AI.CampaignObjective c in ap.CurrentCampaign.objectives)
+                            if (c.building != null && c.building.owner != null && Player.Allied(c.building.owner, a)) objectives.Add(c.kind + "@" + Pos(c.target));
+                    }
+                } finally { Unit.Attacking -= watch; Unit.Attacking -= count; Building.Captured -= taken; Unit.Died -= gone; }
+                int greenUnits = g.units.FindAll(u => u != null && u.Strength > 0).Count;
+                int greenCities = 0; foreach (Building b in Building.all) if (b != null && b.owner == g) greenCities++;
+                detail = blueTurns + " Blue turns, " + attacks + " Blue attacks; at allies: " + (bad.Count == 0 ? "none" : string.Join(", ", bad.ToArray()))
+                       + "; allied buildings among Blue's objectives: " + (objectives.Count == 0 ? "none" : string.Join(" ", objectives.ToArray()))
+                       + "; Green has " + greenUnits + " units, " + greenCities + " buildings" + (died.Count > 0 ? " (lost: " + string.Join("; ", died.ToArray()) + ")" : "");
+                return blueTurns >= 3 && bad.Count == 0 && objectives.Count == 0 && greenUnits == 2 && greenCities == 3;
+            }
+            case "aiAlliesBattle": {
+                Player g = l.sides.Find(s => s.id == 7);
+                AIProfile p2 = ScriptableObject.CreateInstance<AIProfile>(); p2.annotateBoard = false; Rig.AttachAI(o, p2);
+                AIProfile p3 = ScriptableObject.CreateInstance<AIProfile>(); p3.annotateBoard = false; Rig.AttachAI(g, p3);
+                List<string> bad = new List<string>();
+                int[] hits = new int[3];
+                Action<Unit, Unit, bool> watch = (x, d, s) => {
+                    if (x == null || d == null) return;
+                    if (Player.Allied(x.owner, d.owner)) bad.Add(x.owner.personal_name + " " + x.name + " fired on " + d.owner.personal_name + " " + d.name);
+                    else hits[x.owner == a ? 0 : x.owner == g ? 1 : 2]++;
+                };
+                Action<Building, Player, int, int> taken = (b, side, before, after) => { if (b != null && side != null && b.owner != null && Player.Allied(side, b.owner) && after > 0) bad.Add(side.personal_name + " capturing " + b.owner.personal_name + "'s " + Pos(b.tile)); };
+                Unit.Attacking += watch; Building.Captured += taken;
+                try { for (int i = 0; i < 18 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
+                finally { Unit.Attacking -= watch; Building.Captured -= taken; }
+                detail = "after round " + gc.days + (gc.gameOver ? " (over, " + gc.WinnersName() + " won)" : "") + ": attacks on enemies Blue " + hits[0] + ", Green " + hits[1] + ", Red " + hits[2]
+                       + "; material Blue " + ScenarioFile.Material(a) + ", Green " + ScenarioFile.Material(g) + ", Red " + ScenarioFile.Material(o)
+                       + "; at allies: " + (bad.Count == 0 ? "none" : string.Join("; ", bad.ToArray()));
+                return bad.Count == 0 && hits[0] + hits[1] > 0;
             }
             case "retreatAway": {
                 Unit tank = Rig.At(1, 0).occupier, g = Rig.At(0, 0).occupier;

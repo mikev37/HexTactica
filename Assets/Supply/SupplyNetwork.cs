@@ -467,7 +467,7 @@ public static class SupplyNetwork {
             foreach (HexTile n in t.neighbors) {
                 if (n == null || n.terrain == null || cost.ContainsKey(n)) continue;
                 if (n.terrain.elevation >= 0 && !IsOurYard(n, owner)) continue;   // water (and our yards) only
-                if (n.occupier != null && n.occupier.owner != owner) continue;
+                if (n.occupier != null && Player.Hostile(n.occupier.owner, owner)) continue;
                 cost[n] = cost[t] + 1;
                 q.Enqueue(n);
             }
@@ -501,7 +501,7 @@ public static class SupplyNetwork {
             // Not across water: onto the land beside it, a step shorter.
             foreach (HexTile n in origin.neighbors) {
                 if (n == null || n.terrain == null || n.terrain.elevation < 0) continue;
-                if (n.occupier != null && n.occupier.owner != u.owner) continue;
+                if (n.occupier != null && Player.Hostile(n.occupier.owner, u.owner)) continue;
                 Flood(n, hub.range - 1, u.terrainScramble, u.owner, Locomotion.Wheels, result);
             }
             return;
@@ -630,7 +630,7 @@ public static class SupplyNetwork {
     }
 
     /// <summary>
-    /// Dijkstra flood writing depth = range - cost. Enemy units block; friendly units
+    /// Dijkstra flood writing depth = range - cost. Enemy units block; friendly units (our own and our allies')
     /// do not. Depth is graded rather than boolean because the gradient is excellent
     /// AI input even though the *rule* (resupply or not) is binary.
     /// </summary>
@@ -662,7 +662,7 @@ public static class SupplyNetwork {
                 if (n == null || n.terrain == null) continue;
 
                 // An enemy unit standing in the corridor severs it.
-                if (n.occupier != null && n.occupier.owner != owner) continue;
+                if (n.occupier != null && Player.Hostile(n.occupier.owner, owner)) continue;
                 // On and off a bridge only by road, as units move (a harbor is open from every side: LocomotionRules.IsHarbor).
                 if (!LocomotionRules.BridgeStep(current, n, loco)) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).

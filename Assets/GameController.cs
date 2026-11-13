@@ -46,6 +46,26 @@ public class GameController : MonoBehaviour
 
     public string SpecialUnitsSetting { get { return factionSpecialUnits ? "on" : "off"; } }
 
+    [Header("Allies")]
+    [Tooltip("Allies: players on the same team (Player.team, not 0) do not attack each other or take each other's buildings, live on each other's supply, see what each other sees, and win together. Off: every side for itself, whatever its team. A scenario or the pre-game screen sets this (\"allies\": \"on\"/\"off\").")]
+    public bool alliances = true;
+
+    public string AlliesSetting { get { return alliances ? "on" : "off"; } }
+
+    /// <summary>The Allies rule is on in the game being played (Player.Allied). No game: on.</summary>
+    public static bool AlliancesOn { get { return gc == null || gc.alliances; } }
+
+    /// <summary>Two or more players of this game share a team (whether or not the Allies rule is on): the map has allies to offer.</summary>
+    public bool HasTeams {
+        get {
+            if (players == null) return false;
+            for (int i = 0; i < players.Count; i++)
+                for (int j = i + 1; j < players.Count; j++)
+                    if (players[i] != null && players[j] != null && players[i].team != 0 && players[i].team == players[j].team) return true;
+            return false;
+        }
+    }
+
     [Header("Rules the map fixes")]
     [Tooltip("The map fixes fog of war as it is: the pre-game screen shows it and cannot change it (\"fixedRules\" in the file).")]
     public bool fogFixed;
@@ -53,14 +73,17 @@ public class GameController : MonoBehaviour
     public bool purchasesFixed;
     [Tooltip("The map fixes faction special units as they are: the pre-game screen cannot change them.")]
     public bool specialUnitsFixed;
+    [Tooltip("The map fixes allies as they are (on or off): the pre-game screen cannot change them.")]
+    public bool alliancesFixed;
 
-    /// <summary>The rules the map fixes, as the file has them: "fog,purchases,factionSpecialUnits" (any of them).</summary>
+    /// <summary>The rules the map fixes, as the file has them: "fog,purchases,factionSpecialUnits,allies" (any of them).</summary>
     public string FixedRulesSetting {
         get {
             List<string> f = new List<string>();
             if (fogFixed) f.Add("fog");
             if (purchasesFixed) f.Add("purchases");
             if (specialUnitsFixed) f.Add("factionSpecialUnits");
+            if (alliancesFixed) f.Add("allies");
             return string.Join(",", f.ToArray());
         }
     }
@@ -71,6 +94,7 @@ public class GameController : MonoBehaviour
         fogFixed = s.Contains("fog");
         purchasesFixed = s.Contains("purchases");
         specialUnitsFixed = s.Contains("factionSpecialUnits");
+        alliancesFixed = s.Contains("allies");
     }
 
     /// <summary>
@@ -412,11 +436,16 @@ public class GameController : MonoBehaviour
         CheckVictory();
         // Attrition: after roundLimit full rounds, the most left standing wins (equal: a draw).
         if (!gameOver && rules == RuleSet.Attrition && days >= roundLimit) {
+            // (Allies count together: what a side has left is what its players have left between them.)
             Player best = null; float bestM = -1f; bool tie = false;
             for (int i = 0; i < players.Count; i++) {
                 Player p = players[i];
                 if (p == null || p.eliminated) continue;
-                float m = Remaining(p);
+                bool counted = false;
+                for (int j = 0; j < i; j++) if (players[j] != null && !players[j].eliminated && Player.Allied(players[j], p)) counted = true;
+                if (counted) continue;
+                float m = 0f;
+                for (int j = i; j < players.Count; j++) if (players[j] != null && !players[j].eliminated && Player.Friendly(players[j], p)) m += Remaining(players[j]);
                 if (m > bestM) { best = p; bestM = m; tie = false; } else if (m == bestM) tie = true;
             }
             gameOver = true;
@@ -503,10 +532,14 @@ public class GameController : MonoBehaviour
             if ((p.hadHQ && !hasHQ) || (!hasHQ && p.units.Count == 0)) Eliminate(p);
         }
 
+        // The game is over when the players left are all on one side (one player, or allies): nobody has to beat
+        // its allies. The winner is the first of them; its allies have won with it (Won), those knocked out too.
         Player survivor = null;
         int alive = 0;
         for (int i = 0; i < players.Count; i++) {
-            if (players[i] != null && !players[i].eliminated) { alive++; survivor = players[i]; }
+            if (players[i] == null || players[i].eliminated) continue;
+            if (survivor == null) { alive++; survivor = players[i]; }
+            else if (Player.Hostile(survivor, players[i])) alive++;
         }
         if (alive <= 1) {
             gameOver = true;
@@ -515,10 +548,22 @@ public class GameController : MonoBehaviour
         }
     }
 
-    /// <summary>Enemies of a given player, for threat aggregation.</summary>
+    /// <summary>Enemies of a given player (not itself, not its allies), for threat aggregation.</summary>
     public IEnumerable<Player> EnemiesOf(Player p) {
         for (int i = 0; i < players.Count; i++) {
-            if (players[i] != null && players[i] != p) yield return players[i];
+            if (players[i] != null && Player.Hostile(players[i], p)) yield return players[i];
         }
+    }
+
+    /// <summary>Did <paramref name="p"/> win the game that is over: the winner, or one of its allies (knocked out or not)?</summary>
+    public bool Won(Player p) { return gameOver && winner != null && p != null && Player.Friendly(p, winner); }
+
+    /// <summary>The winning side by name: the winner and its allies ("Blue", "Blue and Green", "Blue, Green and Gold"). "" with no winner.</summary>
+    public string WinnersName() {
+        if (winner == null) return "";
+        List<string> names = new List<string>();
+        for (int i = 0; i < players.Count; i++) if (players[i] != null && Player.Friendly(players[i], winner)) names.Add(players[i].personal_name);
+        if (names.Count <= 1) return winner.personal_name;
+        return string.Join(", ", names.GetRange(0, names.Count - 1).ToArray()) + " and " + names[names.Count - 1];
     }
 }

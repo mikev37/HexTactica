@@ -8,7 +8,8 @@ using UnityEngine.UI;
 /// <summary>
 /// The pre-game screen (the PreGame scene, over the game scene with the scenario's board shown and held): for each
 /// side, who plays it (a human, or this AI with one of its profiles) and its faction (unless the map fixes it); fog of
-/// war, purchases (building units), and faction special units. Start loads the scenario again with these choices and
+/// war, purchases (building units), faction special units, and allies (when the scenario puts sides on one team: the
+/// rows are then drawn team by team, a divider between teams). Start loads the scenario again with these choices and
 /// lets it play; Back returns to the main menu. The side rows are copies of a row prefab.
 /// </summary>
 public class PreGameMenu : MonoBehaviour {
@@ -22,6 +23,10 @@ public class PreGameMenu : MonoBehaviour {
     public Toggle build;
     [Tooltip("Faction special units: off, a faction only changes how units look.")]
     public Toggle specialUnits;
+    [Tooltip("Allies: sides the scenario puts on one team fight together. Shown only when the scenario has allies (two or more sides on one team); fixed when the map fixes it.")]
+    public Toggle allies;
+    [Tooltip("Copied between the sides of one team and the next while allies are on (the side rows are drawn team by team). Optional.")]
+    public RectTransform sideDivider;
     [Tooltip("What turning special units off changes for the factions picked. Optional.")]
     public TMP_Text specialNote;
     [Tooltip("The faction list's first entry: no faction (the base units).")]
@@ -35,6 +40,7 @@ public class PreGameMenu : MonoBehaviour {
     public Button startButton;
 
     readonly List<PlayerSetupRow> made = new List<PlayerSetupRow>();
+    readonly List<RectTransform> dividers = new List<RectTransform>();
     List<Faction> factions;
     List<HexTactica.AI.AIProfile> profiles;
 
@@ -42,6 +48,8 @@ public class PreGameMenu : MonoBehaviour {
         if (rowTemplate != null && rowTemplate.gameObject.scene.IsValid()) rowTemplate.gameObject.SetActive(false);
         TransportPanel.EnsureEventSystem();
         if (specialUnits != null) specialUnits.onValueChanged.AddListener(v => ShowSpecialNote());
+        if (sideDivider != null && sideDivider.gameObject.scene.IsValid()) sideDivider.gameObject.SetActive(false);
+        if (allies != null) allies.onValueChanged.AddListener(v => LayOutSides());
     }
 
     void Start() {
@@ -53,6 +61,12 @@ public class PreGameMenu : MonoBehaviour {
         if (fog != null) { fog.SetIsOnWithoutNotify(MatchSetup.Fog); fog.interactable = !MatchSetup.FogFixed; }
         if (build != null) { build.SetIsOnWithoutNotify(MatchSetup.Purchases); build.interactable = !MatchSetup.PurchasesFixed; }
         if (specialUnits != null) { specialUnits.SetIsOnWithoutNotify(MatchSetup.SpecialUnits); specialUnits.interactable = !MatchSetup.SpecialUnitsFixed; }
+        // Allies only for a scenario that has them (two or more sides on one team).
+        if (allies != null) {
+            allies.gameObject.SetActive(MatchSetup.HasTeams);
+            allies.SetIsOnWithoutNotify(MatchSetup.Allies);
+            allies.interactable = !MatchSetup.AlliesFixed;
+        }
         List<string> names = new List<string> { noFaction };
         names.AddRange(factions.Select(f => f.name));
         GameController gc = GameController.gc;
@@ -71,7 +85,32 @@ public class PreGameMenu : MonoBehaviour {
             if (row.faction != null) row.faction.onValueChanged.AddListener(i => ShowSpecialNote());
             made.Add(row);
         }
+        LayOutSides();
         ShowSpecialNote();
+    }
+
+    /// <summary>Allies on: the side rows team by team (a team where its first side is), a divider between one side and
+    /// the next. Off: in the scenario's order, no dividers.</summary>
+    void LayOutSides() {
+        bool together = MatchSetup.HasTeams && (allies == null ? MatchSetup.Allies : allies.isOn);
+        List<List<PlayerSetupRow>> groups = new List<List<PlayerSetupRow>>();
+        foreach (PlayerSetupRow row in made) {
+            int team = row.Side != null ? row.Side.team : 0;
+            List<PlayerSetupRow> g = together && team != 0 ? groups.Find(x => x[0].Side != null && x[0].Side.team == team) : null;
+            if (g == null) groups.Add(g = new List<PlayerSetupRow>());
+            g.Add(row);
+        }
+        int at = 0, used = 0;
+        for (int i = 0; i < groups.Count; i++) {
+            if (i > 0 && together && sideDivider != null && rows != null) {
+                if (used == dividers.Count) dividers.Add(Instantiate(sideDivider, rows));
+                RectTransform d = dividers[used++];
+                d.gameObject.SetActive(true);
+                d.SetSiblingIndex(at++);
+            }
+            foreach (PlayerSetupRow row in groups[i]) row.transform.SetSiblingIndex(at++);
+        }
+        for (int i = used; i < dividers.Count; i++) dividers[i].gameObject.SetActive(false);
     }
 
     /// <summary>The special units the factions picked have, and so what turning them off takes away.</summary>
@@ -108,6 +147,7 @@ public class PreGameMenu : MonoBehaviour {
         MatchSetup.Fog = fog != null && fog.isOn;
         MatchSetup.Purchases = build == null || build.isOn;
         MatchSetup.SpecialUnits = specialUnits == null || specialUnits.isOn;
+        if (allies != null && MatchSetup.HasTeams) MatchSetup.Allies = allies.isOn;
         if (!MatchSetup.StartGame()) { if (details != null) details.text = "Could not load " + MatchSetup.FilePath; return; }
         GameSession.Frame();
         if (GameSession.Instance != null) GameSession.Instance.SetupDone();

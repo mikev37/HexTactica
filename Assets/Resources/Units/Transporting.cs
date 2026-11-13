@@ -58,7 +58,7 @@ public static class Transporting {
     public static bool CanBoardOnto(Unit cargo, HexTile from, HexTile t, Unit transport) {
         if (cargo == null || t == null) return false;
         Building b = t.building;
-        bool servicing = b != null && b.owner == cargo.owner && transport != null && b.Services(transport);
+        bool servicing = b != null && b.owner != null && Player.Friendly(b.owner, cargo.owner) && transport != null && b.Services(transport);
         // An aircraft that needs a base (a transport plane, not a helicopter) takes on cargo only standing on
         // one of our buildings that services it (a runway).
         if (transport != null && LocomotionRules.IsAirborne(transport.locomotion) && LocomotionRules.NeedsBase(transport.locomotion) && !LocomotionRules.ResuppliedInSupply(transport.locomotion)) return servicing;
@@ -88,7 +88,7 @@ public static class Transporting {
         if (!CanCarry(transport, cargo) || transport.tile == null || from == null) return false;
         if (from != transport.tile && !transport.tile.neighbors.Contains(from)) return false;
         Unit o = from.occupier;
-        if (o != null && o != cargo && o != transport && o.owner != cargo.owner) return false;
+        if (o != null && o != cargo && o != transport && Player.Hostile(o.owner, cargo.owner)) return false;
         return CanBoardOnto(cargo, from, transport.tile, transport);
     }
 
@@ -175,7 +175,7 @@ public static class Transporting {
             // An enemy nobody aboard saw (fog of war): the cargo cannot get off there, the enemy is
             // revealed and fires on the transport (which answers as usual if it can).
             Unit hidden = onto.occupier;
-            if (FogOfWar.On && hidden.owner != transport.owner && !FogOfWar.Sees(transport.owner, hidden) && transport.tile != null) {
+            if (FogOfWar.On && Player.Hostile(hidden.owner, transport.owner) && !FogOfWar.Sees(transport.owner, hidden) && transport.tile != null) {
                 FogOfWar.Reveal(hidden, transport.owner);
                 if (hidden.Strength > 0 && CombatMath.InFireRange(hidden, hidden.tile, transport.tile, transport) && hidden.CanAttack(transport) && GameController.Targetable(transport))
                     hidden.OrderAttack(transport, true);
