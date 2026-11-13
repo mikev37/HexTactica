@@ -462,12 +462,16 @@ public class MapEditorPanel : MonoBehaviour {
     public void Resize() {
         int w;
         if (boardWidth == null || !int.TryParse(boardWidth.text, out w) || w < 3) { Say("The width is a number, 3 or more."); return; }
-        if (HexGenerator.hg == null || w == HexGenerator.hg.width) return;
+        // Odd only: a board w wide holds the tiles with every coordinate from -w/2 to w-1-w/2, a regular hexagon only
+        // when w is odd (20 wide gave sides of 9 and 12 tiles, by turns).
+        bool even = w % 2 == 0;
+        if (even) { w++; boardWidth.text = w.ToString(); }
+        if (HexGenerator.hg == null || w == HexGenerator.hg.width) { if (even) Say("Widths are odd (an even one is not a regular hexagon): " + w + "."); return; }
         Clear();
         HexGenerator.hg.SetWidth(w);
         GameController.BoardLoaded();
         GameSession.Frame();
-        Say("The board is " + w + " wide (units and buildings cleared).");
+        Say("The board is " + w + " wide" + (even ? " (odd widths only: an even one is not a regular hexagon)" : "") + " (units and buildings cleared).");
     }
 
     /// <summary>The Save button (Save returns where it saved, for Play).</summary>
