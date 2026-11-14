@@ -40,7 +40,7 @@ public static class GameFiles {
         return list;
     }
 
-    /// <summary>The campaign missions' scenario files (FrontEndSettings.campaignFolders), by name: for the map editor, never for Load Scenario.</summary>
+    /// <summary>The campaign missions' scenario files (FrontEndSettings.campaignFolders), by name. Neither Load Scenario nor the map editor lists them.</summary>
     public static List<GameFile> CampaignScenarios() {
         List<GameFile> list = new List<GameFile>();
         foreach (string rel in S.campaignFolders) {
@@ -53,11 +53,9 @@ public static class GameFiles {
         return list;
     }
 
-    /// <summary>What the map editor can open: every scenario, then the campaign's missions.</summary>
+    /// <summary>What the map editor can open: the scenarios (FrontEndSettings.scenarioFolders). Not the campaign's missions.</summary>
     public static List<GameFile> Editable() {
-        List<GameFile> list = Scenarios();
-        list.AddRange(CampaignScenarios());
-        return list;
+        return Scenarios();
     }
 
     /// <summary>The file of the campaign mission scenario of this name (the first campaign folder that has it), or null.</summary>

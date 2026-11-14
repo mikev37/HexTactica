@@ -78,7 +78,8 @@ building registry and camera rig now install only in a scene with a GameControll
 - **A mission is a flag placed in that scene:** drag the *Mission Flag* prefab (`FrontEnd/Prefabs`) under the map's
   **Flags** object and put it where it belongs on the picture. Its **Mission** component holds the rest:
   - title, scenario (a file in `Assets/Resources/Campaign/Scenarios`, `FrontEndSettings.campaignFolders`, so
-    missions never appear under Load Scenario; the map editor's Load lists them, tagged *campaign*), faction (the
+    missions never appear under Load Scenario or in the map editor, which is the players'; edit a mission's map in the
+    Unity editor with HexTactica ▸ Load / Save Scenario File), faction (the
     flag's colour: `Faction.flagColor`; the factions carry their campaign names and colours: Blue Sun Federation, Red
     Wolf Empire, Green World Union, Golden Eagle Coalition, Rebels brown), *Available At Start*;
   - intro lines, briefing, objectives, outro lines (won) and lost lines;
