@@ -119,6 +119,8 @@ public class MusicManager : MonoBehaviour {
         Kind now = Context();
         if (now != seen) { seen = now; seenSince = Time.unscaledTime; }
         if (now != kind && Time.unscaledTime - seenSince >= 0.3f) {
+            // Play begun from a menu (or the scene opened): a match starts. Not on a replay being watched.
+            if (now == Kind.General && kind != Kind.General && !HexTactica.Harness.Replay.Active) GameSounds.MatchStarted();
             kind = now;
             special = false;
             Switch(Next(kind), Settings.musicSwitchFade, false, Settings.musicSwitchFade);
@@ -173,18 +175,8 @@ public class MusicManager : MonoBehaviour {
         if (gc == null) return Kind.Menu;   // the main menu (or any scene without a game)
         GameSession session = GameSession.Instance;
         if (session != null && (session.Mode == SessionMode.Setup || session.Mode == SessionMode.Editor)) return Kind.Menu;
-        if (gc.gameOver) return HumanWon(gc) ? Kind.Victory : Kind.Loss;
+        if (gc.gameOver) return GameSounds.HumanWon(gc) ? Kind.Victory : Kind.Loss;
         return Kind.General;
-    }
-
-    static bool HumanWon(GameController gc) {
-        if (gc.winner == null) return false;
-        bool anyHuman = false;
-        if (gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) anyHuman = true;
-        if (!anyHuman) return true;
-        // A human on the winning side (the winner, or one of its allies).
-        foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p) && gc.Won(p)) return true;
-        return false;
     }
 
     /// <summary>The next track for <paramref name="k"/>: at random, not the one just played if there is another.</summary>
