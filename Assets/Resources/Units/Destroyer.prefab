@@ -1139,6 +1139,10 @@ PrefabInstance:
       value: 3.66
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
+      propertyPath: Evasion
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
       propertyPath: Piercing
       value: 2
       objectReference: {fileID: 0}
