@@ -304,8 +304,6 @@ namespace HexTactica.AI {
                 // Capturing buildings (and the threat to ours) is in the world score (AIWorld.Buildings).
                 // Runways and docks are kept clear for the aircraft and ships that land there.
                 x = -AIAir.RunwayBlockCost(unit, o.stop, map); o.world.score += x; o.Extra("runway", x);
-                // A building to take is kept clear for those who can take it.
-                x = -CaptureBlockCost(unit, o.stop, map); o.world.score += x; o.Extra("blocksCapture", x);
                 // Fog of war (played by): seeing from there, and not being seen there.
                 x = AIFog.StopValue(unit, o.stop, map, profile); o.world.score += x; o.Extra("sight", x);
                 // ... and what the fog may hide there, which the forecast does not play (AISigint).
@@ -421,22 +419,6 @@ namespace HexTactica.AI {
 
         static string D(HexTile t) { return t == null ? "-" : "(" + t.x + "," + t.y + ")"; }
 
-        /// <summary>
-        /// A unit that cannot take buildings, ending its turn on one that is not ours while a unit of ours that can take
-        /// it could get there within two turns, is in its way: half the building's worth.
-        /// (A gunship stood on the enemy's empty HQ while the grunt that would have taken it walked back to supply.)
-        /// </summary>
-        public static float CaptureBlockCost(Unit unit, HexTile stop, AIMap map) {
-            return 0f;
-            Building b = stop.building;
-            if (b == null || !b.Capturable || !Player.Hostile(b.owner, unit.owner)) return 0f;
-            foreach (Unit c in map.ownUnits) {
-                if (c == null || c == unit || c.tile == null || !Building.CanCapture(c) || c.moveRange <= 0) continue;
-                if (map.Travel(c, c.tile, stop) <= 2 * c.moveRange) return 0.5f * AIWorld.BuildingWorth(b, map);
-            }
-            return 0f;
-        }
-
 
         // -------------------------------------------------------------- shared loop
 
@@ -499,7 +481,7 @@ namespace HexTactica.AI {
                 // to the front line, where it was shot to pieces with nobody aboard.
                 if (screens) {
                     score += map.FirstStrikeCredit(unit, stop);
-                    // And the space it makes for the armour still to move (AISpace).
+                    // And the space it makes for the armour still to move.
                 }
 
                 // And the destination's exposure, since standing there is the point of going.
@@ -592,7 +574,7 @@ namespace HexTactica.AI {
             Objective job;
             if (Assignments != null && Assignments.TryGetValue(unit, out job) && job.tile != null) {
                 if (job.kind == ObjectiveKind.Scout && unit.tile != null) {
-                    // A scout: every step toward where it will look counts (AIObjectives.AssignScouts).
+                    // A scout (the campaign's Scout objective): every step toward where it will look counts.
                     int gained = context.map.Travel(unit, unit.tile, job.tile) - context.map.Travel(unit, tile, job.tile);
                     bonus += worth * context.profile.scoutPull * gained;
                 } else if (job.kind == ObjectiveKind.Capture && unit.tile != null) {

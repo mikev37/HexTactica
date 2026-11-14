@@ -3,7 +3,7 @@ using UnityEngine;
 namespace HexTactica.AI {
 
     /// <summary>
-    /// What fog of war is worth to the AI when it plays by it (AIProfile.fogFair): seeing, and not
+    /// What fog of war is worth to the AI when it plays by it: seeing, and not
     /// being seen. Both are worked out on the concealed board (FogOfWar.current), so they use only
     /// what this side knows; with no concealed board (fog off, or an AI that sees everything) they
     /// are worth nothing and the AI plays exactly as it always has.

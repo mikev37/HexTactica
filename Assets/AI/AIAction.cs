@@ -30,6 +30,9 @@ namespace HexTactica.AI {
         public HexTile via;
         public float score;
         public string reason;
+        /// <summary>A transport's move made for its riders (AIAssault.TransportAction: the assault ride, a medevac,
+        /// holding the line, a sea lift). One that is not, while it has riders, is a fallback: they decide for themselves.</summary>
+        public bool forRiders;
 
         public static AIAction Wait(Unit u, string why) {
             return new AIAction { kind = AIActionKind.Wait, unit = u, reason = why };

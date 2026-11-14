@@ -208,13 +208,13 @@ namespace HexTactica.AI {
         public readonly AIWorld.Cache replyCache = new AIWorld.Cache();
 
         /// <summary>
-        /// The units a forecast for <paramref name="u"/> plays out (profile.theaterForecast), else null
+        /// The units a forecast for <paramref name="u"/> plays out, else null
         /// (all of them). Enemies that could strike, with a move and their range plus
         /// profile.theaterMargin, anywhere <paramref name="u"/> could move or fire this turn; and our
         /// units those enemies could strike, with the same margin. Per unit and board read.
         /// </summary>
         public HashSet<Unit> TheaterOf(Unit u) {
-            if (!profile.theaterForecast || u == null || u.tile == null) return null;
+            if (u == null || u.tile == null) return null;
             lock (cacheLock) return TheaterOfLocked(u);
         }
         /// <summary>The map's lazily filled caches are shared by forecasts on worker threads (AIParallel): filled under this lock.</summary>
@@ -265,7 +265,6 @@ namespace HexTactica.AI {
             ReadDelta(); PruneUnitCaches();
             theaters.Clear();
             theaterRadius.Clear();
-            space = null;
             denialBaseline = null;
             approaches.Clear();
             costHome.Clear();
@@ -312,7 +311,7 @@ namespace HexTactica.AI {
         public AISigint sigint;
         /// <summary>How well we know the enemy's forces and how they compare; null when off.</summary>
         public AIKnowledge knowledge;
-        /// <summary>fogUncertainty: the share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge); -1 unset.</summary>
+        /// <summary>The share of the enemy's forces we cannot place this turn (1 - known / estimate, AIKnowledge); -1 unset.</summary>
         public float fogUncertainty = -1f;
         /// <summary>The enemy's power we cannot place this turn (estimate - known, AIKnowledge); -1 unset.</summary>
         public float fogUnplacedPower = -1f;
@@ -329,11 +328,11 @@ namespace HexTactica.AI {
         public float FogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at, UnknownEverywhere) : 0f; }
         /// <summary>
         /// The fog's cost for a unit choosing where to move (AIFog.FogRisk): lost units, and unknown ground by how much of the
-        /// enemy we cannot place (fogUncertainty). The only place unknown ground is feared with fogUncertainty on: supply,
+        /// enemy we cannot place. The only place unknown ground is feared: supply,
         /// trucks, regrouping, targeting and the coordinator price only the enemy we have seen.
         /// </summary>
         public float MoveFogLoss(Unit u, HexTile at) { return sigint != null ? sigint.Loss(u, at, true) : 0f; }
-        bool UnknownEverywhere { get { return profile == null || !profile.fogUncertainty; } }
+        bool UnknownEverywhere { get { return profile == null; } }
 
         /// <summary>
         /// Model of tonight's enemy fire, one enemy unit at a time.
@@ -465,21 +464,6 @@ namespace HexTactica.AI {
             return AIDenial.Measure(u, at, this, denialBaseline);
         }
 
-        AISpace.Board space;
-
-        /// <summary>
-        /// Gold the more valuable units gain from <paramref name="u"/> (a screener) ending on
-        /// <paramref name="at"/>, with the rest of the screen where the plan puts it (AISpace).
-        /// The plan is built once per board state and rebuilt after every action.
-        /// </summary>
-        public float SpaceDenial(Unit u, HexTile at) {
-            return 0f;
-            if (space == null) space = AISpace.Prepare(this);
-            return AISpace.Credit(space, u, at) * 0f;
-        }
-
-        /// <summary>The current screen plan, for diagnostics (null until a screener asks).</summary>
-        public AISpace.Board SpacePlan { get { return space; } }
 
         /// <summary>Share of this enemy's single attack that <paramref name="u"/> would draw standing on <paramref name="at"/>.</summary>
         float ShareOf(EnemyFire ef, Unit u, HexTile at, out float mine, out float others) {

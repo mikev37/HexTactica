@@ -183,6 +183,10 @@ namespace HexTactica.AI {
         /// whole army's chain toward the nearest enemy HQ.
         /// </summary>
         public static Plan Make(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
+            // (Every placement it tries is solved on the board as it stands: the carriers' reaches are the same throughout.)
+            using (SupplyNetwork.KeepReach()) return MakeOnBoard(map, fixedHubs, objective, only, army);
+        }
+        static Plan MakeOnBoard(AIMap map, ICollection<Unit> fixedHubs, HexTile objective, ICollection<SupplyPoint> only, ICollection<Unit> army) {
             Unified = true;
             Plan plan = MakeOne(map, fixedHubs, objective, only, army, null);
             if (NoLeaps || !plan.short_ || plan.reachSteps == 0) return plan;

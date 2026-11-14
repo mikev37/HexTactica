@@ -49,7 +49,6 @@ AI/AITactical.cs
 AI/AIStrategic.cs
 AI/AICampaign.cs
 AI/AIObjectives.cs
-AI/AISpace.cs
 AI/AIDenial.cs
 AI/AIWorld.cs
 AI/AIPlan.cs
