@@ -64,6 +64,10 @@ PrefabInstance:
       propertyPath: orderSound
       value: 
       objectReference: {fileID: 8300000, guid: e4e7c73e85ba84a498eca015770f79a2, type: 3}
+    - target: {fileID: 9081080694409079478, guid: b85bf809ea5df5e93ff54741de6be9c9, type: 3}
+      propertyPath: moveLoopSound
+      value: 
+      objectReference: {fileID: 8300000, guid: acd81b5d04e5cf8468fabb5e6a5919f7, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

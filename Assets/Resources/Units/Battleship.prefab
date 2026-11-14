@@ -983,7 +983,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
       propertyPath: Piercing
-      value: 4
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
       propertyPath: Firepower
@@ -991,7 +991,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
       propertyPath: Targeting
-      value: 3
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 9081080694409079478, guid: 4710d3ccf821e789735d211947620df0, type: 3}
       propertyPath: maxWeight

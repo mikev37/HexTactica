@@ -623,7 +623,7 @@ MonoBehaviour:
   weaponImpact: {fileID: 8715938160597912360, guid: 7ca2f792481b39a479d54e0e37aa1126, type: 3}
   deathExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
   orderSound: {fileID: 0}
-  moveBurstSound: {fileID: 0}
+  moveBurstSound: {fileID: 8300000, guid: 076326c1242c72848a997c85b0f918e3, type: 3}
   moveLoopSound: {fileID: 8300000, guid: 081f115199875ba41b437c67555b24de, type: 3}
   fireSound: {fileID: 8300000, guid: 48ee197f8b270b846b142d658b16c322, type: 3}
   dieSound: {fileID: 8300000, guid: 3db11af51fca9e3479d6843094661d5b, type: 3}

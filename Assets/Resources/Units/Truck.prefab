@@ -1009,7 +1009,7 @@ PrefabInstance:
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: moveBurstSound
       value: 
-      objectReference: {fileID: 8300000, guid: 888116f798913fd49bb0a7061193eb71, type: 3}
+      objectReference: {fileID: 8300000, guid: 1ee095c9ca94cb04e89be0c26d27e943, type: 3}
     - target: {fileID: 9081080694409079478, guid: ad64bcfa04ecfae5de3c17baa5ae5452, type: 3}
       propertyPath: carries.Array.size
       value: 1
