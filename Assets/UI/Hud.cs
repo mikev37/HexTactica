@@ -57,6 +57,8 @@ public class Hud : MonoBehaviour {
     public HudRow store;
     [Tooltip("The Owner row's value for a building nobody holds.")]
     public string neutralText = "Neutral";
+    [Tooltip("The capture row's label for a building nobody is taking: its value is the capture points it takes (Building.captureThreshold).")]
+    public string captureCostLabel = "Capture";
     [Tooltip("The Owner row's value for a destroyed building (nobody owns ruins).")]
     public string ruinsText = "Ruins";
 
@@ -212,14 +214,19 @@ public class Hud : MonoBehaviour {
 
     /// <summary>
     /// The building's capture progress, if there is any (as the viewer last saw it, under fog of war):
-    /// someone taking it, from its owner or from nobody — "Capturing: Blue 6/10". Hidden otherwise.
+    /// someone taking it, from its owner or from nobody — "Capturing: Blue 6/10"; nobody taking it, the points it takes
+    /// (captureCostLabel: "Capture 10"). Hidden for one that cannot be taken.
     /// </summary>
     void ShowCapture(Building b) {
         if (capture == null) return;
         if (owner != null && (capture == owner || (capture.label != null && capture.label == owner.label) || (capture.value != null && capture.value == owner.value))) return;
         if (b == null) { capture.Show(false); return; }
         string what, value; Player whose;
-        if (!b.ShownCaptureProgress(out what, out value, out whose)) { capture.Show(false); return; }
+        if (!b.ShownCaptureProgress(out what, out value, out whose)) {
+            // Nobody taking it: how long it takes to take (points), or nothing for one that cannot be taken.
+            if (!b.Capturable) { capture.Show(false); return; }
+            what = captureCostLabel; value = b.CaptureThreshold.ToString(); whose = null;
+        }
         Color colour = whose != null ? whose.displayColor : text;
         if (capture.label != null && capture.label.text != what) capture.label.text = what;
         capture.SetText(value, colour);

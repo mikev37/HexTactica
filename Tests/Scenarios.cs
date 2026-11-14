@@ -486,6 +486,8 @@ public static partial class Scenarios {
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) standing on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two (progress cleared).");
+        make("rule-capture-threshold", "captureThreshold", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); Rig.PlaceBuilding("City", null, 3, 0); Put("Grunt", a, 3, 0); },
+             "Each building says how long it takes to capture (Building.captureThreshold): a City set to 5 is Blue's after one Blue turn of a grunt (6) on it; one set to 20 is not after three (18), and is after four.");
         make("rule-capture-from-zero", "captureFromZero", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); },
              "A Blue City, a Red grunt (6) on it: it is not brought down to neutral first — after Red's turn it is still Blue's with Red 6/10, after Red's second turn Red's.");
         make("rule-attack-no-capture", "attackNoCapture", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); Put("Grunt", a, 1, 0); },
@@ -867,6 +869,15 @@ public static partial class Scenarios {
                 bool ok2 = at00.owner == a && at00.capturePoints == 0 && at00.capturingPlayer == null;
                 detail = "after one Blue turn " + first + ", after two " + show(at00);
                 return ok1 && ok2;
+            }
+            case "captureThreshold": {
+                Building quick = Rig.At(0, 0).building, slow = Rig.At(3, 0).building;
+                quick.captureThreshold = 5; slow.captureThreshold = 20;
+                endTurn(); bool quickTaken = quick.owner == a; string q = show(quick);
+                endTurn(); endTurn(); endTurn(); endTurn(); string s3 = show(slow); bool slowNot = slow.owner == null && slow.capturePoints == 18;
+                endTurn(); endTurn(); bool slowTaken = slow.owner == a;
+                detail = "threshold 5 after one turn " + q + "; threshold 20 after three " + s3 + ", after four " + show(slow);
+                return quickTaken && slowNot && slowTaken;
             }
             case "captureFromZero": {
                 endTurn(); endTurn(); string first = show(at00);

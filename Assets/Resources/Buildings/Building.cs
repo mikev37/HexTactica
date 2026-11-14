@@ -28,7 +28,7 @@ public enum BuildingType {
 /// turn per building.
 ///   - capturePoints is capturingPlayer's progress toward taking it from whoever holds it (or from
 ///     nobody). It starts from 0: an owned building does not have to be brought down to neutral
-///     first. At CaptureThreshold (10) it changes hands straight to the capturer, progress cleared.
+///     first. At CaptureThreshold (captureThreshold, set per building) it changes hands straight to the capturer, progress cleared.
 ///   - Another side starting on it starts again from 0 (the earlier progress is lost).
 ///   - The owner's infantry on it brings a capturer's progress down by its strength.
 ///   - Progress is lost (back to 0) at the end of the capturing side's turn when none of its infantry captured there.
@@ -149,6 +149,8 @@ public class Building : MonoBehaviour {
     public bool healStacksWithSupply = false;
 
     [Header("Capture")]
+    [Tooltip("How long it takes to capture: the capture points a side's infantry must put in (each capture adds the capturer's strength; a full-strength grunt adds 6 a turn). Shown on the HUD.")]
+    public int captureThreshold = 10;
     [Tooltip("Owner's points when owned; the capturing side's progress when neutral")]
     [SerializeField, FormerlySerializedAs("capturePoints")] int _capturePoints;
     public int capturePoints {
@@ -277,8 +279,8 @@ public class Building : MonoBehaviour {
         return list;
     }
 
-    /// <summary>Points it takes to take it (and an owner's full hold).</summary>
-    public int CaptureThreshold { get { return 10; } }
+    /// <summary>Points it takes to take it (and an owner's full hold): its captureThreshold.</summary>
+    public int CaptureThreshold { get { return Mathf.Max(1, captureThreshold); } }
 
     /// <summary>
     /// Capture progress as the screen shows it (under fog of war, as the viewer last saw it), if
