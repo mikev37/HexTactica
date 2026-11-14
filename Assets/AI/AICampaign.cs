@@ -453,12 +453,13 @@ namespace HexTactica.AI {
                 HashSet<HexTile> near = new HashSet<HexTile>();
                 List<KeyValuePair<HexTile, float>> spots = new List<KeyValuePair<HexTile, float>>();
                 foreach (HexTile t in HexGenerator.hg.tiles) {
-                    if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
+                    if (t == null || t.terrain == null) continue;
                     float v = 0f;
                     foreach (HexTile n in AIPath.TilesInRangeShared(t, 0, p.scoutRadius)) v += map.sigint.Presence(n);
-                    // Only near our supply (campaignDipTurns, in moves of our scouts): a look is not worth a
-                    // scout — two recons sent across the map starved two turns out.
-                    if (v > 0f && AIMap.GapToSupply(t, x => map.SupplyDepth(x), 99) <= scoutReach) spots.Add(new KeyValuePair<HexTile, float>(t, v));
+                    // Land: only near our supply (campaignDipTurns, in moves of our scouts): a look is not worth a
+                    // scout — two recons sent across the map starved two turns out. Sea (a fleet): for aircraft and
+                    // ships, which come back on their own.
+                    if (v > 0f && (t.terrain.elevation < 0 || AIMap.GapToSupply(t, x => map.SupplyDepth(x), 99) <= scoutReach)) spots.Add(new KeyValuePair<HexTile, float>(t, v));
                 }
                 spots.Sort((a, b) => { int k = b.Value.CompareTo(a.Value); return k != 0 ? k : CombatMath.CompareTiles(a.Key, b.Key); });
                 int made = 0;
@@ -1280,7 +1281,11 @@ namespace HexTactica.AI {
                 // Those that see the most for the least.
                 Unit s = null; float sv = 0f;
                 foreach (Unit u in pool) {
-                    if (u.visionRange <= 0 || u.moveRange <= 0 || LocomotionRules.NeedsAirfield(u.locomotion) || !CanJoin(u, o, map, p)) continue;
+                    if (u.visionRange <= 0 || u.moveRange <= 0 || !CanJoin(u, o, map, p)) continue;
+                    bool flies = LocomotionRules.IsAirborne(u.locomotion);
+                    // Out over the sea only what flies or sails; an aircraft that must land again only with the fuel to get there and back.
+                    if (o.target.terrain.elevation < 0 && !flies && !LocomotionRules.IsNaval(u.locomotion)) continue;
+                    if (LocomotionRules.NeedsAirfield(u.locomotion) && 2 * u.tile.Distance(o.target) > AIPath.StepBudget(u)) continue;
                     float v = (u.visionRange + 1f) * u.moveRange / AIScore.Worth(u) / (1f + Turns(u, o, map));
                     if (v > sv || (v == sv && s != null && AIMap.CompareUnits(u, s) < 0)) { sv = v; s = u; }
                 }

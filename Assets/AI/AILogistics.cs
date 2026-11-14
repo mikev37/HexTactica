@@ -397,18 +397,33 @@ namespace HexTactica.AI {
         }
 
         /// <summary>
-        /// Troop ships bound for land without our supply (Task.bare) carry a supply unit along. A transport
-        /// ship (no supply aboard, room for one) at or beside the naval yard a bare front embarks from — taking on troops or
-        /// about to — gets the nearest of that front's own supply units on our side that can get in this turn (it waits
-        /// at that yard for the ship otherwise: DropNear). Not a second wave: a front whose land our supply already reaches.
+        /// Troop ships bound for land without our supply (Task.bare) carry a supply unit along: a rule of landing. A
+        /// transport ship (no supply aboard, room for one), wherever it is, gets the nearest of that front's own supply
+        /// units on our side that can meet it within two turns; the supply unit walks to it and the ship does not cross
+        /// before it is in. Not a second wave: a front whose land our supply already reaches.
         /// </summary>
         static void RideAlong(AILogistics l, AIMap map, ICollection<Unit> reserved) {
             HashSet<Unit> taken = new HashSet<Unit>();
+            // Last turn's pairs first, while they still hold (a ship and its supply unit on their way to meet: re-paired
+            // each turn, they chased each other).
+            Dictionary<Unit, Unit> was;
+            if (!lastAlongs.TryGetValue(map.player, out was)) lastAlongs[map.player] = was = new Dictionary<Unit, Unit>();
+            foreach (Task t in l.tasks) {
+                if (!t.bare || t.yard == null) continue;
+                foreach (SupplyPoint h in t.tactical) {
+                    Unit u = h.myUnit, sh;
+                    if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !was.TryGetValue(u, out sh)) continue;
+                    if (sh == null || sh.tile == null || taken.Contains(sh) || !AIAssault.SeaLiftShip(sh, map) || Transporting.FreeWeight(sh) < 1 || !Transporting.CanCarry(sh, u)) continue;
+                    if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer) || !map.AcrossWater(u.tile, t.front.target)) continue;
+                    l.alongs[h] = sh; taken.Add(sh); l.rides.Remove(h);
+                }
+            }
             foreach (Task t in l.tasks) {
                 if (!t.bare || t.yard == null) continue;
                 foreach (Unit sh in map.ownUnits) {
                     if (sh == null || sh.tile == null || taken.Contains(sh) || !LocomotionRules.IsNaval(sh.locomotion) || !Transporting.IsTransport(sh) || sh.Firepower > 1) continue;
-                    if (sh.tile.Distance(t.yard.tile) > 1 || Transporting.FreeWeight(sh) < 1) continue;
+                    // Any of our transport ships with room (they meet troops off any shore, not at the yard).
+                    if (!AIAssault.SeaLiftShip(sh, map) || Transporting.FreeWeight(sh) < 1) continue;
                     if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer)) continue;
                     SupplyPoint pick = null; int pd = int.MaxValue;
                     foreach (SupplyPoint h in t.tactical) {
@@ -416,14 +431,17 @@ namespace HexTactica.AI {
                         if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !Transporting.CanCarry(sh, u)) continue;
                         if (!map.AcrossWater(u.tile, t.front.target)) continue;
                         int d = u.tile.Distance(sh.tile);
-                        if (d > Mathf.Max(1, u.moveRange) + 1) continue;   // can get in this turn (or next to it)
+                        if (d > 2 * Mathf.Max(1, u.moveRange) + 1) continue;   // can meet it within two turns
                         if (d < pd || (d == pd && pick != null && AIMap.CompareUnits(u, pick.myUnit) < 0)) { pd = d; pick = h; }
                     }
                     if (pick == null) continue;
                     l.alongs[pick] = sh; taken.Add(sh); l.rides.Remove(pick);
                 }
             }
+            was.Clear();
+            foreach (KeyValuePair<SupplyPoint, Unit> kv in l.alongs) if (kv.Key.myUnit != null) was[kv.Key.myUnit] = kv.Value;
         }
+        static readonly Dictionary<Player, Dictionary<Unit, Unit>> lastAlongs = new Dictionary<Player, Dictionary<Unit, Unit>>();
 
         /// <summary>A fighting unit of ours is supplied now only through <paramref name="h"/>.</summary>
         static bool SuppliesSomeone(SupplyPoint h, AIMap map) {

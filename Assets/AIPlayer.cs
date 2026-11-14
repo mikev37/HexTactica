@@ -1576,6 +1576,22 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     }
                     if (landing != null) goal = landing;
                 }
+                // Landing on ground without our supply: it does not cross before its supply unit is aboard (AILogistics.RideAlong).
+                if (AIAssault.SeaLiftShip(unit, map) && logistics != null && !unit.transported.Exists(c => c != null && c.Hub != null)) {
+                    foreach (KeyValuePair<SupplyPoint, Unit> kv in logistics.alongs)
+                        if (kv.Value == unit && kv.Key.myUnit != null && kv.Key.myUnit.tile != null && kv.Key.myUnit.trasnporter == null) {
+                            Unit su = kv.Key.myUnit;
+                            HexTile w, l;
+                            // Off the shore where they meet soonest (AIMap.Meeting), as for troops; there, it waits for it to get in.
+                            if (map.Meeting(unit, su, out w, out l) && w != unit.tile && w.occupier == null) {
+                                MoveField mf = map.ReachThisTurn(unit);
+                                if (mf.ReachableThisTurn(w) && AIAir.MayEndOn(unit, w, map))
+                                    return AIAction.Move(unit, w, 0f, "sea lift: sails to pick up its supply unit (" + su.tile.x + "," + su.tile.y + ") off (" + l.x + "," + l.y + ") before crossing to land without our supply");
+                            }
+                            if (su.tile.Distance(unit.tile) <= Mathf.Max(1, su.moveRange) + 1)
+                                return AIAction.Wait(unit, "sea lift: waits for its supply unit (" + su.tile.x + "," + su.tile.y + ") before crossing to land without our supply");
+                        }
+                }
                 long __as = AIPerf.Begin();
                 AIAction? ra = AIAssault.TransportAction(unit, goal, rf != null && rf.posture == Posture.Aggressive, map, Profile, !attacking);
                 AIPerf.End("assault: transport with riders", __as);
@@ -2022,6 +2038,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
                     if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
                 }
                 if (beside != null) { action = AIAction.Board(unit, along, beside, "logistics: gets into the troop ship to ride along to land without our supply"); return true; }
+                HexTile mw, ml;
+                HexTile toward = map.Meeting(along, unit, out mw, out ml) && ml != null ? ml : along.tile;
+                HexTile step = toward == unit.tile ? null : AITransportPlanner.SafeStepToward(unit, toward, map.ReachHorizon(unit), map, false);
+                if (step != null && step != unit.tile) { action = AIAction.Move(unit, step, 0f, "logistics: walks to meet the troop ship (" + along.tile.x + "," + along.tile.y + ") to ride along to land without our supply"); return true; }
             }
         }
         // A rider got in this turn for the ride planned when the turn began: that ride is kept, not re-planned
