@@ -128,9 +128,20 @@ public class MapEditorPanel : MonoBehaviour {
         loadedPath = string.IsNullOrEmpty(MatchSetup.FilePath) ? null : MatchSetup.FilePath;
         ReadBoard();
         SetTool(Tool.Look);
+        HexTactica.Harness.ScenarioLoader.Loaded += BoardLoaded;
     }
 
-    void OnDestroy() { SetFlags(Tool.Look); Hud.Pinned = null; }
+    void OnDestroy() { HexTactica.Harness.ScenarioLoader.Loaded -= BoardLoaded; SetFlags(Tool.Look); Hud.Pinned = null; }
+
+    /// <summary>
+    /// Whatever loaded a file onto the board (its own Load, or HexTactica ▸ Load Scenario File in the Unity editor),
+    /// the panel shows that file's settings and sides: their names, colours and factions.
+    /// </summary>
+    void BoardLoaded(string path) {
+        loadedPath = path;
+        ReadBoard();
+        if (tool != Tool.Look) SetTool(tool);
+    }
 
     /// <summary>The scenario's settings and sides as the board has them now (after a load).</summary>
     /// <summary>A rule list: its choices, and what picking one sets (on or off; fixed by the map or not).</summary>

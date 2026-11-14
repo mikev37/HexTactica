@@ -165,8 +165,12 @@ namespace HexTactica.Harness {
                 UnityEngine.Debug.Log("Recording this game to " + GameLog.Folder);
             }
 
+            if (Loaded != null) Loaded(path);
             return true;
         }
+
+        /// <summary>A file was loaded onto the board (its path), from anywhere: the menus, the map editor, HexTactica ▸ Load Scenario File. Screens that show the board's settings (the map editor's sides) read them again.</summary>
+        public static event System.Action<string> Loaded;
 
         /// <summary>The keys a saved game keeps its game log under (GameLog.SavePoint).</summary>
         public const string LogFolderKey = "gameLog", LogLengthKey = "gameLogLength", LogTurnsKey = "gameLogTurns";

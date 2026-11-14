@@ -9,6 +9,19 @@
   - Tunable values live in assets or serialized fields, not constants in code.
 - More standing rules for working on this project: `Tests/HANDOFF.md`, section 1.
 
+## Map editor and scenario files
+
+The **map editor** (main menu ▸ Map Editor) is for players: they make and change their own maps with it. It lists
+and opens the scenarios in `FrontEndSettings.scenarioFolders` (`Resources/Scenarios`, `StreamingAssets/Scenarios`) and
+the player's own (`persistentDataPath`), and saves to the player's folder (in the Unity editor, with
+`FrontEndSettings` set so, back where a scenario was loaded from). It never lists the campaign's mission maps
+(`FrontEndSettings.campaignFolders`, `Resources/Campaign/Scenarios`): those are the game's, not the player's.
+
+Developers edit any scenario, the campaign's included, in the Unity editor in play mode: **HexTactica ▸ Load Scenario
+File...** opens a file from any folder onto the board, and **HexTactica ▸ Save Scenario File...** writes the board to
+any folder. With the map editor open, a file loaded either way shows in it: its sides (names, colours, factions),
+rules and width are read again from the board (`ScenarioLoader.Loaded`).
+
 ## Campaign scripting: scenario triggers and dialogue
 
 A scenario file can carry a script: triggers (*when this happens, do these things*) edited in the inspector, with a
