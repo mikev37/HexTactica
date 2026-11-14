@@ -12,5 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ebda99b0c84145f99690a33a9a63258e, type: 3}
   m_Name: GameSounds
   m_EditorClassIdentifier: Assembly-CSharp::GameSounds
-  buildingCaptured: {fileID: 0}
+  buildingCaptured: {fileID: 8300000, guid: b15e2ceba01e7c34698b106c5ed83358, type: 3}
   stealthDetected: {fileID: 0}
+  musicVolume: 0.6
+  musicEndFade: 10
+  musicFadeIn: 3
+  musicSwitchFade: 2
