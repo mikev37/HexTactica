@@ -408,13 +408,13 @@ namespace HexTactica.AI {
             // each turn, they chased each other).
             Dictionary<Unit, Unit> was;
             if (!lastAlongs.TryGetValue(map.player, out was)) lastAlongs[map.player] = was = new Dictionary<Unit, Unit>();
+            // (Whichever front it serves this turn: fronts' supply units are shared out afresh each turn.)
             foreach (Task t in l.tasks) {
-                if (!t.bare || t.yard == null) continue;
                 foreach (SupplyPoint h in t.tactical) {
                     Unit u = h.myUnit, sh;
                     if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !was.TryGetValue(u, out sh)) continue;
                     if (sh == null || sh.tile == null || taken.Contains(sh) || !AIAssault.SeaLiftShip(sh, map) || Transporting.FreeWeight(sh) < 1 || !Transporting.CanCarry(sh, u)) continue;
-                    if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer) || !map.AcrossWater(u.tile, t.front.target)) continue;
+                    if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer)) continue;
                     l.alongs[h] = sh; taken.Add(sh); l.rides.Remove(h);
                 }
             }
@@ -431,7 +431,8 @@ namespace HexTactica.AI {
                         if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !Transporting.CanCarry(sh, u)) continue;
                         if (!map.AcrossWater(u.tile, t.front.target)) continue;
                         int d = u.tile.Distance(sh.tile);
-                        if (d > 2 * Mathf.Max(1, u.moveRange) + 1) continue;   // can meet it within two turns
+                        // Can meet it within two turns; an empty ship sails to fetch it from wherever it is.
+                        if (d > 2 * Mathf.Max(1, u.moveRange) + 1 && sh.transported.Count > 0) continue;
                         if (d < pd || (d == pd && pick != null && AIMap.CompareUnits(u, pick.myUnit) < 0)) { pd = d; pick = h; }
                     }
                     if (pick == null) continue;

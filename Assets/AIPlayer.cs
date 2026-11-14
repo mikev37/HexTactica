@@ -1579,7 +1579,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 // Landing on ground without our supply: it does not cross before its supply unit is aboard (AILogistics.RideAlong).
                 if (AIAssault.SeaLiftShip(unit, map) && logistics != null && !unit.transported.Exists(c => c != null && c.Hub != null)) {
                     foreach (KeyValuePair<SupplyPoint, Unit> kv in logistics.alongs)
-                        if (kv.Value == unit && kv.Key.myUnit != null && kv.Key.myUnit.tile != null && kv.Key.myUnit.trasnporter == null) {
+                        if (kv.Value == unit && kv.Key.myUnit != null && kv.Key.myUnit.tile != null && kv.Key.myUnit.trasnporter == null && Transporting.CanCarry(unit, kv.Key.myUnit)) {
                             Unit su = kv.Key.myUnit;
                             HexTile w, l;
                             // Off the shore where they meet soonest (AIMap.Meeting), as for troops; there, it waits for it to get in.
@@ -1622,6 +1622,22 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 // Carrying someone nobody planned for: put them down.
                 TransportPlan drop = UnloadHere(unit.transported[0]);
                 if (drop != null) return AITransportPlanner.TransportAction(unit, drop, map);
+            }
+            // An empty ship paired with a supply unit for a crossing (AILogistics.RideAlong) fetches it, as it fetches troops:
+            // off the shore where they meet soonest, and waits there for it to get in.
+            if (unit.transported.Count == 0 && logistics != null && AIAssault.SeaLiftShip(unit, map)) {
+                foreach (KeyValuePair<SupplyPoint, Unit> kv in logistics.alongs) {
+                    Unit su = kv.Key.myUnit;
+                    if (kv.Value != unit || su == null || su.tile == null || su.trasnporter != null) continue;
+                    HexTile w, l;
+                    if (map.Meeting(unit, su, out w, out l) && w != unit.tile && (w.occupier == null || w.occupier == unit)) {
+                        MoveField mf = map.ReachHorizon(unit);
+                        HexTile fstep = AITransportPlanner.SafeStepToward(unit, w, mf, map, true);
+                        if (fstep != null && fstep != unit.tile && AIAir.MayEndOn(unit, fstep, map))
+                            return AIAction.Move(unit, fstep, 0f, "sea lift: sails to fetch a supply unit (" + su.tile.x + "," + su.tile.y + ") off (" + l.x + "," + l.y + ") for a crossing to land without our supply");
+                    }
+                    return AIAction.Wait(unit, "sea lift: waits for its supply unit (" + su.tile.x + "," + su.tile.y + ") to get in");
+                }
             }
             // An empty transport not held for supply goes back for more riders.
             if (unit.transported.Count == 0 && !supplyTransports.Contains(unit) && (logistics == null || !IsLogisticsTruck(unit))) {
@@ -2027,7 +2043,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         Unit unit = hub.myUnit;
         // Riding along: a troop ship at its front's yard bound for land without our supply — in it.
         Unit along;
-        if (logistics != null && logistics.alongs.TryGetValue(hub, out along) && along != null && along.tile != null) {
+        if (logistics != null && logistics.alongs.TryGetValue(hub, out along) && along != null && along.tile != null && (unit.trasnporter == along || Transporting.CanCarry(along, unit))) {
             if (unit.trasnporter == along) { action = AIAction.Wait(unit, "logistics: rides along with the troops to land without our supply"); return true; }
             if (unit.trasnporter == null) {
                 if (Transporting.CanBoardFrom(along, unit)) { action = AIAction.Board(unit, along, unit.tile, "logistics: gets into the troop ship to ride along to land without our supply"); return true; }
@@ -2041,6 +2057,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
                 HexTile mw, ml;
                 HexTile toward = map.Meeting(along, unit, out mw, out ml) && ml != null ? ml : along.tile;
                 HexTile step = toward == unit.tile ? null : AITransportPlanner.SafeStepToward(unit, toward, map.ReachHorizon(unit), map, false);
+                if (toward == unit.tile) { action = AIAction.Wait(unit, "logistics: waits on the shore for the troop ship (" + along.tile.x + "," + along.tile.y + ") to ride along to land without our supply"); return true; }
                 if (step != null && step != unit.tile) { action = AIAction.Move(unit, step, 0f, "logistics: walks to meet the troop ship (" + along.tile.x + "," + along.tile.y + ") to ride along to land without our supply"); return true; }
             }
         }
