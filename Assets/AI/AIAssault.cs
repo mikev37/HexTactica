@@ -354,7 +354,8 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction? RiderAction(Unit c, bool frontAttacks, AIMap map, AIProfile profile, HexTile ground = null, HexTile goal = null) {
             Unit t = c.trasnporter;
-            if (t == null || t.tile == null || Riders(t).Count == 0 || !c.active) return null;
+            // (A transport aboard another, a ship: nobody gets off it until it is put down.)
+            if (t == null || t.tile == null || t.trasnporter != null || Riders(t).Count == 0 || !c.active) return null;
             if (t.active) return AIAction.Wait(c, "rides to the assault");   // its transport moves first
             if (profile.assaultMedevacStrength > 0 && c.Strength <= profile.assaultMedevacStrength) return AIAction.Wait(c, "wounded: rides on to mend");
             foreach (HexTile n in Transporting.UnloadOptions(t, c)) {
