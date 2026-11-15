@@ -1166,7 +1166,7 @@ public static partial class Scenarios {
                     return "fires on Green " + tank.validTarget(gg.tile) + ", on Red " + tank.validTarget(rg.tile)
                          + "; through Green's tile " + HexTactica.AI.AIPath.CanPassThrough(tank, gg.tile, false)
                          + "; would take Green's city " + Building.WouldCapture(onCity, city.tile)
-                         + "; beside Green's HQ: Blue's own supply " + far.tile.supply[a] + ", in supply " + far.tile.isSupplied(a)
+                         + "; beside Green's HQ: Blue's own supply " + far.tile.supply[a] + ", in supply " + far.tile.isSupplied(a) + " (shown " + far.tile.isSuppliedShown(a) + ", inside Blue's border " + HexTilePlayerSupplyDisplay.Bordered(far.tile, a) + ", Green's " + HexTilePlayerSupplyDisplay.Bordered(far.tile, g) + ")"
                          + "; Red tank by Green seen by Blue " + FogOfWar.Sees(a, rTank) + "; Green's grunt seen by Blue " + FogOfWar.Sees(a, gWatch);
                 };
                 bool teamsRead = g != null && a.team == 1 && g.team == 1 && o.team == 0 && Player.Allied(a, g) && !Player.Allied(a, o) && gc.HasTeams;
@@ -1174,6 +1174,7 @@ public static partial class Scenarios {
                 string on = state();
                 bool okOn = !tank.validTarget(gg.tile) && tank.validTarget(rg.tile) && HexTactica.AI.AIPath.CanPassThrough(tank, gg.tile, false)
                          && !Building.WouldCapture(onCity, city.tile) && far.tile.supply[a] == 0 && far.tile.isSupplied(a)
+                         && far.tile.isSuppliedShown(a) && !HexTilePlayerSupplyDisplay.Bordered(far.tile, a) && HexTilePlayerSupplyDisplay.Bordered(far.tile, g)
                          && FogOfWar.Sees(a, rTank) && FogOfWar.Sees(a, gWatch);
                 // The Blue grunt on Green's city ends Blue's turn there: the city stays Green's, nobody capturing.
                 Building.ResolveCaptures(a);

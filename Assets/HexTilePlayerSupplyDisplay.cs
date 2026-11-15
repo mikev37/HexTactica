@@ -122,11 +122,11 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
         // cut), never in the fog.
         Player viewer = FogOfWar.Viewer;
         bool shown = viewer == null || viewer == myPlayer || FogOfWar.TileVisible(viewer, myTile);
-        if (shown && myTile.isSuppliedShown(myPlayer)) {
+        if (shown && Bordered(myTile, myPlayer)) {
             List<HexTile> neighbors = myTile.neighbors;
             for (int i = 0; i < neighbors.Count; i++) {
                 HexTile tile = neighbors[i];
-                if (tile == null || tile.isSuppliedShown(myPlayer)) continue;
+                if (tile == null || Bordered(tile, myPlayer)) continue;
                 if (tile.x == myTile.x) {
                     if (tile.z > myTile.z) u = true; else d = true;
                 } else if (tile.x > myTile.x) {
@@ -138,6 +138,13 @@ public class HexTilePlayerSupplyDisplay : MonoBehaviour
         }
         Show(up, u); Show(down, d); Show(upright, ur); Show(upleft, ul); Show(downleft, dl); Show(downright, dr);
     }
+
+    /// <summary>
+    /// Inside <paramref name="p"/>'s border: its own network only (HexTile.isOwnSupplyShown), not its allies'. A border
+    /// that took in allies' supply would be drawn twice over the same ground, once in each ally's colour, and would go
+    /// stale: it is redrawn only when its own side's field is published (WakeAround), not when an ally's changes.
+    /// </summary>
+    public static bool Bordered(HexTile t, Player p) { return t != null && t.isOwnSupplyShown(p); }
 
     static void Show(SpriteRenderer r, bool on) {
         if (r != null && r.gameObject.activeSelf != on) r.gameObject.SetActive(on);
