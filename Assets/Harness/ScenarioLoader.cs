@@ -151,7 +151,12 @@ namespace HexTactica.Harness {
             UnitData.LoadAll(unitData);
 
             string redKind = ApplyTestBlock(obj);
-            ApplyControl(fileAI, fileProfile);
+            // A saved game (it carries where its game log stands) is played by whoever played it when it was saved, however
+            // it is loaded: the in-game Load and Continue say so (ControlFromFile), HexTactica ▸ Load Scenario File and
+            // the quick load do not.
+            bool fromFile = ControlFromFile;
+            if (ControlOverride == null && SavePointOf(obj) != null) ControlFromFile = true;
+            try { ApplyControl(fileAI, fileProfile); } finally { ControlFromFile = fromFile; }
 
             // The scenario's triggers (and, in a save, how far they got): replace the last board's.
             ScenarioScript.LoadFromBoard(obj, path);
