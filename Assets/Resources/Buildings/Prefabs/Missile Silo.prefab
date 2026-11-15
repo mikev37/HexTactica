@@ -140,7 +140,8 @@ MonoBehaviour:
   damageStates:
   - {fileID: 21300000, guid: db798deeacab98b4695f405e542fdf54, type: 3}
   destroyedSprite: {fileID: 21300000, guid: e265330808d066f478466bed5af78852, type: 3}
-  buildable: []
+  buildable:
+  - {fileID: 9081080694409079478, guid: a3156b28b42b498dad912afc33b18562, type: 3}
 --- !u!1 &8428887425335908075
 GameObject:
   m_ObjectHideFlags: 0

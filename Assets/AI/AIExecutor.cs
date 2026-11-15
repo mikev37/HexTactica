@@ -54,6 +54,10 @@ namespace HexTactica.AI {
                     if (!u.moveAndAttack) return "it cannot move and fire in one turn";
                     return WhyCannotMove(u, a.destination) ?? WhyCannotFire(u, a.destination, a.target);
                 }
+                case AIActionKind.StrikeTile:
+                    if (a.destination == null) return "no tile to strike";
+                    if (!u.StrikesArea) return "it does not strike ground or from afar";
+                    return Strikes.CanOrder(u, u.tile, a.destination) ? null : "(" + a.destination.x + "," + a.destination.y + ") is out of its range or line of fire, or it cannot fire";
                 case AIActionKind.Load:
                     if (a.transport == null) return "no transport";
                     return HexTile.BoardingPath(u, a.transport) == null ? "it cannot get aboard that transport this turn" : null;
@@ -129,6 +133,19 @@ namespace HexTactica.AI {
                         return true;
                     }
                     return false;
+
+                case AIActionKind.StrikeTile: {
+                    Unit striker = action.unit;
+                    HexTile aim = action.destination;
+                    if (aim == null || striker.tile == null) return false;
+                    // Units under the blast now (hit, perhaps destroyed): their caches go.
+                    List<Unit> under = new List<Unit>();
+                    foreach (HexTile t in Strikes.Blast(aim, striker.blastRadius)) if (t.occupier != null) under.Add(t.occupier);
+                    if (!Strikes.Order(striker, aim)) return false;
+                    map.Invalidate(striker);
+                    foreach (Unit x in under) map.Invalidate(x);
+                    return true;
+                }
 
                 case AIActionKind.Capture:
                     // Capture is implicit (infantry ending its turn on a building without attacking):

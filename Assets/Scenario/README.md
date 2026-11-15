@@ -85,6 +85,8 @@ units or buildings must match at least.
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
 | Unit Boarded (30) | a matching unit gets into a transport (*In area*: where the transport stands): *Count* times | side, kind, name, in area |
 | Unit Unloaded (31) | a matching unit gets out of a transport (*In area*: the tile it gets out onto): *Count* times | side, kind, name, in area |
+| Strike Launched (32) | a matching unit orders a strike (a missile launched, a barrage on ground; *In area*: aimed within the area): *Count* times | side, kind, in area |
+| Strike Landed (33) | a strike by a matching unit lands (a missile arriving at its side's next turn, a barrage at once; *In area*: on a tile within the area): *Count* times | side, kind, in area |
 | Units At Least (25) | now: at least *Value* matching units are alive (as in "when you have 3 tanks"; with no kind, any units) | side, kind, name, in area |
 
 A **kind** is a unit or building prefab's name (Grunt, Tank, City, HQ…). A faction's version of a unit counts as its
@@ -146,6 +148,7 @@ Timing is counted in **turns**:
 | Play Sound (21) | plays a sound from `Resources/Dialogue` once |
 | Ready Units (23) | the matching units can act again this turn (Value 1), or have used their turn (Value 0) |
 | Order Units (26) | the matching units move and attack as if ordered: toward the unit in *Attack Unit*, or the nearest unit of *Or Nearest Of*, attacking it if they reach it this turn; with no target, toward the tile. They have then used their turn. (For scripted ambushes: "the raider goes for our grunt".) |
+| Strike Tile (29) | the matching units that strike ground or from afar (a Missile; see *Strikes* in the main README) strike the tile, if it is in their range and they have their turn: at once, or launched to land when their side's next turn starts. They have then used their turn. ("The enemy launches at the bridge.") |
 | Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |
 
 If an action matches nothing, it says so once in the console: no unit to give, no side by that name, no such marker

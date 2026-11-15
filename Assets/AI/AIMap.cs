@@ -436,6 +436,8 @@ namespace HexTactica.AI {
             if (u == null || at == null) return 0f;
             List<EnemyFire> list;
             float fog = sigint != null ? sigint.Loss(u, at, unknownGround) : 0f;
+            // Hostile strikes in the air (AIStrike): a crowd under one is a target.
+            fog += IncomingStrikeLoss(u, at);
             if (!firersAt.TryGetValue(at, out list)) return Mathf.Min(u.Strength, fog);
             float loss = fog;
             for (int i = 0; i < list.Count; i++) {

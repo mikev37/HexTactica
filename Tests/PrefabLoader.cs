@@ -249,6 +249,13 @@ namespace HexTactica.Testing {
                 u.attacksLocomotion = new List<Locomotion>();
                 foreach (int v in PackedInts((attacks ?? "").Trim())) u.attacksLocomotion.Add((Locomotion)v);
             }
+            // The terrain its strike leaves (Unit.craterTerrain), a reference to a terrain asset.
+            string crater;
+            if (unitFields.TryGetValue("craterTerrain", out crater)) {
+                string g = GuidIn(crater);
+                string terrain = g != null ? AssetByGuid(Path.Combine(Root("Tiles")), "*.asset.meta", g) : null;
+                u.craterTerrain = terrain != null ? ScenarioFile.Terrain(terrain) : null;
+            }
             return u;
         }
 
@@ -414,7 +421,8 @@ namespace HexTactica.Testing {
                 if (colon < 0) continue;
                 string key = line.Substring(2, colon - 2).Trim();
                 string val = line.Substring(colon + 1).Trim();
-                if (val.Length == 0 || val.StartsWith("{")) continue;
+                // (References are skipped, but for a terrain a strike leaves: Unit.craterTerrain.)
+                if (val.Length == 0 || (val.StartsWith("{") && key != "craterTerrain")) continue;
                 if (!f.ContainsKey(key)) f[key] = val;
             }
             return f;

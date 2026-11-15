@@ -1288,6 +1288,8 @@ public class Unit : MonoBehaviour
             if (animator != null && HasAnimatorParameter("Launch")) animator.SetTrigger("Launch");
             PlaySound(fireSound);
             float seconds = Mathf.Max(0.05f, launchSeconds);
+            StrikeFlight flight = GetComponent<StrikeFlight>();
+            if (flight != null) flight.Launch(seconds);
             Strikes.Busy(seconds);
             Destroy(gameObject, seconds);
         } else expendAfterShot = true;
@@ -1342,6 +1344,8 @@ public class Unit : MonoBehaviour
         arriveAt = Time.time + seconds;
         Strikes.Busy(seconds);
         if (animator != null && HasAnimatorParameter("Land")) animator.SetTrigger("Land");
+        StrikeFlight flight = GetComponent<StrikeFlight>();
+        if (flight != null) flight.Arrive(transform.position, seconds);
     }
 
     /// <summary>Kept for old callers: a retreat now happens at once (RetreatTo), so there is never one pending.</summary>

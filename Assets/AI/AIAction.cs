@@ -10,7 +10,8 @@ namespace HexTactica.AI {
         MoveAndAttack,   // move, then fire (only for units with moveAndAttack)
         Load,            // board a transport
         Unload,          // disembark cargo onto a tile
-        Capture
+        Capture,
+        StrikeTile       // strike a tile from the current tile (Strikes: on ground, over an area, or launched to land later)
     }
 
     /// <summary>
@@ -48,6 +49,10 @@ namespace HexTactica.AI {
 
         public static AIAction MoveStrike(Unit u, HexTile dest, Unit target, float score, string why) {
             return new AIAction { kind = AIActionKind.MoveAndAttack, unit = u, destination = dest, target = target, score = score, reason = why };
+        }
+
+        public static AIAction StrikeTile(Unit u, HexTile target, float score, string why) {
+            return new AIAction { kind = AIActionKind.StrikeTile, unit = u, destination = target, score = score, reason = why };
         }
 
         public static AIAction Board(Unit cargo, Unit transport, HexTile at, string why) {
