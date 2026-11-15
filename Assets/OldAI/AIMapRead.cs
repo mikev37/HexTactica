@@ -83,17 +83,65 @@ namespace HexTactica.OldAI {
 
         /// <summary>Our field: real, or with the ghosts applied. The real one is always what the board shows.</summary>
         void SolveOurSupply() {
-            supply = SupplyNetwork.Solve(player, false);
-            for (int i = 0; i < supply.connectedHubs.Count; i++) supply.connectedHubs[i].connected = true;
-            for (int i = 0; i < supply.strandedHubs.Count; i++) supply.strandedHubs[i].connected = false;
-            if (ghost.Count > 0) {
-                List<SupplyPoint> gone = new List<SupplyPoint>();
-                foreach (KeyValuePair<SupplyPoint, HexTile> kv in ghost)
-                    if (kv.Key == null || kv.Key.myUnit == null || kv.Key.myUnit.Strength <= 0 || kv.Key.myUnit.tile == null) gone.Add(kv.Key);
-                foreach (SupplyPoint g in gone) ghost.Remove(g);
-                if (ghost.Count > 0) supply = SupplyNetwork.SolveMoved(player, ghost);
+            List<SupplyPoint> gone = new List<SupplyPoint>();
+            foreach (KeyValuePair<SupplyPoint, HexTile> kv in ghost)
+                if (kv.Key == null || kv.Key.myUnit == null || kv.Key.myUnit.Strength <= 0 || kv.Key.myUnit.tile == null) gone.Add(kv.Key);
+            foreach (SupplyPoint g in gone) ghost.Remove(g);
+            // Kept while our supply units, the buildings and the terrain are as they were, the planned
+            // (ghost) moves are the same and nothing changed on or beside the network (an enemy there cuts it; one gone,
+            // or a supply unit killed, retreated or carried off, is a change of marks or tiles and solves it afresh).
+            string ghosts = GhostKey();
+            bool keep = !buildingsChanged && realSupply != null && supply != null && ghosts == lastGhosts
+                     && HubsUnchanged(player) && NetworkUntouched(realSupply) && NetworkUntouched(supply);
+            supplyChanged = !keep;
+            if (keep && Verify) {
+                Count(Checked, "our supply");
+                SupplyNetwork.Result f = SupplyNetwork.Solve(player, false);
+                bool flags = true;
+                foreach (SupplyPoint h in f.connectedHubs) if (!h.connected) flags = false;
+                foreach (SupplyPoint h in f.strandedHubs) if (h.connected) flags = false;
+                if (ghost.Count > 0) f = SupplyNetwork.SolveMoved(player, ghost);
+                if (!SameDepth(f, supply) || !flags) Count(Mismatches, "our supply");
             }
+            if (!keep) {
+                realSupply = SupplyNetwork.Solve(player, false);
+                supply = ghost.Count > 0 ? SupplyNetwork.SolveMoved(player, ghost) : realSupply;
+            }
+            // The planner reads hub.connected: published from the network every read (kept or not), except by a
+            // speculative read (the real board's objects are not written while the opponent plays).
+            if (!speculative) {
+                for (int i = 0; i < realSupply.connectedHubs.Count; i++) realSupply.connectedHubs[i].connected = true;
+                for (int i = 0; i < realSupply.strandedHubs.Count; i++) realSupply.strandedHubs[i].connected = false;
+            }
+            lastGhosts = ghosts;
             ComputeSupplyRead();
+            // Our allies' networks together: our units live on them too (HexTile.isSupplied), though our supply units
+            // do not relay from them. Read for healing and feeding only (Heals); our own network stays ours.
+            alliedSupply = null;
+            if (player.team != 0 && GameController.gc != null && GameController.gc.players != null)
+                foreach (Player a in GameController.gc.players) {
+                    if (!Player.Allied(a, player) || a.eliminated) continue;
+                    SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                    if (alliedSupply == null) alliedSupply = new SupplyNetwork.Result();
+                    foreach (KeyValuePair<HexTile, int> kv in r.depth) if (kv.Value > alliedSupply.DepthAt(kv.Key)) alliedSupply.depth[kv.Key] = kv.Value;
+                }
+        }
+        /// <summary>Our allies' supply, as this board read found it (null: we have no allies). See SolveOurSupply.</summary>
+        SupplyNetwork.Result alliedSupply;
+        bool AlliedSupplied(HexTile at) { return alliedSupply != null && alliedSupply.DepthAt(at) > 0; }
+        SupplyNetwork.Result realSupply;
+        string lastGhosts;
+        bool supplyChanged = true;
+        string GhostKey() {
+            List<string> k = new List<string>();
+            foreach (KeyValuePair<SupplyPoint, HexTile> kv in ghost) k.Add(kv.Key.GetHashCode() + ">" + (kv.Value != null ? kv.Value.x + "," + kv.Value.y : "-"));
+            k.Sort();
+            return string.Join(";", k.ToArray());
+        }
+        static bool SameDepth(SupplyNetwork.Result a, SupplyNetwork.Result b) {
+            if (a.depth.Count != b.depth.Count) return false;
+            foreach (KeyValuePair<HexTile, int> kv in a.depth) { int v; if (!b.depth.TryGetValue(kv.Key, out v) || v != kv.Value) return false; }
+            return true;
         }
 
         readonly Dictionary<SupplyPoint, float> hubStake = new Dictionary<SupplyPoint, float>();
@@ -109,7 +157,7 @@ namespace HexTactica.OldAI {
         /// Strength <paramref name="x"/> heals by its next turn standing on <paramref name="at"/>, as the
         /// game gives it (Player.UpkeepOne): a building of its owner's that services its kind heals
         /// Building.healPerTurn — on top of the supply network's 1 where the building stacks it and the
-        /// tile is supplied, else the more of the two — and otherwise the network heals 1 (healedPerTurn).
+        /// tile is supplied, else the more of the two — and otherwise the network heals GameController.NetworkHealPerTurn.
         /// </summary>
         public float HealAt(Unit x, HexTile at) {
             if (x == null || at == null || x.owner == null) return 0f;
@@ -117,13 +165,13 @@ namespace HexTactica.OldAI {
             if (b != null && b.owner == x.owner && b.Services(x)) {
                 bool inNet = (LocomotionRules.ResuppliedInSupply(x.locomotion) || !LocomotionRules.NeedsBase(x.locomotion)) && SuppliedFor(x, at);
                 if (!inNet) return b.healPerTurn;
-                return b.healStacksWithSupply ? profile.healedPerTurn + b.healPerTurn : Mathf.Max(profile.healedPerTurn, b.healPerTurn);
+                return b.healStacksWithSupply ? GameController.NetworkHealPerTurn + b.healPerTurn : Mathf.Max(GameController.NetworkHealPerTurn, b.healPerTurn);
             }
-            return Heals(x, at) ? profile.healedPerTurn : 0f;
+            return Heals(x, at) ? GameController.NetworkHealPerTurn : 0f;
         }
 
         bool SuppliedFor(Unit x, HexTile at) {
-            if (x.owner == player) return supply != null && supply.DepthAt(at) > 0;
+            if (x.owner == player) return (supply != null && supply.DepthAt(at) > 0) || AlliedSupplied(at);
             return theirSupply != null && theirSupply.DepthAt(at) > 0;
         }
 
@@ -138,6 +186,8 @@ namespace HexTactica.OldAI {
             }
             SupplyPoint sp = x.Hub;
             if (x.owner == player) {
+                // On an ally's supply: fed and healed as on our own (a supply unit too: it is not spending its health).
+                if (AlliedSupplied(at) && (supply == null || supply.DepthAt(at) <= 0)) return true;
                 if (supply == null || supply.DepthAt(at) <= 0) return false;
                 return sp == null || sp.producer || supply.connectedHubs.Contains(sp);
             }
@@ -157,21 +207,35 @@ namespace HexTactica.OldAI {
         /// cache's, for an enemy far from the unit deciding), so each is worked out once per board.
         /// </summary>
         public HashSet<HexTile>[] EnemySpace(Unit e, HashSet<HexTile> positions) {
-            KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]> kv;
             // No move tiles handed in (a unit that does not fire tonight): its reach on the board as
             // it stands, which is the same for every forecast on this board.
-            if (enemySpace.TryGetValue(e, out kv) && ReferenceEquals(kv.Key, positions)) return kv.Value;
-            HashSet<HexTile>[] s = SpaceFrom(e, e.tile, positions);
-            enemySpace[e] = new KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>(positions, s);
+            Dictionary<HashSet<HexTile>, HashSet<HexTile>[]> bySet;
+            HashSet<HexTile>[] s;
+            HashSet<HexTile> key = positions ?? NoPositions;
+            lock (cacheLock) {
+                if (!enemySpace.TryGetValue(e, out bySet)) enemySpace[e] = bySet = new Dictionary<HashSet<HexTile>, HashSet<HexTile>[]>(ReferenceComparer.Instance);
+                if (bySet.TryGetValue(key, out s)) return s;
+            }
+            s = SpaceFrom(e, e.tile, positions);
+            lock (cacheLock) { HashSet<HexTile>[] had; if (bySet.TryGetValue(key, out had)) return had; bySet[key] = s; }
             return s;
         }
-        readonly Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>> enemySpace = new Dictionary<Unit, KeyValuePair<HashSet<HexTile>, HashSet<HexTile>[]>>();
+        static readonly HashSet<HexTile> NoPositions = new HashSet<HexTile>();
+        /// <summary>Move-tile sets by identity (the forecasts hand in the same set objects again).</summary>
+        sealed class ReferenceComparer : IEqualityComparer<HashSet<HexTile>> {
+            public static readonly ReferenceComparer Instance = new ReferenceComparer();
+            public bool Equals(HashSet<HexTile> a, HashSet<HexTile> b) { return ReferenceEquals(a, b); }
+            public int GetHashCode(HashSet<HexTile> a) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(a); }
+        }
+        readonly Dictionary<Unit, Dictionary<HashSet<HexTile>, HashSet<HexTile>[]>> enemySpace = new Dictionary<Unit, Dictionary<HashSet<HexTile>, HashSet<HexTile>[]>>();
 
         public HashSet<HexTile>[] SpaceOf(Unit x) {
             HashSet<HexTile>[] s;
-            if (ourSpace.TryGetValue(x, out s)) return s;
-            s = SpaceFrom(x, x.tile, null);
-            ourSpace[x] = s;
+            lock (cacheLock) {
+                if (ourSpace.TryGetValue(x, out s)) return s;
+                s = SpaceFrom(x, x.tile, null);
+                ourSpace[x] = s;
+            }
             return s;
         }
 
@@ -208,7 +272,7 @@ namespace HexTactica.OldAI {
             SupplyPoint hub = hubUnit != null ? hubUnit.Hub : null;
             if (hub == null || hub.producer || hubUnit.owner == null) return 0f;
             float v;
-            if (hubStake.TryGetValue(hub, out v)) return v;
+            lock (cacheLock) if (hubStake.TryGetValue(hub, out v)) return v;
             Player o = hubUnit.owner;
             SupplyNetwork.Result with = o == player ? supply : SupplyNetwork.Solve(o, false);
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(o, hub);
@@ -218,50 +282,69 @@ namespace HexTactica.OldAI {
                 if (x == null || x.tile == null || x == hubUnit || x.Strength <= 0) continue;
                 if (with.DepthAt(x.tile) > 0 && without.DepthAt(x.tile) <= 0) v += AIScore.Worth(x);
             }
-            hubStake[hub] = v;
+            lock (cacheLock) hubStake[hub] = v;
             return v;
         }
 
         void ComputeSupplyRead() {
             hubStake.Clear();
-            staticSupply = SupplyNetwork.SolveStatic(player);
+            bool keep = !buildingsChanged;
+            // Static supply (buildings and producers): kept like ours.
+            if (keep && staticSupply != null && HubsUnchanged(player) && NetworkUntouched(staticSupply)) {
+                if (Verify) { Count(Checked, "static supply"); if (!SameDepth(SupplyNetwork.SolveStatic(player), staticSupply)) Count(Mismatches, "static supply"); }
+            } else staticSupply = SupplyNetwork.SolveStatic(player);
 
+            // Where each supply unit could reach: kept per unit while its mark is the same and nothing changed on or beside it.
             potentialSupply.Clear();
             List<Unit> mine = player != null ? player.units : null;
+            Dictionary<SupplyPoint, SupplyNetwork.Result> extents = new Dictionary<SupplyPoint, SupplyNetwork.Result>();
             if (mine != null) {
                 for (int i = 0; i < mine.Count; i++) {
                     Unit u = mine[i];
                     if (u == null || u.tile == null || u.Strength <= 0) continue;
                     SupplyPoint sp = u.Hub;
                     if (sp == null || sp.producer) continue;
-                    SupplyNetwork.Result ext = SupplyNetwork.Extent(sp);
+                    SupplyNetwork.Result ext;
+                    if (keep && hubExtent.TryGetValue(sp, out ext) && !changedUnits.Contains(u) && NetworkUntouched(ext)) {
+                        if (Verify) { Count(Checked, "supply unit reach"); if (!SameDepth(SupplyNetwork.Extent(sp), ext)) Count(Mismatches, "supply unit reach"); }
+                    } else ext = SupplyNetwork.Extent(sp);
+                    extents[sp] = ext;
                     foreach (HexTile t in ext.depth.Keys) if (supply.DepthAt(t) <= 0) potentialSupply.Add(t);
                 }
             }
+            hubExtent.Clear();
+            foreach (KeyValuePair<SupplyPoint, SupplyNetwork.Result> kv in extents) hubExtent[kv.Key] = kv.Value;
 
-            // Enemy supply: solve each enemy player, on the board as this AI knows it.
+            // Enemy supply: solve each enemy player, on the board as this AI knows it (kept per player like ours).
+            Dictionary<Player, SupplyNetwork.Result> before = new Dictionary<Player, SupplyNetwork.Result>(theirByPlayer);
             theirSupply.depth.Clear();
             theirByPlayer.Clear();
             theirConnected.Clear();
             enemyPlayers.Clear();
-            ourSpace.Clear();
             SpaceVersion++;
             enemySpace.Clear();
             HashSet<Player> enemies = new HashSet<Player>();
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
-            if (all != null) for (int i = 0; i < all.Count; i++) if (all[i] != null && all[i].owner != null && all[i].owner != player) enemies.Add(all[i].owner);
-            foreach (Player o in enemies) {
-                SupplyNetwork.Result r = SupplyNetwork.Solve(o, false);
+            if (all != null) for (int i = 0; i < all.Count; i++) if (all[i] != null && all[i].owner != null && Player.Hostile(all[i].owner, player)) enemies.Add(all[i].owner);
+            bool theirsChanged = !keep;
+            List<Player> order = new List<Player>(enemies);
+            foreach (Player o in order) {
+                SupplyNetwork.Result r;
+                if (keep && before.TryGetValue(o, out r) && HubsUnchanged(o) && NetworkUntouched(r)) {
+                    if (Verify) { Count(Checked, "enemy supply"); if (!SameDepth(SupplyNetwork.Solve(o, false), r)) Count(Mismatches, "enemy supply"); }
+                } else { r = SupplyNetwork.Solve(o, false); theirsChanged = true; }
                 theirByPlayer[o] = r;
                 enemyPlayers.Add(o);
                 foreach (SupplyPoint h in r.connectedHubs) theirConnected.Add(h);
                 foreach (KeyValuePair<HexTile, int> kv in r.depth)
                     if (kv.Value > theirSupply.DepthAt(kv.Key)) theirSupply.depth[kv.Key] = kv.Value;
             }
+            if (before.Count != order.Count) theirsChanged = true;
 
-            HopDistance(supply, distOurSupply);
-            HopDistance(theirSupply, distTheirSupply);
+            if (supplyChanged || !keep) HopDistance(supply, distOurSupply);
+            if (theirsChanged) HopDistance(theirSupply, distTheirSupply);
         }
+        readonly Dictionary<SupplyPoint, SupplyNetwork.Result> hubExtent = new Dictionary<SupplyPoint, SupplyNetwork.Result>();
 
         /// <summary>Multi-source breadth-first hop distance from every supplied tile, over land and water alike.</summary>
         static void HopDistance(SupplyNetwork.Result field, Dictionary<HexTile, int> dist) {

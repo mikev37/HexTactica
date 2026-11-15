@@ -28,7 +28,7 @@ namespace HexTactica.OldAI {
     }
 
     /// <summary>
-    /// Coordinated plans for groups of units in contact (AIProfile.coordination).
+    /// Coordinated plans for groups of units in contact.
     ///
     /// Units still decide one at a time — but before they do, each group of units the enemy can
     /// strike next turn (or that can strike now) is given three whole-group plans, each forecast as
@@ -114,7 +114,6 @@ namespace HexTactica.OldAI {
             foreach (Unit x in map.enemyUnits) if (x != null && x.tile != null) { hp[x] = x.Strength; at[x] = x.tile; }
             Board board = new Board();
             Dictionary<Unit, HexTile> endsAt = new Dictionary<Unit, HexTile>();
-            bool breakpoints = prof.replyBreakpoints;
             Dictionary<Unit, float> hpCertain = null;
             // Suppressed pips as the forecast plays out. Ours: their fire suppresses in their reply.
             // Theirs: what our indirect fire has suppressed this turn (and what it will in the steps
@@ -145,7 +144,7 @@ namespace HexTactica.OldAI {
                         if (CombatMath.Suppresses(x)) { }   // indirect fire: suppresses (below), never drives back or pins
                         else if (dmg > 0 && dmg < hp[t] && dmg - t.Veterancy > back - x.Veterancy && t.moveRange > 0) {
                             retreat = RetreatTile(t, at[t], at[x], hp, null);
-                            if (retreat == null && prof.forecastPins) { dmg += 1; pinned = true; }
+                            if (retreat == null) { dmg += 1; pinned = true; }
                         }
                     }
                     float dealt = Mathf.Min(hp[t], dmg);
@@ -160,16 +159,13 @@ namespace HexTactica.OldAI {
                 }
 
                 // ---- their reply: AIWorld.Evaluate's, with every moved unit where it now stands.
-                if (breakpoints) hpCertain = new Dictionary<Unit, float>(hp);
+                hpCertain = new Dictionary<Unit, float>(hp);
                 sup.Clear();   // their turn starts: their pips come back; ours are suppressed only by what follows
                 List<Unit> enemies = new List<Unit>(map.enemyUnits);
                 enemies.Sort((a, b) => {
                     int c = (b.Firepower * b.Strength).CompareTo(a.Firepower * a.Strength);
                     return c != 0 ? c : AIMap.CompareUnits(a, b);
                 });
-                bool ownSideBlocks = prof.forecastOwnSideBlocks;
-                // Our units destroyed by retaliation are off the board (the single-move forecast does the same).
-                if (prof.forecastDeadBlock) foreach (Unit x in map.ownUnits) if (hp.ContainsKey(x) && hp[x] <= 0f && x.tile != null) board.Move(x, null, at[x]);
 
                 Dictionary<Unit, HashSet<HexTile>> positions = new Dictionary<Unit, HashSet<HexTile>>();
                 foreach (Unit e in enemies) {
@@ -179,22 +175,21 @@ namespace HexTactica.OldAI {
                     // kills, retreats): where it can go is what it is on the real board, worked out
                     // once per board (the reply cache) instead of once per plan scored.
                     HashSet<HexTile> cached;
-                    if (at[e] == e.tile && !ownSideBlocks && board.FarFrom(e)) {
+                    if (at[e] == e.tile && board.FarFrom(e)) {
                         if (!map.replyCache.positions.TryGetValue(e, out cached)) { cached = AIWorld.Positions(e, false); map.replyCache.positions[e] = cached; }
                         positions[e] = cached;
                         continue;
                     }
-                    positions[e] = PositionsFrom(e, at[e], ownSideBlocks);
+                    positions[e] = PositionsFrom(e, at[e], false);
                 }
                 HashSet<HexTile> taken = new HashSet<HexTile>();
                 foreach (Unit x in map.ownUnits) if (x != null && hp.ContainsKey(x) && hp[x] > 0f) taken.Add(at[x]);
                 foreach (Unit e in enemies) {
                     if (e == null || e.tile == null || !hp.ContainsKey(e) || hp[e] <= 0f) continue;
                     bool firesInPlace = !e.moveAndAttack && e.Firepower > 0 && positions.ContainsKey(e);
-                    if (ownSideBlocks || firesInPlace || e.moveRange <= 0) taken.Add(at[e]);
+                    if (firesInPlace || e.moveRange <= 0) taken.Add(at[e]);
                 }
 
-                bool weighs = prof.enemyWeighsRisk;
                 Func<Unit, HexTile> ourPos = x => at.ContainsKey(x) ? at[x] : x.tile;
                 for (int ei = 0; ei < enemies.Count; ei++) {
                     Unit e = enemies[ei];
@@ -202,7 +197,7 @@ namespace HexTactica.OldAI {
                     if (!positions.TryGetValue(e, out pos) || hp[e] <= 0f) continue;
                     Unit bestTarget = null; HexTile bestTile = null; float bestValue = 0f; int bestDamage = 0, bestBack = 0;
                     bool bestPinned = false;
-                    float home = weighs ? AIWorld.Exposure(e, hp[e], at[e], map, hp, ourPos) : 0f;
+                    float home = AIWorld.Exposure(e, hp[e], at[e], map, hp, ourPos);
                     foreach (Unit d in map.ownUnits) {
                         if (d == null || !hp.ContainsKey(d) || hp[d] <= 0f || !GameController.Targetable(d)) continue;
                         HexTile dAt = at[d];
@@ -212,27 +207,25 @@ namespace HexTactica.OldAI {
                         CombatMath.Exchange(e, AIWorld.Hp(hp[e]), fire, d, AIWorld.Hp(hp[d]), dAt, supOf(d), out dmg, out back);
                         if (dmg <= 0) continue;
                         bool pinned = false;
-                        if (prof.forecastPins && !CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !AIWorld.CanFallBack(d, dAt, fire, null, null, hp, taken)) {
+                        if (!CombatMath.Suppresses(e) && dmg < hp[d] && dmg - d.Veterancy > back - e.Veterancy && !AIWorld.CanFallBack(d, dAt, fire, null, null, hp, taken)) {
                             dmg += 1;
                             pinned = true;
                         }
                         float value = (dmg * AIWorld.Value(d) - back * AIWorld.Value(e)) * (dmg >= hp[d] ? 2f : 1f);
-                        if (breakpoints && dmg < hp[d] && prof.assistWeight > 0f
-                            && AIWorld.EnemyCanFinish(d, dAt, hp[d] - dmg, enemies, ei, positions, taken, fire, hp)) {
+                        if (dmg < hp[d] && prof.assistWeight > 0f && AIWorld.EnemyCanFinish(d, dAt, hp[d] - dmg, enemies, ei, positions, taken, fire, hp)) {
                             float aw = prof.assistWeight;
                             value = ((dmg + aw * (hp[d] - dmg)) * AIWorld.Value(d) - back * AIWorld.Value(e)) * (1f + aw);
                         }
-                        if (weighs) value -= Mathf.Max(0f, AIWorld.Exposure(e, hp[e] - back, fire, map, hp, ourPos) - home) * prof.enemyCaution;
+                        value -= Mathf.Max(0f, AIWorld.Exposure(e, hp[e] - back, fire, map, hp, ourPos) - home) * prof.enemyCaution;
                         if (value > bestValue || (value == bestValue && bestTarget != null && AIMap.CompareUnits(d, bestTarget) < 0)) {
                             bestValue = value; bestTarget = d; bestTile = fire; bestDamage = dmg; bestBack = back; bestPinned = pinned;
                         }
                     }
                     if (bestTarget == null) continue;
-                    if (ownSideBlocks && bestTile != at[e]) taken.Remove(at[e]);
                     taken.Add(bestTile);
                     endsAt[e] = bestTile;
-                    float dealt = Mathf.Min(hp[bestTarget], bestDamage * (breakpoints ? 1f : 1f - prof.replyDiscount));
-                    bool certain = breakpoints && bestBack == 0 && bestTile.Distance(at[bestTarget]) > 1;
+                    float dealt = Mathf.Min(hp[bestTarget], bestDamage * (1f));
+                    bool certain = bestBack == 0 && bestTile.Distance(at[bestTarget]) > 1;
                     if (certain) hpCertain[bestTarget] = Mathf.Max(0f, hpCertain[bestTarget] - dealt);
                     bool pushed = CombatMath.Pushes(e, bestBack, bestTarget, bestDamage, hp[bestTarget]);
                     hp[bestTarget] -= dealt;
@@ -246,7 +239,7 @@ namespace HexTactica.OldAI {
                     if (narrate) w.replies.Add(e.name + "->" + bestTarget.name + " " + dealt.ToString("0.#") + (bestPinned ? " pinned" : "") + (bestBack > 0 ? "/" + bestBack : "") + (certain ? " certain" : ""));
 
                     HexTile freed = null;
-                    if (hp[bestTarget] <= 0f && !prof.forecastDeadBlock) {
+                    if (hp[bestTarget] <= 0f) {
                         freed = at[bestTarget];
                         taken.Remove(freed);
                         board.Clear(freed, bestTarget);
@@ -266,7 +259,7 @@ namespace HexTactica.OldAI {
                         foreach (Unit later in enemies) {
                             if (later == e || !positions.ContainsKey(later) || hp[later] <= 0f || !later.moveAndAttack) continue;
                             if (at[later].Distance(freed) > later.moveRange + 1) continue;
-                            positions[later] = PositionsFrom(later, at[later], ownSideBlocks);
+                            positions[later] = PositionsFrom(later, at[later], false);
                         }
                     }
                 }
@@ -277,16 +270,14 @@ namespace HexTactica.OldAI {
             // ---- what is left: AIWorld.Evaluate's scoring (and its breakpoint blend).
             Func<Unit, HexTile> where = x => x.owner == us ? at[x] : (endsAt.ContainsKey(x) ? endsAt[x] : at[x]);
             float valued = AIWorld.Valuate(hp, us, where, map, w);
-            if (breakpoints) {
-                AIWorld.Outcome c = new AIWorld.Outcome();
-                float vc = AIWorld.Valuate(hpCertain, us, where, map, c);
-                float k = 1f - prof.replyDiscount;
-                valued = vc + k * (valued - vc);
-                w.own = c.own + k * (w.own - c.own);
-                w.enemy = c.enemy + k * (w.enemy - c.enemy);
-                w.deaths = c.deaths + k * (w.deaths - c.deaths);
-                w.hubs = c.hubs + k * (w.hubs - c.hubs);
-            }
+            AIWorld.Outcome sure = new AIWorld.Outcome();
+            float vc = AIWorld.Valuate(hpCertain, us, where, map, sure);
+            float k = 1f - prof.replyDiscount;
+            valued = vc + k * (valued - vc);
+            w.own = sure.own + k * (w.own - sure.own);
+            w.enemy = sure.enemy + k * (w.enemy - sure.enemy);
+            w.deaths = sure.deaths + k * (w.deaths - sure.deaths);
+            w.hubs = sure.hubs + k * (w.hubs - sure.hubs);
             w.score = valued;
             return w;
         }
@@ -461,7 +452,7 @@ namespace HexTactica.OldAI {
             List<PlanStep> result = new List<PlanStep>();
             foreach (List<Unit> g in Groups(map)) {
                 List<GroupPlan> plans = new List<GroupPlan> { Stay(g, map), Strike(g, map), Withdraw(g, map) };
-                foreach (GroupPlan p in plans) p.world = Evaluate(p.steps, map, log != null, profile.coordinationRetreats);
+                foreach (GroupPlan p in plans) p.world = Evaluate(p.steps, map, log != null, true);
                 GroupPlan stay = plans[0], best = stay;
                 foreach (GroupPlan p in plans) if (p.steps.Count > 0 && p.world.score > best.world.score) best = p;
                 bool adopt = best != stay && best.world.score >= stay.world.score + profile.coordinationMargin;
@@ -496,6 +487,7 @@ namespace HexTactica.OldAI {
                 if (t == null || t.tile == null || t.Strength <= 0 || !GameController.Targetable(t)) return false;
                 HexTile from = s.stop ?? u.tile;
                 if (!CombatMath.InFireRange(u, from, t.tile, t) || !u.CanAttack(from)) return false;
+                if (!u.CanTarget(t) || Unit.calculateDamage(u, t, t.tile, 0) <= 0) return false;   // the game's rule: an attack for damage
             }
             return true;
         }

@@ -29,15 +29,6 @@ namespace HexTactica.OldAI {
         /// term priced in worth — risk, supply cost, holding ground, commitment — swung by
         /// thousands as units moved, sending a Tank to starve in an empty corner.
         /// </summary>
-        /// <summary>Worth overrides from the profile of the AI now thinking (AIProfile.gruntWorth /
-        /// supplyWorth; 0 = the unit's gold cost). Set whenever an AIMap is built.</summary>
-        public static float gruntWorth, supplyWorth;
-
-        public static void Use(AIProfile p) {
-            gruntWorth = p != null ? p.gruntWorth : 0f;
-            supplyWorth = p != null ? p.supplyWorth : 0f;
-        }
-
         /// <summary>Gold cost per strength point, veterancy included: for reports, never the AI's values.</summary>
         public static float Cost(Unit u) {
             if (u == null) return 1f;
@@ -46,9 +37,8 @@ namespace HexTactica.OldAI {
 
         public static float Worth(Unit u) {
             if (u == null) return 1f;
+            // Every unit by what it costs: none is priced by its name.
             float baseCost = u.cost;
-            if (gruntWorth > 0f && u.name.StartsWith("Grunt")) baseCost = gruntWorth;
-            else if (supplyWorth > 0f && u.name.StartsWith("Supplies")) baseCost = supplyWorth;
             float material = baseCost + u.Veterancy * baseCost * 0.2f;
             return Mathf.Max(1f, material / 6f);
         }

@@ -63,7 +63,7 @@ namespace HexTactica.OldAI {
     ///   - Mass: an enemy group our nearby forces outmatch by objectiveRatio, counting everything
     ///     that could support it — where reserves should gather. Defeat in detail at the scale
     ///     of the map; the fighting itself is tactical.
-    ///   - Capture (captureObjectives): every building we do not hold, the enemy HQ too where the
+    ///   - Capture: every building we do not hold, the enemy HQ too where the
     ///     rules let it be taken — the nearest unit that can capture it, and an escort as strong
     ///     as objectiveRatio times what could defend it. Without these the army had one target,
     ///     the building nearest its front, and drifted toward it by tie-break: unopposed on
@@ -123,26 +123,24 @@ namespace HexTactica.OldAI {
             }
 
             // Buildings to take.
-            if (profile.captureObjectives) {
-                float board = map.BoardStake;
-                int count = map.ownUnits.Count + map.enemyUnits.Count;
-                float average = count > 0 ? board / count : 0f;
-                foreach (Building b in Building.all) {
-                    if (b == null || b.tile == null || !b.Capturable) continue;
-                    if (FogOfWar.OwnerAsSeen(map.player, b) == map.player) continue;
-                    if (b.IsHQ && attrition) continue;
-                    // Only where the army is: on or beside our supplied ground (supply follows the army).
-                    // Every building on the map, each with its own capturer, sent the infantry off one by
-                    // one ahead of the army, and on ChanceMeeting it lost two thirds of the material.
-                    bool near = map.SupplyDepth(b.tile) > 0;
-                    if (!near) foreach (HexTile n in AIPath.TilesInRangeShared(b.tile, 0, profile.captureReach)) if (map.SupplyDepth(n) > 0) { near = true; break; }
-                    if (!near) continue;
-                    Objective o = new Objective { kind = ObjectiveKind.Capture, tile = b.tile, building = b };
-                    o.value = b.IsHQ ? board : Mathf.Max(b.income * 10f, average * 2f) + (b.producesSupply ? average * 2f : 0f);
-                    o.defence = DefenceAt(map, b.tile, null);
-                    o.required = o.defence * ratio;
-                    list.Add(o);
-                }
+            float board = map.BoardStake;
+            int count = map.ownUnits.Count + map.enemyUnits.Count;
+            float average = count > 0 ? board / count : 0f;
+            foreach (Building b in Building.all) {
+                if (b == null || b.tile == null || !b.Capturable) continue;
+                if (FogOfWar.OwnerAsSeen(map.player, b) == map.player) continue;
+                if (b.IsHQ && attrition) continue;
+                // Only where the army is: on or beside our supplied ground (supply follows the army).
+                // Every building on the map, each with its own capturer, sent the infantry off one by
+                // one ahead of the army, and on ChanceMeeting it lost two thirds of the material.
+                bool near = map.SupplyDepth(b.tile) > 0;
+                if (!near) foreach (HexTile n in AIPath.TilesInRangeShared(b.tile, 0, profile.captureReach)) if (map.SupplyDepth(n) > 0) { near = true; break; }
+                if (!near) continue;
+                Objective o = new Objective { kind = ObjectiveKind.Capture, tile = b.tile, building = b };
+                o.value = b.IsHQ ? board : Mathf.Max(b.income * 10f, average * 2f) + (b.producesSupply ? average * 2f : 0f);
+                o.defence = DefenceAt(map, b.tile, null);
+                o.required = o.defence * ratio;
+                list.Add(o);
             }
 
             // Isolated enemy groups. Every enemy combat unit belongs to one cluster (linked
@@ -204,8 +202,6 @@ namespace HexTactica.OldAI {
                     int t = Eta(u, o.tile, map);
                     if (t > profile.objectiveReachTurns) continue;
                     // Not a trip it would starve on: out there and back must fit in what it carries.
-                    if (profile.objectivesNeedForce && u.suppliesMax > 0 && map.SupplyDepth(o.tile) <= 0 &&
-                        t + map.TurnsToSupply(u, o.tile) > u.supplies + 1) continue;
                     // A building is taken by someone who can capture it; others only escort it against a defence.
                     if (o.kind == ObjectiveKind.Capture) { if (!Building.CanCapture(u) && o.defence <= 0f) continue; }
                     else if (Damage(u, o) <= 0f) continue;
@@ -237,7 +233,7 @@ namespace HexTactica.OldAI {
                 // default it gives direction to the army even without the force to take it. (Requiring
                 // 2.5x the defenders, and no trip a unit couldn't get back into supply from, meant
                 // objectives never applied in an even game.)
-                if (!o.committed && (profile.objectivesNeedForce || o.units.Count == 0)) { o.units.Clear(); o.assignedPower = 0f; o.assignedVolley = 0f; continue; }
+                if (!o.committed && (o.units.Count == 0)) { o.units.Clear(); o.assignedPower = 0f; o.assignedVolley = 0f; continue; }
                 foreach (Unit u in o.units) {
                     used.Add(u);
                     // Structure, not tactics: a unit near the enemy keeps its place in the count
@@ -246,53 +242,6 @@ namespace HexTactica.OldAI {
                 }
             }
             return result;
-        }
-
-        /// <summary>
-        /// Scouting (fog of war, fogThreat; profile.scoutUnits of them): the units that see the most
-        /// for the least — vision times move over worth, recon and cheap infantry before tanks — are
-        /// each given the tile from which they would see the most of where the fog may hide the
-        /// enemy (AISigint.Presence: units we lost track of, ground unknown), the sooner reached the
-        /// better, and not one where what the fog may hide would cost them half their strength.
-        /// They take a pull toward it (scoutPull, AITactical), whether in contact or not; what they
-        /// see on the way is worth what it always is (AIFog.ScoutValue).
-        /// </summary>
-        public static void AssignScouts(Dictionary<Unit, Objective> result, AIMap map, AIProfile profile) {
-            if (map.sigint == null || profile.scoutUnits <= 0) return;
-            List<Unit> pool = new List<Unit>();
-            foreach (Unit u in map.ownUnits) {
-                if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || u.moveRange <= 0 || u.visionRange <= 0) continue;
-                if (u.Strength <= profile.withdrawStrength || u.transported.Count > 0) continue;
-                Objective job;
-                if (result.TryGetValue(u, out job) && job.kind == ObjectiveKind.DefendHQ) continue;
-                if (LocomotionRules.NeedsAirfield(u.locomotion)) continue;   // fuel: not for wandering
-                if (Transporting.IsTransport(u) && u.Firepower <= 1) continue;   // decides as a transport (OldAIPlayer.DecideFor)
-                pool.Add(u);
-            }
-            System.Func<Unit, float> eye = u => (u.visionRange + 1f) * u.moveRange / AIScore.Worth(u);
-            pool.Sort((a, b) => { int c = eye(b).CompareTo(eye(a)); return c != 0 ? c : AIMap.CompareUnits(a, b); });
-            HashSet<HexTile> taken = new HashSet<HexTile>();
-            for (int i = 0; i < pool.Count && i < profile.scoutUnits; i++) {
-                Unit u = pool[i];
-                HexTile best = null;
-                float bestV = 0f;
-                foreach (HexTile t in HexGenerator.hg.tiles) {
-                    if (t == null || !u.CanEnter(t) || taken.Contains(t)) continue;
-                    int travel = map.Travel(u, u.tile, t);
-                    if (travel >= 99) continue;
-                    if (map.FogLoss(u, t) * 2f > u.Strength) continue;
-                    float seen = 0f;
-                    foreach (HexTile n in AIPath.TilesInRangeShared(t, 0, FogOfWar.VisionFrom(u, t)))
-                        if (FogOfWar.LineOfSight(t, n, FogOfWar.DomainOf(u))) seen += map.sigint.Presence(n);
-                    float v = seen / (1f + Mathf.CeilToInt(travel / (float)u.moveRange));
-                    if (v > bestV || (v == bestV && best != null && CombatMath.CompareTiles(t, best) < 0)) { bestV = v; best = t; }
-                }
-                if (best == null) continue;
-                taken.Add(best);
-                Objective o = new Objective { kind = ObjectiveKind.Scout, tile = best, value = bestV, committed = true };
-                o.units.Add(u);
-                result[u] = o;
-            }
         }
 
         static bool Satisfied(Objective o) {

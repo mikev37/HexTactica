@@ -4,8 +4,8 @@ using UnityEngine;
 namespace HexTactica.OldAI {
 
     /// <summary>
-    /// What the fog may hide, priced as tonight's risk (AIProfile.fogThreat), for an AI that plays
-    /// by the fog (AIProfile.fogFair). Without it the AI treated every tile it could not see as
+    /// What the fog may hide, priced as tonight's risk, for an AI that plays
+    /// by the fog. Without it the AI treated every tile it could not see as
     /// empty: gunships flew into an anti-air unit it had never seen, and a supply unit parked next
     /// to a wall of fog as if nothing could be in it.
     ///
@@ -57,7 +57,7 @@ namespace HexTactica.OldAI {
         public static AISigint Build(AIMap map) {
             FogOfWar.Knowledge k = FogOfWar.current;
             AIProfile p = map.profile;
-            if (k == null || k.player != map.player || p == null || !p.fogThreat) return null;
+            if (k == null || k.player != map.player || p == null) return null;
             AISigint s = new AISigint(p);
             s.map = map;
             s.BuildZones(k, map);
@@ -69,10 +69,10 @@ namespace HexTactica.OldAI {
         AIMap map;
 
         /// <summary>
-        /// How much unknown ground is feared: with fogUncertainty and the turn's estimate of the enemy (AIMap.fogUncertainty),
+        /// How much unknown ground is feared: and the turn's estimate of the enemy (AIMap.fogUncertainty),
         /// the share of the enemy's forces we cannot place; otherwise 1 - fogAggression.
         /// </summary>
-        float UnknownWeight { get { return profile.fogUncertainty && map != null && map.fogUncertainty >= 0f ? map.fogUncertainty : 1f - Mathf.Clamp01(profile.fogAggression); } }
+        float UnknownWeight { get { return map != null && map.fogUncertainty >= 0f ? map.fogUncertainty : 1f - Mathf.Clamp01(profile.fogAggression); } }
 
         void BuildZones(FogOfWar.Knowledge k, AIMap map) {
             foreach (FogOfWar.Phantom ph in k.phantoms) {
@@ -105,7 +105,6 @@ namespace HexTactica.OldAI {
         }
 
         void BuildUnknown(FogOfWar.Knowledge k, AIMap map) {
-            if (profile.fogAggression >= 1f && !profile.fogUncertainty) return;
             kinds.AddRange(k.enemyKinds);
             if (kinds.Count == 0) {
                 // Nothing of theirs seen yet: assume they field what we do.
@@ -128,6 +127,20 @@ namespace HexTactica.OldAI {
                 if (last < 0 || now - last >= profile.fogUnknownTurns) unknown.Add(t);
                 return 0;
             });
+            // Lately seen is not safe near the enemy (fogStaleRadius): ground out of sight within that many tiles of an enemy unit
+            // we see or remember may hide what came with it. (ChanceMeeting: Red's artillery moved up beside (-7,7), seen four
+            // turns before and counted empty; an unseen Blue gun stood on it, two tiles from Blue units Red had last seen.)
+            if (profile.fogStaleRadius > 0) {
+                List<HexTile> near = new List<HexTile>();
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) near.Add(e.tile);
+                foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null) near.Add(ph.last);
+                if (near.Count > 0)
+                    HexGenerator.forAllTiles(t => {
+                        if (t == null || t.terrain == null || k.visibleTiles.Contains(t) || unknown.Contains(t)) return 0;
+                        foreach (HexTile a in near) if (a.Distance(t) <= profile.fogStaleRadius) { unknown.Add(t); staleUnknown++; break; }
+                        return 0;
+                    });
+            }
         }
 
         /// <summary>Tiles a unit of <paramref name="kind"/> can stand on within <paramref name="budget"/> movement points of <paramref name="from"/> (its step costs), not in <paramref name="seen"/>.</summary>
@@ -157,21 +170,6 @@ namespace HexTactica.OldAI {
             return result;
         }
 
-        /// <summary>Every tile within <paramref name="range"/> steps of any of <paramref name="from"/>.</summary>
-        static HashSet<HexTile> Grow(HashSet<HexTile> from, int range) {
-            HashSet<HexTile> result = new HashSet<HexTile>(from);
-            List<HexTile> frontier = new List<HexTile>(from);
-            for (int i = 0; i < range && frontier.Count > 0; i++) {
-                List<HexTile> next = new List<HexTile>();
-                foreach (HexTile t in frontier) {
-                    if (t.neighbors == null) continue;
-                    foreach (HexTile n in t.neighbors) if (n != null && result.Add(n)) next.Add(n);
-                }
-                frontier = next;
-            }
-            return result;
-        }
-
         /// <summary>Strength <paramref name="u"/> should expect to lose tonight on <paramref name="at"/> to what the fog may hide.</summary>
         public float Loss(Unit u, HexTile at) { return Loss(u, at, true); }
 
@@ -190,6 +188,21 @@ namespace HexTactica.OldAI {
                     loss += dmg * f / Mathf.Max(1, sharers);
                 }
             }
+            // Screens (fogScreenBelowCost): a cheap unit does not fear what the fog may hide: finding it is its job.
+            if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && Concentrated) {
+                // The chance that one of the unplaced enemy is within reach of this tile (1 - e^-expected),
+                // firing its kind's average, times the share of the enemy we cannot place. At most one unit's fire: the
+                // enemy we can see or remember is priced already. (Was every expected unit firing in full, uncapped: near
+                // the front a stop read as certain death, and the whole army fell back from the contact line.)
+                float e = UnplacedNear(at);
+                if (e > 0f) {
+                    float dmg = 0f;
+                    foreach (FogOfWar.Kind kd in kinds) dmg += Mathf.Min(u.Strength, kd.Damage(6, u, at));
+                    float uwc = UnknownWeight;
+                    loss += dmg / kinds.Count * (1f - (float)System.Math.Exp(-e)) * (uwc);
+                }
+                return Mathf.Min(u.Strength, loss);
+            }
             float uw = UnknownWeight;
             if (unknownGround && kinds.Count > 0 && unknown.Count > 0 && uw > 0f) {
                 float d = Density(at);
@@ -200,6 +213,90 @@ namespace HexTactica.OldAI {
                 }
             }
             return Mathf.Min(u.Strength, loss);
+        }
+
+        int staleUnknown;
+        Dictionary<HexTile, float> mass;
+        float massUnits;
+        string massNote;
+        readonly Dictionary<HexTile, float> nearMass = new Dictionary<HexTile, float>();
+        readonly object massLock = new object();
+
+        /// <summary>And this turn's unplaced power is known (AIMap.fogUnplacedPower).</summary>
+        bool Concentrated { get { return map != null && map.fogUnplacedPower >= 0f; } }
+
+        /// <summary>
+        /// The enemy we cannot place, in units (its power over an average enemy unit's), shared out among where
+        /// the enemy is known to be — each of its units seen or remembered (1), its HQ (fogHQWeight), its production sites
+        /// (fogProductionWeight, purchases on) — and each share spread over unknown ground falling off by e every fogAnchorFalloff
+        /// tiles. Before anything is seen, the HQ (and production sites) hold it all; the far side of the map holds none.
+        /// </summary>
+        Dictionary<HexTile, float> Mass() {
+            if (mass != null) return mass;
+            lock (massLock) {
+                if (mass != null) return mass;
+                Dictionary<HexTile, float> m = new Dictionary<HexTile, float>();
+                float sum = 0f; int n = 0;
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Firepower > 0 && e.Strength > 0) { sum += AIScore.Worth(e) * e.Strength; n++; }
+                if (n == 0) foreach (Unit o in map.ownUnits) if (o != null && o.tile != null && o.Firepower > 0 && o.Strength > 0 && o.Hub == null) { sum += AIScore.Worth(o) * o.Strength; n++; }
+                float per = n > 0 ? sum / n : 1f;
+                // Seen since the turn began (an earlier unit's move revealed it): placed now, out of the unplaced.
+                float unplaced = map.fogUnplacedPower;
+                if (map.fogKnownAtStart != null) foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null && e.Strength > 0 && !map.fogKnownAtStart.Contains(e)) unplaced -= AIScore.Worth(e) * e.Strength;
+                massUnits = Mathf.Max(0f, unplaced) / Mathf.Max(1f, per);
+                List<KeyValuePair<HexTile, float>> anchors = new List<KeyValuePair<HexTile, float>>();
+                foreach (Unit e in map.enemyUnits) if (e != null && e.tile != null) anchors.Add(new KeyValuePair<HexTile, float>(e.tile, 1f));
+                FogOfWar.Knowledge k = FogOfWar.current;
+                int lost = 0;
+                if (k != null) foreach (FogOfWar.Phantom ph in k.phantoms) if (ph.last != null) { anchors.Add(new KeyValuePair<HexTile, float>(ph.last, 1f)); lost++; }
+                bool buys = GameController.gc == null || GameController.gc.purchasesAllowed;
+                int hqs = 0, sites = 0;
+                foreach (Building b in Building.all) {
+                    if (b == null || b.tile == null) continue;
+                    Player owner = FogOfWar.OwnerAsSeen(map.player, b);
+                    if (owner == null || !Player.Hostile(owner, map.player)) continue;
+                    if (b.IsHQ) { anchors.Add(new KeyValuePair<HexTile, float>(b.tile, profile.fogHQWeight)); hqs++; }
+                    else if (buys && b.CanProduce) { anchors.Add(new KeyValuePair<HexTile, float>(b.tile, profile.fogProductionWeight)); sites++; }
+                }
+                float total = 0f; foreach (KeyValuePair<HexTile, float> a in anchors) total += a.Value;
+                List<HexTile> dark = new List<HexTile>(unknown);
+                dark.Sort(CombatMath.CompareTiles);
+                if (massUnits > 0f && total > 0f && dark.Count > 0) {
+                    float fall = Mathf.Max(0.1f, profile.fogAnchorFalloff);
+                    float[] kern = new float[dark.Count];
+                    foreach (KeyValuePair<HexTile, float> a in anchors) {
+                        if (a.Value <= 0f) continue;
+                        float z = 0f;
+                        for (int i = 0; i < dark.Count; i++) { kern[i] = (float)System.Math.Exp(-a.Key.Distance(dark[i]) / fall); z += kern[i]; }
+                        if (z <= 0f) continue;
+                        float share = massUnits * a.Value / total / z;
+                        for (int i = 0; i < dark.Count; i++) { float c; m.TryGetValue(dark[i], out c); m[dark[i]] = c + share * kern[i]; }
+                    }
+                }
+                massNote = string.Format("unplaced enemy: {0:0.0} units ({1:0} power) over {2} anchors ({3} seen, {4} remembered, {5} HQ, {6} production)",
+                    massUnits, map.fogUnplacedPower, anchors.Count, anchors.Count - lost - hqs - sites, lost, hqs, sites);
+                mass = m;
+                return mass;
+            }
+        }
+
+        /// <summary>Share out the unplaced enemy now, on the turn's own thread, once its power is known; the line for the trace (null: not used).</summary>
+        public string Prime() {
+            if (!Concentrated || kinds.Count == 0 || unknown.Count == 0) return null;
+            Mass();
+            return massNote;
+        }
+
+        /// <summary>Unplaced enemy units expected on unknown ground within their usual reach of <paramref name="at"/>.</summary>
+        float UnplacedNear(HexTile at) {
+            float v;
+            lock (nearMass) if (nearMass.TryGetValue(at, out v)) return v;
+            Dictionary<HexTile, float> m = Mass();
+            v = 0f;
+            List<HexTile> near = AIPath.TilesInRangeShared(at, 0, unknownReach);
+            for (int i = 0; i < near.Count; i++) { float c; if (near[i] != null && m.TryGetValue(near[i], out c)) v += c; }
+            lock (nearMass) nearMass[at] = v;
+            return v;
         }
 
         /// <summary>Share of the ground within the enemy's usual reach of <paramref name="at"/> that is unknown.</summary>
@@ -235,7 +332,8 @@ namespace HexTactica.OldAI {
             foreach (Zone z in zones)
                 yield return string.Format("{0} last seen ({1},{2}) str {3}, {4} moves ago: at most {5:0.00} of its places reach a tile, {6} tiles to hide on, fires on {7}, {8} of ours exposed",
                     z.phantom.kind.name, z.phantom.last.x, z.phantom.last.y, z.phantom.strength, z.phantom.moves, z.weight, z.positions.Count, z.fire.Count, z.exposed);
-            yield return string.Format("unknown ground: {0} tiles, {1} kinds, reach {2}", unknown.Count, kinds.Count, unknownReach);
+            yield return string.Format("unknown ground: {0} tiles ({1} lately seen but near the enemy), {2} kinds, reach {3}", unknown.Count, staleUnknown, kinds.Count, unknownReach);
+
         }
     }
 }

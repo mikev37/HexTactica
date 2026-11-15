@@ -28,10 +28,38 @@ namespace HexTactica.OldAI {
         /// </summary>
         public static bool MayEndOn(Unit u, HexTile t, AIMap map) {
             if (u != null && u.trasnporter != null) return true;
+            // A transport does not park on a building of ours that builds: it would take the slot
+            // and nothing could be bought there (a supply truck held on the HQ for twenty turns: no unit bought since).
+            if (BlocksBuildSlot(u, t, map)) return false;
             Unit link;
-            if (t != null && map.chainTiles.TryGetValue(t, out link) && link != u) return false;
+            // (The transport carrying that link takes it there: a hauler with a supply unit aboard was kept off the tile
+            // its own supply unit was going to.)
+            if (t != null && map.chainTiles.TryGetValue(t, out link) && link != u && (link == null || link.trasnporter != u)) return false;
             if (map.landings == null || t == null) return true;
-            foreach (Landing l in map.landings.Values) if (l.turn == 1 && l.tile == t && l.unit != u) return false;
+            // (The carrier an aircraft lands on is where it lands: it stays there.)
+            foreach (Landing l in map.landings.Values) if (l.turn == 1 && l.tile == t && l.unit != u && (u == null || l.carrier != u)) return false;
+            return true;
+        }
+
+        /// <summary>Would <paramref name="u"/>, a transport, ending its turn on <paramref name="t"/> take one of our building slots? Its own tile counts too: it should leave.</summary>
+        /// <summary>Short of fuel, ammunition, supplies or strength: it needs a base's service.</summary>
+        static bool NeedsService(Unit u) {
+            return (u.fuelMax > 0 && u.fuel < u.fuelMax) || (u.ammoMax > 0 && u.ammo < u.ammoMax) || (u.suppliesMax > 0 && u.supplies < u.suppliesMax) || u.Strength < 6;
+        }
+
+        public static bool BlocksBuildSlot(Unit u, HexTile t, AIMap map) {
+            if (u == null || t == null || map == null || map.profile == null) return false;
+            Building b = t.building;
+            if (b == null || b.owner != u.owner || !b.CanProduce) return false;
+            // Nobody ends on it (purchases allowed), but an aircraft or ship it services.
+            if ((GameController.gc == null || GameController.gc.purchasesAllowed)) {
+                if (u.tile == t) return false;   // (already there: standing still is not a move onto it)
+                // (Aircraft and ships it services: only there do they land, rearm or refuel — when it will not build this turn
+                // (saving, or buying nothing: it then gives its budget to the others), or when they need it now.)
+                if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u) && (!AIProduction.WillBuild(u.owner, b) || NeedsService(u))) return false;
+                return b.Purchasable().Count > 0;
+            }
+            if (!Transporting.IsTransport(u) || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return false;
             return true;
         }
 
@@ -57,20 +85,101 @@ namespace HexTactica.OldAI {
             public Unit unit;
             public HexTile tile;
             public int turn;
+            /// <summary>Landing on a carrier of ours (Carriers): it lands on the carrier wherever the carrier is then.</summary>
+            public Unit carrier;
+            /// <summary>Where it lands: the carrier's tile now, else the base tile.</summary>
+            public HexTile Where { get { return carrier != null && carrier.tile != null && carrier.trasnporter == null ? carrier.tile : tile; } }
             public override string ToString() { return unit.name.Replace("(Clone)", "") + " lands on (" + tile.x + "," + tile.y + ") in " + turn + (turn == 1 ? " turn (this one)" : " turns"); }
         }
 
         /// <summary>How far ahead (turns) aircraft reserve their landings.</summary>
         public const int LandingHorizon = 3;
 
-        /// <summary>The tiles of our buildings that service <paramref name="u"/>, whatever is on them.</summary>
-        static List<HexTile> AllBases(Unit u) {
+        /// <summary>
+        /// The tiles of our buildings that service <paramref name="u"/>, whatever is on them; for an aircraft (no
+        /// <paramref name="gives"/>), also the tiles of our carriers that would refuel it (Carriers).
+        /// </summary>
+        static List<HexTile> AllBases(Unit u, System.Func<Building, bool> gives = null) {
             List<HexTile> list = new List<HexTile>();
             foreach (Building b in Building.all) {
-                if (b == null || b.owner != u.owner || !b.Services(u)) continue;
+                if (b == null || b.owner != u.owner || !b.Services(u) || (gives != null && !gives(b))) continue;
                 if (b.tile != null && u.CanEnter(b.tile)) list.Add(b.tile);
             }
+            if (gives == null) foreach (Unit c in Carriers(u)) if (!list.Contains(c.tile)) list.Add(c.tile);
             return list;
+        }
+
+        /// <summary>A ship that carries aircraft (its prefab's carries lists an airborne locomotion): a carrier.</summary>
+        public static bool IsCarrier(Unit t) {
+            if (t == null || !Transporting.IsTransport(t) || !LocomotionRules.IsNaval(t.locomotion) || t.carries == null) return false;
+            foreach (Locomotion l in t.carries) if (LocomotionRules.IsAirborne(l)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Our carriers <paramref name="u"/> (an aircraft) could land on and be refuelled aboard at the start of our next
+        /// turn: afloat, able to take it (its kind, room for its weight), and stocked (supplies of its own, or on a building
+        /// that services it): aboard a carrier out of supplies its cargo starves (Player.CargoUpkeep).
+        /// </summary>
+        public static List<Unit> Carriers(Unit u) {
+            List<Unit> list = new List<Unit>();
+            if (u == null || u.owner == null || !LocomotionRules.IsAirborne(u.locomotion)) return list;
+            foreach (Unit c in u.owner.units) {
+                if (c == null || c == u || c.tile == null || c.Strength <= 0 || c.trasnporter != null || !IsCarrier(c)) continue;
+                if (!Transporting.CarriesKind(c, u)) continue;
+                if (u.trasnporter != c && Mathf.Max(1, u.weight) > Transporting.FreeWeight(c)) continue;
+                if (!(c.suppliesMax <= 0 || c.supplies > 0 || Building.ServicingUnder(c) != null)) continue;
+                list.Add(c);
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Aboard <paramref name="carrier"/> this turn, if it can get there: from beside it, or from a tile beside it it
+        /// reaches this turn (the step in fits: AIPath.BoardsFrom). Null if it cannot.
+        /// </summary>
+        public static AIAction? LandOn(Unit u, Unit carrier, AIMap map, string why) {
+            if (u == null || carrier == null || carrier.tile == null || !Transporting.CanCarry(carrier, u)) return null;
+            if (Transporting.CanBoardFrom(carrier, u) && Transporting.StepInFits(u, u.tile, 0, carrier)) return AIAction.Board(u, carrier, carrier.tile, why);
+            MoveField now = map.ReachThisTurn(u);
+            HexTile beside = null;
+            foreach (HexTile n in carrier.tile.neighbors) {
+                if (n == null || n == u.tile || !AIPath.BoardsFrom(now, u, carrier, n)) continue;
+                if (beside == null || CombatMath.Precedes(n, beside)) beside = n;
+            }
+            return beside != null ? AIAction.Board(u, carrier, beside, why) : (AIAction?)null;
+        }
+
+        /// <summary>
+        /// A carrier's own move, before the rest (OldAIPlayer): it holds where it is while an aircraft of ours has a landing
+        /// reserved on it (the aircraft counted on it being there); empty, it sails toward the nearest of our aircraft it
+        /// could take (as near as it can safely get), so they have somewhere to land. Null: it decides as any transport.
+        /// </summary>
+        public static AIAction? DecideCarrier(Unit t, AIMap map) {
+            if (!IsCarrier(t) || t.tile == null || t.trasnporter != null) return null;
+            if (map.landings != null)
+                foreach (Landing l in map.landings.Values)
+                    if (l.carrier == t) return AIAction.Wait(t, "carrier: holds for " + l.unit.name.Replace("(Clone)", "") + ", landing on it in " + l.turn + " turn" + (l.turn == 1 ? "" : "s"));
+            if (t.transported.Count > 0) return null;
+            Unit near = null; int nd = int.MaxValue;
+            foreach (Unit a in t.owner.units) {
+                if (a == null || a.tile == null || a.trasnporter != null || a.Strength <= 0 || !LocomotionRules.IsAirborne(a.locomotion) || !Transporting.CarriesKind(t, a)) continue;
+                int d = t.tile.Distance(a.tile);
+                if (d < nd || (d == nd && CombatMath.Precedes(a.tile, near.tile))) { nd = d; near = a; }
+            }
+            if (near == null) return null;
+            MoveField horizon = map.ReachHorizon(t);
+            HexTile goal = null; int gd = int.MaxValue;
+            foreach (HexTile x in horizon.Tiles) {
+                if (!horizon.Reachable(x) || (x.occupier != null && x.occupier != t) || !AIPath.CanFinishTurnOn(t, x)) continue;
+                int d = x.Distance(near.tile);
+                if (d < gd || (d == gd && CombatMath.Precedes(x, goal))) { gd = d; goal = x; }
+            }
+            string who = near.name.Replace("(Clone)", "") + " (" + near.tile.x + "," + near.tile.y + ")";
+            if (goal == null || goal == t.tile || gd >= nd) return AIAction.Wait(t, "carrier: stays near " + who);
+            HexTile step = AITransportPlanner.SafeStepToward(t, goal, horizon, map, false);
+            if (step == null || step == t.tile || !MayEndOn(t, step, map)) return AIAction.Wait(t, "carrier: stays near " + who);
+            return AIAction.Move(t, step, 0f, "carrier: sails toward " + who + " to take it aboard");
         }
 
         /// <summary>
@@ -91,7 +200,7 @@ namespace HexTactica.OldAI {
         /// </summary>
         public static List<HexTile> Bases(Unit u, AIMap map) {
             Landing mine;
-            if (map.landings != null && map.landings.TryGetValue(u, out mine)) return new List<HexTile> { mine.tile };
+            if (map.landings != null && map.landings.TryGetValue(u, out mine)) return new List<HexTile> { mine.Where };
             List<HexTile> homes = SupplyHomes(u, map);
             // Every base tile of ours counts as somewhere to get back to. Reservations hold a single
             // turn, and whatever stands on a tile reserved for this turn has to leave it, so neither
@@ -100,6 +209,21 @@ namespace HexTactica.OldAI {
             List<HexTile> list = new List<HexTile>();
             foreach (HexTile t in AllBases(u)) if (t.occupier == null || t.occupier.owner == u.owner) list.Add(t);
             foreach (HexTile t in homes) if (!list.Contains(t)) list.Add(t);
+            foreach (HexTile t in BesideTenders(u)) if (!list.Contains(t)) list.Add(t);
+            return list;
+        }
+
+        /// <summary>
+        /// For a ship: the water beside our supply ships (Player.IsSupplyShip), where it is refuelled and restocked at the start
+        /// of its turn (not rearmed: only a naval yard does that). None for anything else, or for a supply ship itself.
+        /// </summary>
+        static List<HexTile> BesideTenders(Unit u) {
+            List<HexTile> list = new List<HexTile>();
+            if (u == null || u.owner == null || !LocomotionRules.IsNaval(u.locomotion) || Player.IsSupplyShip(u)) return list;
+            foreach (Unit t in u.owner.units) {
+                if (t == null || t == u || t.tile == null || t.Strength <= 0 || !Player.IsSupplyShip(t)) continue;
+                foreach (HexTile n in t.tile.neighbors) if (n != null && !list.Contains(n) && u.CanEnter(n) && (n.occupier == null || n.occupier == u)) list.Add(n);
+            }
             return list;
         }
 
@@ -157,7 +281,7 @@ namespace HexTactica.OldAI {
                         if (Mathf.CeilToInt(u.tile.Distance(t) / (float)Mathf.Max(1, u.moveRange)) > turn) continue;
                         HashSet<int> h = at(t);
                         if (h.Contains(turn)) continue;
-                        got = new Landing { unit = u, tile = t, turn = turn };
+                        got = new Landing { unit = u, tile = t, turn = turn, carrier = t.occupier != null && IsCarrier(t.occupier) && t.occupier.owner == u.owner ? t.occupier : null };
                         h.Add(turn);
                         break;
                     }
@@ -175,14 +299,6 @@ namespace HexTactica.OldAI {
         /// <summary>May a unit be built on <paramref name="t"/> this turn? Not on a tile reserved for a landing this turn.</summary>
         public static bool MayBuildOn(HexTile t, AIMap map) { return MayEndOn(null, t, map); }
 
-        public static bool RoomForAircraft(Building b, AIMap map, int turns) {
-            if (b == null) return false;
-            HashSet<HexTile> reserved = new HashSet<HexTile>();
-            if (map.landings != null) foreach (Landing l in map.landings.Values) if (l.turn <= turns) reserved.Add(l.tile);
-            if (b.tile != null && b.tile.occupier == null && !reserved.Contains(b.tile)) return true;
-            return false;
-        }
-
         /// <summary>Fuel steps from every tile to the nearest of <paramref name="bases"/>, moving as <paramref name="u"/> moves (air: any tile, one each; ships: water only).</summary>
         public static Dictionary<HexTile, int> DistanceToBase(Unit u, List<HexTile> bases) {
             Dictionary<HexTile, int> d = new Dictionary<HexTile, int>();
@@ -192,7 +308,7 @@ namespace HexTactica.OldAI {
                 HexTile t = q.Dequeue();
                 foreach (HexTile n in t.neighbors) {
                     if (n == null || d.ContainsKey(n) || !u.CanEnter(n)) continue;
-                    if (n.occupier != null && n.occupier.owner != u.owner) continue;
+                    if (n.occupier != null && Player.Hostile(n.occupier.owner, u.owner)) continue;
                     d[n] = d[t] + 1;
                     q.Enqueue(n);
                 }
@@ -201,6 +317,7 @@ namespace HexTactica.OldAI {
         }
 
         static bool BesideTanker(Unit u, HexTile at) {
+            if (LocomotionRules.IsNaval(u.locomotion)) return BesideTenders(u).Contains(at);
             if (u.airTanker || !LocomotionRules.IsAirborne(u.locomotion) || u.owner == null) return false;
             foreach (Unit t in u.owner.units) {
                 if (t == null || t == u || !t.airTanker || t.tile == null || t.Strength <= 0 || t.supplies <= 0) continue;
@@ -222,9 +339,9 @@ namespace HexTactica.OldAI {
         /// (a retreat after combat): one tile further from home, one more tile of fuel.</param>
         public static int Margin(Unit u, HexTile stop, Dictionary<HexTile, int> toBase, List<HexTile> bases, Landing land, AIMap map = null) {
             if (u.fuelMax <= 0) return int.MaxValue;
-            if (land != null && stop != land.tile) {
+            if (land != null && stop != land.Where) {
                 int turnsLeft = land.turn - 1;
-                if (turnsLeft <= 0 || stop.Distance(land.tile) > turnsLeft * Mathf.Max(1, u.moveRange)) return -1;
+                if (turnsLeft <= 0 || stop.Distance(land.Where) > turnsLeft * Mathf.Max(1, u.moveRange)) return -1;
             }
             int per = Mathf.Max(0, u.minFuelPerTile);
             int after = u.fuel - u.tile.Distance(stop) * per;
@@ -269,17 +386,34 @@ namespace HexTactica.OldAI {
         }
 
         public static AIAction Guard(Unit u, AIAction action, AIMap map) {
+            action = KeepsUnrefuelledAboard(action);
+            if (u != null && u.tile != null && u.trasnporter == null && LocomotionRules.IsNaval(u.locomotion)) action = Refit(u, action, map);
             if (!NeedsBase(u) || u.fuelMax <= 0 || u.tile == null || u.trasnporter != null) return action;
             Landing land = LandingOf(u, map);
+            // Its landing this turn is on a carrier: aboard it, wherever the carrier is now.
+            if (land != null && land.carrier != null && land.turn == 1 && !(action.kind == AIActionKind.Load && action.transport == land.carrier)) {
+                AIAction? onto = LandOn(u, land.carrier, map, "lands on " + land.carrier.name.Replace("(Clone)", "") + " (" + land.carrier.tile.x + "," + land.carrier.tile.y + ") to refuel (fuel " + u.fuel + ")");
+                if (onto.HasValue) return onto.Value;
+            }
             List<HexTile> bases = Bases(u, map);
             Dictionary<HexTile, int> toBase = DistanceToBase(u, bases);
-            HexTile stop = action.destination ?? u.tile;
-            if (action.kind == AIActionKind.Wait || action.kind == AIActionKind.Attack) stop = u.tile;
+            // No base it can get back to from here (none at all, or none on its water): holding would only idle it for
+            // good, so it carries on with what it was going to do.
+            if (!toBase.ContainsKey(u.tile)) return action;
+            // Where it ends the turn (EndOf): a ship putting troops ashore stays on the water it unloads from, not on the
+            // land they step onto (read as the land, every unloading ship was "out of fuel" and held).
+            HexTile stop = EndOf(u, action);
             if (Margin(u, stop, toBase, bases, land, map) >= 0 && MayEndOn(u, stop, map)) return action;
+            // Short: a carrier it can get aboard this turn takes it in.
+            foreach (Unit c in Carriers(u)) {
+                if (land != null && land.carrier != null && land.carrier != c) continue;
+                AIAction? onto = LandOn(u, c, map, "bingo fuel: lands on " + c.name.Replace("(Clone)", "") + " (" + c.tile.x + "," + c.tile.y + ") (fuel " + u.fuel + ")");
+                if (onto.HasValue) return onto.Value;
+            }
             MoveField f = map.ReachThisTurn(u);
             HexTile best = null; int bestMargin = int.MinValue, bestDist = int.MaxValue;
             foreach (HexTile t in f.Tiles) {
-                if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
+                if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t) || (t.occupier != null && t.occupier != u))) continue;
                 if (!MayEndOn(u, t, map)) continue;
                 int m = Margin(u, t, toBase, bases, land, map);
                 int d; if (!toBase.TryGetValue(t, out d)) d = 999;
@@ -291,8 +425,63 @@ namespace HexTactica.OldAI {
                 if (better) { best = t; bestMargin = m; bestDist = d; }
             }
             if (best == null || best == stop) return action;
+            // (Fuel enough for where it was going, but it may not end there: a tile held for another unit.)
+            if (Margin(u, stop, toBase, bases, land, map) >= 0) {
+                string held = "(" + stop.x + "," + stop.y + ") is held for another unit (" + action.reason + ")";
+                return best == u.tile ? AIAction.Wait(u, held + ": holds") : AIAction.Move(u, best, 0f, held + ": moves to (" + best.x + "," + best.y + ")");
+            }
             if (best == u.tile) return AIAction.Wait(u, "bingo fuel: holds (fuel " + u.fuel + ")");
             return AIAction.Move(u, best, 0f, "bingo fuel: heading for base (fuel " + u.fuel + ", margin " + bestMargin + ")");
+        }
+
+        /// <summary>
+        /// An aircraft aboard a transport is not put down (by the transport, or getting off itself) before it has had the
+        /// start of a turn aboard (still to act: Unit.active), which is when it is refuelled there: one that landed this turn
+        /// would be back out with the fuel it came in with. The transport moves (or holds) instead.
+        /// </summary>
+        public static AIAction KeepsUnrefuelledAboard(AIAction a) {
+            if (a.kind != AIActionKind.Unload || a.target == null || a.target.trasnporter == null || a.target.active) return a;
+            if (!LocomotionRules.IsAirborne(a.target.locomotion) || !LocomotionRules.NeedsBase(a.target.locomotion)) return a;
+            Unit t = a.target.trasnporter;
+            string why = "keeps " + a.target.name.Replace("(Clone)", "") + " aboard: it has not been refuelled yet (" + a.reason + ")";
+            if (a.unit == t && a.via != null && a.via != t.tile) return AIAction.Move(t, a.via, a.score, why);
+            return AIAction.Wait(a.unit, why);
+        }
+
+        /// <summary>
+        /// A ship back for what it is running out of, to where it is given it — as the buildings' prefabs say: one of ours
+        /// that serves ships (Building.Services) and rearms it (Building.rearm) when it is out of ammunition; one that
+        /// restocks it (Building.resupply), or the water beside a supply ship of ours (Player.TankerBeside), when its
+        /// supplies are down to the turns it takes to get there (and one more). It moves as far toward the nearest as it can
+        /// this turn, or stays if it is there. (Out of supplies a ship loses a strength a turn; fuel is Guard's.) Its action
+        /// stands if it is already going to end the turn there, or if it has nothing to go back for.
+        /// </summary>
+        static AIAction Refit(Unit u, AIAction action, AIMap map) {
+            bool noAmmo = u.Firepower > 0 && u.ammoMax > 0 && u.ammo <= 0;
+            List<HexTile> homes = new List<HexTile>();
+            foreach (HexTile t in AllBases(u, b => noAmmo ? b.rearm : b.resupply)) if (t.occupier == null || t.occupier == u || t.occupier.owner == u.owner) homes.Add(t);
+            if (!noAmmo) foreach (HexTile t in BesideTenders(u)) if (!homes.Contains(t)) homes.Add(t);
+            if (homes.Count == 0) return action;
+            Dictionary<HexTile, int> toHome = DistanceToBase(u, homes);
+            int here; if (!toHome.TryGetValue(u.tile, out here)) return action;
+            int turnsHome = Mathf.CeilToInt(here / (float)Mathf.Max(1, u.moveRange));
+            bool lowSupplies = u.suppliesMax > 0 && u.supplies <= turnsHome + 1;
+            if (!noAmmo && !lowSupplies) return action;
+            HexTile stop = EndOf(u, action);
+            if (homes.Contains(stop)) return action;
+            // Putting troops ashore, with the supplies to get back after it: that first.
+            if (action.kind == AIActionKind.Unload && !noAmmo && u.supplies > turnsHome) return action;
+            MoveField f = map.ReachThisTurn(u);
+            HexTile best = null; int bd = int.MaxValue;
+            foreach (HexTile t in f.Tiles) {
+                if (t != u.tile && (!f.ReachableThisTurn(t) || !AIPath.CanFinishTurnOn(u, t))) continue;
+                if (!MayEndOn(u, t, map)) continue;
+                int d; if (!toHome.TryGetValue(t, out d)) continue;
+                if (best == null || d < bd || (d == bd && CombatMath.Precedes(t, best))) { best = t; bd = d; }
+            }
+            string why = noAmmo ? "out of ammunition" : "supplies " + u.supplies + ", " + turnsHome + " turns from restocking";
+            if (best == null || best == u.tile) return AIAction.Wait(u, "refit: " + why + ": holds" + (homes.Contains(u.tile) ? " where it is restocked" : ""));
+            return AIAction.Move(u, best, 0f, "refit: " + why + ": heads " + (bd == 0 ? "to " : "toward ") + (noAmmo ? "a base that rearms it" : "a base that restocks it, or a supply ship"));
         }
 
         /// <summary>

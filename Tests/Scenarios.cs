@@ -5004,7 +5004,7 @@ public static partial class Scenarios {
         Console.WriteLine(string.Format("  A: {0}W {1}L {2}D", w, lo, d));
     }
 
-    /// <summary>OLD=Blue or OLD=Red: that side is played by the old AI (HexTactica.OldAI, claude/campaign-2) with its own defaults.</summary>
+    /// <summary>OLD=Blue or OLD=Red: that side is played by the old AI (HexTactica.OldAI, frozen copy) with its own defaults.</summary>
     static void UseOldAI(ScenarioFile.Loaded l) {
         string oldSide = Environment.GetEnvironmentVariable("OLD");
         if (string.IsNullOrEmpty(oldSide)) return;
@@ -5014,7 +5014,7 @@ public static partial class Scenarios {
         HexTactica.OldAI.OldAIPlayer o = op.gameObject.AddComponent<HexTactica.OldAI.OldAIPlayer>();
         o.player = op;
         o.profile = ScriptableObject.CreateInstance<HexTactica.OldAI.AIProfile>();
-        Console.WriteLine("old AI (claude/campaign-2) plays " + oldSide);
+        Console.WriteLine("old AI (frozen copy) plays " + oldSide);
     }
 
 

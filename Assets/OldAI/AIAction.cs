@@ -30,6 +30,9 @@ namespace HexTactica.OldAI {
         public HexTile via;
         public float score;
         public string reason;
+        /// <summary>A transport's move made for its riders (AIAssault.TransportAction: the assault ride, a medevac,
+        /// holding the line, a sea lift). One that is not, while it has riders, is a fallback: they decide for themselves.</summary>
+        public bool forRiders;
 
         public static AIAction Wait(Unit u, string why) {
             return new AIAction { kind = AIActionKind.Wait, unit = u, reason = why };
@@ -58,10 +61,6 @@ namespace HexTactica.OldAI {
         /// <summary>Move the transport to <paramref name="via"/>, then put <paramref name="cargo"/> down on <paramref name="at"/>.</summary>
         public static AIAction MoveAndDisembark(Unit transport, HexTile via, Unit cargo, HexTile at, string why) {
             return new AIAction { kind = AIActionKind.Unload, unit = transport, target = cargo, destination = at, via = via, reason = why };
-        }
-
-        public static AIAction Seize(Unit u, Building b, float score, string why) {
-            return new AIAction { kind = AIActionKind.Capture, unit = u, building = b, score = score, reason = why };
         }
 
         public bool IsNothing { get { return kind == AIActionKind.Wait; } }

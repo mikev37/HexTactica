@@ -51,30 +51,6 @@ namespace HexTactica.OldAI {
         }
 
         /// <summary>
-        /// Value of holding ground (groundSupplyWeight), in gold: each tile of land supplied with the
-        /// hub at the place being scored and not without it, and not supplied by the enemy, at that
-        /// fraction of a strength point of an average fighting unit. A human spreads supply to claim
-        /// the map; without this a supply unit only went where the army already was.
-        /// </summary>
-        static float GroundCoverage(AIMap map, AIProfile profile, HexTile at, int reach, Func<HexTile, int> before, Func<HexTile, int> after) {
-            if (profile.groundSupplyWeight <= 0f || at == null) return 0f;
-            float worth = 0f; int n = 0;
-            for (int i = 0; i < map.ownUnits.Count; i++) {
-                Unit u = map.ownUnits[i];
-                if (u == null || u.Hub != null || u.Firepower <= 0) continue;
-                worth += AIScore.Worth(u); n++;
-            }
-            if (n == 0) return 0f;
-            int gained = 0;
-            foreach (HexTile t in AIPath.TilesInRangeShared(at, 0, reach)) {
-                if (t == null || t.terrain == null || t.terrain.elevation < 0) continue;
-                if (before(t) > 0 || after(t) <= 0 || map.EnemySupplyShare(t) > 0f) continue;
-                gained++;
-            }
-            return gained * worth / n * profile.groundSupplyWeight;
-        }
-
-        /// <summary>
         /// Value of bringing the network closer to where friendly units are heading, in gold
         /// per turn: for each unit with a destination outside supply, a strength's worth per
         /// tile the gap closes, scaled by intentSupplyWeight and capped at the gap.
@@ -143,7 +119,6 @@ namespace HexTactica.OldAI {
             if (connected) {
                 score += IntentCoverage(map, map.profile, hub.myUnit,
                                         t => Mathf.Max(without.DepthAt(t), range - at.Distance(t)));
-                score += GroundCoverage(map, map.profile, at, range, t => without.DepthAt(t), t => Mathf.Max(without.DepthAt(t), range - at.Distance(t)));
             }
 
             score -= AIScore.Risk(hub.myUnit, at, map, map.profile);
@@ -162,7 +137,7 @@ namespace HexTactica.OldAI {
         public static bool Ghost;
         static readonly Dictionary<HexTile, string> breakdown = new Dictionary<HexTile, string>();
 
-        /// <summary>Set (per thread) while placing a front-line supply unit (supplyFrontFirst): it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
+        /// <summary>Set (per thread) while placing a front-line supply unit: it counts as linked wherever it goes (SupplyNetwork.AssumeLinked).</summary>
         [System.ThreadStatic] public static bool FrontLine;
 
         public static float ExactValue(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
@@ -173,104 +148,11 @@ namespace HexTactica.OldAI {
         }
 
         static float ExactValueOf(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile) {
-            float dSupplied = 0f, dForward = 0f, dIntent = 0f, dConnect = 0f, dRisk = 0f;
-
             SupplyNetwork.Result hypothetical =
                 SupplyNetwork.Solve(map.player, false, hub, at);
-
-            // Everything below is gold per turn, so gains and costs are comparable.
-            //
-            // Supplying a unit is worth roughly one strength per turn, since that is what
-            // attrition takes once its own supplies run out,
-            // and what resupply heals. Urgency scales it: a unit already out of supplies,
-            // ammo or fuel needs it now. (An earlier version priced this as a change in a
-            // 0..1 desirability curve times the unit's *entire* value, and compared that
-            // with a hub's drain of a sixth of its value per turn — two different units.
-            // It sent hubs out of the network to die beside a few cheap squads.)
-            if (profile.hubPricing == 1) return ValueAdded(hub, at, map, profile, hypothetical);
-
-            float total = 0;
-            for (int i = 0; i < map.ownUnits.Count; i++) {
-                Unit u = map.ownUnits[i];
-                if (u == null || u.tile == null || u == hub.myUnit) continue;
-                SupplyPoint otherHub = u.Hub;
-                if (otherHub != null && otherHub.producer) continue;
-
-                int before = map.SupplyDepth(u.tile);
-                int after = hypothetical.DepthAt(u.tile);
-                float perTurn = AIScore.Worth(u);              // one strength
-
-                if ((before > 0) != (after > 0)) {
-                    float need = 1f
-                               + (u.OutOfSupplies ? 2f : 0f)
-                               + (u.OutOfAmmo ? 1f : 0f)
-                               + (u.OutOfFuel ? 1f : 0f)
-                               + (6 - Mathf.Clamp(u.Strength, 0, 6)) / 6f;
-                    total += (after > 0 ? 1f : -1f) * perTurn * need;
-                }
-
-                // Depth inside supply is a margin against falling out of it as the line moves.
-                total += (AIScore.Depth(after, profile) - AIScore.Depth(before, profile)) * perTurn * 0.25f;
-
-                // Moving this hub can also strand or reconnect another relay downstream.
-                if (otherHub != null) {
-                    bool wasConnected = map.supply.connectedHubs.Contains(otherHub);
-                    bool isConnected = hypothetical.connectedHubs.Contains(otherHub);
-                    if (wasConnected != isConnected) total += (isConnected ? 1f : -1f) * perTurn;
-                }
-            }
-
-            dSupplied = total;
-            dForward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-            total += dForward;
-            // Following the army is worth something only from positions that keep the hub
-            // connected. Crediting it from anywhere sent the hub out of the network to burn
-            // through its six-turn fuse in front of the enemy.
-            if (hypothetical.connectedHubs.Contains(hub)) {
-                dIntent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                total += dIntent;
-            }
-            float beforeConnect = total;
-
-            // Connection, priced as what it actually saves: a stranded hub pays a strength
-            // per turn, and that hurts more as it nears burning out.
-            // Being connected is worth exactly the absence of that cost. An earlier version
-            // also *added* half the hub's worth for being connected, which double-counted
-            // the same thing and pinned every hub inside HQ range even when it was
-            // sustaining nobody there.
-            float hubWorth = AIScore.Worth(hub.myUnit);
-            bool connectedAfter = hypothetical.connectedHubs.Contains(hub);
-            if (!connectedAfter) {
-                int autonomy = Mathf.Max(1, hub.TurnsOfAutonomy);
-                total -= hubWorth;
-                if (autonomy <= profile.hubPanicThreshold) {
-                    total -= hubWorth * (profile.hubPanicThreshold - autonomy + 1) * 0.5f;
-                }
-            }
-
-            // And it gets shot at like anything else. This term was missing entirely: the
-            // planner would park the most expensive mobile unit in the army anywhere that
-            // improved coverage.
-            dConnect = total - beforeConnect;
-            // Risk where it will actually stand. The fire field was computed with the hub on its old
-            // tile — which, more than once, was the tile blocking the enemy tank's way to the new
-            // one: the planner saw no danger, the hub stepped forward, and the path it had been
-            // blocking opened onto itself. So the enemy's reply is simulated with the hub moved,
-            // and a real opponent's choice of target (the most valuable thing in reach, which a
-            // 25,000-gold truck usually is) replaces the share-of-fire average when it is worse.
-            float simulated = 0f;
-            AIWorld.Outcome reply = AIWorld.Evaluate(hub.myUnit, at, new AttackAppraisal(), map, map.replyCache, false);
-            reply.lost.TryGetValue(hub.myUnit, out simulated);
-            dRisk = Mathf.Max(map.ExpectedLoss(hub.myUnit, at), simulated) * AIScore.Worth(hub.myUnit) * profile.riskWeight;
-            total -= dRisk;
-            if (DebugLog != null)
-                breakdown[at] = string.Format("({0},{1}) total {2:0} = supplied {3:0} + forward {4:0} + intent {5:0} + connection {6:0} - risk {7:0} (expected loss {8:0.0}, simulated {9:0.0})",
-                    at.x, at.y, total, dSupplied, dForward, dIntent, dConnect, dRisk, map.ExpectedLoss(hub.myUnit, at), simulated);
-
-            // Restore the real field, since the solve above published onto the board.
-            SupplyNetwork.Solve(map.player, false);
-
-            return total;
+            // Gold per turn, so gains and costs are comparable: supplying a unit is worth about one strength per
+            // turn (what attrition takes once its own supplies run out, and what resupply heals).
+            return ValueAdded(hub, at, map, profile, hypothetical);
         }
 
         /// <summary>
@@ -286,7 +168,7 @@ namespace HexTactica.OldAI {
         /// </summary>
         static float ValueAdded(SupplyPoint hub, HexTile at, AIMap map, AIProfile profile, SupplyNetwork.Result hypothetical) {
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(map.player, hub);
-            float resupply = 0f, heal = 0f, spared = 0f, relays = 0f, forward = 0f, intent = 0f, ground = 0f, stranded = 0f;
+            float resupply = 0f, heal = 0f, spared = 0f, relays = 0f, forward = 0f, intent = 0f, stranded = 0f;
             int supplied = 0;
             for (int i = 0; i < map.ownUnits.Count; i++) {
                 Unit u = map.ownUnits[i];
@@ -323,14 +205,11 @@ namespace HexTactica.OldAI {
                 }
             }
             float total = resupply + heal + spared + relays - cutLinks;
-            if (profile.hubPricingForward) {
-                forward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                if (hypothetical.connectedHubs.Contains(hub)) {
-                    intent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
-                    ground = GroundCoverage(map, profile, at, hub.range, t => without.DepthAt(t), t => hypothetical.DepthAt(t));
-                }
-                total += forward + intent + ground;
+            forward = ForwardCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
+            if (hypothetical.connectedHubs.Contains(hub)) {
+                intent = IntentCoverage(map, profile, hub.myUnit, t => hypothetical.DepthAt(t));
             }
+            total += forward + intent;
             float hubWorth = AIScore.Worth(hub.myUnit);
             if (!hypothetical.connectedHubs.Contains(hub)) {
                 stranded = hubWorth * (1f + (LocomotionRules.IsNaval(hub.myUnit.locomotion) ? 0f : 0.5f * AIMap.GapToSupply(at, t => without.DepthAt(t), 12)));
@@ -343,9 +222,11 @@ namespace HexTactica.OldAI {
             reply.lost.TryGetValue(hub.myUnit, out simulated);
             float risk = simulated * hubWorth;
             total -= risk;
-            if (DebugLog != null)
-                breakdown[at] = string.Format("({0},{1}) total {2:0} = resupply {3:0} + heal {4:0} + spared {5:0} ({6} units) + relays {7:0} + forward {8:0} + intent {9:0} + ground {14:0} - stranded {10:0} - hit {11:0} ({12:0.0} strength) [{13}]",
-                    at.x, at.y, total, resupply, heal, spared, supplied, relays, forward, intent, stranded, risk, simulated, map.TileRead(at), ground);
+            if (DebugLog != null) {
+                string line = string.Format("({0},{1}) total {2:0} = resupply {3:0} + heal {4:0} + spared {5:0} ({6} units) + relays {7:0} + forward {8:0} + intent {9:0} - stranded {10:0} - hit {11:0} ({12:0.0} strength) [{13}]",
+                    at.x, at.y, total, resupply, heal, spared, supplied, relays, forward, intent, stranded, risk, simulated, map.TileRead(at));
+                lock (breakdown) breakdown[at] = line;
+            }
             SupplyNetwork.Solve(map.player, false);
             return total;
         }
@@ -377,11 +258,15 @@ namespace HexTactica.OldAI {
             if (unit.tile != null && !candidates.Contains(unit.tile)) candidates.Add(unit.tile);
             if (candidates.Count == 0) return null;
 
+            long __s = AIPerf.Begin();
             SupplyNetwork.Result without = SupplyNetwork.SolveWithout(map.player, hub);
+            AIPerf.End("supply plan: network without it", __s); __s = AIPerf.Begin();
             Dictionary<HexTile, float> proxy = new Dictionary<HexTile, float>();
-            for (int i = 0; i < candidates.Count; i++) {
-                proxy[candidates[i]] = ProxyValue(hub, candidates[i], map, without);
-            }
+            // Each tile's value on its own: at once on worker threads (AIParallel).
+            float[] pv = new float[candidates.Count];
+            AIParallel.For(candidates.Count, i => pv[i] = ProxyValue(hub, candidates[i], map, without));
+            for (int i = 0; i < candidates.Count; i++) proxy[candidates[i]] = pv[i];
+            AIPerf.End("supply plan: rough value of every tile", __s);
 
             candidates.Sort((a, b) => {
                 int c = proxy[b].CompareTo(proxy[a]);
@@ -395,9 +280,11 @@ namespace HexTactica.OldAI {
 
             // Exact evaluation of the shortlist only.
             Dictionary<HexTile, float> exact = new Dictionary<HexTile, float>();
-            for (int i = 0; i < shortlist.Count; i++) {
-                exact[shortlist[i]] = ExactValue(hub, shortlist[i], map, profile);
-            }
+            __s = AIPerf.Begin();
+            float[] ev = new float[shortlist.Count];
+            AIParallel.For(shortlist.Count, i => ev[i] = ExactValue(hub, shortlist[i], map, profile));
+            for (int i = 0; i < shortlist.Count; i++) exact[shortlist[i]] = ev[i];
+            AIPerf.End("supply plan: exact value of the shortlist", __s);
 
             if (DebugLog != null) {
                 List<HexTile> order = new List<HexTile>(exact.Keys);
@@ -447,28 +334,15 @@ namespace HexTactica.OldAI {
                 return exact.TryGetValue(t, out v) ? v : 0f;
             };
 
-            return AITransportPlanner.Plan(unit, map, profile, valueOf, shortlist, reserved);
-        }
-
-        /// <summary>
-        /// Tiles that would restore a stranded hub's connection to HQ, for the case
-        /// where the AI needs to prioritise reconnection over coverage.
-        /// </summary>
-        public static List<HexTile> ReconnectionTiles(SupplyPoint hub, AIMap map) {
-            List<HexTile> result = new List<HexTile>();
-            if (hub == null || hub.myUnit == null) return result;
-
-            MoveField reach = map.ReachHorizon(hub.myUnit);
-            foreach (HexTile t in reach.Tiles) {
-                if (!AIPath.CanFinishTurnOn(hub.myUnit, t)) continue;
-                if (map.SupplyDepth(t) > 0) result.Add(t);
+            TransportPlan plan = AITransportPlanner.Plan(unit, map, profile, valueOf, shortlist, reserved);
+            // A ride for a supply unit ends with it still aboard: the transport parks on the tile
+            // chosen for the supply, if it can stand there, and the supply spreads from it.
+            if (plan != null && plan.usesTransport && plan.transport != null) {
+                plan.stayAboard = true;
+                if (plan.destination != null && plan.transport.CanEnter(plan.destination)) plan.dropoff = plan.destination;
             }
-            result.Sort((a, b) => {
-                int da = reach.Get(a).turns, db = reach.Get(b).turns;
-                if (da != db) return da.CompareTo(db);
-                return CombatMath.CompareTiles(a, b);
-            });
-            return result;
+            return plan;
         }
+
     }
 }
