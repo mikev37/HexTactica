@@ -167,7 +167,7 @@ namespace HexTactica.OldAI {
             for (int i = 0; i < map.ownUnits.Count; i++) ownArmy += CombatPower(map.ownUnits[i]);
             for (int i = 0; i < map.enemyUnits.Count; i++) enemyArmy += CombatPower(map.enemyUnits[i]);
             float army = enemyArmy <= 0.01f ? 99f : ownArmy / enemyArmy;
-            foreach (Front f in fronts) { f.armyRatio = profile.useArmyRatio ? army : 0f; Appraise(f, map, profile); }
+            foreach (Front f in fronts) { f.armyRatio = 0f; Appraise(f, map, profile); }
             AssignUnits(fronts, map);
             Finish(fronts, map, profile, memory, assaulting);
             return fronts;
@@ -179,8 +179,7 @@ namespace HexTactica.OldAI {
             HashSet<HexTile> wasAssaulting = assaulting != null ? new HashSet<HexTile>(assaulting) : new HashSet<HexTile>();
             DecideStaging(fronts, map, profile, assaulting);
             foreach (Front f in fronts) if (f.campaignStaging != null) {
-                if (profile.campaignGather) GatherThenGo(f, map, profile, wasAssaulting);
-                else if (f.campaignReady) f.posture = Posture.Aggressive;   // as first built: goes once given what it needs
+                GatherThenGo(f, map, profile, wasAssaulting);   // as first built: goes once given what it needs
             }
             // A campaign task force on the move keeps together toward wherever it is going now.
             foreach (Front f in fronts) if (f.pullScale != 1f || f.campaignStaging != null) f.paceLimit = f.staging ? -1 : Pace(f, map);
@@ -307,7 +306,7 @@ namespace HexTactica.OldAI {
             int bestDistance = int.MaxValue;
             for (int i = 0; i < Building.all.Count; i++) {
                 Building b = Building.all[i];
-                if (b == null || b.tile == null || b.owner == map.player) continue;
+                if (b == null || b.tile == null || !Player.Hostile(b.owner, map.player)) continue;
                 int d = map.Travel(null, from, b.tile);
                 if (d < bestDistance) { best = b; bestDistance = d; }
             }
@@ -462,11 +461,16 @@ namespace HexTactica.OldAI {
             int radius = Mathf.Max(1, f.campaignStagingRadius);
             // Gathered: healthy, on the staging ground (within its radius of the staging tile) or already past it.
             float gathered = 0f, committed = 0f, force = 0f;
+            // Past the staging ground counts only with the body: within the radius of the task
+            // force's centre too. (A lone unit up front counted as gathered: two grunts, one at the staging ground and one
+            // far ahead by the target, made the need and the front went in on its first turn.)
+            HexTile body = AICampaign.Centre(f.assigned.FindAll(x => x != null && x.tile != null && x.Firepower > 0 && x.Hub == null && x.Strength >= healthy));
             foreach (Unit u in f.assigned) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                 float w = AIScore.Worth(u);
                 if (u.Strength >= healthy) force += w * u.Strength;
-                bool there = map.Travel(u, u.tile, staging) <= radius || map.Travel(u, u.tile, objective) < stagingToGo;
+                bool there = map.Travel(u, u.tile, staging) <= radius
+                          || (map.Travel(u, u.tile, objective) < stagingToGo && (body == null || map.Travel(u, u.tile, body) <= radius));
                 if (there && u.Strength >= healthy) gathered += w * u.Strength;
                 if (u.Strength > profile.withdrawStrength) committed += w * u.Strength;
             }
@@ -532,13 +536,19 @@ namespace HexTactica.OldAI {
                 if (staging == null) continue;
 
                 float full = 0f, gathered = 0f, committedPower = 0f;
+                // Across water from the objective, the staging tile is the shore: a unit already on its way over (aboard a
+                // ship nearer it, or landed beyond) has gathered. (Counted as not, it called the ship back each turn.)
+                bool overWater = map.AcrossWater(staging, objective);
+                int stagingAway = overWater ? staging.Distance(objective) : 0;
                 foreach (Front f in group) {
                     for (int i = 0; i < f.assigned.Count; i++) {
                         Unit u = f.assigned[i];
                         if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null) continue;
                         float w = AIScore.Worth(u);
                         full += w * MAX_STRENGTH;
-                        if (u.Strength >= healthy && map.Travel(u, u.tile, staging) <= profile.stagingRadius) gathered += w * u.Strength;
+                        HexTile at = u.trasnporter != null && u.trasnporter.tile != null ? u.trasnporter.tile : u.tile;
+                        bool ahead = overWater && (u.trasnporter != null ? at.Distance(objective) < stagingAway : !map.AcrossWater(at, objective));
+                        if (u.Strength >= healthy && (ahead || map.Travel(u, u.tile, staging) <= profile.stagingRadius)) gathered += w * u.Strength;
                         if (u.Strength > profile.withdrawStrength) committedPower += w * u.Strength;
                     }
                 }

@@ -96,6 +96,7 @@ UI/TurnBanner.cs
 AI/AISupplyTree.cs
 OldAI/AIAction.cs
 OldAI/AIAir.cs
+OldAI/AIAssault.cs
 OldAI/AICampaign.cs
 OldAI/AICoordinator.cs
 OldAI/AIDenial.cs
@@ -105,8 +106,10 @@ OldAI/AIHeap.cs
 OldAI/AIKnowledge.cs
 OldAI/AILogistics.cs
 OldAI/AIMap.cs
+OldAI/AIMapCache.cs
 OldAI/AIMapRead.cs
 OldAI/AIObjectives.cs
+OldAI/AIParallel.cs
 OldAI/AIPath.cs
 OldAI/AIPerf.cs
 OldAI/AIPlan.cs
@@ -114,9 +117,7 @@ OldAI/AIProduction.cs
 OldAI/AIProfile.cs
 OldAI/AIScore.cs
 OldAI/AISigint.cs
-OldAI/AISpace.cs
 OldAI/AIStrategic.cs
-OldAI/AISupplyBackbone.cs
 OldAI/AISupplyChain.cs
 OldAI/AISupplyPlanner.cs
 OldAI/AISupplyTree.cs

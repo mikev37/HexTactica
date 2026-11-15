@@ -4,7 +4,7 @@ using UnityEngine;
 namespace HexTactica.OldAI {
 
     /// <summary>
-    /// Supply for the campaign's fronts (AIProfile.campaignLogistics), planned at the start of each turn.
+    /// Supply for the campaign's fronts, planned at the start of each turn.
     ///
     /// The fronts (task forces with units) in order of their size, largest first. For each, the
     /// logistics chain comes first: from the static network (HQ and our buildings) toward the front
@@ -40,6 +40,12 @@ namespace HexTactica.OldAI {
             public bool short_;
             /// <summary>Power (worth times strength, the scale AIProduction values fighting units on) of the front's fighting units standing outside supply.</summary>
             public float unsupplied;
+            /// <summary>Its goal's land holds no ground our supply buildings reach (AIMap.SupplyAcrossWater): its supply goes by ship.</summary>
+            public bool acrossWater;
+            /// <summary>... and none of our supply reaches that land now: troop ships bound there carry a supply unit along.</summary>
+            public bool bare;
+            /// <summary>The naval yard its supply embarks from (acrossWater): ours, nearest its goal.</summary>
+            public Building yard;
         }
 
         /// <summary>A truck claimed for one of a front's own supply units, and where it takes it.</summary>
@@ -49,6 +55,14 @@ namespace HexTactica.OldAI {
         public readonly Dictionary<SupplyPoint, Task> chainOf = new Dictionary<SupplyPoint, Task>();
         public readonly Dictionary<SupplyPoint, Task> tacticalOf = new Dictionary<SupplyPoint, Task>();
         public readonly Dictionary<SupplyPoint, Ride> rides = new Dictionary<SupplyPoint, Ride>();
+        /// <summary>
+        /// A front's own supply unit riding along in a troop ship bound for land without our supply (the
+        /// ship at the front's naval yard, taking on troops or about to): it gets in; once the troops are ashore it is a
+        /// chain link aboard, and the ship holds off that shore for it (the chain places it, linked).
+        /// </summary>
+        public readonly Dictionary<SupplyPoint, Unit> alongs = new Dictionary<SupplyPoint, Unit>();
+        /// <summary>Free ships: empty transport ships claimed by no one.</summary>
+        public int freeShips;
         /// <summary>
         /// Each chain link's own truck (claimed before any front's supply unit gets a ride): the truck it is
         /// aboard, or the one coming for it. Aboard, a link's supply reaches as far as its truck can move, so a
@@ -86,12 +100,12 @@ namespace HexTactica.OldAI {
         public static HexTile Goal(CampaignObjective o) { return o.went || o.staging == null ? o.target : o.staging; }
 
         /// <summary>
-        /// Where the front tells its chain it needs supply (AIProfile.campaignChainToUnits): its unit out of our
+        /// Where the front tells its chain it needs supply: its unit out of our
         /// supply nearest its target, else its unit nearest its target — where its units are, not where it is
         /// going; the chain works out its own links. Off (or no units): Goal(o).
         /// </summary>
         public static HexTile Goal(CampaignObjective o, AIMap map) {
-            if (!map.profile.campaignChainToUnits || o.target == null) return Goal(o);
+            if (o.target == null) return Goal(o);
             Unit need = null, lead = null; int nd = int.MaxValue, ld = int.MaxValue;
             foreach (Unit u in o.units) {
                 if (u == null || u.tile == null || u.Firepower <= 0 || u.Hub != null || u.trasnporter != null) continue;
@@ -110,7 +124,25 @@ namespace HexTactica.OldAI {
         }
 
         public static bool IsCarrier(Unit t) {
-            return t != null && t.tile != null && Transporting.IsTransport(t) && t.Firepower <= 1 && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion);
+            return t != null && t.tile != null && t.trasnporter == null && Transporting.IsTransport(t) && t.Firepower <= 1 && !LocomotionRules.IsAirborne(t.locomotion) && !LocomotionRules.IsNaval(t.locomotion);
+        }
+
+        /// <summary>
+        /// A transport that can carry supply for <paramref name="t"/>: on its land, a ground one; across water
+        ///, a ship too, or an aircraft that holds where it stops (not one that must go back to a runway).
+        /// </summary>
+        public static bool IsCarrierFor(Unit c, Task t) {
+            if (c != null && c.trasnporter != null) return false;   // aboard another transport: it goes where that one goes
+            if (IsCarrier(c)) return true;
+            if (t == null || !t.acrossWater || c == null || c.tile == null || !Transporting.IsTransport(c) || c.Firepower > 1 || c.Hub != null) return false;
+            if (LocomotionRules.IsNaval(c.locomotion)) return true;
+            return LocomotionRules.IsAirborne(c.locomotion) && (!LocomotionRules.NeedsBase(c.locomotion) || LocomotionRules.ResuppliedInSupply(c.locomotion));
+        }
+
+        static bool ServesShips(Building b) {
+            if (b == null) return false;
+            foreach (Unit t in b.Purchasable()) if (t != null && LocomotionRules.IsNaval(t.locomotion)) return true;
+            return false;
         }
 
         public static AILogistics Make(AIMap map, AICampaign campaign, ICollection<Unit> reservedTrucks) { return Make(map, campaign, reservedTrucks, null); }
@@ -146,13 +178,25 @@ namespace HexTactica.OldAI {
             });
             foreach (Task t in l.tasks)
                 foreach (Unit u in t.front.units) if (u != null && u.tile != null && u.Firepower > 0 && u.Hub == null && map.SupplyDepth(u.tile) <= 0) t.unsupplied += AIScore.Worth(u) * u.Strength;
+            foreach (Task t in l.tasks) {
+                t.acrossWater = map.SupplyAcrossWater(t.front.target);
+                if (!t.acrossWater) continue;
+                t.bare = true;
+                foreach (KeyValuePair<HexTile, int> kv in map.LandSteps(t.front.target)) if (map.SupplyDepth(kv.Key) > 0) { t.bare = false; break; }
+                int yd = int.MaxValue;
+                foreach (Building b in Building.all) {
+                    if (b == null || b.tile == null || b.owner != map.player || !b.Functioning || !ServesShips(b)) continue;
+                    if (map.SupplyDepth(b.tile) <= 0) continue;   // embarks inside our supply
+                    int d = b.tile.Distance(t.front.target);
+                    if (d < yd || (d == yd && t.yard != null && CombatMath.CompareTiles(b.tile, t.yard.tile) < 0)) { yd = d; t.yard = b; }
+                }
+            }
             // Only supply units joined to the network now: one cut off moves as a unit (AISupplyPlanner),
             // which brings it back to our supply first.
             SupplyNetwork.Result now = SupplyNetwork.SolveAll(map.player, new Dictionary<SupplyPoint, HexTile>());
             List<SupplyPoint> pool = new List<SupplyPoint>();
             foreach (SupplyPoint h in map.ownHubs)
-                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion)
-                    && now.connectedHubs.Contains(h)) pool.Add(h);
+                if (h != null && !h.producer && h.myUnit != null && h.myUnit.tile != null && !LocomotionRules.IsNaval(h.myUnit.locomotion) && !LocomotionRules.IsAirborne(h.myUnit.locomotion) && (now.connectedHubs.Contains(h) || (h.myUnit.trasnporter != null && LocomotionRules.IsNaval(h.myUnit.trasnporter.locomotion)))) pool.Add(h);
             if (l.tasks.Count == 0) return l;
 
             // A supply building of ours cut off from the network — a FOB — that would carry supply nearer
@@ -184,6 +228,17 @@ namespace HexTactica.OldAI {
                 foreach (KeyValuePair<SupplyPoint, HexTile> lk in p.links) { if (!pool.Contains(lk.Key)) continue; t.chain.Add(lk.Key); l.chainOf[lk.Key] = t; l.linkTiles[lk.Key] = lk.Value; }
                 foreach (SupplyPoint h in t.chain) pool.Remove(h);
                 t.gap = p.reachSteps > 0 && t.unsupplied > 0f;
+            }
+
+            // A supply unit aboard a ship is a link at sea, never a front's own to be put ashore: the chain of
+            // the front across water nearest it keeps it (aboard, linked where the ship can be: AISupplyChain).
+            foreach (SupplyPoint h in new List<SupplyPoint>(pool)) {
+                Unit c = h.myUnit.trasnporter;
+                if (c == null || !LocomotionRules.IsNaval(c.locomotion)) continue;
+                Task near = null; int nd = int.MaxValue;
+                foreach (Task t in l.tasks) { if (!t.acrossWater) continue; int d = c.tile.Distance(t.front.target); if (d < nd) { nd = d; near = t; } }
+                if (near == null) continue;
+                near.chain.Add(h); l.chainOf[h] = near; l.linkTiles[h] = c.tile; pool.Remove(h);
             }
 
             // The rest: the fronts' own, by their number of units, the largest first taking any remainder.
@@ -253,7 +308,8 @@ namespace HexTactica.OldAI {
             // Rides for the fronts' own that are far from their front: the nearest free truck that can
             // take it, one supply unit to a truck, the largest front's first, the farthest first.
             List<Unit> trucks = new List<Unit>();
-            foreach (Unit u in map.ownUnits) if (IsCarrier(u) && u.active && (reservedTrucks == null || !reservedTrucks.Contains(u))) trucks.Add(u);
+            bool anyAcross = l.tasks.Exists(x => x.acrossWater);
+            foreach (Unit u in map.ownUnits) if ((IsCarrier(u) || (anyAcross && IsCarrierFor(u, l.tasks.Find(x => x.acrossWater)))) && u.active && (reservedTrucks == null || !reservedTrucks.Contains(u))) trucks.Add(u);
             trucks.Sort(AIMap.CompareUnits);
             ClaimChainTrucks(l, map, trucks);
             foreach (Task t in l.tasks) {
@@ -270,11 +326,11 @@ namespace HexTactica.OldAI {
                 far.Sort((a, b) => { int c = NearestOf(t, b.myUnit, map).CompareTo(NearestOf(t, a.myUnit, map)); return c != 0 ? c : AIMap.CompareUnits(a.myUnit, b.myUnit); });
                 foreach (SupplyPoint h in far) {
                     Unit u = h.myUnit;
-                    if (u.trasnporter != null && IsCarrier(u.trasnporter)) { trucks.Remove(u.trasnporter); l.rides[h] = new Ride { truck = u.trasnporter, to = drops[h], task = t }; continue; }
+                    if (u.trasnporter != null && IsCarrierFor(u.trasnporter, t)) { trucks.Remove(u.trasnporter); l.rides[h] = new Ride { truck = u.trasnporter, to = drops[h], task = t }; continue; }
                     int walk = Mathf.CeilToInt(map.Travel(u, u.tile, drops[h]) / (float)Mathf.Max(1, u.moveRange));
                     Unit pick = null; int pd = int.MaxValue;
                     foreach (Unit tr in trucks) {
-                        if (tr.transported.Count > 0 || !Transporting.CanCarry(tr, u)) continue;
+                        if (tr.transported.Count > 0 || !Transporting.CanCarry(tr, u) || !IsCarrierFor(tr, t)) continue;
                         // To beside it (its own tile is taken by it: the truck that had arrived beside it
                         // read as unable to reach it, lost its claim, and drove off).
                         int d = 99;
@@ -292,7 +348,9 @@ namespace HexTactica.OldAI {
                 }
             }
             // Free: empty and claimed by no one (a loaded truck, or one claimed for a link, is not).
-            l.freeTrucks = 0; foreach (Unit tr in trucks) if (tr.transported.Count == 0) l.freeTrucks++;
+            l.freeTrucks = 0; foreach (Unit tr in trucks) if (tr.transported.Count == 0 && IsCarrier(tr)) l.freeTrucks++;
+            l.freeShips = 0; foreach (Unit tr in trucks) if (tr.transported.Count == 0 && LocomotionRules.IsNaval(tr.locomotion)) l.freeShips++;
+            RideAlong(l, map, reservedTrucks);
             return l;
         }
 
@@ -311,7 +369,7 @@ namespace HexTactica.OldAI {
                 if (h == null || h.producer || h.myUnit == null || h.myUnit.tile == null) continue;
                 Unit carrier = h.myUnit.trasnporter;
                 if (carrier != null) {
-                    if (IsCarrier(carrier)) { l.chainTrucks[h] = carrier; trucks.Remove(carrier); }
+                    if (IsCarrierFor(carrier, kv.Value)) { l.chainTrucks[h] = carrier; trucks.Remove(carrier); }
                     continue;
                 }
                 if (l.dutied.Contains(h) || kv.Value.gap || kv.Value.unsupplied > 0f || SuppliesSomeone(h, map)) onFoot.Add(h);
@@ -321,14 +379,14 @@ namespace HexTactica.OldAI {
             if (was != null)
                 foreach (SupplyPoint h in new List<SupplyPoint>(onFoot)) {
                     Unit tr;
-                    if (!was.TryGetValue(h, out tr) || tr == null || !trucks.Contains(tr) || tr.transported.Count > 0 || !Transporting.CanCarry(tr, h.myUnit)) continue;
+                    if (!was.TryGetValue(h, out tr) || tr == null || !trucks.Contains(tr) || tr.transported.Count > 0 || !Transporting.CanCarry(tr, h.myUnit) || !IsCarrierFor(tr, l.chainOf[h])) continue;
                     l.chainTrucks[h] = tr; trucks.Remove(tr); onFoot.Remove(h);
                 }
             while (onFoot.Count > 0) {
                 SupplyPoint bestH = null; Unit bestT = null; int bestD = int.MaxValue;
                 foreach (SupplyPoint h in onFoot)
                     foreach (Unit tr in trucks) {
-                        if (tr.transported.Count > 0 || !Transporting.CanCarry(tr, h.myUnit)) continue;
+                        if (tr.transported.Count > 0 || !Transporting.CanCarry(tr, h.myUnit) || !IsCarrierFor(tr, l.chainOf[h])) continue;
                         int d = TruckTo(tr, h.myUnit, map);
                         if (d >= int.MaxValue) continue;
                         if (d < bestD || (d == bestD && (AIMap.CompareUnits(h.myUnit, bestH.myUnit) < 0 || (h == bestH && AIMap.CompareUnits(tr, bestT) < 0)))) { bestD = d; bestH = h; bestT = tr; }
@@ -337,6 +395,54 @@ namespace HexTactica.OldAI {
                 l.chainTrucks[bestH] = bestT; trucks.Remove(bestT); onFoot.Remove(bestH);
             }
         }
+
+        /// <summary>
+        /// Troop ships bound for land without our supply (Task.bare) carry a supply unit along: a rule of landing. A
+        /// transport ship (no supply aboard, room for one), wherever it is, gets the nearest of that front's own supply
+        /// units on our side that can meet it within two turns; the supply unit walks to it and the ship does not cross
+        /// before it is in. Not a second wave: a front whose land our supply already reaches.
+        /// </summary>
+        static void RideAlong(AILogistics l, AIMap map, ICollection<Unit> reserved) {
+            HashSet<Unit> taken = new HashSet<Unit>();
+            // Last turn's pairs first, while they still hold (a ship and its supply unit on their way to meet: re-paired
+            // each turn, they chased each other).
+            Dictionary<Unit, Unit> was;
+            if (!lastAlongs.TryGetValue(map.player, out was)) lastAlongs[map.player] = was = new Dictionary<Unit, Unit>();
+            // (Whichever front it serves this turn: fronts' supply units are shared out afresh each turn.)
+            foreach (Task t in l.tasks) {
+                foreach (SupplyPoint h in t.tactical) {
+                    Unit u = h.myUnit, sh;
+                    if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !was.TryGetValue(u, out sh)) continue;
+                    if (sh == null || sh.tile == null || taken.Contains(sh) || !AIAssault.SeaLiftShip(sh, map) || Transporting.FreeWeight(sh) < 1 || !Transporting.CanCarry(sh, u)) continue;
+                    if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer)) continue;
+                    l.alongs[h] = sh; taken.Add(sh); l.rides.Remove(h);
+                }
+            }
+            foreach (Task t in l.tasks) {
+                if (!t.bare || t.yard == null) continue;
+                foreach (Unit sh in map.ownUnits) {
+                    if (sh == null || sh.tile == null || taken.Contains(sh) || !LocomotionRules.IsNaval(sh.locomotion) || !Transporting.IsTransport(sh) || sh.Firepower > 1) continue;
+                    // Any of our transport ships with room (they meet troops off any shore, not at the yard).
+                    if (!AIAssault.SeaLiftShip(sh, map) || Transporting.FreeWeight(sh) < 1) continue;
+                    if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer)) continue;
+                    SupplyPoint pick = null; int pd = int.MaxValue;
+                    foreach (SupplyPoint h in t.tactical) {
+                        Unit u = h.myUnit;
+                        if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !Transporting.CanCarry(sh, u)) continue;
+                        if (!map.AcrossWater(u.tile, t.front.target)) continue;
+                        int d = u.tile.Distance(sh.tile);
+                        // Can meet it within two turns; an empty ship sails to fetch it from wherever it is.
+                        if (d > 2 * Mathf.Max(1, u.moveRange) + 1 && sh.transported.Count > 0) continue;
+                        if (d < pd || (d == pd && pick != null && AIMap.CompareUnits(u, pick.myUnit) < 0)) { pd = d; pick = h; }
+                    }
+                    if (pick == null) continue;
+                    l.alongs[pick] = sh; taken.Add(sh); l.rides.Remove(pick);
+                }
+            }
+            was.Clear();
+            foreach (KeyValuePair<SupplyPoint, Unit> kv in l.alongs) if (kv.Key.myUnit != null) was[kv.Key.myUnit] = kv.Value;
+        }
+        static readonly Dictionary<Player, Dictionary<Unit, Unit>> lastAlongs = new Dictionary<Player, Dictionary<Unit, Unit>>();
 
         /// <summary>A fighting unit of ours is supplied now only through <paramref name="h"/>.</summary>
         static bool SuppliesSomeone(SupplyPoint h, AIMap map) {
@@ -365,7 +471,7 @@ namespace HexTactica.OldAI {
         public static bool Threatened(Unit u, AIMap map) {
             if (u == null || u.tile == null) return false;
             // Capturing a building (standing on one not ours): kept in supply as if in contact.
-            if (Building.CanCapture(u) && u.tile.building != null && u.tile.building.owner != map.player) return true;
+            if (Building.CanCapture(u) && u.tile.building != null && Player.Hostile(u.tile.building.owner, map.player)) return true;
             if (map.TurnsToContact(u) <= 1) return true;
             return map.sigint != null && map.sigint.Loss(u, u.tile, false) > 0f;
         }
@@ -381,6 +487,17 @@ namespace HexTactica.OldAI {
         /// its goal) not ahead of it. Either way, one the enemy we know of cannot hit tonight.
         /// </summary>
         public static HexTile DropNear(Task t, Unit truck, AIMap map) {
+            // Across water: a supply unit still on our side waits at the naval yard the front embarks from.
+            HexTile standsOn = truck != null ? (truck.trasnporter != null ? truck.trasnporter.tile : truck.tile) : null;
+            if (t.acrossWater && t.yard != null && standsOn != null && standsOn.terrain != null && standsOn.terrain.elevation >= 0 && !map.SupplyAcrossWater(standsOn)) {
+                HexTile atYard = null; int yd = int.MaxValue;
+                foreach (HexTile x in t.yard.tile.neighbors) {
+                    if (x == null || !truck.CanEnter(x) || !AIPath.CanFinishTurnOn(truck, x) || (x.occupier != null && x.occupier != truck)) continue;
+                    int d = map.Travel(truck, truck.tile, x);
+                    if (d < yd || (d == yd && CombatMath.Precedes(x, atYard))) { yd = d; atYard = x; }
+                }
+                return atYard ?? t.yard.tile;
+            }
             Dictionary<HexTile, int> toGoal = map.LandSteps(t.goal);
             System.Func<HexTile, int> steps = x => { int v; return x != null && toGoal.TryGetValue(x, out v) ? v : int.MaxValue; };
             if (t.gap) {
@@ -460,11 +577,12 @@ namespace HexTactica.OldAI {
             List<string> s = new List<string>();
             foreach (Task t in tasks) {
                 int rode = 0; foreach (Ride r in rides.Values) if (r.task == t) rode++;
-                s.Add(t.front.Id + " (" + t.size + " units, to (" + t.goal.x + "," + t.goal.y + ")" + (t.fob != null ? " joining its " + t.fob.name.Replace("(Clone)", "") : "") + "): chain " + t.chain.Count + ", its own " + t.tactical.Count + (rode > 0 ? " (" + rode + " on trucks)" : "") + (t.gap ? ", chain short" : "") + (t.short_ ? ", nothing spare" : ""));
+                s.Add(t.front.Id + " (" + t.size + " units, to (" + t.goal.x + "," + t.goal.y + ")" + (t.fob != null ? " joining its " + t.fob.name.Replace("(Clone)", "") : "") + "): chain " + t.chain.Count + ", its own " + t.tactical.Count + (rode > 0 ? " (" + rode + " on trucks)" : "") + (t.gap ? ", chain short" : "") + (t.short_ ? ", nothing spare" : "") + (t.acrossWater ? ", across water" + (t.bare ? " (no supply there)" : "") + (t.yard != null ? " from the yard (" + t.yard.tile.x + "," + t.yard.tile.y + ")" : " (no yard)") : ""));
             }
             List<string> rs = new List<string>();
             foreach (KeyValuePair<SupplyPoint, Ride> kv in rides) rs.Add("(" + kv.Key.myUnit.tile.x + "," + kv.Key.myUnit.tile.y + ") on the truck at (" + kv.Value.truck.tile.x + "," + kv.Value.truck.tile.y + ") to (" + kv.Value.to.x + "," + kv.Value.to.y + ")");
-            return "logistics: " + (s.Count > 0 ? string.Join("; ", s.ToArray()) : "no fronts") + "; free trucks " + freeTrucks + "; supply units with a duty " + dutied.Count + " of " + duty.Count + (rs.Count > 0 ? "; rides " + string.Join(", ", rs.ToArray()) : "");
+            foreach (KeyValuePair<SupplyPoint, Unit> kv in alongs) rs.Add("(" + kv.Key.myUnit.tile.x + "," + kv.Key.myUnit.tile.y + ") rides along in the troop ship at (" + kv.Value.tile.x + "," + kv.Value.tile.y + ")");
+            return "logistics: " + (s.Count > 0 ? string.Join("; ", s.ToArray()) : "no fronts") + "; free trucks " + freeTrucks + (freeShips > 0 ? ", ships " + freeShips : "") + "; supply units with a duty " + dutied.Count + " of " + duty.Count + (rs.Count > 0 ? "; rides " + string.Join(", ", rs.ToArray()) : "");
         }
     }
 }

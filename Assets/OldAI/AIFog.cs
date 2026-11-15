@@ -3,7 +3,7 @@ using UnityEngine;
 namespace HexTactica.OldAI {
 
     /// <summary>
-    /// What fog of war is worth to the AI when it plays by it (AIProfile.fogFair): seeing, and not
+    /// What fog of war is worth to the AI when it plays by it: seeing, and not
     /// being seen. Both are worked out on the concealed board (FogOfWar.current), so they use only
     /// what this side knows; with no concealed board (fog off, or an AI that sees everything) they
     /// are worth nothing and the AI plays exactly as it always has.
@@ -32,7 +32,7 @@ namespace HexTactica.OldAI {
         public static float FogRisk(Unit unit, HexTile stop, AIMap map, AIProfile p) {
             // Less, the better we know the enemy and the more we outmatch it (AIKnowledge.aggression).
             float bold = map.knowledge != null ? 1f - Mathf.Clamp01(map.knowledge.aggression) : 1f;
-            return map.MoveFogLoss(unit, stop) * AIWorld.Value(unit) * p.riskWeight * bold;
+            return map.MoveFogLoss(unit, stop) * AIWorld.Value(unit) * p.riskWeight * p.fogRiskWeight * bold;
         }
 
         public static bool IsRecon(Unit u) { return u != null && u.moveRange >= 6 && u.Firepower <= 2; }

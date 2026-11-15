@@ -31,6 +31,21 @@ namespace HexTactica.OldAI {
     public static class AITargeting {
 
         /// <summary>Score a specific attack, delivered from a specific tile.</summary>
+        /// <summary>
+        /// Could a player order <paramref name="attacker"/>, standing on <paramref name="from"/>, to fire on
+        /// <paramref name="defender"/>: the click flow's own checks (HexTile.CheckAttackRange, Unit.validTarget). The
+        /// enemy is what stands on its tile (not cargo aboard a transport), may be fired on (seen; not protected by the
+        /// rules), is a kind the attacker fires on, and is in range and line of fire from there. Every place that
+        /// picks a target by going through the enemy's units, rather than the tiles in range, asks this.
+        /// </summary>
+        public static bool CanOrder(Unit attacker, HexTile from, Unit defender) {
+            if (attacker == null || from == null || defender == null || defender.tile == null) return false;
+            if (!Player.Hostile(defender.owner, attacker.owner) || defender.tile.occupier != defender) return false;
+            if (!attacker.CanAttack(from) || !attacker.CanTarget(defender)) return false;
+            if (!GameController.Targetable(defender) || !FogOfWar.CanTarget(attacker.owner, defender)) return false;
+            return CombatMath.InFireRange(attacker, from, defender.tile, defender);
+        }
+
         public static AttackAppraisal Appraise(Unit attacker, Unit defender, HexTile from,
                                                AIMap map, AIProfile profile, Posture posture,
                                                bool imminent) {
@@ -38,9 +53,12 @@ namespace HexTactica.OldAI {
 
             if (attacker == null || defender == null || defender.tile == null) return a;
             if (!attacker.CanAttack(from)) return a;
-            if (defender.owner == attacker.owner) return a;
+            if (!Player.Hostile(defender.owner, attacker.owner)) return a;
 
             if (!CombatMath.InFireRange(attacker, from, defender.tile, defender)) return a;   // range, and line of fire
+            // The game's own rule for offering an attack (Unit.CanAttack(Unit)): a target it can attack at all, for damage.
+            // (The AI took attacks the player is never offered: no damage, only a hoped-for retreat, and the reply.)
+            if (!attacker.CanTarget(defender) || Unit.calculateDamage(attacker, defender, defender.tile, 0) <= 0) return a;
 
             CombatOutcome o = CombatMath.Resolve(attacker, defender, from);
             if (o.damageToDefender <= 0 && !o.defenderRetreats) return a;
@@ -57,9 +75,9 @@ namespace HexTactica.OldAI {
             // all of it.
             // (Supply units heal too, unless cut off — the 25,000 hub healed its 3 points back while the
             // tank that hit it was lost for good. It used to be exempt here.)
-            // The game heals one strength a turn (profile.healedPerTurn): that much doesn't count.
+            // The game heals GameController.NetworkHealPerTurn a turn in supply: that much doesn't count.
             if (!o.defenderDies && o.damageToDefender > 0 && defender.Strength - o.damageToDefender >= profile.healMinStrength && map.Heals(defender, defender.tile))
-                value *= Mathf.Max(0f, o.damageToDefender - profile.healedPerTurn) / o.damageToDefender;
+                value *= Mathf.Max(0f, o.damageToDefender - GameController.NetworkHealPerTurn) / o.damageToDefender;
 
             // An HQ is priced by what attacking it achieves: the win, or nothing lasting.
             if (IsHQ(defender)) {
@@ -167,7 +185,7 @@ namespace HexTactica.OldAI {
             List<HexTile> inRange = AIPath.TilesInRange(from, attacker.MinRange, attacker.AttackRange);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
+                if (t.occupier == null || !Player.Hostile(t.occupier.owner, attacker.owner) || !GameController.Targetable(t.occupier)) continue;
 
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (!a.valid) continue;
@@ -188,14 +206,12 @@ namespace HexTactica.OldAI {
             inRange.Sort(CombatMath.CompareTiles);
             for (int i = 0; i < inRange.Count; i++) {
                 HexTile t = inRange[i];
-                if (t.occupier == null || t.occupier.owner == attacker.owner || !GameController.Targetable(t.occupier)) continue;
+                if (t.occupier == null || !Player.Hostile(t.occupier.owner, attacker.owner) || !GameController.Targetable(t.occupier)) continue;
                 AttackAppraisal a = Appraise(attacker, t.occupier, from, map, profile, posture, imminent);
                 if (a.valid) all.Add(a);
             }
             return all;
         }
-
-        public static bool IsHQUnit(Unit u) { return IsHQ(u); }
 
         static bool IsHQ(Unit u) {
             SupplyPoint sp = u != null ? u.Hub : null;
@@ -247,7 +263,6 @@ namespace HexTactica.OldAI {
             cost += AIScore.OutOfSupplyCost(attacker, at, map);
             cost += map.CohesionCost(attacker, at);
             cost -= map.FirstStrikeCredit(attacker, at);
-            cost -= map.SpaceDenial(attacker, at);
             return cost;
         }
 

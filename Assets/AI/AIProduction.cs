@@ -123,14 +123,13 @@ namespace HexTactica.AI {
         /// <summary>
         /// From each land tile, the turns to the nearest of <paramref name="goals"/> for a land unit moving
         /// <paramref name="move"/> a turn that goes by ship where it must: back from the goals over land (its speed), onto the
-        /// water anywhere off a shore (the landing), over water (the ship's speed), into one of our naval yards (getting in:
-        /// boardSteps at its speed), then over land again to where it starts. Tiles one a step, as LandSteps.
+        /// water anywhere off a shore (the landing), over water (the ship's speed), ashore anywhere (getting in from the shore
+        /// the ship comes to: boardSteps at its speed, as AIMap.SeaTravel), then over land again to where it starts. Tiles
+        /// one a step, as LandSteps. (It had troops get in only at our naval yards, from before ships met them off any shore.)
         /// </summary>
         class LiftNode { public long k; }
 
         static Dictionary<HexTile, float> LiftField(AIMap map, Player p, List<HexTile> goals, int move, int shipMove, int boardSteps) {
-            HashSet<HexTile> yards = new HashSet<HexTile>();
-            foreach (Building b in Building.all) if (b != null && b.tile != null && b.owner == p && b.Functioning && AIAssault.ServesShips(b)) yards.Add(b.tile);
             float landStep = 1f / move, seaStep = 1f / shipMove;
             // phase 0: ashore after the landing; 1: at sea; 2: ashore before getting in.
             Dictionary<long, float> cost = new Dictionary<long, float>();
@@ -151,7 +150,7 @@ namespace HexTactica.AI {
                     if (n == null || n.terrain == null) continue;
                     bool nl = n.terrain.elevation >= 0;
                     if (ph == 0) { if (nl) push(n, 0, c + landStep); else push(n, 1, c + seaStep); }
-                    else if (ph == 1) { if (!nl) push(n, 1, c + seaStep); else if (yards.Contains(n)) push(n, 2, c + boardSteps * landStep); }
+                    else if (ph == 1) { if (!nl) push(n, 1, c + seaStep); else push(n, 2, c + boardSteps * landStep); }
                     else if (nl) push(n, 2, c + landStep);
                 }
             }
@@ -376,8 +375,8 @@ namespace HexTactica.AI {
             Reach reach = new Reach(fight);
             // Turns over land at a unit's own speed and over water by ship, from each tile to the fight; one field a speed.
             int shipMove = 0;
-            foreach (Unit u in map.ownUnits) if (u != null && LocomotionRules.IsNaval(u.locomotion) && Transporting.IsTransport(u)) shipMove = Mathf.Max(shipMove, u.moveRange);
-            foreach (Building b in sites) foreach (Unit u in b.Purchasable()) if (u != null && LocomotionRules.IsNaval(u.locomotion) && Transporting.IsTransport(u)) shipMove = Mathf.Max(shipMove, u.moveRange);
+            foreach (Unit u in map.ownUnits) if (u != null && AIAssault.TroopShip(u)) shipMove = Mathf.Max(shipMove, u.moveRange);
+            foreach (Building b in sites) foreach (Unit u in b.Purchasable()) if (u != null && AIAssault.TroopShip(u)) shipMove = Mathf.Max(shipMove, u.moveRange);
             Dictionary<int, Dictionary<HexTile, float>> liftFields = new Dictionary<int, Dictionary<HexTile, float>>();
             System.Func<int, HexTile, float> LiftTurns = (move, at) => {
                 if (shipMove <= 0 || fight.Count == 0 || move <= 0) return float.PositiveInfinity;
