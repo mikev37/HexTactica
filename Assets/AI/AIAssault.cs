@@ -401,10 +401,20 @@ namespace HexTactica.AI {
             return AIAction.Wait(c, "rides to the assault");
         }
 
-        /// <summary>Does <paramref name="t"/> carry a supply unit?</summary>
         /// <summary>A ship under the sea lift: never held for supply duty; it takes troops and their supply together.</summary>
         public static bool SeaLiftShip(Unit t, AIMap map) {
-            return t != null && map != null && map.profile != null && LocomotionRules.IsNaval(t.locomotion) && Transporting.IsTransport(t) && !AIAir.IsCarrier(t);
+            return t != null && map != null && map.profile != null && TroopShip(t) && !AIAir.IsCarrier(t);
+        }
+
+        /// <summary>
+        /// A ship that carries land units (a hauler, a gunboat). A destroyer's one slot takes a helicopter: it lifts no
+        /// troops. (Counted as sea lift, it let the AI think it could cross with only a destroyer, and put off the hauler.)
+        /// </summary>
+        public static bool TroopShip(Unit t) {
+            if (t == null || !LocomotionRules.IsNaval(t.locomotion) || !Transporting.IsTransport(t)) return false;
+            if (t.carries == null || t.carries.Count == 0) return true;   // (Transporting.CarriesKind: Boots, then)
+            foreach (Locomotion l in t.carries) if (!LocomotionRules.IsAirborne(l) && !LocomotionRules.IsNaval(l)) return true;
+            return false;
         }
 
         /// <summary>
@@ -435,6 +445,14 @@ namespace HexTactica.AI {
             return shipKinds;
         }
 
+        /// <summary>A supply unit aboard <paramref name="t"/> that is a link of the supply (not riding along with troops).</summary>
+        public static bool LinkAboard(Unit t) {
+            if (t == null || t.transported == null) return false;
+            foreach (Unit x in t.transported) if (x != null && x.Hub != null && !x.Hub.producer && !AILogistics.RidesAlong(t.owner, x)) return true;
+            return false;
+        }
+
+        /// <summary>Does <paramref name="t"/> carry a supply unit?</summary>
         public static bool CarriesHub(Unit t) {
             if (t == null || t.transported == null) return false;
             foreach (Unit x in t.transported) if (x != null && x.Hub != null) return true;
@@ -588,8 +606,14 @@ namespace HexTactica.AI {
                 if (t == null || t.tile == null) continue;
                 // Earmarked for supply: only a spare slot, and only once its supply unit is aboard (it goes where the supply goes).
                 // A ship taking this unit across water to its ground (sea lift): a troop ship, its supply or not.
-                bool overWater = SeaLiftShip(t, map) && ground != null && map.AcrossWater(c.tile, ground);
-                if (SeaLiftShip(t, map) && !overWater && !hurt) continue;   // ships carry over water, not along the shore
+                // A ship with a supply unit aboard that is not riding along with troops (AILogistics.RidesAlong) is a supply
+                // link: it goes where the supply goes (often nowhere: it holds off a shore), as a supply truck does. (Troops
+                // got into one holding as a link to cross, were let out where it stood, and got in again every other turn.)
+                bool link = SeaLiftShip(t, map) && LinkAboard(t);
+                bool overWater = SeaLiftShip(t, map) && !link && ground != null && map.AcrossWater(c.tile, ground);
+                if (SeaLiftShip(t, map) && !overWater && !link && !hurt) continue;   // ships carry over water, not along the shore
+                // A ship waiting for the supply unit that is to cross with its troops (AILogistics.RideAlong): its seat is kept.
+                if (overWater && supply != null && supply.Contains(t) && !CarriesHub(t) && !SpareSlot(t, c)) continue;
                 bool forSupply = !overWater && ((supply != null && supply.Contains(t)) || busy.Contains(t) || CarriesHub(t));
                 // A supply transport's spare seat: a rider may take it before its supply unit is aboard, as long as
                 // the supply unit still fits beside it (supply units move last: waiting for them, no infantry ever got the seat).
@@ -631,7 +655,9 @@ namespace HexTactica.AI {
         /// </summary>
         public static AIAction? Fetch(Unit t, AIMap map, AIProfile profile, HashSet<Unit> sought, System.Func<Unit, HexTile> groundOf = null) {
             bool ship = SeaLiftShip(t, map);
-            if (t.tile == null || t.transported.Count > 0) return null;
+            // (A ship with only its ride-along supply aboard goes for troops to cross with it: AIPlayer.CarriesSupply.)
+            bool withSupply = ship && t.transported.Count > 0 && Riders(t).Count == 0 && CarriesHub(t);
+            if (t.tile == null || (t.transported.Count > 0 && !withSupply)) return null;
             // The wounded first (medevac): the nearest, within two moves.
             Unit hurt = null; int hd = int.MaxValue;
             foreach (Unit u in map.ownUnits) {
@@ -640,7 +666,7 @@ namespace HexTactica.AI {
                 if (d > 2 * Mathf.Max(1, t.moveRange)) continue;
                 if (d < hd || (d == hd && CombatMath.Precedes(u.tile, hurt.tile))) { hd = d; hurt = u; }
             }
-            if (hurt != null && Hospital(hurt, t, map) != null) {
+            if (hurt != null && !withSupply && Hospital(hurt, t, map) != null) {
                 sought.Add(hurt);
                 if (t.tile.Distance(hurt.tile) <= 1) return AIAction.Wait(t, "medevac: waits for " + hurt.name.Replace("(Clone)", "") + " (strength " + hurt.Strength + ") to get in");
                 // Beside it: the free tile next to it nearest us.
@@ -679,6 +705,7 @@ namespace HexTactica.AI {
                 if (t.tile.Distance(pick.tile) <= 1) return AIAction.Wait(t, "assault ride: waits for " + pick.name.Replace("(Clone)", "") + " to get in");
                 goal = pick.tile; why = "assault ride: goes to fetch " + pick.name.Replace("(Clone)", "") + " (" + pick.tile.x + "," + pick.tile.y + ")";
             } else {
+                if (withSupply) return null;
                 int bd = int.MaxValue;
                 foreach (Building b in Building.all) {
                     if (b == null || b.tile == null || b.owner != t.owner || !b.CanProduce) continue;

@@ -43,6 +43,16 @@ namespace HexTactica.AI {
 
         /// <summary>Would <paramref name="u"/>, a transport, ending its turn on <paramref name="t"/> take one of our building slots? Its own tile counts too: it should leave.</summary>
         /// <summary>Short of fuel, ammunition, supplies or strength: it needs a base's service.</summary>
+        /// <summary>An enemy we know of that takes buildings could reach <paramref name="b"/>'s tile next turn.</summary>
+        public static bool CaptureThreat(Building b, AIMap map) {
+            if (b == null || b.tile == null || map == null) return false;
+            foreach (Unit e in map.enemyUnits) {
+                if (e == null || e.tile == null || e.Strength <= 0 || !Building.CanCapture(e) || e.tile.Distance(b.tile) > e.moveRange + 1) continue;
+                if (e.tile == b.tile || map.BaseReach(e, false).Contains(b.tile)) return true;
+            }
+            return false;
+        }
+
         static bool NeedsService(Unit u) {
             return (u.fuelMax > 0 && u.fuel < u.fuelMax) || (u.ammoMax > 0 && u.ammo < u.ammoMax) || (u.suppliesMax > 0 && u.supplies < u.suppliesMax) || u.Strength < 6;
         }
@@ -57,6 +67,11 @@ namespace HexTactica.AI {
                 // (Aircraft and ships it services: only there do they land, rearm or refuel — when it will not build this turn
                 // (saving, or buying nothing: it then gives its budget to the others), or when they need it now.)
                 if ((LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) && b.Services(u) && (!AIProduction.WillBuild(u.owner, b) || NeedsService(u))) return false;
+                // A land unit it mends, wounded, when it will not build this turn (the withdrawal's own reason to go
+                // there: AITactical counts the healing, and the move was then turned away from the building).
+                if (!LocomotionRules.IsAirborne(u.locomotion) && !LocomotionRules.IsNaval(u.locomotion) && b.Services(u) && b.healPerTurn > 0 && u.Strength < 6 && !AIProduction.WillBuild(u.owner, b)) return false;
+                // Anyone, when an enemy that takes buildings could stand on it next turn: standing there keeps it ours.
+                if (CaptureThreat(b, map)) return false;
                 return b.Purchasable().Count > 0;
             }
             if (!Transporting.IsTransport(u) || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) return false;
@@ -153,17 +168,30 @@ namespace HexTactica.AI {
         /// <summary>
         /// A carrier's own move, before the rest (AIPlayer): it holds where it is while an aircraft of ours has a landing
         /// reserved on it (the aircraft counted on it being there); empty, it sails toward the nearest of our aircraft it
-        /// could take (as near as it can safely get), so they have somewhere to land. Null: it decides as any transport.
+        /// could take that has no base of ours within its fuel (as near as it can safely get), so it has somewhere to land. Null: it decides as any transport.
         /// </summary>
+        static bool BaseWithinFuel(Unit a) {
+            int reach = AIPath.StepBudget(a);
+            foreach (Building b in Building.all)
+                if (b != null && b.tile != null && b.owner == a.owner && b.Functioning && b.Services(a) && a.tile.Distance(b.tile) <= reach) return true;
+            return false;
+        }
+
         public static AIAction? DecideCarrier(Unit t, AIMap map) {
             if (!IsCarrier(t) || t.tile == null || t.trasnporter != null) return null;
             if (map.landings != null)
                 foreach (Landing l in map.landings.Values)
                     if (l.carrier == t) return AIAction.Wait(t, "carrier: holds for " + l.unit.name.Replace("(Clone)", "") + ", landing on it in " + l.turn + " turn" + (l.turn == 1 ? "" : "s"));
             if (t.transported.Count > 0) return null;
+            // A warship with a helicopter deck (a destroyer) fights as a warship: it does not shadow our aircraft. (Destroyers
+            // stayed near gunships and transport helicopters turn after turn, out of the fight.)
+            if (t.Firepower > 1) return null;
             Unit near = null; int nd = int.MaxValue;
             foreach (Unit a in t.owner.units) {
                 if (a == null || a.tile == null || a.trasnporter != null || a.Strength <= 0 || !LocomotionRules.IsAirborne(a.locomotion) || !Transporting.CarriesKind(t, a)) continue;
+                // Only one with no building of ours that services it within its fuel: the rest land there. (It sailed after
+                // gunships that refuelled at a base and passed it going the other way, turn after turn.)
+                if (BaseWithinFuel(a)) continue;
                 int d = t.tile.Distance(a.tile);
                 if (d < nd || (d == nd && CombatMath.Precedes(a.tile, near.tile))) { nd = d; near = a; }
             }

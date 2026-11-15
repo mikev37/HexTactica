@@ -949,7 +949,10 @@ namespace HexTactica.AI {
         /// the later of the ship's turns and the rider's walk in turns, then the shorter walk, then the ship's nearer.
         /// False: no shore of the rider's land the ship reaches.
         /// </summary>
-        public bool Meeting(Unit ship, Unit rider, out HexTile water, out HexTile shore) {
+        public bool Meeting(Unit ship, Unit rider, out HexTile water, out HexTile shore) { return Meeting(ship, rider, out water, out shore, null); }
+
+        /// <param name="claimed">Tiles taken for other meetings: neither the water nor the shore is one of them.</param>
+        public bool Meeting(Unit ship, Unit rider, out HexTile water, out HexTile shore, HashSet<HexTile> claimed) {
             water = null; shore = null;
             if (ship == null || rider == null || ship.tile == null || rider.tile == null) return false;
             Dictionary<HexTile, int> walk = LandSteps(rider.tile);
@@ -959,11 +962,12 @@ namespace HexTactica.AI {
             foreach (HexTile w in sail.Tiles) {
                 if (w.terrain == null || w.terrain.elevation >= 0) continue;   // off the shore, on the water
                 if (w != ship.tile && !AIPath.CanFinishTurnOn(ship, w)) continue;
+                if (claimed != null && claimed.Contains(w)) continue;
                 int sailTurns = w == ship.tile ? 0 : sail.Get(w).turns;
                 foreach (HexTile l in w.neighbors) {
                     int steps;
                     if (l == null || l.terrain == null || l.terrain.elevation < 0 || !walk.TryGetValue(l, out steps)) continue;
-                    if (!rider.CanEnter(l)) continue;
+                    if (!rider.CanEnter(l) || (claimed != null && claimed.Contains(l))) continue;
                     int when = Mathf.Max(sailTurns, (steps + riderMove - 1) / riderMove);
                     int sd = ship.tile.Distance(w);
                     if (when < best || (when == best && (steps < bestWalk || (steps == bestWalk && (sd < bestSail || (sd == bestSail && CombatMath.Precedes(w, water))))))) {
@@ -980,11 +984,11 @@ namespace HexTactica.AI {
             lock (cacheLock) {
                 if (seaLiftPossible.HasValue) return seaLiftPossible.Value;
                 bool can = false;
-                foreach (Unit u in ownUnits) if (u != null && LocomotionRules.IsNaval(u.locomotion) && Transporting.IsTransport(u) && u.transportSlots > 0) { can = true; break; }
+                foreach (Unit u in ownUnits) if (u != null && AIAssault.TroopShip(u)) { can = true; break; }
                 if (!can)
                     foreach (Building b in Building.all) {
                         if (b == null || b.owner != player || !b.CanProduce || !AIAssault.ServesShips(b)) continue;
-                        foreach (Unit t in b.Purchasable()) if (t != null && LocomotionRules.IsNaval(t.locomotion) && t.transportSlots > 0) { can = true; break; }
+                        foreach (Unit t in b.Purchasable()) if (t != null && AIAssault.TroopShip(t)) { can = true; break; }
                         if (can) break;
                     }
                 seaLiftPossible = can;

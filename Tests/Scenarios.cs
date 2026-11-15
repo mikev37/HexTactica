@@ -777,7 +777,22 @@ public static partial class Scenarios {
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
                  Put("Grunt", a, -4, 1); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2);
                  Put("Grunt", o, 5, -2); },
-             "The enemy HQ across a channel no land unit can cross: Blue (the AI, with a naval yard on its shore and gold) builds a transport ship and ferries infantry over, landing on Red's shore, and takes Red's HQ (Red, a human player here, does nothing).");
+             "The enemy HQ across a channel no land unit can cross: Blue (the AI, with a naval yard on its shore and gold) builds a transport ship and ferries infantry over, landing on Red's shore within five Blue turns, and takes Red's HQ (Red, a human player here, does nothing). A destroyer is no transport for troops (its one slot takes a helicopter), and with no enemy able to reach Blue's shore there is no home reserve to buy first: the troop ship comes first.");
+        make("ai-landing-carries-supply", "landingSupply", (a, o) => {
+                 for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
+                 Rig.PlaceBuilding("NavalYard", a, -2, 0);
+                 Put("Hauler", a, 1, -6);
+                 Put("Grunt", a, -4, 1); Put("Grunt", a, -4, 2); Put("Grunt", a, -5, 2); Put("Grunt", a, -3, -2);
+                 Put("Supplies", a, -5, -2);
+                 Put("Grunt", o, 5, -3); },
+             "A landing on a coast our supply does not reach brings supply with it (a rule of the game for the AI: the troops would starve on the beach). Blue's troops and its one supply unit stand on its shore, the empty transport ship out at sea away from the naval yard, Red's land across the channel without Blue's supply. The ship comes for them; the supply unit goes aboard with the troops (it walks to where the ship comes in, not to the yard); when the first Blue troops are put down on Red's side, the ground they stand on is in Blue's supply, and the ship does not land them before the supply unit is aboard.");
+        make("ai-second-supply-ashore", "supplyAshore", (a, o) => {
+                 water(-4, 5, -7, 7);
+                 for (int x = 0; x <= 5; x++) for (int y = -4; y <= -1; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Grassland"); }
+                 Unit h = Put("Hauler", a, -1, 0); Aboard(h, Put("Supplies", a, -6, 3)); Aboard(h, Put("Supplies", a, -6, 2));
+                 Put("Grunt", a, 4, -3); Put("Grunt", a, 5, -4);
+                 Put("Grunt", o, 6, 1); },
+             "A transport ship off an island, within a move of Blue's shore (linked), carrying two supply units; two Blue grunts inland on the island beyond what supply from the ship reaches. One supply unit stays aboard (the beach is supplied from the water through it: put down, it would be cut off) and the other is put ashore, from where it carries supply inland: within two Blue turns a supply unit stands on the island, one is still aboard, and more of the island is in Blue's supply than the ship alone supplied.");
         make("attrition-ai-sea-supply", "attritionSeaSupply", (a, o) => {
                  for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
@@ -3589,13 +3604,63 @@ public static partial class Scenarios {
                     foreach (Unit u in a.units) {
                         if (u == null || u.tile == null) continue;
                         line += " " + u.name.Replace("(Clone)", "") + (u.trasnporter != null ? "[aboard]" : Pos(u.tile));
-                        if (LocomotionRules.IsNaval(u.locomotion) && Transporting.IsTransport(u) && bought < 0) bought = blueTurns;
+                        if (HexTactica.AI.AIAssault.TroopShip(u) && bought < 0) bought = blueTurns;
                         if (u.trasnporter == null && u.tile.x >= 3 && u.locomotion == Locomotion.Boots && landed < 0) landed = blueTurns;
                     }
                     r.Add(line + " gold " + a.money);
                 }
                 detail = string.Join(" | ", r.ToArray()) + "; ship from Blue turn " + bought + ", landed on Red's shore turn " + landed + "; game over " + gc.gameOver + (gc.winner != null ? ", " + gc.winner.personal_name + " wins" : "") + " after " + blueTurns + " Blue turns";
-                return bought > 0 && landed > 0 && gc.gameOver && gc.winner == a;
+                return bought > 0 && landed > 0 && landed <= 5 && gc.gameOver && gc.winner == a;
+            }
+            case "landingSupply": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                a.money = 0;
+                List<string> r = new List<string>();
+                int landed = -1, blueTurns = 0;
+                bool supplied = false;
+                for (int turn = 0; turn < 24 && !gc.gameOver && landed < 0; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    SupplyNetwork.Result net = SupplyNetwork.Solve(a, false);
+                    string line = "T" + blueTurns + ":";
+                    foreach (Unit u in a.units) {
+                        if (u == null || u.tile == null) continue;
+                        line += " " + u.name.Replace("(Clone)", "") + (u.trasnporter != null ? "[aboard " + Pos(u.trasnporter.tile) + "]" : Pos(u.tile));
+                        if (u.trasnporter == null && u.tile.x >= 3 && u.Hub == null && !LocomotionRules.IsNaval(u.locomotion)) {
+                            if (landed < 0) { landed = blueTurns; supplied = true; }
+                            if (landed == blueTurns && !net.IsSupplied(u.tile)) supplied = false;
+                        }
+                    }
+                    r.Add(line);
+                }
+                detail = string.Join(" | ", r.ToArray()) + "; first landing on Red's side Blue turn " + landed + (landed > 0 ? (supplied ? ", in Blue's supply" : ", NOT in Blue's supply") : "");
+                return landed > 0 && landed <= 10 && supplied;
+            }
+            case "supplyAshore": {
+                if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
+                Unit g1 = Rig.At(4, -3).occupier, g2 = Rig.At(5, -4).occupier, ship = Rig.At(-1, 0).occupier;
+                List<string> r = new List<string>();
+                bool ok = false;
+                Func<SupplyNetwork.Result, int> island = n => { int c = 0; for (int x = 0; x <= 5; x++) for (int y = -4; y <= -1; y++) { HexTile t = Rig.At(x, y); if (t != null && n.IsSupplied(t)) c++; } return c; };
+                int start = island(SupplyNetwork.SolveMoved(a, new Dictionary<SupplyPoint, HexTile>()));
+                r.Add("island tiles supplied at the start " + start);
+                for (int turn = 0, blueTurns = 0; turn < 6 && !gc.gameOver && !ok; turn++) {
+                    bool blue = gc.activePlayer == a;
+                    ScenarioFile.PlayTurn();
+                    if (!blue) continue;
+                    blueTurns++;
+                    SupplyNetwork.Result net = SupplyNetwork.SolveMoved(a, new Dictionary<SupplyPoint, HexTile>());
+                    int ashore = 0, aboard = 0;
+                    string where = "";
+                    foreach (Unit u in a.units) if (u != null && u.Hub != null && !u.Hub.producer && u.tile != null) { if (u.trasnporter != null) aboard++; else if (u.tile.x >= 0 && u.tile.x <= 5 && u.tile.y >= -4 && u.tile.y <= -1) { ashore++; where += Pos(u.tile); } }
+                    int now = island(net);
+                    r.Add("T" + blueTurns + ": ship " + Pos(ship.tile) + ", supply aboard " + aboard + ", on the island " + ashore + where + ", island tiles supplied " + now);
+                    if (blueTurns <= 2 && now > start && ashore >= 1 && aboard >= 1) ok = true;
+                }
+                detail = string.Join(" | ", r.ToArray());
+                return ok;
             }
             case "attritionSeaSupply": {
                 if (Environment.GetEnvironmentVariable("CHECKTRACE") != null) AIPlayer.Trace = Console.WriteLine;
@@ -4873,7 +4938,7 @@ public static partial class Scenarios {
         if (Environment.GetEnvironmentVariable("DUELTRACE") != null) { AIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIProduction.DebugValues = x => { if (x.Contains("sea lift")) Console.WriteLine("   value: " + x); }; HexTactica.OldAI.OldAIPlayer.Trace = Console.WriteLine; HexTactica.AI.AIAssault.Debug = Console.WriteLine; HexTactica.AI.AISupplyChain.DebugLog = Console.WriteLine; HexTactica.AI.AICampaign.Debug = x => { if (x.StartsWith("not taken on") || x.StartsWith("given up") || x.StartsWith("reserve drafts")) Console.WriteLine("   campaign: " + x); }; if (Environment.GetEnvironmentVariable("DUELTRACE") == "full") { AITactical.DecisionLog = m => Console.WriteLine("    " + m); AITactical.DebugBreakdown = true; } }
         double thinkBlue = 0, thinkRed = 0, worstBlue = 0, worstRed = 0;
         // How each side uses transports: supply units put down, fighting units boarding, put down, and turns spent aboard.
-        int[] supplyDrops = new int[2], boards = new int[2], drops = new int[2], aboardTurns = new int[2], transportsBought = new int[2];
+        int[] supplyDrops = new int[2], boards = new int[2], drops = new int[2], aboardTurns = new int[2], transportsBought = new int[2], outOfSupply = new int[2];
         foreach (Player pl in new[] { l.ai, l.other }) {
             AIPlayer ap = pl.GetComponent<AIPlayer>(); if (ap == null) continue;
             int side = pl == l.ai ? 0 : 1;
@@ -4891,6 +4956,16 @@ public static partial class Scenarios {
             double secs = sw.Elapsed.TotalSeconds;
             if (blueMoves) { thinkBlue += secs; worstBlue = Math.Max(worstBlue, secs); } else { thinkRed += secs; worstRed = Math.Max(worstRed, secs); }
             foreach (Player pl in new[] { l.ai, l.other }) foreach (Unit u in pl.units) if (u != null && u.tile != null && u.trasnporter != null && u.Hub == null) aboardTurns[pl == l.ai ? 0 : 1]++;
+            // The side that just moved: its land units ashore out of its supply (what reaches them as its turn ends).
+            {
+                Player pl = blueMoves ? l.ai : l.other;
+                // (A solve with no unit moved: nothing published to the board, the game unchanged.)
+                SupplyNetwork.Result net = SupplyNetwork.SolveMoved(pl, new Dictionary<SupplyPoint, HexTile>());
+                List<string> outs = new List<string>();
+                foreach (Unit u in pl.units)
+                    if (u != null && u.tile != null && u.trasnporter == null && u.Hub == null && !LocomotionRules.IsNaval(u.locomotion) && !LocomotionRules.IsAirborne(u.locomotion) && !net.IsSupplied(u.tile)) { outOfSupply[blueMoves ? 0 : 1]++; outs.Add(u.name.Replace("(Clone)", "") + "(" + u.tile.x + "," + u.tile.y + ")"); }
+                if (Environment.GetEnvironmentVariable("OUTDUMP") != null && outs.Count > 0) Console.WriteLine("OUT " + turn + " " + pl.personal_name + ": " + string.Join(" ", outs.ToArray()));
+            }
             if (Environment.GetEnvironmentVariable("BOARD") != null) {
                 List<string> b = new List<string>();
                 foreach (Player p in new[] { l.ai, l.other }) foreach (Unit u in p.units) if (u != null && u.tile != null)
@@ -4924,6 +4999,7 @@ public static partial class Scenarios {
         Console.WriteLine("buildings that changed hands: " + (handsChanged.Count > 0 ? string.Join(", ", handsChanged.ToArray()) : "none"));
         Console.WriteLine(string.Format("transports: supply put down Blue {0} Red {1}; fighting units boarded Blue {2} Red {3}, put down Blue {4} Red {5}; unit-turns aboard Blue {6} Red {7}",
             supplyDrops[0], supplyDrops[1], boards[0], boards[1], drops[0], drops[1], aboardTurns[0], aboardTurns[1]));
+        Console.WriteLine("supply: land unit-turns out of supply Blue " + outOfSupply[0] + " Red " + outOfSupply[1]);
         string folder = HexTactica.Harness.GameLog.Folder;
         if (root != null) HexTactica.Harness.GameLog.Stop();
         Console.WriteLine("winner: " + (gc.winner != null ? gc.winner.personal_name : "none (round limit)")

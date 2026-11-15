@@ -61,6 +61,8 @@ namespace HexTactica.AI {
         /// chain link aboard, and the ship holds off that shore for it (the chain places it, linked).
         /// </summary>
         public readonly Dictionary<SupplyPoint, Unit> alongs = new Dictionary<SupplyPoint, Unit>();
+        /// <summary>Where each supply unit on foot in <see cref="alongs"/> meets its ship (RideAlong).</summary>
+        public readonly Dictionary<SupplyPoint, Meet> alongMeet = new Dictionary<SupplyPoint, Meet>();
         /// <summary>Free ships: empty transport ships claimed by no one.</summary>
         public int freeShips;
         /// <summary>
@@ -396,53 +398,162 @@ namespace HexTactica.AI {
             }
         }
 
+        /// <summary>Where a ship and its ride-along supply unit meet: the ship off the shore, the supply unit on it.</summary>
+        public struct Meet { public HexTile water, shore; }
+
+        /// <summary>The land a laden ship is crossing to (AIPlayer: the ground of its riders), to match it with a front.</summary>
+        public static System.Func<Unit, HexTile> LandingOf;
+
+        /// <summary>A side's ride-along pairs kept from turn to turn: on foot, the ship and where they meet; aboard,
+        /// whether its troops have got in yet (once they have and are put down, it is the shore's link).</summary>
+        sealed class AlongState {
+            public readonly Dictionary<Unit, KeyValuePair<Unit, Meet>> onFoot = new Dictionary<Unit, KeyValuePair<Unit, Meet>>();
+            /// <summary>Aboard: turns it has waited for troops (Crossing once they are aboard).</summary>
+            public readonly Dictionary<Unit, int> aboard = new Dictionary<Unit, int>();
+        }
+        const int Crossing = -1;
+        /// <summary>Turns a ship with its ride-along supply aboard waits for troops before the supply is free for other work.</summary>
+        const int WaitForTroops = 3;
+        static readonly Dictionary<Player, AlongState> alongState = new Dictionary<Player, AlongState>();
+        static AlongState StateOf(Player p) {
+            AlongState st;
+            lock (alongState) if (!alongState.TryGetValue(p, out st)) alongState[p] = st = new AlongState();
+            return st;
+        }
+
+        /// <summary>A supply unit gets into its ride-along ship (AIPlayer, when it orders it): the ship waits for troops with it.</summary>
+        public static void NoteAboard(Player p, Unit supply) { StateOf(p).aboard[supply] = 0; }
+
+        /// <summary>A supply unit on foot and its ship meet elsewhere from now on (the way to the old shore was blocked).</summary>
+        public void MoveMeet(SupplyPoint h, Meet m) {
+            alongMeet[h] = m;
+            Unit sh;
+            if (h.myUnit != null && alongs.TryGetValue(h, out sh)) StateOf(sh.owner).onFoot[h.myUnit] = new KeyValuePair<Unit, Meet>(sh, m);
+        }
+
+        /// <summary>A supply unit that rides along: aboard, waiting for its troops or crossing with them, not yet put down with them.</summary>
+        public static bool RidesAlong(Player p, Unit supply) { return p != null && supply != null && StateOf(p).aboard.ContainsKey(supply); }
+
         /// <summary>
-        /// Troop ships bound for land without our supply (Task.bare) carry a supply unit along: a rule of landing. A
-        /// transport ship (no supply aboard, room for one), wherever it is, gets the nearest of that front's own supply
-        /// units on our side that can meet it within two turns; the supply unit walks to it and the ship does not cross
-        /// before it is in. Not a second wave: a front whose land our supply already reaches.
+        /// Where <paramref name="ship"/> and the supply unit <paramref name="u"/> meet, and in how many turns: off the shore
+        /// the ship lies at now if the supply unit can walk to a tile beside it (a laden ship stays at the shore its troops got
+        /// in from), else where both get soonest (AIMap.Meeting).
+        /// </summary>
+        public static bool Rendezvous(Unit ship, Unit u, AIMap map, out Meet m, out int turns) { return Rendezvous(ship, u, map, out m, out turns, null); }
+
+        /// <param name="claimed">Shores and waters other pairs meet at this turn: not shared.</param>
+        public static bool Rendezvous(Unit ship, Unit u, AIMap map, out Meet m, out int turns, HashSet<HexTile> claimed) {
+            m = default(Meet); turns = int.MaxValue;
+            if (ship == null || u == null || ship.tile == null || u.tile == null) return false;
+            int mv = Mathf.Max(1, u.moveRange);
+            Dictionary<HexTile, int> walk = map.LandSteps(u.tile);
+            if (ship.tile.terrain != null && ship.tile.terrain.elevation < 0) {
+                HexTile best = null; int bs = int.MaxValue;
+                foreach (HexTile n in ship.tile.neighbors) {
+                    int steps;
+                    if (n == null || n.terrain == null || n.terrain.elevation < 0 || !u.CanEnter(n) || (n.occupier != null && n.occupier != u) || !walk.TryGetValue(n, out steps)) continue;
+                    if (claimed != null && claimed.Contains(n)) continue;
+                    if (steps < bs || (steps == bs && CombatMath.Precedes(n, best))) { bs = steps; best = n; }
+                }
+                if (best != null && (claimed == null || !claimed.Contains(ship.tile))) { m = new Meet { water = ship.tile, shore = best }; turns = (bs + mv - 1) / mv; }
+            }
+            HexTile w, l;
+            if (map.Meeting(ship, u, out w, out l, claimed)) {
+                int steps; walk.TryGetValue(l, out steps);
+                int sail = w == ship.tile ? 0 : map.ReachHorizon(ship).Get(w).turns;
+                int when = Mathf.Max(sail, (steps + mv - 1) / mv);
+                // (Staying put wins a tie: the troops that got in there, or are walking there, are not left behind.)
+                if (when < turns) { m = new Meet { water = w, shore = l }; turns = when; }
+            }
+            return m.water != null;
+        }
+
+        static bool StillMeets(Meet m, Unit ship, Unit u, AIMap map) {
+            if (m.water == null || m.shore == null) return false;
+            if (m.water != ship.tile && (m.water.occupier != null || !AIPath.CanFinishTurnOn(ship, m.water))) return false;
+            if (m.shore.occupier != null && m.shore.occupier != u) return false;
+            return map.LandSteps(u.tile).ContainsKey(m.shore);
+        }
+
+        /// <summary>
+        /// Troop ships bound for land without our supply (Task.bare) carry a supply unit along: a rule of landing. Each
+        /// transport ship with room and no supply aboard is paired with one of that front's own supply units on our side:
+        /// a laden one (troops aboard for that land) with one it can meet within three turns, an empty one with the nearest
+        /// (it sails to fetch it, then fetches troops with it aboard). Both go to where they meet (Rendezvous, kept from turn
+        /// to turn while it holds); the laden ship does not cross before the supply unit is in. A supply unit that got in
+        /// stays paired until its troops are put down: then it is that shore's link (a cut-off supply unit supplies nothing:
+        /// aboard the ship off the shore, linked, it supplies the beach). Not a second wave: a front our supply reaches.
         /// </summary>
         static void RideAlong(AILogistics l, AIMap map, ICollection<Unit> reserved) {
+            AlongState st = StateOf(map.player);
             HashSet<Unit> taken = new HashSet<Unit>();
-            // Last turn's pairs first, while they still hold (a ship and its supply unit on their way to meet: re-paired
-            // each turn, they chased each other).
-            Dictionary<Unit, Unit> was;
-            if (!lastAlongs.TryGetValue(map.player, out was)) lastAlongs[map.player] = was = new Dictionary<Unit, Unit>();
-            // (Whichever front it serves this turn: fronts' supply units are shared out afresh each turn.)
-            foreach (Task t in l.tasks) {
-                foreach (SupplyPoint h in t.tactical) {
-                    Unit u = h.myUnit, sh;
-                    if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !was.TryGetValue(u, out sh)) continue;
-                    if (sh == null || sh.tile == null || taken.Contains(sh) || !AIAssault.SeaLiftShip(sh, map) || Transporting.FreeWeight(sh) < 1 || !Transporting.CanCarry(sh, u)) continue;
-                    if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer)) continue;
-                    l.alongs[h] = sh; taken.Add(sh); l.rides.Remove(h);
-                }
+            HashSet<HexTile> claimed = new HashSet<HexTile>();
+            Dictionary<SupplyPoint, Task> taskOf = new Dictionary<SupplyPoint, Task>();
+            foreach (Task t in l.tasks) foreach (SupplyPoint h in t.tactical) taskOf[h] = t;
+            // Aboard: paired with its ship until its troops have got in and been put down.
+            // (Waiting longer than WaitForTroops with no troops: the supply unit is free for the chain again.)
+            foreach (Unit u in new List<Unit>(st.aboard.Keys)) {
+                Unit sh = u != null ? u.trasnporter : null;
+                if (sh == null || u.Hub == null || u.tile == null) { st.aboard.Remove(u); continue; }
+                if (AIAssault.Riders(sh).Count > 0) st.aboard[u] = Crossing;
+                else if (st.aboard[u] == Crossing || st.aboard[u] >= WaitForTroops) { st.aboard.Remove(u); continue; }
+                else st.aboard[u]++;
+                l.alongs[u.Hub] = sh; taken.Add(sh); l.rides.Remove(u.Hub);
             }
-            foreach (Task t in l.tasks) {
-                if (!t.bare || t.yard == null) continue;
-                foreach (Unit sh in map.ownUnits) {
-                    if (sh == null || sh.tile == null || taken.Contains(sh) || !LocomotionRules.IsNaval(sh.locomotion) || !Transporting.IsTransport(sh) || sh.Firepower > 1) continue;
-                    // Any of our transport ships with room (they meet troops off any shore, not at the yard).
-                    if (!AIAssault.SeaLiftShip(sh, map) || Transporting.FreeWeight(sh) < 1) continue;
-                    if (sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer)) continue;
-                    SupplyPoint pick = null; int pd = int.MaxValue;
+            // On foot: last turn's pairs while they still hold (re-paired each turn, ship and supply chased each other).
+            Dictionary<Unit, KeyValuePair<Unit, Meet>> was = new Dictionary<Unit, KeyValuePair<Unit, Meet>>(st.onFoot);
+            st.onFoot.Clear();
+            foreach (KeyValuePair<Unit, KeyValuePair<Unit, Meet>> kv in was) {
+                Unit u = kv.Key, sh = kv.Value.Key;
+                SupplyPoint h = u != null ? u.Hub : null;
+                Task t;
+                if (h == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !taskOf.TryGetValue(h, out t) || !t.bare) continue;
+                if (!Pairable(sh, u, map, taken) || !map.AcrossWater(u.tile, t.front.target) || !BoundFor(sh, t, map)) continue;
+                Meet m = kv.Value.Value; int turns = 0;
+                if ((!StillMeets(m, sh, u, map) || claimed.Contains(m.shore) || claimed.Contains(m.water)) && !Rendezvous(sh, u, map, out m, out turns, claimed)) continue;
+                if (AIAssault.Riders(sh).Count > 0 && turns > 3) continue;
+                Pair(l, st, h, sh, m, taken, claimed);
+            }
+            // New pairs: laden ships first (troops waiting to cross), each with the supply unit it meets soonest.
+            List<Unit> ships = new List<Unit>();
+            foreach (Unit sh in map.ownUnits) if (sh != null && sh.tile != null && !taken.Contains(sh) && AIAssault.SeaLiftShip(sh, map) && sh.Firepower <= 1) ships.Add(sh);
+            ships.Sort((x, y) => { int c = AIAssault.Riders(y).Count.CompareTo(AIAssault.Riders(x).Count); return c != 0 ? c : AIMap.CompareUnits(x, y); });
+            foreach (Unit sh in ships) {
+                bool laden = AIAssault.Riders(sh).Count > 0;
+                SupplyPoint pick = null; Meet pm = default(Meet); int pt = int.MaxValue;
+                foreach (Task t in l.tasks) {
+                    if (!t.bare || t.front == null || !BoundFor(sh, t, map)) continue;
                     foreach (SupplyPoint h in t.tactical) {
                         Unit u = h.myUnit;
-                        if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !Transporting.CanCarry(sh, u)) continue;
+                        if (u == null || u.tile == null || u.trasnporter != null || l.alongs.ContainsKey(h) || !Pairable(sh, u, map, taken)) continue;
                         if (!map.AcrossWater(u.tile, t.front.target)) continue;
-                        int d = u.tile.Distance(sh.tile);
-                        // Can meet it within two turns; an empty ship sails to fetch it from wherever it is.
-                        if (d > 2 * Mathf.Max(1, u.moveRange) + 1 && sh.transported.Count > 0) continue;
-                        if (d < pd || (d == pd && pick != null && AIMap.CompareUnits(u, pick.myUnit) < 0)) { pd = d; pick = h; }
+                        Meet m; int turns;
+                        if (!Rendezvous(sh, u, map, out m, out turns, claimed)) continue;
+                        if (laden && turns > 3) continue;
+                        if (turns < pt || (turns == pt && AIMap.CompareUnits(u, pick.myUnit) < 0)) { pt = turns; pick = h; pm = m; }
                     }
-                    if (pick == null) continue;
-                    l.alongs[pick] = sh; taken.Add(sh); l.rides.Remove(pick);
                 }
+                if (pick != null) Pair(l, st, pick, sh, pm, taken, claimed);
             }
-            was.Clear();
-            foreach (KeyValuePair<SupplyPoint, Unit> kv in l.alongs) if (kv.Key.myUnit != null) was[kv.Key.myUnit] = kv.Value;
         }
-        static readonly Dictionary<Player, Dictionary<Unit, Unit>> lastAlongs = new Dictionary<Player, Dictionary<Unit, Unit>>();
+
+        static bool Pairable(Unit sh, Unit u, AIMap map, HashSet<Unit> taken) {
+            if (sh == null || sh.tile == null || taken.Contains(sh) || !AIAssault.SeaLiftShip(sh, map) || !Transporting.CanCarry(sh, u)) return false;
+            return !sh.transported.Exists(c => c != null && c.Hub != null && !c.Hub.producer);
+        }
+
+        /// <summary>An empty ship goes for any front; a laden one only for the land its troops cross to.</summary>
+        static bool BoundFor(Unit sh, Task t, AIMap map) {
+            if (AIAssault.Riders(sh).Count == 0 || LandingOf == null) return true;
+            HexTile landing = LandingOf(sh);
+            return landing == null || t.front == null || t.front.target == null || !map.AcrossWater(landing, t.front.target);
+        }
+
+        static void Pair(AILogistics l, AlongState st, SupplyPoint h, Unit sh, Meet m, HashSet<Unit> taken, HashSet<HexTile> claimed) {
+            l.alongs[h] = sh; l.alongMeet[h] = m; taken.Add(sh); l.rides.Remove(h);
+            claimed.Add(m.water); claimed.Add(m.shore);
+            st.onFoot[h.myUnit] = new KeyValuePair<Unit, Meet>(sh, m);
+        }
 
         /// <summary>A fighting unit of ours is supplied now only through <paramref name="h"/>.</summary>
         static bool SuppliesSomeone(SupplyPoint h, AIMap map) {
