@@ -102,6 +102,18 @@ public class HexTile : MonoBehaviour
         return isSupplied(myPlayer);
     }
 
+    /// <summary>
+    /// In <paramref name="myPlayer"/>'s own network as the screen shows it, allies' not counted: what its supply border
+    /// outlines (HexTilePlayerSupplyDisplay). Each side's border traces its own network, so it changes only when that
+    /// network's field is published (and is redrawn then); an ally's supply keeps the unit fed (isSuppliedShown) but is
+    /// outlined in the ally's colour.
+    /// </summary>
+    internal bool isOwnSupplyShown(Player myPlayer) {
+        int d;
+        if (BoardView.current == null && supplyShown != null && supplyShown.TryGetValue(myPlayer, out d)) return d > 0;
+        return supply != null && supply.TryGetValue(myPlayer, out d) && d > 0;
+    }
+
     public AITileData aiData;
 
     [Header("Movement Variables")]
