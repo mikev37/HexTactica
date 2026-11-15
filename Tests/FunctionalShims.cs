@@ -35,7 +35,14 @@ namespace UnityEngine {
         public string name { get { MainThreadOnly.Check("get_name"); return _name; } set { MainThreadOnly.Check("set_name"); _name = value; } }
         public int GetInstanceID() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
         public static implicit operator bool(Object o) { return !ReferenceEquals(o, null); }
-        public static void Destroy(Object o) { MainThreadOnly.Check("Destroy"); }
+        public static void Destroy(Object o) { MainThreadOnly.Check("Destroy"); if (o != null) Pending.Add(o); }
+        /// <summary>What Destroy was asked to remove (Unity removes it at the end of the frame; checks call EndOfFrame).</summary>
+        public static readonly List<Object> Pending = new List<Object>();
+        /// <summary>The end of a frame: components given to Destroy leave their GameObject (as in Unity).</summary>
+        public static void EndOfFrame() {
+            foreach (Object o in Pending) { Component c = o as Component; if (c != null && c.gameObject != null) c.gameObject.RemoveComponent(c); }
+            Pending.Clear();
+        }
         public static void Destroy(Object o, float t) { MainThreadOnly.Check("Destroy"); }
         public static void DestroyImmediate(Object o) { MainThreadOnly.Check("DestroyImmediate"); }
         public static void DontDestroyOnLoad(Object o) { }
@@ -293,6 +300,7 @@ namespace UnityEngine {
             if (!components.Contains(c)) { components.Add(c); c._go = this; }
         }
 
+        public void RemoveComponent(Component c) { components.Remove(c); }
         public T GetComponent<T>() where T : class {
             MainThreadOnly.Check("GetComponent");
             for (int i = 0; i < components.Count; i++) {

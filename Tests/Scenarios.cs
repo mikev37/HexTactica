@@ -1726,16 +1726,31 @@ public static partial class Scenarios {
                     };
                     try { loaded = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); }
                     finally { HexTactica.Harness.ScenarioLoader.ControlFromFile = false; Rig.hg.makeTile = null; UnityEngine.GameObject.Cloner = null; }
+                    UnityEngine.Object.EndOfFrame();
                     bool blueAI = AIControl.Of(a) != null, redHuman = AIControl.Of(o) == null;
-                    HexTactica.Harness.ScenarioLoader.SetControl(a, false); HexTactica.Harness.ScenarioLoader.SetControl(o, true);
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, false); HexTactica.Harness.ScenarioLoader.SetControl(o, true); UnityEngine.Object.EndOfFrame();
                     bool loaded2;
                     Rig.hg.makeTile = at => { HexTile t = Rig.New<HexTile>(); t.neighbors = new List<HexTile>(); t.aiData = new AITileData(); t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>(); t.terrain = ScenarioFile.Terrain("Grassland"); dress(t); return t; };
                     try { loaded2 = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); } finally { Rig.hg.makeTile = null; }
+                    UnityEngine.Object.EndOfFrame();
                     bool blueAI2 = AIControl.Of(a) != null, redHuman2 = AIControl.Of(o) == null;
+                    // The other way round (the user's game): Red the AI and Blue a human, saved; loaded into a scene where
+                    // Red is a human. Red must come out with an AI.
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, false); HexTactica.Harness.ScenarioLoader.SetControl(o, true); UnityEngine.Object.EndOfFrame();
+                    foreach (Defective.JSON.JSONObject pj in players.list) { long id = pj.GetField("id").longValue; pj.SetField("AI", id == o.id); }
+                    File.WriteAllText(path, saved.Print());
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, true); HexTactica.Harness.ScenarioLoader.SetControl(o, false); UnityEngine.Object.EndOfFrame();
+                    bool loaded3;
+                    Rig.hg.makeTile = at => { HexTile t = Rig.New<HexTile>(); t.neighbors = new List<HexTile>(); t.aiData = new AITileData(); t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>(); t.terrain = ScenarioFile.Terrain("Grassland"); dress(t); return t; };
+                    HexTactica.Harness.ScenarioLoader.ControlFromFile = true;
+                    try { loaded3 = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); } finally { HexTactica.Harness.ScenarioLoader.ControlFromFile = false; Rig.hg.makeTile = null; }
+                    UnityEngine.Object.EndOfFrame();
+                    bool redAI3 = AIControl.Of(o) != null, blueHuman3 = AIControl.Of(a) == null;
                     int i = file.IndexOf("\"players\""); 
                     detail = "chosen " + chosen + "; file players: " + (i >= 0 ? file.Substring(i, Math.Min(260, file.Length - i)).Replace("\n", " ") : "none") + "; loaded as the in-game Load " + loaded + ": Blue AI " + blueAI + ", Red human " + redHuman
-                           + "; as HexTactica > Load Scenario File " + loaded2 + ": Blue AI " + blueAI2 + ", Red human " + redHuman2;
-                    return chosen && loaded && blueAI && redHuman && loaded2 && blueAI2 && redHuman2;
+                           + "; as HexTactica > Load Scenario File " + loaded2 + ": Blue AI " + blueAI2 + ", Red human " + redHuman2
+                           + "; Red the AI saved, loaded into a scene where Red is human " + loaded3 + ": Red AI " + redAI3 + ", Blue human " + blueHuman3;
+                    return chosen && loaded && blueAI && redHuman && loaded2 && blueAI2 && redHuman2 && loaded3 && redAI3 && blueHuman3;
                 } finally { LevelEditor.singleton = was; }
             }
             case "loadCargo": {
