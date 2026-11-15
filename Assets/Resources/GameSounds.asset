@@ -12,8 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ebda99b0c84145f99690a33a9a63258e, type: 3}
   m_Name: GameSounds
   m_EditorClassIdentifier: Assembly-CSharp::GameSounds
-  buildingCaptured: {fileID: 8300000, guid: b15e2ceba01e7c34698b106c5ed83358, type: 3}
+  buildingCaptured: {fileID: 8300000, guid: cc01057dbef2dfe4584fd33183575fa3, type: 3}
   stealthDetected: {fileID: 0}
+  buildingDestroyed: {fileID: 8300000, guid: 6909eadf247a8ea47894595da973818d, type: 3}
+  matchStart: {fileID: 8300000, guid: cae86f24ff5cb3d468e195be89c82234, type: 3}
+  victory: {fileID: 8300000, guid: b15e2ceba01e7c34698b106c5ed83358, type: 3}
+  loss: {fileID: 8300000, guid: 126cae71757080c4a999d4fa991c6d9a, type: 3}
+  unitLoad: {fileID: 8300000, guid: caad7fa1d7e38dc4190d9840b2999fef, type: 3}
+  unitUnload: {fileID: 8300000, guid: f89720f04cb3e6f4ca77fed9871f44ce, type: 3}
   musicVolume: 0.6
   musicEndFade: 10
   musicFadeIn: 3

@@ -1386,6 +1386,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 158503137770955053, guid: 4c9c08dca2d76ee4295c6a46d7725af4, type: 3}
     - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
+      propertyPath: moveLoopSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 38be0b04fda98c548b3a01b5c28c3a24, type: 3}
+    - target: {fileID: 9081080694409079478, guid: d3d4f90a2589a1c4ab7ca036793ecb84, type: 3}
       propertyPath: minFuelPerTile
       value: 2
       objectReference: {fileID: 0}

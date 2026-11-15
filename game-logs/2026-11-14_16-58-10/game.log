@@ -1,0 +1,430 @@
+HexTactica game log, 2026-11-14 16:58:10
+source: D:/DevBox/HexTactica/HexTactica/Assets\Resources/Scenarios\BushWar.dat
+side: 0 Colonials | faction Union | human
+side: 112 Rebels | faction Rebels | AI
+axis: 24
+Blue (upper case) = this AI; Red (lower case) = Human
+rules: Standard
+glyphs: S supply unit, G grunt, T tank, A artillery; buildings (no unit on them) H HQ, C city, B forward base, P airport, D naval yard, = neutral; . grass, f forest, ^ mountain, ~ water
+
+== round 0: Rebels to move
+  -12             X . . . . . X ~ . . U c X
+  -11            . . . . . . . . ~ . . . . .
+  -10           . . . . . . . . . ~ . . . . .
+   -9          . . . . . g . . . ~ . . . . . X
+   -8         . . . . . . . . . . . . . . . . ~
+   -7        . . . . . . S . . ~ . . . . . . ~ ~
+   -6       . . . U . . U . . ~ ~ . . . . . ~ ~ U
+   -5      . . . . . S U . ~ ~ . . . . ~ . ~ . . c
+   -4     X . U . . . . ~ ~ X . . . . U . . . . . .
+   -3    H . . S . . . ~ ~ . . . . . . ^ . . . . . .
+   -2   X . . U . . . ~ ~ . . . . . . . . . . . . s u
+   -1  . . U S . . . . ~ . . . . . . ^ . f f f p . u u
+    0 . . S . . . . . . ~ . . . . U . . . f f u x . u u
+    1  . . . c . . . . . . . g . . . . . . . . . . s u
+    2   . . . . S . . . c . . . . . . ^ . . . . . . t
+    3    . . . . . . . U . U . . c . ^ . . . . s . x
+    4     . . . . S U . . . ~ U . . . . . . . . . .
+    5      . . . . U . g . . . . ~ . . . ~ ~ ~ . .
+    6       . . . . U . . . . ~ ~ . . . ~ ~ ~ ~ ~
+    7        . . . . . . . . . ~ . . ^ . ~ ~ ~ ~
+    8         . . . . . . . . ~ . . . X ~ ~ ~ ~
+    9          c . U . . . . ~ . . . ~ ~ ~ ~ ~
+   10           . . . ~ ~ ~ . . . . . ~ ~ ~ ~
+   11            X ~ ~ . . . . . ~ ~ ~ ~ ~ ~
+   12             ~ . . X c . U . . ~ ~ ~ ~
+   units: CMa(12,0)s6 CMa(12,-1)s6 CMa(12,-2)s6 CRe(11,1)s6 CRe(11,0)s6 CRe(11,-1)s6 CGr(-1,1)s6u1 RIn(-1,-5)s6u3 RIn(-7,4)s6u3 RIn(-3,-6)s6u3 CSu(10,1)s6 CSu(7,3)s6 CSu(11,-2)s6 CTa(10,2)s6 CGu(8,0)s6f30 RTr(0,-6)s6 RTr(-7,-2)s6 RTr(-9,-1)s6 RTr(-6,-4)s6 RRe(-3,3)s6 RRe(-2,4)s6 RRe(2,0)s6 RRe(-5,3)s6 RRe(-8,5)s6 RRe(-8,6)s6 RRe(6,-4)s6 RRe(12,-6)s6 RRe(10,-12)s6 RRe(-10,9)s6 RRe(-6,12)s6 RSu(-8,4)s6 RSu(-8,2)s6 RSu(-10,0)s6 RSu(-8,-1)s6 RSu(-6,-3)s6 RSu(-2,-5)s6 RSu(1,-7)s6 CGr(-6,5)s6 CGr(2,-9)s6 RSu(-7,-2)s6
+   buildings: HQ(-9,-3) Rebels 0/10; HQ(12,0) Colonials 0/10; Runway(9,0) Colonials 0/10; Airport(9,-1) Colonials 0/10; ArmyBase(9,3) Colonials 0/10; ArmyBase(-12,11) Rebels 0/10; ArmyBase(-9,12) Rebels 0/10; ArmyBase(12,-12) Rebels 0/10; ArmyBase(-8,-4) Rebels 0/10; ArmyBase(-10,-2) Rebels 0/10; ArmyBase(0,-12) Rebels 0/10; ArmyBase(1,-4) Rebels 0/10; ArmyBase(0,8) Rebels 0/10; ArmyBase(12,-9) Rebels 0/10; ArmyBase(6,-12) Rebels 0/10; City(-9,1) Colonials 0/10; City(11,-12) Colonials 0/10; City(12,-5) Colonials 0/10; City(6,-4) Colonials 0/10; City(0,3) Colonials 0/10; City(-4,2) Colonials 0/10; City(-12,9) Colonials 0/10; City(-8,12) Colonials 0/10; City(2,-9) Colonials 0/10;
+   state Colonials: worth 67000, units 14, cities 9, buildings 13, income 12000, gold 4000, front 0.185
+   Colonials fields: 3 Grunt Union Variant, 1 Gunship, 3 Marine Union Variant, 3 Recon Union Variant, 3 Supplies, 1 Tank Union Variant
+   Colonials can buy: APC, AirTanker, Anti Air Missile Truck, Bomber, Conscript Union Variant, Fighter, Grunt Union Variant, Gunner Anti Air, Gunship, Heavy Tank, IFV Union Variant, JumpJet, Marine Union Variant, Recon Union Variant, Rocket Artillery, Supplies, Tank Union Variant, Transport Helo, Transport Plane, Truck, Wheeled Artillery Variant
+   state Rebels: worth 93000, units 26, cities 0, buildings 11, income 2000, gold 0, front 0.695
+   Rebels fields: 3 Insurgent, 11 Rebel, 8 Supplies Cache, 4 Truck
+   Rebels can buy: APC, Anti Air Missile Truck, Artillery, Grunt Guerilla Variant, IFV Rebel Variant, Insurgent, Quad Cannon, Rebel, Recon Technical Variant, Rocket Artillery, Supplies Cache, Tank Rebel Variant, Truck
+   (board saved as turn-000-Rebels.dat)
+   fog: unknown ground: 98 tiles (0 lately seen but near the enemy), 1 kinds, reach 4
+   fog: unplaced enemy: 26.4 units (66000 power) over 5 anchors (2 seen, 0 remembered, 1 HQ, 2 production)
+   knowledge: enemy could have 71000 (start 71000 + built 0 - destroyed 0), we know of 5000; their buildings seen 62%; confidence 0.23; ours 93000 = ratio 1.31; aggression 0.07; unknown ground feared at 0.93
+   campaign planned afresh: first plan
+   objective Scout(5,5) away 3 value 1339 priority 334.65 enemy 5000 need 0 have 0, 0 units, 0/0 supply via (-8,4) turn 1 formed against 5000
+   objective Scout(-12,3) away 2 value 614 priority 204.51 enemy 5000 need 0 have 3500, 1 units, 0/0 supply via (-10,0) turn 1 [staged 0, en route 1, engaged 0] formed against 5000: Insurgent(-3,-6)s6
+   objective Secure(2,-9) away 2 City value 10000 priority 2.22 enemy 85 (unseen 85, 10% dark) need 1500 have 3500, 1 units, 0/0 supply via (-6,-3) turn 1 gone in [staged 0, en route 1, engaged 0] formed against 85: Insurgent(-1,-5)s6
+   objective Secure(-8,12) away 2 City value 10000 priority 1.21 enemy 2509 (unseen 9, 1% dark) need 2760 have 3000, 2 units, 0/0 supply via (-8,4) turn 1 gone in [staged 0, en route 0, engaged 2] formed against 2509: Rebel(-8,5)s6 Rebel(-8,6)s6
+   objective Secure(-12,9) away 2 City value 10000 priority 1.16 enemy 2611 (unseen 111, 13% dark) need 2872 have 3500, 1 units, 0/0 supply via (-8,4) turn 1 gone in [staged 0, en route 0, engaged 1] formed against 2611: Insurgent(-7,4)s6
+   objective Secure(11,-12) away 1 City value 10000 priority 1.05 enemy 114 (unseen 114, 13% dark) need 1500 have 1500, 1 units, 3/1 supply via (-6,-3) turn 1 gone in [staged 0, en route 0, engaged 1] formed against 114: Rebel(-5,3)s6
+   objective Hold(4,-8) chokepoint end away 2 value 3500 priority 0.78 enemy 110 (unseen 110, 13% dark) need 1500 have 1500, 1 units, 0/0 supply via (-6,-3) turn 1 gone in [staged 0, en route 0, engaged 1] formed against 110: Rebel(6,-4)s6
+   objective Hold(5,-7) chokepoint end away 2 value 3500 priority 0.25 enemy 146 (unseen 146, 17% dark) need 1500 have 1500, 1 units, 2/1 supply via (-6,-3) turn 1 gone in [staged 0, en route 0, engaged 1] formed against 146: Rebel(-3,3)s6
+   front Front(-12,3) Defensive ratio 0.70 priority 205 objective (-12,3) value 614 staging at (-10,0), 1 units
+   front Front(2,-9) Aggressive ratio 41.10 priority 2 objective (2,-9) value 10000, 1 units
+   front Front(-8,12) Aggressive ratio 1.20 priority 1 objective (-8,12) value 10000, 2 units
+   front Front(-12,9) Aggressive ratio 1.34 priority 1 objective (-12,9) value 10000, 1 units
+   front Front(11,-12) Aggressive ratio 13.21 priority 1 objective (11,-12) value 10000, 4 units
+   front Front(4,-8) Aggressive ratio 13.64 priority 1 objective (4,-8) value 3500, 1 units
+   front Front(5,-7) Aggressive ratio 10.28 priority 0 objective (5,-7) value 3500, 3 units
+   front Front(-5,2) Aggressive ratio 3.50 priority 50 objective (-5,2) value 10000, 11 units
+   front Front(-9,8) Aggressive ratio 5.00 priority 23 objective (-11,7) value 10000, 1 units
+   front Front(-2,5) Defensive ratio 2.50 priority 29 objective (-5,3) value 10000 staging at (-5,3), 1 units
+   chain: supply unit at (-6,-3, 9 steps): 15 tiles, 7 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-8,-2, 8 steps); reach now 7
+   chain: supply unit at (-10,0, 8 steps): 13 tiles, 1 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-10,2, 6 steps); reach now 0
+   chain: supply unit aboard at (-7,-2): 72 tiles its transport reaches linked; holds: none brings supply nearer
+   chain: supply unit at (-8,-1, 7 steps): 14 tiles, 0 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-8,1, 5 steps); reach now 0
+   chain: supply unit at (-8,2, 4 steps): 16 tiles, 0 not supplied by the links behind, 0 ahead of the army, 3 in reach of the enemy; best (-9,4, 3 steps); reach now 0
+   chain: supply unit at (-8,4, 2 steps): 12 tiles, 0 not supplied by the links behind, 0 ahead of the army, 5 in reach of the enemy; best (-9,6, 1 steps); reach now 0
+   chain: supply unit at (-8,4, 9 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 4
+   chain: supply unit at (-8,-1, 7 steps): 14 tiles, 6 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-7,-3, 6 steps); reach now 4
+   chain: supply unit at (-8,2, 7 steps): 17 tiles, 17 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 4
+   chain: supply unit at (-8,-1, 6 steps): 14 tiles, 6 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-10,1, 6 steps); reach now 6
+   chain: supply unit at (-8,2, 3 steps): 16 tiles, 4 not supplied by the links behind, 0 ahead of the army, 3 in reach of the enemy; best (-9,4, 2 steps); reach now 0
+   chain: supply unit at (-8,4, 1 steps): 13 tiles, 0 not supplied by the links behind, 0 ahead of the army, 6 in reach of the enemy; best (-9,4, 2 steps); reach now 0
+   chain: supply unit at (-8,2, 4 steps): 17 tiles, 17 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 7
+   chain: supply unit at (-8,4, 3 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 7
+   chain: supply unit at (-8,2, 14 steps): 17 tiles, 17 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 15
+   chain: supply unit at (-8,4, 14 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 15
+   chain: supply unit at (-8,2, 6 steps): 17 tiles, 17 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 9
+   chain: supply unit at (-8,4, 5 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 9
+   chain: supply unit at (-8,2, 10 steps): 17 tiles, 17 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 12
+   chain: supply unit at (-8,4, 10 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 12
+   chain: supply unit at (-8,2, 8 steps): 17 tiles, 17 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 11
+   chain: supply unit at (-8,4, 7 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 11
+   chain: supply unit at (-8,2, 7 steps): 17 tiles, 17 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 8
+   chain: supply unit at (-8,4, 5 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 8
+   logistics: Secure@-8,12 (2 units, to (-8,6)): chain 3, its own 1; Secure@2,-9 (1 units, to (-1,-5)): chain 0, its own 1, chain short; Secure@-12,9 (1 units, to (-7,4)): chain 1, its own 0; Secure@11,-12 (1 units, to (-5,3)): chain 0, its own 0; Hold@4,-8 (1 units, to (6,-4)): chain 0, its own 0, chain short, nothing spare; Hold@5,-7 (1 units, to (-3,3)): chain 0, its own 0, chain short, nothing spare; Clear@-5,2 (4 units, to (2,0)): chain 0, its own 0, chain short, nothing spare; Clear@-5,3 (1 units, to (-2,4)): chain 0, its own 0, chain short, nothing spare; Clear@-11,7 (1 units, to (-10,9)): chain 0, its own 0, chain short, nothing spare; free trucks 0; supply units with a duty 6 of 6
+   reserve (mobile): central 0, active 0 (of 0 on no task force)
+   scout Insurgent (-3,-6) -> (-12,3) sees 613.5
+   transports for supply: Truck(-6,-4), Truck(-7,-2), Truck(-9,-1), Truck(0,-6)
+   chain: supply unit at (-10,0, 23 steps): 13 tiles, 4 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-10,1, 22 steps); reach now 22
+   chain: supply unit at (-8,-1, 22 steps): 14 tiles, 4 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-8,1, 20 steps); reach now 14
+   chain: supply unit aboard at (-7,-2): 73 tiles its transport reaches linked; holds: none brings supply nearer
+   chain: supply unit at (-6,-3, 22 steps): 15 tiles, 0 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-5,-2, 20 steps); reach now 14
+   chain: supply unit at (-6,-3) reconnects: to (-5,-2), 0 left cut off
+   chain: supply unit at (-2,-5, 22 steps): 13 tiles, 6 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-4,-3, 20 steps); reach now 14
+   chain: supply unit at (-8,2, 20 steps): 17 tiles, 6 not supplied by the links behind, 0 ahead of the army, 4 in reach of the enemy; best (-7,1, 19 steps); reach now 9
+   chain: supply unit at (-8,4, 20 steps): 14 tiles, 8 not supplied by the links behind, 0 ahead of the army, 6 in reach of the enemy; best none; reach now 9
+   chain: supply unit at (1,-7, 19 steps): 14 tiles, 14 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best none; reach now 9
+   chain: link at (-5,-2) within 2 of another node: released, spare
+   chain toward (12,0): (-10,0)->(-5,1), (-7,-2) holds, (-2,-5)->(6,-6); spare 5; supply reaches 9 steps from the objective, the army 6
+[ghost plan] Rebels Supplies Cache(Clone) at (-8,4) plans, top of 13:
+   (-4,-2) total 15852 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -306 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 15 strike-in 2]
+   (-3,-5) total 15833 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -325 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 17 strike-in 3]
+   (-3,-4) total 15833 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -325 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 16 strike-in 3]
+   (-4,-5) total 15833 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -325 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 18 strike-in 3]
+   (-4,-4) total 15833 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -325 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 17 strike-in 3]
+   (-3,-5) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-3,-4) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-2,-4) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-4,-2) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-2,-7) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-2,-6) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-4,-5) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-4,-4) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-4,-3) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-1,-8) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-1,-7) stops tonight at (-6,2): -5417 for 5.0 strength there
+   (-1,-6) stops tonight at (-6,2): -5417 for 5.0 strength there
+   ghost plan: walk to (-4,-2,6) (T+2)
+   ghost: Supplies Cache will move to (-6,2); the line plans with that supply
+[ghost plan] Rebels Supplies Cache(Clone) at (-8,2) plans, top of 12:
+   (-4,-2) total 9010 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -649 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 15 strike-in 2]
+   (-3,-5) total 8962 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -696 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 17 strike-in 3]
+   (-3,-4) total 8962 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -696 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 16 strike-in 3]
+   (-4,-5) total 8962 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -696 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 18 strike-in 3]
+   (-4,-4) total 8962 = resupply 700 + heal 0 + spared 292 (2 units) + relays 2167 + forward -696 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 17 strike-in 3]
+   ghost plan: walk to (-4,-2,6) (T+1)
+   ghost: Supplies Cache will move to (-6,0); the line plans with that supply
+[ghost plan] Rebels Supplies Cache(Clone) at (-8,-1) plans, top of 13:
+   (-7,1) total 3193 = resupply 800 + heal 0 + spared 333 (4 units) + relays 2167 + forward -107 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d3 to-ours 0 to-theirs 15 strike-in 2]
+   (-8,1) total 3145 = resupply 800 + heal 0 + spared 333 (4 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 16 strike-in 2]
+   (-9,2) total 3145 = resupply 800 + heal 0 + spared 333 (4 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 17 strike-in 2]
+   (-10,3) total 3145 = resupply 800 + heal 0 + spared 333 (4 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Potential d0 to-ours 1 to-theirs 18 strike-in 2]
+   (-8,-1) total 3145 = resupply 800 + heal 0 + spared 333 (4 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Static d4 to-ours 0 to-theirs 18 strike-in 3]
+   ghost plan: walk to (-8,-1,9) (T+0)
+   ghost: Supplies Cache stays; the line plans with that supply
+[ghost plan] Rebels Supplies Cache(Clone) at (-6,-3) plans, top of 13:
+   (-4,-2) total 16519 = resupply 1050 + heal 0 + spared 438 (3 units) + relays 2167 + forward -136 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 15 strike-in 2]
+   (-4,-5) total 16500 = resupply 1050 + heal 0 + spared 438 (3 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 18 strike-in 3]
+   (-4,-4) total 16500 = resupply 1050 + heal 0 + spared 438 (3 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 17 strike-in 3]
+   (-4,-3) total 16500 = resupply 1050 + heal 0 + spared 438 (3 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 16 strike-in 3]
+   (-5,-5) total 16500 = resupply 1050 + heal 0 + spared 438 (3 units) + relays 2167 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Static d2 to-ours 0 to-theirs 19 strike-in 3]
+   ghost plan: walk to (-4,-5,9) (T+0)
+   ghost: Supplies Cache will move to (-4,-5); the line plans with that supply
+[ghost plan] Rebels Supplies Cache(Clone) at (1,-7) plans, top of 13:
+   (-4,-2) total 8439 = resupply 700 + heal 0 + spared 292 (2 units) + relays 1083 + forward -136 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 15 strike-in 2]
+   (-3,-5) total 8420 = resupply 700 + heal 0 + spared 292 (2 units) + relays 1083 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d3 to-ours 0 to-theirs 17 strike-in 3]
+   (-3,-4) total 8420 = resupply 700 + heal 0 + spared 292 (2 units) + relays 1083 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 16 strike-in 3]
+   (-4,-5) total 8420 = resupply 700 + heal 0 + spared 292 (2 units) + relays 1083 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d4 to-ours 0 to-theirs 18 strike-in 3]
+   (-4,-4) total 8420 = resupply 700 + heal 0 + spared 292 (2 units) + relays 1083 + forward -155 + intent 0 - stranded 0 - hit 0 (0.0 strength) [Mobile d3 to-ours 0 to-theirs 17 strike-in 3]
+   ghost plan: walk to (-3,-5,8) (T+1)
+   ghost: Supplies Cache will move to (-1,-6); the line plans with that supply
+   coordination pass 1: 8 units in contact
+     Rebel(-10,9) favourite (-12,9) no shot world 98479 | survive (-7,7) no shot world 95752; retreat (-12,9) no shot world 98479
+     Rebel(-8,5) favourite (-5,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100704 | attack1 (-5,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100704; attack2 (-7,5) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100760; attack3 (-7,6) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100584; survive (-7,5) no shot world 95528; retreat (-9,5) no shot world 95744
+     Rebel(-8,6) favourite (-6,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100562 | attack1 (-6,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100562; attack2 (-7,5) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100770; attack3 (-7,6) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100536; survive (-6,4) no shot world 98277; retreat (-9,4) no shot world 95652
+     Insurgent(-7,4) favourite (-7,5) hit Grunt Union Variant(-6,5) 4/1 (counts on assist) world 100715 | attack1 (-7,5) hit Grunt Union Variant(-6,5) 4/1 (counts on assist) world 100715; attack2 (-7,6) hit Grunt Union Variant(-6,5) 4/1 (counts on assist) world 100252; attack3 (-6,6) hit Grunt Union Variant(-6,5) 4/1 (counts on assist) world 100193; survive (-4,2) no shot world 98281; retreat (-10,5) no shot world 95579
+     Rebel(-5,3) favourite (-5,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100682 | attack1 (-5,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100682; attack2 (-7,5) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100657; attack3 (-6,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100459; survive (-4,2) no shot world 98426; retreat (-5,0) no shot world 95135
+     Rebel(-3,3) favourite (-6,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100444 | attack1 (-6,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100444; attack2 (-5,4) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100667; attack3 (-5,5) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100474; survive (-4,2) no shot world 98426; retreat none
+     Rebel(-2,4) favourite (-5,5) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100457 | attack1 (-5,5) hit Grunt Union Variant(-6,5) 3/1 (counts on assist) world 100457; attack2 (-1,2) hit Grunt Union Variant(-1,1) 2/2 (counts on assist) world 97312; attack3 (-2,2) hit Grunt Union Variant(-1,1) 2/2 (counts on assist) world 97192; survive (0,3) no shot world 98405; retreat (1,4) no shot world 95188
+     Rebel(2,0) favourite (-1,2) hit Grunt Union Variant(-1,1) 2/2 (counts on assist) world 97242 | attack1 (-1,2) hit Grunt Union Variant(-1,1) 2/2 (counts on assist) world 97242; attack2 (0,1) hit Grunt Union Variant(-1,1) 2/2 (counts on assist) world 97193; attack3 (0,0) hit Grunt Union Variant(-1,1) 2/2 (counts on assist) world 97176; survive (0,3) no shot world 96991; retreat (4,1) no shot world 95650
+   coordination pass 2: 2 targets, 58 groups of attackers tried, 14 plans forecast, 13 single steps forecast
+     > battle on Grunt Union Variant(-6,5) (kill): together +5625, synergy +1250, sacrifice 0 = +1250 | Insurgent->(-7,5) hits Grunt Union Variant(-6,5); Rebel->(-5,6) hits Grunt Union Variant(-6,5)
+       battle on Grunt Union Variant(-6,5) (kill): together +5375, synergy -1208, sacrifice 0 = -1208 | Rebel->(-5,4) hits Grunt Union Variant(-6,5); Rebel hits Grunt Union Variant(-6,5); Rebel->(-7,6) hits Grunt Union Variant(-6,5)
+       battle on Grunt Union Variant(-6,5) (kill): together +5375, synergy -1208, sacrifice 0 = -1208 | Rebel->(-5,4) hits Grunt Union Variant(-6,5); Rebel hits Grunt Union Variant(-6,5); Rebel->(-5,5) hits Grunt Union Variant(-6,5)
+       battle on Grunt Union Variant(-6,5) (kill): together +5375, synergy -1208, sacrifice 0 = -1208 | Rebel->(-5,4) hits Grunt Union Variant(-6,5); Rebel hits Grunt Union Variant(-6,5); Rebel->(-5,5) hits Grunt Union Variant(-6,5)
+       battle on Grunt Union Variant(-6,5) (kill): together +5625, synergy -1500, sacrifice 0 = -1500 | Rebel->(-6,4) hits Grunt Union Variant(-6,5); Rebel->(-7,6) hits Grunt Union Variant(-6,5)
+   coordination: 2 units in battle plans, acting first; deciding again without assist credit: Rebel(-8,5), Rebel(-8,6), Rebel(-5,3), Rebel(-3,3), Rebel(2,0)
+   turn order by steps: 1 [] 2 [] 3 [Insurgent, Rebel, Rebel, Rebel, Rebel, Rebel, Rebel, Insurgent, Rebel, Insurgent, Rebel, Rebel, Rebel, Rebel, Supplies Cache, Supplies Cache, Supplies Cache] 4 [] 5 [Supplies Cache, Supplies Cache, Supplies Cache, Supplies Cache, Supplies Cache, Truck, Truck, Truck, Truck] empty [] 6 [] 7 []
+   Rebels (this AI) reads the board: supply tiles: static 28, mobile 76, potential 93; enemy supplied 19; enemy strike in 1/2/3 turns: 81/102/100 tiles (2.2 ms); ghost Supplies Cache(Clone) -> (-6,2); ghost Supplies Cache(Clone) -> (-6,0); ghost Supplies Cache(Clone) -> (-5,1); ghost Supplies Cache(Clone) -> (-4,-5); ghost Supplies Cache(Clone) -> (6,-6); ghost Supplies Cache(Clone) -> (-1,-6)
+   turns to contact: Su(-10,0)=3 Re(-10,9)=1 Tr(-9,-1)=2 Su(-8,-1)=3 Su(-8,2)=2 Su(-8,4)=1 Re(-8,5)=1 Re(-8,6)=1 Tr(-7,-2)=1 Su(-7,-2)=3 In(-7,4)=1 Tr(-6,-4)=2 Su(-6,-3)=3 Re(-6,12)=3 Re(-5,3)=1 In(-3,-6)=3 Re(-3,3)=1 Su(-2,-5)=3 Re(-2,4)=1 In(-1,-5)=3 Tr(0,-6)=2 Su(1,-7)=4 Re(2,0)=1 Re(6,-4)=2 Re(10,-12)=4 Re(12,-6)=4
+   objective Capture(-9,1) GO value 10000 need 0 have 3500 units 1 Insurgent(-7,4)
+   objective Capture(-4,2) no value 10000 need 16250 have 15000 units 10
+   objective Capture(-12,9) GO value 10000 need 0 have 1500 units 1 Rebel(-10,9)
+   objective Mass(-6,5) no value 3375 need 8125 have 0 units 0
+   objective Mass(-1,1) no value 3375 need 8125 have 0 units 0
+   objective pulls: 3; turn order: Insurgent, Rebel, Rebel, Rebel, Rebel, Rebel, Rebel, Insurgent, Rebel, Insurgent, Rebel, Rebel, Rebel, Rebel, Supplies Cache, Supplies Cache, Supplies Cache, Supplies Cache, Supplies Cache, Supplies Cache, Supplies Cache, Supplies Cache, Truck, Truck, Truck, Truck
+   Rebels Insurgent moved (-7,4) -> (-7,5)
+   Rebels Insurgent (-7,5) attacks Colonials Grunt Union Variant (-6,5): deals 4, takes 1, retreats to (-5,5) -> 5 v 2
+   Rebels Insurgent (-7,4)->(-7,5): MoveAndAttack — group battle: Insurgent->(-7,5) hits Grunt Union Variant(-6,5)
+   Colonials Grunt Union Variant (-5,5) dies: combat
+   Rebels Rebel moved (-2,4) -> (-5,6)
+   Rebels Rebel (-5,6) attacks Colonials Grunt Union Variant (-5,5): deals 2, takes 0, Grunt Union Variant destroyed -> 6 v 0
+   Rebels Rebel (-2,4)->(-5,6): MoveAndAttack — group battle: Rebel->(-5,6) hits Grunt Union Variant(-5,5)
+   Rebel(-10,9) decides again: Insurgent near it changed ((-7,4) -> (-7,5))
+Rebels Rebel(Clone)(-10,9) s6 [line, world] 21 options | best world 102912, within 250: 1
+      > (-12,9) no shot world 102912 space +3280 (381/63 unsupplied 1) buildings +9437 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City capture +1800 City ours, capturing +1320 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +58 fog(0.02 str) -5 | deny 0 pos 5161
+      x (-11,7) no shot world 99929 space +3250 (378/63 unsupplied 1) buildings +6437 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +116 fog(0.06 str) -15
+      x (-12,8) no shot world 99917 space +3260 (379/63 unsupplied 1) buildings +6437 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +87 fog(0.04 str) -9
+      x (-10,6) no shot world 99906 space +3220 (375/63 unsupplied 1) buildings +6437 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +145 fog(0.16 str) -38
+      x (-11,8) no shot world 99902 space +3280 (381/63 unsupplied 1) buildings +6437 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +58 fog(0.06 str) -14
+   Rebels captures City (-12,9): 0 -> 6 of 10, now Colonials's
+   Rebels Rebel moved (-10,9) -> (-12,9)
+   Rebels Rebel (-10,9)->(-12,9): Move — line: world 102912 move
+   Rebel(-8,5) decides again: deciding again without assist credit
+Rebels Rebel(Clone)(-8,5) s6 [line, world] 29 options | best world 101313, within 250: 12
+        (-9,3) no shot world 101313 space +3460 (399/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +232 fog(0.68 str) -157 | deny 0 pos 266
+        (-9,4) no shot world 101306 space +3390 (392/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +174 fog(0.16 str) -36 | deny 0 pos 230
+        (-11,5) no shot world 101297 space +3380 (391/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +203 fog(0.27 str) -64 | deny 0 pos 199
+        (-10,5) no shot world 101292 space +3360 (389/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +174 fog(0.09 str) -20 | deny 0 pos 186
+        (-10,4) no shot world 101270 space +3430 (396/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 6/1 strike +100/-0 | after forecast: sight +174 fog(0.49 str) -112 | deny 0 pos 166
+      > (-5,4) world 101162 space +3250 (378/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +133/-0 | after forecast: sight +75 | pos 462
+   Rebels Rebel moved (-8,5) -> (-5,4)
+   Rebels Rebel (-8,5)->(-5,4): Move — line: world 101162 move
+   Rebel(-8,6) decides again: deciding again without assist credit
+Rebels Rebel(Clone)(-8,6) s6 [line, world] 30 options | best world 101354, within 250: 8
+        (-9,4) no shot world 101354 space +3380 (391/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +133/-0 | after forecast: sight +174 fog(0.16 str) -36 | deny 0 pos 230
+        (-10,5) no shot world 101341 space +3350 (388/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +133/-0 | after forecast: sight +174 fog(0.09 str) -20 | deny 0 pos 186
+        (-11,6) no shot world 101272 space +3310 (384/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +133/-0 | after forecast: sight +145 fog(0.09 str) -20 | deny 0 pos 160
+        (-9,5) no shot world 101228 space +3320 (385/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +133/-0 | after forecast: sight +87 fog(0.07 str) -16 | deny 0 pos 158
+        (-10,6) no shot world 101192 space +3300 (383/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +133/-0 | after forecast: sight +87 fog(0.14 str) -32 | deny 0 pos 108
+      > (-5,5) world 101185 space +3240 (377/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +167/-0 | after forecast: sight +75 | pos 365
+   Rebels Rebel moved (-8,6) -> (-5,5)
+   Rebels Rebel (-8,6)->(-5,5): Move — line: world 101185 move
+Rebels Rebel(Clone)(-6,12) s6 [line, world] 15 options | best world 104050, within 250: 1
+      > (-8,12) no shot world 104050 space +3180 (371/63 unsupplied 1) buildings +10637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City capture +1800 City ours, capturing +1320 City clear +120) mutual 7/1 strike +167/-0 | deny 0 pos -14
+      x (-6,11) no shot world 101160 space +3290 (382/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +167/-0
+      x (-5,11) no shot world 101155 space +3290 (382/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +167/-0 | after forecast: fog(0.02 str) -5
+      x (-7,12) no shot world 101120 space +3250 (378/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +167/-0
+      x (-7,11) no shot world 101120 space +3250 (378/63 unsupplied 1) buildings +7637 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120) mutual 7/1 strike +167/-0
+   Rebels captures City (-8,12): 0 -> 6 of 10, now Colonials's
+   Rebels Rebel moved (-6,12) -> (-8,12)
+   Rebels Rebel (-6,12)->(-8,12): Move — line: world 104050 move
+   Rebel(-5,3) decides again: deciding again without assist credit
+Rebels Rebel(Clone)(-5,3) s6 [line, world] 26 options | best world 102680, within 250: 1
+      > (-2,2) hit Grunt Union Variant(Clone)(-1,1) 2/2 world 102680 space +3210 (367/56 unsupplied 1) buildings +8837 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | deny 25 pos 330
+      x (-4,2) no shot world 102429 space +3250 (376/61 unsupplied 1) buildings +11837 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City capture +1800 City ours, capturing +1320 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 8/1 strike +167/-0 | after forecast: sight +29 fog(0.31 str) -72 fightFirst -2873
+      x (-2,0) no shot world 102410 space +3330 (385/62 unsupplied 1) buildings +8837 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 9/1 strike +167/-0 | after forecast: sight +104 fog(0.62 str) -144
+      x (-3,1) no shot world 102315 space +3310 (383/62 unsupplied 1) buildings +8837 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 9/1 strike +167/-0 | after forecast: sight +29 fog(0.62 str) -144
+      x (-4,1) no shot world 102301 space +3260 (379/63 unsupplied 1) buildings +8837 (HQ clear +3797 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/1 strike +167/-0 | after forecast: sight +116 fog(0.62 str) -144
+   Rebels Rebel moved (-5,3) -> (-2,2)
+   Rebels Rebel (-2,2) attacks Colonials Grunt Union Variant (-1,1): deals 2, takes 2 -> 4 v 4
+   Rebels Rebel (-5,3)->(-2,2): MoveAndAttack — line: world 102680 move+strike
+Rebels Insurgent(Clone)(-3,-6) s6 [line, world] 31 options | best world 103843, within 250: 1
+      > (-6,-5) no shot world 103843 space +3260 (372/56 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: campaign +1167 | deny 0 pos 1198
+      x (-5,-5) no shot world 103531 space +3270 (373/56 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: fog(0.6 str) -322 campaign +1167
+      x (-5,-6) no shot world 103220 space +3220 (368/56 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: campaign +583
+      x (-6,-6) no shot world 103210 space +3210 (367/56 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: campaign +583
+      x (-5,-4) no shot world 103151 space +3310 (377/56 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: sight +58 fog(1.48 str) -800 campaign +1167
+   Rebels Insurgent moved (-3,-6) -> (-6,-5)
+   Rebels Insurgent (-3,-6)->(-6,-5): Move — line: world 103843 move
+   Rebel(-3,3) decides again: deciding again without assist credit
+Rebels Rebel(Clone)(-3,3) s6 [line, world] 26 options | best world 103284, within 250: 1
+      > (-2,1) hit Grunt Union Variant(Clone)(-1,1) 2/1 world 103284 space +3430 (385/52 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +158/-0 [Grunt Union Variant(Clone) driven back to (0,1)] | after forecast: fog(0.42 str) -96 | deny 100 pos 391
+      x (-4,2) no shot world 103033 space +3350 (381/56 unsupplied 1) buildings +11783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City capture +1800 City ours, capturing +1320 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 8/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: sight +29 fog(0.57 str) -132 fightFirst -2656
+      x (0,1) hit Grunt Union Variant(Clone)(-1,1) 2/1 world 102839 space +3120 (375/73 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 12/0 strike +83/-0 [Grunt Union Variant(Clone) driven back to (-2,1)] | after forecast: fog(1.21 str) -281
+      x (-2,1) no shot world 102790 space +3470 (385/48 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: fog(0.42 str) -96
+      x (-2,0) no shot world 102781 space +3450 (390/55 unsupplied 1) buildings +8783 (HQ clear +3743 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 10/0 strike +250/-0 [Grunt Union Variant(Clone)->Rebel(Clone) 2/1] | after forecast: sight +104 fog(1.14 str) -265
+   Rebels Rebel moved (-3,3) -> (-2,1)
+   Rebels Rebel (-2,1) attacks Colonials Grunt Union Variant (-1,1): deals 2, takes 1, retreats to (0,1) -> 5 v 2
+   Rebels Rebel (-3,3)->(-2,1): MoveAndAttack — line: world 103284 move+strike
+Rebels Insurgent(Clone)(-1,-5) s6 [line, world] 21 options | best world 104936, within 250: 2
+        (1,-8) no shot world 104936 space +3400 (382/52 unsupplied 1) buildings +8740 (HQ clear +3700 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +158/-0 | after forecast: sight +174 fog(0.54 str) -295 campaign +1750 | deny 0 pos 299
+      > (2,-8) no shot world 104849 space +3410 (383/52 unsupplied 1) buildings +8740 (HQ clear +3700 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +158/-0 | after forecast: sight +203 fog(0.78 str) -421 campaign +1750 | deny 0 pos 4757
+      x (0,-8) no shot world 104497 space +3390 (381/52 unsupplied 1) buildings +8740 (HQ clear +3700 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +158/-0 | after forecast: sight +116 fog(0.15 str) -82 campaign +1167
+      x (0,-7) no shot world 104392 space +3420 (384/52 unsupplied 1) buildings +8740 (HQ clear +3700 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +158/-0 | after forecast: sight +145 fog(0.45 str) -246 campaign +1167
+      x (2,-7) no shot world 104294 space +3410 (383/52 unsupplied 1) buildings +8740 (HQ clear +3700 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/0 strike +158/-0 | after forecast: sight +232 fog(0.78 str) -421 campaign +1167
+   Rebels Insurgent moved (-1,-5) -> (2,-8)
+   Rebels Insurgent (-1,-5)->(2,-8): Move — line: world 104849 move
+   Rebel(2,0) decides again: deciding again without assist credit
+Rebels Rebel(Clone)(2,0) s6 [line, world] 23 options | best world 98342, within 250: 2
+        (1,0) hit Grunt Union Variant(Clone)(0,1) 2/0 world 98342 deaths +417 space +3040 (379/85 unsupplied 1) buildings +8840 (HQ clear +3800 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +87 fog(0.78 str) -182 | deny -100 pos -63
+      > (1,1) hit Grunt Union Variant(Clone)(0,1) 2/0 world 98122 deaths +417 space +3110 (386/85 unsupplied 1) buildings +8840 (HQ clear +3800 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +29 fog(1.78 str) -413 | deny 75 pos -125
+      x (0,3) no shot world 98091 space +2660 (385/139 unsupplied 2) buildings +11840 (HQ clear +3800 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City capture +1800 City ours, capturing +1320 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 14/5 strike +267/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(0.88 str) -205 fightFirst -1870
+      x (-1,2) hit Grunt Union Variant(Clone)(0,1) 2/0 world 97929 deaths +417 space +3000 (375/85 unsupplied 1) buildings +8840 (HQ clear +3800 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(2.02 str) -468
+      x (0,2) hit Grunt Union Variant(Clone)(0,1) 2/0 world 97865 deaths +417 space +3070 (382/85 unsupplied 1) buildings +8840 (HQ clear +3800 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(2.59 str) -602
+   Colonials Grunt Union Variant (0,1) dies: combat
+   Rebels Rebel moved (2,0) -> (1,1)
+   Rebels Rebel (1,1) attacks Colonials Grunt Union Variant (0,1): deals 2, takes 0, Grunt Union Variant destroyed -> 6 v 0
+   Rebels Rebel (2,0)->(1,1): MoveAndAttack — line: world 98122 move+strike
+Rebels Rebel(Clone)(6,-4) s6 [line, world] 25 options | best world 99666, within 250: 1
+      > (6,-4) no shot world 99666 space +3120 (387/85 unsupplied 1) buildings +10607 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City capture +1800 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(0.87 str) -201 | deny 0 pos 34
+      x (6,-3) no shot world 97544 space +3220 (397/85 unsupplied 1) buildings +7607 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +781 fog(0.88 str) -205
+      x (4,-4) no shot world 97507 space +3140 (389/85 unsupplied 1) buildings +7607 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +29 fog(0.69 str) -159 campaign +750
+      x (3,-3) no shot world 97433 space +3140 (389/85 unsupplied 1) buildings +7607 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(0.88 str) -204 campaign +750
+      x (4,-5) no shot world 97414 space +3110 (386/85 unsupplied 1) buildings +7607 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +87 fog(1.21 str) -280 campaign +750
+   Rebels Rebel(6,-4): would wait (line: world 99666 hold): decides again after the rest
+Rebels Rebel(Clone)(10,-12) s6 [line, world] 15 options | best world 100989, within 250: 1
+      > (11,-12) no shot world 100989 space +3120 (387/85 unsupplied 1) buildings +11807 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City capture +1800 City ours, capturing +1320 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(0.34 str) -78 | deny 0 pos -12
+      x (12,-11) no shot world 97977 space +3120 (387/85 unsupplied 1) buildings +8807 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(0.39 str) -90
+      x (7,-9) no shot world 97968 space +3120 (387/85 unsupplied 1) buildings +8807 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 7/4 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +145 fog(1.27 str) -294
+      x (11,-11) no shot world 97940 space +3120 (387/85 unsupplied 1) buildings +8807 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +29 fog(0.67 str) -156
+      x (8,-10) no shot world 97918 space +3120 (387/85 unsupplied 1) buildings +8807 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +145 fog(1.27 str) -294
+   Rebels captures City (11,-12): 0 -> 6 of 10, now Colonials's
+   Rebels Rebel moved (10,-12) -> (11,-12)
+   Rebels Rebel (10,-12)->(11,-12): Move — line: world 100989 move
+Rebels Rebel(Clone)(12,-6) s6 [line, world] 12 options | best world 102198, within 250: 1
+      > (12,-5) no shot world 102198 space +3150 (390/85 unsupplied 1) buildings +13007 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City capture +1800 City ours, capturing +1320 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +116 fog(0.93 str) -215 | deny 0 pos 176
+      x (10,-3) no shot world 99480 space +3330 (408/85 unsupplied 1) buildings +10007 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +434 fog(1.86 str) -431
+      x (9,-3) no shot world 99452 space +3360 (411/85 unsupplied 1) buildings +10007 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +376 fog(1.86 str) -431
+      x (11,-3) no shot world 99420 space +3270 (402/85 unsupplied 1) buildings +10007 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +434 fog(1.86 str) -431
+      x (12,-3) no shot world 99323 space +3260 (396/85 cut 1 unsupplied 1) buildings +10007 (HQ clear +3767 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City clear +120 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 6/5 strike +108/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +347 fog(1.86 str) -431
+   Rebels captures City (12,-5): 0 -> 6 of 10, now Colonials's
+   Rebels Rebel moved (12,-6) -> (12,-5)
+   Rebels Rebel (12,-6)->(12,-5): Move — line: world 102198 move
+Rebels Supplies Cache(Clone) at (-8,2) plans, top of 13:
+   (-8,2) total -4643 = resupply 500 + heal 583 + spared 208 (2 units) + relays 1083 + forward -256 + intent -6762 - stranded 0 - hit 0 (0.0 strength) [Mobile d4 to-ours 0 to-theirs 16 strike-in 2]
+   (-2,-4) total -8381 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 12 strike-in 3]
+   (-8,3) total -8381 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d3 to-ours 0 to-theirs 16 strike-in 1]
+   (-7,2) total -8381 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 15 strike-in 1]
+   (-3,-3) total -8381 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Potential d0 to-ours 1 to-theirs 12 strike-in 3]
+   Rebels Supplies Cache(-8,2): would wait (already positioned): decides again after the rest
+Rebels Supplies Cache(Clone) at (-8,4) plans, top of 13:
+   (-2,-4) total -1881 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 12 strike-in 3]
+   (-5,3) total -1881 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 13 strike-in 1]
+   (-5,2) total -1881 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d3 to-ours 0 to-theirs 13 strike-in 1]
+   (-3,-3) total -1881 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Potential d0 to-ours 1 to-theirs 12 strike-in 3]
+   (-8,6) total -1881 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward -256 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 16 strike-in 1]
+   Rebels Supplies Cache moved (-8,4) -> (-8,6)
+   Rebels Supplies Cache (-8,4)->(-8,6): Move — walk: walk to (-8,6,2) (T+0)
+   Rebels Supplies Cache (1,-7) boards Rebels Truck (0,-6)
+   Rebels Supplies Cache (1,-7)->(0,-6): Load — cut off: boards Truck (0,-6) to get back to supply
+Rebels Rebel(Clone)(6,-4) s6 [line, world] 25 options | best world 92408, within 250: 1
+      > (6,-4) no shot world 92408 space +2630 (390/137 unsupplied 1) buildings +13407 (HQ clear +4167 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City capture +1800 City ours, capturing +1320 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 4/8 strike +650/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(0.8 str) -185 | deny 0 pos 50
+      x (4,-4) no shot world 90274 space +2650 (392/137 unsupplied 1) buildings +10407 (HQ clear +4167 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 4/8 strike +650/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +29 fog(0.51 str) -118 campaign +750
+      x (6,-3) no shot world 90216 space +2720 (399/137 unsupplied 1) buildings +10407 (HQ clear +4167 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 4/8 strike +650/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +724 fog(0.83 str) -191
+      x (3,-3) no shot world 90215 space +2650 (392/137 unsupplied 1) buildings +10407 (HQ clear +4167 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 4/8 strike +650/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: fog(0.64 str) -149 campaign +750
+      x (4,-5) no shot world 90196 space +2620 (389/137 unsupplied 1) buildings +10407 (HQ clear +4167 Runway clear +60 Airport clear +180 ArmyBase clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120 City clear +120 City clear +120 City ours, capturing +1320 City ours, capturing +1320 City clear +120) mutual 4/8 strike +650/-451 [Grunt Union Variant(Clone)->Supplies Cache(Clone) 5] | after forecast: sight +87 fog(0.97 str) -224 campaign +750
+   Rebels Rebel (6,-4): Wait (not executed) — line: world 92408 hold
+Rebels Supplies Cache(Clone) at (-8,2) plans, top of 13:
+   (-8,3) total -1601 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward 24 + intent 0 - stranded 1625 - hit 0 (0.0 strength) [Mobile d3 to-ours 0 to-theirs 16 strike-in 1]
+   (-8,4) total -2143 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward 24 + intent 0 - stranded 2167 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 16 strike-in 1]
+   (-7,3) total -2143 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward 24 + intent 0 - stranded 2167 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 15 strike-in 1]
+   (-10,5) total -2143 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward 24 + intent 0 - stranded 2167 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 18 strike-in 2]
+   (-9,4) total -2143 = resupply 0 + heal 0 + spared 0 (0 units) + relays 0 + forward 24 + intent 0 - stranded 2167 - hit 0 (0.0 strength) [Mobile d2 to-ours 0 to-theirs 17 strike-in 2]
+   Rebels Supplies Cache moved (-8,2) -> (-8,3)
+   Rebels Supplies Cache (-8,2)->(-8,3): Move — walk: walk to (-8,3,5) (T+0)
+   chain: supply unit at (-6,-3, 9 steps): 14 tiles, 7 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-8,-2, 8 steps); reach now 7
+   chain: supply unit at (-10,0, 8 steps): 12 tiles, 2 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-9,1, 6 steps); reach now 5
+   chain: supply unit aboard at (-7,-2): 80 tiles its transport reaches linked; to (-10,5), reach 0
+   chain: link at (-8,-2) within 2 of another node: released, spare
+   supply at (-10,0) [chain, duty 1+]: Load to (-10,0) - logistics for Secure@-8,12: chain link boards its truck (to (-9,1))
+   Rebels Supplies Cache (-10,0) boards Rebels Truck (-9,-1)
+   Rebels Supplies Cache (-10,0)->(-9,-1): Load — logistics for Secure@-8,12: chain link boards its truck (to (-9,1))
+   chain: supply unit at (-8,-1, 6 steps): 15 tiles, 6 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-10,1, 6 steps); reach now 6
+   supply at (-8,-1) [chain, duty 13+]: Move to (-10,1) - logistics for Secure@-12,9: link moves up (3 steps short)
+   Rebels Supplies Cache moved (-8,-1) -> (-10,1)
+   Rebels Supplies Cache (-8,-1)->(-10,1): Move — logistics for Secure@-12,9: link moves up (3 steps short)
+   chain: supply unit at (-6,-3, 9 steps): 15 tiles, 5 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-8,-1, 7 steps); reach now 5
+   chain: supply unit aboard at (-7,-2): 82 tiles its transport reaches linked; to (-10,5), reach 0
+   supply at (-7,-2) aboard [chain, duty 1+]: Wait - logistics for Secure@-8,12: rides its truck to (-10,5)
+   Rebels Supplies Cache: aboard, decides again if put down — logistics for Secure@-8,12: rides its truck to (-10,5)
+   chain: supply unit at (-6,-3, 9 steps): 15 tiles, 5 not supplied by the links behind, 0 ahead of the army, 0 in reach of the enemy; best (-8,-1, 7 steps); reach now 5
+   chain: supply unit aboard at (-7,-2): 82 tiles its transport reaches linked; to (-10,5), reach 0
+   supply at (-6,-3) [chain, duty 1+]: Load to (-6,-3) - logistics for Secure@-8,12: chain link boards its truck (to (-8,-1))
+   Rebels Supplies Cache (-6,-3) boards Rebels Truck (-6,-4)
+   Rebels Supplies Cache (-6,-3)->(-6,-4): Load — logistics for Secure@-8,12: chain link boards its truck (to (-8,-1))
+Rebels Supplies Cache(Clone) at (-2,-5) plans, top of 13:
+   (-7,1) total 19261 = resupply 800 + heal 583 + spared 333 (4 units) + relays 2167 + forward -12 + intent 2390 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 15 strike-in 2]
+   (-6,0) total 19261 = resupply 800 + heal 583 + spared 333 (4 units) + relays 2167 + forward -12 + intent 2390 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 14 strike-in 2]
+   (-8,2) total 19090 = resupply 800 + heal 583 + spared 333 (4 units) + relays 2167 + forward -12 + intent 2219 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 16 strike-in 2]
+   (-9,3) total 19090 = resupply 800 + heal 583 + spared 333 (4 units) + relays 2167 + forward -12 + intent 2219 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 17 strike-in 2]
+   (-10,4) total 19090 = resupply 800 + heal 583 + spared 333 (4 units) + relays 2167 + forward -12 + intent 2219 - stranded 0 - hit 0 (0.0 strength) [Mobile d1 to-ours 0 to-theirs 18 strike-in 2]
+   Rebels Supplies Cache moved (-2,-5) -> (-4,-3)
+   Rebels Supplies Cache (-2,-5)->(-4,-3): Move — walk: walk to (-7,1,6) (T+2)
+   Rebels Truck moved (-9,-1) -> (-9,1)
+   Rebels Truck (-9,-1)->(-9,1): Move — carries its supply unit:  — supply leap: ride to (-9,1,8) via (-9,-1,10) (T+0, walk was T+0)
+   Rebels Truck(0,-6): would wait (carries a link of the chain: holds with the chain — supply leap: holds, carrying supply): decides again after the rest
+   Rebels Truck (0,-6): Wait (not executed) — carries its supply unit:  — supply leap: holds, carrying supply
+   Rebels Truck moved (-7,-2) -> (-10,5)
+   Rebels Truck (-7,-2)->(-10,5): Move — carries its supply unit:  — supply leap: ride to (-10,5,5) via (-7,-2,9) (T+0, walk was T+0)
+   Rebels Truck moved (-6,-4) -> (-8,-1)
+   Rebels Truck (-6,-4)->(-8,-1): Move — carries its supply unit:  — supply leap: ride to (-8,-1,9) via (-6,-4,10) (T+0, walk was T+0)
+   riders waiting for a transport: 3, room in empty troop transports 0
+   cargo: 3 land units waiting (weight 3), 0 empty transports, grace 0 (room bought last turn)
+   Rebels procurement: income 2000 (enemy 12000, map 14000), 11 facilities (0 under fire), 1 serving fronts, wait for savings 2-2 turns
+   Rebels budget HQ (-9,-3) for Secure@2,-9: weight 4.15 (best 17764), share 285, has 0, waits at most 23; saves for Rebel (12149, 6 turns: 1233)
+   Rebels budget ArmyBase (6,-12): weight 3.46 (best 28024), share 238, has 0, waits at most 28; saves for Rebel (23502, 7 turns: 1630)
+   Rebels budget ArmyBase (0,-12): weight 3.40 (best 27546), share 234, has 0, waits at most 28; saves for Rebel (17482, 7 turns: 1212)
+   Rebels budget ArmyBase (1,-4): weight 2.94 (best 23848), share 202, has 0, waits at most 33; saves for Rebel (16938, 8 turns: 802)
+   Rebels budget ArmyBase (-12,11): weight 2.26 (best 17647), share 155, has 0, waits at most 42; saves for Rebel (8014, 10 turns: 177)
+   Rebels budget ArmyBase (12,-9): weight 2.20 (best 16832), share 151, has 0, waits at most 43; saves for Rebel (11874, 10 turns: 262)
+   Rebels budget ArmyBase (12,-12): weight 2.20 (best 16795), share 151, has 0, waits at most 44; saves for Rebel (11848, 10 turns: 262)
+   Rebels budget ArmyBase (0,8): weight 2.20 (best 16772), share 151, has 0, waits at most 44; saves for Rebel (11831, 10 turns: 261)
+   Rebels budget ArmyBase (-8,-4): weight 2.18 (best 16600), share 150, has 0, waits at most 44; saves for Rebel (13915, 10 turns: 307)
+   Rebels budget ArmyBase (-10,-2): weight 2.17 (best 16427), share 149, has 0, waits at most 44; saves for Rebel (11582, 11 turns: 175)
+   Rebels budget ArmyBase (-9,12): weight 1.94 (best 13217), share 134, has 0, waits at most 49; saves for Rebel (7814, 12 turns: 81)
+   Rebels buys against 3 enemy units (3 in sight): 0 of 11 building slots, 0 of 0 gold; supply units 8 (at most 2147483647)
+   Rebels captures City (6,-4): 0 -> 6 of 10, now Colonials's
+
+== round 0: Colonials to move
+  -12             X . . . . . X ~ . . . U X
+  -11            . . . . . . . . ~ . . . . .
+  -10           . . . . . . . . . ~ . . . . .
+   -9          . . . . . g . . . ~ . . . . . X
+   -8         . . . . . . U . . . . . . . . . ~
+   -7        . . . . . . . . . ~ . . . . . . ~ ~
+   -6       . . . . . . U . . ~ ~ . . . . . ~ ~ .
+   -5      . U . . . . . . ~ ~ . . . . ~ . ~ . . U
+   -4     X . . . . . . ~ ~ X . . . . U . . . . . .
+   -3    H . . . . S . ~ ~ . . . . . . ^ . . . . . .
+   -2   X . . . . . . ~ ~ . . . . . . . . . . . . s u
+   -1  . . . U . . . . ~ . . . . . . ^ . f f f p . u u
+    0 . . . . . . . . . ~ . . . . . . . . f f u x . u u
+    1  . . S U . . . . . . U . . U . . . . . . . . s u
+    2   . . . . . . . . c . U . . . . ^ . . . . . . t
+    3    . . . . S . . . . . . . c . ^ . . . . s . x
+    4     . . . . . . . U . ~ . . . . . . . . . . .
+    5      . . U . . U . U . . . ~ . . . ~ ~ ~ . .
+    6       . . . . S . . U . ~ ~ . . . ~ ~ ~ ~ ~
+    7        . . . . . . . . . ~ . . ^ . ~ ~ ~ ~
+    8         . . . . . . . . ~ . . . X ~ ~ ~ ~
+    9          U . . . . . . ~ . . . ~ ~ ~ ~ ~
+   10           . . . ~ ~ ~ . . . . . ~ ~ ~ ~
+   11            X ~ ~ . . . . . ~ ~ ~ ~ ~ ~
+   12             ~ . . X U . . . . ~ ~ ~ ~
+   units: CMa(12,0)s6 CMa(12,-1)s6 CMa(12,-2)s6 CRe(11,1)s6 CRe(11,0)s6 CRe(11,-1)s6 RIn(2,-8)s6u3 RIn(-7,5)s5u3 RIn(-6,-5)s6u3 CSu(10,1)s6 CSu(7,3)s6 CSu(11,-2)s6 CTa(10,2)s6 CGu(8,0)s6f30 RTr(0,-6)s6 RTr(-10,5)s6 RTr(-9,1)s6 RTr(-8,-1)s6 RRe(-2,1)s5a5 RRe(-5,6)s6a5 RRe(1,1)s6a5 RRe(-2,2)s4a5 RRe(-5,4)s6 RRe(-5,5)s6 RRe(6,-4)s6 RRe(12,-5)s6 RRe(11,-12)s6 RRe(-12,9)s6 RRe(-8,12)s6 RSu(-8,6)s6 RSu(-8,3)s6 RSu(-9,1)s6 RSu(-10,1)s6 RSu(-8,-1)s6 RSu(-4,-3)s6 RSu(0,-6)s6 CGr(2,-9)s6u2 RSu(-10,5)s6
+   buildings: HQ(-9,-3) Rebels 0/10; HQ(12,0) Colonials 0/10; Runway(9,0) Colonials 0/10; Airport(9,-1) Colonials 0/10; ArmyBase(9,3) Colonials 0/10; ArmyBase(-12,11) Rebels 0/10; ArmyBase(-9,12) Rebels 0/10; ArmyBase(12,-12) Rebels 0/10; ArmyBase(-8,-4) Rebels 0/10; ArmyBase(-10,-2) Rebels 0/10; ArmyBase(0,-12) Rebels 0/10; ArmyBase(1,-4) Rebels 0/10; ArmyBase(0,8) Rebels 0/10; ArmyBase(12,-9) Rebels 0/10; ArmyBase(6,-12) Rebels 0/10; City(-9,1) Colonials 0/10; City(11,-12) Colonials 6/10; City(12,-5) Colonials 6/10; City(6,-4) Colonials 6/10; City(0,3) Colonials 0/10; City(-4,2) Colonials 0/10; City(-12,9) Colonials 6/10; City(-8,12) Colonials 6/10; City(2,-9) Colonials 0/10;
+   state Colonials: worth 62000, units 12, cities 9, buildings 13, income 12000, gold 16000, front 0.116
+   Colonials fields: 1 Grunt Union Variant, 1 Gunship, 3 Marine Union Variant, 3 Recon Union Variant, 3 Supplies, 1 Tank Union Variant
+   Colonials can buy: APC, AirTanker, Anti Air Missile Truck, Bomber, Conscript Union Variant, Fighter, Grunt Union Variant, Gunner Anti Air, Gunship, Heavy Tank, IFV Union Variant, JumpJet, Marine Union Variant, Recon Union Variant, Rocket Artillery, Supplies, Tank Union Variant, Transport Helo, Transport Plane, Truck, Wheeled Artillery Variant
+   state Rebels: worth 91667, units 26, cities 0, buildings 11, income 2000, gold 0, front 0.686
+   Rebels fields: 3 Insurgent, 11 Rebel, 8 Supplies Cache, 4 Truck
+   Rebels can buy: APC, Anti Air Missile Truck, Artillery, Grunt Guerilla Variant, IFV Rebel Variant, Insurgent, Quad Cannon, Rebel, Recon Technical Variant, Rocket Artillery, Supplies Cache, Tank Rebel Variant, Truck
+   (board saved as turn-001-Colonials.dat)
+   Colonials Recon Union Variant moved (11,-1) -> (11,-4)
+   Colonials Recon Union Variant (11,-4) attacks Rebels Rebel (12,-5): deals 1, takes 3 (ambush: defender fired first) -> 3 v 5
+   Colonials Recon Union Variant moved (11,0) -> (12,-4)
+   Colonials Recon Union Variant (12,-4) attacks Rebels Rebel (12,-5): deals 1, takes 2 (ambush: defender fired first) -> 4 v 4
+   Colonials Gunship moved (8,0) -> (10,-3)
+   Colonials Gunship (10,-3) attacks Rebels Rebel (12,-5): deals 2, takes 0, retreats to (12,-6) -> 6 v 2
+   Rebels Rebel (12,-6) dies: combat
+   Colonials Marine Union Variant moved (12,-2) -> (12,-5)
+   Colonials Marine Union Variant (12,-5) attacks Rebels Rebel (12,-6): deals 2, takes 0, Rebel destroyed -> 6 v 0
+-- recording stopped

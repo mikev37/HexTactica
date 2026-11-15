@@ -1,0 +1,1126 @@
+HexTactica game log, 2026-11-14 17:03:02
+source: D:/DevBox/HexTactica/HexTactica/Assets\Resources/Scenarios\Sea Battle.dat
+side: 0 Task Force Alpha | faction Coalition | human
+side: 112 Kaisen Kaijin | faction Empire | AI
+axis: 17
+Blue (upper case) = this AI; Red (lower case) = Human
+rules: Sandbox (the game never ends)
+glyphs: S supply unit, G grunt, T tank, A artillery; buildings (no unit on them) H HQ, C city, B forward base, P airport, D naval yard, = neutral; . grass, f forest, ^ mountain, ~ water
+
+== round 1: Task Force Alpha to move
+  -10           ~ ~ ~ U U U U U ~ . ~
+   -9          ~ U U U ~ . U ~ H ~ ~ .
+   -8         ~ U ~ U U U . U ~ D . ~ ~
+   -7        ~ . ~ U . ~ ~ ~ ~ ~ ~ ~ . .
+   -6       ~ ~ ~ . . ~ . . ~ . ~ ~ ~ . .
+   -5      ~ . ~ ~ ~ ~ ~ . . ~ . ~ . ~ ~ .
+   -4     ~ . . . . . = . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . . . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ ~ ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ ~ . . . ~ ~ ~ . ~ . ~ . .
+    0 ~ . . . . . ~ ~ ~ ~ ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . . . . . ~ ~ ~ ~ ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . . ~ ~ . . . . . .
+    4     ~ ~ ~ . . ~ . . . . ~ ~ ~ ~ . . .
+    5      ~ . . . . . . . . ~ ~ . ~ . . .
+    6       . g g . . . . . ~ ~ ~ ~ ~ . .
+    7        g g d . . . . ~ ~ ~ ~ ~ . ~
+    8         g g . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          g u d u u u u ~ u ~ ~ ~
+   10           g g u u u u u u u u u
+   units: TGu(-5,9)s6f70 TGu(-7,9)s6f70 THa(-7,10)s6f70 TGu(-9,9)s6f30 TBa(-6,10)s6f60 TDe(-6,9)s6f70 TCa(-8,10)s6f70 TCa(-5,10)s6f70 TSt(-4,10)s6f36 TSt(-3,10)s6f36 TSt(-2,10)s6f36 TDe(-4,9)s6f70 TGr(-9,10)s6 TGr(-10,10)s6 TGr(-10,9)s6 TGr(-9,8)s6 TGr(-10,8)s6 TGr(-9,7)s6 TGr(-10,7)s6 TGr(-8,6)s6 TGr(-9,6)s6 KBa(4,-10)s6f60 KBa(5,-10)s6f60 KBa(6,-10)s6f60 KDe(2,-8)s6f70 KDe(3,-8)s6f70 KFi(0,-9)s6f36 KFi(-1,-8)s6f36 KFi(0,-7)s6f36 KCa(2,-9)s6f70 KGu(3,-10)s6f30 KGu(7,-10)s6f30 KGu(5,-9)s6f70 KGu(5,-8)s6f70 KBo(1,-8)s6f64 KBo(1,-9)s6f64 TAt(-1,10)s6a2f64 TAt(0,10)s6a2f64 TSt(-2,9)s6f36
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 0/3; NavalYard(-8,7) Task Force Alpha 0/10 store 0/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 0/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) neutral 0/10;
+   state Task Force Alpha: worth 279500, units 24, cities 0, buildings 3, income 2000, gold 0, front 0.078
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 249000, units 15, cities 0, buildings 2, income 2000, gold 0, front 0.875
+   Kaisen Kaijin fields: 3 Battleship, 2 Bomber, 1 Carrier, 2 Destroyer, 3 Fighter, 2 Gunboat, 2 Gunship
+   (board saved as turn-000-TaskForceAlpha.dat)
+   Task Force Alpha Stealth Fighter (-4,10) boards Task Force Alpha Carrier (-5,10)
+   Task Force Alpha Stealth Fighter (-3,10) boards Task Force Alpha Carrier (-5,10)
+   Task Force Alpha Stealth Fighter (-2,10) boards Task Force Alpha Carrier (-5,10)
+   Task Force Alpha Stealth Fighter (-2,9) boards Task Force Alpha Carrier (-8,10)
+   Task Force Alpha Attacker (-1,10) boards Task Force Alpha Carrier (-8,10)
+   Task Force Alpha Gunship (-9,9) boards Task Force Alpha Destroyer (-6,9)
+   Task Force Alpha Gunboat moved (-7,9) -> (-8,8)
+   Task Force Alpha Gunboat moved (-5,9) -> (-8,9)
+   Task Force Alpha Hauler moved (-7,10) -> (-8,7)
+   Task Force Alpha Grunt Coalition Variant (-9,10) boards Task Force Alpha Gunboat (-8,9)
+   Task Force Alpha Grunt Coalition Variant (-10,10) boards Task Force Alpha Gunboat (-8,9)
+   Task Force Alpha Grunt Coalition Variant (-10,9) boards Task Force Alpha Gunboat (-8,8)
+   Task Force Alpha Grunt Coalition Variant (-9,8) boards Task Force Alpha Gunboat (-8,8)
+   Task Force Alpha Grunt Coalition Variant (-10,8) boards Task Force Alpha Hauler (-8,7)
+   Task Force Alpha Grunt Coalition Variant (-9,7) boards Task Force Alpha Hauler (-8,7)
+   Task Force Alpha Grunt Coalition Variant (-10,7) boards Task Force Alpha Hauler (-8,7)
+   Task Force Alpha Grunt Coalition Variant (-9,6) boards Task Force Alpha Hauler (-8,7)
+   Task Force Alpha Destroyer moved (-4,9) -> (-6,5)
+   Task Force Alpha Attacker moved (0,10) -> (-4,6)
+   Task Force Alpha Carrier moved (-5,10) -> (0,5)
+   Task Force Alpha Battleship moved (-6,10) -> (-2,5)
+   Task Force Alpha Carrier moved (-8,10) -> (-4,4)
+   Task Force Alpha Grunt Coalition Variant moved (-8,6) -> (-7,4)
+   Task Force Alpha Destroyer moved (-6,9) -> (-1,3)
+
+== round 2: Kaisen Kaijin to move
+  -10           ~ ~ ~ U U U U U ~ . ~
+   -9          ~ U U U ~ . U ~ H ~ ~ .
+   -8         ~ U ~ U U U . U ~ D . ~ ~
+   -7        ~ . ~ U . ~ ~ ~ ~ ~ ~ ~ . .
+   -6       ~ ~ ~ . . ~ . . ~ . ~ ~ ~ . .
+   -5      ~ . ~ ~ ~ ~ ~ . . ~ . ~ . ~ ~ .
+   -4     ~ . . . . . = . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . . . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ ~ ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ ~ . . . ~ ~ ~ . ~ . ~ . .
+    0 ~ . . . . . ~ ~ ~ ~ ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . . . . . ~ ~ ~ ~ ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . u ~ ~ . . . . . .
+    4     ~ ~ ~ g . ~ u . . . ~ ~ ~ ~ . . .
+    5      ~ . . . u . . . u ~ u . ~ . . .
+    6       . . . . . . u . ~ ~ ~ ~ ~ . .
+    7        . . u . . . . ~ ~ ~ ~ ~ . ~
+    8         h . u ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . u ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(-8,9)s6f70 TGu(-8,8)s6f68 THa(-8,7)s6f70 TGu(-1,3)s6f26 TBa(-2,5)s6f55 TDe(-1,3)s6f64 TCa(-4,4)s6f64 TCa(0,5)s6f65 TSt(0,5)s6f36 TSt(0,5)s6f35 TSt(0,5)s6f34 TDe(-6,5)s6f64 TGr(-8,9)s6 TGr(-8,9)s6 TGr(-8,8)s6 TGr(-8,8)s6 TGr(-8,7)s6 TGr(-8,7)s6 TGr(-8,7)s6 TGr(-7,4)s6 TGr(-8,7)s6 KBa(4,-10)s6u14f60 KBa(5,-10)s6u14f60 KBa(6,-10)s6u14f60 KDe(2,-8)s6u14f70 KDe(3,-8)s6u14f70 KFi(0,-9)s6u2f33 KFi(-1,-8)s6u2f33 KFi(0,-7)s6u2f33 KCa(2,-9)s6u14f70 KGu(3,-10)s6u2f28 KGu(7,-10)s6f30 KGu(5,-9)s6u14f70 KGu(5,-8)s6u14f70 KBo(1,-8)s6u2f61 KBo(1,-9)s6u2f61 TAt(-4,4)s6a2f58 TAt(-4,6)s6a2f56 TSt(-4,4)s6f31
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 0/3; NavalYard(-8,7) Task Force Alpha 0/10 store 0/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 1/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) neutral 0/10;
+   state Task Force Alpha: worth 279500, units 24, cities 0, buildings 3, income 2000, gold 0, front 0.205
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 249000, units 15, cities 0, buildings 2, income 2000, gold 2000, front 0.875
+   Kaisen Kaijin fields: 3 Battleship, 2 Bomber, 1 Carrier, 2 Destroyer, 3 Fighter, 2 Gunboat, 2 Gunship
+   (board saved as turn-001-KaisenKaijin.dat)
+   fog: unknown ground: 220 tiles (0 lately seen but near the enemy), 6 kinds, reach 10
+   fog: unplaced enemy: 17.0 units (279500 power) over 1 anchors (0 seen, 0 remembered, 1 HQ, 0 production)
+   knowledge: enemy could have 279500 (start 279500 + built 0 - destroyed 0), we know of 0; their buildings seen 0%; confidence 0.00; ours 249000 = ratio 0.89; aggression 0.00; unknown ground feared at 1.00
+   campaign planned afresh: first plan
+   objective Scout(-7,3) away 1 value 2160 priority 1080.00 enemy 0 need 0 have 15000, 1 units, 0/0 supply turn 1 [staged 0, en route 1, engaged 0]: Fighter(0,-7)s6
+   objective Scout(-4,7) away 2 value 2160 priority 720.00 enemy 0 need 0 have 15000, 1 units, 0/0 supply turn 1 [staged 0, en route 1, engaged 0]: Fighter(-1,-8)s6
+   objective Hold(-4,3) chokepoint end away 1 value 16600 priority 0.06 enemy 7580 (unseen 7580, 40% dark) need 9000 have 15000, 1 units, 0/16 supply turn 1 [staged 0, en route 1, engaged 0] formed against 7580: Fighter(0,-9)s6
+   front Front(-7,3) Defensive ratio 99.00 priority 1080 objective (-7,3) value 2160 staging at (7,-10), 1 units
+   front Front(-4,7) Defensive ratio 99.00 priority 720 objective (-4,7) value 2160 staging at (7,-8), 1 units
+   front Front(-4,3) Defensive ratio 1.98 priority 0 objective (-4,3) value 16600 staging at (7,-8), 1 units
+   front Front(7,-9) Aggressive ratio 99.00 priority 9 objective (0,-4) value 33200, 12 units
+   logistics: Hold@-4,3 (1 units, to (0,-9)): chain 0, its own 0, chain short, nothing spare, across water (no supply there) (no yard); Clear@0,-4 (11 units, to (1,-8)): chain 0, its own 0, chain short, nothing spare, across water (no supply there) (no yard); free trucks 0, ships 1; supply units with a duty 0 of 0
+   reserve (mobile): central 9, active 2 (of 11 on no task force)
+   scout Fighter (0,-7) -> (-7,3) sees 2160.0
+   scout Fighter (-1,-8) -> (-4,7) sees 2160.0
+   transports for supply: none
+   chain toward (-10,8): ; spare 0; supply reaches 17 steps from the objective, the army 2147483647; short a supply unit
+   landing reserved: Fighter lands on (2,-9) in 3 turns
+   landing reserved: Fighter lands on (2,-9) in 2 turns
+   landing reserved: Fighter lands on (2,-9) in 1 turn (this one)
+   coordination pass 2: 0 targets, 0 groups of attackers tried, 0 plans forecast, 0 single steps forecast
+   coordination: no battle plan
+   turn order by steps: 1 [] 2 [] 3 [Fighter, Fighter, Destroyer, Destroyer, Gunship, Battleship, Battleship, Gunboat, Gunboat, Battleship, Gunship, Bomber, Bomber] 4 [] 5 [] empty [Carrier] 6 [] 7 [Fighter]
+   Kaisen Kaijin (this AI) reads the board: supply tiles: static 4, mobile 0, potential 0; enemy supplied 16; enemy strike in 1/2/3 turns: 0/0/0 tiles (0.0 ms)
+   turns to contact: Fi(-1,-8)=99 Fi(0,-9)=99 Fi(0,-7)=99 Bo(1,-9)=99 Bo(1,-8)=99 Ca(2,-9)=99 De(2,-8)=99 Gu(3,-10)=99 De(3,-8)=99 Ba(4,-10)=99 Ba(5,-10)=99 Gu(5,-9)=99 Gu(5,-8)=99 Ba(6,-10)=99 Gu(7,-10)=99
+   objective pulls: 2; turn order: Fighter, Fighter, Destroyer, Destroyer, Gunship, Battleship, Battleship, Gunboat, Gunboat, Battleship, Gunship, Bomber, Bomber, Carrier, Fighter
+Kaisen Kaijin Fighter(Clone)(-1,-8) s6 [AA, world] 136 options | best world 259659, within 625: 7
+        (9,-8) no shot world 259659 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +840 fog(0.25 str) -621 | deny 0 pos 215
+        (9,-9) no shot world 259573 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +600 fog(0.19 str) -468 | deny 0 pos 200
+        (9,-10) no shot world 259493 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +360 fog(0.12 str) -307 | deny 0 pos 585
+        (8,-7) no shot world 259390 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +1080 fog(0.45 str) -1130 | deny 0 pos 455
+        (8,-8) no shot world 259344 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +810 fog(0.36 str) -906 | deny 0 pos 1610
+      > (8,-10) world 259329 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +300 fog(0.16 str) -411 | pos 1800
+   Kaisen Kaijin Fighter moved (-1,-8) -> (8,-10)
+   Kaisen Kaijin Fighter (-1,-8)->(8,-10): Move — AA: world 259329 move
+Kaisen Kaijin Fighter(Clone)(0,-9) s6 [AA, world] 123 options | best world 261093, within 625: 1
+      > (7,-8) no shot world 261093 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +420 fog(0.51 str) -1267 campaign +2500 | deny 0 pos 2545
+      x (10,-9) no shot world 259413 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +300 fog(0.13 str) -327
+      x (9,-8) no shot world 259372 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +540 fog(0.24 str) -608
+      x (10,-10) no shot world 259302 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +90 fog(0.09 str) -228
+      x (9,-9) no shot world 259286 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +300 fog(0.18 str) -454
+   Kaisen Kaijin Fighter moved (0,-9) -> (7,-8)
+   Kaisen Kaijin Fighter (0,-9)->(7,-8): Move — AA: world 261093 move
+   Kaisen Kaijin Destroyer moved (2,-8) -> (2,-10)
+   Kaisen Kaijin Destroyer (2,-8)->(2,-10): Move — carrier: sails toward Gunship (3,-10) to take it aboard
+   Kaisen Kaijin Destroyer moved (3,-8) -> (3,-9)
+   Kaisen Kaijin Destroyer (3,-8)->(3,-9): Move — carrier: sails toward Gunship (3,-10) to take it aboard
+Kaisen Kaijin Gunship(Clone)(3,-10) s6 [line, world] 50 options | best world 259247, within 375: 2
+        (9,-10) no shot world 259247 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -193 | deny 0 pos -87
+      > (8,-9) no shot world 258948 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.33 str) -492 | deny 0 pos 496
+      x (7,-9) no shot world 258741 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.47 str) -699
+      x (3,-10) no shot world 258724 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.48 str) -716
+      x (6,-9) no shot world 258548 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.59 str) -892
+   Kaisen Kaijin Gunship moved (3,-10) -> (8,-9)
+   Kaisen Kaijin Gunship (3,-10)->(8,-9): Move — line: world 258948 move
+Kaisen Kaijin Battleship(Clone)(4,-10) s6 [line, world] 31 options | best world 258553, within 1042: 6
+        (4,-10) no shot world 258553 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.21 str) -887 | deny 0 pos 694
+        (6,-9) no shot world 258119 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.32 str) -1321 | deny 0 pos 2127
+        (1,-10) no shot world 258032 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.34 str) -1408 | deny 0 pos 460
+        (0,-10) no shot world 257966 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.35 str) -1474 | deny 0 pos 306
+      > (4,-9) no shot world 257606 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.44 str) -1834 | deny 0 pos 2411
+   Kaisen Kaijin Battleship moved (4,-10) -> (4,-9)
+   Kaisen Kaijin Battleship (4,-10)->(4,-9): Move — line: world 257606 move
+Kaisen Kaijin Battleship(Clone)(5,-10) s6 [line, world] 33 options | best world 258956, within 1042: 7
+        (9,-9) no shot world 258956 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.12 str) -484 | deny 0 pos 1135
+        (5,-10) no shot world 258665 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.19 str) -775 | deny 0 pos 686
+        (4,-10) no shot world 258553 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.21 str) -887 | deny 0 pos 603
+        (8,-7) no shot world 258139 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.31 str) -1301 | deny 0 pos 1182
+      > (6,-9) no shot world 258119 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.32 str) -1321 | deny 0 pos 2137
+   Kaisen Kaijin Battleship moved (5,-10) -> (6,-9)
+   Kaisen Kaijin Battleship (5,-10)->(6,-9): Move — line: world 258119 move
+Kaisen Kaijin Gunboat(Clone)(5,-9) s6 [line, world] 41 options | best world 259293, within 542: 6
+        (10,-10) no shot world 259293 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.07 str) -147 | deny 0 pos -500
+      > (9,-9) no shot world 259094 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.16 str) -346 | deny 0 pos 511
+        (9,-8) no shot world 258959 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.22 str) -481 | deny 0 pos 443
+        (5,-10) no shot world 258886 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.26 str) -554 | deny 0 pos 197
+        (9,-7) no shot world 258829 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.28 str) -611 | deny 0 pos 279
+   Kaisen Kaijin Gunboat moved (5,-9) -> (9,-9)
+   Kaisen Kaijin Gunboat (5,-9)->(9,-9): Move — line: world 259094 move
+Kaisen Kaijin Gunboat(Clone)(5,-8) s6 [line, world] 48 options | best world 259293, within 542: 8
+        (10,-10) no shot world 259293 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.07 str) -147 | deny 0 pos -433
+        (10,-8) no shot world 259120 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.15 str) -320 | deny 0 pos 285
+        (10,-7) no shot world 259068 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +30 fog(0.19 str) -402 | deny 0 pos 158
+      > (9,-8) no shot world 258959 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.22 str) -481 | deny 0 pos 515
+        (5,-10) no shot world 258886 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.26 str) -554 | deny 0 pos 178
+   Kaisen Kaijin Gunboat moved (5,-8) -> (9,-8)
+   Kaisen Kaijin Gunboat (5,-8)->(9,-8): Move — line: world 258959 move
+Kaisen Kaijin Battleship(Clone)(6,-10) s6 [line, world] 33 options | best world 259234, within 1042: 5
+        (10,-10) no shot world 259234 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.05 str) -206 | deny 0 pos -549
+        (6,-10) no shot world 258781 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.16 str) -660 | deny 0 pos 582
+        (5,-10) no shot world 258665 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.19 str) -775 | deny 0 pos 510
+      > (9,-7) no shot world 258585 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.21 str) -855 | deny 0 pos 1135
+        (4,-10) no shot world 258553 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.21 str) -887 | deny 0 pos 521
+   Kaisen Kaijin Battleship moved (6,-10) -> (9,-7)
+   Kaisen Kaijin Battleship (6,-10)->(9,-7): Move — line: world 258585 move
+Kaisen Kaijin Gunship(Clone)(7,-10) s6 [line, world] 51 options | best world 259301, within 375: 8
+        (10,-10) no shot world 259301 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.09 str) -139 | deny 0 pos -115
+        (10,-9) no shot world 259249 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +30 fog(0.15 str) -221 | deny 0 pos -77
+        (9,-10) no shot world 259247 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -193 | deny 0 pos -12
+        (10,-7) no shot world 259240 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +180 fog(0.25 str) -380 | deny 0 pos 585
+        (10,-8) no shot world 259228 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +90 fog(0.2 str) -302 | deny 0 pos 547
+      > (9,-6) world 259106 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +360 fog(0.46 str) -694 | pos 845
+   Kaisen Kaijin Gunship moved (7,-10) -> (9,-6)
+   Kaisen Kaijin Gunship (7,-10)->(9,-6): Move — line: world 259106 move
+Kaisen Kaijin Bomber(Clone)(1,-9) s6 [line, world] 95 options | best world 259093, within 833: 5
+        (9,-10) no shot world 259093 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -347 | deny 0 pos -333
+      > (7,-10) no shot world 258761 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.2 str) -679 | deny 0 pos 821
+        (6,-10) no shot world 258602 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.25 str) -838 | deny 0 pos 167
+        (5,-10) no shot world 258448 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.3 str) -992 | deny 0 pos 190
+        (4,-10) no shot world 258299 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.34 str) -1141 | deny 0 pos 212
+   Kaisen Kaijin Bomber moved (1,-9) -> (7,-10)
+   Kaisen Kaijin Bomber (1,-9)->(7,-10): Move — line: world 258761 move
+Kaisen Kaijin Bomber(Clone)(1,-8) s6 [line, world] 111 options | best world 259093, within 833: 4
+        (9,-10) no shot world 259093 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -347 | deny 0 pos -500
+        (6,-10) no shot world 258602 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.25 str) -838 | deny 0 pos -13
+        (5,-10) no shot world 258448 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.3 str) -992 | deny 0 pos 0
+      > (4,-10) no shot world 258299 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.34 str) -1141 | deny 0 pos 12
+      x (8,-8) no shot world 258129 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.39 str) -1311
+   Kaisen Kaijin Bomber moved (1,-8) -> (4,-10)
+   Kaisen Kaijin Bomber (1,-8)->(4,-10): Move — line: world 258299 move
+   Kaisen Kaijin Carrier(2,-9): would wait (carrier: holds for Fighter, landing on it in 3 turns): decides again after the rest
+   Kaisen Kaijin Carrier (2,-9): Wait (not executed) — carrier: holds for Fighter, landing on it in 3 turns
+Kaisen Kaijin Fighter(Clone)(0,-7) s6 [AA, world] 4 options | best world 258569, within 625: 1
+      > (3,-10) no shot world 258569 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.35 str) -871 | deny 0 pos 1625
+      x (1,-9) no shot world 257274 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.87 str) -2166
+      x (2,-8) no shot world 256534 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(1.16 str) -2906
+      x (1,-8) no shot world 256312 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(1.25 str) -3128
+   Kaisen Kaijin Fighter (0,-7) boards Kaisen Kaijin Carrier (2,-9)
+   Kaisen Kaijin Fighter (0,-7)->(2,-9): Load — lands on Carrier (2,-9) to refuel (fuel 33)
+   riders waiting for a transport: 0, room in empty troop transports 0
+   cargo: 0 land units waiting (weight 0), 0 empty transports, grace 0 (room bought last turn)
+   Kaisen Kaijin procurement: income 2000 (enemy 2000, map 4000), 0 facilities (0 under fire), 0 serving fronts, wait for savings 6-6 turns
+   Kaisen Kaijin buys against 0 enemy units (0 in sight): 0 of 0 building slots, 0 of 2000 gold; supply units 0 (at most 2147483647)
+
+== round 2: Task Force Alpha to move
+  -10           ~ ~ U . U ~ ~ U U . ~
+   -9          ~ ~ ~ U U U . U H U U .
+   -8         ~ ~ ~ ~ ~ . . . ~ U . U ~
+   -7        ~ . ~ ~ . ~ ~ ~ ~ ~ ~ ~ U .
+   -6       ~ ~ ~ . . ~ . . ~ . ~ ~ ~ U .
+   -5      ~ . ~ ~ ~ ~ ~ . . ~ . ~ . ~ ~ .
+   -4     ~ . . . . . = . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . . . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ ~ ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ ~ . . . ~ ~ ~ . ~ . ~ . .
+    0 ~ . . . . . ~ ~ ~ ~ ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . . . . . ~ ~ ~ ~ ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . u ~ ~ . . . . . .
+    4     ~ ~ ~ g . ~ u . . . ~ ~ ~ ~ . . .
+    5      ~ . . . u . . . u ~ u . ~ . . .
+    6       . . . . . . u . ~ ~ ~ ~ ~ . .
+    7        . . u . . . . ~ ~ ~ ~ ~ . ~
+    8         h . u ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . u ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(-8,9)s6f70 TGu(-8,8)s6u14f68 THa(-8,7)s6f70 TGu(-1,3)s6f30 TBa(-2,5)s6u14f55 TDe(-1,3)s6u14f64 TCa(-4,4)s6u14f64 TCa(0,5)s6u14f65 TSt(0,5)s6f36 TSt(0,5)s6f36 TSt(0,5)s6f36 TDe(-6,5)s6u14f64 TGr(-8,9)s6 TGr(-8,9)s6 TGr(-8,8)s6 TGr(-8,8)s6 TGr(-8,7)s6 TGr(-8,7)s6 TGr(-8,7)s6 TGr(-7,4)s6u2 TGr(-8,7)s6 KBa(4,-9)s6u14f59 KBa(6,-9)s6u14f58 KBa(9,-7)s6u14f54 KDe(2,-10)s6u14f68 KDe(3,-9)s6u14f69 KFi(7,-8)s6u2f25 KFi(8,-10)s6u2f24 KFi(2,-9)s6u2f31 KCa(2,-9)s6u14f70 KGu(8,-9)s6u2f16 KGu(9,-6)s6f18 KGu(9,-9)s6u14f65 KGu(9,-8)s6u14f65 KBo(4,-10)s6u2f58 KBo(7,-10)s6u2f55 TAt(-4,4)s6f64 TAt(-4,6)s6a2u2f53 TSt(-4,4)s6f36
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 1/3; NavalYard(-8,7) Task Force Alpha 0/10 store 1/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 1/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) neutral 0/10;
+   state Task Force Alpha: worth 279500, units 24, cities 0, buildings 3, income 2000, gold 2000, front 0.205
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 249000, units 15, cities 0, buildings 2, income 2000, gold 2000, front 0.963
+   Kaisen Kaijin fields: 3 Battleship, 2 Bomber, 1 Carrier, 2 Destroyer, 3 Fighter, 2 Gunboat, 2 Gunship
+   (board saved as turn-002-TaskForceAlpha.dat)
+   Task Force Alpha Gunboat moved (-8,8) -> (-3,2)
+   Task Force Alpha Gunboat moved (-8,9) -> (-2,3)
+   Task Force Alpha Carrier moved (0,5) -> (1,3)
+   Task Force Alpha Gunship gets off Task Force Alpha Destroyer (-1,3) onto (-1,2)
+   Task Force Alpha Gunship moved (-1,2) -> (-1,0)
+   Task Force Alpha Stealth Fighter gets off Task Force Alpha Carrier (1,3) onto (2,2)
+   Task Force Alpha Stealth Fighter moved (2,2) -> (6,-1)
+   Task Force Alpha Stealth Fighter gets off Task Force Alpha Carrier (1,3) onto (0,3)
+   Task Force Alpha Stealth Fighter moved (0,3) -> (-7,1)
+   Task Force Alpha Stealth Fighter gets off Task Force Alpha Carrier (-4,4) onto (-4,3)
+   Task Force Alpha Stealth Fighter moved (-4,3) -> (-2,-1)
+   Task Force Alpha Hauler moved (-8,7) -> (-3,3)
+   Task Force Alpha Battleship moved (-2,5) -> (3,3)
+   Task Force Alpha Attacker (-4,6) boards Task Force Alpha Carrier (1,3)
+   Task Force Alpha Destroyer moved (-1,3) -> (0,1)
+   Task Force Alpha Destroyer moved (-6,5) -> (0,2)
+
+== round 3: Kaisen Kaijin to move
+  -10           ~ ~ U . U ~ ~ U U . ~
+   -9          ~ ~ ~ U U U . U H U U .
+   -8         ~ ~ ~ ~ ~ . . . ~ U . U ~
+   -7        ~ . ~ ~ . ~ ~ ~ ~ ~ ~ ~ U .
+   -6       ~ ~ ~ . . ~ . . ~ . ~ ~ ~ U .
+   -5      ~ . ~ ~ ~ ~ ~ . . ~ . ~ . ~ ~ .
+   -4     ~ . . . . . = . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . . . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ ~ ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ u . . . ~ ~ ~ . u . ~ . .
+    0 ~ . . . . . ~ ~ ~ u ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . u . . . ~ ~ ~ u ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . u . . u ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . u u . ~ u . u . . . .
+    4     ~ ~ ~ g . ~ u . . . ~ ~ ~ ~ . . .
+    5      ~ . . . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(-2,3)s6f64 TGu(-3,2)s6u14f62 THa(-3,3)s6f65 TGu(-1,0)s6f26 TBa(3,3)s6u14f50 TDe(0,1)s6u14f62 TCa(-4,4)s6u14f64 TCa(1,3)s6u14f63 TSt(-7,1)s6f27 TSt(1,3)s6f36 TSt(6,-1)s6f32 TDe(0,2)s6u14f58 TGr(-2,3)s6 TGr(-2,3)s6 TGr(-3,2)s6 TGr(-3,2)s6 TGr(-3,3)s6 TGr(-3,3)s6 TGr(-3,3)s6 TGr(-7,4)s6u2 TGr(-3,3)s6 KBa(4,-9)s6u13f59 KBa(6,-9)s6u13f58 KBa(9,-7)s6u13f54 KDe(2,-10)s6u13f68 KDe(3,-9)s6u13f69 KFi(7,-8)s6u1f22 KFi(8,-10)s6u1f21 KFi(2,-9)s6f36 KCa(2,-9)s6u13f70 KGu(8,-9)s6u1f14 KGu(9,-6)s6u2f16 KGu(9,-9)s6u13f65 KGu(9,-8)s6u13f65 KBo(4,-10)s6u1f55 KBo(7,-10)s6u1f52 TAt(-4,4)s6f64 TAt(1,3)s6a2u2f49 TSt(-2,-1)s6f32
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 1/3; NavalYard(-8,7) Task Force Alpha 0/10 store 1/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 2/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) neutral 0/10;
+   state Task Force Alpha: worth 279500, units 24, cities 0, buildings 3, income 2000, gold 2000, front 0.408
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 249000, units 15, cities 0, buildings 2, income 2000, gold 4000, front 0.963
+   Kaisen Kaijin fields: 3 Battleship, 2 Bomber, 1 Carrier, 2 Destroyer, 3 Fighter, 2 Gunboat, 2 Gunship
+   (board saved as turn-003-KaisenKaijin.dat)
+   fog: unknown ground: 184 tiles (0 lately seen but near the enemy), 6 kinds, reach 10
+   fog: unplaced enemy: 17.0 units (279500 power) over 1 anchors (0 seen, 0 remembered, 1 HQ, 0 production)
+   knowledge: enemy could have 279500 (start 279500 + built 0 - destroyed 0), we know of 0; their buildings seen 0%; confidence 0.00; ours 249000 = ratio 0.89; aggression 0.00; unknown ground feared at 1.00
+   objective Scout(-7,3) away 2 value 2160 priority 720.00 enemy 0 need 0 have 28000, 2 units, 0/0 supply turn 2 [staged 0, en route 2, engaged 0]: Fighter(2,-9)s6 Destroyer(3,-9)s6
+   objective Scout(-4,7) away 2 value 2160 priority 720.00 enemy 0 need 0 have 15000, 1 units, 0/0 supply turn 2 [staged 0, en route 1, engaged 0]: Fighter(8,-10)s6
+   objective Hold(1,-1) chokepoint end away 1 value 16600 priority 0.06 enemy 7318 (unseen 7318, 38% dark) need 9000 have 15000, 1 units, 0/16 supply turn 1 [staged 0, en route 1, engaged 0] formed against 7318: Fighter(7,-8)s6
+   front Front(-7,3) Defensive ratio 99.00 priority 720 objective (-7,3) value 2160 staging at (7,-10), 2 units
+   front Front(-4,7) Aggressive ratio 99.00 priority 720 objective (-4,7) value 2160, 1 units
+   front Front(1,-1) Aggressive ratio 2.05 priority 0 objective (1,-1) value 16600, 1 units
+   front Front(7,-9) Aggressive ratio 99.00 priority 9 objective (0,-4) value 33200, 11 units
+   logistics: Hold@1,-1 (1 units, to (7,-8)): chain 0, its own 0, across water (no supply there) (no yard); Clear@0,-4 (10 units, to (4,-9)): chain 0, its own 0, chain short, nothing spare, across water (no supply there) (no yard); free trucks 0; supply units with a duty 0 of 0
+   reserve (mobile): central 9, active 2 (of 11 on no task force)
+   scout Fighter (2,-9) -> (-7,3) sees 2160.0
+   scout Destroyer (3,-9) -> (-7,3) sees 2160.0
+   scout Fighter (8,-10) -> (-4,7) sees 2160.0
+   transports for supply: none
+   chain toward (-10,8): ; spare 0; supply reaches 17 steps from the objective, the army 2147483647; short a supply unit
+   landing reserved: Bomber lands on (2,-9) in 2 turns
+   landing reserved: Bomber lands on (2,-9) in 1 turn (this one)
+   coordination pass 2: 0 targets, 0 groups of attackers tried, 0 plans forecast, 0 single steps forecast
+   coordination: no battle plan
+   turn order by steps: 1 [] 2 [] 3 [Destroyer, Destroyer, Fighter, Fighter, Battleship, Battleship, Gunship, Gunboat, Gunboat, Battleship, Gunship, Bomber] 4 [Carrier] 5 [] empty [] 6 [Fighter] 7 [Bomber]
+   Kaisen Kaijin (this AI) reads the board: supply tiles: static 4, mobile 0, potential 0; enemy supplied 16; enemy strike in 1/2/3 turns: 0/0/0 tiles (0.0 ms)
+   turns to contact: De(2,-10)=99 Ca(2,-9)=99 Fi(2,-9)=99 De(3,-9)=99 Bo(4,-10)=99 Ba(4,-9)=99 Ba(6,-9)=99 Bo(7,-10)=99 Fi(7,-8)=99 Fi(8,-10)=99 Gu(8,-9)=99 Gu(9,-9)=99 Gu(9,-8)=99 Ba(9,-7)=99 Gu(9,-6)=99
+   objective pulls: 3; turn order: Destroyer, Destroyer, Fighter, Fighter, Battleship, Battleship, Gunship, Gunboat, Gunboat, Battleship, Gunship, Bomber, Carrier, Fighter, Bomber
+   Kaisen Kaijin Destroyer moved (2,-10) -> (6,-8)
+   Kaisen Kaijin Destroyer (2,-10)->(6,-8): Move — carrier: sails toward Gunship (8,-9) to take it aboard
+   Kaisen Kaijin Destroyer moved (3,-9) -> (6,-7)
+   Kaisen Kaijin Destroyer (3,-9)->(6,-7): Move — carrier: sails toward Gunship (8,-9) to take it aboard
+Kaisen Kaijin Fighter(Clone)(7,-8) s6 [AA, world] 116 options | best world 259286, within 625: 9
+        (10,-10) no shot world 259286 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.06 str) -154 | deny 0 pos -125
+      > (9,-10) no shot world 259220 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.09 str) -220 | deny 0 pos 1358
+        (10,-9) no shot world 259185 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -255 | deny 0 pos -400
+        (10,-6) no shot world 259138 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +240 fog(0.22 str) -542 | deny 0 pos -1085
+        (10,-8) no shot world 259086 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.14 str) -354 | deny 0 pos -775
+   Kaisen Kaijin Fighter moved (7,-8) -> (9,-10)
+   Kaisen Kaijin Fighter (7,-8)->(9,-10): Move — AA: world 259220 move
+Kaisen Kaijin Fighter(Clone)(8,-10) s6 [AA, world] 92 options | best world 263608, within 625: 2
+      > (8,-8) no shot world 263608 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.33 str) -832 campaign +5000 | deny 0 pos 4333
+        (7,-8) no shot world 263228 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.48 str) -1212 campaign +5000 | deny 0 pos 4108
+      x (7,-9) no shot world 261099 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.34 str) -841 campaign +2500
+      x (10,-10) no shot world 259286 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.06 str) -154
+      x (10,-9) no shot world 259185 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -255
+   Kaisen Kaijin Fighter moved (8,-10) -> (8,-8)
+   Kaisen Kaijin Fighter (8,-10)->(8,-8): Move — AA: world 263608 move
+Kaisen Kaijin Battleship(Clone)(4,-9) s6 [line, world] 46 options | best world 259044, within 1042: 6
+        (8,-10) no shot world 259044 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -396 | deny 0 pos 1523
+        (6,-10) no shot world 258795 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.15 str) -645 | deny 0 pos 2271
+      > (5,-10) no shot world 258677 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.18 str) -763 | deny 0 pos 2578
+        (2,-10) no shot world 258178 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.3 str) -1263 | deny 0 pos 1642
+        (8,-7) no shot world 258154 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.31 str) -1286 | deny 0 pos 1524
+   Kaisen Kaijin Battleship moved (4,-9) -> (5,-10)
+   Kaisen Kaijin Battleship (4,-9)->(5,-10): Move — line: world 258677 move
+Kaisen Kaijin Battleship(Clone)(6,-9) s6 [line, world] 44 options | best world 259253, within 1042: 5
+        (10,-10) no shot world 259253 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.04 str) -187 | deny 0 pos 1252
+        (8,-10) no shot world 259044 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -396 | deny 0 pos 2090
+        (10,-8) no shot world 259011 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -429 | deny 0 pos 1245
+        (10,-7) no shot world 258895 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -545 | deny 0 pos 1165
+      > (6,-10) no shot world 258795 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.15 str) -645 | deny 0 pos 2838
+   Kaisen Kaijin Battleship moved (6,-9) -> (6,-10)
+   Kaisen Kaijin Battleship (6,-9)->(6,-10): Move — line: world 258795 move
+Kaisen Kaijin Gunship(Clone)(8,-9) s6 [line, world] 25 options | best world 259314, within 375: 5
+        (10,-10) no shot world 259314 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.08 str) -126 | deny 0 pos -399
+        (10,-9) no shot world 259231 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.14 str) -209 | deny 0 pos -399
+        (8,-10) no shot world 259173 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.18 str) -267 | deny 0 pos -98
+        (10,-8) no shot world 259151 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.19 str) -290 | deny 0 pos -532
+      > (8,-9) no shot world 258959 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.32 str) -481 | deny 0 pos 68
+   Kaisen Kaijin Gunship(8,-9): would wait (line: world 258959 hold): decides again after the rest
+Kaisen Kaijin Gunboat(Clone)(9,-9) s6 [line, world] 34 options | best world 259306, within 542: 8
+        (10,-10) no shot world 259306 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.06 str) -134 | deny 0 pos 1337
+        (8,-10) no shot world 259157 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -283 | deny 0 pos 1412
+        (10,-8) no shot world 259133 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.14 str) -307 | deny 0 pos 1145
+      > (9,-9) no shot world 259107 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.15 str) -333 | deny 0 pos 1713
+        (10,-7) no shot world 259051 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.18 str) -390 | deny 0 pos 931
+   Kaisen Kaijin Gunboat(9,-9): would wait (line: world 259107 hold): decides again after the rest
+Kaisen Kaijin Gunboat(Clone)(9,-8) s6 [line, world] 41 options | best world 259306, within 542: 9
+        (10,-10) no shot world 259306 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.06 str) -134 | deny 0 pos 1156
+        (8,-10) no shot world 259157 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -283 | deny 0 pos 1231
+        (10,-8) no shot world 259133 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.14 str) -307 | deny 0 pos 1326
+        (10,-7) no shot world 259051 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.18 str) -390 | deny 0 pos 1111
+      > (9,-8) no shot world 258971 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.22 str) -469 | deny 0 pos 1706
+   Kaisen Kaijin Gunboat(9,-8): would wait (line: world 258971 hold): decides again after the rest
+Kaisen Kaijin Battleship(Clone)(9,-7) s6 [line, world] 45 options | best world 259253, within 1042: 11
+        (10,-10) no shot world 259253 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.04 str) -187 | deny 0 pos 1877
+        (8,-10) no shot world 259044 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -396 | deny 0 pos 2368
+        (10,-8) no shot world 259011 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -429 | deny 0 pos 2549
+        (10,-7) no shot world 258895 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -545 | deny 0 pos 2485
+        (10,-6) no shot world 258783 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.16 str) -657 | deny 0 pos 1970
+      > (9,-7) world 258602 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.2 str) -839 | pos 3236
+   Kaisen Kaijin Battleship(9,-7): would wait (line: world 258602 hold): decides again after the rest
+Kaisen Kaijin Gunship(Clone)(9,-6) s6 [line, world] 32 options | best world 259314, within 375: 8
+        (10,-10) no shot world 259314 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.08 str) -126 | deny 0 pos 676
+        (10,-9) no shot world 259231 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.14 str) -209 | deny 0 pos 676
+        (8,-10) no shot world 259173 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.18 str) -267 | deny 0 pos 852
+        (10,-8) no shot world 259151 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.19 str) -290 | deny 0 pos 793
+        (10,-5) no shot world 259134 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +210 fog(0.34 str) -516 | deny 0 pos 820
+      > (9,-4) world 258958 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +420 fog(0.6 str) -902 | pos 1105
+   Kaisen Kaijin Gunship moved (9,-6) -> (9,-4)
+   Kaisen Kaijin Gunship (9,-6)->(9,-4): Move — line: world 258958 move
+Kaisen Kaijin Bomber(Clone)(4,-10) s6 [line, world] 86 options | best world 259219, within 833: 3
+        (10,-10) no shot world 259219 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.07 str) -221 | deny 0 pos -1522
+        (10,-9) no shot world 259079 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.11 str) -361 | deny 0 pos -1522
+      > (8,-10) no shot world 258944 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.15 str) -496 | deny 0 pos -1115
+      x (4,-10) no shot world 258306 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.34 str) -1134
+      x (7,-9) no shot world 258147 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.39 str) -1293
+   Kaisen Kaijin Bomber moved (4,-10) -> (8,-10)
+   Kaisen Kaijin Bomber (4,-10)->(8,-10): Move — line: world 258944 move
+Kaisen Kaijin Gunship(Clone)(8,-9) s6 [line, world] 24 options | best world 259325, within 375: 4
+        (10,-10) no shot world 259325 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.08 str) -115 | deny 0 pos -515
+        (10,-9) no shot world 259253 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.12 str) -187 | deny 0 pos -519
+        (10,-8) no shot world 259172 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.18 str) -268 | deny 0 pos -532
+      > (8,-9) no shot world 258979 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.31 str) -461 | deny 0 pos -300
+      x (7,-9) no shot world 258769 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.45 str) -671
+   Kaisen Kaijin Gunship (8,-9): Wait (not executed) — line: world 258979 hold
+Kaisen Kaijin Gunboat(Clone)(9,-9) s6 [line, world] 33 options | best world 259318, within 542: 7
+        (10,-10) no shot world 259318 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.06 str) -122 | deny 0 pos 990
+        (10,-8) no shot world 259156 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -284 | deny 0 pos 964
+      > (9,-9) no shot world 259129 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.14 str) -311 | deny 0 pos 1182
+        (10,-7) no shot world 259072 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.17 str) -368 | deny 0 pos 921
+        (10,-6) no shot world 258992 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.21 str) -448 | deny 0 pos 828
+   Kaisen Kaijin Gunboat (9,-9): Wait (not executed) — line: world 259129 hold
+Kaisen Kaijin Gunboat(Clone)(9,-8) s6 [line, world] 40 options | best world 259318, within 542: 7
+        (10,-10) no shot world 259318 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.06 str) -122 | deny 0 pos 990
+        (10,-8) no shot world 259156 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.13 str) -284 | deny 0 pos 964
+        (10,-7) no shot world 259072 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.17 str) -368 | deny 0 pos 921
+      > (9,-8) no shot world 258992 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.21 str) -448 | deny 0 pos 1170
+        (10,-6) no shot world 258992 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.21 str) -448 | deny 0 pos 828
+   Kaisen Kaijin Gunboat (9,-8): Wait (not executed) — line: world 258992 hold
+Kaisen Kaijin Battleship(Clone)(9,-7) s6 [line, world] 44 options | best world 259270, within 1042: 11
+        (10,-10) no shot world 259270 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.04 str) -170 | deny 0 pos 1904
+        (10,-8) no shot world 259042 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.1 str) -398 | deny 0 pos 1855
+        (10,-7) no shot world 258926 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.12 str) -514 | deny 0 pos 1770
+        (10,-6) no shot world 258813 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.15 str) -627 | deny 0 pos 1592
+        (10,-5) no shot world 258705 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.18 str) -735 | deny 0 pos 1398
+      > (9,-7) world 258630 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: fog(0.19 str) -810 | pos 2195
+   Kaisen Kaijin Battleship (9,-7): Wait (not executed) — line: world 258630 hold
+   Carrier(2,-9): its move is not its assault ride (carrier: holds for Bomber, landing on it in 2 turns): its riders decide for themselves
+   Kaisen Kaijin Carrier(2,-9): would wait (carrier: holds for Bomber, landing on it in 2 turns): decides again after the rest
+   Carrier(2,-9): its move is not its assault ride (carrier: holds for Bomber, landing on it in 2 turns): its riders decide for themselves
+   Kaisen Kaijin Carrier (2,-9): Wait (not executed) — carrier: holds for Bomber, landing on it in 2 turns
+   Kaisen Kaijin Fighter gets off Kaisen Kaijin Carrier (2,-9) onto (1,-9)
+   Kaisen Kaijin Fighter (2,-9)->(1,-9): Unload — its transport's move was not its assault ride: gets off at (1,-9) to decide for itself
+Kaisen Kaijin Fighter(Clone)(1,-9) s6 [AA, world] 137 options | best world 281767, within 625: 3
+      > (-5,1) no shot world 281767 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +2535 fog(1.83 str) -4583 campaign +25000 outOfSupply -625 | deny 0 pos 1910
+        (-6,1) no shot world 281497 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +2265 fog(1.83 str) -4583 campaign +25000 outOfSupply -625 | deny 0 pos 1640
+        (-7,1) no shot world 281242 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +2010 fog(1.83 str) -4583 campaign +25000 outOfSupply -625 | deny 0 pos 1385
+      x (-4,1) no shot world 279432 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +2700 fog(1.83 str) -4583 campaign +22500 outOfSupply -625
+      x (-4,0) no shot world 279147 buildings +10440 (HQ clear +9960 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) | after forecast: sight +2415 fog(1.83 str) -4583 campaign +22500 outOfSupply -625
+   Kaisen Kaijin Fighter moved (1,-9) -> (-5,1)
+   Kaisen Kaijin Fighter (1,-9)->(-5,1): Move — AA: world 281767 move
+Kaisen Kaijin Bomber(Clone)(7,-10) s6 [line, world] 6 options | best world 127042, within 833: 2
+      > (3,-9) no shot world 127042 deaths -1250 space -2950 (0/465 unsupplied 17) buildings +15700 (HQ clear +15220 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) mutual 1/0 heals +2167/-0 strike +5517/-0 [Destroyer(Clone)->Fighter(Clone) 5; Destroyer(Clone)->Fighter(Clone) 1 kill; Gunship(Clone)->Destroyer(Clone) 1 certain] | deny 333 pos 1247
+        (1,-9) no shot world 127042 deaths -1250 space -2950 (0/465 unsupplied 17) buildings +15700 (HQ clear +15220 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) mutual 1/0 heals +2167/-0 strike +5517/-0 [Destroyer(Clone)->Fighter(Clone) 5; Destroyer(Clone)->Fighter(Clone) 1 kill; Gunship(Clone)->Destroyer(Clone) 1 certain] | deny 167 pos 936
+      x (3,-10) no shot world 126175 deaths -1250 space -2950 (0/465 unsupplied 17) buildings +15700 (HQ clear +15220 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) mutual 1/0 heals +2167/-0 strike +4650/-0 [Destroyer(Clone)->Fighter(Clone) 5; Destroyer(Clone)->Fighter(Clone) 1 kill; Gunship(Clone)->Destroyer(Clone) 1 certain]
+      x (2,-10) no shot world 126175 deaths -1250 space -2950 (0/465 unsupplied 17) buildings +15700 (HQ clear +15220 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) mutual 1/0 heals +2167/-0 strike +4650/-0 [Destroyer(Clone)->Fighter(Clone) 5; Destroyer(Clone)->Fighter(Clone) 1 kill; Gunship(Clone)->Destroyer(Clone) 1 certain]
+      x (1,-8) no shot world 124542 deaths -1250 space -2950 (0/465 unsupplied 17) buildings +15700 (HQ clear +15220 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +120) mutual 1/0 strike +4683/-0 [Destroyer(Clone)->Fighter(Clone) 5; Destroyer(Clone)->Fighter(Clone) 1 kill; Gunship(Clone)->Bomber(Clone) 1 certain] | after forecast: sight +1667
+   Kaisen Kaijin Bomber (7,-10) boards Kaisen Kaijin Carrier (2,-9)
+   Kaisen Kaijin Bomber (7,-10)->(2,-9): Load — lands on Carrier (2,-9) to refuel (fuel 52)
+   riders waiting for a transport: 0, room in empty troop transports 0
+   cargo: 0 land units waiting (weight 0), 0 empty transports, grace 0 (room bought last turn)
+   Kaisen Kaijin procurement: income 2000 (enemy 2000, map 4000), 0 facilities (0 under fire), 0 serving fronts, wait for savings 6-6 turns
+   Kaisen Kaijin buys against 17 enemy units (17 in sight): 0 of 0 building slots, 0 of 4000 gold; supply units 0 (at most 2147483647)
+
+== round 3: Task Force Alpha to move
+  -10           ~ ~ ~ . ~ U U . U U ~
+   -9          ~ ~ ~ U ~ . . ~ H U U .
+   -8         ~ ~ ~ ~ ~ . . . U D U U ~
+   -7        ~ . ~ ~ . ~ ~ ~ ~ U ~ ~ U .
+   -6       ~ ~ ~ . . ~ . . ~ . ~ ~ ~ . .
+   -5      ~ . ~ ~ ~ ~ ~ . . ~ . ~ . ~ ~ .
+   -4     ~ . . . . . = . ~ ~ ~ ~ . . . U ~
+   -3    . . . ~ . . . . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ ~ ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ u . . . ~ ~ ~ . u . ~ . .
+    0 ~ . . . . . ~ ~ ~ u ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . u . U . ~ ~ ~ u ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . u . . u ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . u u . ~ u . u . . . .
+    4     ~ ~ ~ g . ~ u . . . ~ ~ ~ ~ . . .
+    5      ~ . . . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(-2,3)s6u14f64 TGu(-3,2)s6u13f62 THa(-3,3)s6u14f65 TGu(-1,0)s6u2f24 TBa(3,3)s6u13f50 TDe(0,1)s6u13f62 TCa(-4,4)s6u13f64 TCa(1,3)s6u13f63 TSt(-7,1)s6u2f24 TSt(1,3)s6f36 TSt(6,-1)s6u2f29 TDe(0,2)s6u13f58 TGr(-2,3)s6 TGr(-2,3)s6 TGr(-3,2)s6 TGr(-3,2)s6 TGr(-3,3)s6 TGr(-3,3)s6 TGr(-3,3)s6 TGr(-7,4)s6u1 TGr(-3,3)s6 KBa(5,-10)s6u13f58 KBa(6,-10)s6u13f57 KBa(9,-7)s6u13f54 KDe(6,-8)s6u13f62 KDe(6,-7)s6u13f64 KFi(9,-10)s6u1f20 KFi(8,-8)s6u1f19 KFi(-5,1)s6f26 KCa(2,-9)s6u13f70 KGu(8,-9)s6u1f14 KGu(9,-4)s6u2f12 KGu(9,-9)s6u13f65 KGu(9,-8)s6u13f65 KBo(8,-10)s6u1f51 KBo(2,-9)s6u1f46 TAt(-4,4)s6f64 TAt(1,3)s6f64 TSt(-2,-1)s6u2f29
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 2/3; NavalYard(-8,7) Task Force Alpha 0/10 store 2/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 2/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) neutral 0/10;
+   state Task Force Alpha: worth 279500, units 24, cities 0, buildings 3, income 2000, gold 4000, front 0.408
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 249000, units 15, cities 0, buildings 2, income 2000, gold 4000, front 0.937
+   Kaisen Kaijin fields: 3 Battleship, 2 Bomber, 1 Carrier, 2 Destroyer, 3 Fighter, 2 Gunboat, 2 Gunship
+   (board saved as turn-004-TaskForceAlpha.dat)
+   Kaisen Kaijin Fighter (-5,1) dies: combat
+   Task Force Alpha Stealth Fighter moved (-7,1) -> (-5,4)
+   Task Force Alpha Stealth Fighter (-5,4) attacks Kaisen Kaijin Fighter (-5,1): deals 6, takes 0, Fighter destroyed -> 6 v 0
+   Kaisen Kaijin Gunship (9,-4) dies: combat
+   Task Force Alpha Stealth Fighter moved (6,-1) -> (9,-1)
+   Task Force Alpha Stealth Fighter (9,-1) attacks Kaisen Kaijin Gunship (9,-4): deals 6, takes 0, Gunship destroyed -> 6 v 0
+   Task Force Alpha Gunboat moved (-3,2) -> (-1,-3)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Gunboat (-1,-3) onto (0,-4)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Gunboat (-1,-3) onto (-1,-4)
+   Task Force Alpha Carrier moved (-4,4) -> (1,2)
+   Task Force Alpha Carrier moved (1,3) -> (4,2)
+   Task Force Alpha Destroyer moved (0,2) -> (5,0)
+   Task Force Alpha Destroyer moved (0,1) -> (-4,1)
+   Task Force Alpha Gunboat moved (-2,3) -> (2,0)
+   Task Force Alpha Battleship moved (3,3) -> (7,0)
+   Task Force Alpha Hauler moved (-3,3) -> (0,1)
+   Task Force Alpha Gunship (-1,0) boards Task Force Alpha Destroyer (5,0)
+   Task Force Alpha captures Int. Ops (0,-4): 0 -> 6 of 10, now neutral (Task Force Alpha progress)
+
+== round 4: Kaisen Kaijin to move
+  -10           ~ ~ ~ . ~ U U . U U ~
+   -9          ~ ~ ~ U ~ . . ~ H U U .
+   -8         ~ ~ ~ ~ ~ . . . U D U U ~
+   -7        ~ . ~ ~ . ~ ~ ~ ~ U ~ ~ U .
+   -6       ~ ~ ~ . . ~ . . ~ . ~ ~ ~ . .
+   -5      ~ . ~ ~ ~ ~ ~ . . ~ . ~ . ~ ~ .
+   -4     ~ . . . . g g . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . u . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ ~ ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ u . . . ~ ~ ~ . ~ . ~ u .
+    0 ~ . . . . . ~ ~ ~ ~ ~ ~ u ~ . u . u . . ~
+    1  ~ . . . . . u ~ ~ ~ u ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ u ~ . u . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . . ~ ~ . . . . . .
+    4     ~ ~ ~ g . u . . . . ~ ~ ~ ~ . . .
+    5      ~ . . . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(2,0)s6u14f60 TGu(-1,-3)s6u13f57 THa(0,1)s6u14f62 TGu(5,0)s6u2f14 TBa(7,0)s6u13f46 TDe(-4,1)s6u13f58 TCa(1,2)s6u13f59 TCa(4,2)s6u13f60 TSt(-5,4)s6a5u2f19 TSt(4,2)s6f36 TSt(9,-1)s6a5u2f26 TDe(5,0)s6u13f53 TGr(2,0)s6 TGr(2,0)s6 TGr(-1,-4)s6 TGr(0,-4)s6 TGr(0,1)s6 TGr(0,1)s6 TGr(0,1)s6 TGr(-7,4)s6u1 TGr(0,1)s6 KBa(5,-10)s6u12f58 KBa(6,-10)s6u12f57 KBa(9,-7)s6u12f54 KDe(6,-8)s6u12f62 KDe(6,-7)s6u12f64 KFi(9,-10)s6u0f17 KFi(8,-8)s6u0f16 KCa(2,-9)s6u12f70 KGu(8,-9)s6u0f12 KGu(9,-9)s6u12f65 KGu(9,-8)s6u12f65 KBo(8,-10)s6u0f48 KBo(2,-9)s6f64 TAt(1,2)s6f64 TAt(4,2)s6f64 TSt(-2,-1)s6u2f29
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 2/3; NavalYard(-8,7) Task Force Alpha 0/10 store 2/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 3/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) neutral/Task Force Alpha 6/10;
+   state Task Force Alpha: worth 279500, units 24, cities 0, buildings 3, income 2000, gold 4000, front 0.548
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 225000, units 13, cities 0, buildings 2, income 2000, gold 6000, front 0.984
+   Kaisen Kaijin fields: 3 Battleship, 2 Bomber, 1 Carrier, 2 Destroyer, 2 Fighter, 2 Gunboat, 1 Gunship
+   (board saved as turn-005-KaisenKaijin.dat)
+   fog: Grunt Coalition Variant last seen (-3,2) str 6, 1 moves ago: at most 1.00 of its places reach a tile, 4 tiles to hide on, fires on 96, 0 of ours exposed
+   fog: Grunt Coalition Variant last seen (-3,2) str 6, 1 moves ago: at most 1.00 of its places reach a tile, 4 tiles to hide on, fires on 96, 0 of ours exposed
+   fog: unknown ground: 207 tiles (117 lately seen but near the enemy), 6 kinds, reach 8
+   fog: unplaced enemy: 10.9 units (150000 power) over 12 anchors (9 seen, 2 remembered, 1 HQ, 0 production)
+   knowledge: enemy could have 279500 (start 279500 + built 0 - destroyed 0), we know of 129500; their buildings seen 33%; confidence 0.46; ours 225000 = ratio 0.81; aggression 0.00; unknown ground feared at 0.54
+   objective Scout(2,2) away 1 value 1159 priority 579.61 enemy 99000 need 0 have 9000, 1 units, 0/0 supply turn 1 [staged 0, en route 0, engaged 1] formed against 99000: Gunship(8,-9)s6
+   objective Scout(-5,7) away 2 value 1159 priority 386.40 enemy 101500 need 0 have 20000, 1 units, 0/0 supply turn 1 [staged 0, en route 0, engaged 1] formed against 101500: Bomber(2,-9)s6
+   objective Clear(0,1) away 2 value 101925 priority 0.13 enemy 104330 (unseen 2830, 41% dark) need 114763 have 127000, 8 units, 0/16 supply turn 1 [staged 0, en route 0, engaged 8] formed against 104330: Fighter(8,-8)s6 Destroyer(6,-8)s6 Destroyer(6,-7)s6 Bomber(8,-10)s6 Fighter(9,-10)s6 Gunboat(9,-9)s6 Gunboat(9,-8)s6 Battleship(5,-10)s6
+   front Front(2,2) Defensive ratio 0.09 priority 580 objective (2,2) value 1159, 1 units
+   front Front(-5,7) Defensive ratio 0.20 priority 386 objective (-5,7) value 1159, 1 units
+   front Front(0,1) Defensive ratio 1.22 priority 0 objective (0,1) value 101925, 8 units
+   front Front(7,-9) Aggressive ratio 2.19 priority 860 objective (0,-4) value 31773, 3 units
+   logistics: Clear@0,1 (8 units, to (6,-7)): chain 0, its own 0, chain short, nothing spare, across water (no supply there) (no yard); Clear@0,-4 (2 units, to (6,-10)): chain 0, its own 0, chain short, nothing spare, across water (no supply there) (no yard); free trucks 0; supply units with a duty 0 of 0
+   reserve (mobile): central 0, active 3 (of 3 on no task force)
+   scout Gunship (8,-9) -> (2,2) sees 1159.2
+   scout Bomber (2,-9) -> (-5,7) sees 1159.2
+   transports for supply: none
+   chain toward (-10,8): ; spare 0; supply reaches 17 steps from the objective, the army 2147483647; short a supply unit
+   landing reserved: Fighter lands on (2,-9) in 1 turn (this one)
+   coordination pass 1: 11 units in contact
+     Battleship(5,-10) favourite (5,-7) no shot world 83986 | survive (5,-7) no shot world 83986; retreat (0,-10) no shot world 75585
+     Battleship(6,-10) favourite (5,-7) no shot world 83986 | survive (5,-7) no shot world 83986; retreat (1,-10) no shot world 75482
+     Destroyer(6,-8) favourite (10,-8) no shot world 78258 | survive (10,-10) no shot world 78713; retreat (2,-10) no shot world 75739
+     Destroyer(6,-7) favourite (10,-8) no shot world 78389 | survive (10,-10) no shot world 78844; retreat (4,-10) no shot world 75862
+     Bomber(8,-10) favourite (7,-10) no shot world 85325 | survive (7,-10) no shot world 85325; retreat (0,-10) no shot world 74873
+     Gunship(8,-9) favourite (5,-7) no shot world 75991 | survive (5,-7) no shot world 75991; retreat none
+     Fighter(8,-8) favourite (3,-9) no shot world 80182 | survive (1,-9) no shot world 80317; retreat (2,-10) no shot world 73066
+     Fighter(9,-10) favourite (7,-9) no shot world 83400 | survive (7,-9) no shot world 83400; retreat (0,-10) no shot world 73595
+     Gunboat(9,-9) favourite (5,-7) no shot world 85503 | survive (5,-7) no shot world 85503; retreat none
+     Gunboat(9,-8) favourite (5,-7) no shot world 85453 | survive (5,-7) no shot world 85453; retreat none
+     Battleship(9,-7) favourite (5,-7) no shot world 85195 | survive (5,-7) no shot world 85195; retreat none
+   coordination pass 2: 0 targets, 0 groups of attackers tried, 0 plans forecast, 0 single steps forecast
+   coordination: no battle plan
+   turn order by steps: 1 [] 2 [] 3 [Destroyer, Destroyer, Fighter, Battleship, Battleship, Gunship, Gunboat, Gunboat, Battleship, Bomber] 4 [Carrier] 5 [] empty [] 6 [Bomber] 7 [Fighter]
+   Kaisen Kaijin (this AI) reads the board: supply tiles: static 4, mobile 0, potential 0; enemy supplied 16; enemy strike in 1/2/3 turns: 326/5/0 tiles (6.9 ms)
+   turns to contact: Ca(2,-9)=1 Bo(2,-9)=1 Ba(5,-10)=1 Ba(6,-10)=1 De(6,-8)=1 De(6,-7)=1 Bo(8,-10)=1 Gu(8,-9)=1 Fi(8,-8)=1 Fi(9,-10)=1 Gu(9,-9)=1 Gu(9,-8)=1 Ba(9,-7)=1
+   objective Mass(0,1) no value 101925 need 313625 have 117000 units 6 Battleship(5,-10) Battleship(6,-10) Battleship(9,-7) Bomber(8,-10) Gunboat(9,-9) Gunship(8,-9)
+   objective Mass(9,-1) GO value 28350 need 68250 have 69000 units 5 Fighter(8,-8) Fighter(9,-10) Gunboat(9,-8) Destroyer(6,-8) Destroyer(6,-7)
+   objective pulls: 2; turn order: Destroyer, Destroyer, Fighter, Battleship, Battleship, Gunship, Gunboat, Gunboat, Battleship, Bomber, Carrier, Bomber, Fighter
+   Kaisen Kaijin Destroyer moved (6,-8) -> (7,-8)
+   Kaisen Kaijin Destroyer (6,-8)->(7,-8): Move — carrier: sails toward Gunship (8,-9) to take it aboard
+   Kaisen Kaijin Destroyer(6,-7): would wait (carrier: stays near Gunship (8,-9)): decides again after the rest
+   Fighter(9,-10) decides again: Destroyer near it changed ((6,-8) -> (7,-8))
+Kaisen Kaijin Fighter(Clone)(9,-10) s6 [AA, world] 59 options | best world 83285, within 625: 1
+      > (7,-9) no shot world 83285 deaths -6667 space -1180 (406/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +8269 fog(0.41 str) -1014 | deny 0 pos 4905
+      x (-1,-7) no shot world 80889 deaths -6667 space -300 (494/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +8468 fog(0.82 str) -2040 starve -2500
+      x (6,-9) no shot world 80836 deaths -6667 space -1050 (419/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +8292 fog(0.45 str) -1116 starve -2500
+      x (-1,-9) no shot world 80740 deaths -6667 space -600 (464/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +7621 fog(0.4 str) -991 starve -2500
+      x (0,-9) no shot world 80610 deaths -6667 space -600 (464/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +7628 fog(0.45 str) -1129 starve -2500
+   Kaisen Kaijin Fighter moved (9,-10) -> (7,-9)
+   Kaisen Kaijin Fighter (9,-10)->(7,-9): Move — AA: world 83285 move
+   Battleship(5,-10) decides again: Destroyer near it changed ((6,-8) -> (7,-8))
+Kaisen Kaijin Battleship(Clone)(5,-10) s6 [line, world] 39 options | best world 75965, within 1042: 14
+      > (-1,-7) no shot world 75965 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +12533/-2549 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +23 fog(0.52 str) -2151 | deny 2292 pos 4534
+        (0,-10) no shot world 75633 deaths -6667 space -1010 (423/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.14 str) -567 | deny -417 pos 1242
+        (1,-10) no shot world 75527 deaths -6667 space -1040 (420/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.15 str) -643 | deny -417 pos 1518
+        (2,-10) no shot world 75507 deaths -6667 space -1060 (418/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +10750/-2368 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.15 str) -643 | deny -417 pos 1679
+        (0,-7) no shot world 75432 deaths -6667 space -870 (437/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +12533/-2882 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +8 fog(0.54 str) -2235 | deny 0 pos 2096
+   Kaisen Kaijin Battleship moved (5,-10) -> (-1,-7)
+   Kaisen Kaijin Battleship (5,-10)->(-1,-7): Move — line: world 75965 move
+   Battleship(6,-10) decides again: Battleship near it changed ((5,-10) -> (-1,-7))
+Kaisen Kaijin Battleship(Clone)(6,-10) s6 [line, world] 38 options | best world 77808, within 1042: 13
+        (10,-10) no shot world 77808 deaths -6667 space -750 (447/612 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +12533/-2549 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.06 str) -255 | deny 0 pos 2254
+        (6,-10) no shot world 77581 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +12533/-2549 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.12 str) -512 | deny 0 pos 4229
+        (5,-10) no shot world 77489 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +12533/-2549 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.14 str) -604 | deny 0 pos 3693
+        (4,-10) no shot world 77450 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +12533/-2549 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.15 str) -643 | deny 0 pos 3202
+        (1,-10) no shot world 77450 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +12533/-2549 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.15 str) -643 | deny -417 pos 1563
+      > (3,-7) world 76963 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 23/0 strike +14317/-3229 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.55 str) -2283 | pos 4351
+   Kaisen Kaijin Battleship moved (6,-10) -> (3,-7)
+   Kaisen Kaijin Battleship (6,-10)->(3,-7): Move — line: world 76963 move
+   Gunship(8,-9) decides again: Battleship near it changed ((5,-10) -> (-1,-7))
+Kaisen Kaijin Gunship(Clone)(8,-9) s6 [line, world] 18 options | best world 78608, within 375: 1
+      > (7,-10) no shot world 78608 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 22/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +450 fog(0.22 str) -334 | deny 75 pos 2267
+      x (9,-10) no shot world 77974 deaths -6667 space -760 (447/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 22/0 strike +14317/-3229 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +450 fog(0.14 str) -207 starve -1500
+      x (10,-10) no shot world 77956 deaths -6667 space -750 (447/612 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +14317/-3229 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +450 fog(0.14 str) -210 starve -1500
+      x (10,-9) no shot world 77408 deaths -6667 space -740 (447/611 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +14317/-3229 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +450 fog(0.48 str) -718 starve -1500
+      x (8,-9) no shot world 77363 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 23/0 strike +14317/-3229 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +450 fog(0.56 str) -833 starve -1500
+   Kaisen Kaijin Gunship moved (8,-9) -> (7,-10)
+   Kaisen Kaijin Gunship (8,-9)->(7,-10): Move — line: world 78608 move
+   Gunboat(9,-9) decides again: Battleship near it changed ((5,-10) -> (-1,-7))
+Kaisen Kaijin Gunboat(Clone)(9,-9) s6 [line, world] 36 options | best world 79086, within 542: 1
+      > (10,-10) no shot world 79086 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 27/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.08 str) -170 | deny -108 pos 1806
+      x (9,-9) no shot world 78502 deaths -6667 space -770 (447/614 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 22/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.3 str) -639
+      x (8,-9) no shot world 78480 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 23/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.31 str) -677
+      x (10,-8) no shot world 78199 deaths -6667 space -730 (447/610 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 17/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.4 str) -857
+      x (8,-7) no shot world 77865 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 24/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.61 str) -1317
+   Kaisen Kaijin Gunboat moved (9,-9) -> (10,-10)
+   Kaisen Kaijin Gunboat (9,-9)->(10,-10): Move — line: world 79086 move
+   Gunboat(9,-8) decides again: Battleship near it changed ((5,-10) -> (-1,-7))
+Kaisen Kaijin Gunboat(Clone)(9,-8) s6 [line, world] 42 options | best world 78505, within 542: 4
+        (8,-9) no shot world 78505 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 24/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.31 str) -677 | deny -542 pos 1852
+        (9,-9) no shot world 78487 deaths -6667 space -760 (447/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 21/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.3 str) -639 | deny 108 pos 1833
+      > (10,-8) no shot world 78399 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 27/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.4 str) -857 | deny -542 pos 3945
+        (9,-8) no shot world 78290 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 27/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.45 str) -967 | deny 0 pos 1863
+      x (8,-7) no shot world 77940 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 27/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: sight +650 fog(0.61 str) -1317
+   Kaisen Kaijin Gunboat moved (9,-8) -> (10,-8)
+   Kaisen Kaijin Gunboat (9,-8)->(10,-8): Move — line: world 78399 move
+   Battleship(9,-7) decides again: Battleship near it changed ((5,-10) -> (-1,-7))
+Kaisen Kaijin Battleship(Clone)(9,-7) s6 [line, world] 46 options | best world 78332, within 1042: 9
+        (6,-10) no shot world 78332 deaths -6667 space -790 (447/616 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 23/0 strike +14317/-3611 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.12 str) -512 | deny -208 pos 3104
+        (7,-7) no shot world 78202 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 23/0 strike +16100/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.5 str) -2088 | deny 417 pos 2985
+      > (9,-9) no shot world 77818 deaths -6667 space -760 (447/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +14317/-3611 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.23 str) -956 | deny 1042 pos 2979
+        (8,-9) no shot world 77469 deaths -6667 space -780 (447/615 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 22/0 strike +14317/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.24 str) -1013 | deny -208 pos 3015
+        (6,-8) no shot world 77438 deaths -6667 space -790 (447/616 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 24/0 strike +14933/-3958 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill] | after forecast: fog(0.41 str) -1700 | deny 417 pos 3186
+   Kaisen Kaijin Battleship moved (9,-7) -> (9,-9)
+   Kaisen Kaijin Battleship (9,-7)->(9,-9): Move — line: world 77818 move
+   Bomber(8,-10) decides again: Battleship near it changed ((5,-10) -> (-1,-7))
+Kaisen Kaijin Bomber(Clone)(8,-10) s6 [line, world] 86 options | best world 87068, within 833: 4
+        (0,-9) no shot world 87068 deaths -5833 space -760 (447/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +12733/-4583 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10055 fog(0.51 str) -1705 starve -3333 | deny 333 pos -7623
+        (1,-9) no shot world 86932 deaths -5833 space -780 (445/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +12733/-4583 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10047 fog(0.54 str) -1813 starve -3333 | deny 333 pos -7542
+      > (3,-9) no shot world 86816 deaths -5833 space -780 (445/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +12733/-4583 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10021 fog(0.57 str) -1903 starve -3333 | deny 667 pos -7352
+        (0,-8) no shot world 86266 deaths -5833 space -700 (453/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +12733/-4583 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10085 fog(0.78 str) -2598 starve -3333 | deny 333 pos -7533
+      x (1,-8) no shot world 86108 deaths -5833 space -730 (450/613 unsupplied 9) buildings +14520 (HQ clear +13980 NavalYard clear +180 NavalYard clear +180 Int. Ops clear +180) mutual 19/0 strike +12733/-4583 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10074 fog(0.81 str) -2715 starve -3333
+   Kaisen Kaijin Bomber moved (8,-10) -> (3,-9)
+   Kaisen Kaijin Bomber (8,-10)->(3,-9): Move — line: world 86816 move
+   Kaisen Kaijin Destroyer moved (6,-7) -> (6,-10)
+   Kaisen Kaijin Destroyer (6,-7)->(6,-10): Move — carrier: sails toward Gunship (7,-10) to take it aboard
+   Carrier(2,-9): its move is not its assault ride (carrier: holds for Fighter, landing on it in 1 turn): its riders decide for themselves
+   Kaisen Kaijin Carrier(2,-9): would wait (carrier: holds for Fighter, landing on it in 1 turn): decides again after the rest
+   Carrier(2,-9): its move is not its assault ride (carrier: holds for Fighter, landing on it in 1 turn): its riders decide for themselves
+   Kaisen Kaijin Carrier (2,-9): Wait (not executed) — carrier: holds for Fighter, landing on it in 1 turn
+   Kaisen Kaijin Bomber gets off Kaisen Kaijin Carrier (2,-9) onto (2,-10)
+   Kaisen Kaijin Bomber (2,-9)->(2,-10): Unload — its transport's move was not its assault ride: gets off at (2,-10) to decide for itself
+Kaisen Kaijin Bomber(Clone)(2,-10) s6 [line, world] 133 options | best world 87705, within 833: 6
+        (-1,-9) no shot world 87705 deaths -5833 space -630 (442/615 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 17/0 strike +12733/-694 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10046 fog(0.91 str) -3021 fightFirst -360 | deny 167 pos -1581
+        (0,-9) no shot world 87579 deaths -5833 space -630 (442/615 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 17/0 strike +12733/-694 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10040 fog(0.94 str) -3142 fightFirst -360 | deny 0 pos -1459
+        (1,-9) no shot world 87518 deaths -5833 space -630 (442/615 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 17/0 strike +12733/-694 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10029 fog(0.96 str) -3191 fightFirst -360 | deny 0 pos -1085
+        (-2,-8) no shot world 87470 deaths -5833 space -630 (442/615 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 17/0 strike +12733/-694 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10079 fog(0.99 str) -3289 fightFirst -360 | deny 667 pos -688
+        (-1,-8) no shot world 87342 deaths -5833 space -630 (442/615 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 17/0 strike +12733/-694 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10081 fog(1.03 str) -3419 fightFirst -360 | deny 167 pos -487
+      > (-2,-7) world 87193 deaths -5833 space -630 (442/615 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 17/0 strike +12733/-694 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill] | after forecast: sight +10117 fog(1.08 str) -3605 fightFirst -360 | pos 447
+   Kaisen Kaijin Bomber moved (2,-10) -> (-2,-7)
+   Kaisen Kaijin Bomber (2,-10)->(-2,-7): Move — line: world 87193 move
+   Fighter(8,-8) decides again: Bomber near it changed ((2,-9) -> (-2,-7))
+Kaisen Kaijin Fighter(Clone)(8,-8) s6 [AA, world] 5 options | best world 76610, within 625: 3
+        (3,-10) no shot world 76610 deaths -5833 space -1240 (385/619 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 21/0 heals +2083/-0 strike +12100/-1042 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +750 fog(0.48 str) -1190 starve -2500 | deny -750 pos -2325
+        (2,-10) no shot world 76610 deaths -5833 space -1240 (385/619 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 21/0 heals +2083/-0 strike +12100/-1042 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +750 fog(0.48 str) -1190 starve -2500 | deny -625 pos -2650
+      > (1,-9) no shot world 76065 deaths -5833 space -1070 (402/619 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 21/0 heals +2083/-0 strike +12100/-1042 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +756 fog(0.76 str) -1911 starve -2500 | deny -625 pos -625
+      x (2,-8) no shot world 75322 deaths -5833 space -750 (434/619 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 21/0 heals +2083/-0 strike +12100/-1042 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +23 fog(0.9 str) -2241 starve -2500
+      x (1,-8) no shot world 75283 deaths -5833 space -800 (429/619 unsupplied 11) buildings +14540 (HQ clear +14180 NavalYard clear +180 NavalYard clear +180) mutual 21/0 heals +2083/-0 strike +12100/-1042 [Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +23 fog(0.89 str) -2230 starve -2500
+   Kaisen Kaijin Fighter (8,-8) boards Kaisen Kaijin Carrier (2,-9)
+   Kaisen Kaijin Fighter (8,-8)->(2,-9): Load — lands on Carrier (2,-9) to refuel (fuel 16)
+   riders waiting for a transport: 0, room in empty troop transports 0
+   cargo: 0 land units waiting (weight 0), 0 empty transports, grace 0 (room bought last turn)
+   Kaisen Kaijin procurement: income 2000 (enemy 2000, map 4000), 0 facilities (0 under fire), 0 serving fronts, wait for savings 6-6 turns
+   Kaisen Kaijin buys against 19 enemy units (11 in sight): 0 of 0 building slots, 0 of 6000 gold; supply units 0 (at most 2147483647)
+
+== round 4: Task Force Alpha to move
+  -10           ~ ~ ~ . ~ ~ U U ~ . U
+   -9          ~ ~ ~ U U . . ~ U ~ U .
+   -8         ~ ~ ~ ~ ~ . . . ~ U . ~ U
+   -7        ~ U U ~ . ~ U ~ ~ ~ ~ ~ . .
+   -6       ~ ~ ~ . . ~ . . ~ . ~ ~ ~ . .
+   -5      ~ . ~ ~ ~ ~ ~ . . ~ . ~ . ~ ~ .
+   -4     ~ . . . . g g . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . u . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ ~ ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ u . . . ~ ~ ~ . ~ . ~ u .
+    0 ~ . . . . . ~ ~ ~ ~ ~ ~ u ~ . u . u . . ~
+    1  ~ . . . . . u ~ ~ ~ u ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ u ~ . u . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . . ~ ~ . . . . . .
+    4     ~ ~ ~ g . u . . . . ~ ~ ~ ~ . . .
+    5      ~ . . . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(2,0)s6u13f60 TGu(-1,-3)s6u12f57 THa(0,1)s6u13f62 TGu(5,0)s6f30 TBa(7,0)s6u12f46 TDe(-4,1)s6u12f58 TCa(1,2)s6u12f59 TCa(4,2)s6u12f60 TSt(-5,4)s6a5u1f16 TSt(4,2)s6f36 TSt(9,-1)s6a5u1f23 TDe(5,0)s6u12f53 TGr(2,0)s6 TGr(2,0)s6 TGr(-1,-4)s6u2 TGr(0,-4)s6u2 TGr(0,1)s6 TGr(0,1)s6 TGr(0,1)s6 TGr(-7,4)s5u0 TGr(0,1)s6 KBa(-1,-7)s6u12f52 KBa(3,-7)s6u12f54 KBa(9,-9)s6u12f52 KDe(7,-8)s6f70 KDe(6,-10)s6u12f61 KFi(7,-9)s6u0f15 KFi(2,-9)s6u0f8 KCa(2,-9)s6u12f70 KGu(7,-10)s6u0f8 KGu(10,-10)s6u12f64 KGu(10,-8)s6u12f64 KBo(3,-9)s6u0f43 KBo(-2,-7)s6f60 TAt(1,2)s6f64 TAt(4,2)s6f64 TSt(-2,-1)s6u1f26
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 3/3; NavalYard(-8,7) Task Force Alpha 0/10 store 3/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 3/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) neutral/Task Force Alpha 6/10;
+   state Task Force Alpha: worth 279083, units 24, cities 0, buildings 3, income 2000, gold 6000, front 0.548
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 225000, units 13, cities 0, buildings 2, income 2000, gold 6000, front 0.925
+   Kaisen Kaijin fields: 3 Battleship, 2 Bomber, 1 Carrier, 2 Destroyer, 2 Fighter, 2 Gunboat, 1 Gunship
+   (board saved as turn-006-TaskForceAlpha.dat)
+   Task Force Alpha Grunt Coalition Variant moved (-7,4) -> (-8,5)
+   Task Force Alpha Stealth Fighter moved (9,-1) -> (4,-3)
+   Task Force Alpha Stealth Fighter gets off Task Force Alpha Carrier (4,2) onto (4,1)
+   Kaisen Kaijin Fighter (7,-9) dies: combat
+   Task Force Alpha Stealth Fighter moved (4,1) -> (7,-6)
+   Task Force Alpha Stealth Fighter (7,-6) attacks Kaisen Kaijin Fighter (7,-9): deals 6, takes 0, Fighter destroyed -> 6 v 0
+   Task Force Alpha Carrier moved (1,2) -> (-3,0)
+   Task Force Alpha Grunt Coalition Variant moved (-1,-4) -> (-3,-4)
+   Task Force Alpha Destroyer moved (-4,1) -> (-4,-5)
+   Task Force Alpha Destroyer (-4,-5) attacks Kaisen Kaijin Bomber (-2,-7): deals 5, takes 0, retreats to (-1,-8) -> 6 v 1
+   Task Force Alpha Gunboat moved (-1,-3) -> (-2,-6)
+   Kaisen Kaijin Bomber (-1,-8) dies: combat
+   Task Force Alpha Stealth Fighter moved (-2,-1) -> (0,-6)
+   Task Force Alpha Stealth Fighter (0,-6) attacks Kaisen Kaijin Bomber (-1,-8): deals 1, takes 0, Bomber destroyed -> 6 v 0
+   Task Force Alpha Attacker gets off Task Force Alpha Carrier (-3,0) onto (-3,-1)
+   Task Force Alpha Attacker moved (-3,-1) -> (-3,-7)
+   Task Force Alpha Attacker (-3,-7) attacks Kaisen Kaijin Battleship (-1,-7): deals 4, takes 0, retreats to (0,-7) -> 6 v 2
+   Task Force Alpha Destroyer moved (5,0) -> (2,-3)
+   Task Force Alpha Gunship gets off Task Force Alpha Destroyer (2,-3) onto (1,-3)
+   Task Force Alpha Carrier moved (4,2) -> (2,-2)
+   Task Force Alpha Gunship moved (1,-3) -> (-2,-5)
+   Task Force Alpha Gunship (-2,-5) attacks Kaisen Kaijin Battleship (0,-7): deals 1, takes 0, retreats to (1,-8) -> 6 v 1
+   Task Force Alpha Attacker gets off Task Force Alpha Carrier (2,-2) onto (1,-2)
+   Task Force Alpha Attacker moved (1,-2) -> (1,-5)
+   Task Force Alpha Attacker (1,-5) attacks Kaisen Kaijin Battleship (3,-7): deals 4, takes 0, retreats to (4,-8) -> 6 v 2
+   Task Force Alpha Battleship moved (7,0) -> (3,-2)
+   Task Force Alpha Gunboat moved (2,0) -> (5,-4)
+   Task Force Alpha Hauler moved (0,1) -> (0,-3)
+   Task Force Alpha Stealth Fighter (-5,4) boards Task Force Alpha Carrier (2,-2)
+   Task Force Alpha captures Int. Ops (0,-4): 6 -> 0 of 10, now Task Force Alpha's
+   Int. Ops (0,-4) changes hands: neutral -> Task Force Alpha
+
+== round 5: Kaisen Kaijin to move
+  -10           ~ ~ ~ . ~ ~ U U ~ . U
+   -9          ~ ~ ~ U U . . ~ H ~ U .
+   -8         ~ ~ ~ U ~ . U . ~ U . ~ U
+   -7        u . ~ ~ . ~ ~ ~ ~ ~ ~ ~ . .
+   -6       ~ ~ u . u ~ . . ~ . ~ u ~ . .
+   -5      ~ u ~ u ~ ~ u . . ~ . ~ . ~ ~ .
+   -4     ~ . . g . . g . ~ ~ ~ u . . . ~ ~
+   -3    . . . ~ . . . u ~ u ~ u ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ u u ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ ~ . . . ~ ~ ~ . ~ . ~ . .
+    0 ~ . . . . . ~ u ~ ~ ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . . . . . ~ ~ ~ ~ ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . . ~ ~ . . . . . .
+    4     ~ ~ ~ . . ~ . . . . ~ ~ ~ ~ . . .
+    5      ~ . g . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(5,-4)s6u13f56 TGu(-2,-6)s6u12f51 THa(0,-3)s6u13f56 TGu(-2,-5)s6a5f20 TBa(3,-2)s6u12f40 TDe(-4,-5)s6a5u12f52 TCa(-3,0)s6u12f53 TCa(2,-2)s6u12f54 TSt(2,-2)s6a5u1f10 TSt(7,-6)s6a5f29 TSt(4,-3)s6a5u1f16 TDe(2,-3)s6u12f47 TGr(5,-4)s6 TGr(5,-4)s6 TGr(-3,-4)s6u2 TGr(0,-4)s6u2 TGr(0,-3)s6 TGr(0,-3)s6 TGr(0,-3)s6 TGr(-8,5)s5u0 TGr(0,-3)s6 KBa(1,-8)s2u11f52 KBa(4,-8)s3u11f54 KBa(9,-9)s6u11f52 KDe(7,-8)s6f70 KDe(6,-10)s6u11f61 KFi(2,-9)s6f36 KCa(2,-9)s6u11f70 KGu(7,-10)s6f30 KGu(10,-10)s6u11f64 KGu(10,-8)s6u11f64 KBo(3,-9)s5u0f40 TAt(-3,-7)s6a3f58 TAt(1,-5)s6a3f61 TSt(0,-6)s6a5u1f21
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 3/3; NavalYard(-8,7) Task Force Alpha 0/10 store 3/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 3/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) Task Force Alpha 0/10;
+   state Task Force Alpha: worth 279083, units 24, cities 0, buildings 4, income 2000, gold 6000, front 0.643
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 4 Stealth Fighter
+   state Kaisen Kaijin: worth 157500, units 11, cities 0, buildings 2, income 2000, gold 8000, front 0.955
+   Kaisen Kaijin fields: 3 Battleship, 1 Bomber, 1 Carrier, 2 Destroyer, 1 Fighter, 2 Gunboat, 1 Gunship
+   (board saved as turn-007-KaisenKaijin.dat)
+   fog: Destroyer last seen (0,2) str 6, 2 moves ago: at most 0.79 of its places reach a tile, 215 tiles to hide on, fires on 331, 10 of ours exposed
+   fog: Grunt Coalition Variant last seen (-7,4) str 6, 2 moves ago: at most 1.00 of its places reach a tile, 20 tiles to hide on, fires on 100, 0 of ours exposed
+   fog: unknown ground: 244 tiles (154 lately seen but near the enemy), 6 kinds, reach 8
+   fog: unplaced enemy: 6.1 units (75000 power) over 18 anchors (13 seen, 4 remembered, 1 HQ, 0 production)
+   knowledge: enemy could have 279500 (start 279500 + built 0 - destroyed 0), we know of 204500; their buildings seen 50%; confidence 0.73; ours 190000 = ratio 0.68; aggression 0.00; reserve released; unknown ground feared at 0.27
+   objective Scout(1,0) away 1 value 89 priority 44.58 enemy 191450 need 0 have 15000, 1 units, 0/0 supply turn 1 [staged 0, en route 0, engaged 1] formed against 191450: Fighter(2,-9)s6
+   objective Scout(8,-2) away 1 value 71 priority 35.55 enemy 186450 need 0 have 9000, 1 units, 0/0 supply turn 1 [staged 0, en route 0, engaged 1] formed against 186450: Gunship(7,-10)s6
+   objective Clear(1,-5) away 2 value 136350 priority 0.13 enemy 191450 need 114500 have 114500, 8 units, 0/16 supply turn 2 [staged 0, en route 0, engaged 8] formed against 104330: Destroyer(6,-10)s6 Destroyer(7,-8)s6 Bomber(3,-9)s5 Battleship(4,-8)s3 Battleship(1,-8)s2 Gunboat(10,-10)s6 Gunboat(10,-8)s6 Battleship(9,-9)s6
+   front Front(1,0) Defensive ratio 0.08 priority 45 objective (1,0) value 89, 1 units
+   front Front(8,-2) Defensive ratio 0.05 priority 36 objective (8,-2) value 71, 1 units
+   front Front(1,-5) Defensive ratio 0.60 priority 0 objective (1,-5) value 136350, 8 units
+   front Front(7,-9) Defensive ratio 0.89 priority 1813 objective (0,-4) value 26542, 1 units
+   logistics: Clear@0,1 (8 units, to (1,-8)): chain 0, its own 0, chain short, nothing spare, across water (no supply there) (no yard); free trucks 0; supply units with a duty 0 of 0
+   reserve (mobile): central 0, active 1 (of 1 on no task force)
+   scout Fighter (2,-9) -> (1,0) sees 89.2
+   scout Gunship (7,-10) -> (8,-2) sees 71.1
+   transports for supply: none
+   chain toward (-10,8): ; spare 0; supply reaches 17 steps from the objective, the army 2147483647; short a supply unit
+   landing reserved: Bomber lands on (2,-9) in 1 turn (this one)
+   coordination pass 1: 8 units in contact
+     Battleship(1,-8) favourite (-1,-5) hit Gunboat(-2,-6) 1/0 (counts on assist) world -78011 | attack1 (-1,-5) hit Gunboat(-2,-6) 1/0 (counts on assist) world -78011; attack2 (0,-10) hit Gunboat(-2,-6) 1/0 (counts on assist) world -77698; attack3 (1,-10) hit Gunboat(-2,-6) 1/0 (counts on assist) world -77714; survive (-2,-8) no shot world -79212; retreat none
+     Bomber(3,-9) favourite (1,-9) hit Gunboat(-2,-6) 3/0 (counts on assist) world -88092 | attack1 (1,-9) hit Gunboat(-2,-6) 3/0 (counts on assist) world -88092; survive (2,-10) no shot world -96297; retreat none
+     Destroyer(6,-10) favourite (8,-7) hit Stealth Fighter(7,-6) 5/0 (counts on assist) world -60113 | attack1 (8,-7) hit Stealth Fighter(7,-6) 5/0 (counts on assist) world -60113; attack2 (0,-8) hit Stealth Fighter(0,-6) 5/0 (counts on assist) world -63260; attack3 (0,-7) hit Stealth Fighter(0,-6) 5/0 (counts on assist) world -63295; survive (3,-4) no shot world -90663; retreat none
+     Gunship(7,-10) favourite (1,-7) hit Attacker(1,-5) 1/0 (counts on assist) world -61176 | attack1 (1,-7) hit Attacker(1,-5) 1/0 (counts on assist) world -61176; attack2 (2,-8) hit Stealth Fighter(0,-6) 1/0 (counts on assist) world -65966; attack3 (2,-4) hit Attacker(1,-5) 1/0 (counts on assist) world -68962; survive (1,-7) no shot world -86796; retreat none
+     Destroyer(7,-8) favourite (2,-4) hit Attacker(1,-5) 5/0 (counts on assist) world -64325 | attack1 (2,-4) hit Attacker(1,-5) 5/0 (counts on assist) world -64325; attack2 (3,-7) hit Attacker(1,-5) 5/0 (counts on assist) world -65430; attack3 (2,-7) hit Attacker(1,-5) 5/0 (counts on assist) world -65432; survive (9,-4) no shot world -91033; retreat none
+     Battleship(9,-9) favourite (7,-7) hit Gunboat(5,-4) 2/0 (counts on assist) world -74636 | attack1 (7,-7) hit Gunboat(5,-4) 2/0 (counts on assist) world -74636; attack2 (6,-6) hit Gunboat(5,-4) 2/0 (counts on assist) world -74727; attack3 (9,-7) hit Gunboat(5,-4) 2/0 (counts on assist) world -77983; survive (4,-7) no shot world -85445; retreat none
+     Gunboat(10,-10) favourite (6,-6) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -66110 | attack1 (6,-6) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -66110; attack2 (7,-7) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -71043; attack3 (8,-6) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -75167; survive (9,-4) no shot world -91388; retreat none
+     Gunboat(10,-8) favourite (6,-6) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -66235 | attack1 (6,-6) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -66235; attack2 (7,-7) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -71168; attack3 (8,-6) hit Stealth Fighter(7,-6) 1/0 (counts on assist) world -75242; survive (8,-2) no shot world -91026; retreat none
+   coordination pass 2: 5 targets, 7 groups of attackers tried, 4 plans forecast, 7 single steps forecast
+     > battle on Attacker(1,-5) (kill): together +52000, synergy +13917, sacrifice 0 = +13917 | Gunship->(1,-7) hits Attacker(1,-5); Destroyer->(1,-6) hits Attacker(1,-5)
+     > battle on Stealth Fighter(7,-6) (kill): together +33583, synergy +3500, sacrifice 0 = +3500 | Destroyer->(8,-7) hits Stealth Fighter(7,-6); Gunboat->(6,-6) hits Stealth Fighter(7,-6)
+       battle on Stealth Fighter(7,-6) (kill): together +33583, synergy +3500, sacrifice 0 = +3500 | Destroyer->(8,-7) hits Stealth Fighter(7,-6); Gunboat->(6,-6) hits Stealth Fighter(7,-6)
+       battle on Stealth Fighter(0,-6) (kill): together +37417, synergy -3250, sacrifice 7937 = -11187 | Destroyer->(0,-8) hits Stealth Fighter(0,-6); Gunship->(1,-7) hits Stealth Fighter(0,-6)
+   coordination: 4 units in battle plans, acting first; deciding again without assist credit: Battleship(1,-8), Bomber(3,-9), Battleship(9,-9), Gunboat(10,-8)
+   turn order by steps: 1 [] 2 [] 3 [Gunship, Destroyer, Destroyer, Gunboat, Battleship, Battleship, Gunboat, Battleship] 4 [Carrier] 5 [] empty [] 6 [Fighter] 7 [Bomber]
+   Kaisen Kaijin (this AI) reads the board: supply tiles: static 4, mobile 0, potential 0; enemy supplied 16; enemy strike in 1/2/3 turns: 313/18/0 tiles (12.6 ms)
+   turns to contact: Ba(1,-8)=0 Ca(2,-9)=0 Fi(2,-9)=0 Bo(3,-9)=0 Ba(4,-8)=0 De(6,-10)=1 Gu(7,-10)=1 De(7,-8)=0 Ba(9,-9)=0 Gu(10,-10)=1 Gu(10,-8)=0
+   objective Mass(0,-6) no value 136350 need 507000 have 115167 units 8
+   objective Mass(7,-6) no value 52650 need 357500 have 0 units 0
+   objective Mass(9,-1) no value 28350 need 178750 have 0 units 0
+   objective pulls: 2; turn order: Gunship, Destroyer, Destroyer, Gunboat, Battleship, Battleship, Gunboat, Battleship, Carrier, Fighter, Bomber
+   Kaisen Kaijin Gunship moved (7,-10) -> (1,-7)
+   Kaisen Kaijin Gunship (1,-7) attacks Task Force Alpha Attacker (1,-5): deals 1, takes 0, retreats to (1,-4) -> 6 v 5
+   Kaisen Kaijin Gunship (7,-10)->(1,-7): MoveAndAttack — group battle: Gunship->(1,-7) hits Attacker(1,-5)
+   Kaisen Kaijin Destroyer moved (7,-8) -> (1,-6)
+   Kaisen Kaijin Destroyer (7,-8)->(1,-6): Move — carrier: sails toward Gunship (1,-7) to take it aboard
+   Kaisen Kaijin Destroyer moved (6,-10) -> (0,-7)
+   Kaisen Kaijin Destroyer (6,-10)->(0,-7): Move — carrier: sails toward Gunship (1,-7) to take it aboard
+   battle plan on Stealth Fighter can no longer kill; 2 units decide alone
+   Gunboat(10,-10) decides again: Destroyer near it changed ((6,-10) -> (0,-7))
+Kaisen Kaijin Gunboat(Clone)(10,-10) s6 [line, world] 32 options | best world -109797, within 542: 1
+      > (4,-7) no shot world -109797 deaths -15750 space -1240 (289/583 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 29/1 heals +5833/-1083 strike +6050/-15396 [Attacker(Clone)->Carrier(Clone) 4 certain; Attacker(Clone)->Battleship(Clone) 3 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Battleship(Clone) 2 pinned certain kill; Destroyer(Clone)->Gunboat(Clone) 1/1; Gunboat(Clone)->Carrier(Clone) 2 kill; Gunship(Clone)->Gunboat(Clone) 2 certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +5 fog(0.32 str) -686 fightFirst -360 | deny 433 pos 1937
+      x (8,-6) hit Stealth Fighter(Clone)(7,-6) 1/0 world -111010 deaths -16083 space -1240 (288/582 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 29/1 heals +2083/-0 strike +6000/-15417 [Stealth Fighter(Clone) driven back to (6,-6); Attacker(Clone)->Carrier(Clone) 4 certain; Attacker(Clone)->Battleship(Clone) 3 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Battleship(Clone) 2 pinned certain kill; Destroyer(Clone)->Carrier(Clone) 2 certain kill; Gunboat(Clone)->Fighter(Clone) 1 kill; Gunship(Clone)->Gunship(Clone) 3 pinned certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +14 fog(0.28 str) -614
+      x (8,-7) hit Stealth Fighter(Clone)(7,-6) 1/0 world -111104 deaths -16083 space -1340 (284/588 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 29/1 heals +2083/-0 strike +6000/-15417 [Stealth Fighter(Clone) driven back to (6,-5); Attacker(Clone)->Carrier(Clone) 4 certain; Attacker(Clone)->Battleship(Clone) 3 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Battleship(Clone) 2 pinned certain kill; Destroyer(Clone)->Carrier(Clone) 2 certain kill; Gunboat(Clone)->Fighter(Clone) 1 kill; Gunship(Clone)->Gunship(Clone) 3 pinned certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.27 str) -594
+      x (5,-9) no shot world -111147 deaths -15750 space -1280 (284/582 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 29/1 heals +5833/-0 strike +6050/-15771 [Attacker(Clone)->Carrier(Clone) 4 certain; Attacker(Clone)->Battleship(Clone) 3 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Battleship(Clone) 2 pinned certain kill; Destroyer(Clone)->Gunboat(Clone) 1 certain; Gunboat(Clone)->Carrier(Clone) 2 kill; Gunship(Clone)->Gunboat(Clone) 2 certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.25 str) -533 fightFirst -360
+      x (4,-6) no shot world -111187 deaths -15750 space -1150 (298/583 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 29/1 heals +8000/-0 strike +6050/-15771 [Attacker(Clone)->Carrier(Clone) 4 certain; Attacker(Clone)->Battleship(Clone) 3 certain kill; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Battleship(Clone) 2 pinned certain kill; Destroyer(Clone)->Gunboat(Clone) 2 pinned certain; Gunboat(Clone)->Carrier(Clone) 2 kill; Gunship(Clone)->Gunboat(Clone) 2 certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +14 fog(0.33 str) -717 fightFirst -360
+   Kaisen Kaijin Gunboat moved (10,-10) -> (4,-7)
+   Kaisen Kaijin Gunboat (10,-10)->(4,-7): Move — line: world -109797 move
+   Battleship(4,-8) decides again: Destroyer near it changed ((6,-10) -> (0,-7))
+   Kaisen Kaijin Battleship moved (4,-8) -> (7,-8)
+   Kaisen Kaijin Battleship (4,-8)->(7,-8): Move — withdraw: move
+   Battleship(9,-9) decides again: deciding again without assist credit
+Kaisen Kaijin Battleship(Clone)(9,-9) s6 [line, world] 49 options | best world -104013, within 1042: 1
+      > (3,-8) hit Grunt Coalition Variant(Clone)(0,-4) 4/0 world -104013 deaths -11083 space -1180 (293/581 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 36/0 heals +2083/-0 strike +6067/-18924 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.24 str) -1006 | deny -1667 pos -19134
+      x (3,-8) no shot world -105575 deaths -11083 space -1180 (293/581 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 36/0 heals +2083/-0 strike +6067/-18819 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.24 str) -1006
+      x (4,-5) hit Hauler(Clone)(0,-3) 6/0 world -107523 deaths -11667 space -1300 (292/582 unsupplied 16) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 30/0 strike +5350/-15611 [Attacker(Clone)->Battleship(Clone) 4 certain; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1 certain; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1 kill] | after forecast: sight +10 fog(0.26 str) -1102
+      x (3,-7) hit Grunt Coalition Variant(Clone)(0,-4) 4/0 world -110289 deaths -11083 space -1080 (303/581 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 34/0 heals +4167/-0 strike +6067/-18924 [Attacker(Clone)->Battleship(Clone) 4 certain; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.26 str) -1082
+      x (5,-7) hit Destroyer(Clone)(2,-3) 2/0 world -111195 deaths -13167 space -1200 (292/582 unsupplied 17) buildings +14047 (HQ clear +13687 NavalYard clear +180 NavalYard clear +180) mutual 30/0 heals +2083/-2167 strike +6000/-15958 [Attacker(Clone)->Battleship(Clone) 4 certain; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 6 certain kill; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1 kill] | after forecast: fog(0.24 str) -1000
+   Kaisen Kaijin Battleship moved (9,-9) -> (3,-8)
+   Kaisen Kaijin Battleship (3,-8) attacks Task Force Alpha Grunt Coalition Variant (0,-4): deals 4, takes 0, suppressed 1 (1 of 2 will not fire back until its turn) -> 6 v 2
+   Kaisen Kaijin Battleship (9,-9)->(3,-8): MoveAndAttack — line: world -104013 move+strike
+   Gunboat(10,-8) decides again: deciding again without assist credit
+Kaisen Kaijin Gunboat(Clone)(10,-8) s6 [line, world] 38 options | best world -94516, within 542: 5
+      > (6,-5) hit Stealth Fighter(Clone)(7,-6) 1/0 world -94516 deaths -8583 space -1240 (288/582 unsupplied 17) buildings +13980 (HQ clear +13620 NavalYard clear +180 NavalYard clear +180) mutual 38/0 heals +2083/-0 strike +6867/-18986 [Stealth Fighter(Clone) driven back to (8,-7); Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +19 fog(0.32 str) -689 | deny 325 pos -1812
+        (7,-7) hit Stealth Fighter(Clone)(7,-6) 1/0 world -94539 deaths -8583 space -1260 (289/585 unsupplied 17) buildings +13980 (HQ clear +13620 NavalYard clear +180 NavalYard clear +180) mutual 36/0 heals +2083/-0 strike +6867/-18986 [Stealth Fighter(Clone) driven back to (7,-5); Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.29 str) -623 | deny 217 pos -2030
+        (6,-6) hit Stealth Fighter(Clone)(7,-6) 1/0 world -94545 deaths -8583 space -1260 (285/581 unsupplied 17) buildings +13980 (HQ clear +13620 NavalYard clear +180 NavalYard clear +180) mutual 38/0 heals +2083/-0 strike +6867/-18986 [Stealth Fighter(Clone) driven back to (8,-6); Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.31 str) -678 | deny 108 pos -1702
+        (8,-6) hit Stealth Fighter(Clone)(7,-6) 1/0 world -94593 deaths -8583 space -1140 (297/581 unsupplied 17) buildings +13980 (HQ clear +13620 NavalYard clear +180 NavalYard clear +180) mutual 38/0 heals +2083/-0 strike +6617/-18986 [Stealth Fighter(Clone) driven back to (6,-6); Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +14 fog(0.28 str) -611 | deny 108 pos -1915
+        (8,-7) hit Stealth Fighter(Clone)(7,-6) 1/0 world -94697 deaths -8583 space -1250 (292/587 unsupplied 17) buildings +13980 (HQ clear +13620 NavalYard clear +180 NavalYard clear +180) mutual 38/0 heals +2083/-0 strike +6617/-18986 [Stealth Fighter(Clone) driven back to (6,-5); Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Destroyer(Clone)->Battleship(Clone) 1; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.27 str) -591 | deny 217 pos -1888
+   Kaisen Kaijin Gunboat moved (10,-8) -> (6,-5)
+   Kaisen Kaijin Gunboat (6,-5) attacks Task Force Alpha Stealth Fighter (7,-6): deals 1, takes 0, retreats to (8,-7) -> 6 v 5
+   Kaisen Kaijin Gunboat (10,-8)->(6,-5): MoveAndAttack — line: world -94516 move+strike
+   Battleship(1,-8) decides again: deciding again without assist credit
+Kaisen Kaijin Battleship(Clone)(1,-8) s2 [line, world] 83 options | best world -91718, within 1042: 7
+        (-1,-9) hit Destroyer(Clone)(-4,-5) 1/0 world -91718 deaths -4917 space -1010 (289/580 unsupplied 19) buildings +14040 (HQ clear +13680 NavalYard clear +180 NavalYard clear +180) mutual 42/0 heals +11083/-3250 strike +6150/-17979 [Attacker(Clone)->Battleship(Clone) 4 certain; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 4 certain; Destroyer(Clone)->Gunboat(Clone) 1/1; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Gunboat(Clone)->Carrier(Clone) 3 kill; Gunship(Clone)->Destroyer(Clone) 2 pinned certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.13 str) -552 | deny -9375 pos -7541
+        (-2,-8) hit Destroyer(Clone)(-4,-5) 1/0 world -91809 deaths -4917 space -1010 (289/580 unsupplied 19) buildings +14040 (HQ clear +13680 NavalYard clear +180 NavalYard clear +180) mutual 42/0 heals +11083/-3250 strike +6150/-17979 [Attacker(Clone)->Battleship(Clone) 4 certain; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 4 certain; Destroyer(Clone)->Gunboat(Clone) 1/1; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Gunboat(Clone)->Carrier(Clone) 3 kill; Gunship(Clone)->Destroyer(Clone) 2 pinned certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.15 str) -643 | deny -9375 pos -7650
+        (-1,-5) hit Destroyer(Clone)(-4,-5) 1/0 world -91953 deaths -4917 space -1000 (289/579 unsupplied 19) buildings +14040 (HQ clear +13680 NavalYard clear +180 NavalYard clear +180) mutual 44/0 heals +11083/-3250 strike +6150/-17979 [Attacker(Clone)->Battleship(Clone) 4 certain; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 4 certain; Destroyer(Clone)->Gunboat(Clone) 1/1; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Gunboat(Clone)->Carrier(Clone) 3 kill; Gunship(Clone)->Destroyer(Clone) 2 pinned certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.2 str) -848 | deny -6458 pos -7264
+        (0,-5) hit Destroyer(Clone)(-4,-5) 1/0 world -92028 deaths -4917 space -1010 (289/580 unsupplied 19) buildings +14040 (HQ clear +13680 NavalYard clear +180 NavalYard clear +180) mutual 42/0 heals +11083/-3250 strike +6150/-17979 [Attacker(Clone)->Battleship(Clone) 4 certain; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 4 certain; Destroyer(Clone)->Gunboat(Clone) 1/1; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Gunboat(Clone)->Carrier(Clone) 3 kill; Gunship(Clone)->Destroyer(Clone) 2 pinned certain; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.21 str) -862 | deny -7292 pos -7215
+      > (1,-8) hit Destroyer(Clone)(-4,-5) 1/0 world -92073 deaths -7000 space -1030 (288/581 unsupplied 19) buildings +14040 (HQ clear +13680 NavalYard clear +180 NavalYard clear +180) mutual 34/0 heals +5750/-2167 strike +7050/-18917 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 4 certain; Destroyer(Clone)->Battleship(Clone) 1; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Gunboat(Clone)->Carrier(Clone) 3 kill; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: fog(0.18 str) -733 | deny 0 pos -6779
+   Kaisen Kaijin Battleship (1,-8) attacks Task Force Alpha Destroyer (-4,-5): deals 1, takes 0, suppressed 3 (3 of 5 will not fire back until its turn) -> 2 v 5
+   Kaisen Kaijin Battleship (1,-8): Attack — wounded, fighting worth more (-92073 v withdraw -101548): line: world -92073 strike
+   Carrier(2,-9): its move is not its assault ride (carrier: holds for Bomber, landing on it in 1 turn): its riders decide for themselves
+   Kaisen Kaijin Carrier(2,-9): would wait (carrier: holds for Bomber, landing on it in 1 turn): decides again after the rest
+   Carrier(2,-9): its move is not its assault ride (carrier: holds for Bomber, landing on it in 1 turn): its riders decide for themselves
+   Kaisen Kaijin Carrier (2,-9): Wait (not executed) — carrier: holds for Bomber, landing on it in 1 turn
+   Kaisen Kaijin Fighter gets off Kaisen Kaijin Carrier (2,-9) onto (1,-9)
+   Kaisen Kaijin Fighter (2,-9)->(1,-9): Unload — its transport is threatened (6.0 strength): gets off at (1,-9), safer
+Kaisen Kaijin Fighter(Clone)(1,-9) s6 [AA, world] 238 options | best world -50659, within 625: 2
+        (-2,-4) hit Stealth Fighter(Clone)(0,-6) 6/0 world -50659 deaths -5083 space +1240 (506/562 unsupplied 18) buildings +13953 (HQ clear +13593 NavalYard clear +180 NavalYard clear +180) mutual 44/0 heals +4167/-0 strike +6733/-11500 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Destroyer(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5/1; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +537 fog(0.46 str) -1140 | deny 375 pos 6102
+      > (-1,-5) hit Stealth Fighter(Clone)(0,-6) 6/0 world -51154 deaths -5083 space +1090 (491/562 unsupplied 18) buildings +13953 (HQ clear +13593 NavalYard clear +180 NavalYard clear +180) mutual 44/0 heals +4167/-0 strike +6733/-11708 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Destroyer(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5/1; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +381 fog(0.45 str) -1120 | deny 1750 pos 6831
+      x (-3,-5) hit Stealth Fighter(Clone)(0,-6) 6/0 world -51426 deaths -5083 space +560 (439/563 unsupplied 18) buildings +13953 (HQ clear +13593 NavalYard clear +180 NavalYard clear +180) mutual 44/0 heals +4167/-0 strike +6733/-11500 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Destroyer(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5/1; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +385 fog(0.43 str) -1075
+      x (-1,-6) hit Stealth Fighter(Clone)(0,-6) 6/0 world -51654 deaths -5083 space +740 (456/562 unsupplied 18) buildings +13953 (HQ clear +13593 NavalYard clear +180 NavalYard clear +180) mutual 42/0 heals +4167/-0 strike +6733/-11708 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Destroyer(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5/1; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +243 fog(0.43 str) -1082
+      x (-3,-3) hit Stealth Fighter(Clone)(0,-6) 6/0 world -60318 deaths -5083 space +1370 (520/563 unsupplied 18) buildings +13953 (HQ clear +13593 NavalYard clear +180 NavalYard clear +180) mutual 44/0 heals +4167/-0 strike +6950/-13646 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Destroyer(Clone)->Bomber(Clone) 5 certain kill; Stealth Fighter(Clone)->Fighter(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain kill; Gunboat(Clone)->Battleship(Clone) 1] | after forecast: sight +690 fog(0.46 str) -1152
+   Task Force Alpha Stealth Fighter (0,-6) dies: combat
+   Kaisen Kaijin Fighter moved (1,-9) -> (-1,-5)
+   Kaisen Kaijin Fighter (-1,-5) attacks Task Force Alpha Stealth Fighter (0,-6): deals 6, takes 0, Stealth Fighter destroyed -> 6 v 0
+   Kaisen Kaijin Fighter (1,-9)->(-1,-5): MoveAndAttack — AA: world -51154 move+strike
+   Bomber(3,-9) decides again: deciding again without assist credit
+Kaisen Kaijin Bomber(Clone)(3,-9) s5 [line, world] 6 options | best world -138733, within 833: 1
+      > (1,-9) hit Gunboat(Clone)(-2,-6) 3/0 world -138733 deaths -10667 space +1210 (489/578 unsupplied 21) buildings +15473 (HQ clear +15113 NavalYard clear +180 NavalYard clear +180) mutual 38/0 heals +2083/-2167 strike +8383/-19917 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 5 certain; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 2 pinned kill; Gunship(Clone)->Battleship(Clone) 1 certain; Gunboat(Clone)->Battleship(Clone) 1 kill] | after forecast: starve -3333 | deny 0 pos -22558
+      x (2,-8) no shot world -142195 deaths -12167 space +1190 (488/579 unsupplied 21) buildings +15473 (HQ clear +15113 NavalYard clear +180 NavalYard clear +180) mutual 36/0 heals +2083/-0 strike +8033/-15625 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 5 certain; Stealth Fighter(Clone)->Gunship(Clone) 6 pinned certain kill; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 2 pinned kill; Gunship(Clone)->Battleship(Clone) 1 certain; Gunboat(Clone)->Battleship(Clone) 1 kill] | after forecast: starve -3333
+      x (3,-9) no shot world -142680 deaths -8583 space +1230 (490/577 unsupplied 21) buildings +15473 (HQ clear +15113 NavalYard clear +180 NavalYard clear +180) mutual 40/0 heals +2083/-0 strike +8700/-24083 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 5 certain; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain; Gunboat(Clone)->Battleship(Clone) 1 kill] | after forecast: starve -3333
+      x (3,-10) no shot world -142680 deaths -8583 space +1230 (490/577 unsupplied 21) buildings +15473 (HQ clear +15113 NavalYard clear +180 NavalYard clear +180) mutual 40/0 heals +2083/-0 strike +8700/-24083 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 5 certain; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain; Gunboat(Clone)->Battleship(Clone) 1 kill] | after forecast: starve -3333
+      x (2,-10) no shot world -142680 deaths -8583 space +1230 (490/577 unsupplied 21) buildings +15473 (HQ clear +15113 NavalYard clear +180 NavalYard clear +180) mutual 40/0 heals +2083/-0 strike +8700/-24083 [Attacker(Clone)->Battleship(Clone) 4; Attacker(Clone)->Carrier(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 5 certain kill; Destroyer(Clone)->Fighter(Clone) 5 certain; Stealth Fighter(Clone)->Gunship(Clone) 5 certain; Destroyer(Clone)->Carrier(Clone) 3 certain kill; Gunboat(Clone)->Battleship(Clone) 1; Gunship(Clone)->Battleship(Clone) 1 certain; Gunboat(Clone)->Battleship(Clone) 1 kill] | after forecast: starve -3333
+   Kaisen Kaijin Bomber (3,-9) boards Kaisen Kaijin Carrier (2,-9)
+   Kaisen Kaijin Bomber (3,-9)->(2,-9): Load — lands on Carrier (2,-9) to refuel (fuel 40)
+   riders waiting for a transport: 0, room in empty troop transports 0
+   cargo: 0 land units waiting (weight 0), 0 empty transports, grace 0 (room bought last turn)
+   Kaisen Kaijin procurement: income 2000 (enemy 2000, map 4000), 0 facilities (0 under fire), 0 serving fronts, wait for savings 6-6 turns
+   Kaisen Kaijin buys against 22 enemy units (21 in sight): 0 of 0 building slots, 0 of 8000 gold; supply units 0 (at most 2147483647)
+
+== round 5: Task Force Alpha to move
+  -10           ~ ~ ~ . ~ ~ ~ . ~ . ~
+   -9          ~ ~ ~ U ~ . . ~ H ~ ~ .
+   -8         ~ ~ ~ U ~ U . . ~ U . ~ ~
+   -7        u . ~ U U ~ ~ U ~ ~ ~ u . .
+   -6       ~ ~ u . . U . . ~ . ~ ~ ~ . .
+   -5      ~ u ~ u U ~ ~ . . ~ . U . ~ ~ .
+   -4     ~ . . g . . g u ~ ~ ~ u . . . ~ ~
+   -3    . . . ~ . . . u ~ u ~ u ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ u u ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ ~ . . . ~ ~ ~ . ~ . ~ . .
+    0 ~ . . . . . ~ u ~ ~ ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . . . . . ~ ~ ~ ~ ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . . ~ ~ . . . . . .
+    4     ~ ~ ~ . . ~ . . . . ~ ~ ~ ~ . . .
+    5      ~ . g . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(5,-4)s6u12f56 TGu(-2,-6)s6u11f51 THa(0,-3)s6u12f56 TGu(-2,-5)s6a5u2f18 TBa(3,-2)s6u11f40 TDe(-4,-5)s6a5u11f52 TCa(-3,0)s6u11f53 TCa(2,-2)s6u11f54 TSt(2,-2)s6f36 TSt(8,-7)s5a4u2f26 TSt(4,-3)s6a5u0f13 TDe(2,-3)s6u11f47 TGr(5,-4)s6 TGr(5,-4)s6 TGr(-3,-4)s6u1 TGr(0,-4)s2u1 TGr(0,-3)s6 TGr(0,-3)s6 TGr(0,-3)s6 TGr(-8,5)s6 TGr(0,-3)s6 KBa(1,-8)s2a7u11f52 KBa(7,-8)s3f60 KBa(3,-8)s6a7u11f46 KDe(1,-6)s6f64 KDe(0,-7)s6u11f55 KFi(-1,-5)s6a5f32 KCa(2,-9)s6u11f70 KGu(1,-7)s6a5f18 KGu(4,-7)s6u11f58 KGu(6,-5)s6a5u11f59 KBo(2,-9)s5u0f40 TAt(-3,-7)s6a3u2f55 TAt(1,-4)s5a3u2f58
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 3/3; NavalYard(-8,7) Task Force Alpha 0/10 store 3/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 3/3; HQ(7,-9) Kaisen Kaijin 0/10; Int. Ops(0,-4) Task Force Alpha 0/10;
+   state Task Force Alpha: worth 250000, units 23, cities 0, buildings 4, income 2000, gold 8000, front 0.642
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 3 Stealth Fighter
+   state Kaisen Kaijin: worth 157500, units 11, cities 0, buildings 2, income 2000, gold 8000, front 0.810
+   Kaisen Kaijin fields: 3 Battleship, 1 Bomber, 1 Carrier, 2 Destroyer, 1 Fighter, 2 Gunboat, 1 Gunship
+   (board saved as turn-008-TaskForceAlpha.dat)
+   Kaisen Kaijin Fighter (-1,-5) dies: combat
+   Task Force Alpha Stealth Fighter moved (4,-3) -> (-1,-3)
+   Task Force Alpha Stealth Fighter (-1,-3) attacks Kaisen Kaijin Fighter (-1,-5): deals 6, takes 0, Fighter destroyed -> 6 v 0
+   Task Force Alpha Stealth Fighter gets off Task Force Alpha Carrier (2,-2) onto (3,-3)
+   Kaisen Kaijin Gunship (1,-7) dies: combat
+   Task Force Alpha Stealth Fighter moved (3,-3) -> (2,-5)
+   Task Force Alpha Stealth Fighter (2,-5) attacks Kaisen Kaijin Gunship (1,-7): deals 6, takes 0, Gunship destroyed -> 6 v 0
+   Task Force Alpha Attacker moved (1,-4) -> (3,-6)
+   Task Force Alpha Attacker (3,-6) attacks Kaisen Kaijin Battleship (3,-8): deals 3, takes 0, retreats to (3,-9) -> 5 v 3
+   Kaisen Kaijin Battleship (1,-8) dies: combat
+   Task Force Alpha Attacker moved (-3,-7) -> (0,-9)
+   Task Force Alpha Attacker (0,-9) attacks Kaisen Kaijin Battleship (1,-8): deals 2, takes 0, Battleship destroyed -> 6 v 0
+   Task Force Alpha Battleship moved (3,-2) -> (4,-5)
+   Task Force Alpha Battleship (4,-5) attacks Kaisen Kaijin Battleship (7,-8): deals 1, takes 0, suppressed 1 (1 of 2 will not fire back until its turn) -> 6 v 2
+   Task Force Alpha Destroyer moved (2,-3) -> (6,-6)
+   Task Force Alpha Destroyer (6,-6) attacks Kaisen Kaijin Battleship (7,-8): deals 1, takes 0, retreats to (8,-9) -> 6 v 1
+   Kaisen Kaijin Battleship (8,-9) dies: combat
+   Task Force Alpha Gunboat moved (5,-4) -> (7,-8)
+   Task Force Alpha Gunboat (7,-8) attacks Kaisen Kaijin Battleship (8,-9): deals 1, takes 0, Battleship destroyed -> 6 v 0
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Gunboat (7,-8) onto (7,-9)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Gunboat (7,-8) onto (8,-8)
+   Task Force Alpha Gunship moved (-2,-5) -> (-2,-7)
+   Task Force Alpha Gunship (-2,-7) attacks Kaisen Kaijin Destroyer (0,-7): deals 1, takes 0, retreats to (1,-8) -> 6 v 5
+   Task Force Alpha Destroyer moved (-4,-5) -> (-1,-7)
+   Task Force Alpha Destroyer (-1,-7) attacks Kaisen Kaijin Destroyer (1,-8): deals 1, takes 0, retreats to (2,-8) -> 6 v 4
+   Task Force Alpha Hauler moved (0,-3) -> (4,-6)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Hauler (4,-6) onto (5,-6)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Hauler (4,-6) onto (3,-5)
+   Task Force Alpha Grunt Coalition Variant moved (5,-6) -> (5,-5)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Hauler (4,-6) onto (5,-6)
+   Task Force Alpha Grunt Coalition Variant moved (3,-5) -> (2,-6)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Hauler (4,-6) onto (3,-5)
+   Task Force Alpha Stealth Fighter (8,-7) boards Task Force Alpha Carrier (2,-2)
+   Task Force Alpha Carrier moved (-3,0) -> (-3,-5)
+   Task Force Alpha Gunboat moved (-2,-6) -> (1,-8)
+   Task Force Alpha Gunboat (1,-8) attacks Kaisen Kaijin Carrier (2,-9): deals 4, takes 0, retreats to (2,-10) -> 6 v 2
+   Task Force Alpha captures HQ (7,-9): 0 -> 6 of 10, now Kaisen Kaijin's
+
+== round 6: Kaisen Kaijin to move
+  -10           ~ ~ U . ~ ~ ~ . ~ . ~
+   -9          ~ u ~ ~ U . . ~ g ~ ~ .
+   -8         ~ ~ ~ u U . . . ~ u g ~ ~
+   -7        ~ u u ~ . ~ ~ U ~ ~ ~ ~ . .
+   -6       ~ ~ ~ . . U g u u g u ~ ~ . .
+   -5      ~ . u ~ ~ ~ ~ u g u g U . ~ ~ .
+   -4     ~ . . g . . g . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . u . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ u ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ ~ . . . ~ ~ ~ . ~ . ~ . .
+    0 ~ . . . . . ~ ~ ~ ~ ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . . . . . ~ ~ ~ ~ ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . . ~ ~ . . . . . .
+    4     ~ ~ ~ . . ~ . . . . ~ ~ ~ ~ . . .
+    5      ~ . g . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(7,-8)s6a5u12f50 TGu(1,-8)s6a5u11f48 THa(4,-6)s6u12f51 TGu(-2,-7)s6a4u2f14 TBa(4,-5)s6a7u11f37 TDe(-1,-7)s6a4u11f49 TCa(-3,-5)s6u11f47 TCa(2,-2)s6u11f54 TSt(2,-5)s6a5f33 TSt(2,-2)s5a4u2f21 TSt(-1,-3)s6a4u0f8 TDe(6,-6)s6a5u11f41 TGr(8,-8)s6 TGr(7,-9)s6 TGr(-3,-4)s6u1 TGr(0,-4)s2u1 TGr(3,-5)s6 TGr(5,-6)s6 TGr(2,-6)s6 TGr(-8,5)s6 TGr(5,-5)s6 KBa(3,-9)s4a7u10f46 KDe(1,-6)s6u14f64 KDe(2,-8)s5u10f55 KCa(2,-10)s3u10f70 KGu(4,-7)s6u10f58 KGu(6,-5)s6a5u10f59 KBo(2,-10)s6f64 TAt(0,-9)s6a2u2f52 TAt(3,-6)s5a2u2f56
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 3/3; NavalYard(-8,7) Task Force Alpha 0/10 store 3/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 3/3; HQ(7,-9) Kaisen Kaijin 6/10; Int. Ops(0,-4) Task Force Alpha 0/10;
+   state Task Force Alpha: worth 250000, units 23, cities 0, buildings 4, income 2000, gold 8000, front 0.739
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 9 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 3 Stealth Fighter
+   state Kaisen Kaijin: worth 96000, units 7, cities 0, buildings 2, income 2000, gold 10000, front 0.845
+   Kaisen Kaijin fields: 1 Battleship, 1 Bomber, 1 Carrier, 2 Destroyer, 2 Gunboat
+   (board saved as turn-009-KaisenKaijin.dat)
+   fog: Grunt Coalition Variant last seen (-7,4) str 6, 3 moves ago: at most 1.00 of its places reach a tile, 20 tiles to hide on, fires on 100, 0 of ours exposed
+   fog: unknown ground: 228 tiles (138 lately seen but near the enemy), 7 kinds, reach 9
+   fog: unplaced enemy: 2.1 units (21000 power) over 23 anchors (21 seen, 1 remembered, 1 HQ, 0 production)
+   knowledge: enemy could have 258500 (start 279500 + built 0 - destroyed 21000), we know of 237500; their buildings seen 50%; confidence 0.92; ours 116000 = ratio 0.45; aggression 0.00; reserve released; unknown ground feared at 0.08
+   objective Clear(7,-9) value 169425 priority 0.88 enemy 184225 need 86500 have 86500, 6 units, 0/0 supply via (7,-9) turn 3 gone in [staged 0, en route 0, engaged 6] formed against 104330: Destroyer(2,-8)s5 Destroyer(1,-6)s6 Bomber(2,-10)s6 Gunboat(4,-7)s6 Gunboat(6,-5)s6 Battleship(3,-9)s4
+   front Front(7,-9) Aggressive ratio 0.47 priority 1 objective (7,-9) value 169425, 6 units
+   front Front(7,-9) Defensive ratio 0.48 priority 1460 objective (0,-4) value 23286, 1 units
+   logistics: Clear@0,1 (6 units, to (4,-7)): chain 0, its own 0, chain short, nothing spare; free trucks 0; supply units with a duty 0 of 0
+   reserve (mobile): central 0, active 1 (of 1 on no task force)
+   transports for supply: none
+   chain toward (-10,8): ; spare 0; supply reaches 17 steps from the objective, the army 2147483647; short a supply unit
+   coordination pass 1: 4 units in contact
+     Destroyer(1,-6) favourite (5,-7) hit Grunt Coalition Variant(7,-9) 3/0 (counts on assist) world -314952 | attack1 (5,-7) hit Grunt Coalition Variant(7,-9) 3/0 (counts on assist) world -314952; attack2 (7,-7) hit Grunt Coalition Variant(7,-9) 3/0 (counts on assist) world -314492; attack3 (6,-7) hit Grunt Coalition Variant(7,-9) 3/0 (counts on assist) world -314537; survive (2,-9) no shot world -1577002; retreat none
+     Destroyer(2,-8) favourite (6,-7) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -315545 | attack1 (6,-7) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -315545; attack2 (7,-7) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -315500; attack3 (6,-8) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -315583; survive (3,-8) no shot world -1578082; retreat none
+     Gunboat(4,-7) favourite (6,-8) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -312271 | attack1 (6,-8) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -312271; attack2 (6,-9) hit Grunt Coalition Variant(7,-9) 3/0 (counts on assist) world -338241; attack3 (7,-7) hit Grunt Coalition Variant(8,-8) 4/0 (counts on assist) world -1542079; survive (9,-6) no shot world -1576958; retreat none
+     Gunboat(6,-5) favourite (6,-8) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -315415 | attack1 (6,-8) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -315415; attack2 (8,-9) hit Grunt Coalition Variant(7,-9) 2/0 (counts on assist) world -315435; attack3 (8,-10) hit Grunt Coalition Variant(7,-9) 3/0 (counts on assist) world -339840; survive (4,1) no shot world -1573162; retreat none
+   coordination pass 2: 2 targets, 11 groups of attackers tried, 6 plans forecast, 6 single steps forecast
+     > battle on Grunt Coalition Variant(7,-9) (kill): together +5083, synergy +1667, sacrifice 0 = +1667 | Destroyer->(5,-7) hits Grunt Coalition Variant(7,-9); Destroyer->(5,-10) hits Grunt Coalition Variant(7,-9)
+       battle on Grunt Coalition Variant(7,-9) (kill): together +2083, synergy +1250, sacrifice 0 = +1250 | Destroyer->(6,-7) hits Grunt Coalition Variant(7,-9); Gunboat->(6,-10) hits Grunt Coalition Variant(7,-9)
+       battle on Grunt Coalition Variant(7,-9) (kill): together +4250, synergy +1250, sacrifice 0 = +1250 | Destroyer->(6,-7) hits Grunt Coalition Variant(7,-9); Gunboat->(6,-10) hits Grunt Coalition Variant(7,-9)
+       battle on Grunt Coalition Variant(7,-9) (kill): together +5083, synergy -500, sacrifice 0 = -500 | Destroyer->(5,-7) hits Grunt Coalition Variant(7,-9); Gunboat->(6,-10) hits Grunt Coalition Variant(7,-9)
+       battle on Grunt Coalition Variant(7,-9) (kill): together +1833, synergy -1583, sacrifice 0 = -1583 | Destroyer->(5,-7) hits Grunt Coalition Variant(7,-9); Gunboat->(6,-10) hits Grunt Coalition Variant(7,-9)
+   coordination: 2 units in battle plans, acting first; deciding again without assist credit: Gunboat(4,-7), Gunboat(6,-5)
+   turn order by steps: 1 [] 2 [] 3 [Destroyer, Destroyer, Battleship, Gunboat, Gunboat] 4 [Carrier] 5 [] empty [] 6 [Bomber] 7 []
+   Kaisen Kaijin (this AI) reads the board: supply tiles: static 2, mobile 1, potential 0; enemy supplied 16; enemy strike in 1/2/3 turns: 308/23/0 tiles (11.4 ms)
+   turns to contact: De(1,-6)=0 Ca(2,-10)=0 Bo(2,-10)=0 De(2,-8)=0 Ba(3,-9)=0 Gu(4,-7)=0 Gu(6,-5)=0
+   objective Mass(-3,-4) no value 3375 need 461500 have 0 units 0
+   objective Mass(1,-8) no value 74250 need 554125 have 0 units 0
+   objective Mass(2,-6) no value 169425 need 594750 have 66500 units 5 Battleship(3,-9) Destroyer(1,-6) Destroyer(2,-8) Gunboat(4,-7) Gunboat(6,-5)
+   objective pulls: 0; turn order: Destroyer, Destroyer, Battleship, Gunboat, Gunboat, Carrier, Bomber
+   Kaisen Kaijin Destroyer moved (1,-6) -> (5,-7)
+   Kaisen Kaijin Destroyer (5,-7) attacks Task Force Alpha Grunt Coalition Variant (7,-9): deals 3, takes 0, retreats to (7,-10) -> 6 v 3
+   Kaisen Kaijin Destroyer (1,-6)->(5,-7): MoveAndAttack — group battle: Destroyer->(5,-7) hits Grunt Coalition Variant(7,-9)
+   Task Force Alpha Grunt Coalition Variant (7,-10) dies: combat
+   Kaisen Kaijin Destroyer moved (2,-8) -> (5,-10)
+   Kaisen Kaijin Destroyer (5,-10) attacks Task Force Alpha Grunt Coalition Variant (7,-10): deals 3, takes 0, Grunt Coalition Variant destroyed -> 5 v 0
+   Kaisen Kaijin Destroyer (2,-8)->(5,-10): MoveAndAttack — group battle: Destroyer->(5,-10) hits Grunt Coalition Variant(7,-10)
+   Battleship(3,-9) decides again: Destroyer near it changed ((1,-6) -> (5,-7))
+   Kaisen Kaijin Battleship moved (3,-9) -> (4,-8)
+   Kaisen Kaijin Battleship (3,-9)->(4,-8): Move — withdraw: move
+   Gunboat(4,-7) decides again: deciding again without assist credit
+Kaisen Kaijin Gunboat(Clone)(4,-7) s6 [line, world] 63 options | best world -331569, within 542: 3
+        (8,-7) hit Grunt Coalition Variant(Clone)(8,-8) 4/0 world -331569 deaths -10667 space -1030 (234/547 unsupplied 21) buildings -109660 (HQ clear +13640 NavalYard clear +180 NavalYard clear +180 NavalYard at risk -900 HQ at risk -68200 HQ threat -54560) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +41 fog(0.02 str) -40 | deny -17875 pos -1124
+        (9,-8) hit Grunt Coalition Variant(Clone)(8,-8) 4/0 world -331570 deaths -10667 space -1030 (234/547 unsupplied 21) buildings -109660 (HQ clear +13640 NavalYard clear +180 NavalYard clear +180 NavalYard at risk -900 HQ at risk -68200 HQ threat -54560) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +32 fog(0.02 str) -33 | deny -17983 pos -1250
+      > (9,-9) hit Grunt Coalition Variant(Clone)(8,-8) 4/0 world -331613 deaths -10667 space -1050 (232/547 unsupplied 21) buildings -109660 (HQ clear +13640 NavalYard clear +180 NavalYard clear +180 NavalYard at risk -900 HQ at risk -68200 HQ threat -54560) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +8 fog(0.01 str) -32 | deny -17225 pos -1274
+      x (7,-7) hit Grunt Coalition Variant(Clone)(8,-8) 4/0 world -332680 deaths -11750 space -1070 (231/548 unsupplied 21) buildings -109660 (HQ clear +13640 NavalYard clear +180 NavalYard clear +180 NavalYard at risk -900 HQ at risk -68200 HQ threat -54560) mutual 16/0 heals +3250/-1083 strike +3783/-7854 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1; Gunboat(Clone)->Gunboat(Clone) 1 kill] | after forecast: sight +16 fog(0.02 str) -45
+      x (6,-7) hit Grunt Coalition Variant(Clone)(5,-6) 4/0 world -1425702 deaths -11750 space -1070 (231/548 unsupplied 21) buildings -1202660 (HQ clear +13640 NavalYard clear +180 NavalYard clear +180 NavalYard at risk -2700 HQ at risk -1159400 HQ threat -54560) mutual 16/0 heals +3250/-1083 strike +3783/-7854 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1; Gunboat(Clone)->Gunboat(Clone) 1 kill] | after forecast: fog(0.02 str) -51
+   Kaisen Kaijin Gunboat moved (4,-7) -> (9,-9)
+   Kaisen Kaijin Gunboat (9,-9) attacks Task Force Alpha Grunt Coalition Variant (8,-8): deals 4, takes 0, pinned (1 of that for having nowhere to retreat) -> 6 v 2
+   Kaisen Kaijin Gunboat (4,-7)->(9,-9): MoveAndAttack — line: world -331613 move+strike
+   Gunboat(6,-5) decides again: deciding again without assist credit
+Kaisen Kaijin Gunboat(Clone)(6,-5) s6 [line, world] 95 options | best world -247954, within 542: 2
+      > (8,-7) hit Grunt Coalition Variant(Clone)(8,-8) 2/0 world -247954 deaths -10250 space -1530 (195/548 unsupplied 20) buildings -26787 (HQ clear +13573 NavalYard clear +180 NavalYard clear +180 HQ threat -40720) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +32 fog(0.02 str) -40 | deny -11483 pos 8426
+        (9,-8) hit Grunt Coalition Variant(Clone)(8,-8) 2/0 world -248125 deaths -10250 space -1650 (182/547 unsupplied 20) buildings -26787 (HQ clear +13573 NavalYard clear +180 NavalYard clear +180 HQ threat -40720) mutual 20/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +24 fog(0.02 str) -33 | deny -11808 pos 8214
+      x (7,-7) hit Grunt Coalition Variant(Clone)(8,-8) 2/0 world -249295 deaths -11333 space -1800 (168/548 unsupplied 20) buildings -26787 (HQ clear +13573 NavalYard clear +180 NavalYard clear +180 HQ threat -40720) mutual 16/0 heals +3250/-1083 strike +3783/-7854 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1; Gunboat(Clone)->Gunboat(Clone) 1 kill] | after forecast: sight +8 fog(0.02 str) -45
+      x (8,-9) hit Grunt Coalition Variant(Clone)(8,-8) 2/0 world -252636 deaths -11333 space -1800 (168/548 unsupplied 20) buildings -26787 (HQ clear +13573 NavalYard clear +180 NavalYard clear +180 HQ threat -40720) mutual 16/0 heals +4333/-1083 strike +3150/-8396 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 4 pinned certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2 kill; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: fog(0.02 str) -37
+      x (6,-7) hit Grunt Coalition Variant(Clone)(5,-6) 4/0 world -303986 deaths -11750 space -1700 (168/548 unsupplied 21) buildings -81980 (HQ clear +13573 NavalYard clear +180 NavalYard clear +180 NavalYard at risk -900 HQ at risk -67867 HQ threat -27147) mutual 16/0 heals +3250/-1083 strike +3783/-7854 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1; Gunboat(Clone)->Gunboat(Clone) 1 kill] | after forecast: fog(0.02 str) -51
+   Task Force Alpha Grunt Coalition Variant (8,-8) dies: combat
+   Kaisen Kaijin Gunboat moved (6,-5) -> (8,-7)
+   Kaisen Kaijin Gunboat (8,-7) attacks Task Force Alpha Grunt Coalition Variant (8,-8): deals 2, takes 0, Grunt Coalition Variant destroyed -> 6 v 0
+   Kaisen Kaijin Gunboat (6,-5)->(8,-7): MoveAndAttack — line: world -247954 move+strike
+   assault ride: Carrier with 1 aboard, front Defensive objective (0,-4)
+   assault ride: Carrier goal (0,-4) -> Unload (assault ride: would be destroyed here with them aboard)
+   Kaisen Kaijin Bomber gets off Kaisen Kaijin Carrier (2,-10) onto (1,-10)
+   Kaisen Kaijin Carrier (2,-10): Unload — assault ride: would be destroyed here with them aboard
+Kaisen Kaijin Bomber(Clone)(1,-10) s6 [line, world] 212 options | best world -204578, within 833: 1
+      x (6,-9) hit Grunt Coalition Variant(Clone)(5,-6) 6/0 world -204578 deaths -11333 space -1870 (167/544 unsupplied 19) buildings +13900 (HQ clear +13540 NavalYard clear +180 NavalYard clear +180) mutual 16/0 heals +3250/-0 strike +4067/-7583 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Gunboat(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2 kill] | after forecast: sight +4 fog(0.02 str) -79
+      x (2,-4) hit Grunt Coalition Variant(Clone)(5,-6) 6/0 world -204627 deaths -10250 space -1590 (194/543 unsupplied 19) buildings +13900 (HQ clear +13540 NavalYard clear +180 NavalYard clear +180) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +300 fog(0.03 str) -108
+      x (3,-7) hit Grunt Coalition Variant(Clone)(5,-6) 6/0 world -204867 deaths -10250 space -1590 (194/543 unsupplied 19) buildings +13900 (HQ clear +13540 NavalYard clear +180 NavalYard clear +180) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +53 fog(0.03 str) -101
+      x (8,-9) hit Grunt Coalition Variant(Clone)(5,-6) 6/0 world -204872 deaths -10250 space -1590 (194/543 unsupplied 19) buildings +13900 (HQ clear +13540 NavalYard clear +180 NavalYard clear +180) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +12 fog(0.02 str) -65
+      > (7,-9) hit Grunt Coalition Variant(Clone)(5,-6) 6/0 world -204875 deaths -10250 space -1590 (194/543 unsupplied 19) buildings +13900 (HQ clear +13540 NavalYard clear +180 NavalYard clear +180) mutual 22/0 heals +3250/-1083 strike +4133/-9479 [Attacker(Clone)->Battleship(Clone) 4 certain kill; Battleship(Clone)->Carrier(Clone) 3 certain kill; Attacker(Clone)->Gunboat(Clone) 3 certain; Stealth Fighter(Clone)->Bomber(Clone) 6 certain kill; Destroyer(Clone)->Destroyer(Clone) 1 certain; Destroyer(Clone)->Destroyer(Clone) 1 certain; Gunship(Clone)->Destroyer(Clone) 1 certain; Gunboat(Clone)->Gunboat(Clone) 2/1] | after forecast: sight +16 fog(0.02 str) -72 | deny -1500 pos -9205
+   Task Force Alpha Grunt Coalition Variant (5,-6) dies: combat
+   Kaisen Kaijin Bomber moved (1,-10) -> (7,-9)
+   Kaisen Kaijin Bomber (7,-9) attacks Task Force Alpha Grunt Coalition Variant (5,-6): deals 6, takes 0, Grunt Coalition Variant destroyed -> 6 v 0
+   Kaisen Kaijin Bomber (1,-10)->(7,-9): MoveAndAttack — line: world -204875 move+strike
+   riders waiting for a transport: 0, room in empty troop transports 0
+   cargo: 0 land units waiting (weight 0), 1 empty transports, grace 0 (room bought last turn)
+   Kaisen Kaijin procurement: income 2000 (enemy 2000, map 4000), 0 facilities (0 under fire), 0 serving fronts, wait for savings 6-6 turns
+   Kaisen Kaijin buys against 20 enemy units (19 in sight): 0 of 0 building slots, 0 of 10000 gold; supply units 0 (at most 2147483647)
+
+== round 6: Task Force Alpha to move
+  -10           ~ ~ U . ~ U ~ . ~ . ~
+   -9          ~ u ~ ~ ~ . . ~ U ~ U .
+   -8         ~ ~ ~ u ~ . U . ~ u . ~ ~
+   -7        ~ u u ~ . ~ ~ ~ U ~ ~ U . .
+   -6       ~ ~ ~ . . ~ g u u . u ~ ~ . .
+   -5      ~ . u ~ ~ ~ ~ u g u g ~ . ~ ~ .
+   -4     ~ . . g . . g . ~ ~ ~ ~ . . . ~ ~
+   -3    . . . ~ . . u . ~ ~ ~ . ~ ~ . . ~ ~
+   -2   . . . . . . . ~ . ~ u ~ ~ . . ~ ~ . ~
+   -1  ~ . . . . . ~ ~ . . . ~ ~ ~ . ~ . ~ . .
+    0 ~ . . . . . ~ ~ ~ ~ ~ ~ ~ ~ . . . . . . ~
+    1  ~ . . . . . . ~ ~ ~ ~ ~ ~ ~ . . ~ . . ~
+    2   ~ . ~ ~ ~ ~ . ~ . . ~ ~ ~ . . . . ~ .
+    3    ~ ~ ~ ~ ~ . . ~ . . ~ ~ . . . . . .
+    4     ~ ~ ~ . . ~ . . . . ~ ~ ~ ~ . . .
+    5      ~ . g . . . . . . ~ ~ . ~ . . .
+    6       . . . . . . . . ~ ~ ~ ~ ~ . .
+    7        . . d . . . . ~ ~ ~ ~ ~ . ~
+    8         h . . ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+    9          . . d ~ ~ ~ ~ ~ ~ ~ ~ ~
+   10           . . ~ ~ ~ ~ ~ ~ ~ ~ ~
+   units: TGu(7,-8)s6a5u11f50 TGu(1,-8)s6a5u10f48 THa(4,-6)s6u11f51 TGu(-2,-7)s6a4u1f12 TBa(4,-5)s6a7u10f37 TDe(-1,-7)s6a4u10f49 TCa(-3,-5)s6u10f47 TCa(2,-2)s6u10f54 TSt(2,-5)s6a5u2f30 TSt(2,-2)s6f36 TSt(-1,-3)s5a4u0f5 TDe(6,-6)s6a5u10f41 TGr(-3,-4)s5u0 TGr(0,-4)s1u0 TGr(3,-5)s6u2 TGr(2,-6)s6u2 TGr(-8,5)s6 TGr(5,-5)s6u2 KBa(4,-8)s4a7u10f44 KDe(5,-7)s6a5u14f60 KDe(5,-10)s5a5u10f52 KCa(2,-10)s3u10f70 KGu(9,-9)s6a5u10f52 KGu(8,-7)s6a4u10f57 KBo(7,-9)s6a1f57 TAt(0,-9)s6a2u1f49 TAt(3,-6)s5a2u1f53
+   buildings: HQ(-10,8) Task Force Alpha 0/10; NavalYard(-8,9) Task Force Alpha 0/10 store 3/3; NavalYard(-8,7) Task Force Alpha 0/10 store 3/3; NavalYard(7,-8) Kaisen Kaijin 0/10 store 3/3; HQ(7,-9) Kaisen Kaijin 6/10; Int. Ops(0,-4) Task Force Alpha 0/10;
+   state Task Force Alpha: worth 241667, units 20, cities 0, buildings 4, income 2000, gold 10000, front 0.707
+   Task Force Alpha fields: 2 Attacker, 1 Battleship, 2 Carrier, 2 Destroyer, 6 Grunt Coalition Variant, 2 Gunboat, 1 Gunship, 1 Hauler, 3 Stealth Fighter
+   state Kaisen Kaijin: worth 96000, units 7, cities 0, buildings 2, income 2000, gold 10000, front 0.950
+   Kaisen Kaijin fields: 1 Battleship, 1 Bomber, 1 Carrier, 2 Destroyer, 2 Gunboat
+   (board saved as turn-010-TaskForceAlpha.dat)
+   Task Force Alpha Attacker (3,-6) attacks Kaisen Kaijin Battleship (4,-8): deals 3, takes 0, retreats to (4,-9) -> 5 v 1
+   Task Force Alpha Battleship (4,-5) attacks Kaisen Kaijin Destroyer (5,-7): deals 2, takes 0, suppressed 2 (2 of 4 will not fire back until its turn) -> 6 v 4
+   Task Force Alpha Stealth Fighter (-1,-3) boards Task Force Alpha Carrier (2,-2)
+   Task Force Alpha Stealth Fighter gets off Task Force Alpha Carrier (2,-2) onto (3,-3)
+   Kaisen Kaijin Bomber (7,-9) dies: combat
+   Task Force Alpha Stealth Fighter moved (3,-3) -> (5,-8)
+   Task Force Alpha Stealth Fighter (5,-8) attacks Kaisen Kaijin Bomber (7,-9): deals 6, takes 0, Bomber destroyed -> 6 v 0
+   Task Force Alpha Grunt Coalition Variant (3,-5) boards Task Force Alpha Hauler (4,-6)
+   Task Force Alpha Grunt Coalition Variant (2,-6) boards Task Force Alpha Hauler (4,-6)
+   Task Force Alpha Grunt Coalition Variant (5,-5) boards Task Force Alpha Hauler (4,-6)
+   Task Force Alpha Hauler moved (4,-6) -> (6,-9)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Hauler (6,-9) onto (7,-9)
+   Task Force Alpha Grunt Coalition Variant gets off Task Force Alpha Hauler (6,-9) onto (7,-10)
+   Kaisen Kaijin Battleship (4,-9) dies: combat
+   Task Force Alpha Gunboat moved (7,-8) -> (5,-9)
+   Task Force Alpha Gunboat (5,-9) attacks Kaisen Kaijin Battleship (4,-9): deals 1, takes 0, Battleship destroyed -> 6 v 0
+   Task Force Alpha Destroyer (6,-6) attacks Kaisen Kaijin Destroyer (5,-7): deals 1, takes 0, retreats to (4,-7) -> 6 v 3
+   Task Force Alpha Destroyer moved (-1,-7) -> (3,-8)
+   Task Force Alpha Destroyer (3,-8) attacks Kaisen Kaijin Destroyer (4,-7): deals 1, takes 0, retreats to (4,-6) -> 6 v 2
+   Task Force Alpha Attacker moved (0,-9) -> (3,-9)
+   Task Force Alpha Attacker (3,-9) attacks Kaisen Kaijin Destroyer (5,-10): deals 2, takes 0, retreats to (6,-10) -> 6 v 3
+   Task Force Alpha Gunship moved (-2,-7) -> (4,-9)
+   Task Force Alpha Gunship (4,-9) attacks Kaisen Kaijin Destroyer (6,-10): deals 2, takes 0, pinned (1 of that for having nowhere to retreat) -> 6 v 1
+-- recording stopped

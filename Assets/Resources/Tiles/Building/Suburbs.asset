@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3fd0217391ec204489956106f5e2058f, type: 3}
-  m_Name: City
+  m_Name: Suburbs
   m_EditorClassIdentifier: 
   description: The City provides protection and Funding
   inMapEditor: 0
