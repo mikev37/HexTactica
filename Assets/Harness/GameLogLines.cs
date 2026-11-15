@@ -270,6 +270,82 @@ namespace HexTactica.Harness {
                 return true;
             }
 
+            /// <summary>
+            /// A strike ordered (Strikes.Order), an action a replay plays again: "Blue Missile (1,2) launches at (5,5)"
+            /// (delayed: it lands at the start of Blue's next turn) or "Blue Rocket Artillery (1,2) strikes (5,5)" (at once).
+            /// </summary>
+            public static string StrikeFired(Unit u, HexTile from, HexTile target, bool delayed) {
+                return Indent + Who(u) + " " + D(from) + (delayed ? " launches at " : " strikes ") + D(target);
+            }
+            static readonly Regex strikeFired = new Regex(@"^   (.+) \((-?\d+),(-?\d+)\) (launches at|strikes) \((-?\d+),(-?\d+)\)$");
+
+            public class StrikeLine { public string side, unit; public int fromX, fromY, x, y; public bool delayed; }
+
+            public static bool ReadStrikeFired(string line, IEnumerable<string> sides, out StrikeLine s) {
+                s = null;
+                Match m = strikeFired.Match(line);
+                if (!m.Success) return false;
+                StrikeLine r = new StrikeLine();
+                if (!SplitWho(m.Groups[1].Value, sides, out r.side, out r.unit)) return false;
+                r.fromX = int.Parse(m.Groups[2].Value, Inv); r.fromY = int.Parse(m.Groups[3].Value, Inv);
+                r.delayed = m.Groups[4].Value == "launches at";
+                r.x = int.Parse(m.Groups[5].Value, Inv); r.y = int.Parse(m.Groups[6].Value, Inv);
+                s = r;
+                return true;
+            }
+
+            /// <summary>
+            /// A strike landed, with what it did (not an action: the game works it out again as the turn starts or the
+            /// strike is ordered): "Blue Missile strike lands on (5,5): Red Tank (5,5) -5 destroyed, Red Grunt (5,6) -4 -> 2;
+            /// ground Grassland destroyed; City damaged 5", or "... : hits nothing". The splash of an ordinary shot:
+            /// "Blue Bomber splash around (5,5): ...". Units destroyed have their "dies: combat" lines just before it.
+            /// </summary>
+            public static string StrikeLanded(StrikeResult r) {
+                Strike s = r.strike;
+                StringBuilder sb = new StringBuilder();
+                sb.Append(Indent).Append(Name(s.owner)).Append(' ').Append(s.kind).Append(s.splash ? " splash around " : " strike lands on ").Append(D(s.target)).Append(": ");
+                if (r.hits.Count == 0) sb.Append("hits nothing");
+                for (int i = 0; i < r.hits.Count; i++) {
+                    StrikeHit h = r.hits[i];
+                    sb.Append(i > 0 ? ", " : "").Append(Name(h.unit.owner)).Append(' ').Append(UnitName(h.unit)).Append(' ').Append(D(h.tile)).Append(" -").Append(h.damage.ToString(Inv))
+                      .Append(h.dies ? " destroyed" : " -> " + (h.before - h.damage).ToString(Inv));
+                }
+                if (r.groundWas != null) sb.Append("; ground ").Append(r.groundWas.name).Append(" destroyed");
+                if (r.building != null) sb.Append("; ").Append(r.building.name.Replace("(Clone)", "").Trim()).Append(" damaged ").Append(r.buildingDamage.ToString(Inv));
+                return sb.ToString();
+            }
+            static readonly Regex strikeLanded = new Regex(@"^   (.+) (strike lands on|splash around) \((-?\d+),(-?\d+)\): (.*)$");
+            static readonly Regex strikeHit = new Regex(@"^(.+) \((-?\d+),(-?\d+)\) -(\d+)(?: destroyed| -> (\d+))$");
+
+            public class StrikeHitLine { public string side, unit; public int x, y, damage, after; public bool destroyed; }
+            public class StrikeLandedLine { public string side, unit; public int x, y; public bool splash; public readonly List<StrikeHitLine> hits = new List<StrikeHitLine>(); }
+
+            public static bool ReadStrikeLanded(string line, IEnumerable<string> sides, out StrikeLandedLine s) {
+                s = null;
+                Match m = strikeLanded.Match(line);
+                if (!m.Success) return false;
+                StrikeLandedLine r = new StrikeLandedLine();
+                if (!SplitWho(m.Groups[1].Value, sides, out r.side, out r.unit)) return false;
+                r.splash = m.Groups[2].Value == "splash around";
+                r.x = int.Parse(m.Groups[3].Value, Inv); r.y = int.Parse(m.Groups[4].Value, Inv);
+                string rest = m.Groups[5].Value;
+                int semi = rest.IndexOf(';');
+                if (semi >= 0) rest = rest.Substring(0, semi);
+                foreach (string part in rest.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries)) {
+                    Match h = strikeHit.Match(part);
+                    if (!h.Success) continue;
+                    StrikeHitLine hit = new StrikeHitLine();
+                    if (!SplitWho(h.Groups[1].Value, sides, out hit.side, out hit.unit)) continue;
+                    hit.x = int.Parse(h.Groups[2].Value, Inv); hit.y = int.Parse(h.Groups[3].Value, Inv);
+                    hit.damage = int.Parse(h.Groups[4].Value, Inv);
+                    hit.destroyed = !h.Groups[5].Success;
+                    hit.after = h.Groups[5].Success ? int.Parse(h.Groups[5].Value, Inv) : 0;
+                    r.hits.Add(hit);
+                }
+                s = r;
+                return true;
+            }
+
             /// <summary>A building changed owner: "City (3,4) changes hands: Red -> Blue".</summary>
             public static string ChangesHands(Building b, Player previous) {
                 return Indent + b.name.Replace("(Clone)", "").Trim() + " " + D(b.tile) + " changes hands: " + Name(previous) + " -> " + Name(b.owner);

@@ -20,6 +20,8 @@ public class HexTileUIData : ScriptableObject {
     public Sprite capture;
     [Tooltip("A move tile where ending the move would leave the unit unable to reach a building that refuels it before it runs dry next turn (Unit.WouldDitchFrom). Empty: the ordinary move sprite.")]
     public Sprite move_warning;
+    [Tooltip("A tile a strike being aimed would hit: its target and the tiles its blast reaches (Sprites/UI/Threat). Units on them show what they would lose.")]
+    public Sprite strike;
     [Header("An enemy unit clicked (SupplyOverlay.ShowEnemy)")]
     [Tooltip("The tiles it can move to.")]
     public Color enemyMove = new Color(0.6f, 0.6f, 0.6f, 0.5f);
@@ -43,5 +45,9 @@ public enum UIState {
     /// <summary>An enemy unit was clicked: a tile it could fire on.</summary>
     ENEMY_THREAT,
     /// <summary>A selected unit that fires without moving (artillery): a tile in its range with nothing to hit now.</summary>
-    RANGE
+    RANGE,
+    /// <summary>A strike is being aimed (a unit that targets ground, hits an area or lands later): a tile its blast would hit.</summary>
+    STRIKE_AREA,
+    /// <summary>A strike is being aimed: the tile aimed at. A click on it orders the strike.</summary>
+    STRIKE_CONFIRM
 }

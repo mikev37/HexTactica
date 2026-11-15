@@ -204,6 +204,22 @@ public class GameRecord {
                 pending.Clear();
                 continue;
             }
+            GameLog.Lines.StrikeLandedLine landed;
+            if (GameLog.Lines.ReadStrikeLanded(line, names, out landed)) {
+                // The combat losses just before this line were the strike's doing (and cargo aboard a transport it destroyed).
+                Side by = g.SideNamed(landed.side);
+                string bk = g.Note(landed.unit);
+                foreach (GameLog.Lines.StrikeHitLine h in landed.hits) {
+                    if (!h.destroyed) continue;
+                    Side hs = g.SideNamed(h.side);
+                    string hk = g.Note(h.unit);
+                    Loss l = hs != null ? pending.Find(x => x.side == hs.id && x.kind == hk && x.cause == GameLog.Lines.Combat && x.killerSide < 0) : null;
+                    if (l != null && by != null) { l.killerSide = by.id; l.killerKind = bk; l.strength = h.damage; }
+                }
+                if (by != null) foreach (Loss l in pending) if (l.cause == GameLog.Lines.Aboard && l.killerSide < 0) { l.killerSide = by.id; l.killerKind = bk; }
+                pending.Clear();
+                continue;
+            }
             if (GameLog.Lines.ReadChangesHands(line, out name, out from, out to)) {
                 Side s = g.SideNamed(to), was = g.SideNamed(from);
                 if (s != null) g.captures.Add(new Capture { round = round, side = s.id, building = name, from = was != null ? was.id : -1 });

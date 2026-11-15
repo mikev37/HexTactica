@@ -9,6 +9,7 @@ SupplyPoint.cs
 GameController.cs
 GameAssets.cs
 ThreatReach.cs
+Strikes.cs
 UnitController.cs
 AIPlayer.cs
 GoTo.cs

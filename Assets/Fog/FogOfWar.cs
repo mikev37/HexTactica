@@ -265,6 +265,9 @@ public static class FogOfWar {
             if (b.detectRange > 0)
                 foreach (HexTile t in HexTactica.AI.AIPath.TilesInRangeShared(b.tile, -1, b.detectRange)) s.detected.Add(t);
         }
+        // Ground lit up for this side (a strike of its own, or an ally's, that just landed): seen, whatever is in the way.
+        Lit[] lit = flares;
+        for (int i = 0; i < lit.Length; i++) if (Player.Friendly(lit[i].to, p)) Cover(s, lit[i].at, lit[i].radius, Domain.Land, true);
         return s;
     }
 
@@ -362,6 +365,27 @@ public static class FogOfWar {
         return any;
     }
 
+    // ------------------------------------------------------------------ ground lit up for a turn
+
+    /// <summary>Ground a side sees until the end of its turn, with no unit of its own there (a strike that landed: Unit.strikeRevealRadius).</summary>
+    public struct Lit { public Player to; public HexTile at; public int radius; }
+
+    // Replaced whole, never changed in place (a thought on another thread may be working sight out).
+    static Lit[] flares = new Lit[0];
+
+    /// <summary>The ground lit up now (a save keeps it: a game saved in the turn a strike landed shows the same on loading).</summary>
+    public static IList<Lit> Flares { get { return flares; } }
+
+    /// <summary><paramref name="to"/> (and its allies) sees every tile within <paramref name="radius"/> of <paramref name="at"/>, over any ground, until the end of its turn (OnTurnEnded).</summary>
+    public static void Flare(Player to, HexTile at, int radius) {
+        if (to == null || at == null || radius < 0) return;
+        Lit[] next = new Lit[flares.Length + 1];
+        Array.Copy(flares, next, flares.Length);
+        next[flares.Length] = new Lit { to = to, at = at, radius = radius };
+        flares = next;
+        Changed();
+    }
+
     // ------------------------------------------------------------------ revealed by firing
 
     static readonly Dictionary<Unit, HashSet<Player>> revealed = new Dictionary<Unit, HashSet<Player>>();
@@ -387,6 +411,7 @@ public static class FogOfWar {
             if (kv.Value.Count == 0 || kv.Key == null) gone.Add(kv.Key);
         }
         foreach (Unit u in gone) revealed.Remove(u);
+        if (flares.Length > 0) flares = Array.FindAll(flares, x => x.to != p);
         Turn++;
         Changed();
     }
@@ -576,7 +601,7 @@ public static class FogOfWar {
 
     /// <summary>A new game: forget everything (memory, reveals, the turn count).</summary>
     public static void Reset() {
-        sights = new Dictionary<Player, Sight>(); revealed.Clear(); units.Clear(); tilesSeen.Clear(); buildings.Clear(); kindsSeen.Clear();
+        sights = new Dictionary<Player, Sight>(); revealed.Clear(); flares = new Lit[0]; units.Clear(); tilesSeen.Clear(); buildings.Clear(); kindsSeen.Clear();
         Turn = 0; lastHuman = null; viewerChanges++;
         Changed();
     }

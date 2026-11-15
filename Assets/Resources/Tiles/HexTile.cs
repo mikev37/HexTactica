@@ -245,6 +245,10 @@ public class HexTile : MonoBehaviour
             case UIState.RANGE:
                 overlay.sprite = uiData.attack_possible;
                 break;
+            case UIState.STRIKE_AREA:
+            case UIState.STRIKE_CONFIRM:
+                overlay.sprite = uiData.strike;
+                break;
             default: overlay.gameObject.SetActive(false); break;
         }
     }
@@ -338,6 +342,30 @@ public class HexTile : MonoBehaviour
         SetTerrain(terrain.destroyedInto);
         AfterTerrainChange();
         if (TerrainDestroyed != null) TerrainDestroyed(this, was);
+    }
+
+    /// <summary>
+    /// A strike's crater (Unit.craterTerrain): the terrain is destroyed whatever health it had and becomes
+    /// <paramref name="into"/>, as DestroyTerrain makes a forest stumps (what it was is kept, so Repair Tile puts it
+    /// back; units that cannot stand on the new ground are lost; supply is worked out again). Land only: water stays
+    /// water, and a bridge is not filled in but falls as bridges do (its own destroyedInto). Not a building's tile: its
+    /// ground is the building's. False if nothing changed.
+    /// </summary>
+    public bool Crater(TerrainData into) {
+        if (terrain == null || building != null) return false;
+        if (terrain.elevation < 0) return false;
+        if (terrain.elevation == 0) {
+            if (into == null || terrain.destroyedInto == null) return false;
+            DestroyTerrain();
+            return true;
+        }
+        if (into == null || terrain == into) return false;
+        TerrainData was = terrain;
+        destroyedFrom.Add(was);
+        SetTerrain(into);
+        AfterTerrainChange();
+        if (TerrainDestroyed != null) TerrainDestroyed(this, was);
+        return true;
     }
 
     /// <summary>
@@ -497,6 +525,8 @@ public class HexTile : MonoBehaviour
         Unit justMoved = null;
         bool unloading = state == UIState.UNLOAD_CONFIRM && TransportMenu.pendingCargo != null;
         if (!unloading) TransportMenu.Close();
+        // A strike's hint on show: any click but the one that orders it takes it down first (the tiles are as they were).
+        if (state != UIState.STRIKE_CONFIRM && state != UIState.ATTACK_CONFIRM) ClearStrikeHint();
         BuildingMenu.open = null;
         // An enemy's move and threat on show: any click clears it first.
         SupplyOverlay.HideEnemy();
@@ -537,7 +567,8 @@ public class HexTile : MonoBehaviour
                 HexGenerator.forAllTiles(x => { x.G = 0; x.Reset(); return 0; });
                 CheckMovementRange(sel).ForEach(x => { if (x.G != 0 && x.CanEndTurnHere(sel)) x.changeState(UIState.MOVE); });
                 // Only what it can fire on now: enemies it sees in range (not its whole range, not friends or empty tiles).
-                CheckAttackRange(sel).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
+                // (A unit that targets ground: every tile in its range it could not move to instead.)
+                AttackOptions(sel).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
                 changeState(UIState.SELECTED);
                 NotifyUnitSelected(sel);
                 // A human's order: the unit acknowledges (the AI selects its units without clicking, so never for them).
@@ -565,7 +596,7 @@ public class HexTile : MonoBehaviour
                 HexGenerator.forAllTiles(x => { if (x.state == UIState.ATTACK_CONFIRM) x.changeState(UIState.FREE); return 0; });
 
                 if (mover.moveAndAttack) {
-                    CheckAttackRange(mover).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
+                    AttackOptions(mover).ForEach(position => { position.changeState(UIState.ATTACK); position.parent = this; });
                 } else {
 
                 }
@@ -576,6 +607,21 @@ public class HexTile : MonoBehaviour
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
                 // A transport that has moved can still put down what it carries.
                 if (Transporting.IsTransport(mover) && mover.transported.Count > 0) justMoved = mover;
+            } else if (state == UIState.ATTACK && GameController.gc.activeUnit != null && GameController.gc.activeUnit.StrikesArea) {
+                // A strike (on ground, over an area, or landing later) aimed here: the tiles it would hit, and what
+                // every unit on them would lose. A click on the target again orders it.
+                HexGenerator.forAllTiles(x => { if (x.state == UIState.ATTACK_CONFIRM) x.changeState(UIState.ATTACK); return 0; });
+                ShowStrikeHint(GameController.gc.activeUnit, parent != null ? parent : GameController.gc.activeUnit.tile, knower);
+            } else if (state == UIState.STRIKE_CONFIRM) {
+                HexTile from = parent;
+                Unit attacker = GameController.gc.activeUnit;
+                bool arrived = true;
+                // Striking on the move (stopped on the way by an enemy it did not see: no strike).
+                if (from != null && attacker.tile != from) arrived = attacker.CompleteMove(from, true);
+                if (arrived && attacker.Strength > 0) Strikes.Order(attacker, this);
+                attacker.FinishActive();
+                strikeUnder.Clear();
+                HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
             } else if (state == UIState.ATTACK) {
                 HexGenerator.forAllTiles(x => { if (x.state == UIState.ATTACK_CONFIRM) x.changeState(UIState.ATTACK); return 0; });
                 changeState(UIState.ATTACK_CONFIRM);
@@ -584,7 +630,9 @@ public class HexTile : MonoBehaviour
                 Unit defender = occupier;
                 // The exact resolution OrderAttack will run, firing from the tile the attacker will
                 // stand on (parent when moving and firing): ambush order, retaliation, pinned retreat.
-                defender.PreviewAttack(attacker, move_confirm != null ? move_confirm : attacker.tile);
+                CombatOutcome shown = defender.PreviewAttack(attacker, move_confirm != null ? move_confirm : attacker.tile);
+                // Area of effect: the tiles around the target its shot also hits, and what the units on them would lose.
+                if (attacker.blastRadius > 0) ShowSplashHint(attacker, move_confirm != null ? move_confirm : attacker.tile, defender, shown, knower);
             } else if (state == UIState.ATTACK_CONFIRM) {
                 HexTile move_confirm = parent;
                 Unit attacker = GameController.gc.activeUnit;
@@ -614,6 +662,55 @@ public class HexTile : MonoBehaviour
             if (selected != null && Transporting.IsTransport(selected) && selected.transported.Count > 0 && selected.owner == GameController.gc.activePlayer) TransportMenu.Open(selected);
             else if (justMoved != null && justMoved.tile != null) TransportMenu.Open(justMoved);
         }
+    }
+
+    // ---- aiming a strike (Strikes): the hint on the tiles it would hit ----
+
+    /// <summary>What each tile under a strike's hint showed before it (put back when the hint goes).</summary>
+    static readonly Dictionary<HexTile, UIState> strikeUnder = new Dictionary<HexTile, UIState>();
+
+    /// <summary>
+    /// The tiles <paramref name="attacker"/> could attack from here: for a unit that targets ground, every tile in its
+    /// range (Strikes.Targets) but those it could move to instead (a click there is a move); for any other, the tiles
+    /// holding an enemy it can fire on (CheckAttackRange).
+    /// </summary>
+    List<HexTile> AttackOptions(Unit attacker) {
+        if (attacker == null || !attacker.targetsGround) return CheckAttackRange(attacker);
+        return Strikes.Targets(attacker, this).FindAll(t => t.state != UIState.MOVE && t.state != UIState.MOVE_ARROW && t.state != UIState.MOVE_CONFIRM && t.state != UIState.SELECTED);
+    }
+
+    void HintOver(UIState shown) {
+        if (!strikeUnder.ContainsKey(this)) strikeUnder[this] = state;
+        changeState(shown);
+    }
+
+    /// <summary>Take a strike's hint off the board: every tile under it shows what it did before.</summary>
+    static void ClearStrikeHint() {
+        if (strikeUnder.Count == 0) return;
+        foreach (KeyValuePair<HexTile, UIState> kv in new List<KeyValuePair<HexTile, UIState>>(strikeUnder))
+            if (kv.Key != null && (kv.Key.state == UIState.STRIKE_AREA || kv.Key.state == UIState.STRIKE_CONFIRM)) kv.Key.changeState(kv.Value);
+        strikeUnder.Clear();
+    }
+
+    /// <summary>
+    /// This tile is aimed at by <paramref name="attacker"/>'s strike from <paramref name="from"/>: it and the tiles
+    /// the blast reaches show the strike sprite (HexTileUIData.strike), and each unit on them that the player knows
+    /// of shows what it would lose (Strikes.Preview: as things stand now; a delayed strike hits what is there when it lands).
+    /// </summary>
+    void ShowStrikeHint(Unit attacker, HexTile from, Player knower) {
+        ClearStrikeHint();
+        foreach (HexTile t in Strikes.Blast(this, attacker.blastRadius)) t.HintOver(t == this ? UIState.STRIKE_CONFIRM : UIState.STRIKE_AREA);
+        foreach (StrikeHit h in Strikes.Preview(attacker, from, this, knower)) h.unit.ShowStrikePreview(h);
+    }
+
+    /// <summary>The splash of an ordinary shot at <paramref name="defender"/> on this tile: the tiles around it show the strike sprite, the units on them what they would lose.</summary>
+    void ShowSplashHint(Unit attacker, HexTile from, Unit defender, CombatOutcome shot, Player knower) {
+        ClearStrikeHint();
+        Strike s = Strikes.Plan(attacker, from, this);
+        s.strength = attacker.Strength - (shot.defenderFiresFirst ? shot.damageToAttacker : 0);
+        s.splash = true; s.spareA = attacker; s.spareB = defender;
+        foreach (HexTile t in Strikes.Blast(this, attacker.blastRadius)) if (t != this) t.HintOver(UIState.STRIKE_AREA);
+        foreach (StrikeHit h in Strikes.Hits(s, t => FogOfWar.ApparentOccupier(t, knower))) h.unit.ShowStrikePreview(h);
     }
 
 		public int Distance(HexTile t) {

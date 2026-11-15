@@ -135,6 +135,35 @@ public class Unit : MonoBehaviour
     [Tooltip("Its attacks ignore the defender's cover (napalm, flamethrowers): no cover off its damage, and a defender cannot use the ground to fire first on it (an ambush by veterancy alone still can).")]
     public bool ignoresCover;
 
+    [Header("Strike (each on its own: any mix of them makes a unit)")]
+    [Tooltip("Target ground: it attacks a tile, not a unit: any tile in its range, whatever stands there, seen or not. What it hits is whatever is on the tiles when the attack lands (Strikes).")]
+    public bool targetsGround;
+    [Range(0, 3)]
+    [Tooltip("Area of effect: its attack also hits every unit within this many tiles of its target (1: the seven tiles), friend and foe alike, with no answer and no retreat. 0: the target only.")]
+    public int blastRadius;
+    [Tooltip("Self-destruct: it is expended by its own attack (a missile, a bomb). With a ballistic delay it leaves the board as it is launched and cannot be attacked after.")]
+    public bool selfDestructs;
+    [Tooltip("Ballistic delay: its attack lands at the start of its owner's next turn, on the tile it was aimed at (a unit aimed at: the tile it stood on), hitting whatever is there then. Launching gives it away to every enemy side (fog of war).")]
+    public bool ballistic;
+    [Range(0, 6)]
+    [Tooltip("Fog of war: when its attack on ground or its ballistic attack lands, its owner sees every tile within this many steps of the target until the end of that turn (0: nothing revealed).")]
+    public int strikeRevealRadius;
+    [Tooltip("The tile its ground or ballistic attack lands on is destroyed and becomes this terrain (land only: water stays water, a bridge falls as bridges do, a building's ground is the building's). Empty: the ground is only worn, as by any attack.")]
+    public TerrainData craterTerrain;
+    [Tooltip("Damage its ground or ballistic attack does to a building on the tile it lands on (Building.health; any attack on a unit standing on a building does 1).")]
+    public int buildingDamage;
+    [Tooltip("What its ground or ballistic attack shows where it lands (an explosion). Empty: its weapon impact.")]
+    [LooksOnly] public GameObject strikeExplosion;
+    [Tooltip("Played where its ground or ballistic attack lands.")]
+    [LooksOnly] public AudioClip strikeSound;
+    [Tooltip("Seconds its launch plays (the animator's Launch trigger) before it is gone from the screen. Animation only.")]
+    [LooksOnly] public float launchSeconds = 1.2f;
+    [Tooltip("Seconds its arrival plays (the animator's Land trigger) before the explosion. Animation only.")]
+    [LooksOnly] public float landSeconds = 0.8f;
+
+    /// <summary>Its attack is worked out over an area or later, not as a duel with one unit (Strikes): it aims at ground, hits an area, or lands after a delay.</summary>
+    public bool StrikesArea { get { return targetsGround || ballistic; } }
+
     [Header("Vision (fog of war)")]
     [Range(0, 10)]
     [Tooltip("Tiles it sees around it when fog of war is on: everything within this many steps.")]
@@ -298,6 +327,15 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Launched (expended as its delayed attack left): its launch plays out where it stood, then it is gone.
+        if (launched) return;
+        // Arriving (a strike landing, shown by a copy of the unit that fired it): the explosion and the hits when it is down.
+        if (arriving != null) {
+            if (Time.time >= arriveAt) { StrikeResult r = arriving; arriving = null; Strikes.ShowImpact(r); Destroy(gameObject); }
+            return;
+        }
+        // A strike's hits wait for this unit's shot to land (AttackResolve), a couple of seconds at most.
+        if (pendingImpact != null && Time.time - impactAt > 2.5f) ShowPendingImpact();
         // Boarding: walk the path to the transport at full size; only the last step, onto the
         // transport's tile, is taken shrinking into the slot.
         if (trasnporter != null && boardingWalk.Count > 0) {
@@ -461,6 +499,7 @@ public class Unit : MonoBehaviour
 
     /// <summary>Any unit on the board still animating (see <see cref="Animating"/>).</summary>
     public static bool AnyAnimating() {
+        if (Strikes.Showing) return true;
         if (UnitController.uc == null) return false;
         foreach (Unit u in UnitController.uc.units) if (u != null && u.Animating) return true;
         return false;
@@ -1129,6 +1168,12 @@ public class Unit : MonoBehaviour
     /// under fog of war fires first whatever the ground (no ambush by the unit it surprised).
     /// </summary>
     internal CombatOutcome OrderAttack(Unit defender, bool surprise = false) {
+        // A unit whose attack is on ground or lands later (Strikes) strikes the tile its target stands on: no duel.
+        if (StrikesArea && defender != null && defender.tile != null && BoardView.current == null) {
+            Strikes.Order(this, defender.tile);
+            return new CombatOutcome();
+        }
+        int firedWith = Strength;
         if (Attacking != null) Attacking(this, defender, surprise);
         // The defender's sprite is still sliding back from an earlier retreat: the shot waits until
         // it has arrived where the defender now is (the tile it stands on as this attack begins).
@@ -1199,7 +1244,104 @@ public class Unit : MonoBehaviour
 
         FogOfWar.Changed();
         if (Attacked != null) Attacked(this, defender, firedFrom, fought, o);
+        // Area of effect: the shot also hits every unit around the tile fired on (at the strength it was fired with:
+        // less what an ambush took first).
+        if (blastRadius > 0) {
+            StrikeResult splash = Strikes.Splash(this, firedWith - (o.defenderFiresFirst ? o.damageToAttacker : 0), defender, firedFrom, fought);
+            if (splash != null && splash.hits.Count > 0) {
+                if (GameController.gc != null && !GameController.gc.headless) { pendingImpact = splash; impactAt = Time.time; }
+            }
+        }
+        // Self-destruct: expended by its own attack, whatever came of it.
+        if (selfDestructs) Expend(false);
         return o;
+    }
+
+    // ---- Strikes (Strikes.cs has the rules; this is the unit's part in them) ----
+
+    /// <summary>A unit is leaving the board because its own attack expended it (Died is told, as for any unit that goes: this says it was not killed).</summary>
+    public static bool Expending;
+
+    /// <summary>The hits of a strike this unit made, shown when its shot lands (AttackResolve). Animation only.</summary>
+    [System.NonSerialized] StrikeResult pendingImpact;
+    [System.NonSerialized] float impactAt;
+    /// <summary>Expended by a shot still playing: its death plays when the shot has landed. Animation only.</summary>
+    [System.NonSerialized] bool expendAfterShot;
+    /// <summary>Expended as it launched: its launch is playing, then it is destroyed. Animation only.</summary>
+    [System.NonSerialized] bool launched;
+    /// <summary>A copy of a launched unit shown arriving where its strike lands. Animation only: never on the board.</summary>
+    [System.NonSerialized] StrikeResult arriving;
+    [System.NonSerialized] float arriveAt;
+
+    /// <summary>
+    /// Self-destruct: the unit is gone from the board, expended by its own attack — not killed (Expending: no loss is
+    /// logged or counted for it). <paramref name="launch"/>: it left as a delayed attack (it plays its animator's
+    /// Launch for launchSeconds and is then removed); otherwise its death plays once its shot has landed.
+    /// </summary>
+    internal void Expend(bool launch) {
+        if (dead) return;
+        Expending = true;
+        try { DieActual(); } finally { Expending = false; }
+        if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
+        if (launch) {
+            launched = true;
+            if (animator != null && HasAnimatorParameter("Launch")) animator.SetTrigger("Launch");
+            PlaySound(fireSound);
+            float seconds = Mathf.Max(0.05f, launchSeconds);
+            Strikes.Busy(seconds);
+            Destroy(gameObject, seconds);
+        } else expendAfterShot = true;
+    }
+
+    /// <summary>Hit by a strike (Strikes.Resolve): the strength is lost now, as in any attack; the screen shows it when the strike is seen to land (ShowHit).</summary>
+    internal void TakeStrike(int damage) {
+        if (dead || damage <= 0) return;
+        Strength = Mathf.Max(0, Strength - damage);
+        suppressed = Mathf.Clamp(suppressed, 0, Mathf.Max(0, Strength));
+        if (Strength <= 0) DieActual();
+    }
+
+    /// <summary>The strike that hit it is seen to land: its strength shows as it is, and its death plays. Animation only.</summary>
+    internal void ShowHit() {
+        StrengthDisplay = Strength;
+        if (Strength <= 0) Die();
+    }
+
+    /// <summary>
+    /// This unit fired a strike (Strikes.Order): its fire animation and sound; <paramref name="r"/>, what the strike
+    /// did if it landed at once, is shown when the shot lands (AttackResolve), as an ordinary attack's hit is.
+    /// </summary>
+    internal void ShowStrikeFired(StrikeResult r) {
+        if (GameController.gc == null || GameController.gc.headless) return;
+        target = null;
+        pendingImpact = r; impactAt = Time.time;
+        firing = true; firedAt = Time.time;
+        if (animator != null) animator.SetTrigger("Fire!");
+        PlaySound(fireSound);
+    }
+
+    /// <summary>The preview of a strike being aimed (HexTile.ShowStrikeHint): what this unit would lose, as an attack's preview shows it.</summary>
+    internal void ShowStrikePreview(StrikeHit h) {
+        if (textArea != null) textArea.text = "-" + h.damage + (h.dies ? " X" : "");
+    }
+
+    void ShowPendingImpact() {
+        StrikeResult r = pendingImpact;
+        pendingImpact = null;
+        if (r != null) Strikes.ShowImpact(r);
+    }
+
+    /// <summary>
+    /// A copy of the unit that launched a strike (made from its prefab where the strike lands, on no tile and in no
+    /// list): it plays its animator's Land for landSeconds, then the explosion and the hits are shown and it is removed.
+    /// </summary>
+    internal void BeginArrival(StrikeResult r) {
+        dead = true;
+        arriving = r;
+        float seconds = Mathf.Max(0.05f, landSeconds);
+        arriveAt = Time.time + seconds;
+        Strikes.Busy(seconds);
+        if (animator != null && HasAnimatorParameter("Land")) animator.SetTrigger("Land");
     }
 
     /// <summary>Kept for old callers: a retreat now happens at once (RetreatTo), so there is never one pending.</summary>
@@ -1417,7 +1559,9 @@ public class Unit : MonoBehaviour
 
     internal void AttackResolve(Unit defender, bool retaliate) {
         firing = false;
-        if (!defender) return;
+        // What its strike did (a barrage on ground, the splash of its shot) shows as the shot lands.
+        ShowPendingImpact();
+        if (!defender) { if (expendAfterShot) Die(); return; }
         GameObject.Instantiate(weaponImpact, defender.transform.position, defender.transform.rotation);
         defender.StrengthDisplay = defender.Strength;
         Unit answer = answeredBy;
@@ -1428,6 +1572,8 @@ public class Unit : MonoBehaviour
             defender.Fire(this, false);
         }
         shooter = false;
+        // Expended by this shot: now that it has landed, it goes.
+        if (expendAfterShot) Die();
     }
     //Just aniamtions
     bool deathPlayed;
@@ -1479,14 +1625,23 @@ public class Unit : MonoBehaviour
     /// where the defender stands (default: <paramref name="tile"/>, else where it stands). Only for a building's
     /// garrison bonuses (Building.attackBonus, defenseBonus): <paramref name="tile"/> is for cover, and null for none.</param>
     internal static int calculateDamage(Unit attacker, Unit defender, HexTile tile, int firstStrike, HexTile attackerAt = null, HexTile defenderAt = null) {
-        if (attacker.Strength - firstStrike <= 0)
+        Building atk = Building.GarrisonFor(attacker, attackerAt ?? attacker.tile);
+        return DamageFrom(attacker, attacker.Strength - firstStrike, attacker.Veterancy, atk != null ? atk.attackBonus : 0, defender, tile, defenderAt);
+    }
+
+    /// <summary>
+    /// The one damage formula. <paramref name="attacker"/> gives the weapon (firepower, piercing, targeting, what it can
+    /// attack); its strength, veterancy and garrison bonus are given, so an attack already in the air (Strikes: launched
+    /// by a unit since gone, or at the strength it had then) is worked out by the same rule as a shot fired now.
+    /// </summary>
+    internal static int DamageFrom(Unit attacker, int attackerStrength, int attackerVeterancy, int attackBonus, Unit defender, HexTile tile, HexTile defenderAt = null) {
+        if (attackerStrength <= 0)
             return 0;
         // Not something it can attack (artillery at a jet): no damage, and no return fire either way.
         if (!attacker.CanTarget(defender)) return 0;
         float cover = 0;
-        Building atk = Building.GarrisonFor(attacker, attackerAt ?? attacker.tile);
         Building def = Building.GarrisonFor(defender, defenderAt ?? tile ?? defender.tile);
-        float destruction = Mathf.Max(0, attacker.Firepower + attacker.Veterancy + (atk != null ? atk.attackBonus : 0) + defender.Vulnerability - (def != null ? def.defenseBonus : 0));
+        float destruction = Mathf.Max(0, attacker.Firepower + attackerVeterancy + attackBonus + defender.Vulnerability - (def != null ? def.defenseBonus : 0));
         float penetration = Mathf.Max(1, defender.Armor - attacker.Piercing);
         float aquire = Mathf.Max(1, defender.Evasion - attacker.Targeting);
         float toughness = 6;
@@ -1495,7 +1650,7 @@ public class Unit : MonoBehaviour
         int minDamage = 1;
         return (int) Mathf.Max(minDamage, Mathf.Floor(
             (destruction / penetration / aquire - cover)
-            * (attacker.Strength - firstStrike) / toughness));
+            * attackerStrength / toughness));
     }
 
     internal int displayAttackOdds(Unit attacker, HexTile tile, int firstStrike) {

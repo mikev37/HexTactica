@@ -119,6 +119,8 @@ public class LevelEditor : MonoBehaviour
             });
             json = json.Substring(0, json.Length - 1) + "\n]\n";
         }
+        // Strikes in the air (a missile launched, not yet landed) and the ground one lit up this turn: a save goes on with them.
+        json += Strikes.SaveJson();
         // The scenario's triggers, with how far they have got in this game (a scenario not yet played: nowhere).
         ScenarioScript script = ScenarioScript.Instance;
         if (script != null && script.HasContent) json += script.WordsJson() + ",\n\"" + ScenarioScript.FileKey + "\":" + script.ToJson(true).Print(true) + "\n";

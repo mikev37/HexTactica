@@ -506,6 +506,7 @@ public class GameController : MonoBehaviour
     public void Eliminate(Player p) {
         if (p == null || p.eliminated || !p.eliminable) return;   // (a side the scenario keeps in: Player.eliminable)
         p.eliminated = true;
+        Strikes.Drop(p);   // what it had in the air goes with it
         List<Unit> doomed = new List<Unit>(p.units);
         for (int i = 0; i < doomed.Count; i++) {
             if (doomed[i] != null) doomed[i].Delete();

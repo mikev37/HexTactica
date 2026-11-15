@@ -390,6 +390,9 @@ namespace HexTactica.Harness {
             if (GameLog.Lines.ReadChangesHands(line, out a, out b, out c)) return true;
             GameLog.Lines.CargoLine cargo;
             if (GameLog.Lines.ReadCargo(line, sides, out cargo)) return true;
+            // A strike ordered is played again; its landing is not a line to play (the game works it out as it did).
+            GameLog.Lines.StrikeLine strike;
+            if (GameLog.Lines.ReadStrikeFired(line, sides, out strike)) return true;
             return GameLog.Lines.ReadResigns(line, sides, out a);
         }
 
@@ -454,12 +457,17 @@ namespace HexTactica.Harness {
             string side, unit, cause, a, b; int x1, y1, x2, y2, cost;
             GameLog.Lines.AttackLine at;
             GameLog.Lines.CargoLine cargo;
+            GameLog.Lines.StrikeLine fired;
             if (GameLog.Lines.ReadMoved(line, sides, out side, out unit, out x1, out y1, out x2, out y2)) {
                 // Ordered as a player or the AI orders it: the unit walks its path (and fires after, if its next line is its attack from there).
                 GameLog.Lines.AttackLine then;
                 int next = t.actions.IndexOf(e) + 1;
                 bool fires = next < t.actions.Count && GameLog.Lines.ReadAttack(t.events[t.actions[next]], sides, out then)
                              && then.side == side && then.unit == unit && then.fromX == x2 && then.fromY == y2;
+                // (Or strikes from there: a move and strike.)
+                GameLog.Lines.StrikeLine thenStrike;
+                if (!fires && next < t.actions.Count && GameLog.Lines.ReadStrikeFired(t.events[t.actions[next]], sides, out thenStrike))
+                    fires = thenStrike.side == side && thenStrike.unit == unit && thenStrike.fromX == x2 && thenStrike.fromY == y2;
                 MoveOrCargo(t, e, side, unit, x1, y1, Tile(x2, y2), fires);
             } else if (GameLog.Lines.ReadAttack(line, sides, out at)) {
                 Unit attacker = UnitAt(at.side, at.unit, at.fromX, at.fromY);
@@ -512,6 +520,13 @@ namespace HexTactica.Harness {
                 Hold(attacker, at.strengthAfter);
                 Hold(defender, at.targetStrengthAfter);
                 if (back != null && defender.Strength > 0 && defender.tile != back && back.occupier == null) defender.RetreatTo(back);
+            } else if (GameLog.Lines.ReadStrikeFired(line, sides, out fired)) {
+                // Ordered as in play: a strike that lands at once does what it does on this board; one launched is in the
+                // air until its side's next turn starts (Advance ends the turn as the game does), and lands then.
+                Unit striker = UnitAt(fired.side, fired.unit, fired.fromX, fired.fromY);
+                HexTile aim = Tile(fired.x, fired.y);
+                if (striker == null || aim == null) { Warn("no " + fired.side + " " + fired.unit + " at (" + fired.fromX + "," + fired.fromY + ") to strike (" + fired.x + "," + fired.y + ")"); return; }
+                if (!Strikes.Order(striker, aim)) Warn(fired.unit + " could not strike (" + fired.x + "," + fired.y + ") on the board as it is");
             } else if (GameLog.Lines.ReadCargo(line, sides, out cargo)) {
                 Unit transport = UnitAt(cargo.transportSide, cargo.transportUnit, cargo.transportX, cargo.transportY);
                 if (transport == null) { Warn("no " + cargo.transportSide + " " + cargo.transportUnit + " at (" + cargo.transportX + "," + cargo.transportY + ")"); return; }

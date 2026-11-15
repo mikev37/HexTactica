@@ -48,6 +48,9 @@ public class Player : MonoBehaviour
     public int hubsStranded;
 
     public void StartTurn() {
+        // What this side has in the air lands first (Strikes: a missile launched last turn), before income and upkeep.
+        Strikes.LandFor(this);
+        if (eliminated || (GameController.gc != null && GameController.gc.gameOver)) return;
         // Suppression lasts until the unit's own turn: every pip comes back now.
         foreach (Unit u in units) if (u != null) u.suppressed = 0;
         CollectIncome();
