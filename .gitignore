@@ -16,3 +16,7 @@ Temp/
 *.kra
 
 Art/
+
+game-logs/
+
+saves/
