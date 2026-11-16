@@ -101,6 +101,7 @@ namespace HexTactica.Harness {
             GameController gc = GameController.gc;
             if (gc == null) return;
             foreach (Player p in gc.players) if (p != null) Line(Lines.Side(p));
+            Line(Lines.Fog(gc.fogOfWar));
             Player a = gc.players.Count > 0 ? gc.players[0] : null, b = gc.players.Count > 1 ? gc.players[1] : null;
             Building ha = a != null ? GameController.HQOf(a) : null, hb = b != null ? GameController.HQOf(b) : null;
             axisTiles = 0;
@@ -516,6 +517,9 @@ namespace HexTactica.Harness {
             if (GameController.gc != null) {
                 sb.Append(",\n\"day\":").Append(GameController.gc.days);
                 sb.Append(",\n\"factionSpecialUnits\":").Append(Q(GameController.gc.SpecialUnitsSetting));
+                // The rules as played: a replay plays under them.
+                sb.Append(",\n\"fog\":").Append(Q(GameController.gc.FogSetting));
+                sb.Append(",\n\"purchases\":").Append(Q(GameController.gc.PurchasesSetting));
                 sb.Append(",\n\"players\":[");
                 bool firstSide = true;
                 foreach (Player q in GameController.gc.players) {

@@ -57,6 +57,13 @@ namespace HexTactica.Harness {
             static readonly Regex axis = new Regex(@"^axis: (\d+)$");
             public static bool ReadAxis(string line, out int tiles) { Match m = axis.Match(line); tiles = m.Success ? int.Parse(m.Groups[1].Value, Inv) : 0; return m.Success; }
 
+            /// <summary>The game's fog rule: "fog: on" / "fog: off".</summary>
+            public static string Fog(bool on) { return "fog: " + (on ? "on" : "off"); }
+            public static bool ReadFog(string line, out bool on) {
+                on = line == "fog: on";
+                return on || line == "fog: off";
+            }
+
             public static string Source(string from) { return "source: " + from; }
             public static bool ReadSource(string line, out string from) { from = line.StartsWith("source: ", StringComparison.Ordinal) ? line.Substring(8) : null; return from != null; }
 

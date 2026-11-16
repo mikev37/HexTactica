@@ -68,12 +68,19 @@ namespace HexTactica.Harness {
         /// <summary>How a board is loaded: as the game loads a scenario file (the harness loads its own way).</summary>
         public static Func<string, bool> Loader = ScenarioLoader.LoadBoardFromPath;
 
-        static bool fogWas, recordWas;
+        static bool fogWas, recordWas, shownWas = true;
         static int viewerWas = -1;
+
+        /// <summary>
+        /// The recorded game's fog rule: from its turn boards ("fog"), else the log's "fog:" line, else the scenario it was
+        /// played from; null if none says (the board's is kept). Put in force on every board the replay loads.
+        /// </summary>
+        public static bool? RecordedFog;
+        static bool? logFog;
 
         /// <summary>Read the recording in <paramref name="folder"/>: its boards in order, each with its part of the log. False if it has none.</summary>
         public static bool Read(string folder) {
-            turns.Clear(); Ending = null; logSides.Clear(); logFactions.Clear();
+            turns.Clear(); Ending = null; logSides.Clear(); logFactions.Clear(); logFog = null; RecordedFog = null; sourceFile = null;
             if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return false;
             List<string> files = new List<string>(Directory.GetFiles(folder, "turn-*.dat"));
             files.Sort(StringComparer.Ordinal);
@@ -90,6 +97,10 @@ namespace HexTactica.Harness {
                     string line = raw.TrimEnd();
                     long sideId; string sideName, sideFaction; bool sideAI;
                     if (round < 0 && GameLog.Lines.ReadSide(line, out sideId, out sideName, out sideFaction, out sideAI)) { logSides[sideName] = sideId; logFactions[sideName] = sideFaction; continue; }
+                    bool fogLine;
+                    if (round < 0 && GameLog.Lines.ReadFog(line, out fogLine)) { logFog = fogLine; continue; }
+                    string fromFile;
+                    if (round < 0 && GameLog.Lines.ReadSource(line, out fromFile)) { sourceFile = fromFile; continue; }
                     if (line.StartsWith("== round ", StringComparison.Ordinal)) {
                         at = null; board = true;
                         int.TryParse(line.Substring(9).Split(':')[0], out round);
@@ -107,7 +118,22 @@ namespace HexTactica.Harness {
                     at.events.Add(line);
                 }
             }
+            RecordedFog = FogOf(turns[0].file) ?? logFog ?? (sourceFile != null && File.Exists(sourceFile) ? FogOf(sourceFile) : null);
             return true;
+        }
+
+        static string sourceFile;
+
+        /// <summary>A board file's fog rule ("fog": "on"/"off", in it or its test block), or null if it has none.</summary>
+        static bool? FogOf(string file) {
+            try {
+                Defective.JSON.JSONObject obj = new Defective.JSON.JSONObject(File.ReadAllText(file));
+                Defective.JSON.JSONObject test = obj.GetField("test");
+                Defective.JSON.JSONObject f = test != null ? test.GetField("fog") : null;
+                if (f == null) f = obj.GetField("fog");
+                if (f == null || string.IsNullOrEmpty(f.stringValue)) return null;
+                return GameController.ParseFog(f.stringValue);
+            } catch (Exception) { return null; }
         }
 
         static string SideOf(string file) {
@@ -126,6 +152,7 @@ namespace HexTactica.Harness {
                 recordWas = ScenarioLoader.RecordGames;
                 fogWas = gc != null && gc.fogOfWar;
                 viewerWas = gc != null ? gc.fogViewer : -1;
+                shownWas = gc == null || gc.fogShownOnScreen;
             }
             Folder = folder;
             Active = true;
@@ -158,6 +185,7 @@ namespace HexTactica.Harness {
                 }
             }
             finally { ScenarioLoader.RecordGames = recordWas; ScenarioLoader.SidesAsFiled = exactWas; }
+            if (RecordedFog.HasValue && GameController.gc != null) GameController.gc.fogOfWar = RecordedFog.Value;
             Index = i;
             Freeze();
             ApplyView();
@@ -630,25 +658,11 @@ namespace HexTactica.Harness {
             Warn("no " + side + " " + kind + " at (" + x1 + "," + y1 + ") or aboard a transport there");
         }
 
-        /// <summary>
-        /// Do <paramref name="a"/> as if fog of war were off (the game's own rule: a move running into a unit it cannot
-        /// see stops there and is fired on — in a replay the fog is the viewer's, not the mover's, and the log already
-        /// says where every move ended). Fog is put back as it was, without being redrawn.
-        /// </summary>
-        static void Unfogged(Action a) {
-            GameController gc = GameController.gc;
-            bool was = gc != null && gc.fogOfWar;
-            if (was) gc.fogOfWar = false;
-            try { a(); } finally { if (was) gc.fogOfWar = true; }
-        }
-
         /// <summary>The unit walks up to the transport and gets in, as ordered in play; if the game will not have it, it is put aboard as the log says.</summary>
         static void Board(Unit rider, Unit transport) {
-            List<HexTile> steps = null;
-            Unfogged(() => steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile));
+            List<HexTile> steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile);
             bool headless = GameController.gc != null && GameController.gc.headless;
-            bool walked = false;
-            if (steps != null) Unfogged(() => walked = rider.WalkAndBoard(steps, transport, !headless));
+            bool walked = steps != null && rider.WalkAndBoard(steps, transport, !headless);
             if (!walked || rider.trasnporter != transport) {
                 if (rider.trasnporter != transport) Transporting.Embark(transport, rider);
             }
@@ -672,15 +686,15 @@ namespace HexTactica.Harness {
         static void Move(Unit u, HexTile to, bool thenAttacks) {
             if (u == null || to == null || u.tile == to) return;
             if (to.occupier != null && to.occupier != u) { Warn("(" + to.x + "," + to.y + ") is taken: the move is left out"); return; }
-            // Without fog: what the viewer of the replay cannot see must not stop the move (the recorded game's
-            // ambushes are in the log, as attacks, and are played from there).
-            Unfogged(() => {
-                List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathTo(u, to) : null;
-                if (steps == null || !u.MoveAlong(steps, thenAttacks, true) || u.tile != to) {
-                    if (u.tile != to && to.occupier == null) u.TeleportTo(to, u.tile.Distance(to), thenAttacks);
-                }
-            });
-            if (u.tile != to) Warn(GameLog.Lines.Who(u) + " did not get to (" + to.x + "," + to.y + ")");
+            // Under the recorded game's own fog rule, from the mover's side (path-finding and moving go by what its
+            // side knows), as the game played it.
+            List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathTo(u, to) : null;
+            if (steps != null) u.MoveAlong(steps, thenAttacks, true);
+            if (u.tile != to) {
+                // The game would not take it there (it knew otherwise than the recorded game did): put where the log has it.
+                if (steps != null) Warn(GameLog.Lines.Who(u) + " stopped at (" + u.tile.x + "," + u.tile.y + "), not (" + to.x + "," + to.y + "): put where the log has it");
+                if (to.occupier == null) u.TeleportTo(to, u.tile.Distance(to), thenAttacks);
+            }
         }
 
         /// <summary>The path the game's own search gives the unit to <paramref name="to"/> this turn (its tile first), as a player's click follows; null if it does not reach.</summary>
@@ -719,10 +733,15 @@ namespace HexTactica.Harness {
             View(ViewAs + 1 >= n ? -1 : ViewAs + 1);
         }
 
+        /// <summary>
+        /// What is shown, and nothing else: the fog rule is the recorded game's (RecordedFog) whatever the view. As a side:
+        /// that side's fog drawn (fogShownOnScreen, fogViewer). Everything: fog not drawn (each side's fog faintly, as
+        /// FogView shows it with fogShownOnScreen off).
+        /// </summary>
         static void ApplyView() {
             GameController gc = GameController.gc;
             if (gc == null) return;
-            gc.fogOfWar = ViewAs >= 0;
+            gc.fogShownOnScreen = ViewAs >= 0;
             gc.fogViewer = ViewAs;
             FogOfWar.Changed();
             FogOfWar.Refresh();
@@ -745,7 +764,7 @@ namespace HexTactica.Harness {
             if (!Active) return;
             Active = false;
             GameController gc = GameController.gc;
-            if (gc != null) { gc.fogOfWar = fogWas; gc.fogViewer = viewerWas; FogOfWar.Changed(); FogOfWar.Refresh(); FogView.BoardLoaded(); }
+            if (gc != null) { gc.fogOfWar = fogWas; gc.fogViewer = viewerWas; gc.fogShownOnScreen = shownWas; FogOfWar.Changed(); FogOfWar.Refresh(); FogView.BoardLoaded(); }
             ScenarioLoader.RecordGames = recordWas;
         }
 

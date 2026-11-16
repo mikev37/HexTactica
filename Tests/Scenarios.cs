@@ -3302,11 +3302,13 @@ public static partial class Scenarios {
                 Rig.At(0, 0).OnMouseDown();
                 bool noClick = HexTile.lastClicked == clickedWas;
                 HexTactica.Harness.Replay.View(0);
-                bool asFirst = GameController.gc.fogOfWar && FogOfWar.Viewer == GameController.gc.players[0] && HexTactica.Harness.Replay.ViewName() == "as " + GameController.gc.players[0].personal_name + " sees it";
+                bool fogRule = GameController.gc.fogOfWar;
+                bool asFirst = GameController.gc.fogShownOnScreen && FogOfWar.Viewer == GameController.gc.players[0] && HexTactica.Harness.Replay.ViewName() == "as " + GameController.gc.players[0].personal_name + " sees it";
                 HexTactica.Harness.Replay.CycleView();
                 bool asSecond = FogOfWar.Viewer == GameController.gc.players[1];
                 HexTactica.Harness.Replay.CycleView();
-                bool all = !GameController.gc.fogOfWar && HexTactica.Harness.Replay.ViewAs == -1;
+                // Everything: fog not drawn, the game's fog rule untouched.
+                bool all = !GameController.gc.fogShownOnScreen && GameController.gc.fogOfWar == fogRule && HexTactica.Harness.Replay.ViewAs == -1;
                 r.Add("clicks ignored " + noClick + "; seen as " + GameController.gc.players[0].personal_name + " " + asFirst + ", as " + GameController.gc.players[1].personal_name + " " + asSecond + ", everything " + all);
                 HexTactica.Harness.Replay.View(1);
                 HexTactica.Harness.Replay.Close();
