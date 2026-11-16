@@ -40,7 +40,7 @@ namespace HexTactica.Harness {
         static readonly Dictionary<Unit, HexTile> lastSeen = new Dictionary<Unit, HexTile>();
         static readonly HashSet<Unit> ditching = new HashSet<Unit>();
         static bool finished;
-        /// <summary>The line the first two sides' HQs stand on (for each side's "front").</summary>
+        /// <summary>The line the first side's HQ and its first enemy's stand on (for each side's "front").</summary>
         static Vector3 hqA, hqB;
         static int axisTiles;
 
@@ -102,7 +102,9 @@ namespace HexTactica.Harness {
             if (gc == null) return;
             foreach (Player p in gc.players) if (p != null) Line(Lines.Side(p));
             Line(Lines.Fog(gc.fogOfWar));
-            Player a = gc.players.Count > 0 ? gc.players[0] : null, b = gc.players.Count > 1 ? gc.players[1] : null;
+            // From the first side's HQ to its first enemy's (the second side, unless that is an ally).
+            Player a = gc.players.Count > 0 ? gc.players[0] : null, b = null;
+            for (int i = 1; i < gc.players.Count && b == null; i++) if (gc.players[i] != null && Player.Hostile(gc.players[i], a)) b = gc.players[i];
             Building ha = a != null ? GameController.HQOf(a) : null, hb = b != null ? GameController.HQOf(b) : null;
             axisTiles = 0;
             if (ha != null && hb != null && ha.tile != null && hb.tile != null) {
