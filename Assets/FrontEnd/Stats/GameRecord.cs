@@ -21,6 +21,10 @@ public class GameRecord {
 
     public class Kind {
         public string name; public int cost; public int range; public int maxStrength = 1;
+        /// <summary>Its prefab's move (movement points) and whether it can move and fire in one turn.</summary>
+        public int move; public bool moveAndFire = true;
+        /// <summary>Tiles it could strike at next turn from where it stands, terrain aside: its move and range, or its range alone if it cannot move and fire.</summary>
+        public int Reach { get { return (moveAndFire ? move : 0) + range; } }
         public Locomotion locomotion;
         public bool Air { get { return LocomotionRules.IsAirborne(locomotion); } }
     }
@@ -41,9 +45,30 @@ public class GameRecord {
     public class Count { public long side; public string kind; public int n; }
     public class Buy { public int round; public long side; public string kind; public int cost; }
 
+    /// <summary>
+    /// One unit, followed through the log by where it stands (the log names units by side and kind only; every move,
+    /// boarding, purchase, attack and loss says where). A unit that has not moved yet is known from the first line that
+    /// names its tile. Its kills, and who killed it.
+    /// </summary>
+    public class Track {
+        public int id; public long side; public string kind;
+        public int x, y;
+        public bool alive = true;
+        /// <summary>Aboard this transport (null: on its tile).</summary>
+        public Track aboard;
+        public readonly List<Track> cargo = new List<Track>();
+        public readonly List<Track> kills = new List<Track>();
+        public int diedRound = -1;
+        public Track killedBy;
+        /// <summary>When it was destroyed: each side's units (as far as the log had placed them) within its reach (Kind.Reach) of where it stood.</summary>
+        public Dictionary<long, int> inReachAtDeath;
+    }
+
     /// <summary>A unit lost: to whom, how, and when.</summary>
     public class Loss {
         public int round; public long side; public string kind; public int cost;
+        /// <summary>The unit lost and the one that killed it, if the log placed them (Track).</summary>
+        public Track unit, killer;
         /// <summary>Its strength when it was lost (what was destroyed).</summary>
         public int strength;
         /// <summary>GameLog.Lines.Combat (destroyed attacking or attacked: the killer is named), Supply (starved), Fuel (ditched), Aboard (went down with its transport).</summary>
@@ -53,6 +78,7 @@ public class GameRecord {
 
     public class Attack {
         public int round; public long side; public string kind; public long targetSide; public string targetKind;
+        public Track unit, target;
         public int dealt, taken, distance, targetStrength; public bool killed, attackerDied; public long turnOf;
     }
 
@@ -71,6 +97,8 @@ public class GameRecord {
     public List<Loss> losses = new List<Loss>();
     public List<Attack> attacks = new List<Attack>();
     public List<Capture> captures = new List<Capture>();
+    /// <summary>Every unit the log placed (see Track), in the order it first came up.</summary>
+    public List<Track> tracks = new List<Track>();
     /// <summary>The sides that gave the game up.</summary>
     public List<long> resigned = new List<long>();
     public bool over;
@@ -91,6 +119,76 @@ public class GameRecord {
     public List<long> SideAndAllies(long id) { List<long> l = new List<long>(); foreach (Side x in sides) if (x.id == id || Allied(x.id, id)) l.Add(x.id); return l; }
     public Side SideNamed(string name) { return sides.Find(x => x.name == name); }
     public Kind KindNamed(string k) { return kinds.Find(x => x.name == k); }
+
+    /// <summary>Follows units through the log by tile (Track).</summary>
+    class Tracker {
+        readonly GameRecord g;
+        readonly Dictionary<long, Track> at = new Dictionary<long, Track>();
+        /// <summary>Strikes in flight: the unit that fired, by its side and kind and the tile aimed at.</summary>
+        readonly List<KeyValuePair<string, Track>> strikes = new List<KeyValuePair<string, Track>>();
+        public Tracker(GameRecord g) { this.g = g; }
+        static long Key(int x, int y) { return ((long)x << 32) ^ (uint)y; }
+
+        /// <summary>The unit of this side and kind on (x,y): the one the log put there, or a new one (not yet named by any line).</summary>
+        public Track Find(long side, string kind, int x, int y) {
+            Track t;
+            if (at.TryGetValue(Key(x, y), out t) && t.alive && t.side == side && t.kind == kind) return t;
+            t = new Track { id = g.tracks.Count, side = side, kind = kind, x = x, y = y };
+            g.tracks.Add(t);
+            at[Key(x, y)] = t;
+            return t;
+        }
+        public void Place(Track t, int x, int y) {
+            Track was;
+            if (t.aboard == null && at.TryGetValue(Key(t.x, t.y), out was) && was == t) at.Remove(Key(t.x, t.y));
+            if (t.aboard != null) { t.aboard.cargo.Remove(t); t.aboard = null; }
+            t.x = x; t.y = y;
+            at[Key(x, y)] = t;
+        }
+        public void Board(Track cargo, Track transport) {
+            Track was;
+            if (cargo.aboard == null && at.TryGetValue(Key(cargo.x, cargo.y), out was) && was == cargo) at.Remove(Key(cargo.x, cargo.y));
+            cargo.aboard = transport; cargo.x = transport.x; cargo.y = transport.y;
+            if (!transport.cargo.Contains(cargo)) transport.cargo.Add(cargo);
+        }
+        /// <summary>The unit of this side and kind aboard <paramref name="transport"/> (a new one if the log never saw it board).</summary>
+        public Track Aboard(Track transport, long side, string kind) {
+            Track c = transport.cargo.Find(x => x.alive && x.side == side && x.kind == kind);
+            if (c != null) return c;
+            c = new Track { id = g.tracks.Count, side = side, kind = kind, x = transport.x, y = transport.y, aboard = transport };
+            g.tracks.Add(c); transport.cargo.Add(c);
+            return c;
+        }
+        /// <summary>Gone: off the board with its cargo; who killed it (null: lost some other way), and who stood within its reach.</summary>
+        public void Kill(Track t, Track by, int round) {
+            if (t == null || !t.alive) return;
+            if (t.aboard == null) {
+                GameRecord.Kind k = g.KindNamed(t.kind);
+                int reach = k != null ? k.Reach : 0;
+                t.inReachAtDeath = new Dictionary<long, int>();
+                foreach (Track o in at.Values) {
+                    if (o == t || !o.alive || Distance(o.x, o.y, t.x, t.y) > reach) continue;
+                    int n; t.inReachAtDeath.TryGetValue(o.side, out n); t.inReachAtDeath[o.side] = n + 1;
+                }
+            }
+            t.alive = false; t.diedRound = round; t.killedBy = by;
+            if (by != null) by.kills.Add(t);
+            Track was;
+            if (t.aboard == null && at.TryGetValue(Key(t.x, t.y), out was) && was == t) at.Remove(Key(t.x, t.y));
+            if (t.aboard != null) t.aboard.cargo.Remove(t);
+            foreach (Track c in t.cargo.ToArray()) { c.aboard = null; Kill(c, by, round); }
+        }
+        public static int Distance(int ax, int ay, int bx, int by) { int dz = (-ax - ay) - (-bx - by); return Math.Max(Math.Abs(ax - bx), Math.Max(Math.Abs(ay - by), Math.Abs(dz))); }
+        public void Fired(long side, string kind, int x, int y, Track unit) { strikes.Add(new KeyValuePair<string, Track>(side + "|" + kind + "|" + x + "," + y, unit)); }
+        /// <summary>The unit that fired the strike landing on (x,y), or null.</summary>
+        public Track Landed(long side, string kind, int x, int y) {
+            string key = side + "|" + kind + "|" + x + "," + y;
+            int i = strikes.FindIndex(s => s.Key == key);
+            if (i < 0) return null;
+            Track t = strikes[i].Value; strikes.RemoveAt(i);
+            return t;
+        }
+    }
 
     // ------------------------------------------------------------------ reading
 
@@ -118,6 +216,7 @@ public class GameRecord {
         Snap snap = null;
         // Losses in combat and aboard, waiting for the attack line that says who did it.
         List<Loss> pending = new List<Loss>();
+        Tracker tr = new Tracker(g);
 
         foreach (string raw in lines) {
             string line = raw.TrimEnd('\r');
@@ -182,7 +281,12 @@ public class GameRecord {
             int cost;
             if (GameLog.Lines.ReadBuy(line, names, out sideName, out unit, out cost)) {
                 Side s = g.SideNamed(sideName);
-                if (s != null) g.buys.Add(new Buy { round = round, side = s.id, kind = g.Note(unit), cost = cost });
+                if (s != null) {
+                    string k = g.Note(unit);
+                    g.buys.Add(new Buy { round = round, side = s.id, kind = k, cost = cost });
+                    int bx, by;
+                    if (GameLog.Lines.ReadBuyPlace(line, out bx, out by)) tr.Place(tr.Find(s.id, k, bx, by), bx, by);
+                }
                 continue;
             }
             if (GameLog.Lines.ReadDies(line, names, out sideName, out unit, out cause)) {
@@ -192,6 +296,13 @@ public class GameRecord {
                 Kind kind = g.KindNamed(k);
                 Loss l = new Loss { round = round, side = s.id, kind = k, cost = kind != null ? kind.cost : 0, cause = cause, turnOf = mover };
                 g.losses.Add(l);
+                // Lost in combat or aboard: placed by the attack or strike line that follows (a unit that moved and died
+                // attacking has its dies line before its move line, so its tile here is not yet where the log has it).
+                int dx, dy;
+                if (cause != GameLog.Lines.Aboard && cause != GameLog.Lines.Combat && GameLog.Lines.ReadTile(line, out dx, out dy)) {
+                    l.unit = tr.Find(s.id, k, dx, dy);
+                    tr.Kill(l.unit, null, round);
+                }
                 if (cause == GameLog.Lines.Combat || cause == GameLog.Lines.Aboard) pending.Add(l);
                 continue;
             }
@@ -201,16 +312,21 @@ public class GameRecord {
                 if (att == null || def == null) { pending.Clear(); continue; }
                 string ak = g.Note(a.unit), dk = g.Note(a.targetUnit);
                 int before = Math.Max(0, a.targetStrengthAfter) + a.dealt;
+                Track at_ = tr.Find(att.id, ak, a.fromX, a.fromY), dt = tr.Find(def.id, dk, a.atX, a.atY);
                 g.attacks.Add(new Attack {
                     round = round, side = att.id, kind = ak, targetSide = def.id, targetKind = dk, dealt = a.dealt, taken = a.taken,
-                    distance = a.Distance, targetStrength = before, killed = a.killed, attackerDied = a.attackerDied, turnOf = mover
+                    distance = a.Distance, targetStrength = before, killed = a.killed, attackerDied = a.attackerDied, turnOf = mover,
+                    unit = at_, target = dt
                 });
                 // The losses just before this line were its doing: the defender (killed by the attacker), the attacker
                 // (killed by return fire), and cargo aboard either.
                 Loss defLoss = a.killed ? pending.FindLast(x => x.side == def.id && x.kind == dk && x.cause == GameLog.Lines.Combat) : null;
                 Loss attLoss = a.attackerDied ? pending.FindLast(x => x.side == att.id && x.kind == ak && x.cause == GameLog.Lines.Combat) : null;
-                if (defLoss != null) { defLoss.killerSide = att.id; defLoss.killerKind = ak; defLoss.strength = before; }
-                if (attLoss != null) { attLoss.killerSide = def.id; attLoss.killerKind = dk; attLoss.strength = Math.Max(0, a.strengthAfter) + a.taken; }
+                if (defLoss != null) { defLoss.killerSide = att.id; defLoss.killerKind = ak; defLoss.strength = before; defLoss.unit = dt; defLoss.killer = at_; }
+                if (attLoss != null) { attLoss.killerSide = def.id; attLoss.killerKind = dk; attLoss.strength = Math.Max(0, a.strengthAfter) + a.taken; attLoss.unit = at_; attLoss.killer = dt; }
+                if (a.killed) tr.Kill(dt, at_, round);
+                else if (a.retreated) tr.Place(dt, a.retreatX, a.retreatY);
+                if (a.attackerDied) tr.Kill(at_, dt, round);
                 foreach (Loss l in pending)
                     if (l.cause == GameLog.Lines.Aboard && l.killerSide < 0) {
                         if (l.side == def.id && a.killed) { l.killerSide = att.id; l.killerKind = ak; }
@@ -224,15 +340,38 @@ public class GameRecord {
                 // The combat losses just before this line were the strike's doing (and cargo aboard a transport it destroyed).
                 Side by = g.SideNamed(landed.side);
                 string bk = g.Note(landed.unit);
+                Track striker = by != null ? tr.Landed(by.id, bk, landed.x, landed.y) : null;
                 foreach (GameLog.Lines.StrikeHitLine h in landed.hits) {
                     if (!h.destroyed) continue;
                     Side hs = g.SideNamed(h.side);
                     string hk = g.Note(h.unit);
                     Loss l = hs != null ? pending.Find(x => x.side == hs.id && x.kind == hk && x.cause == GameLog.Lines.Combat && x.killerSide < 0) : null;
-                    if (l != null && by != null) { l.killerSide = by.id; l.killerKind = bk; l.strength = h.damage; }
+                    if (l != null && by != null) { l.killerSide = by.id; l.killerKind = bk; l.strength = h.damage; l.killer = striker; }
+                    if (hs != null) { Track victim = tr.Find(hs.id, hk, h.x, h.y); if (l != null) l.unit = victim; tr.Kill(victim, striker, round); }
                 }
                 if (by != null) foreach (Loss l in pending) if (l.cause == GameLog.Lines.Aboard && l.killerSide < 0) { l.killerSide = by.id; l.killerKind = bk; }
                 pending.Clear();
+                continue;
+            }
+            int mx0, my0, mx1, my1;
+            if (GameLog.Lines.ReadMoved(line, names, out sideName, out unit, out mx0, out my0, out mx1, out my1)) {
+                Side s = g.SideNamed(sideName);
+                if (s != null) tr.Place(tr.Find(s.id, g.Note(unit), mx0, my0), mx1, my1);
+                continue;
+            }
+            GameLog.Lines.CargoLine cl;
+            if (GameLog.Lines.ReadCargo(line, names, out cl)) {
+                Side s = g.SideNamed(cl.side), ts = g.SideNamed(cl.transportSide);
+                if (s == null || ts == null) continue;
+                Track transport = tr.Find(ts.id, g.Note(cl.transportUnit), cl.transportX, cl.transportY);
+                if (cl.boards) tr.Board(tr.Find(s.id, g.Note(cl.unit), cl.x, cl.y), transport);
+                else tr.Place(tr.Aboard(transport, s.id, g.Note(cl.unit)), cl.x, cl.y);
+                continue;
+            }
+            GameLog.Lines.StrikeLine sl;
+            if (GameLog.Lines.ReadStrikeFired(line, names, out sl)) {
+                Side s = g.SideNamed(sl.side);
+                if (s != null) { string k = g.Note(sl.unit); tr.Fired(s.id, k, sl.x, sl.y, tr.Find(s.id, k, sl.fromX, sl.fromY)); }
                 continue;
             }
             if (GameLog.Lines.ReadChangesHands(line, out name, out from, out to)) {
@@ -264,7 +403,8 @@ public class GameRecord {
         if (prefab == null) prefab = GameAssets.Unit(k);
         kinds.Add(new Kind {
             name = k, cost = prefab != null ? prefab.cost : 0, range = prefab != null ? prefab.AttackRange : 0,
-            maxStrength = prefab != null ? Math.Max(1, prefab.Strength) : 1, locomotion = prefab != null ? prefab.locomotion : default(Locomotion)
+            maxStrength = prefab != null ? Math.Max(1, prefab.Strength) : 1, locomotion = prefab != null ? prefab.locomotion : default(Locomotion),
+            move = prefab != null ? prefab.moveRange : 0, moveAndFire = prefab == null || prefab.moveAndAttack
         });
         return k;
     }
