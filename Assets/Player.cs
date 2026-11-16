@@ -73,6 +73,12 @@ public class Player : MonoBehaviour
         // Air tankers and supply ships resupply this turn if they started it with supplies (whatever order the roster runs in).
         tankersStocked.Clear();
         foreach (Unit t in roster) if (t != null && (t.airTanker || IsSupplyShip(t)) && t.supplies > 0) tankersStocked.Add(t);
+        // Ships carrying a supply unit that is linked this turn: supplied as on supplied ground, so a convoy need not rotate out.
+        linkedShips.Clear();
+        foreach (SupplyPoint sp in supply.connectedHubs) {
+            Unit ship = LinkedShip(sp);
+            if (ship != null) linkedShips.Add(ship);
+        }
         InUpkeep = true;
         try {
             for (int i = 0; i < roster.Count; i++) {
@@ -85,6 +91,7 @@ public class Player : MonoBehaviour
             }
         } finally { InUpkeep = false; }
         tankersStocked.Clear();
+        linkedShips.Clear();
         // Units lost to attrition while feeding (Unit.ResupplyOnAnyDeath): every side's supply now they are gone.
         if (ResupplyAfterUpkeep) {
             ResupplyAfterUpkeep = false;
@@ -99,6 +106,20 @@ public class Player : MonoBehaviour
 
     /// <summary>The air tankers that started this turn with supplies: they resupply the aircraft beside them (StartTurn).</summary>
     readonly HashSet<Unit> tankersStocked = new HashSet<Unit>();
+
+    /// <summary>Our ships carrying a supply unit linked to our network at the start of this turn (StartTurn).</summary>
+    readonly HashSet<Unit> linkedShips = new HashSet<Unit>();
+
+    /// <summary>
+    /// The ship <paramref name="sp"/> rides in (outermost, for supply in a truck in a ship), when it is a supply unit
+    /// aboard a ship; else null. Such a ship, with the supply linked, is supplied: it needs no restocking (UpkeepOne).
+    /// Aircraft carrying supply get no such thing: they run on their fuel and supplies as always.
+    /// </summary>
+    public static Unit LinkedShip(SupplyPoint sp) {
+        if (sp == null || sp.producer || sp.myUnit == null || sp.myUnit.trasnporter == null) return null;
+        Unit ship = SupplyNetwork.Outermost(sp.myUnit.trasnporter);
+        return ship != null && ship.tile != null && LocomotionRules.IsNaval(ship.locomotion) ? ship : null;
+    }
 
     enum Fed { Resupplied, Starved, Aloft }
 
@@ -143,6 +164,8 @@ public class Player : MonoBehaviour
             // them at the start of the turn fills them instead); out of fuel, they are ditched.
             // Helicopters are also resupplied on any tile in supply, like ground units.
             if (LocomotionRules.ResuppliedInSupply(u.locomotion) && u.tile.isSupplied(this)) { Resupplied(u, true); return Fed.Resupplied; }
+            // A ship carrying linked supply is supplied: healed, rearmed, refuelled and restocked, and so is what it carries.
+            if (linkedShips.Contains(u) && u.Strength > 0) { Resupplied(u, true); return Fed.Resupplied; }
             if (LocomotionRules.NeedsBase(u.locomotion)) {
                 // A ship at sea is supplied while it has supplies of its own, or a supply ship beside it restocks it:
                 // what it carries is then resupplied as on supplied ground (healed, rearmed, refuelled, restocked),
