@@ -665,7 +665,8 @@ public static class FogOfWar {
         // (Unseen enemy supply units were seen walking into and out of trucks in the fog.)
         if (u.GettingOnOrOff) { HexTile under = u.TileUnderSprite(); return under != null && SeesAt(v, u, under); }
         if (u.trasnporter != null && u.trasnporter != u) return ShownToViewer(u.trasnporter);
-        if (u.tile == null) return false;
+        // Off the board, playing its strike (a launch, a fall): as the tile it plays on is shown.
+        if (u.tile == null) return u.ShownAt != null && TileVisible(v, u.ShownAt);
         return SeesAt(v, u, u.ShownTile);
     }
 

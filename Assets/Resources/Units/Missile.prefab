@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 2135285971195945096}
   - component: {fileID: 9081080694409079478}
   - component: {fileID: 1922176808774982529}
-  - component: {fileID: 4417203396515507712}
   m_Layer: 0
   m_Name: Missile
   m_TagString: Untagged
@@ -112,10 +111,10 @@ MonoBehaviour:
   strikeRevealRadius: 2
   craterTerrain: {fileID: 11400000, guid: 572719be81234fee8dc2b775c8662a57, type: 2}
   buildingDamage: 5
-  strikeExplosion: {fileID: 0}
+  strikeExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
   strikeSound: {fileID: 0}
-  launchSeconds: 1.6
-  landSeconds: 0.9
+  launchSeenWithin: 10
+  launchRevealRadius: 1
 --- !u!95 &1922176808774982529
 Animator:
   serializedVersion: 3
@@ -649,20 +648,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 635909237759655326, guid: 2cff058ad97cdb54a9b1959b9a31877f, type: 3}
   m_PrefabInstance: {fileID: 8888191662731795796}
   m_PrefabAsset: {fileID: 0}
-
---- !u!114 &4417203396515507712
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3547141541890433994}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3c93dd6e72564345a872e955e0aad6f3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  offScreen: 6
-  acceleration: 2.5
-  exhaust: {fileID: 0}
-  ignition: 0.25

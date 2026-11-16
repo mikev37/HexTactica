@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"ai-strike-blind","kind":"rules","opponent":"Human","rounds":"4","check":"aiStrikeBlind","question":"The AI learns of strikes only as a player does. Under fog, Blue launches a missile Red cannot see (from its silo far away) and one Red can (beside its tanks): Red knows of one, the seen one, with who fired it and from where but not its target; Blue knows of both, targets and all. No AI code reads the list of every strike in the air (Strikes.InFlight): the AI's source is checked for it.","rules":"standard"},
+"test":{"name":"ai-strike-blind","kind":"rules","opponent":"Human","rounds":"4","check":"aiStrikeBlind","question":"The AI learns of strikes only as a player does. Under fog, Blue launches a missile more than 10 tiles from any Red unit and out of Red's sight, and one beside Red's units: Red knows of one, the near one, with who fired it and from where but not its target; Blue knows of both, targets and all. No AI code reads the list of every strike in the air (Strikes.InFlight) or the strike events: the AI's source is checked for it.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
@@ -175,14 +175,12 @@
 ],
 "buildings":[
 {"x":-6,"y":0,"z":6,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":112,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":0,"capturingPlayerId":-1},
-{"x":6,"y":0,"z":-6,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":0,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":0,"capturingPlayerId":-1},
-{"x":-4,"y":0,"z":4,"gameobject_name":"Missile Silo","personal_name":"Stronghold","type":6,"owner_id":112,"income":0,"producesSupply":false,"supplyRange":0,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":0,"capturingPlayerId":-1}
+{"x":6,"y":0,"z":-6,"gameobject_name":"HQ","personal_name":"Headquarters","type":0,"owner_id":0,"income":2000,"producesSupply":true,"supplyRange":8,"supplies":0,"suppliesMax":0,"damageLevel":0,"capturePoints":0,"capturingPlayerId":-1}
 ],
 "units":[
-{"x":-4,"y":0,"z":4,"Strength":6,"Veterancy":0,"personalName":"Missile","active":true,"owner_id":112,"supplies":0,"fuel":0,"ammo":1,"gameobject_name":"Missile","transporterIndexPlusOne":0},
-{"x":2,"y":0,"z":-2,"Strength":6,"Veterancy":0,"personalName":"Missile","active":true,"owner_id":112,"supplies":0,"fuel":0,"ammo":1,"gameobject_name":"Missile","transporterIndexPlusOne":0},
-{"x":4,"y":0,"z":-4,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0},
-{"x":4,"y":1,"z":-5,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0},
-{"x":4,"y":-1,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
+{"x":-6,"y":3,"z":3,"Strength":6,"Veterancy":0,"personalName":"Missile","active":true,"owner_id":112,"supplies":0,"fuel":0,"ammo":1,"gameobject_name":"Missile","transporterIndexPlusOne":0},
+{"x":3,"y":-2,"z":-1,"Strength":6,"Veterancy":0,"personalName":"Missile","active":true,"owner_id":112,"supplies":0,"fuel":0,"ammo":1,"gameobject_name":"Missile","transporterIndexPlusOne":0},
+{"x":5,"y":-2,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0},
+{"x":6,"y":-3,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
 ]
 }

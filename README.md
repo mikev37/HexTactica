@@ -56,26 +56,42 @@ Four attributes on a unit (its prefab's Unit, header *Strike*), each on or off b
 |---|---|
 | **Targets Ground** | It attacks a tile, not a unit: any tile in its range and line of fire, whatever is on it, seen or not. |
 | **Blast Radius** (0-3) | Its attack also hits every unit within this many tiles of the target (1: the seven tiles), friend and foe, each with that unit's ordinary damage (`Unit.DamageFrom`, the one formula), with no answer and no retreat. On a unit that aims at units and fires at once, it is the splash around its ordinary shot. |
-| **Ballistic** | Its attack lands at the start of its owner's next turn, on the tile it was aimed at, on whatever is there then. An enemy side knows it is coming only if it saw the unit fire (it saw the launch tile); none knows where it is aimed. |
+| **Ballistic** | Its attack lands at the start of its owner's next turn, on the tile it was aimed at, on whatever is there then. A side knows it is coming only if it saw the unit fire, or had a unit within **Launch Seen Within** of it (then it also sees **Launch Reveal Radius** round the launch tile until its own turn ends, and its player is warned). No side but its owner knows where it is aimed. |
 | **Self Destructs** | It is expended by its attack (not killed: no loss is counted or logged). With Ballistic it leaves the board as it is launched, and there is nothing left to attack. |
 
 Also under *Strike*: **Strike Reveal Radius** (its owner sees that far round the target until the end of the turn it
 lands), **Crater Terrain** (the target tile becomes this: land only; water stays water, a bridge falls as bridges do, a
 building's tile is the building's), **Building Damage** (to a building on the target tile), and for looks only
-**Strike Explosion**, **Strike Sound**, **Launch Seconds**, **Land Seconds**.
+**Strike Explosion** and **Strike Sound**. How long a launch or a fall takes is its animator's (below).
 
 **The Missile** (`Resources/Units/Missile`) has all four: 30,000 gold, built at the Missile Silo, cannot move (so a silo
-holds one at a time), range 2-10, blast radius 1, reveals 2, leaves a **Crater** (`Resources/Tiles/Crater`, also
+holds one at a time), range 2-10, blast radius 1, reveals 2, seen launching from 10 tiles (revealing 1 round its launch
+tile), leaves a **Crater** (`Resources/Tiles/Crater`, also
 paintable in the map editor). Its look is placeholder art (`Sprites/Units/Missile`); the crater uses `craters_0` until
 its art arrives.
 
 - **Aiming.** Select it, click a tile in range: the target and the tiles its blast reaches show the Threat sprite
   (`Sprites/UI/Threat`, `HexTileUIData.strike`), and every unit you know of on them shows what it would lose (as things
   stand now: a delayed strike hits what is there when it lands). Click the target again to fire.
-- **Its animator** is `StrikeFlight` on the prefab: on launch it climbs off the top of the screen; at its side's next turn
-  a copy falls from above onto the target, then the explosion plays. Motion is in code, so it plays with no clips; an
-  Animator with a `Launch` or `Land` trigger is told too, for art on top. The explosion is *Strike Explosion*, else the
-  unit's weapon impact (placeholder until the large explosion arrives).
+- **Its animator** is its own, `Animations/Missile/Missile.controller`: the units' shared controller (idle, fire, death)
+  plus three triggers and states, **Launch** (it climbs off the screen where it stood), **Fall** (at its side's next
+  turn a copy of it falls onto the target) and **Impact** (after the explosion). Each of those states carries a
+  **StrikeStage** behaviour (Launched, Landed, Impact Done): the game waits for the state to end, so the clips alone set
+  the timing. The explosion is the unit's *Strike Explosion* (the Missile: `Animations/Explosion`, a placeholder), shown
+  when Fall ends. Any unit can use this: give its controller the triggers and states; a controller without one skips
+  that stage. The controller and its three placeholder clips (`Missile Launch/Fall/Impact.anim`) are made by
+  `Editor/MissileAnimator.cs` the first time the project opens, and the Missile prefab is switched to it (only if it
+  still has the shared controller). After that they are ordinary assets to edit; *HexTactica ▸ Units ▸ Recreate Missile
+  Animator* puts the defaults back (it asks first).
+- **Fog of war.** Once launched it is off the board (its tile is free: the silo can build another); while its launch
+  plays it is shown to whoever sees its launch tile, and its fall to whoever sees the target.
+- **Launch warning.** A side with a unit within 10 tiles of the launch (or sight of it) sees the launch tile and the
+  tiles round it until the end of its next turn, and knows a strike is coming (its AI too). If that is the player at the
+  screen, a yellow banner shows for 10 seconds or until the turn ends, then fades, and the camera glides to the site;
+  any camera input of the player's or a scenario's camera action cuts the glide short. Clicking the banner cycles the
+  camera through this turn's launch sites. The banner is the prefab `Resources/LaunchWarning` (text, colours, layout,
+  sound, and its timings on its LaunchWarning component), made by `Editor/LaunchWarningPrefab.cs` the first time the
+  project opens; *HexTactica ▸ UI ▸ Recreate Launch Warning Prefab* puts the default back.
 - **Saves, the game log and replays.** A strike in the air is in every save (`"strikes"`, and `"lit"` for ground lit up
   that turn): the in-game save, the map editor's, the game log's turn snapshots. The log has `Blue Missile (-4,0)
   launches at (3,0)` (an action, which a replay plays again) and `Blue Missile strike lands on (3,0): Red Tank (3,0) -6
@@ -94,7 +110,7 @@ its art arrives.
   in the air (`Strikes.InFlight`) or the strike events: test `ai-strike-blind` checks the AI's source for it. It buys missiles by the purchase rules' generic
   value for a unit that fires from afar without moving (about 12,000 for the 30,000 Missile).
 - Tests: `strike-missile`, `strike-attributes`, `strike-save`, `strike-log-replay`, `script-strike`, `ai-strike-fire`,
-  `ai-strike-spread`, `ai-strike-blind` (`Tests/StrikeChecks.cs`; `ONLY=rules NAME=strike bash Tests/run.sh Assets`).
+  `ai-strike-spread`, `ai-strike-blind`, `strike-launch-seen` (`Tests/StrikeChecks.cs`; `ONLY=rules NAME=strike bash Tests/run.sh Assets`).
 
 ## Supply carried by transports, ships and aircraft
 

@@ -143,8 +143,14 @@ public class Unit : MonoBehaviour
     public int blastRadius;
     [Tooltip("Self-destruct: it is expended by its own attack (a missile, a bomb). With a ballistic delay it leaves the board as it is launched and cannot be attacked after.")]
     public bool selfDestructs;
-    [Tooltip("Ballistic delay: its attack lands at the start of its owner's next turn, on the tile it was aimed at (a unit aimed at: the tile it stood on), hitting whatever is there then. Enemy sides that see it fire know a strike is coming, not where; others learn of it when it lands.")]
+    [Tooltip("Ballistic delay: its attack lands at the start of its owner's next turn, on the tile it was aimed at (a unit aimed at: the tile it stood on), hitting whatever is there then. Sides that see it fire, or have a unit within Launch Seen Within of it, know a strike is coming, not where; others learn of it when it lands.")]
     public bool ballistic;
+    [Range(0, 30)]
+    [Tooltip("Ballistic delay: a side with any unit within this many tiles of it when it launches sees the launch whatever its sight (a rocket going up is seen from far off): it knows a strike is coming (its AI too), its player is warned (LaunchWarning), and it sees the ground around the launch tile (Launch Reveal Radius). 0: only a side that sees the unit fire.")]
+    public int launchSeenWithin;
+    [Range(0, 3)]
+    [Tooltip("Ballistic delay: the tiles round the launch tile a side that sees the launch (Launch Seen Within) sees until the end of its own next turn. 0: the launch tile only.")]
+    public int launchRevealRadius;
     [Range(0, 6)]
     [Tooltip("Fog of war: when its attack on ground or its ballistic attack lands, its owner sees every tile within this many steps of the target until the end of that turn (0: nothing revealed).")]
     public int strikeRevealRadius;
@@ -156,10 +162,6 @@ public class Unit : MonoBehaviour
     [LooksOnly] public GameObject strikeExplosion;
     [Tooltip("Played where its ground or ballistic attack lands.")]
     [LooksOnly] public AudioClip strikeSound;
-    [Tooltip("Seconds its launch plays (the animator's Launch trigger) before it is gone from the screen. Animation only.")]
-    [LooksOnly] public float launchSeconds = 1.2f;
-    [Tooltip("Seconds its arrival plays (the animator's Land trigger) before the explosion. Animation only.")]
-    [LooksOnly] public float landSeconds = 0.8f;
 
     /// <summary>Its attack is worked out over an area or later, not as a duel with one unit (Strikes): it aims at ground, hits an area, or lands after a delay.</summary>
     public bool StrikesArea { get { return targetsGround || ballistic; } }
@@ -327,13 +329,8 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Launched (expended as its delayed attack left): its launch plays out where it stood, then it is gone.
-        if (launched) return;
-        // Arriving (a strike landing, shown by a copy of the unit that fired it): the explosion and the hits when it is down.
-        if (arriving != null) {
-            if (Time.time >= arriveAt) { StrikeResult r = arriving; arriving = null; Strikes.ShowImpact(r); Destroy(gameObject); }
-            return;
-        }
+        // Off the board, playing a stage of its strike (launch, fall, impact): its animator decides when it ends (StrikeStage).
+        if (ShownAt != null) return;
         // A strike's hits wait for this unit's shot to land (AttackResolve), a couple of seconds at most.
         if (pendingImpact != null && Time.time - impactAt > 2.5f) ShowPendingImpact();
         // Boarding: walk the path to the transport at full size; only the last step, onto the
@@ -1267,32 +1264,71 @@ public class Unit : MonoBehaviour
     [System.NonSerialized] float impactAt;
     /// <summary>Expended by a shot still playing: its death plays when the shot has landed. Animation only.</summary>
     [System.NonSerialized] bool expendAfterShot;
-    /// <summary>Expended as it launched: its launch is playing, then it is destroyed. Animation only.</summary>
-    [System.NonSerialized] bool launched;
     /// <summary>A copy of a launched unit shown arriving where its strike lands. Animation only: never on the board.</summary>
     [System.NonSerialized] StrikeResult arriving;
-    [System.NonSerialized] float arriveAt;
+
+    /// <summary>
+    /// Off the board but still on screen, playing its strike (its launch from this tile; as a copy, its fall onto this
+    /// tile): fog of war shows it as it shows this tile (FogOfWar.ShownToViewer). Null: on the board, or gone.
+    /// </summary>
+    [System.NonSerialized] public HexTile ShownAt;
+
+    /// <summary>
+    /// Seconds a strike's stage may play before the unit is removed anyway, in case its animation never ends (as a death
+    /// is, Die). Not how long anything takes: the animator's states decide that (StrikeStage).
+    /// </summary>
+    public const float StageTimeout = 15f;
 
     /// <summary>
     /// Self-destruct: the unit is gone from the board, expended by its own attack — not killed (Expending: no loss is
-    /// logged or counted for it). <paramref name="launch"/>: it left as a delayed attack (it plays its animator's
-    /// Launch for launchSeconds and is then removed); otherwise its death plays once its shot has landed.
+    /// logged or counted for it). <paramref name="launch"/>: it left as a delayed attack: its animator's Launch trigger
+    /// plays where it stood (seen by whoever sees that tile), and it is removed when that state ends (StrikeStage
+    /// Launched). Otherwise its death plays once its shot has landed.
     /// </summary>
     internal void Expend(bool launch) {
         if (dead) return;
+        HexTile pad = tile;
         Expending = true;
         try { DieActual(); } finally { Expending = false; }
         if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
         if (launch) {
-            launched = true;
-            if (animator != null && HasAnimatorParameter("Launch")) animator.SetTrigger("Launch");
+            ShownAt = pad;
+            Strikes.Performing(this);
             PlaySound(fireSound);
-            float seconds = Mathf.Max(0.05f, launchSeconds);
-            StrikeFlight flight = GetComponent<StrikeFlight>();
-            if (flight != null) flight.Launch(seconds);
-            Strikes.Busy(seconds);
-            Destroy(gameObject, seconds);
+            PlayStage("Launch", StrikeStage.Stage.Launched);
         } else expendAfterShot = true;
+    }
+
+    /// <summary>Set the animator trigger of a strike's stage; a controller without it skips the stage at once.</summary>
+    void PlayStage(string trigger, StrikeStage.Stage stage) {
+        if (animator != null && animator.runtimeAnimatorController != null && HasAnimatorParameter(trigger)) {
+            animator.SetTrigger(trigger);
+            Destroy(gameObject, StageTimeout);   // (only if the state never ends)
+        } else StrikeStageEnded(stage);
+    }
+
+    /// <summary>A stage of its strike has played out (StrikeStage, on its animator's state; or at once without one).</summary>
+    public void StrikeStageEnded(StrikeStage.Stage stage) {
+        switch (stage) {
+            case StrikeStage.Stage.Launched:
+                if (ShownAt == null || arriving != null) return;
+                ShownAt = null;
+                Destroy(gameObject);
+                return;
+            case StrikeStage.Stage.Landed: {
+                if (arriving == null) return;
+                StrikeResult r = arriving;
+                arriving = null;
+                Strikes.ShowImpact(r);
+                PlayStage("Impact", StrikeStage.Stage.ImpactDone);
+                return;
+            }
+            case StrikeStage.Stage.ImpactDone:
+                if (ShownAt == null) return;
+                ShownAt = null;
+                Destroy(gameObject);
+                return;
+        }
     }
 
     /// <summary>Hit by a strike (Strikes.Resolve): the strength is lost now, as in any attack; the screen shows it when the strike is seen to land (ShowHit).</summary>
@@ -1335,17 +1371,16 @@ public class Unit : MonoBehaviour
 
     /// <summary>
     /// A copy of the unit that launched a strike (made from its prefab where the strike lands, on no tile and in no
-    /// list): it plays its animator's Land for landSeconds, then the explosion and the hits are shown and it is removed.
+    /// list): its animator's Fall trigger plays; when that state ends (StrikeStage Landed) the explosion and the hits are
+    /// shown and its Impact trigger plays; when that ends (Impact Done) it is removed. Fog of war shows it as it shows the
+    /// tile it falls on.
     /// </summary>
     internal void BeginArrival(StrikeResult r) {
         dead = true;
         arriving = r;
-        float seconds = Mathf.Max(0.05f, landSeconds);
-        arriveAt = Time.time + seconds;
-        Strikes.Busy(seconds);
-        if (animator != null && HasAnimatorParameter("Land")) animator.SetTrigger("Land");
-        StrikeFlight flight = GetComponent<StrikeFlight>();
-        if (flight != null) flight.Arrive(transform.position, seconds);
+        ShownAt = r.strike.target;
+        Strikes.Performing(this);
+        PlayStage("Fall", StrikeStage.Stage.Landed);
     }
 
     /// <summary>Kept for old callers: a retreat now happens at once (RetreatTo), so there is never one pending.</summary>

@@ -76,7 +76,8 @@ public class FogFader : MonoBehaviour {
     void LateUpdate() {
         if (unit == null) return;
         // Dead or dying: keep whatever it was (a unit killed in sight plays its death in sight).
-        if (unit.Strength > 0 && unit.tile != null) target = TargetFor(unit);
+        // (Or off the board playing its strike, a launch or a fall: shown as the tile it plays on, Unit.ShownAt.)
+        if ((unit.Strength > 0 && unit.tile != null) || unit.ShownAt != null) target = TargetFor(unit);
         if (!started) { started = true; alpha = target; }
         float seconds = Mathf.Max(0.01f, FogSettings.Instance.fadeSeconds);
         alpha = Mathf.MoveTowards(alpha, target, Time.deltaTime / seconds);
