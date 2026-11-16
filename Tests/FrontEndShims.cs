@@ -42,6 +42,7 @@ namespace TMPro {
         public string text = "";
         public ContentType contentType;
         public SubmitEvent onEndEdit = new SubmitEvent();
+        public bool isFocused;
         public TMP_Text textComponent;
         public UnityEngine.UI.Graphic placeholder;
     }

@@ -258,6 +258,7 @@ namespace UnityEngine {
         public Vector3 position, localPosition, localScale, up, right;
         public Vector3 lossyScale { get { return localScale; } }
         public Quaternion rotation, localRotation;
+        public Vector3 localEulerAngles, eulerAngles;
         public Transform parent;
         public void SetParent(Transform p, bool worldPositionStays) { parent = p; }
         public Transform Find(string n) { return null; }

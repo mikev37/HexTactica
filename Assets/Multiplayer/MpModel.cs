@@ -203,8 +203,10 @@ namespace HexTactica.Multiplayer {
 
     /// <summary>A game in a player's list (the main menu's): enough to show it and say whether it waits on them.</summary>
     public class MpSummary {
-        public string code, title, turnSide;
+        public string code, title, turnSide, epoch;
         public MpState state;
+        /// <summary>Log entries so far: with the epoch, which turn it is (a your-turn notice is shown once per turn).</summary>
+        public int entries;
         public bool myTurn, host, spectator;
         /// <summary>The player is no longer in it (removed by the host).</summary>
         public bool removed;

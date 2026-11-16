@@ -16,6 +16,12 @@ public class PlayerSetupRow : MonoBehaviour {
     public TMP_Dropdown faction;
     [Tooltip("Shown when the map fixes the side's faction. Optional.")]
     public GameObject lockedMark;
+    [Header("Networked lobby (optional)")]
+    [Tooltip("Who holds the side in a networked lobby (a player's name, \"open\").")]
+    public TMPro.TMP_Text playerLabel;
+    [Tooltip("A joined player takes the side, or gives up the one they hold.")]
+    public Button seatButton;
+    public TMPro.TMP_Text seatLabel;
 
     public MatchSetup.Side Side { get; private set; }
 
@@ -35,5 +41,8 @@ public class PlayerSetupRow : MonoBehaviour {
             faction.interactable = !side.factionLocked;
         }
         if (lockedMark != null) lockedMark.SetActive(side.factionLocked);
+        // (A networked lobby fills these in: MpLobby.)
+        if (playerLabel != null) playerLabel.text = "";
+        if (seatButton != null) seatButton.gameObject.SetActive(false);
     }
 }

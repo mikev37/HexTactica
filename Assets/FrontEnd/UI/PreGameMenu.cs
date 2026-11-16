@@ -38,6 +38,10 @@ public class PreGameMenu : MonoBehaviour {
     [Tooltip("Who plays a side: this AI with a profile from FrontEndSettings.aiProfiles; {0} the profile's name.")]
     public string profileAiLabel = "AI: {0}";
     public Button startButton;
+    [Tooltip("The networked lobby on this screen (when it is one: MatchSetup.Networked). Made if missing.")]
+    public HexTactica.Multiplayer.MpLobby lobby;
+    [Tooltip("Shown only when this screen is a networked lobby (the join code, its name, the turn limit, who is in it).")]
+    public GameObject[] lobbyOnly = new GameObject[0];
 
     readonly List<PlayerSetupRow> made = new List<PlayerSetupRow>();
     readonly List<RectTransform> dividers = new List<RectTransform>();
@@ -54,6 +58,7 @@ public class PreGameMenu : MonoBehaviour {
 
     void Start() {
         factions = GameAssets.AllFactions.OrderBy(f => f.name).ToList();
+        foreach (GameObject g in lobbyOnly) if (g != null) g.SetActive(MatchSetup.Networked);
         // (MatchSetup.ReadFromBoard was read by GameSession from the board as the file has it.)
         if (title != null) title.text = Path.GetFileNameWithoutExtension(MatchSetup.FilePath);
         if (details != null) details.text = GameFiles.Describe(MatchSetup.FilePath);
@@ -73,6 +78,11 @@ public class PreGameMenu : MonoBehaviour {
         profiles = FrontEndSettings.Get.aiProfiles.Where(x => x != null).ToList();
         List<string> controls = new List<string> { humanLabel, defaultAiLabel };
         controls.AddRange(profiles.Select(x => string.Format(profileAiLabel, x.profileName)));
+        // A networked lobby: open (to join), the host's device, or the AI.
+        if (MatchSetup.Networked) {
+            if (lobby == null) lobby = gameObject.AddComponent<HexTactica.Multiplayer.MpLobby>();
+            controls = lobby.Controls(defaultAiLabel, profileAiLabel, profiles);
+        }
         foreach (MatchSetup.Side side in MatchSetup.Sides) {
             if (rowTemplate == null || rows == null) break;
             PlayerSetupRow row = Instantiate(rowTemplate, rows);
@@ -81,12 +91,15 @@ public class PreGameMenu : MonoBehaviour {
             int pick = factions.FindIndex(f => f.name == side.faction) + 1;
             int profile = profiles.FindIndex(x => x.profileName == side.profile);
             int control = !side.ai ? 0 : profile >= 0 ? 2 + profile : 1;
+            if (MatchSetup.Networked) control = !side.ai ? 1 : profile >= 0 ? 3 + profile : 2;
             row.Show(side, p != null ? p.displayColor : Color.white, controls, control, names, pick);
             if (row.faction != null) row.faction.onValueChanged.AddListener(i => ShowSpecialNote());
             made.Add(row);
         }
         LayOutSides();
         ShowSpecialNote();
+        if (MatchSetup.Networked) lobby.Begin(this, made, profiles, factions);
+        else if (lobby != null) lobby.enabled = false;
     }
 
     /// <summary>Allies on: the side rows team by team (a team where its first side is), a divider between one side and
@@ -134,6 +147,7 @@ public class PreGameMenu : MonoBehaviour {
 
     /// <summary>Start the game with these choices.</summary>
     public void StartGame() {
+        if (MatchSetup.Networked) { if (lobby != null) lobby.StartPressed(); return; }
         foreach (PlayerSetupRow row in made) {
             if (row.Side == null) continue;
             int c = row.control != null ? row.control.value : 0;
@@ -153,5 +167,8 @@ public class PreGameMenu : MonoBehaviour {
         if (GameSession.Instance != null) GameSession.Instance.SetupDone();
     }
 
-    public void Back() { MatchSetup.ToMainMenu(); }
+    public void Back() {
+        if (MatchSetup.Networked && lobby != null) { lobby.Back(); return; }
+        MatchSetup.ToMainMenu();
+    }
 }

@@ -671,10 +671,10 @@ namespace HexTactica.Multiplayer {
             // (Mp.Start writes entry 0's board; this is the same key, written over.)
             string key = Mp.KeyBase(g);
             for (int attempt = 0; attempt < 4; attempt++) {
-                Dictionary<string, MpValue> got = await Mp.Store.Read(g.code, new[] { key });
+                Dictionary<string, MpValue> got = await Mp.Store.Read(Mp.DataId(g), new[] { key });
                 if (got == null) return MpResult.Fail("Could not reach the game store.");
                 MpValue was; got.TryGetValue(key, out was);
-                MpWritten w = await Mp.Store.Write(g.code, key, entry + "\n" + BoardText(), was != null ? was.writeLock : null);
+                MpWritten w = await Mp.Store.Write(Mp.DataId(g), key, entry + "\n" + BoardText(), was != null ? was.writeLock : null);
                 if (w.ok) return new MpResult { ok = true, game = g };
                 if (!w.conflict) return MpResult.Fail(w.error ?? "Could not write to the game store.");
             }

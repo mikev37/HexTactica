@@ -26,7 +26,7 @@ static partial class FrontEndScenes {
     const string SettingsPath = "Assets/Resources/" + FrontEndSettings.ResourceName + ".asset";
     const string PreviewTexturePath = "Assets/FrontEnd/UnitPreview.renderTexture";
     const string PrefabFolder = "Assets/FrontEnd/Prefabs/";
-    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Side Divider", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row", MissionFlagPrefab };
+    static readonly string[] RowPrefabs = { "File Row", "Unit Row", "Attribute Row", "Side Row", "Side Divider", "Palette Entry", "Map Side Row", "Unit Table Heading", "Unit Table Row", MissionFlagPrefab, "Mp Game Row", "Mp Member Row", "Mp Side Row" };
 
     static FrontEndScenes() { EditorApplication.delayCall += () => CreateMissing(false); }
 
@@ -46,7 +46,9 @@ static partial class FrontEndScenes {
     [MenuItem("HexTactica/Front End/Rebuild Front End Scenes (overwrites)")]
     static void Rebuild() {
         FrontEndSettings s = Settings();
-        string[] names = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
+        List<string> all = new List<string> { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
+        all.AddRange(MultiplayerSceneNames());
+        string[] names = all.ToArray();
         for (int i = 0; i < SceneManager.sceneCount; i++)
             foreach (string n in names)
                 if (SceneManager.GetSceneAt(i).path == SceneFolder + n + ".unity") {
@@ -81,6 +83,7 @@ static partial class FrontEndScenes {
         List<string> made = new List<string>();
         Make(s.replayScene, BuildReplay, true, made);
         MakeCampaignScenes(s, true, made);
+        MakeMultiplayerScenes(true, made);
         if (made.Count > 0) { ListInBuild(s); Debug.Log("Created the scene(s): " + string.Join(", ", made.ToArray()) + "."); }
         AssetDatabase.SaveAssets();
     }
@@ -214,6 +217,7 @@ static partial class FrontEndScenes {
             done.Add("Allies checkbox added");
         }
         if (m.sideDivider == null) { m.sideDivider = RowPrefab("Side Divider", DividerRow); done.Add("side divider prefab linked"); }
+        UpdatePreGameMultiplayer(m, done);
     }
 
     static TMP_Dropdown RuleRow(Transform parent, string name, string label) {
@@ -234,6 +238,7 @@ static partial class FrontEndScenes {
         }
         if (m.tableHeading == null) { m.tableHeading = RowPrefab("Unit Table Heading", TableHeading); done.Add("table heading prefab linked"); }
         if (m.tableRow == null) { m.tableRow = RowPrefab("Unit Table Row", TableRow); done.Add("table row prefab linked"); }
+        UpdatePostGameMultiplayer(m, done);
     }
 
     static FrontEndSettings Settings() {
@@ -268,6 +273,7 @@ static partial class FrontEndScenes {
         Make(s.mapEditorScene, BuildMapEditor, fromMenu, made);
         Make(s.replayScene, BuildReplay, fromMenu, made);
         MakeCampaignScenes(s, fromMenu, made);
+        MakeMultiplayerScenes(fromMenu, made);
         bool listed = ListInBuild(s);
         AssetDatabase.SaveAssets();
         if (made.Count > 0) Debug.Log("Created the front end's scenes: " + string.Join(", ", made.ToArray()) + ". They are yours to edit; open " + SceneFolder + s.mainMenuScene + ".unity and press Play.");
@@ -321,7 +327,8 @@ static partial class FrontEndScenes {
     static bool ListInBuild(FrontEndSettings s) {
         List<EditorBuildSettingsScene> list = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         bool changed = false;
-        string[] ours = { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
+        List<string> ours = new List<string> { s.mainMenuScene, s.preGameScene, s.postGameScene, s.inGameMenuScene, s.mapEditorScene, s.replayScene, s.campaignScene, s.missionBriefScene, s.missionResultScene };
+        ours.AddRange(MultiplayerSceneNames());
         foreach (string n in ours) {
             string path = SceneFolder + n + ".unity";
             if (!File.Exists(path) || list.Exists(x => x.path == path)) continue;
@@ -455,6 +462,7 @@ static partial class FrontEndScenes {
         menu.optionsPanel = options;
 
         foreach (GameObject p in new[] { load, editor, units, options, menu.replayPanel }) p.SetActive(false);
+        UpdateMainMenuMultiplayer(menu, new List<string>());
     }
 
     static void BuildPreGame() {
@@ -479,6 +487,7 @@ static partial class FrontEndScenes {
         Btn(buttons.transform, "Back", m.Back, 200f);
         Spacer(buttons.transform);
         m.startButton = Btn(buttons.transform, "Start", m.StartGame, 240f);
+        UpdatePreGameMultiplayer(m, new List<string>());
     }
 
     static void BuildPostGame() {
@@ -507,7 +516,7 @@ static partial class FrontEndScenes {
         GameObject buttons = Row(w.transform, "Buttons", 64f);
         Btn(buttons.transform, "View board", m.ViewBoard, 240f);
         Spacer(buttons.transform);
-        Btn(buttons.transform, "Play again", m.PlayAgain, 240f);
+        m.playAgainButton = Btn(buttons.transform, "Play again", m.PlayAgain, 240f);
         Btn(buttons.transform, "Main menu", m.MainMenu, 240f);
     }
 
@@ -541,6 +550,7 @@ static partial class FrontEndScenes {
         m.optionsPanel = options.GetComponent<OptionsPanel>();
         m.optionsPanel.returnTo = w;
         options.SetActive(false);
+        UpdateInGameMenuMultiplayer(m, new List<string>());
     }
 
     /// <summary>The replay's controls: a panel down the left, the board beside it.</summary>
@@ -647,6 +657,7 @@ static partial class FrontEndScenes {
     /// of your Options button, before it) and Replay window.
     /// </summary>
     static void UpdateMainMenu(MainMenu menu, List<string> done) {
+        UpdateMainMenuMultiplayer(menu, done);
         Transform mainButtons = menu.mainPanel != null ? menu.mainPanel.transform : null;
         if (mainButtons != null && FindButton(mainButtons, "Campaign") == null) {
             Button first = FindButton(mainButtons, "ShowLoadScenario");
@@ -684,6 +695,7 @@ static partial class FrontEndScenes {
             if (resume != null) CopyButton(resume, "Options", m.ShowOptions);
             done.Add("Options button and panel added");
         }
+        UpdateInGameMenuMultiplayer(m, done);
     }
 
     static void BuildMapEditor() {
@@ -835,6 +847,14 @@ static partial class FrontEndScenes {
         TextMeshProUGUI locked = Text(g.transform, "Fixed by the map", "fixed", 16, TextAlignmentOptions.Left, FontStyles.Italic);
         Size(locked.gameObject, 50f, -1f);
         r.lockedMark = locked.gameObject;
+        // A networked lobby: who holds the side, and Take / Give up (hidden otherwise).
+        r.playerLabel = Text(g.transform, "Player", "", 20, TextAlignmentOptions.Left, FontStyles.Italic);
+        Size(r.playerLabel.gameObject, 130f, -1f);
+        r.playerLabel.transform.SetSiblingIndex(r.sideName.transform.GetSiblingIndex() + 1);
+        r.seatButton = Btn(g.transform, "Take", null, 110f, 20f);
+        r.seatButton.transform.SetSiblingIndex(r.playerLabel.transform.GetSiblingIndex() + 1);
+        r.seatLabel = r.seatButton.GetComponentInChildren<TMP_Text>();
+        r.seatButton.gameObject.SetActive(false);
         return r;
     }
 

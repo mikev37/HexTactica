@@ -72,6 +72,13 @@ public class GameSession : MonoBehaviour {
                 Frame();
                 SceneManager.LoadScene(s.mapEditorScene, LoadSceneMode.Additive);
                 break;
+            case SessionMode.Networked:
+                // The game as the store has it: the board it is played on from, then its log (MpSession). The overlay
+                // over it says whose turn it is, and what is going on while the game is opened.
+                GameController.Paused = false;
+                SceneManager.LoadScene(HexTactica.Multiplayer.MultiplayerSettings.Get.overlayScene, LoadSceneMode.Additive);
+                yield return OpenNetworked();
+                break;
             case SessionMode.Replay:
                 // Nobody plays: the game is held, and the Replay scene's controls step through the recording.
                 GameController.Paused = true;
@@ -92,6 +99,24 @@ public class GameSession : MonoBehaviour {
         ready = true;
     }
 
+    /// <summary>A networked game opened from the store (the overlay says so if it cannot be: MpSession.Notice).</summary>
+    IEnumerator OpenNetworked() {
+        System.Threading.Tasks.Task<bool> open = HexTactica.Multiplayer.MpSession.Open(MatchSetup.NetCode);
+        while (!open.IsCompleted) yield return null;
+        if (open.IsFaulted) Debug.LogError("Could not open the networked game " + MatchSetup.NetCode + ": " + open.Exception);
+        // Not opened (the overlay says why): the scene's own board is held, not played; the menu key leads back.
+        if (open.IsFaulted || !open.Result) GameController.Paused = true;
+        Frame();
+    }
+
+    /// <summary>The host's lobby started the networked game: the pre-game screen goes, the game plays, the overlay comes.</summary>
+    public void NetworkedStarted() {
+        SetupDone();
+        mode = SessionMode.Networked;
+        ShowGamePanels(mode);
+        SceneManager.LoadScene(HexTactica.Multiplayer.MultiplayerSettings.Get.overlayScene, LoadSceneMode.Additive);
+    }
+
     /// <summary>The camera on the whole board (a board just loaded may be another size).</summary>
     public static void Frame() {
         CameraRig rig = Camera.main != null ? Camera.main.GetComponent<CameraRig>() : null;
@@ -102,7 +127,7 @@ public class GameSession : MonoBehaviour {
         if (!ready) return;
         GameController gc = GameController.gc;
         if (gc == null) return;
-        bool playing = mode == SessionMode.Play || mode == SessionMode.None;
+        bool playing = mode == SessionMode.Play || mode == SessionMode.None || mode == SessionMode.Networked;
         if (playing && Input.GetKeyDown(FrontEndSettings.Get.menuKey)) { if (menuOpen) CloseMenu(); else OpenMenu(); }
         if (playing && gc.gameOver && !postShown) {
             postShown = true;
@@ -134,7 +159,7 @@ public class GameSession : MonoBehaviour {
     public void CloseMenu() {
         if (!menuOpen) return;
         menuOpen = false;
-        GameController.Paused = mode != SessionMode.Play && mode != SessionMode.None;
+        GameController.Paused = mode != SessionMode.Play && mode != SessionMode.None && mode != SessionMode.Networked;
         Unload(FrontEndSettings.Get.inGameMenuScene);
     }
 
@@ -158,7 +183,7 @@ public class GameSession : MonoBehaviour {
     /// unit and tile panels (they show the pick) without the turn controls (gold, next unit, end turn) or the banner.
     /// </summary>
     static void ShowGamePanels(SessionMode m) {
-        bool hud = m != SessionMode.Setup, turns = m == SessionMode.Play || m == SessionMode.None;
+        bool hud = m != SessionMode.Setup, turns = m == SessionMode.Play || m == SessionMode.None || m == SessionMode.Networked;
         foreach (Hud h in Resources.FindObjectsOfTypeAll<Hud>()) if (h != null && h.gameObject.scene.IsValid()) h.gameObject.SetActive(hud);
         foreach (TurnControls c in Resources.FindObjectsOfTypeAll<TurnControls>()) if (c != null && c.gameObject.scene.IsValid()) c.gameObject.SetActive(turns);
         foreach (TurnBanner b in Resources.FindObjectsOfTypeAll<TurnBanner>()) if (b != null && b.gameObject.scene.IsValid()) b.gameObject.SetActive(turns);

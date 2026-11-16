@@ -47,7 +47,7 @@ public static partial class Scenarios {
     // ------------------------------------------------------------------ the rig: devices on one store
 
     /// <summary>A store that hides the log past an entry (a device that has not looked since then), for playing "polled while open".</summary>
-    class LaggingStore : IMpStore {
+    class LaggingStore : IMpStore, IMpLinking {
         readonly IMpStore inner;
         public int limit = int.MaxValue;
         public LaggingStore(IMpStore inner) { this.inner = inner; }
@@ -71,6 +71,11 @@ public static partial class Scenarios {
         public Task<MpWritten> Write(string game, string key, string value, string writeLock) { return inner.Write(game, key, value, writeLock); }
         public Task<string> ReadMine() { return inner.ReadMine(); }
         public Task<bool> WriteMine(string value) { return inner.WriteMine(value); }
+        IMpLinking L { get { return (IMpLinking)inner; } }
+        public Task<string> StartLink() { return L.StartLink(); }
+        public Task<string> ConfirmLink(string code) { return L.ConfirmLink(code); }
+        public Task<string> FinishLink() { return L.FinishLink(); }
+        public string LinkError { get { return L.LinkError; } }
     }
 
     static string mpRoot;
@@ -253,8 +258,21 @@ public static partial class Scenarios {
         bool left = g2.Slot(red).kind == MpSlotKind.Open && g2.Member("bob") == null && !Mp.Games.Exists(s => s.code == code) && g2.state == MpState.Playing;
         r.Add("bob left: Red open, not a member, off his list " + left);
 
+        // A second device of alice's (her phone): a code made there, typed on her PC, and the phone is alice, games and all.
+        Device("phone", "Alice's phone");
+        IMpStore phone = Mp.Store;
+        string linkCode = Wait(Mp.StartLink());
+        Device("alice", "Alice");
+        string confirmed = Wait(Mp.ConfirmLink(linkCode ?? ""));
+        MpSession.Close(); Mp.Reset(); Mp.Store = phone;
+        string finished = Wait(Mp.FinishLink());
+        bool linked = linkCode != null && confirmed == null && finished == null && Mp.Me == "alice" && Mp.Games.Exists(s => s.code == code);
+        Device("eve", "Eve");
+        string bogus = Wait(Mp.ConfirmLink("NOPE00"));
+        r.Add("a second device: code " + linkCode + ", confirmed on alice's " + (confirmed == null) + ", the phone is now " + (linked ? "alice, her games listed" : "not linked (" + finished + ")") + "; a wrong code refused " + (bogus != null));
+
         detail = string.Join("; ", r.ToArray());
-        return h.ok && codeOk && titled && !early.ok && renamed.ok && scenario == "{\"width\":15}"
+        return linked && bogus != null && h.ok && codeOk && titled && !early.ok && renamed.ok && scenario == "{\"width\":15}"
             && joined.ok && !takeBlue.ok && takeRed.ok && !bobHosts.ok
             && carolIn && !carolRed && kicked && !back.ok && back.error.Contains("removed")
             && !dave.ok && dave.error.Contains("version") && eveWatches

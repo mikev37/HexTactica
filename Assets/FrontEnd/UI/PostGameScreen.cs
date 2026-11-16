@@ -24,6 +24,11 @@ public class PostGameScreen : MonoBehaviour {
     [Tooltip("Shown when the game has no game log (recording was turned off).")]
     public string noStatistics = "This game was not recorded (no game log), so there is nothing to report.";
 
+    [Tooltip("Hidden for a networked game (it cannot be played again from here). Optional.")]
+    public UnityEngine.UI.Button playAgainButton;
+    [Tooltip("A networked game the host ended: the headline.")]
+    public string endedByHost = "The host ended the game.";
+
     void Awake() { TransportPanel.EnsureEventSystem(); }
 
     void Start() {
@@ -35,6 +40,9 @@ public class PostGameScreen : MonoBehaviour {
         List<long> side = null;
         if (gc != null && gc.gameOver && gc.winner != null) { side = new List<long>(); foreach (Player p in gc.players) if (p != null && gc.Won(p)) side.Add(p.id); }
         if (headline != null) headline.text = s != null ? GameInsights.Headline(s, viewer, side) : noStatistics;
+        HexTactica.Multiplayer.MpGame net = HexTactica.Multiplayer.MpSession.Game;
+        if (net != null && net.state == HexTactica.Multiplayer.MpState.Terminated && headline != null) headline.text = endedByHost;
+        if (playAgainButton != null) playAgainButton.gameObject.SetActive(net == null);
         // The scenario's own words for how it went (its win or loss text), above the findings.
         Player me = FogOfWar.Viewer;
         if (me == null && gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) { me = p; break; }
@@ -73,7 +81,12 @@ public class PostGameScreen : MonoBehaviour {
     public void ShowFindings() { if (findingsPage != null) findingsPage.SetActive(true); if (unitsPage != null) unitsPage.SetActive(false); }
     public void ShowUnits() { if (findingsPage != null) findingsPage.SetActive(false); if (unitsPage != null) unitsPage.SetActive(true); }
 
-    public void MainMenu() { MatchSetup.ToMainMenu(); }
+    /// <summary>Done with the game: to the main menu (a finished networked game goes from the player's list).</summary>
+    public async void MainMenu() {
+        HexTactica.Multiplayer.MpGame net = HexTactica.Multiplayer.MpSession.Game;
+        if (net != null && net.Finished) await HexTactica.Multiplayer.Mp.Forget(net.code);
+        MatchSetup.ToMainMenu();
+    }
 
     public void ViewBoard() { if (GameSession.Instance != null) GameSession.Instance.ClosePostGame(); }
 

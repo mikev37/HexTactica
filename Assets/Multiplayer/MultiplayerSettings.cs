@@ -33,8 +33,10 @@ namespace HexTactica.Multiplayer {
         public float livePollSeconds = 2f;
         [Tooltip("Seconds the your-turn notice stays up.")]
         public float noticeSeconds = 6f;
-        [Tooltip("The your-turn notice: a prefab under a Resources folder, with an MpNotice on it and its own canvas.")]
-        public string noticePrefab = "Multiplayer/Turn Notice";
+        [Tooltip("The scene the your-turn notice is in (an MpNotice), loaded over whatever screen is up.")]
+        public string noticeScene = "TurnNotice";
+        [Tooltip("The scene over a networked game (an MpOverlay): whose turn, the turn clock, skipping, the host's say over players, desyncs.")]
+        public string overlayScene = "MultiplayerOverlay";
 
         [Header("Join codes")]
         [Tooltip("How many characters a game's join code has.")]

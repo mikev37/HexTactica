@@ -13,8 +13,9 @@ namespace HexTactica.Multiplayer {
     /// (Two devices writing the same key in the same instant over a slow synced folder can still both win: it is not
     /// for games that matter.)
     /// </summary>
-    public class MpFolderStore : IMpStore {
-        readonly string root, player;
+    public class MpFolderStore : IMpStore, IMpLinking {
+        readonly string root;
+        string player;
 
         /// <param name="root">The shared folder.</param>
         /// <param name="player">This device's player id (kept by the caller: Mp keeps one in PlayerPrefs).</param>
@@ -79,6 +80,42 @@ namespace HexTactica.Multiplayer {
         public Task<bool> WriteMine(string value) {
             try { Directory.CreateDirectory(root); File.WriteAllText(MinePath, value); return Task.FromResult(true); }
             catch (Exception) { return Task.FromResult(false); }
+        }
+
+        // ------------------------------------------------------------------ linking devices: a file per code, the player's id written in it once confirmed
+
+        /// <summary>This device's player is now <see cref="PlayerId"/>, after linking (the caller keeps it for next time).</summary>
+        public event Action<string> PlayerChanged;
+        string linkCode;
+        public string LinkError { get; private set; }
+
+        string LinkPath(string code) { return Path.Combine(root, "link-" + Safe((code ?? "").Trim().ToUpperInvariant()) + ".txt"); }
+
+        public Task<string> StartLink() {
+            try {
+                Directory.CreateDirectory(root);
+                linkCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
+                File.WriteAllText(LinkPath(linkCode), "");
+                return Task.FromResult(linkCode);
+            } catch (Exception e) { LinkError = e.Message; return Task.FromResult<string>(null); }
+        }
+
+        public Task<string> ConfirmLink(string code) {
+            string path = LinkPath(code);
+            if (!File.Exists(path)) return Task.FromResult("No device is waiting with the code " + code + ".");
+            try { File.WriteAllText(path, player); return Task.FromResult<string>(null); }
+            catch (Exception e) { return Task.FromResult(e.Message); }
+        }
+
+        public Task<string> FinishLink() {
+            if (linkCode == null) return Task.FromResult("Make a code on this device first.");
+            string path = LinkPath(linkCode), id = File.Exists(path) ? File.ReadAllText(path).Trim() : "";
+            if (id.Length == 0) return Task.FromResult("Not confirmed yet: type the code on your other device.");
+            try { File.Delete(path); } catch (Exception) { }
+            linkCode = null;
+            player = id;
+            if (PlayerChanged != null) PlayerChanged(id);
+            return Task.FromResult<string>(null);
         }
     }
 }

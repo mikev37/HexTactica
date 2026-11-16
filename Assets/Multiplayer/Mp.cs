@@ -28,6 +28,12 @@ namespace HexTactica.Multiplayer {
     public static class Mp {
 
         public const string KeyMeta = "meta";
+        /// <summary>
+        /// Where a game's own data (its scenario, base board, log) is kept: apart from its meta (kept under the join code),
+        /// one place per game played under the code, so a code used again starts empty and a backend's per-item limits
+        /// (UGS: 2000 keys, 5 MiB) apply to one game only.
+        /// </summary>
+        public static string DataId(MpGame g) { return g.code + "-" + g.epoch; }
         /// <summary>The scenario file the lobby shows (per epoch).</summary>
         public static string KeyScenario(MpGame g) { return "scenario-" + g.epoch; }
         /// <summary>The board the game is played on from (per epoch): the start, or the host's after a desync. First line: the entry count it stands at.</summary>
@@ -81,7 +87,44 @@ namespace HexTactica.Multiplayer {
             string id = PlayerPrefs.GetString(IdKey, "");
             if (string.IsNullOrEmpty(id)) { id = Guid.NewGuid().ToString("N").Substring(0, 12); PlayerPrefs.SetString(IdKey, id); PlayerPrefs.Save(); }
             string folder = string.IsNullOrEmpty(s.sharedFolder) ? Path.Combine(Application.persistentDataPath, "multiplayer-shared") : s.sharedFolder;
-            return new MpFolderStore(folder, id);
+            MpFolderStore store = new MpFolderStore(folder, id);
+            store.PlayerChanged += p => { PlayerPrefs.SetString(IdKey, p); PlayerPrefs.Save(); };
+            return store;
+        }
+
+        // ------------------------------------------------------------------ linking devices
+
+        /// <summary>The backend can make one player of two devices (IMpLinking).</summary>
+        public static bool CanLink { get { if (Store == null) Store = MakeStore(); return Store is IMpLinking; } }
+
+        /// <summary>On the new device: a code to type on the other one; null (LastError says why) if it cannot.</summary>
+        public static async Task<string> StartLink() {
+            if (await Ready() != null) return null;
+            IMpLinking l = Store as IMpLinking;
+            if (l == null) { LastError = "This backend cannot link devices."; return null; }
+            string code = await l.StartLink();
+            if (code == null) LastError = l.LinkError ?? "Could not make a code.";
+            return code;
+        }
+
+        /// <summary>On the device already playing: confirm the code the new device shows. Null when done, else what went wrong.</summary>
+        public static async Task<string> ConfirmLink(string code) {
+            string notReady = await Ready();
+            if (notReady != null) return notReady;
+            IMpLinking l = Store as IMpLinking;
+            return l == null ? "This backend cannot link devices." : await l.ConfirmLink(code);
+        }
+
+        /// <summary>On the new device, once confirmed: this device plays as the other one's player from now on, with all their games.</summary>
+        public static async Task<string> FinishLink() {
+            IMpLinking l = Store as IMpLinking;
+            if (l == null) return "This backend cannot link devices.";
+            string failed = await l.FinishLink();
+            if (failed != null) return failed;
+            signedIn = true;
+            Games.Clear();
+            await Refresh();
+            return null;
         }
 
         // ------------------------------------------------------------------ reading and changing a game
@@ -163,7 +206,7 @@ namespace HexTactica.Multiplayer {
                     host = Me, hostName = PlayerName, appVersion = Application.version, state = MpState.Lobby
                 };
                 g.members.Add(new MpMember { id = Me, name = PlayerName });
-                MpWritten sc = await Store.Write(code, KeyScenario(g), scenarioText ?? "", null);
+                MpWritten sc = await Store.Write(DataId(g), KeyScenario(g), scenarioText ?? "", null);
                 if (!sc.ok) return MpResult.Fail(LastError = sc.error ?? "Could not write to the game store.");
                 MpWritten w = await Store.Write(code, KeyMeta, g.ToJson(), was.game != null ? was.writeLock : null);
                 if (w.conflict) continue;   // someone took the code this instant
@@ -176,7 +219,7 @@ namespace HexTactica.Multiplayer {
 
         /// <summary>The scenario the lobby of <paramref name="g"/> shows, as text; null if it could not be read.</summary>
         public static async Task<string> Scenario(MpGame g) {
-            Dictionary<string, MpValue> got = await Store.Read(g.code, new[] { KeyScenario(g) });
+            Dictionary<string, MpValue> got = await Store.Read(DataId(g), new[] { KeyScenario(g) });
             MpValue v;
             return got != null && got.TryGetValue(KeyScenario(g), out v) ? v.value : null;
         }
@@ -246,6 +289,19 @@ namespace HexTactica.Multiplayer {
                 string no = HostOnly(g); if (no != null) return no;
                 if (g.state != MpState.Lobby) return "The game has started.";
                 change(g);
+                return null;
+            });
+        }
+
+        /// <summary>A side's faction in the lobby: the host's to set for any side, a player's for a side they hold (not one the map fixes).</summary>
+        public static Task<MpResult> SetFaction(string code, long side, string faction) {
+            return Change(code, g => {
+                MpSlot s = g.Slot(side);
+                if (s == null) return "No such side.";
+                if (g.state != MpState.Lobby) return "The game has started.";
+                if (s.factionLocked) return "The map fixes " + s.sideName + "'s faction.";
+                if (g.host != Me && !(s.kind == MpSlotKind.Player && s.player == Me)) return "That side is not yours.";
+                s.faction = faction ?? "";
                 return null;
             });
         }
@@ -321,10 +377,10 @@ namespace HexTactica.Multiplayer {
         static async Task<MpResult> WriteBase(MpGame g, int entry, string board) {
             string key = KeyBase(g);
             for (int attempt = 0; attempt < 4; attempt++) {
-                Dictionary<string, MpValue> got = await Store.Read(g.code, new[] { key });
+                Dictionary<string, MpValue> got = await Store.Read(DataId(g), new[] { key });
                 if (got == null) return MpResult.Fail(LastError = "Could not reach the game store.");
                 MpValue was; got.TryGetValue(key, out was);
-                MpWritten w = await Store.Write(g.code, key, entry + "\n" + board, was != null ? was.writeLock : null);
+                MpWritten w = await Store.Write(DataId(g), key, entry + "\n" + board, was != null ? was.writeLock : null);
                 if (w.ok) return new MpResult { ok = true, game = g };
                 if (!w.conflict) return MpResult.Fail(LastError = w.error ?? "Could not write to the game store.");
             }
@@ -333,7 +389,7 @@ namespace HexTactica.Multiplayer {
 
         /// <summary>The board the game is played on from, and the entry count it stands at (-1 and null if it could not be read).</summary>
         public static async Task<KeyValuePair<int, string>> Base(MpGame g) {
-            Dictionary<string, MpValue> got = await Store.Read(g.code, new[] { KeyBase(g) });
+            Dictionary<string, MpValue> got = await Store.Read(DataId(g), new[] { KeyBase(g) });
             MpValue v;
             if (got == null || !got.TryGetValue(KeyBase(g), out v) || v.value == null) return new KeyValuePair<int, string>(-1, null);
             int nl = v.value.IndexOf('\n'), entry;
@@ -352,7 +408,7 @@ namespace HexTactica.Multiplayer {
             while (true) {
                 List<string> keys = new List<string>();
                 for (int i = 0; i < 6; i++) keys.Add(KeyLog(g.epoch, c + i));
-                Dictionary<string, MpValue> got = await Store.Read(g.code, keys);
+                Dictionary<string, MpValue> got = await Store.Read(DataId(g), keys);
                 if (got == null) { LastError = "Could not reach the game store."; return null; }
                 bool more = true;
                 for (int i = 0; i < keys.Count && more; i++) {
@@ -379,14 +435,14 @@ namespace HexTactica.Multiplayer {
             if (notReady != null) return MpResult.Fail(notReady);
             int size = Chunk, c = expected / size;
             string key = KeyLog(g.epoch, c), next = KeyLog(g.epoch, c + 1);
-            Dictionary<string, MpValue> got = await Store.Read(g.code, new[] { key, next });
+            Dictionary<string, MpValue> got = await Store.Read(DataId(g), new[] { key, next });
             if (got == null) return MpResult.Fail(LastError = "Could not reach the game store.");
             if (got.ContainsKey(next)) return new MpResult { conflict = true };
             MpValue was; got.TryGetValue(key, out was);
             List<MpEntry> chunk = was != null ? MpEntry.ChunkFromJson(was.value) : new List<MpEntry>();
             if (c * size + chunk.Count != expected) return new MpResult { conflict = true };
             chunk.Add(new MpEntry { n = expected, by = Me, kind = kind, at = MpJson.Now(), lines = lines ?? new List<string>() });
-            MpWritten w = await Store.Write(g.code, key, MpEntry.ChunkToJson(chunk), was != null ? was.writeLock : null);
+            MpWritten w = await Store.Write(DataId(g), key, MpEntry.ChunkToJson(chunk), was != null ? was.writeLock : null);
             if (w.conflict) return new MpResult { conflict = true };
             if (!w.ok) return MpResult.Fail(LastError = w.error ?? "Could not write to the game store.");
             MpResult meta = await Change(g.code, x => {
@@ -442,7 +498,7 @@ namespace HexTactica.Multiplayer {
                 if (g == null) { list.Add(new MpSummary { code = code, title = "#" + code, turnSide = "", removed = true }); continue; }
                 MpMember m = g.Member(Me);
                 list.Add(new MpSummary {
-                    code = code, title = g.Title, state = g.state, turnSide = g.turnSide, host = g.host == Me,
+                    code = code, title = g.Title, state = g.state, turnSide = g.turnSide, host = g.host == Me, entries = g.entries, epoch = g.epoch,
                     spectator = m != null && m.spectator, removed = m == null, myTurn = m != null && g.TurnOf(Me)
                 });
             }

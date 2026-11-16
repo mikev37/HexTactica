@@ -14,7 +14,9 @@ public enum SessionMode {
     /// <summary>The map editor: a scenario (or the scene's board) to edit.</summary>
     Editor,
     /// <summary>A recorded game (a game log folder), watched again.</summary>
-    Replay
+    Replay,
+    /// <summary>A networked game (MatchSetup.NetCode), played on from the store as it stands (Multiplayer/MpSession).</summary>
+    Networked
 }
 
 /// <summary>
@@ -47,6 +49,12 @@ public static class MatchSetup {
     /// <summary>The scenario or save being set up, played or edited ("" none: the map editor on the scene's own board).</summary>
     public static string FilePath = "";
     public static readonly List<Side> Sides = new List<Side>();
+    /// <summary>The networked game being set up or played (its join code), "" none. With <see cref="NetHosting"/> and no code yet: a lobby about to be hosted.</summary>
+    public static string NetCode = "";
+    /// <summary>This player hosts the networked lobby being set up (the pre-game screen is the lobby, its choices the host's).</summary>
+    public static bool NetHosting;
+    /// <summary>The pre-game screen is a networked lobby (hosted here, or joined).</summary>
+    public static bool Networked { get { return NetHosting || NetCode.Length > 0; } }
     public static bool Fog, Purchases = true, SpecialUnits = true, Allies = true;
     /// <summary>The rules the map fixes (GameController.fogFixed and the rest): the pre-game screen shows them, cannot change them, and the file's stand.</summary>
     public static bool FogFixed, PurchasesFixed, SpecialUnitsFixed, AlliesFixed;
@@ -66,6 +74,29 @@ public static class MatchSetup {
 
     /// <summary>Open the game scene on a recorded game (its game log folder) to watch it again.</summary>
     public static void Watch(string logFolder) { Open(SessionMode.Replay, logFolder); }
+
+    /// <summary>Host a networked game on a scenario: the pre-game screen is its lobby, with a join code for the others.</summary>
+    public static void HostNetworked(string scenarioPath) { Open(SessionMode.Setup, scenarioPath, null, "", true); }
+
+    /// <summary>
+    /// Into the lobby of the networked game <paramref name="code"/>, as the store has it: the scenario it shows is read
+    /// from the store first (a guest may not have the file). False (and nothing opened) if it could not be read.
+    /// </summary>
+    public static async System.Threading.Tasks.Task<bool> EnterLobby(string code) {
+        HexTactica.Multiplayer.MpGame g = await HexTactica.Multiplayer.Mp.Load(code);
+        if (g == null) return false;
+        string text = await HexTactica.Multiplayer.Mp.Scenario(g);
+        if (text == null) return false;
+        string folder = System.IO.Path.Combine(UnityEngine.Application.persistentDataPath, "multiplayer");
+        System.IO.Directory.CreateDirectory(folder);
+        string path = System.IO.Path.Combine(folder, GameFiles.SafeName(g.name) + "#" + g.code + ".dat");
+        System.IO.File.WriteAllText(path, text);
+        Open(SessionMode.Setup, path, null, g.code, g.host == HexTactica.Multiplayer.Mp.Me);
+        return true;
+    }
+
+    /// <summary>Open the networked game <paramref name="code"/> to play or watch it (it has started).</summary>
+    public static void PlayNetworked(string code) { Open(SessionMode.Networked, "", null, code, false); }
 
     /// <summary>
     /// Open the game scene on a campaign mission's scenario, with the mission's briefing over it. False (and nothing
@@ -87,9 +118,11 @@ public static class MatchSetup {
     /// <summary>The main menu's Campaign button: the campaign hub, looking at the campaign last looked at.</summary>
     public static void ToDefaultCampaign() { Leave(FrontEndSettings.Get.campaignScene); }
 
-    static void Open(SessionMode mode, string path, MissionInfo mission = null) {
+    static void Open(SessionMode mode, string path, MissionInfo mission = null, string netCode = "", bool netHosting = false) {
+        HexTactica.Multiplayer.MpSession.Close();
         Mission = mission;
         Mode = mode;
+        NetCode = netCode ?? ""; NetHosting = netHosting;
         FilePath = path ?? "";
         GameController.Paused = mode != SessionMode.Play;
         SceneManager.LoadScene(FrontEndSettings.Get.gameScene, LoadSceneMode.Single);
@@ -99,6 +132,9 @@ public static class MatchSetup {
     public static void ToMainMenu() { Leave(FrontEndSettings.Get.mainMenuScene); }
 
     static void Leave(string toScene) {
+        // A networked game goes on in the store: only this device stops showing it.
+        HexTactica.Multiplayer.MpSession.Close();
+        NetCode = ""; NetHosting = false;
         Mission = null;
         Mode = SessionMode.None;
         FilePath = "";
@@ -137,7 +173,7 @@ public static class MatchSetup {
             if (!SpecialUnitsFixed) ScenarioLoader.SpecialUnitsOverride = SpecialUnits ? "on" : "off";
             if (!AlliesFixed && HasTeams) ScenarioLoader.AlliesOverride = Allies ? "on" : "off";
         });
-        if (ok) { Mode = SessionMode.Play; GameController.Paused = false; }
+        if (ok) { Mode = NetCode.Length > 0 ? SessionMode.Networked : SessionMode.Play; GameController.Paused = false; }
         return ok;
     }
 

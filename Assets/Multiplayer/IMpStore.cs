@@ -21,6 +21,21 @@ namespace HexTactica.Multiplayer {
     }
 
     /// <summary>
+    /// A backend that can make one player of two devices (a phone and a PC, or a reinstall): on the new device a code is
+    /// made (StartLink); typed on the device already playing, it is confirmed there (ConfirmLink); then the new device
+    /// signs in as that player (FinishLink), with all their games. The new device's own player (and its games) is left.
+    /// </summary>
+    public interface IMpLinking {
+        /// <summary>On the new device: a code to type on the other one. Null on failure (why: LinkError).</summary>
+        Task<string> StartLink();
+        /// <summary>On the device already playing: confirm the code the new device shows. Null when done, else what went wrong.</summary>
+        Task<string> ConfirmLink(string code);
+        /// <summary>On the new device, once the code is confirmed: sign in as the other device's player. Null when done, else what went wrong.</summary>
+        Task<string> FinishLink();
+        string LinkError { get; }
+    }
+
+    /// <summary>
     /// Where networked games are kept: all the game asks of a backend, so one can be replaced by another (the Unity
     /// Gaming Services one, MpUgsStore; a shared folder, MpFolderStore; one in memory for the tests). No game logic
     /// lives behind it: it stores text under keys, per game, and refuses a write when the value changed since the
