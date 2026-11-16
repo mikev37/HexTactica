@@ -486,6 +486,8 @@ public static partial class Scenarios {
              "A gun's zone of control (artilleryCoverValue) counts the tiles in its range the enemy could move to next turn. With coverByTarget, only for enemies it can fire on: the anti-air missile truck (aircraft only) holds none of the ground Red's tank and grunt could reach; the artillery still holds it. Off: the truck held it all.");
         make("rule-capture-neutral", "captureNeutral", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); },
              "A Blue grunt (6) standing on a neutral City (threshold 10): neutral with 6 Blue after one Blue turn, Blue's after two (progress cleared).");
+        make("rule-save-keeps-who-plays", "saveControl", (a, o) => { Put("Grunt", a, -2, 0); Put("Grunt", o, 2, 0); },
+             "A game saved with who plays each side changed from the scene's (Blue the AI, Red a human) loads that way, by the in-game Load (and Continue) and by HexTactica ▸ Load Scenario File, not as the scene has it.");
         make("rule-capture-threshold", "captureThreshold", (a, o) => { Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0); Rig.PlaceBuilding("City", null, 3, 0); Put("Grunt", a, 3, 0); },
              "Each building says how long it takes to capture (Building.captureThreshold): a City set to 5 is Blue's after one Blue turn of a grunt (6) on it; one set to 20 is not after three (18), and is after four.");
         make("rule-capture-from-zero", "captureFromZero", (a, o) => { Rig.PlaceBuilding("City", a, 0, 0); Put("Grunt", o, 0, 0); },
@@ -1673,6 +1675,83 @@ public static partial class Scenarios {
                 } finally { LevelEditor.singleton = was; l.ai.faction = null; }
                 detail = string.Join("; ", r.ToArray());
                 return lookups && threaded && placed && other && shown;
+            }
+            case "saveControl": {
+                // A game started with who plays each side changed on the pre-game screen (Blue the AI, Red a human:
+                // the other way round from the scene's), saved, and loaded as the in-game Load and the main menu's
+                // Continue do (MatchSetup.LoadSave: the file's "AI" per side).
+                LevelEditor was = LevelEditor.singleton;
+                string path = Path.Combine(Path.GetTempPath(), "hextactica-save-control.dat");
+                try {
+                    LevelEditor ed = Rig.New<LevelEditor>(); ed.allUnit = new List<Unit>(); ed.allFaction = new List<Faction>();
+                    foreach (string n in new[] { "Grunt" }) { Unit u = PrefabLoader.Load(n); u.name = n; ed.allUnit.Add(u); }
+                    LevelEditor.singleton = ed;
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, true); HexTactica.Harness.ScenarioLoader.SetControl(o, false);
+                    bool chosen = AIControl.Of(a) != null && AIControl.Of(o) == null;
+                    // (The rig's buildings and units are not prefabs the loader can find: the save is checked without them.)
+                    Defective.JSON.JSONObject saved = new Defective.JSON.JSONObject(LevelEditor.BoardJson());
+                    saved.RemoveField("buildings"); saved.RemoveField("units");
+                    // (The players as the game writes them: the test shim's JsonUtility does not write them.)
+                    Defective.JSON.JSONObject players = new Defective.JSON.JSONObject(Defective.JSON.JSONObject.Type.Array);
+                    foreach (Player p in new[] { a, o }) {
+                        Defective.JSON.JSONObject pj = new Defective.JSON.JSONObject();
+                        pj.AddField("personal_name", p.personal_name); pj.AddField("id", p.id); pj.AddField("AI", AIControl.Of(p) != null);
+                        pj.AddField("aiProfile", ""); pj.AddField("factionName", ""); pj.AddField("money", p.money); pj.AddField("eliminable", true);
+                        players.Add(pj);
+                    }
+                    saved.SetField("players", players);
+                    // A save: where its game log stood.
+                    saved.AddField(HexTactica.Harness.ScenarioLoader.LogFolderKey, "test-log");
+                    File.WriteAllText(path, saved.Print());
+                    string file = File.ReadAllText(path);
+                    // The scene's own again (as a fresh game scene has it) before the save is loaded.
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, false); HexTactica.Harness.ScenarioLoader.SetControl(o, true);
+                    Action<HexTile> dress = t => {
+                        foreach (System.Reflection.FieldInfo fi in typeof(HexTile).GetFields()) {
+                            if (fi.GetValue(t) != null) continue;
+                            if (fi.FieldType == typeof(SpriteRenderer)) fi.SetValue(t, Rig.New<SpriteRenderer>());
+                            else if (fi.FieldType == typeof(Transform)) fi.SetValue(t, Rig.New<Transform>());
+                            else if (fi.FieldType == typeof(UnityEngine.UI.Text)) fi.SetValue(t, Rig.New<UnityEngine.UI.Text>());
+                        }
+                    };
+                    foreach (HexTile t in Rig.hg.tiles) dress(t);
+                    Rig.hg.makeTile = at => { HexTile t = Rig.New<HexTile>(); t.neighbors = new List<HexTile>(); t.aiData = new AITileData(); t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>(); t.terrain = ScenarioFile.Terrain("Grassland"); dress(t); return t; };
+                    bool loaded;
+                    HexTactica.Harness.ScenarioLoader.ControlFromFile = true;
+                    UnityEngine.GameObject.Cloner = obj => {
+                        GameObject g = obj as GameObject; Unit src = g != null ? g.GetComponent<Unit>() : null;
+                        if (src == null) return null;
+                        Unit c = Rig.Clone(src); c.path = new List<HexTile>(); c.transported = new List<Unit>();
+                        return c.gameObject;
+                    };
+                    try { loaded = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); }
+                    finally { HexTactica.Harness.ScenarioLoader.ControlFromFile = false; Rig.hg.makeTile = null; UnityEngine.GameObject.Cloner = null; }
+                    UnityEngine.Object.EndOfFrame();
+                    bool blueAI = AIControl.Of(a) != null, redHuman = AIControl.Of(o) == null;
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, false); HexTactica.Harness.ScenarioLoader.SetControl(o, true); UnityEngine.Object.EndOfFrame();
+                    bool loaded2;
+                    Rig.hg.makeTile = at => { HexTile t = Rig.New<HexTile>(); t.neighbors = new List<HexTile>(); t.aiData = new AITileData(); t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>(); t.terrain = ScenarioFile.Terrain("Grassland"); dress(t); return t; };
+                    try { loaded2 = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); } finally { Rig.hg.makeTile = null; }
+                    UnityEngine.Object.EndOfFrame();
+                    bool blueAI2 = AIControl.Of(a) != null, redHuman2 = AIControl.Of(o) == null;
+                    // The other way round (the user's game): Red the AI and Blue a human, saved; loaded into a scene where
+                    // Red is a human. Red must come out with an AI.
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, false); HexTactica.Harness.ScenarioLoader.SetControl(o, true); UnityEngine.Object.EndOfFrame();
+                    foreach (Defective.JSON.JSONObject pj in players.list) { long id = pj.GetField("id").longValue; pj.SetField("AI", id == o.id); }
+                    File.WriteAllText(path, saved.Print());
+                    HexTactica.Harness.ScenarioLoader.SetControl(a, true); HexTactica.Harness.ScenarioLoader.SetControl(o, false); UnityEngine.Object.EndOfFrame();
+                    bool loaded3;
+                    Rig.hg.makeTile = at => { HexTile t = Rig.New<HexTile>(); t.neighbors = new List<HexTile>(); t.aiData = new AITileData(); t.threat = new Dictionary<Player, Heat>(); t.supply = new Dictionary<Player, int>(); t.terrain = ScenarioFile.Terrain("Grassland"); dress(t); return t; };
+                    HexTactica.Harness.ScenarioLoader.ControlFromFile = true;
+                    try { loaded3 = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath(path); } finally { HexTactica.Harness.ScenarioLoader.ControlFromFile = false; Rig.hg.makeTile = null; }
+                    UnityEngine.Object.EndOfFrame();
+                    bool redAI3 = AIControl.Of(o) != null, blueHuman3 = AIControl.Of(a) == null;
+                    int i = file.IndexOf("\"players\""); 
+                    detail = "chosen " + chosen + "; file players: " + (i >= 0 ? file.Substring(i, Math.Min(260, file.Length - i)).Replace("\n", " ") : "none") + "; loaded as the in-game Load " + loaded + ": Blue AI " + blueAI + ", Red human " + redHuman
+                           + "; as HexTactica > Load Scenario File " + loaded2 + ": Blue AI " + blueAI2 + ", Red human " + redHuman2
+                           + "; Red the AI saved, loaded into a scene where Red is human " + loaded3 + ": Red AI " + redAI3 + ", Blue human " + blueHuman3;
+                    return chosen && loaded && blueAI && redHuman && loaded2 && blueAI2 && redHuman2 && loaded3 && redAI3 && blueHuman3;
+                } finally { LevelEditor.singleton = was; }
             }
             case "loadCargo": {
                 // The game's own loader (HexTactica > Load Scenario File: ScenarioLoader, which shares UnitData.LoadAll with the

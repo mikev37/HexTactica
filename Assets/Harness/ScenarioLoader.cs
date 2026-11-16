@@ -150,8 +150,23 @@ namespace HexTactica.Harness {
             }
             UnitData.LoadAll(unitData);
 
-            string redKind = ApplyTestBlock(obj);
-            ApplyControl(fileAI, fileProfile);
+            // A saved game (it carries where its game log stands) is played by whoever played it when it was saved, however
+            // it is loaded: the in-game Load and Continue say so (ControlFromFile), HexTactica ▸ Load Scenario File and
+            // the quick load do not.
+            bool fromFile = ControlFromFile;
+            if (ControlOverride == null && SavePointOf(obj) != null) ControlFromFile = true;
+            try {
+                // Who plays each side is the pre-game screen's or the save's when either says: the test block's opponent
+                // is then not applied at all. (It used to be, then undone: its Destroy of Red's AI only happens at the end
+                // of the frame, so the AI the save or the pre-game screen gave Red was the one about to go, and Red was
+                // left with none.)
+                string redKind = ApplyTestBlock(obj, ControlOverride == null && !ControlFromFile);
+                ApplyControl(fileAI, fileProfile);
+                return Finish(obj, path, redKind);
+            } finally { ControlFromFile = fromFile; }
+        }
+
+        static bool Finish(JSONObject obj, string path, string redKind) {
 
             // The scenario's triggers (and, in a save, how far they got): replace the last board's.
             ScenarioScript.LoadFromBoard(obj, path);
@@ -226,7 +241,7 @@ namespace HexTactica.Harness {
         /// always this AI (AIPlayer), set up exactly as the headless harness runs it: no mission
         /// objective (SampleScene's GoTo would otherwise pull every unit toward the centre).
         /// </summary>
-        static string ApplyTestBlock(JSONObject obj) {
+        static string ApplyTestBlock(JSONObject obj, bool control = true) {
             if (GameController.gc == null) return null;
             JSONObject active = obj.GetField("active");
             if (active != null) {
@@ -264,7 +279,7 @@ namespace HexTactica.Harness {
             GameController.gc.roundLimit = test != null && test.GetField("rounds") != null && int.TryParse(test.GetField("rounds").stringValue, out limit) ? limit : 30;
 
             Player red = null, blue = null;
-            GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; if (pl != null && pl.id == 112) blue = pl; });
+            if (control) GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == 0) red = pl; if (pl != null && pl.id == 112) blue = pl; });
 
             if (blue != null) {
                 AIPlayer ai = blue.GetComponent<AIPlayer>();
