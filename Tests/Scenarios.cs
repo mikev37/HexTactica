@@ -1256,12 +1256,39 @@ public static partial class Scenarios {
                 };
                 Action<Building, Player, int, int> taken = (b, side, before, after) => { if (b != null && side != null && b.owner != null && Player.Allied(side, b.owner) && after > 0) bad.Add(side.personal_name + " capturing " + b.owner.personal_name + "'s " + Pos(b.tile)); };
                 Unit.Attacking += watch; Building.Captured += taken;
+                // Recorded, for the post-game report: it must know all three sides and who was allied with whom.
+                string root = Path.Combine(Path.GetTempPath(), "hextactica-allies-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                HexTactica.Harness.GameLog.Start(l.path, "Full", root);
+                string folder = HexTactica.Harness.GameLog.Folder;
                 try { for (int i = 0; i < 18 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
-                finally { Unit.Attacking -= watch; Building.Captured -= taken; }
-                detail = "after round " + gc.days + (gc.gameOver ? " (over, " + gc.WinnersName() + " won)" : "") + ": attacks on enemies Blue " + hits[0] + ", Green " + hits[1] + ", Red " + hits[2]
+                finally { Unit.Attacking -= watch; Building.Captured -= taken; HexTactica.Harness.GameLog.EndIfOver(); HexTactica.Harness.GameLog.Stop(); }
+                GameRecord rec = GameRecord.Read(folder);
+                string reportOk = "no game log";
+                bool report = false;
+                if (rec != null) {
+                    // From Red's side (an AI): its enemies are Blue and Green together. From Blue's, as a human: "your side" (Blue and Green).
+                    List<GameInsights.UnitTable> tables = GameInsights.UnitTablesOf(rec, o.id);
+                    string red = GameInsights.Report(rec, o.id);
+                    GameRecord.Side blueSide = rec.SideOf(a.id); if (blueSide != null) blueSide.ai = false;
+                    string blue = GameInsights.Report(rec, a.id);
+                    List<GameInsights.Finding> blueFindings = GameInsights.Findings(rec, a.id);
+                    GameInsights.Finding strength = blueFindings.Find(f => f.title == "How the strength went");
+                    bool teams = rec.sides.Count == 3 && rec.Allied(a.id, 7) && !rec.Allied(a.id, o.id) && !rec.Allied(7, o.id);
+                    bool tablesOk = tables.Count == 3 && tables.Exists(t => t.title.StartsWith("Green") && t.title.Contains("allied with Blue"))
+                                 && tables.Exists(t => t.title.StartsWith("Red") && !t.title.Contains("allied"));
+                    // Fronts are measured from Blue's HQ (-6,0) to its first enemy's, Red's (6,0): 12 tiles, not to its ally Green's.
+                    bool axis = rec.axisLength == 12;
+                    bool words = strength != null && strength.body.Contains("your side") && red.Contains("Blue and Green") && blue.Contains("Green (allied with you)");
+                    report = teams && tablesOk && axis && words;
+                    reportOk = "report: teams read " + teams + ", 3 units tables " + tablesOk + " (" + string.Join(" | ", tables.Select(t => t.title).ToArray()) + "), front axis " + rec.axisLength
+                             + ", your side / Blue and Green " + words + (strength != null ? " [" + strength.body + "]" : " [no strength finding]");
+                    if (Environment.GetEnvironmentVariable("REPORT") == "1") Console.WriteLine("\n== report, Blue as a human\n" + blue + "\n== report, Red\n" + red);
+                }
+                try { Directory.Delete(root, true); } catch (Exception) { }
+                detail = reportOk + "; after round " + gc.days + (gc.gameOver ? " (over, " + gc.WinnersName() + " won)" : "") + ": attacks on enemies Blue " + hits[0] + ", Green " + hits[1] + ", Red " + hits[2]
                        + "; material Blue " + ScenarioFile.Material(a) + ", Green " + ScenarioFile.Material(g) + ", Red " + ScenarioFile.Material(o)
                        + "; at allies: " + (bad.Count == 0 ? "none" : string.Join("; ", bad.ToArray()));
-                return bad.Count == 0 && hits[0] + hits[1] > 0;
+                return bad.Count == 0 && hits[0] + hits[1] > 0 && report;
             }
             case "retreatAway": {
                 Unit tank = Rig.At(1, 0).occupier, g = Rig.At(0, 0).occupier;

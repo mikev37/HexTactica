@@ -13,7 +13,11 @@ using HexTactica.Harness;
 /// </summary>
 public class GameRecord {
 
-    public class Side { public long id; public string name; public string faction = ""; public bool ai; }
+    public class Side {
+        public long id; public string name; public string faction = ""; public bool ai;
+        /// <summary>Sides with the same team (not 0) were allies in this game (GameLog.Lines.Side). 0: on nobody's side but its own.</summary>
+        public int team;
+    }
 
     public class Kind {
         public string name; public int cost; public int range; public int maxStrength = 1;
@@ -27,7 +31,7 @@ public class GameRecord {
         /// <summary>What its units are worth as they stand: each unit's cost times the share of its full strength it has (HQs not counted).</summary>
         public int material;
         public int units, cities, buildings, money, income;
-        /// <summary>Where its units stand on the line from the first side's HQ (0) to the second's (1), on average; -1 if none.</summary>
+        /// <summary>Where its units stand on the line from the first side's HQ (0) to its first enemy's (1), on average; -1 if none.</summary>
         public float front = -1f;
         /// <summary>Its units by kind.</summary>
         public Dictionary<string, int> fielded = new Dictionary<string, int>();
@@ -74,6 +78,17 @@ public class GameRecord {
     public int lastRound;
 
     public Side SideOf(long id) { return sides.Find(x => x.id == id); }
+
+    /// <summary>Two different sides on one team (not 0): allies in this game.</summary>
+    public bool Allied(long a, long b) {
+        if (a == b) return false;
+        Side x = SideOf(a), y = SideOf(b);
+        return x != null && y != null && x.team != 0 && x.team == y.team;
+    }
+    /// <summary>Different sides and not allies: who fought whom.</summary>
+    public bool Hostile(long a, long b) { return a != b && !Allied(a, b); }
+    /// <summary>The side and its allies, in the log's order.</summary>
+    public List<long> SideAndAllies(long id) { List<long> l = new List<long>(); foreach (Side x in sides) if (x.id == id || Allied(x.id, id)) l.Add(x.id); return l; }
     public Side SideNamed(string name) { return sides.Find(x => x.name == name); }
     public Kind KindNamed(string k) { return kinds.Find(x => x.name == k); }
 
@@ -106,12 +121,12 @@ public class GameRecord {
 
         foreach (string raw in lines) {
             string line = raw.TrimEnd('\r');
-            long id; string name, faction, sideName, unit, cause, from, to; bool ai; int n;
+            long id; string name, faction, sideName, unit, cause, from, to; bool ai; int n, team;
 
-            if (GameLog.Lines.ReadSide(line, out id, out name, out faction, out ai)) {
+            if (GameLog.Lines.ReadSide(line, out id, out name, out faction, out ai, out team)) {
                 Side s = g.SideOf(id);
                 if (s == null) { s = new Side { id = id }; g.sides.Add(s); }
-                s.name = name; s.faction = faction; s.ai = ai;
+                s.name = name; s.faction = faction; s.ai = ai; s.team = team;
                 if (!names.Contains(name)) names.Add(name);
                 continue;
             }

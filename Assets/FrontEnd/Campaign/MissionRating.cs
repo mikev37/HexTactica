@@ -63,7 +63,8 @@ public static class MissionRating {
         foreach (GameRecord.Snap snap in s.snaps) if (snap.mover == viewer) t.turns++;
         foreach (GameRecord.Loss l in s.losses) {
             if (l.side == viewer) t.losses++;
-            else if (l.killerSide == viewer || l.cause == HexTactica.Harness.GameLog.Lines.Aboard) t.kills++;
+            // An enemy's unit (never an ally's): killed by us, or gone down aboard a transport.
+            else if (s.Hostile(l.side, viewer) && (l.killerSide == viewer || l.cause == HexTactica.Harness.GameLog.Lines.Aboard)) t.kills++;
         }
         return t;
     }
