@@ -23,6 +23,9 @@ public class Strike {
     public Unit spareA, spareB;
     /// <summary>The round it was fired in.</summary>
     public int day;
+    /// <summary>The enemy sides that saw it launched (they saw the unit that fired it as it fired: FogOfWar.Sees). Filled
+    /// before it goes in the air, never changed after. Only these sides know it is coming (Strikes.KnownTo).</summary>
+    public readonly List<Player> seenBy = new List<Player>();
 
     public int Radius { get { return weapon != null ? Mathf.Max(0, weapon.blastRadius) : 0; } }
 }
@@ -46,6 +49,21 @@ public class StrikeResult {
     public int buildingDamage;
 }
 
+/// <summary>
+/// A strike in the air as one side knows it (Strikes.KnownTo): the only way the AI learns of strikes. For its own
+/// strikes a side knows everything, the target included; for an enemy's it knows only what it saw at the launch (who,
+/// from where, with what, at what strength) and never where it is aimed: <see cref="target"/> is then null.
+/// </summary>
+public struct StrikeSighting {
+    public Player owner;
+    public HexTile from;
+    /// <summary>Its weapon (the prefab of the unit that fired it): range, blast, damage.</summary>
+    public Unit weapon;
+    public int strength, veterancy, attackBonus;
+    /// <summary>Where it lands: known for one's own strikes only; null for another side's.</summary>
+    public HexTile target;
+}
+
 /// <summary>A strike in the air, as a save keeps it (LevelEditor.BoardJson, GameLog.Snapshot: "strikes").</summary>
 [Serializable]
 public struct StrikeData {
@@ -54,6 +72,8 @@ public struct StrikeData {
     public int strength, veterancy, attackBonus;
     public int fromX, fromY, x, y;
     public int day;
+    /// <summary>The ids of the enemy sides that saw it launched, comma separated ("" none: a file from before this was kept).</summary>
+    public string seenBy;
 
     public StrikeData(Strike s) {
         owner_id = s.owner != null ? s.owner.id : -1;
@@ -62,6 +82,9 @@ public struct StrikeData {
         fromX = s.from != null ? s.from.x : 0; fromY = s.from != null ? s.from.y : 0;
         x = s.target != null ? s.target.x : 0; y = s.target != null ? s.target.y : 0;
         day = s.day;
+        List<string> ids = new List<string>();
+        foreach (Player p in s.seenBy) if (p != null) ids.Add(p.id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        seenBy = string.Join(",", ids.ToArray());
     }
 
     /// <summary>The strike back in the air. Null (said so) if its side, its target tile or its unit's prefab is not in this game.</summary>
@@ -77,6 +100,11 @@ public struct StrikeData {
         }
         Strike s = new Strike { owner = p, kind = kind, weapon = prefab, strength = strength, veterancy = veterancy, attackBonus = attackBonus,
                                 from = HexGenerator.hg.get(fromX, fromY, -fromX - fromY), target = to, day = day };
+        foreach (string id in (seenBy ?? "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)) {
+            long n;
+            if (!long.TryParse(id.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out n)) continue;
+            GameController.gc.players.ForEach(pl => { if (pl != null && pl.id == n && !s.seenBy.Contains(pl)) s.seenBy.Add(pl); });
+        }
         Strikes.Add(s);
         return s;
     }
@@ -103,7 +131,11 @@ public static class Strikes {
     // Replaced whole, never changed in place: an AI thought on another thread keeps reading the one it had.
     static Strike[] inFlight = new Strike[0];
 
-    /// <summary>The attacks in the air, in the order they were launched.</summary>
+    /// <summary>
+    /// Every attack in the air, in the order launched, targets and all: for the rules, the screen, saves and tests.
+    /// Never for the AI (it would know what no player can): the AI reads KnownTo, and a test (ai-strike-blind) fails if
+    /// any AI code names this.
+    /// </summary>
     public static IList<Strike> InFlight { get { return inFlight; } }
 
     /// <summary>An order to strike was given (before it lands or leaves): the unit, the strike, and whether it is delayed. For logs and scripts.</summary>
@@ -129,11 +161,23 @@ public static class Strikes {
         if (keep.Count != inFlight.Length) inFlight = keep.ToArray();
     }
 
-    /// <summary>Is a strike of a side hostile to <paramref name="p"/> in the air? (Every side knows: a launch gives itself away.)</summary>
-    public static bool Incoming(Player p) {
+    /// <summary>
+    /// The strikes in the air <paramref name="p"/> knows of: its own, target and all; an enemy's only if it saw the
+    /// launch (Strike.seenBy), without the target. An ally's are left out. Safe from any thread (it reads only what was
+    /// fixed at launch).
+    /// </summary>
+    public static List<StrikeSighting> KnownTo(Player p) {
+        List<StrikeSighting> known = new List<StrikeSighting>();
         Strike[] now = inFlight;
-        for (int i = 0; i < now.Length; i++) if (Player.Hostile(now[i].owner, p)) return true;
-        return false;
+        for (int i = 0; i < now.Length; i++) {
+            Strike s = now[i];
+            if (s == null || p == null) continue;
+            bool own = s.owner == p;
+            if (!own && !(Player.Hostile(s.owner, p) && s.seenBy.Contains(p))) continue;
+            known.Add(new StrikeSighting { owner = s.owner, from = s.from, weapon = s.weapon, strength = s.strength, veterancy = s.veterancy,
+                                           attackBonus = s.attackBonus, target = own ? s.target : null });
+        }
+        return known;
     }
 
     /// <summary>The unit prefab <paramref name="p"/> fields under <paramref name="kind"/> (as a loaded save finds its units).</summary>
@@ -161,8 +205,8 @@ public static class Strikes {
             for (int i = 0; i < now.Length; i++) {
                 StrikeData d = new StrikeData(now[i]);
                 sb.Append(i > 0 ? "," : "").Append(string.Format(inv,
-                    "\n{{\"owner_id\":{0},\"kind\":\"{1}\",\"strength\":{2},\"veterancy\":{3},\"attackBonus\":{4},\"fromX\":{5},\"fromY\":{6},\"x\":{7},\"y\":{8},\"day\":{9}}}",
-                    d.owner_id, (d.kind ?? "").Replace("\\", "/").Replace("\"", "'"), d.strength, d.veterancy, d.attackBonus, d.fromX, d.fromY, d.x, d.y, d.day));
+                    "\n{{\"owner_id\":{0},\"kind\":\"{1}\",\"strength\":{2},\"veterancy\":{3},\"attackBonus\":{4},\"fromX\":{5},\"fromY\":{6},\"x\":{7},\"y\":{8},\"day\":{9},\"seenBy\":\"{10}\"}}",
+                    d.owner_id, (d.kind ?? "").Replace("\\", "/").Replace("\"", "'"), d.strength, d.veterancy, d.attackBonus, d.fromX, d.fromY, d.x, d.y, d.day, d.seenBy));
             }
             sb.Append("\n]");
         }
@@ -273,9 +317,10 @@ public static class Strikes {
             // In the air it is its prefab's weapon at the strength it left with: the unit may be gone when it lands.
             Unit prefab = Prefab(u.owner, s.kind);
             if (prefab != null) s.weapon = prefab;
-            // A launch is seen by every enemy side.
+            // Who saw it go: the enemy sides that see the unit as it fires (no fog: all of them). Only they know it is coming.
             GameController gc = GameController.gc;
-            if (gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && Player.Hostile(p, u.owner)) FogOfWar.Reveal(u, p);
+            if (gc != null && gc.players != null)
+                foreach (Player p in gc.players) if (p != null && !p.eliminated && Player.Hostile(p, u.owner) && FogOfWar.Sees(p, u)) s.seenBy.Add(p);
             Add(s);
             if (u.selfDestructs) u.Expend(true);
             else u.ShowStrikeFired(null);

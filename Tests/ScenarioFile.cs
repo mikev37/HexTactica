@@ -353,7 +353,8 @@ public static class ScenarioFile {
         foreach (Dictionary<string, string> s in Array(json, Strikes.FileKey)) {
             Func<string, int> n = k => { int v; return s.ContainsKey(k) && int.TryParse(s[k], out v) ? v : 0; };
             new StrikeData { owner_id = s.ContainsKey("owner_id") ? long.Parse(s["owner_id"]) : -1, kind = s.ContainsKey("kind") ? s["kind"] : "", strength = n("strength"), veterancy = n("veterancy"),
-                             attackBonus = n("attackBonus"), fromX = n("fromX"), fromY = n("fromY"), x = n("x"), y = n("y"), day = n("day") }.Load();
+                             attackBonus = n("attackBonus"), fromX = n("fromX"), fromY = n("fromY"), x = n("x"), y = n("y"), day = n("day"),
+                             seenBy = s.ContainsKey("seenBy") ? s["seenBy"] : "" }.Load();
         }
         foreach (Dictionary<string, string> s in Array(json, Strikes.LitKey)) {
             Func<string, int> n = k => { int v; return s.ContainsKey(k) && int.TryParse(s[k], out v) ? v : 0; };

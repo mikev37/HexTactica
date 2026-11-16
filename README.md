@@ -56,7 +56,7 @@ Four attributes on a unit (its prefab's Unit, header *Strike*), each on or off b
 |---|---|
 | **Targets Ground** | It attacks a tile, not a unit: any tile in its range and line of fire, whatever is on it, seen or not. |
 | **Blast Radius** (0-3) | Its attack also hits every unit within this many tiles of the target (1: the seven tiles), friend and foe, each with that unit's ordinary damage (`Unit.DamageFrom`, the one formula), with no answer and no retreat. On a unit that aims at units and fires at once, it is the splash around its ordinary shot. |
-| **Ballistic** | Its attack lands at the start of its owner's next turn, on the tile it was aimed at, on whatever is there then. Launching shows the unit to every enemy side; where it is aimed is not shown. |
+| **Ballistic** | Its attack lands at the start of its owner's next turn, on the tile it was aimed at, on whatever is there then. An enemy side knows it is coming only if it saw the unit fire (it saw the launch tile); none knows where it is aimed. |
 | **Self Destructs** | It is expended by its attack (not killed: no loss is counted or logged). With Ballistic it leaves the board as it is launched, and there is nothing left to attack. |
 
 Also under *Strike*: **Strike Reveal Radius** (its owner sees that far round the target until the end of the turn it
@@ -86,12 +86,15 @@ its art arrives.
 - **The AI** (`AI/AIStrike.cs`) aims where its strike destroys the most enemy material, by what its side knows, less its
   own and its allies' units under the blast; a unit that can move counts half against a delayed strike. A self-destructing
   unit fires only for at least 40% of its own worth (5% when it is about to be destroyed anyway); otherwise it holds.
-  Against a hostile strike in the air it knows only who launched it, from where and with what: each unit's danger is the
+  It learns of strikes only as a player does (`Strikes.KnownTo`): its own, target and all; an enemy's only if it saw the
+  launch, and then only who fired, from where and with what, never the target. A launch it did not see changes nothing
+  (test `ai-strike-unseen` plays move for move as with nothing in the air). Against one it saw, each unit's danger is the
   share of its side's units in reach that one blast around its tile would also catch (part of `AIMap.ExpectedLoss`), so
-  crowds spread out or leave reach. It never walks under its own strike. It buys missiles by the purchase rules' generic
+  crowds spread out or leave reach. It never walks under its own strike. AI code may not read the list of every strike
+  in the air (`Strikes.InFlight`) or the strike events: test `ai-strike-blind` checks the AI's source for it. It buys missiles by the purchase rules' generic
   value for a unit that fires from afar without moving (about 12,000 for the 30,000 Missile).
 - Tests: `strike-missile`, `strike-attributes`, `strike-save`, `strike-log-replay`, `script-strike`, `ai-strike-fire`,
-  `ai-strike-spread` (`Tests/StrikeChecks.cs`; `ONLY=rules NAME=strike bash Tests/run.sh Assets`).
+  `ai-strike-spread`, `ai-strike-blind` (`Tests/StrikeChecks.cs`; `ONLY=rules NAME=strike bash Tests/run.sh Assets`).
 
 ## Supply carried by transports, ships and aircraft
 

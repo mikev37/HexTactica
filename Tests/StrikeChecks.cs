@@ -49,19 +49,32 @@ public static partial class Scenarios {
              },
              "The AI with a missile and three Red tanks bunched in range (and a lone grunt): it launches at the tile whose blast covers the most of them, not at the grunt. With only the grunt in range it holds the missile (not worth what it spends).");
         n++;
-        Action<Player, Player, bool> spreadBoard = (a, o, incoming) => {
+        // 0: nothing in the air; 1: a Blue missile Red saw launched; 2: one Red did not see.
+        Action<Player, Player, int> spreadBoard = (a, o, incoming) => {
             Put("Grunt", o, 2, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 2, 1); Put("Grunt", o, 3, -1); Put("Grunt", o, 4, -1); Put("Tank", o, 4, 0);
             Put("Grunt", a, -4, 0);
-            if (incoming) {
+            if (incoming > 0) {
                 Unit prefab = PrefabLoader.Load("Missile");
-                Strikes.Add(new Strike { owner = a, kind = "Missile", weapon = prefab, strength = 6, from = Rig.At(-4, 0), target = Rig.At(3, 0), day = 1 });
+                Strike s = new Strike { owner = a, kind = "Missile", weapon = prefab, strength = 6, from = Rig.At(-4, 0), target = Rig.At(3, 0), day = 1 };
+                if (incoming == 1) s.seenBy.Add(o);
+                Strikes.Add(s);
             }
         };
-        make("ai-strike-spread", "aiStrikeSpread", (a, o) => spreadBoard(a, o, true),
-             "Red's units bunched within reach of a Blue missile in the air (the file carries it; where it is aimed is not read by Red's AI): on its turn Red's AI spreads them out or takes them out of reach, so that no blast catches as many as on the same board with nothing in the air (ai-strike-spread-control).");
+        make("ai-strike-spread", "aiStrikeSpread", (a, o) => spreadBoard(a, o, 1),
+             "Red's units bunched within reach of a Blue missile in the air that Red saw launched (Red knows who, from where, with what; not where it is aimed): on its turn Red's AI spreads them out or takes them out of reach, so that no blast catches as many as on the same board with nothing in the air (ai-strike-spread-control). With the same missile unseen (ai-strike-unseen), Red plays move for move as with nothing in the air.");
         n++;
-        make("ai-strike-spread-control", "aiStrikeControl", (a, o) => spreadBoard(a, o, false),
+        make("ai-strike-spread-control", "aiStrikeControl", (a, o) => spreadBoard(a, o, 0),
              "The board of ai-strike-spread with nothing in the air (played from that check).");
+        n++;
+        make("ai-strike-unseen", "aiStrikeControl", (a, o) => spreadBoard(a, o, 2),
+             "The board of ai-strike-spread with the missile's launch unseen by Red (played from that check).");
+        n++;
+        make("ai-strike-blind", "aiStrikeBlind", (a, o) => {
+                 Rig.PlaceBuilding("Missile Silo", a, -4, 0); Put("Missile", a, -4, 0);
+                 Put("Missile", a, 2, 0);
+                 Put("Tank", o, 4, 0); Put("Tank", o, 4, 1); Put("Grunt", o, 4, -1);
+             },
+             "The AI learns of strikes only as a player does. Under fog, Blue launches a missile Red cannot see (from its silo far away) and one Red can (beside its tanks): Red knows of one, the seen one, with who fired it and from where but not its target; Blue knows of both, targets and all. No AI code reads the list of every strike in the air (Strikes.InFlight): the AI's source is checked for it.");
         n++;
         make("script-strike", "scriptStrike", (a, o) => {
                  Rig.PlaceBuilding("Missile Silo", a, -4, 0); Put("Missile", a, -4, 0);
@@ -268,18 +281,55 @@ public static partial class Scenarios {
                 return covered == 3 && !second.HasValue && kept;
             }
             case "aiStrikeSpread": {
+                Dictionary<string, string> boards = new Dictionary<string, string>();
                 Func<string, int[]> play = name => {
                     ScenarioFile.Loaded g = ScenarioFile.Load(Path.Combine(Dir, name + ".dat"), "Full", null);
                     foreach (MonoBehaviour m in g.ai.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = false;
                     int air = Strikes.InFlight.Count;
                     int before = MostUnderOneBlast(g.other);
                     Rig.gc.EndTurn();   // Blue's turn passes: Red's AI plays
-                    g.other.GetComponent<AIPlayer>().PlayWholeTurn();
-                    return new[] { air, before, MostUnderOneBlast(g.other) };
+                    // Red's board as its turn ends (before anything lands at Blue's next turn).
+                    int after = -1;
+                    Action<Player> ending = p => { if (p == g.other && after < 0) { boards[name] = StrikeBoard(); after = MostUnderOneBlast(g.other); } };
+                    GameController.TurnEnding += ending;
+                    try { g.other.GetComponent<AIPlayer>().PlayWholeTurn(); } finally { GameController.TurnEnding -= ending; }
+                    if (after < 0) { boards[name] = StrikeBoard(); after = MostUnderOneBlast(g.other); }
+                    return new[] { air, before, after };
                 };
-                int[] withStrike = play("ai-strike-spread"), without = play("ai-strike-spread-control");
-                detail = "Red's units under one blast at most: with a Blue missile in the air (" + withStrike[0] + " in the file) " + withStrike[1] + " -> " + withStrike[2] + "; with nothing in the air " + without[1] + " -> " + without[2];
-                return withStrike[0] == 1 && without[0] == 0 && withStrike[2] < without[2] && withStrike[2] < withStrike[1];
+                int[] withStrike = play("ai-strike-spread"), without = play("ai-strike-spread-control"), unseen = play("ai-strike-unseen");
+                bool sameAsNothing = boards["ai-strike-unseen"] == boards["ai-strike-spread-control"];
+                detail = "Red's units under one blast at most: with a Blue missile in the air Red saw launched " + withStrike[1] + " -> " + withStrike[2] + "; with nothing in the air " + without[1] + " -> " + without[2]
+                       + "; with one Red did not see " + unseen[1] + " -> " + unseen[2] + " (" + unseen[0] + " in the air), Red's moves as with nothing in the air " + sameAsNothing;
+                if (!sameAsNothing) detail += " [nothing: " + boards["ai-strike-spread-control"] + " | unseen: " + boards["ai-strike-unseen"] + "]";
+                return withStrike[0] == 1 && without[0] == 0 && unseen[0] == 1 && withStrike[2] < without[2] && withStrike[2] < withStrike[1] && sameAsNothing;
+            }
+            case "aiStrikeBlind": {
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                Unit far = At(-4, 0), near = At(2, 0);
+                bool farHidden = !FogOfWar.Sees(o, far), nearSeen = FogOfWar.Sees(o, near);
+                bool ordered = Strikes.Order(far, Rig.At(4, 0)) & Strikes.Order(near, Rig.At(4, 1));
+                List<StrikeSighting> red = Strikes.KnownTo(o), blue = Strikes.KnownTo(a);
+                bool redKnows = red.Count == 1 && red[0].from == Rig.At(2, 0) && red[0].owner == a && red[0].target == null && red[0].weapon != null;
+                bool blueKnows = blue.Count == 2 && blue.TrueForAll(s => s.target != null);
+                // The AI's source never names the full list (or the internals it is made from).
+                List<string> offenders = new List<string>();
+                string assets = PrefabLoader.AssetsRoot;
+                List<string> files = new List<string>(Directory.GetFiles(Path.Combine(assets, "AI"), "*.cs", SearchOption.AllDirectories));
+                files.Add(Path.Combine(assets, "AIPlayer.cs"));
+                if (Directory.Exists(Path.Combine(assets, "OldAI"))) files.AddRange(Directory.GetFiles(Path.Combine(assets, "OldAI"), "*.cs", SearchOption.AllDirectories));
+                // (Code only, comments stripped.) The AI may use only these of Strikes: what its side knows (KnownTo), and its
+                // own strikes (Preview, Blast, Targets, CanOrder, Order). Anything else (InFlight, the Fired and Landed events,
+                // a save's StrikeData) would tell it of strikes it did not see, or where they are aimed.
+                HashSet<string> allowed = new HashSet<string> { "KnownTo", "Preview", "Blast", "Targets", "CanOrder", "Order" };
+                System.Text.RegularExpressions.Regex use = new System.Text.RegularExpressions.Regex(@"\bStrikes\s*\.\s*(\w+)|\b(InFlight|StrikeData)\b");
+                foreach (string file in files) {
+                    string code = System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(file), @"//[^\n]*|/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+                    foreach (System.Text.RegularExpressions.Match m in use.Matches(code))
+                        if (m.Groups[2].Success || !allowed.Contains(m.Groups[1].Value)) offenders.Add(Path.GetFileName(file) + ": " + m.Value);
+                }
+                detail = "under fog: Red sees the silo's missile " + !farHidden + ", the one beside it " + nearSeen + "; both launched " + ordered + "; Red knows of " + red.Count + " (the seen one, firer and launch tile, no target: " + redKnows
+                       + "); Blue knows of " + blue.Count + " with targets " + blueKnows + "; AI files checked " + files.Count + ", using what the AI may not: " + (offenders.Count == 0 ? "none" : string.Join(", ", offenders.ToArray()));
+                return farHidden && nearSeen && ordered && redKnows && blueKnows && offenders.Count == 0 && files.Count > 10;
             }
             case "aiStrikeControl": {
                 detail = "the control board of ai-strike-spread (played there)";

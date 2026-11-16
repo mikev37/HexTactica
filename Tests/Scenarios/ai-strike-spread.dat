@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"ai-strike-spread","kind":"rules","opponent":"Human","rounds":"4","check":"aiStrikeSpread","question":"Red's units bunched within reach of a Blue missile in the air (the file carries it; where it is aimed is not read by Red's AI): on its turn Red's AI spreads them out or takes them out of reach, so that no blast catches as many as on the same board with nothing in the air (ai-strike-spread-control).","rules":"standard"},
+"test":{"name":"ai-strike-spread","kind":"rules","opponent":"Human","rounds":"4","check":"aiStrikeSpread","question":"Red's units bunched within reach of a Blue missile in the air that Red saw launched (Red knows who, from where, with what; not where it is aimed): on its turn Red's AI spreads them out or takes them out of reach, so that no blast catches as many as on the same board with nothing in the air (ai-strike-spread-control). With the same missile unseen (ai-strike-unseen), Red plays move for move as with nothing in the air.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
@@ -187,6 +187,6 @@
 {"x":4,"y":0,"z":-4,"Strength":6,"Veterancy":0,"personalName":"Tank","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Tank","transporterIndexPlusOne":0}
 ],
 "strikes":[
-{"owner_id":112,"kind":"Missile","strength":6,"veterancy":0,"attackBonus":0,"fromX":-4,"fromY":0,"x":3,"y":0,"day":1}
+{"owner_id":112,"kind":"Missile","strength":6,"veterancy":0,"attackBonus":0,"fromX":-4,"fromY":0,"x":3,"y":0,"day":1,"seenBy":"0"}
 ]
 }

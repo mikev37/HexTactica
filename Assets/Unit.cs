@@ -143,7 +143,7 @@ public class Unit : MonoBehaviour
     public int blastRadius;
     [Tooltip("Self-destruct: it is expended by its own attack (a missile, a bomb). With a ballistic delay it leaves the board as it is launched and cannot be attacked after.")]
     public bool selfDestructs;
-    [Tooltip("Ballistic delay: its attack lands at the start of its owner's next turn, on the tile it was aimed at (a unit aimed at: the tile it stood on), hitting whatever is there then. Launching gives it away to every enemy side (fog of war).")]
+    [Tooltip("Ballistic delay: its attack lands at the start of its owner's next turn, on the tile it was aimed at (a unit aimed at: the tile it stood on), hitting whatever is there then. Enemy sides that see it fire know a strike is coming, not where; others learn of it when it lands.")]
     public bool ballistic;
     [Range(0, 6)]
     [Tooltip("Fog of war: when its attack on ground or its ballistic attack lands, its owner sees every tile within this many steps of the target until the end of that turn (0: nothing revealed).")]

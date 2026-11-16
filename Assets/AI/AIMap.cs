@@ -261,6 +261,7 @@ namespace HexTactica.AI {
 
         void Rebuild(bool recalculateThreat) {
             readCount++;
+            ReadKnownStrikes();
             // Only what the board's changes since the last read could have changed (AIMapCache).
             ReadDelta(); PruneUnitCaches();
             theaters.Clear();

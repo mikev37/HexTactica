@@ -11,14 +11,15 @@ namespace HexTactica.AI {
     ///     allies' hit by the blast. A delayed strike lands after the enemy has moved: a unit that can move counts at
     ///     half. A unit that is expended by its strike (a missile) fires only when that is worth enough of what is
     ///     spent, or when it is about to be destroyed where it stands anyway.
-    ///   - Defence (AIMap.IncomingStrikeLoss): a hostile strike in the air is known to every side (its launch is seen),
-    ///     but not where it is aimed. Its owner will aim where it hits most of us, so a unit's chance of being under it
+    ///   - Defence (AIMap.IncomingStrikeLoss): a hostile strike in the air is known only to a side that saw it launched
+    ///     (Strikes.KnownTo: who, from where, with what; never where it is aimed). A launch it did not see changes nothing. Its owner will aim where it hits most of us, so a unit's chance of being under it
     ///     is the share of our units in its range that one blast around this tile would also catch: a lone unit among
     ///     many risks little, a crowd risks all. The danger is part of ExpectedLoss, so every decision (where to stop,
     ///     whether to hold) spreads out or leaves the strike's reach without a rule of its own.
     ///
-    /// Fair play: only what a player could know. The target of an enemy strike is never read; our own strikes are
-    /// weighed on the units our side sees or remembers (FogOfWar.ApparentOccupier).
+    /// Fair play: only what a player could know. The AI never reads Strikes.InFlight (test ai-strike-blind): what it
+    /// knows of strikes comes from Strikes.KnownTo, which has no target for another side's. Our own strikes are weighed
+    /// on the units our side sees or remembers (FogOfWar.ApparentOccupier).
     /// </summary>
     public static class AIStrike {
 
@@ -110,13 +111,19 @@ namespace HexTactica.AI {
         /// (AIStrike: where they are aimed is not known; the share of our units in reach that one blast here would also
         /// catch). 0 when none is in the air: games without strikes play exactly as before.
         /// </summary>
+        /// <summary>The strikes in the air this side knows of (Strikes.KnownTo), read with the board (ReadKnownStrikes).</summary>
+        List<StrikeSighting> knownStrikes = new List<StrikeSighting>();
+
+        /// <summary>Read what this side knows of strikes in the air (with every board read: Rebuild).</summary>
+        void ReadKnownStrikes() { knownStrikes = Strikes.KnownTo(player); }
+
         public float IncomingStrikeLoss(Unit u, HexTile at) {
-            IList<Strike> air = Strikes.InFlight;
+            List<StrikeSighting> air = knownStrikes;
             if (air.Count == 0 || u == null || at == null) return 0f;
             float loss = 0f;
             for (int i = 0; i < air.Count; i++) {
-                Strike s = air[i];
-                if (s == null || s.weapon == null || s.from == null) continue;
+                StrikeSighting s = air[i];
+                if (s.weapon == null || s.from == null) continue;
                 Unit w = s.weapon;
                 int r = Mathf.Max(0, w.blastRadius);
                 // Our own: we know where it lands. Never stand under it.
