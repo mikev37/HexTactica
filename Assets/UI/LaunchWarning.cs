@@ -11,7 +11,8 @@ using UnityEngine.UI;
 ///     <see cref="fadeSeconds"/>.
 ///   - The camera glides to the site at the lowest priority (CameraRig.Notice): the player's own camera input or a
 ///     scenario's camera cuts it short.
-///   - Clicking the banner cycles the camera through the sites launched from this turn.
+///   - Clicking the banner cycles the camera through the sites launched from this turn that this player saw
+///     (Strikes.SitesWarnedScreen, asked afresh on each click): a launch it did not see is never among them.
 ///
 /// Everything it looks like is its prefab, Resources/LaunchWarning (made once by Editor/LaunchWarningPrefab, then
 /// yours): text, colours, layout, sound and timings. The code only shows, hides, fades and counts.
@@ -25,7 +26,7 @@ public class LaunchWarning : MonoBehaviour {
     public GameObject banner;
     [Tooltip("Fades the banner out (its alpha).")]
     public CanvasGroup fade;
-    [Tooltip("Clicking it cycles the camera through this turn's launch sites.")]
+    [Tooltip("Clicking it cycles the camera through this turn's launch sites this player saw.")]
     public Button button;
     [Tooltip("Optional: which site the camera is on, of how many (shown only with more than one).")]
     public TMP_Text count;
@@ -40,8 +41,8 @@ public class LaunchWarning : MonoBehaviour {
     [Tooltip("Played on each launch warned of (empty: silent).")]
     public AudioSource sound;
 
-    readonly List<HexTile> sites = new List<HexTile>();
-    int site = -1;
+    // The site the camera was last sent to (the list itself is the rules', Strikes.SitesWarnedScreen).
+    HexTile current;
     float hideAt, fadeFrom;
     bool fading;
 
@@ -51,8 +52,6 @@ public class LaunchWarning : MonoBehaviour {
         Strikes.Fired += OnFired;
         GameController.TurnEnding -= OnTurnEnding;
         GameController.TurnEnding += OnTurnEnding;
-        GameController.TurnStarted -= OnTurnStarted;
-        GameController.TurnStarted += OnTurnStarted;
     }
 
     static LaunchWarning instance;
@@ -82,7 +81,6 @@ public class LaunchWarning : MonoBehaviour {
 
     static void OnTurnEnding(Player p) { if (instance != null) instance.FadeOut(); }
 
-    static void OnTurnStarted(Player p) { if (instance != null) { instance.sites.Clear(); instance.site = -1; } }
 
     void Awake() {
         instance = this;
@@ -95,8 +93,7 @@ public class LaunchWarning : MonoBehaviour {
     /// <summary>A launch from <paramref name="from"/> seen: the banner (again, from full), the camera to it.</summary>
     public void Warn(HexTile from) {
         if (from == null) return;
-        if (!sites.Contains(from)) sites.Add(from);
-        site = sites.IndexOf(from);
+        current = from;
         if (banner != null) banner.SetActive(true);
         if (fade != null) fade.alpha = 1f;
         fading = false;
@@ -106,12 +103,13 @@ public class LaunchWarning : MonoBehaviour {
         Look(from);
     }
 
-    /// <summary>The banner clicked: the camera to the next site launched from this turn.</summary>
+    /// <summary>The banner clicked: the camera to the next site launched from this turn that this player saw.</summary>
     public void Cycle() {
-        if (sites.Count == 0) return;
-        site = (site + 1) % sites.Count;
+        List<HexTile> sites = Strikes.SitesWarnedScreen();
+        if (sites.Count == 0) { current = null; ShowCount(); return; }
+        current = sites[(sites.IndexOf(current) + 1) % sites.Count];
         ShowCount();
-        Look(sites[site]);
+        Look(current);
     }
 
     void Look(HexTile t) {
@@ -121,8 +119,10 @@ public class LaunchWarning : MonoBehaviour {
 
     void ShowCount() {
         if (count == null) return;
-        count.gameObject.SetActive(sites.Count > 1);
-        if (sites.Count > 1) count.text = string.Format(countFormat, site + 1, sites.Count);
+        List<HexTile> sites = Strikes.SitesWarnedScreen();
+        int at = sites.IndexOf(current);
+        count.gameObject.SetActive(sites.Count > 1 && at >= 0);
+        if (sites.Count > 1 && at >= 0) count.text = string.Format(countFormat, at + 1, sites.Count);
     }
 
     void FadeOut() {

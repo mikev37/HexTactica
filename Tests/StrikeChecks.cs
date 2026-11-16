@@ -81,7 +81,7 @@ public static partial class Scenarios {
                  Put("Missile", a, -6, 3);
                  Put("Grunt", o, 6, -2);
              },
-             "A launch is seen from far off. Under fog, Red's only unit is 8 tiles from one Blue missile (beyond its sight) and 12 from another. The near launch: Red learns of it (where from, not where to) and sees the launch tile and the tiles round it (not two away) until the end of its next turn; the player at the screen is warned if that is Red. The far one: Red knows nothing and sees nothing there.");
+             "A launch is seen from far off. Under fog, Red's only unit is 8 tiles from one Blue missile (beyond its sight) and 12 from another. The near launch: Red learns of it (where from, not where to) and sees the launch tile and the tiles round it (not two away) until the end of its next turn; the player at the screen is warned if that is Red, and the sites its warning cycles through are the near one only (never the far one); a new turn starts with none. The far one: Red knows nothing and sees nothing there.");
         n++;
         make("script-strike", "scriptStrike", (a, o) => {
                  Rig.PlaceBuilding("Missile Silo", a, -4, 0); Put("Missile", a, -4, 0);
@@ -354,15 +354,21 @@ public static partial class Scenarios {
                 Player viewer = FogOfWar.Viewer;
                 bool warnNear = Strikes.WarnsScreen(sNear), warnFar = Strikes.WarnsScreen(sFar);
                 bool warnRight = viewer == o ? warnNear && !warnFar : viewer == a ? !warnNear && !warnFar : true;
+                // The sites the warning may cycle through: Red's holds the near launch only; Blue's (its own launches) none.
+                List<HexTile> redSites = Strikes.SitesWarned(o), blueSites = Strikes.SitesWarned(a);
+                bool sitesRight = redSites.Count == 1 && redSites[0] == padNear && blueSites.Count == 0;
+                bool screenSitesRight = viewer == o ? Strikes.SitesWarnedScreen().SequenceEqual(redSites) : viewer == a ? Strikes.SitesWarnedScreen().Count == 0 : true;
                 gc.EndTurn(); FogOfWar.Refresh();
                 bool litOnRedTurn = ring1.TrueForAll(t => FogOfWar.TileVisible(o, t));
+                bool sitesCleared = Strikes.SitesWarned(o).Count == 0;
                 gc.EndTurn(); FogOfWar.Refresh();
                 bool goneAfter = !ring1.Exists(t => FogOfWar.TileVisible(o, t));
                 detail = "Red sees nothing of either launch tile before " + darkBefore + "; both launched " + ordered + "; Red knows of the near one only (from, no target) " + knowsNear + ", not the far one " + knowsNotFar
                        + "; launch tile and the ring round it lit for Red " + lit + ", two away still dark " + notWider + ", far launch tile dark " + farDark
-                       + "; viewer " + (viewer != null ? viewer.name : "none") + ": warned of the near " + warnNear + ", the far " + warnFar
+                       + "; viewer " + (viewer == o ? "Red" : viewer == a ? "Blue" : "none") + ": warned of the near " + warnNear + ", the far " + warnFar
+                       + "; sites Red may cycle " + redSites.Count + " (the near launch only " + sitesRight + ", the screen's list the same " + screenSitesRight + "), none left next turn " + sitesCleared
                        + "; still lit on Red's turn " + litOnRedTurn + ", dark again after it " + goneAfter;
-                return darkBefore && ordered && knowsNear && knowsNotFar && lit && notWider && farDark && warnRight && litOnRedTurn && goneAfter;
+                return darkBefore && ordered && knowsNear && knowsNotFar && lit && notWider && farDark && warnRight && sitesRight && screenSitesRight && sitesCleared && litOnRedTurn && goneAfter;
             }
             case "aiStrikeControl": {
                 detail = "the control board of ai-strike-spread (played there)";

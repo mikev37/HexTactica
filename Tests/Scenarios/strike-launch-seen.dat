@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"strike-launch-seen","kind":"rules","opponent":"Human","rounds":"4","check":"strikeLaunchSeen","question":"A launch is seen from far off. Under fog, Red's only unit is 8 tiles from one Blue missile (beyond its sight) and 12 from another. The near launch: Red learns of it (where from, not where to) and sees the launch tile and the tiles round it (not two away) until the end of its next turn; the player at the screen is warned if that is Red. The far one: Red knows nothing and sees nothing there.","rules":"standard"},
+"test":{"name":"strike-launch-seen","kind":"rules","opponent":"Human","rounds":"4","check":"strikeLaunchSeen","question":"A launch is seen from far off. Under fog, Red's only unit is 8 tiles from one Blue missile (beyond its sight) and 12 from another. The near launch: Red learns of it (where from, not where to) and sees the launch tile and the tiles round it (not two away) until the end of its next turn; the player at the screen is warned if that is Red, and the sites its warning cycles through are the near one only (never the far one); a new turn starts with none. The far one: Red knows nothing and sees nothing there.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
