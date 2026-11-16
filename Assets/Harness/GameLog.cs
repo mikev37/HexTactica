@@ -101,6 +101,7 @@ namespace HexTactica.Harness {
             GameController gc = GameController.gc;
             if (gc == null) return;
             foreach (Player p in gc.players) if (p != null) Line(Lines.Side(p));
+            Line(Lines.Fog(gc.fogOfWar));
             // From the first side's HQ to its first enemy's (the second side, unless that is an ally).
             Player a = gc.players.Count > 0 ? gc.players[0] : null, b = null;
             for (int i = 1; i < gc.players.Count && b == null; i++) if (gc.players[i] != null && Player.Hostile(gc.players[i], a)) b = gc.players[i];
@@ -162,9 +163,14 @@ namespace HexTactica.Harness {
             finished = false;
             turns = from.turns;
             Listen();
+            // The game goes on in the turn it was saved in: no new turn heading or board (the turn's own, from its
+            // start, is the one copied above), so a replay plays the turn through as one. Each unit's next move
+            // starts from where it stands now.
             Line(Lines.Resumed(source));
             WriteSides();
-            OnTurnStarted(GameController.gc != null ? GameController.gc.activePlayer : null);
+            lastSeen.Clear();
+            ditching.Clear();
+            foreach (Unit u in AllUnits()) if (u != null && u.tile != null && u.trasnporter == null) lastSeen[u] = u.tile;
             return true;
         }
 
@@ -233,7 +239,8 @@ namespace HexTactica.Harness {
             HexTile was;
             lastSeen.TryGetValue(u, out was);
             if (u.tile != null && was != null && was != u.tile)
-                Line(Lines.Moved(u, was, u.tile));
+                Line(Lines.Moved(u, was, u.tile, u.orderedTo));
+            u.orderedTo = null;
             if (u.tile != null) lastSeen[u] = u.tile;
         }
 
@@ -241,7 +248,7 @@ namespace HexTactica.Harness {
         static void FlushMove(Unit u, HexTile now) {
             HexTile was;
             if (u == null || now == null || !lastSeen.TryGetValue(u, out was) || was == now) return;
-            Line(Lines.Moved(u, was, now));
+            Line(Lines.Moved(u, was, now, u.orderedTo));   // (the order is cleared when the unit finishes: "ran into" names it too)
             lastSeen[u] = now;
         }
 
@@ -354,7 +361,8 @@ namespace HexTactica.Harness {
 
         static void OnRanInto(Unit mover, Unit hidden, HexTile stoppedAt) {
             if (writer == null || mover == null || hidden == null) return;
-            Line("   " + Who(mover) + " ran into " + Who(hidden) + " at " + D(hidden.tile) + " (unseen, fog of war): stopped at " + D(stoppedAt));
+            Line("   " + Who(mover) + " ran into " + Who(hidden) + " at " + D(hidden.tile) + " (unseen, fog of war): stopped at " + D(stoppedAt)
+                 + (mover.orderedTo != null && mover.orderedTo != stoppedAt ? ", ordered to " + D(mover.orderedTo) : ""));
         }
 
         static void OnCapture(Building b, Player side, int before, int after) {
@@ -513,6 +521,9 @@ namespace HexTactica.Harness {
             if (GameController.gc != null) {
                 sb.Append(",\n\"day\":").Append(GameController.gc.days);
                 sb.Append(",\n\"factionSpecialUnits\":").Append(Q(GameController.gc.SpecialUnitsSetting));
+                // The rules as played: a replay plays under them.
+                sb.Append(",\n\"fog\":").Append(Q(GameController.gc.FogSetting));
+                sb.Append(",\n\"purchases\":").Append(Q(GameController.gc.PurchasesSetting));
                 sb.Append(",\n\"players\":[");
                 bool firstSide = true;
                 foreach (Player q in GameController.gc.players) {

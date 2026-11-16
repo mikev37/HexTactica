@@ -153,6 +153,10 @@ no faction has none (`ScenarioLoader.SidesAsFiled`; the same for a saved game), 
 keeps the scene's. Nothing is recorded while a recording is watched, and the scene's own board is no longer recorded
 when it opens under a menu (pre-game, map editor, replay).
 
+A saved game keeps its game log: loading the save starts a new recording folder holding the log up to the save
+and every turn board before it, then goes on in the same turn (no new turn heading). That folder replays the whole
+game from its first turn. The folder the game was first recorded in stays too, ending at the save.
+
 ## Resigning, and options in game
 
 The in-game menu has **Resign**: `GameController.Resign` takes the human side out (logged as `Blue resigns`), and

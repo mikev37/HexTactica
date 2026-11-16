@@ -69,6 +69,13 @@ namespace HexTactica.Harness {
             static readonly Regex axis = new Regex(@"^axis: (\d+)$");
             public static bool ReadAxis(string line, out int tiles) { Match m = axis.Match(line); tiles = m.Success ? int.Parse(m.Groups[1].Value, Inv) : 0; return m.Success; }
 
+            /// <summary>The game's fog rule: "fog: on" / "fog: off".</summary>
+            public static string Fog(bool on) { return "fog: " + (on ? "on" : "off"); }
+            public static bool ReadFog(string line, out bool on) {
+                on = line == "fog: on";
+                return on || line == "fog: off";
+            }
+
             public static string Source(string from) { return "source: " + from; }
             public static bool ReadSource(string line, out string from) { from = line.StartsWith("source: ", StringComparison.Ordinal) ? line.Substring(8) : null; return from != null; }
 
@@ -145,12 +152,36 @@ namespace HexTactica.Harness {
                 x = int.Parse(m.Groups[1].Value, Inv); y = int.Parse(m.Groups[2].Value, Inv);
                 return true;
             }
+            /// <summary>The building a unit was bought at, from its buy line ("... at Factory (3,5) for 300").</summary>
+            public static bool ReadBuyAt(string line, out int x, out int y) {
+                Match m = boughtAtBuilding.Match(line);
+                x = y = 0;
+                if (!m.Success) return false;
+                x = int.Parse(m.Groups[1].Value, Inv); y = int.Parse(m.Groups[2].Value, Inv);
+                return true;
+            }
+            static readonly Regex boughtAtBuilding = new Regex(@" \((-?\d+),(-?\d+)\) for \d+(?:, placed \(-?\d+,-?\d+\))?$");
             static readonly Regex placed = new Regex(@", placed \((-?\d+),(-?\d+)\)$");
             static readonly Regex boughtAt = new Regex(@" \((-?\d+),(-?\d+)\) for \d+$");
 
             /// <summary>A unit ended its action somewhere else: "Blue Tank moved (1,2) -> (3,2)".</summary>
-            public static string Moved(Unit u, HexTile from, HexTile to) { return Indent + Who(u) + " moved " + D(from) + " -> " + D(to); }
-            static readonly Regex moved = new Regex(@"^   (.+) moved \((-?\d+),(-?\d+)\) -> \((-?\d+),(-?\d+)\)$");
+            /// <summary>
+            /// A unit's move: "Blue Tank moved (1,2) -> (3,2)"; stopped short of where it was ordered (it ran into a unit
+            /// it could not see), "Blue Tank moved (1,2) -> (3,2), ordered to (5,2), stopped short".
+            /// </summary>
+            public static string Moved(Unit u, HexTile from, HexTile to, HexTile ordered = null) {
+                return Indent + Who(u) + " moved " + D(from) + " -> " + D(to) + (ordered != null && ordered != to ? ", ordered to " + D(ordered) + ", stopped short" : "");
+            }
+            static readonly Regex moved = new Regex(@"^   (.+) moved \((-?\d+),(-?\d+)\) -> \((-?\d+),(-?\d+)\)(?:, ordered to \((-?\d+),(-?\d+)\), stopped short)?$");
+
+            /// <summary>Where a move line says the unit was ordered to, when it stopped short of it; false when it got where it was ordered (or the log is older).</summary>
+            public static bool ReadMoveOrder(string line, out int x, out int y) {
+                Match m = moved.Match(line);
+                x = y = 0;
+                if (!m.Success || !m.Groups[6].Success) return false;
+                x = int.Parse(m.Groups[6].Value, Inv); y = int.Parse(m.Groups[7].Value, Inv);
+                return true;
+            }
             public static bool ReadMoved(string line, IEnumerable<string> sides, out string sideName, out string unit, out int fromX, out int fromY, out int toX, out int toY) {
                 Match m = moved.Match(line);
                 sideName = unit = null; fromX = fromY = toX = toY = 0;

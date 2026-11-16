@@ -255,14 +255,17 @@ public static partial class Scenarios {
                 HexTactica.Harness.Replay.Show(0);
                 while (HexTactica.Harness.Replay.NextAction() && guard++ < 200) { }
                 string replayed = StrikeBoard();
+                int desyncs = HexTactica.Harness.Replay.Desyncs.Count;
+                string firstDesync = desyncs > 0 ? HexTactica.Harness.Replay.Desyncs[0] : "";
                 HexTactica.Harness.Replay.Close();
                 HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
                 try { Directory.Delete(root, true); } catch (Exception) { }
                 bool same = replayed == recorded && recorded.Contains("crater@");
                 string excerpt = string.Join(" / ", log.Split('\n').Where(x => x.Contains("launches at") || x.Contains("strike lands on")).Select(x => x.Trim()).ToArray());
                 detail = "launched by the AI " + launched + "; log: " + excerpt + "; kills credited to the Missile " + credited + "/" + killed + ", missile not a loss " + missileNotLost
-                       + "; replay opened " + opened + ", ends as recorded " + same + (same ? "" : " [recorded " + recorded + " | replayed " + replayed + "]");
-                return launched && logged && credited == killed && killed > 0 && missileNotLost && opened && same;
+                       + "; replay opened " + opened + ", ends as recorded " + same + (same ? "" : " [recorded " + recorded + " | replayed " + replayed + "]")
+                       + ", desyncs " + desyncs + (desyncs > 0 ? " (first: " + firstDesync + ")" : "");
+                return launched && logged && credited == killed && killed > 0 && missileNotLost && opened && same && desyncs == 0;
             }
             case "aiStrikeFire": {
                 Unit missile = At(-4, 0);
