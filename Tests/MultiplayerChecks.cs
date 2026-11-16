@@ -290,12 +290,16 @@ public static partial class Scenarios {
         bool ok = true;
         int caughtUp = 0, watched = 0;
         bool gatesOk = true;
+        List<string> opens = new List<string>();
+        bool fromCopies = true;
         for (int round = 0; round < 3 && ok; round++) {
             // Alice: on round 0 the game is open from starting it; later she watches it live, polling.
             if (round > 0) {
                 Device("alice", "Alice");
                 mpStore.limit = aliceSaw;   // (as alice's device was when bob began)
                 bool opened = MpOpen(code);
+                opens.Add("alice " + (MpSession.OpenedFromCopy ? "copy@" : "base@") + MpSession.OpenedFrom + "+" + MpSession.EntriesPlayedOnOpen);
+                fromCopies &= MpSession.OpenedFromCopy && MpSession.EntriesPlayedOnOpen == 0;
                 mpStore.limit = int.MaxValue;
                 MpSession.Poll().Wait();   // (what MpSession.Tick does every few seconds while the game is open)
                 bool same = GameLog.BoardCheck() == bobCheck;
@@ -311,6 +315,9 @@ public static partial class Scenarios {
 
             Device("bob", "Bob");
             bool open = MpOpen(code);
+            opens.Add("bob " + (MpSession.OpenedFromCopy ? "copy@" : "base@") + MpSession.OpenedFrom + "+" + MpSession.EntriesPlayedOnOpen);
+            // From his own copy at his last turn's start, after the first time: only alice's turn is played on it.
+            if (round > 0) fromCopies &= MpSession.OpenedFromCopy && MpSession.EntriesPlayedOnOpen <= 3;
             bool same2 = GameLog.BoardCheck() == aliceCheck;
             if (!open || !same2 || MpSession.Diverged || !MpSession.MyTurn || MpSession.State != MpSession.Phase.Live) {
                 r.Add("round " + round + ": bob caught up: opened " + open + ", same board " + same2 + ", desync " + MpSession.Diverged + " (" + (MpSession.Game != null ? MpSession.Game.desync : "") + "), his turn " + MpSession.MyTurn + ", " + MpSession.State);
@@ -327,9 +334,31 @@ public static partial class Scenarios {
         bool inOrder = true;
         for (int i = 0; i < log.Count; i++) if (log[i].n != i) inOrder = false;
         int desyncs = Replay.Desyncs.Count - desyncsBefore;
+
+        // A copy the log no longer agrees with, and one whose board is not what it says: each is passed over, and the
+        // game is rebuilt from its board (as on a new device), still ending as it stands.
+        string folder = Path.Combine(Application.persistentDataPath, "multiplayer");
+        string txt = Directory.GetFiles(folder, "copy-bob-" + code + "-*.txt").FirstOrDefault(), dat = txt != null ? txt.Substring(0, txt.Length - 4) + ".dat" : null;
+        bool badCheck = false, badBoard = false;
+        if (txt != null) {
+            string kept = File.ReadAllText(txt);
+            File.WriteAllText(txt, kept.Substring(0, kept.IndexOf('\n') + 1) + "units: tampered");
+            Device("bob", "Bob");
+            MpOpen(code);
+            badCheck = !MpSession.OpenedFromCopy && MpSession.OpenedFrom == 0 && GameLog.BoardCheck() == bobCheck && !MpSession.Diverged;
+            // (Opening wrote nothing new: the copy is put back as it was, then its board swapped for the starting one.)
+            File.WriteAllText(txt, kept);
+            KeyValuePair<int, string> start = Wait(Mp.Base(Wait(Mp.Load(code))));
+            File.WriteAllText(dat, start.Value);
+            Device("bob", "Bob");
+            MpOpen(code);
+            badBoard = !MpSession.OpenedFromCopy && MpSession.OpenedFrom == 0 && GameLog.BoardCheck() == bobCheck && !MpSession.Diverged;
+        }
+        r.Add("opened from: " + string.Join(", ", opens.ToArray()) + "; each reopening from the device's own copy, only the other's turn played " + fromCopies
+              + "; a copy the log disagrees with passed over " + badCheck + ", one whose board is not as kept passed over " + badBoard);
         r.Add("rounds: bob caught up " + caughtUp + "/3, alice watched live " + watched + "/2; log " + log.Count + " entries in order " + inOrder + " (" + orders + " of orders: " + moves + " moves, " + attacks + " attacks; " + turns + " turn ends); desyncs " + desyncs + "; only the player to move may act, each sees through their own side " + gatesOk);
         detail = string.Join("; ", r.ToArray());
-        return ok && caughtUp == 3 && watched == 2 && inOrder && turns == 6 && moves > 0 && desyncs == 0 && gatesOk;
+        return ok && caughtUp == 3 && watched == 2 && inOrder && turns == 6 && moves > 0 && desyncs == 0 && gatesOk && fromCopies && badCheck && badBoard;
     }
 
     static string aliceCheck = "", bobCheck = "";

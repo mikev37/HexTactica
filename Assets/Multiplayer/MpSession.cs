@@ -19,8 +19,11 @@ namespace HexTactica.Multiplayer {
     ///   replay orders it (Replay.BeginOrders, NextOrder); what comes of each order is checked against its line, and at
     ///   every turn's start the whole board against the check line its author wrote (GameLog.BoardCheck). A difference
     ///   is a desync: reported, never papered over (the host decides: MpSession.HostContinue, HostTerminate).
-    /// - Opening a game loads the board it is played on from (the start, or the host's after a desync) and plays the
-    ///   log onto it: what the player has seen already at once, the rest as moves on screen, speeded up.
+    /// - Each device keeps its own copy of each game: the board at the last turn's start it had, with its game log
+    ///   (a save, as a saved game is kept). Opening a game loads that and plays only the log after it: what the
+    ///   player has seen already at once, the rest as moves on screen, speeded up. Without a usable copy (a new
+    ///   device, the host went on from their own board after a desync), the game is rebuilt from the board it is
+    ///   played on from.
     /// - A side is played by the player who holds it; an AI side by the device of the next player to move after it
     ///   (DriverOf). Everyone else only watches that side (GameController.PlayedElsewhere).
     ///
@@ -71,7 +74,7 @@ namespace HexTactica.Multiplayer {
         static bool begun;
 
         /// <summary>An entry waiting to go to the store. Its lines may be worked out only when it is sent (<see cref="make"/>): the board as it stands once what caused it is over.</summary>
-        class Send { public string kind; public List<string> lines; public Func<List<string>> make; public Action<MpGame> then; }
+        class Send { public string kind; public List<string> lines; public Func<List<string>> make; public Action<MpGame> then; public LocalSave save; }
         static readonly List<Send> pending = new List<Send>();
         static readonly List<string> outbox = new List<string>();
 
@@ -170,6 +173,72 @@ namespace HexTactica.Multiplayer {
         static string Folder { get { return Path.Combine(Application.persistentDataPath, "multiplayer"); } }
         static string SeenKey(MpGame g) { return "mp-seen-" + Mp.Me + "-" + g.code + "-" + g.epoch; }
 
+        // ------------------------------------------------------------------ this device's copy of the game
+
+        /// <summary>The board as it stands (a save, with the game log's place marked) and its check line, taken at a turn's start.</summary>
+        class LocalSave { public string board, check; }
+
+        /// <summary>The entry count the copy on disk stands at (-1 none written this session).</summary>
+        static int savedAt = -1;
+        /// <summary>Opening the game: the entry count it was played on from (0 the start; more: this device's copy, or the host's board after a desync).</summary>
+        public static int OpenedFrom { get; private set; }
+        /// <summary>Opening the game: how many log entries were played onto that board.</summary>
+        public static int EntriesPlayedOnOpen { get; private set; }
+        /// <summary>Opening the game: the board came from this device's own copy.</summary>
+        public static bool OpenedFromCopy { get; private set; }
+
+        static string Stem(MpGame g) {
+            string me = Mp.Me;
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            foreach (char c in me) sb.Append(char.IsLetterOrDigit(c) ? c : '_');
+            return Path.Combine(Folder, "copy-" + sb + "-" + g.code + "-" + g.epoch);
+        }
+
+        /// <summary>The board now, as a save: the game log's place marked in it, so loading it goes on with the same log (as a saved game does).</summary>
+        static LocalSave Capture() {
+            if (gc == null || Game == null) return null;
+            try {
+                string check = GameLog.BoardCheck(), board = BoardText();
+                GameLog.SavePoint at = GameLog.Recording ? GameLog.MarkSave("multiplayer " + Game.Title) : null;
+                if (at != null) board = ScenarioLoader.WithSavePoint(board, at);
+                return new LocalSave { board = board, check = check };
+            } catch (Exception e) { Debug.LogWarning("Multiplayer: could not keep a copy of the board: " + e.Message); return null; }
+        }
+
+        /// <summary>Keep the copy: the game after <paramref name="entries"/> log entries.</summary>
+        static void WriteCopy(int entries, LocalSave save) {
+            if (save == null || Game == null || Diverged || entries <= savedAt) return;
+            try {
+                Directory.CreateDirectory(Folder);
+                string stem = Stem(Game);
+                File.WriteAllText(stem + ".dat", save.board);
+                File.WriteAllText(stem + ".txt", entries.ToString(CultureInfo.InvariantCulture) + "\n" + save.check);
+                savedAt = entries;
+            } catch (Exception e) { Debug.LogWarning("Multiplayer: could not keep a copy of the board: " + e.Message); }
+        }
+
+        /// <summary>This device's copy of the game, if it has one: the entry count, the check line, the board file.</summary>
+        static bool ReadCopy(MpGame g, out int entries, out string check, out string path) {
+            entries = -1; check = ""; path = Stem(g) + ".dat";
+            try {
+                string txt = Stem(g) + ".txt";
+                if (!File.Exists(txt) || !File.Exists(path)) return false;
+                string text = File.ReadAllText(txt);
+                int nl = text.IndexOf('\n');
+                if (nl < 0 || !int.TryParse(text.Substring(0, nl), NumberStyles.Integer, CultureInfo.InvariantCulture, out entries)) return false;
+                check = text.Substring(nl + 1);
+                return entries > 0;
+            } catch (Exception) { return false; }
+        }
+
+        /// <summary>Throw away this device's copies of a game (it is over and looked at, or the player left it).</summary>
+        public static void ForgetCopies(string code) {
+            try {
+                if (!Directory.Exists(Folder)) return;
+                foreach (string f in Directory.GetFiles(Folder, "copy-*-" + code + "-*")) File.Delete(f);
+            } catch (Exception) { }
+        }
+
         /// <summary>
         /// A fresh game log for the board just loaded, unless loading it started one (ScenarioLoader does in play): the
         /// log knows where every unit stands from its start, and only then writes their moves.
@@ -201,7 +270,7 @@ namespace HexTactica.Multiplayer {
         public static void Close() {
             Unhook();
             if (State != Phase.None && gc != null) { gc.fogViewer = -1; gc.fogShownOnScreen = true; }
-            State = Phase.None; Game = null; Spectating = false; Diverged = false; Notice = "";
+            State = Phase.None; Game = null; Spectating = false; Diverged = false; Notice = ""; savedAt = -1;
             incoming.Clear(); current = null; pending.Clear(); outbox.Clear();
             applying = busy = false;
             Replay.Instant = false;
@@ -266,23 +335,42 @@ namespace HexTactica.Multiplayer {
         static async Task<bool> Rebuild(int instantBelow) {
             busy = true;
             try {
-                KeyValuePair<int, string> board = await Mp.Base(Game);
-                if (board.Value == null) return Fail("Could not read " + Game.Title + "'s board from the game store.");
-                Directory.CreateDirectory(Folder);
-                string path = Path.Combine(Folder, Game.code + "-" + Game.epoch + "-base.dat");
-                File.WriteAllText(path, board.Value);
                 Unhook();
                 incoming.Clear(); current = null; pending.Clear(); outbox.Clear(); applying = false; Diverged = false;
-                GameLog.Stop();   // (the log of the board as it was)
-                bool loaded = false;
-                try { loaded = LoadBoard(path); }
-                catch (Exception e) { Debug.LogError("Multiplayer: loading " + path + " failed: " + e); }
-                if (!loaded) return Fail("Could not load " + Game.Title + "'s board.");
+                List<MpEntry> entries = null;
+                int from = -1;
+                OpenedFromCopy = false;
+                // This device's copy, if the log still agrees with it: the entry it stands after is the turn (or the
+                // game's end, or the host's new board) whose check line it kept, and loaded it checks the same.
+                int copyAt; string copyCheck, copyPath;
+                if (ReadCopy(Game, out copyAt, out copyCheck, out copyPath) && copyAt >= Game.baseEntry) {
+                    List<MpEntry> after = await Mp.Fetch(Game, copyAt - 1);
+                    if (after == null) return Fail(Mp.LastError);
+                    MpEntry last = after.Count > 0 ? after[0] : null;
+                    bool agrees = last != null && last.n == copyAt - 1 && last.kind != MpEntryKind.Orders && last.lines.Count > 1 && last.lines[1] == copyCheck;
+                    if (agrees && LoadInto(copyPath) && GameLog.BoardCheck() == copyCheck) {
+                        from = copyAt;
+                        entries = after.GetRange(1, after.Count - 1);
+                        OpenedFromCopy = true;
+                        savedAt = copyAt;
+                    } else if (agrees) Debug.LogWarning("Multiplayer: this device's copy of " + Game.Title + " did not load as kept: the game is rebuilt from its board.");
+                }
+                if (from < 0) {
+                    // The board the game is played on from, and the whole log after it.
+                    KeyValuePair<int, string> board = await Mp.Base(Game);
+                    if (board.Value == null) return Fail("Could not read " + Game.Title + "'s board from the game store.");
+                    Directory.CreateDirectory(Folder);
+                    string path = Path.Combine(Folder, Game.code + "-" + Game.epoch + "-base.dat");
+                    File.WriteAllText(path, board.Value);
+                    if (!LoadInto(path)) return Fail("Could not load " + Game.Title + "'s board.");
+                    from = board.Key;
+                    entries = await Mp.Fetch(Game, from);
+                    if (entries == null) return Fail(Mp.LastError);
+                }
                 Record();
-                Applied = board.Key; turnBeganAt = board.Key;
+                Applied = from; turnBeganAt = from;
+                OpenedFrom = from; EntriesPlayedOnOpen = entries.Count;
                 desyncsSeen = Replay.Desyncs.Count;
-                List<MpEntry> entries = await Mp.Fetch(Game, Applied);
-                if (entries == null) return Fail(Mp.LastError);
                 foreach (MpEntry e in entries) incoming.Enqueue(e);
                 seenAtOpen = instantBelow;
                 Hook();
@@ -297,6 +385,13 @@ namespace HexTactica.Multiplayer {
                 Say();
                 return true;
             } finally { busy = false; }
+        }
+
+        /// <summary>A board file onto the board (the game log of the board as it was stopped first). False if it did not load.</summary>
+        static bool LoadInto(string path) {
+            GameLog.Stop();
+            try { return LoadBoard(path); }
+            catch (Exception e) { Debug.LogError("Multiplayer: loading " + path + " failed: " + e); return false; }
         }
 
         /// <summary>Load the game again from the store as it stands (this device's board had something the log refused).</summary>
@@ -362,6 +457,8 @@ namespace HexTactica.Multiplayer {
             }
             Applied = current.n + 1;
             if (current.kind == MpEntryKind.Turn || current.kind == MpEntryKind.Base) turnBeganAt = Applied;
+            // A turn's start (or the game's end): this device keeps its copy of the game here.
+            if (current.kind == MpEntryKind.Turn || current.kind == MpEntryKind.Over) WriteCopy(Applied, Capture());
             current = null;
             PlayerPrefs.SetString(SeenKey(Game), Applied.ToString(CultureInfo.InvariantCulture));
             return true;
@@ -474,7 +571,8 @@ namespace HexTactica.Multiplayer {
             string now = mine ? MpJson.Now() : "";
             pending.Add(new Send {
                 kind = MpEntryKind.Turn, lines = new List<string> { Heading(), GameLog.BoardCheck() },
-                then = g => { g.turnSide = name; g.turnDriver = DriverOf(g, next); g.clockStarted = now; g.clockEntry = mine ? turn : -1; }
+                then = g => { g.turnSide = name; g.turnDriver = DriverOf(g, next); g.clockStarted = now; g.clockEntry = mine ? turn : -1; },
+                save = Capture()   // (the board as the turn starts, before anyone acts in it)
             });
             turnBeganAt = turn;
             Game.clockStarted = now; Game.clockEntry = mine ? turn : -1;
@@ -511,12 +609,16 @@ namespace HexTactica.Multiplayer {
             try {
                 while (pending.Count > 0 && Game != null) {
                     Send s = pending[0];
-                    if (s.lines == null) s.lines = s.make != null ? s.make() : new List<string>();
+                    if (s.lines == null) {
+                        s.lines = s.make != null ? s.make() : new List<string>();
+                        if (s.kind == MpEntryKind.Over) s.save = Capture();
+                    }
                     MpResult r = await Mp.Append(Game, Applied, s.kind, s.lines, s.then);
                     if (State == Phase.None) return;
                     if (r.ok) {
                         pending.RemoveAt(0);
                         Applied++;
+                        if (s.save != null) WriteCopy(Applied, s.save);
                         if (r.game != null) Game = r.game;
                         PlayerPrefs.SetString(SeenKey(Game), Applied.ToString(CultureInfo.InvariantCulture));
                         if (Notice.Length > 0) { Notice = ""; Say(); }
@@ -660,6 +762,7 @@ namespace HexTactica.Multiplayer {
                 incoming.Clear(); current = null; pending.Clear(); outbox.Clear();
                 Applied = total + 1; turnBeganAt = Applied; Diverged = false; applying = false;
                 desyncsSeen = Replay.Desyncs.Count;
+                WriteCopy(Applied, Capture());
                 State = Phase.Live;
                 TurnBegan();
                 Say();

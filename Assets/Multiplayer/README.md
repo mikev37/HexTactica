@@ -17,9 +17,18 @@ There is no game server to run. Each device keeps the game in step by itself; a 
   the money).
 - **A difference is a desync.** It is reported and never papered over. That device plays nothing more, nobody can
   act, and the host decides (see *The host*).
-- **Opening a game** loads the board it is played on from and plays the log onto it. Moves the player has seen
-  before are played at once; newer ones play on screen, sped up (`MultiplayerSettings.catchUpMoveSpeed`). A game
-  that is open is polled every couple of seconds, so the opponent's moves show as they make them.
+- **Each device keeps its own copy of each game**: the board at the start of the latest turn it has, saved like a
+  saved game (its local game log continues from it), in `<persistentDataPath>/multiplayer/copy-*`. A copy is written
+  at every turn's start, when a turn's end is played or sent, and at the game's end. It is never written mid-turn,
+  because a board saved mid-turn would forget which units have already acted.
+- **Opening a game loads that copy and plays only the log after it**: at most the turn in progress and anything
+  since. Moves the player has seen are applied at once; newer ones play on screen, sped up
+  (`MultiplayerSettings.catchUpMoveSpeed`). A copy is used only if the log still agrees with it: the entry it stands
+  after must have the same board check line, and the board must check the same once loaded. Otherwise, and on a new
+  device, a reinstall, or after the host went on from their own board, the game is rebuilt from the board it is
+  played on from, with the whole log. Finishing with a game (closing its post-game screen, or leaving it) deletes
+  its copy.
+- A game that is open is polled every couple of seconds, so the opponent's moves show as they make them.
 - **No device is a server.** Whoever's turn it is writes. The store refuses a write that is out of order (every
   value has a write lock), and a device that finds the log has moved on under it reloads the game as it stands.
 
@@ -174,7 +183,9 @@ Engine hooks outside this folder: `GameController.PlayedElsewhere`, `FogOfWar.Is
 `Tests/MultiplayerChecks.cs`: six headless checks (`NAME=mp- bash Tests/run.sh Assets`). Several devices share one
 folder store; the board is switched between them by opening the game as each player.
 - `mp-lobby`: codes, joining, claiming, removing, versions, spectators, code reuse, leaving, linking.
-- `mp-turns`: three rounds on two devices, by catching up and by watching live, with the same board throughout.
+- `mp-turns`: three rounds on two devices, by catching up and by watching live, with the same board throughout;
+  each reopening starts from the device's own copy and plays only the other player's turn; a copy the log disagrees
+  with, or whose board is not as kept, is passed over.
 - `mp-ai`: who runs an AI side, and a spectator.
 - `mp-clock`: when clocks start, skipping a player out of time.
 - `mp-desync`: a tampered board found, reported, and put right by the host; the host ending the game.
@@ -183,6 +194,10 @@ folder store; the board is switched between them by opening the game as each pla
 Not covered headless: the screens (type-checked only), anything in the Unity editor, and the UGS backend.
 
 ## Known traps
+
+- **Copies only at a turn's start.** A board saved mid-turn loads with every unit ready to act again
+  (`MpSession.WriteCopy` is called only at turn boundaries). The copy for this device's own turn end is taken when
+  the turn ends, then written once the store has that entry, so it never runs ahead of the log.
 
 - **Finishing units.** A replay never finishes units, but live orders must: finishing is when captures start and
   supply is recalculated (`Replay.FinishLive`).

@@ -481,6 +481,7 @@ namespace HexTactica.Multiplayer {
         public static async Task Forget(string code) {
             if (await Ready() != null) return;
             await EditMine(l => l.Remove(code));
+            MpSession.ForgetCopies(code);
             Games.RemoveAll(s => s.code == code);
             if (Listed != null) Listed();
         }

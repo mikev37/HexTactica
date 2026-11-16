@@ -353,6 +353,12 @@ public static class ScenarioFile {
         }
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
+        // The round it was saved on (a board saved in play), as the game's loader reads it (ScenarioLoader.DayOf).
+        {
+            Defective.JSON.JSONObject whole = new Defective.JSON.JSONObject(json);
+            Defective.JSON.JSONObject day = whole.GetField("day");
+            if (day != null && day.isNumber) Rig.gc.days = (int)day.longValue;
+        }
         // Strikes in the air and ground lit up, as the game's loader puts them back (ScenarioLoader.LoadStrikes).
         foreach (Dictionary<string, string> s in Array(json, Strikes.FileKey)) {
             Func<string, int> n = k => { int v; return s.ContainsKey(k) && int.TryParse(s[k], out v) ? v : 0; };
