@@ -3246,9 +3246,24 @@ public static partial class Scenarios {
                 boards.Add(Draw());
                 HexTactica.Harness.GameLog.Start("replay check", "Full", root);
                 GameController.TurnStarted += onTurn;
-                try { for (int i = 0; i < 6 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
+                string firstFolder = null; bool continued = false;
+                try {
+                    for (int i = 0; i < 6 && !gc.gameOver; i++) {
+                        // Halfway, the game is saved and loaded again (the board as it is): the log goes on in a new folder
+                        // that holds the whole game, the turns before the save included.
+                        if (i == 3) {
+                            HexTactica.Harness.GameLog.SavePoint at = HexTactica.Harness.GameLog.MarkSave("save check");
+                            firstFolder = HexTactica.Harness.GameLog.Folder;
+                            HexTactica.Harness.GameLog.Stop();
+                            System.Threading.Thread.Sleep(1100);   // (folders are named by the second)
+                            continued = HexTactica.Harness.GameLog.Continue(at, "save check", "Full", root);
+                        }
+                        ScenarioFile.PlayTurn();
+                    }
+                }
                 finally { GameController.TurnStarted -= onTurn; }
                 string folder = HexTactica.Harness.GameLog.Folder;
+                r.Add("saved after 3 turns and loaded again: the log continued " + continued + " in a new folder " + (folder != firstFolder));
                 HexTactica.Harness.GameLog.Stop();
                 HexTactica.Harness.Replay.Loader = f => { ScenarioFile.Load(f, "Full", null); return true; };
                 bool opened = HexTactica.Harness.Replay.Open(folder);
@@ -3300,7 +3315,7 @@ public static partial class Scenarios {
                 try { Directory.Delete(root, true); } catch (Exception) { }
                 HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
                 detail = string.Join("; ", r.ToArray());
-                return stepped > 0 && read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
+                return continued && folder != firstFolder && stepped > 0 && read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;

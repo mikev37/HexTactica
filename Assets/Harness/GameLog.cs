@@ -160,9 +160,14 @@ namespace HexTactica.Harness {
             finished = false;
             turns = from.turns;
             Listen();
+            // The game goes on in the turn it was saved in: no new turn heading or board (the turn's own, from its
+            // start, is the one copied above), so a replay plays the turn through as one. Each unit's next move
+            // starts from where it stands now.
             Line(Lines.Resumed(source));
             WriteSides();
-            OnTurnStarted(GameController.gc != null ? GameController.gc.activePlayer : null);
+            lastSeen.Clear();
+            ditching.Clear();
+            foreach (Unit u in AllUnits()) if (u != null && u.tile != null && u.trasnporter == null) lastSeen[u] = u.tile;
             return true;
         }
 
