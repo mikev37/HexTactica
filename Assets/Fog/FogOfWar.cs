@@ -648,6 +648,7 @@ public static class FogOfWar {
 
     public static bool IsHuman(Player p) {
         if (p == null) return false;
+        if (GameController.IsPlayedElsewhere(p)) return false;   // a networked game: played on another device
         if (AIControl.Of(p) != null) return false;
         foreach (MonoBehaviour m in p.GetComponents<MonoBehaviour>())
             if (m != null && m.enabled && m.GetType().Name == "BaselineAIPlayer") return false;

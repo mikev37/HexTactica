@@ -36,7 +36,9 @@ namespace HexTactica.Testing {
             if (type == typeof(GameObject) && path == "Units") {
                 foreach (string f in Directory.GetFiles(Root("Units"), "*.prefab", SearchOption.AllDirectories)) {
                     string n = Path.GetFileNameWithoutExtension(f);
-                    try { Unit u = Load(n); u.name = n; u.gameObject.name = n; r.Add(u.gameObject); } catch (Exception) { }
+                    // The archetype, as in Unity: Resources.LoadAll gives the same prefab every building's list points at, so a
+                    // unit looked up by name (GameAssets.Unit: a replay's purchase) is the one a building offers.
+                    try { Unit u = Archetype(n); u.name = n; u.gameObject.name = n; r.Add(u.gameObject); } catch (Exception) { }
                 }
             } else if (type == typeof(GameObject) && path == "Buildings") {
                 foreach (string f in Directory.GetFiles(Path.Combine(Root("Buildings"), "Prefabs"), "*.prefab")) {
