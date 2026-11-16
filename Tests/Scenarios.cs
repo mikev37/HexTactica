@@ -669,6 +669,14 @@ public static partial class Scenarios {
              "Blue saw a Red anti-air gunner and a Red grunt, then lost both (their tiles seen empty since). The fog risk of a stop is the strength each lost unit could take there (its own damage against the unit in question, by the share of its places from which it reaches) times the unit's worth: next to where they may be, a bomber's risk comes only from the anti-air gunner (a grunt cannot hit it), and a bomber's risk in gold is many times a conscript's for the same tile.", "Human");
         makeFog("game-log-replay", "gameLogReplay", (a, o) => { Put("Grunt", a, -3, 0); Put("Tank", a, -4, 2); Put("Grunt", o, 3, 0); Put("Tank", o, 4, -2); },
              "Replaying a recorded game: three rounds of the AI against itself are recorded (game.log and a board for every turn), then replayed. The replay has a turn for every board saved, each with its round, its side and what the log says happened in it; it shows each board exactly as it was at the start of that turn, forward and back; nobody plays (every AI off, clicks on the board and the recording ignored); it can be seen as either side sees it (that side's fog) or with everything shown; closing it puts the fog as it was.", "Full");
+        makeFog("fog-game-replay", "fogGameReplay", (a, o) => {
+                 Put("Tank", a, -4, 1); Put("Grunt", a, -3, -1); Put("Grunt", a, -4, 3); Put("Recon", a, -3, 2); Put("Artillery", a, -5, 2);
+                 Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2);
+                 Rig.PlaceBuilding("ArmyBase", a, -5, 4); Rig.PlaceBuilding("ArmyBase", o, 5, -4);
+                 Rig.PlaceBuilding("City", null, 0, 0); Rig.PlaceBuilding("City", null, -1, 3); Rig.PlaceBuilding("City", null, 1, -3);
+                 a.money = 3000; o.money = 3000;
+                 for (int x = -1; x <= 1; x++) for (int y = -3; y <= 3; y++) { HexTile t = Rig.At(x, y); if (t != null && t.building == null && (x + y) % 2 == 0) t.terrain = T("Forest"); } },
+             "Replaying a fogged game as it was played: both sides the AI, with fog, money and army bases, eight rounds are recorded (moves, attacks, units run into in the fog, captures, purchases), then replayed action by action. Every order is played again through the game's own rules (paths, the fog's ambushes, combat, purchases) and never set to the log's result: every move ends where the log says, every fight comes out as logged, and every turn's board (units, strength, supplies, fuel, ammunition, buildings, money) is the recorded one, with no board loaded on the way.", "Full");
         makeFog("fog-ai-game", "fogGame", (a, o) => {
                  Put("Tank", a, -4, 1); Put("Grunt", a, -3, -1); Put("Grunt", a, -4, 3); Put("Recon", a, -3, 2); Put("Artillery", a, -5, 2); Put("Supplies", a, -5, 1);
                  Put("Tank", o, 4, -1); Put("Grunt", o, 3, 1); Put("Grunt", o, 4, -3); Put("Recon", o, 3, -2); Put("Artillery", o, 5, -2); Put("Supplies", o, 5, -1);
@@ -3289,12 +3297,23 @@ public static partial class Scenarios {
                     compared++;
                     if (Draw() == boards[i + 1]) sameAfter++; else if (firstOff == null) firstOff = "turn " + i;
                 }
-                // Straight through with Next action: each turn ended as the game ends it, no board loaded in between.
+                // Straight through with Next action: each order played as the game plays it, each turn ended as the
+                // game ends it, no board loaded on the way; every board checked against the recording's.
                 HexTactica.Harness.Replay.Show(0);
-                HexTactica.Harness.Replay.Reloads = 0;
+                HexTactica.Harness.Replay.Desyncs.Clear();
                 int through = 0;
                 while (HexTactica.Harness.Replay.NextAction() && through++ < 500) { }
-                r.Add("played through to turn " + (HexTactica.Harness.Replay.Index + 1) + " with " + HexTactica.Harness.Replay.Reloads + " boards loaded on the way; ends as recorded " + (Draw() == boards[turns.Count - 1]));
+                int desyncs = HexTactica.Harness.Replay.Desyncs.Count;
+                bool throughEnd = HexTactica.Harness.Replay.Index == turns.Count - 1 && !HexTactica.Harness.Replay.Halted;
+                bool endsAsRecorded = Draw() == boards[turns.Count - 1];
+                r.Add("played through to turn " + (HexTactica.Harness.Replay.Index + 1) + " with " + desyncs + " desyncs" + (desyncs > 0 ? " (first: " + HexTactica.Harness.Replay.Desyncs[0] + ")" : "") + "; ends as recorded " + endsAsRecorded);
+                // Next turn: the rest of each turn played at once, the turn ended, the next board checked.
+                HexTactica.Harness.Replay.Show(0);
+                HexTactica.Harness.Replay.Desyncs.Clear();
+                int turnsDone = 0;
+                while (HexTactica.Harness.Replay.NextTurn() && turnsDone++ < 50) { }
+                bool byTurn = HexTactica.Harness.Replay.Index == turns.Count - 1 && HexTactica.Harness.Replay.Desyncs.Count == 0;
+                r.Add("next turn to the end " + byTurn + " (" + HexTactica.Harness.Replay.Desyncs.Count + " desyncs)");
                 HexTactica.Harness.Replay.Show(turns.Count - 1);
                 r.Add("actions played " + stepped + "; boards after a turn's actions equal to the next turn's " + sameAfter + "/" + compared + (firstOff != null ? " (first off: " + firstOff + ")" : ""));
                 r.Add("boards as recorded " + same + " of " + turns.Count + "; back " + back + ", stops at the last " + clamp + "; nobody plays " + frozen);
@@ -3317,7 +3336,58 @@ public static partial class Scenarios {
                 try { Directory.Delete(root, true); } catch (Exception) { }
                 HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
                 detail = string.Join("; ", r.ToArray());
-                return continued && folder != firstFolder && stepped > 0 && read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
+                return continued && folder != firstFolder && stepped > 0 && desyncs == 0 && throughEnd && endsAsRecorded && byTurn && read && frozen && same == turns.Count && back && clamp && noClick && asFirst && asSecond && all && closed;
+            }
+            case "fogGameReplay": {
+                string root = Path.Combine(Path.GetTempPath(), "hextactica-fogreplay-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                List<string> boards = new List<string>();
+                Action<Player> onTurn = p => { if (!gc.gameOver) boards.Add(Draw()); };
+                boards.Add(Draw());
+                HexTactica.Harness.GameLog.Start("fog replay check", "Full", root);
+                GameController.TurnStarted += onTurn;
+                try { for (int i = 0; i < 16 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
+                finally { GameController.TurnStarted -= onTurn; }
+                string folder = HexTactica.Harness.GameLog.Folder;
+                string end = Draw();
+                HexTactica.Harness.GameLog.EndIfOver();
+                HexTactica.Harness.GameLog.Stop();
+                string log = File.ReadAllText(Path.Combine(folder, "game.log"));
+                int attacks = 0, ranInto = 0, buys = 0, captures = 0;
+                foreach (string line in log.Split('\n')) {
+                    if (line.Contains(" attacks ")) attacks++;
+                    if (line.Contains(" ran into ")) ranInto++;
+                    if (line.Contains(" buys ")) buys++;
+                    if (line.Contains(" changes hands")) captures++;
+                }
+                HexTactica.Harness.Replay.Loader = f => { ScenarioFile.Load(f, "Full", null); return true; };
+                bool opened = HexTactica.Harness.Replay.Open(folder);
+                HexTactica.Harness.Replay.Desyncs.Clear();
+                int guard = 0;
+                while (HexTactica.Harness.Replay.NextAction() && guard++ < 2000) { }
+                int desyncs = HexTactica.Harness.Replay.Desyncs.Count;
+                string first = desyncs > 0 ? string.Join(" | ", HexTactica.Harness.Replay.Desyncs.Take(4).ToArray()) : "";
+                bool reached = HexTactica.Harness.Replay.Index == HexTactica.Harness.Replay.turns.Count - 1 && !HexTactica.Harness.Replay.Halted;
+                bool same = Draw() == end;
+                string idx = (HexTactica.Harness.Replay.Index + 1) + "/" + HexTactica.Harness.Replay.turns.Count;
+                // The check is real: a recorded board with a unit's strength changed is a desync when the replay gets there.
+                HexTactica.Harness.Replay.Close();
+                string tampered = HexTactica.Harness.Replay.turns.Count > 2 ? HexTactica.Harness.Replay.turns[2].file : null;
+                int caught = 0;
+                if (tampered != null) {
+                    string text = File.ReadAllText(tampered);
+                    System.Text.RegularExpressions.Match sm = System.Text.RegularExpressions.Regex.Match(text, "\"Strength\":(\\d+)");
+                    string changed = sm.Success ? text.Substring(0, sm.Index) + "\"Strength\":" + (int.Parse(sm.Groups[1].Value) + 3) + text.Substring(sm.Index + sm.Length) : text;
+                    File.WriteAllText(tampered, changed);
+                    HexTactica.Harness.Replay.Open(folder);
+                    guard = 0;
+                    while (HexTactica.Harness.Replay.Index < 2 && HexTactica.Harness.Replay.NextAction() && guard++ < 500) { }
+                    caught = HexTactica.Harness.Replay.Desyncs.Count;
+                    HexTactica.Harness.Replay.Close();
+                }
+                HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
+                try { Directory.Delete(root, true); } catch (Exception) { }
+                detail = "recorded " + boards.Count + " turns: " + attacks + " attacks, " + ranInto + " run into in the fog, " + buys + " purchases, " + captures + " captures; replay opened " + opened + ", reached the last turn " + reached + " (" + idx + ", " + guard + " steps)" + ", ends as recorded " + same + ", desyncs " + desyncs + (desyncs > 0 ? " (" + first + ")" : "") + "; a board with a unit's strength changed caught " + (caught > 0);
+                return opened && reached && same && desyncs == 0 && attacks > 0 && caught > 0;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;

@@ -7,9 +7,11 @@ namespace HexTactica.Harness {
 
     /// <summary>
     /// Watching a recorded game again (GameLog), a turn at a time — and within a turn an action at a time
-    /// (NextAction): each of the turn's logged moves, attacks, purchases, losses and captures is played on the board
-    /// with the result the log gives (GameLog.Lines reads the lines it wrote). The next turn's board is loaded from
-    /// its snapshot, so anything the log does not tell (units getting in and out of transports) is put right there.
+    /// (NextAction): each of the turn's logged orders (moves, attacks, strikes, boarding and getting off, purchases,
+    /// resigning) is ordered again on the board and the game plays it by its own rules (GameLog.Lines reads the lines
+    /// it wrote). Nothing is set to the log's result: what came of each order is checked against the log, and at each
+    /// turn's start the board is checked against that turn's recorded board; every difference is a desync (Desyncs,
+    /// and an error in the console). Boards are loaded only to start, or to jump to a turn (Show, Previous, Next).
     ///
     /// A recording folder holds the board at the start of every turn (turn-NNN-Side.dat) and the
     /// game's log (game.log): what each side did that turn, and the AI's reasoning. A replay loads
@@ -158,6 +160,7 @@ namespace HexTactica.Harness {
             Active = true;
             ViewAs = -1;
             Index = -1;
+            Desyncs.Clear();
             Show(0);
             if (BuiltInPanel) ReplayPanel.Ensure();
             return true;
@@ -186,6 +189,7 @@ namespace HexTactica.Harness {
             }
             finally { ScenarioLoader.RecordGames = recordWas; ScenarioLoader.SidesAsFiled = exactWas; }
             if (RecordedFog.HasValue && GameController.gc != null) GameController.gc.fogOfWar = RecordedFog.Value;
+            Halted = false;
             Index = i;
             Freeze();
             ApplyView();
@@ -246,146 +250,134 @@ namespace HexTactica.Harness {
             return changed;
         }
 
-        // ---------------------------------------------------------------- turn to turn without loading
+        // ---------------------------------------------------------------- turn to turn, as the game plays it
+
+        /// <summary>
+        /// Everything the replay played that did not come out as the log says (a move that ended elsewhere, an attack
+        /// with other losses, a board at a turn's start that is not the recording's): one entry each, also in the console
+        /// as an error ("Replay desync"). The replay never sets the board to the recording's: what is here is what the
+        /// game made of the recorded orders.
+        /// </summary>
+        public static readonly List<string> Desyncs = new List<string>();
+        /// <summary>The replay cannot go on (the game here ended, or a turn could not be ended): nothing more is played.</summary>
+        public static bool Halted { get; private set; }
+        /// <summary>The turn has been ended already (the side to move resigned).</summary>
+        static bool turnEnded;
+        /// <summary>Every action of the turn is played (Next turn): the turn ends once the board is still (Tick).</summary>
+        static bool advancePending;
+
+        static void Desync(string what) {
+            string s = "turn " + (Index + 1) + ": " + what + (string.IsNullOrEmpty(LastAction) ? "" : " (\"" + LastAction + "\")");
+            Desyncs.Add(s);
+            Debug.LogError("Replay desync, " + s);
+        }
 
         /// <summary>
         /// The turn after the one on screen, reached as the game reaches it: the turn is ended (captures, upkeep, the
-        /// next side's start), with every unit left where it is — nothing is taken off and put back. The board is then
-        /// checked against the recording's board for that turn, and only if it is not the same is that board loaded.
+        /// next side's start). The board is then checked against the recording's board for that turn (Verify); it is
+        /// never loaded from it.
         /// </summary>
-        /// <summary>How many times going on to the next turn had to load its board (the board was not the recording's).</summary>
-        public static int Reloads;
-
         static void Advance() {
             GameController gc = GameController.gc;
             int next = Index + 1;
-            if (gc == null || gc.gameOver) { Show(next); return; }
-            try { gc.EndTurn(); }
-            catch (Exception e) { Debug.LogWarning("Replay: ending the turn failed (" + e.Message + "): the next turn's board is loaded."); Show(next); return; }
-            string why = Differs(turns[next].file);
-            if (why != null && SetDown(turns[next].file)) why = Differs(turns[next].file);
-            if (why != null) {
-                Reloads++;
-                Debug.LogWarning("Replay: after turn " + (Index + 1) + " the board is not the recording's (" + why + "): turn " + (next + 1) + "'s board is loaded.");
-                Show(next);
+            if (gc == null) { Halted = true; return; }
+            if (gc.gameOver) {
+                Desync("the game is over here, the recording goes on to turn " + (next + 1));
+                Halted = true;
+                if (Changed != null) Changed();
                 return;
             }
+            if (!turnEnded) {
+                try { gc.EndTurn(); }
+                catch (Exception e) {
+                    Desync("ending the turn failed: " + e.Message);
+                    Halted = true;
+                    if (Changed != null) Changed();
+                    return;
+                }
+            }
             Index = next;
+            LastAction = "";
             Freeze();
+            Verify(turns[next].file);
             Prepare(turns[next]);
             if (Changed != null) Changed();
         }
 
         /// <summary>
-        /// A recording from before getting off and purchases were logged says nothing of a unit set down that did
-        /// nothing after, or of a unit bought. Each unit the turn's recorded board has standing where this board has
-        /// none is set down there from the nearest transport of its side carrying one of its kind — or, with none
-        /// aboard anything, made there (it was bought). True if anything was done.
+        /// Check the board against a turn's recorded board: the side to move; every unit's place, kind, side, strength,
+        /// supplies, fuel and ammunition, and what each transport carries; every building's owner; each side's money.
+        /// Each difference is a desync. Nothing is changed. Returns the number of differences.
         /// </summary>
-        static bool SetDown(string file) {
+        static int Verify(string file) {
             GameController gc = GameController.gc;
-            bool any = false;
-            try {
-                Defective.JSON.JSONObject units = new Defective.JSON.JSONObject(File.ReadAllText(file)).GetField("units");
-                if (units == null || units.list == null || UnitController.uc == null) return false;
-                foreach (Defective.JSON.JSONObject uj in units.list) {
-                    Defective.JSON.JSONObject carried = uj.GetField("transporterIndexPlusOne");
-                    if (carried != null && carried.intValue > 0) continue;
-                    HexTile t = Tile(uj.GetField("x").intValue, uj.GetField("y").intValue);
-                    if (t == null || t.occupier != null) continue;
-                    string kind = uj.GetField("gameobject_name").stringValue;
-                    long owner = uj.GetField("owner_id").intValue;
-                    Unit transport = null, rider = null; int best = int.MaxValue;
-                    foreach (Unit x in UnitController.uc.units) {
-                        if (x == null || x.owner == null || x.owner.id != owner || x.tile == null || x.Strength <= 0) continue;
-                        Unit c = x.transported.Find(q => q != null && GameLog.Lines.UnitName(q) == kind);
-                        int d = x.tile.Distance(t);
-                        if (c != null && d < best) { best = d; transport = x; rider = c; }
-                    }
-                    if (rider != null && (Transporting.Unload(transport, rider, t) || Transporting.Disembark(transport, rider, t))) { any = true; continue; }
-                    // No such unit aboard anything: it was bought, and the log has no line for the purchase (a recording
-                    // from before purchases were logged, where a human's are not there at all). Made where it stands.
-                    if (rider != null) continue;
-                    Player p = null;
-                    foreach (Player q in gc.players) if (q != null && q.id == owner) p = q;
-                    Unit prefab = GameAssets.Unit(kind);
-                    if (p == null || prefab == null) continue;
-                    Unit made = UnitController.uc.CreateUnit(p, prefab, t);
-                    if (made == null) continue;
-                    made.Strength = uj.GetField("Strength").intValue;
-                    made.StrengthDisplay = made.Strength;
-                    any = true;
-                }
-            } catch (Exception e) { Debug.LogWarning("Replay: " + e.Message); }
-            return any;
-        }
-
-        /// <summary>
-        /// How the board differs from a turn's recorded board (the side to move, a unit's place, kind, side or strength, a
-        /// building's owner), or null if it does not. Where they agree, each unit's supplies, fuel and ammunition and each
-        /// side's money are set to the recording's.
-        /// </summary>
-        static string Differs(string file) {
-            GameController gc = GameController.gc;
+            List<string> why = new List<string>();
             Defective.JSON.JSONObject obj;
             try { obj = new Defective.JSON.JSONObject(File.ReadAllText(file)); }
-            catch (Exception e) { return "could not read " + Path.GetFileName(file) + ": " + e.Message; }
+            catch (Exception e) { Desync("could not read " + Path.GetFileName(file) + " to check the board: " + e.Message); return 1; }
             Defective.JSON.JSONObject active = obj.GetField("active");
-            if (active != null && gc.activePlayer != null && gc.activePlayer.id != active.intValue) return "it is " + gc.activePlayer.personal_name + "'s turn";
-            int onBoard = 0;
-            if (UnitController.uc != null) foreach (Unit u in UnitController.uc.units) if (u != null && u.Strength > 0 && u.tile != null && u.trasnporter == null) onBoard++;
-            int inFile = 0;
-            List<KeyValuePair<Unit, Defective.JSON.JSONObject>> matched = new List<KeyValuePair<Unit, Defective.JSON.JSONObject>>();
+            if (active != null && gc.activePlayer != null && gc.activePlayer.id != active.intValue) why.Add("it is " + gc.activePlayer.personal_name + "'s turn here");
+            HashSet<Unit> accounted = new HashSet<Unit>();
             Defective.JSON.JSONObject units = obj.GetField("units");
-            if (units != null && units.list != null)
-                foreach (Defective.JSON.JSONObject uj in units.list) {
-                    Defective.JSON.JSONObject carried = uj.GetField("transporterIndexPlusOne");
-                    if (carried != null && carried.intValue > 0) continue;
-                    inFile++;
-                    int x = uj.GetField("x").intValue, y = uj.GetField("y").intValue;
+            List<Defective.JSON.JSONObject> list = units != null && units.list != null ? units.list : new List<Defective.JSON.JSONObject>();
+            for (int i = 0; i < list.Count; i++) {
+                Defective.JSON.JSONObject uj = list[i];
+                if (uj == null || uj.GetField("x") == null) continue;
+                int x = uj.GetField("x").intValue, y = uj.GetField("y").intValue;
+                string kind = uj.GetField("gameobject_name").stringValue;
+                long owner = uj.GetField("owner_id").intValue;
+                Defective.JSON.JSONObject carried = uj.GetField("transporterIndexPlusOne");
+                Unit u;
+                if (carried != null && carried.intValue > 0) {
+                    // Aboard: the unit standing where its transport is recorded carries one of its kind and side.
+                    Defective.JSON.JSONObject tj = carried.intValue - 1 < list.Count ? list[carried.intValue - 1] : null;
+                    HexTile tt = tj != null ? Tile(tj.GetField("x").intValue, tj.GetField("y").intValue) : null;
+                    Unit transport = tt != null ? tt.occupier : null;
+                    u = transport != null ? transport.transported.Find(c => c != null && !accounted.Contains(c) && GameLog.Lines.UnitName(c) == kind && c.owner != null && c.owner.id == owner) : null;
+                    if (u == null) { why.Add("no " + kind + " aboard the transport at " + (tt != null ? D(tt) : "?") + ", the recording has one"); continue; }
+                } else {
                     HexTile t = Tile(x, y);
-                    Unit u = t != null ? t.occupier : null;
-                    string kind = uj.GetField("gameobject_name").stringValue;
-                    if (u == null || u.Strength <= 0) return "no unit at (" + x + "," + y + "), the recording has " + kind;
-                    if (GameLog.Lines.UnitName(u) != kind) return GameLog.Lines.UnitName(u) + " at (" + x + "," + y + "), the recording has " + kind;
-                    if (u.owner == null || u.owner.id != uj.GetField("owner_id").intValue) return "the unit at (" + x + "," + y + ") is another side's";
-                    // Strength gained or lost at the turn's start (supply, repair) is worked out again by the game here and
-                    // can come out otherwise (it depends on what the log does not hold): the recording's is taken.
-                    int filedStrength = uj.GetField("Strength").intValue;
-                    if (u.Strength != filedStrength) {
-                        Debug.Log("Replay: " + GameLog.Lines.Who(u) + " at (" + x + "," + y + ") came out at strength " + u.Strength + " after the turn ended; the recording has " + filedStrength + ". Set to the recording's.");
-                        u.Strength = filedStrength;
-                        u.StrengthDisplay = filedStrength;
-                    }
-                    matched.Add(new KeyValuePair<Unit, Defective.JSON.JSONObject>(u, uj));
+                    u = t != null ? t.occupier : null;
+                    if (u == null || u.Strength <= 0) { why.Add("no unit at (" + x + "," + y + "), the recording has " + kind); continue; }
+                    if (GameLog.Lines.UnitName(u) != kind) { why.Add(GameLog.Lines.UnitName(u) + " at (" + x + "," + y + "), the recording has " + kind); accounted.Add(u); continue; }
+                    if (u.owner == null || u.owner.id != owner) { why.Add("the " + kind + " at (" + x + "," + y + ") is another side's"); accounted.Add(u); continue; }
                 }
-            if (onBoard != inFile) return onBoard + " units on the board, the recording has " + inFile;
+                accounted.Add(u);
+                Check(why, u, "strength", u.Strength, uj.GetField("Strength"));
+                Check(why, u, "supplies", u.supplies, uj.GetField("supplies"));
+                Check(why, u, "fuel", u.fuel, uj.GetField("fuel"));
+                Check(why, u, "ammunition", u.ammo, uj.GetField("ammo"));
+            }
+            if (UnitController.uc != null)
+                foreach (Unit u in UnitController.uc.units)
+                    if (u != null && u.Strength > 0 && u.tile != null && !accounted.Contains(u))
+                        why.Add(GameLog.Lines.Who(u) + (u.trasnporter != null ? " aboard " + GameLog.Lines.Who(u.trasnporter) : "") + " at " + D(u.tile) + " is not in the recording");
             Defective.JSON.JSONObject buildings = obj.GetField("buildings");
             if (buildings != null && buildings.list != null)
                 foreach (Defective.JSON.JSONObject bj in buildings.list) {
+                    if (bj == null || bj.GetField("x") == null) continue;
                     HexTile t = Tile(bj.GetField("x").intValue, bj.GetField("y").intValue);
-                    if (t == null || t.building == null) return "no building at (" + bj.GetField("x").intValue + "," + bj.GetField("y").intValue + ")";
-                    long owner = t.building.owner != null ? t.building.owner.id : -1;
+                    if (t == null || t.building == null) { why.Add("no building at (" + bj.GetField("x").intValue + "," + bj.GetField("y").intValue + ")"); continue; }
                     long filed = bj.GetField("owner_id").intValue;
-                    bool filedNeutral = true;
-                    foreach (Player p in gc.players) if (p != null && p.id == filed) filedNeutral = false;
-                    if (filedNeutral ? t.building.owner != null : owner != filed) return "the building at (" + t.x + "," + t.y + ") has another owner";
+                    Player filedOwner = null;
+                    foreach (Player p in gc.players) if (p != null && p.id == filed) filedOwner = p;
+                    if (t.building.owner != filedOwner)
+                        why.Add("the building at " + D(t) + " is " + (t.building.owner != null ? t.building.owner.personal_name + "'s" : "nobody's") + ", the recording has it " + (filedOwner != null ? filedOwner.personal_name + "'s" : "nobody's"));
                 }
-            // The same board: what the log does not tell (stores) is taken from the recording, so nothing drifts.
-            foreach (KeyValuePair<Unit, Defective.JSON.JSONObject> m in matched) {
-                Defective.JSON.JSONObject v;
-                if ((v = m.Value.GetField("supplies")) != null) m.Key.supplies = v.intValue;
-                if ((v = m.Value.GetField("fuel")) != null) m.Key.fuel = v.intValue;
-                if ((v = m.Value.GetField("ammo")) != null) m.Key.ammo = v.intValue;
-            }
             Defective.JSON.JSONObject players = obj.GetField("players");
             if (players != null && players.list != null)
                 foreach (Defective.JSON.JSONObject pj in players.list) {
                     Defective.JSON.JSONObject id = pj.GetField("id"), money = pj.GetField("money");
                     if (id == null || money == null) continue;
-                    foreach (Player p in gc.players) if (p != null && p.id == id.intValue) p.money = money.intValue;
+                    foreach (Player p in gc.players)
+                        if (p != null && p.id == id.intValue && p.money != money.intValue) why.Add(p.personal_name + " has " + p.money + " money, the recording " + money.intValue);
                 }
-            return null;
+            foreach (string w in why) Desync("at the turn's start, " + w);
+            return why.Count;
+        }
+
+        static void Check(List<string> why, Unit u, string what, int here, Defective.JSON.JSONObject filed) {
+            if (filed != null && here != filed.intValue) why.Add(GameLog.Lines.Who(u) + " at " + D(u.tile) + " has " + what + " " + here + ", the recording " + filed.intValue);
         }
 
         // ---------------------------------------------------------------- actions within a turn
@@ -395,7 +387,7 @@ namespace HexTactica.Harness {
 
         /// <summary>The board just loaded: its tiles by coordinate, its sides' names, and which of the turn's log lines are actions.</summary>
         static void Prepare(Turn t) {
-            Step = 0; LastAction = ""; played.Clear();
+            Step = 0; LastAction = ""; played.Clear(); turnEnded = false; advancePending = false;
             tileAt.Clear();
             HexGenerator.forAllTiles(x => { if (x != null) tileAt[Key(x.x, x.y)] = x; return 0; });
             // The sides as the log names them (its "side:" lines), and as the board does.
@@ -414,8 +406,6 @@ namespace HexTactica.Harness {
             if (GameLog.Lines.ReadMoved(line, sides, out a, out b, out x1, out y1, out x2, out y2)) return true;
             if (GameLog.Lines.ReadAttack(line, sides, out at)) return true;
             if (GameLog.Lines.ReadBuy(line, sides, out a, out b, out n)) return true;
-            if (GameLog.Lines.ReadDies(line, sides, out a, out b, out c)) return c != GameLog.Lines.Combat && c != GameLog.Lines.Aboard;
-            if (GameLog.Lines.ReadChangesHands(line, out a, out b, out c)) return true;
             GameLog.Lines.CargoLine cargo;
             if (GameLog.Lines.ReadCargo(line, sides, out cargo)) return true;
             // A strike ordered is played again; its landing is not a line to play (the game works it out as it did).
@@ -427,19 +417,20 @@ namespace HexTactica.Harness {
         /// <summary>Actions left to play in the turn on screen.</summary>
         public static int StepsLeft { get { Turn t = Current; return t != null ? Mathf.Max(0, t.actions.Count - Step) : 0; } }
         /// <summary>Nothing left to play: the last action of the last turn has been.</summary>
-        public static bool AtEnd { get { return !Active || (Index >= turns.Count - 1 && StepsLeft == 0); } }
+        public static bool AtEnd { get { return !Active || Halted || (Index >= turns.Count - 1 && StepsLeft == 0); } }
 
         /// <summary>
-        /// Play the next action of the turn on screen; when the turn has none left, go to the next turn's board.
-        /// False when the recording is over.
+        /// Play the next action of the turn on screen, as it was ordered; when the turn has none left, end it as the
+        /// game does (once the board is still) and check the next turn's board. False when the recording is over.
         /// </summary>
         public static bool NextAction() {
             Turn t = Current;
-            if (!Active || t == null) return false;
-            while (Step < t.actions.Count && played.Contains(t.actions[Step])) Step++;   // (a move played early, with its attack)
+            if (!Active || Halted || t == null) return false;
+            if (advancePending) { Tick(); return true; }
+            while (Step < t.actions.Count && played.Contains(t.actions[Step])) Step++;   // (played already, with another)
             if (Step >= t.actions.Count) {
                 if (Index >= turns.Count - 1) return false;
-                if (Unit.AnyAnimating()) return true;   // the turn ends when the board is still (as in play)
+                if (Animate && Unit.AnyAnimating()) return true;   // the turn ends when the board is still (as in play)
                 LastAction = "";
                 Advance();
                 return true;
@@ -447,16 +438,27 @@ namespace HexTactica.Harness {
             int e = t.actions[Step++];
             LastAction = t.events[e].Trim();
             try { Apply(t, e); }
-            catch (Exception ex) { Debug.LogWarning("Replay: could not play \"" + LastAction + "\": " + ex.Message); }
+            catch (Exception ex) { Desync("playing it failed: " + ex); }
             if (Changed != null) Changed();
             return true;
         }
 
-        /// <summary>The board of the next turn (whatever is left of this one is not played).</summary>
+        /// <summary>The rest of the turn on screen, every action played at once; the turn ends once the board is still (Tick).</summary>
         public static bool NextTurn() {
-            if (!Active || Index >= turns.Count - 1) return false;
-            Next();
+            if (!Active || Halted || Index >= turns.Count - 1) return false;
+            int at = Index, guard = 0;
+            while (Index == at && !advancePending && Current != null && StepsLeft > 0 && guard++ < 10000 && NextAction()) { }
+            if (Index == at) { advancePending = true; Tick(); }
             return true;
+        }
+
+        /// <summary>A turn played through (NextTurn) ends once the board is still. Called every frame by the controls.</summary>
+        public static void Tick() {
+            if (!advancePending || !Active) return;
+            if (Animate && Unit.AnyAnimating()) return;
+            advancePending = false;
+            LastAction = "";
+            Advance();
         }
 
         /// <summary>The player a side of the log is: by the id its "side:" line gives, else by name.</summary>
@@ -480,14 +482,20 @@ namespace HexTactica.Harness {
             return u.owner != null && u.owner == Side(side) && (!exactKind || GameLog.Lines.UnitName(u) == kind);
         }
 
+        static bool Animate { get { return GameController.gc != null && !GameController.gc.headless; } }
+
+        /// <summary>
+        /// One logged action, ordered as a player or the AI orders it, through the game's own rules (paths, fog,
+        /// ambushes, combat, purchases); what comes of it is then checked against the log. Nothing is set by hand.
+        /// </summary>
         static void Apply(Turn t, int e) {
             string line = t.events[e];
-            string side, unit, cause, a, b; int x1, y1, x2, y2, cost;
+            string side, unit, a; int x1, y1, x2, y2, cost;
             GameLog.Lines.AttackLine at;
             GameLog.Lines.CargoLine cargo;
             GameLog.Lines.StrikeLine fired;
             if (GameLog.Lines.ReadMoved(line, sides, out side, out unit, out x1, out y1, out x2, out y2)) {
-                // Ordered as a player or the AI orders it: the unit walks its path (and fires after, if its next line is its attack from there).
+                // The unit walks its path (and fires after, if its next line is its attack from there).
                 GameLog.Lines.AttackLine then;
                 int next = t.actions.IndexOf(e) + 1;
                 bool fires = next < t.actions.Count && GameLog.Lines.ReadAttack(t.events[t.actions[next]], sides, out then)
@@ -500,14 +508,14 @@ namespace HexTactica.Harness {
             } else if (GameLog.Lines.ReadAttack(line, sides, out at)) {
                 Unit attacker = UnitAt(at.side, at.unit, at.fromX, at.fromY);
                 if (attacker == null) {
-                    // (An older log: a move-and-attack's move written after the attack.) Play that move first.
+                    // (An older log: a move-and-attack's move written after the attack.) That move is ordered first.
                     for (int j = t.actions.IndexOf(e) + 1; j < t.actions.Count; j++) {
                         int k = t.actions[j];
                         if (played.Contains(k)) continue;
                         if (GameLog.Lines.ReadMoved(t.events[k], sides, out side, out unit, out x1, out y1, out x2, out y2)
                             && side == at.side && unit == at.unit && x2 == at.fromX && y2 == at.fromY) {
-                            Move(UnitAt(side, unit, x1, y1), Tile(x2, y2), true);
                             played.Add(k);
+                            Move(t, e, UnitAt(side, unit, x1, y1), Tile(x2, y2), true, null);
                             break;
                         }
                     }
@@ -516,102 +524,101 @@ namespace HexTactica.Harness {
                 Unit defender = UnitAt(at.targetSide, at.targetUnit, at.atX, at.atY);
                 if (defender == null) {
                     // The target walked into this (it ran into a unit it had not seen, which fired): an older log writes
-                    // its move after, ending where it retreated to. It is brought to where it was stopped, first.
-                    bool stopped = false;
-                    for (int j = e + 1; j < t.events.Count && j <= e + 4; j++)
-                        if (t.events[j].Contains(" ran into ") && t.events[j].EndsWith("stopped at (" + at.atX + "," + at.atY + ")")) stopped = true;
+                    // its move after, ending where it retreated to. That move is ordered: the game's own fog stops it
+                    // and the hidden unit fires, as it did.
                     for (int j = t.actions.IndexOf(e) + 1; j < t.actions.Count; j++) {
                         int k = t.actions[j];
                         if (played.Contains(k)) continue;
                         if (GameLog.Lines.ReadMoved(t.events[k], sides, out side, out unit, out x1, out y1, out x2, out y2)
-                            && side == at.targetSide && unit == at.targetUnit && ((x2 == at.atX && y2 == at.atY) || stopped)) {
-                            Unit walker = UnitAt(side, unit, x1, y1);
-                            HexTile stop = Tile(at.atX, at.atY);
-                            if (walker != null && stop != null && stop.occupier == null) walker.TeleportTo(stop, walker.tile.Distance(stop));
+                            && side == at.targetSide && unit == at.targetUnit) {
                             played.Add(k);
+                            Move(t, k, UnitAt(side, unit, x1, y1), Tile(x2, y2), false, null);
                             break;
                         }
                     }
+                    if (played.Contains(e)) return;   // (the ambush was this attack: played with the move)
                     defender = UnitAt(at.targetSide, at.targetUnit, at.atX, at.atY);
                 }
-                if (defender == null) { Warn("no " + at.targetSide + " " + at.targetUnit + " at (" + at.atX + "," + at.atY + ") to be attacked"); return; }
-                HexTile back = at.retreated ? Tile(at.retreatX, at.retreatY) : null;
-                if (attacker == null || attacker == defender) {
-                    Warn("no " + at.side + " " + at.unit + " at (" + at.fromX + "," + at.fromY + ") to attack: only the result is shown");
-                    defender.Strength = Mathf.Max(0, at.targetStrengthAfter);
-                    if (defender.Strength <= 0) defender.ReplayLoss();
-                    return;
-                }
-                // The attack is ordered as in play (the shot, the answer, the sounds, a retreat); then the board is held
-                // to what the log says came of it, should the game work it out otherwise (fog is not as it was).
+                if (attacker == null) { Desync("no " + at.side + " " + at.unit + " at (" + at.fromX + "," + at.fromY + ") to attack: the attack is not played"); return; }
+                if (defender == null) { Desync("no " + at.targetSide + " " + at.targetUnit + " at (" + at.atX + "," + at.atY + ") to be attacked: the attack is not played"); return; }
                 attacker.OrderAttack(defender);
-                Hold(attacker, at.strengthAfter);
-                Hold(defender, at.targetStrengthAfter);
-                if (back != null && defender.Strength > 0 && defender.tile != back && back.occupier == null) defender.RetreatTo(back);
+                CheckAttack(at, attacker, defender);
             } else if (GameLog.Lines.ReadStrikeFired(line, sides, out fired)) {
-                // Ordered as in play: a strike that lands at once does what it does on this board; one launched is in the
-                // air until its side's next turn starts (Advance ends the turn as the game does), and lands then.
+                // A strike that lands at once does what it does on this board; one launched is in the air until its
+                // side's next turn starts (Advance ends the turn as the game does), and lands then.
                 Unit striker = UnitAt(fired.side, fired.unit, fired.fromX, fired.fromY);
                 HexTile aim = Tile(fired.x, fired.y);
-                if (striker == null || aim == null) { Warn("no " + fired.side + " " + fired.unit + " at (" + fired.fromX + "," + fired.fromY + ") to strike (" + fired.x + "," + fired.y + ")"); return; }
-                if (!Strikes.Order(striker, aim)) Warn(fired.unit + " could not strike (" + fired.x + "," + fired.y + ") on the board as it is");
+                if (striker == null || aim == null) { Desync("no " + fired.side + " " + fired.unit + " at (" + fired.fromX + "," + fired.fromY + ") to strike (" + fired.x + "," + fired.y + ")"); return; }
+                if (!Strikes.Order(striker, aim)) Desync(fired.unit + " could not strike (" + fired.x + "," + fired.y + ") on the board as it is");
             } else if (GameLog.Lines.ReadCargo(line, sides, out cargo)) {
                 Unit transport = UnitAt(cargo.transportSide, cargo.transportUnit, cargo.transportX, cargo.transportY);
-                if (transport == null) { Warn("no " + cargo.transportSide + " " + cargo.transportUnit + " at (" + cargo.transportX + "," + cargo.transportY + ")"); return; }
+                if (transport == null) { Desync("no " + cargo.transportSide + " " + cargo.transportUnit + " at (" + cargo.transportX + "," + cargo.transportY + ")"); return; }
                 if (cargo.boards) {
                     Unit rider = UnitAt(cargo.side, cargo.unit, cargo.x, cargo.y);
-                    if (rider == null) return;
+                    if (rider == null) { Desync("no " + cargo.side + " " + cargo.unit + " at (" + cargo.x + "," + cargo.y + ") to board"); return; }
                     Board(rider, transport);
                 } else {
                     Unit rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, true));
                     if (rider == null) rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, false));
-                    if (rider != null) Transporting.Unload(transport, rider, Tile(cargo.x, cargo.y));
+                    HexTile where = Tile(cargo.x, cargo.y);
+                    if (rider == null) Desync("no " + cargo.unit + " aboard " + GameLog.Lines.Who(transport) + " to get off");
+                    else if (!Transporting.Unload(transport, rider, where)) Desync(GameLog.Lines.Who(rider) + " could not get off " + GameLog.Lines.Who(transport) + " at " + (where != null ? D(where) : "?"));
                 }
             } else if (GameLog.Lines.ReadBuy(line, sides, out side, out unit, out cost)) {
-                Player p = Side(side);
-                Unit prefab = GameAssets.Unit(unit);
-                if (p != null) p.money -= cost;
-                if (p != null && prefab != null && GameLog.Lines.ReadBuyPlace(line, out x1, out y1)) {
-                    HexTile where = Tile(x1, y1);
-                    if (where != null && where.occupier == null && UnitController.uc != null) {
-                        Unit made = UnitController.uc.CreateUnit(p, prefab, where);
-                        if (made != null) made.active = false;   // (a unit does nothing the turn it is bought)
-                    } else Warn("the unit bought could not be put at (" + x1 + "," + y1 + ")");
-                }
-            } else if (GameLog.Lines.ReadDies(line, sides, out side, out unit, out cause)) {
-                if (GameLog.Lines.ReadTile(line, out x1, out y1)) {
-                    Unit u = UnitAt(side, unit, x1, y1);
-                    if (u != null) u.ReplayLoss();
-                }
-            } else if (GameLog.Lines.ReadChangesHands(line, out unit, out a, out b)) {
-                if (GameLog.Lines.ReadTile(line, out x1, out y1)) {
-                    HexTile where = Tile(x1, y1);
-                    if (where != null && where.building != null) where.building.owner = Side(b);
-                }
+                Buy(line, side, unit, cost);
+            } else if (GameLog.Lines.ReadResigns(line, sides, out a)) {
+                GameController gc = GameController.gc;
+                Player p = Side(a), was = gc != null ? gc.activePlayer : null;
+                if (gc == null || p == null) { Desync("no side " + a + " to resign"); return; }
+                gc.Resign(p);
+                if (gc.activePlayer != was || gc.gameOver) turnEnded = true;
             }
             FogOfWar.Changed();
             FogOfWar.Refresh();
+        }
+
+        /// <summary>What came of the attack as played, against the log: both sides' strength after, and where the defender was driven back to.</summary>
+        static void CheckAttack(GameLog.Lines.AttackLine at, Unit attacker, Unit defender) {
+            int aStr = Mathf.Max(0, attacker.Strength), dStr = Mathf.Max(0, defender.Strength);
+            if (aStr != Mathf.Max(0, at.strengthAfter) || dStr != Mathf.Max(0, at.targetStrengthAfter))
+                Desync(GameLog.Lines.Who(attacker) + " attacking " + GameLog.Lines.Who(defender) + " came out " + aStr + " to " + dStr + ", the log has " + Mathf.Max(0, at.strengthAfter) + " to " + Mathf.Max(0, at.targetStrengthAfter));
+            if (at.retreated && dStr > 0 && defender.tile != null && (defender.tile.x != at.retreatX || defender.tile.y != at.retreatY))
+                Desync(GameLog.Lines.Who(defender) + " ended at " + D(defender.tile) + ", the log has it driven back to (" + at.retreatX + "," + at.retreatY + ")");
+        }
+
+        /// <summary>A purchase, made as in play at the building the log names (BuildingController.Produce: its money, its rules).</summary>
+        static void Buy(string line, string side, string kind, int cost) {
+            Player p = Side(side);
+            Unit prefab = GameAssets.Unit(kind);
+            int bx, by, px, py;
+            HexTile at = GameLog.Lines.ReadBuyAt(line, out bx, out by) ? Tile(bx, by) : null;
+            Building b = at != null ? at.building : null;
+            if (p == null || prefab == null || b == null || BuildingController.bc == null) { Desync("no " + (p == null ? "side " + side : prefab == null ? "unit " + kind : "building at (" + bx + "," + by + ")") + " to buy with"); return; }
+            if (b.owner != p) { Desync("the building at " + D(at) + " is not " + side + "'s here: nothing bought"); return; }
+            int money = p.money;
+            Unit made = BuildingController.bc.Produce(b, prefab);
+            if (made == null) { Desync(side + " could not buy " + kind + " at " + D(at) + " here (" + money + " money, " + (at.occupier != null ? D(at) + " taken by " + GameLog.Lines.Who(at.occupier) : "the building does not offer it") + ")"); return; }
+            if (money - p.money != cost) Desync(kind + " cost " + (money - p.money) + ", the log has " + cost);
+            if (GameLog.Lines.ReadBuyPlace(line, out px, out py) && made.tile != null && (made.tile.x != px || made.tile.y != py))
+                Desync(kind + " was placed at " + D(made.tile) + ", the log has (" + px + "," + py + ")");
         }
 
         /// <summary>
         /// A "moved" line. Usually the unit of that kind on the first tile, walking to the second. In a recording made
         /// before boarding and getting off had lines of their own, it may also be: a unit walking into its transport
         /// (the second tile holds a friendly unit that carries it), or a unit getting off one (the first tile is where its
-        /// transport stood at the start of the turn; the transport's own move, if any, is played first).
+        /// transport stood at the start of the turn; the transport's own move, if any, is ordered first).
         /// </summary>
         static void MoveOrCargo(Turn t, int e, string side, string kind, int x1, int y1, HexTile to, bool fires) {
-            if (to == null) return;
+            if (to == null) { Desync("no such tile on this board"); return; }
             HexTile from = Tile(x1, y1);
             Unit u = from != null ? from.occupier : null;
             Player owner = Side(side);
-            // Already there (driven back there by an attack this move ended with): nothing to play.
-            Unit there = to.occupier;
-            if (there != null && there.owner == owner && GameLog.Lines.UnitName(there) == kind && (u == null || u.owner != owner || GameLog.Lines.UnitName(u) != kind)) return;
             if (u != null && u.owner == owner && u.Strength > 0 && GameLog.Lines.UnitName(u) == kind) {
                 Unit carrier = to.occupier;
                 if (carrier != null && carrier != u && carrier.owner == owner && Transporting.CanCarry(carrier, u)) { Board(u, carrier); return; }
                 int ox, oy;
-                Move(u, to, fires, GameLog.Lines.ReadMoveOrder(t.events[e], out ox, out oy) ? Tile(ox, oy) : null);
+                Move(t, e, u, to, fires, GameLog.Lines.ReadMoveOrder(t.events[e], out ox, out oy) ? Tile(ox, oy) : null);
                 return;
             }
             // Getting off: the transport is the unit standing where the cargo was at the start of the turn...
@@ -625,8 +632,8 @@ namespace HexTactica.Harness {
                     if (played.Contains(k)) continue;
                     if (GameLog.Lines.ReadMoved(t.events[k], sides, out s2, out k2, out a1, out b1, out a2, out b2)
                         && s2 == side && a1 == x1 && b1 == y1 && k2 == GameLog.Lines.UnitName(transport)) {
-                        Move(transport, Tile(a2, b2), false);
                         played.Add(k);
+                        Move(t, k, transport, Tile(a2, b2), false, null);
                         break;
                     }
                 }
@@ -640,86 +647,69 @@ namespace HexTactica.Harness {
                     if (c != null) { transport = x; rider = c; break; }
                 }
             }
-            if (rider == null && UnitController.uc != null) {
-                // ... or one further off (it got off and walked on): the nearest transport of the side's carrying one.
-                int best = int.MaxValue;
-                foreach (Unit x in UnitController.uc.units) {
-                    if (x == null || x.owner != owner || x.tile == null || x.Strength <= 0) continue;
-                    Unit c = x.transported.Find(q => q != null && GameLog.Lines.UnitName(q) == kind);
-                    int d = x.tile.Distance(to);
-                    if (c != null && d < best) { best = d; transport = x; rider = c; }
-                }
-            }
             if (rider != null) {
-                // Off as in play where the game allows it; else set down where the recording has it.
-                if (!Transporting.Unload(transport, rider, to) && !Transporting.Disembark(transport, rider, to))
-                    Warn(kind + " could not get off at (" + to.x + "," + to.y + ")");
+                if (!Transporting.Unload(transport, rider, to)) Desync(kind + " could not get off " + GameLog.Lines.Who(transport) + " at " + D(to));
                 return;
             }
-            Warn("no " + side + " " + kind + " at (" + x1 + "," + y1 + ") or aboard a transport there");
+            Desync("no " + side + " " + kind + " at (" + x1 + "," + y1 + ") or aboard a transport there");
         }
 
-        /// <summary>The unit walks up to the transport and gets in, as ordered in play; if the game will not have it, it is put aboard as the log says.</summary>
+        /// <summary>The unit walks up to the transport and gets in, as ordered in play.</summary>
         static void Board(Unit rider, Unit transport) {
             List<HexTile> steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile);
-            bool headless = GameController.gc != null && GameController.gc.headless;
-            bool walked = steps != null && rider.WalkAndBoard(steps, transport, !headless);
-            if (!walked || rider.trasnporter != transport) {
-                if (rider.trasnporter != transport) Transporting.Embark(transport, rider);
-            }
-        }
-
-        static void Warn(string what) { Debug.LogWarning("Replay: " + what + " (\"" + LastAction + "\")"); }
-
-        /// <summary>The unit's strength as the log has it after the action (it is lost if that is none).</summary>
-        static void Hold(Unit u, int strength) {
-            if (u == null || u.Strength <= 0) return;   // (already lost in the attack as played)
-            if (u.Strength == strength) return;
-            Warn(GameLog.Lines.Who(u) + " came out at " + u.Strength + ", the log says " + strength + ": set to the log's");
-            u.Strength = Mathf.Max(0, strength);
-            if (u.Strength <= 0) u.ReplayLoss();
+            if (steps == null) { Desync(GameLog.Lines.Who(rider) + " at " + D(rider.tile) + " has no path to " + GameLog.Lines.Who(transport) + " at " + D(transport.tile) + " here"); return; }
+            rider.WalkAndBoard(steps, transport, Animate);
+            if (rider.trasnporter != transport) Desync(GameLog.Lines.Who(rider) + " did not get aboard " + GameLog.Lines.Who(transport) + " at " + D(transport.tile) + " (it is at " + D(rider.tile) + ")");
         }
 
         /// <summary>
-        /// The move, ordered as in play: the unit walks the path the game finds for it to <paramref name="to"/> (its
-        /// animation and sounds with it). Only when the game finds none (the board is not as it was) is it set there.
+        /// The move, ordered as in play: the unit is ordered to where the recorded game ordered it (the log's "ordered
+        /// to", else where it ended) along the path the game finds for it, and the game plays it — its animation, its
+        /// fuel, and under the recorded fog rule an ambush by a unit its side did not see (which fires, as it did: that
+        /// attack line is then played already). Where it ends is checked against the log.
         /// </summary>
-        static void Move(Unit u, HexTile to, bool thenAttacks) { Move(u, to, thenAttacks, null); }
-
-        /// <param name="ordered">Where the recorded game ordered it, when it stopped short of that at <paramref name="to"/> (the log's "ordered to"); null when it got where it was ordered.</param>
-        static void Move(Unit u, HexTile to, bool thenAttacks, HexTile ordered) {
-            if (u == null || to == null || u.tile == to) return;
-            string order = ordered != null ? " (ordered to " + D(ordered) + ", stopped short at " + D(to) + " in the recorded game)" : " (ordered to " + D(to) + ")";
-            if (to.occupier != null && to.occupier != u) { Warn(GameLog.Lines.Who(u) + order + ": " + D(to) + " is taken here by " + GameLog.Lines.Who(to.occupier) + "; the move is left out"); return; }
-            // Under the recorded game's own fog rule, from the mover's side (path-finding and moving go by what its
-            // side knows), as the game played it — to where the recorded move ended (a stop short and the shot that
-            // stopped it are played from the log's own lines).
-            List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathTo(u, to) : null;
-            Unit inTheWay = null;
-            if (steps != null && FogOfWar.On)
-                for (int i = 1; i < steps.Count && inTheWay == null; i++) {
-                    Unit o = steps[i] != null ? steps[i].occupier : null;
-                    if (o != null && o != u && Player.Hostile(o.owner, u.owner)) inTheWay = o;
-                }
+        /// <param name="ordered">Where the recorded game ordered it, when it stopped short at <paramref name="to"/>; null when it got where it was ordered.</param>
+        static void Move(Turn t, int e, Unit u, HexTile to, bool thenAttacks, HexTile ordered) {
+            if (u == null || to == null) { Desync("no unit to move"); return; }
+            HexTile target = ordered ?? to;
             HexTile was = u.tile;
-            if (steps != null && inTheWay == null) u.MoveAlong(steps, thenAttacks, true);
-            if (u.tile != to) {
-                // The game here would not take it there (its side knew otherwise than in the recorded game): it is put
-                // where the log has it, and the console says where it was ordered, where the game here took or would
-                // have stopped it, and where the recording has it.
-                string here = steps == null ? "no path to " + D(to) + " from " + D(was)
-                            : inTheWay != null ? "its path runs into " + GameLog.Lines.Who(inTheWay) + " at " + D(inTheWay.tile) + ", which it would stop at"
-                            : "it stopped at " + D(u.tile);
-                if (!(GameController.gc != null && GameController.gc.headless))
-                    Warn(GameLog.Lines.Who(u) + " from " + D(was) + order + ": here " + here + "; put at " + D(to) + " as recorded");
-                if (to.occupier == null) u.TeleportTo(to, u.tile.Distance(to), thenAttacks);
+            if (was == target) {
+                if (was != to) Desync(GameLog.Lines.Who(u) + " is at " + D(was) + " already, the log has it stopping at " + D(to));
+                return;
             }
+            string order = " from " + D(was) + " ordered to " + D(target) + (ordered != null ? " (stopped short at " + D(to) + " in the recorded game)" : "");
+            List<HexTile> steps = PathTo(u, target);
+            if (steps == null) { Desync(GameLog.Lines.Who(u) + order + ": the game here finds no path; it stays at " + D(was)); return; }
+            u.MoveAlong(steps, thenAttacks, Animate);
+            Unit ambusher = u.ambushedBy;
+            if (ambusher != null) {
+                // The hidden unit's fire is the log's next attack by it on this unit where it stopped: played with the move.
+                for (int j = Mathf.Max(0, Step - 1); j < t.actions.Count; j++) {
+                    int k = t.actions[j];
+                    GameLog.Lines.AttackLine shot;
+                    if (played.Contains(k) || !GameLog.Lines.ReadAttack(t.events[k], sides, out shot)) continue;
+                    if (Side(shot.side) == ambusher.owner && shot.unit == GameLog.Lines.UnitName(ambusher) && shot.atX == u.tile.x && shot.atY == u.tile.y) {
+                        played.Add(k);
+                        CheckAttack(shot, ambusher, u);
+                        break;
+                    }
+                }
+            }
+            if (u.Strength > 0 && u.tile != to)
+                Desync(GameLog.Lines.Who(u) + order + ": here it " + (ambusher != null ? "ran into " + GameLog.Lines.Who(ambusher) + " at " + D(ambusher.tile) + " and stopped at " + D(u.tile) : "ended at " + D(u.tile)) + ", the log has " + D(to));
         }
 
         static string D(HexTile t) { return GameLog.Lines.D(t); }
 
         /// <summary>The path the game's own search gives the unit to <paramref name="to"/> this turn (its tile first), as a player's click follows; null if it does not reach.</summary>
         static List<HexTile> PathTo(Unit u, HexTile to) {
+            if (!Animate) {
+                // Headless (no tile visuals to reset): the same search as the AI's, on what the mover's side knows.
+                HexTactica.AI.MoveField field;
+                using (FogOfWar.Concealing(u.owner)) field = HexTactica.AI.AIPath.ThisTurn(u);
+                List<HexTile> p = u.PathIn(field, to);
+                return p != null && p.Count >= 2 && p[0] == u.tile ? p : null;
+            }
             HexGenerator.forAllTiles(x => { x.G = 0; x.parent = null; return 0; });
             List<HexTile> reach = u.tile.CheckMovementRange(u);
             List<HexTile> steps = reach.Contains(to) ? to.buildpath() : null;
@@ -729,7 +719,6 @@ namespace HexTactica.Harness {
 
         /// <summary>A path for the unit to a tile beside <paramref name="target"/> (to board what stands there), or null.</summary>
         static List<HexTile> PathBeside(Unit u, HexTile target) {
-            if (GameController.gc == null || GameController.gc.headless) return null;
             foreach (HexTile n in target.neighbors) {
                 if (n == null) continue;
                 List<HexTile> steps = PathTo(u, n);

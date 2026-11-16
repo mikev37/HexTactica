@@ -140,6 +140,15 @@ namespace HexTactica.Harness {
                 x = int.Parse(m.Groups[1].Value, Inv); y = int.Parse(m.Groups[2].Value, Inv);
                 return true;
             }
+            /// <summary>The building a unit was bought at, from its buy line ("... at Factory (3,5) for 300").</summary>
+            public static bool ReadBuyAt(string line, out int x, out int y) {
+                Match m = boughtAtBuilding.Match(line);
+                x = y = 0;
+                if (!m.Success) return false;
+                x = int.Parse(m.Groups[1].Value, Inv); y = int.Parse(m.Groups[2].Value, Inv);
+                return true;
+            }
+            static readonly Regex boughtAtBuilding = new Regex(@" \((-?\d+),(-?\d+)\) for \d+(?:, placed \(-?\d+,-?\d+\))?$");
             static readonly Regex placed = new Regex(@", placed \((-?\d+),(-?\d+)\)$");
             static readonly Regex boughtAt = new Regex(@" \((-?\d+),(-?\d+)\) for \d+$");
 

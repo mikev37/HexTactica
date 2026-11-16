@@ -53,6 +53,7 @@ public class ReplayControls : MonoBehaviour {
         FrontEndSettings s = FrontEndSettings.Get;
         // Fast forward: units move faster on screen (and only while it is on).
         Unit.MoveSpeedScale = playing && fast && Replay.Active ? Mathf.Max(1f, s.replayFastMoveSpeed) : 1f;
+        Replay.Tick();   // (a turn played through ends once the board is still)
         if (!playing || !Replay.Active) return;
         if (fast) {
             // An action every interval, whether or not the last has finished playing. (A turn still ends only when
