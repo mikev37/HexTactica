@@ -3364,7 +3364,7 @@ public static partial class Scenarios {
                 HexTactica.Harness.Replay.Desyncs.Clear();
                 int guard = 0;
                 while (HexTactica.Harness.Replay.NextAction() && guard++ < 2000) { }
-                int desyncs = HexTactica.Harness.Replay.Desyncs.Count;
+                int desyncs = HexTactica.Harness.Replay.Desyncs.Count, corrections = HexTactica.Harness.Replay.Corrections;
                 string first = desyncs > 0 ? string.Join(" | ", HexTactica.Harness.Replay.Desyncs.Take(4).ToArray()) : "";
                 bool reached = HexTactica.Harness.Replay.Index == HexTactica.Harness.Replay.turns.Count - 1 && !HexTactica.Harness.Replay.Halted;
                 bool same = Draw() == end;
@@ -3373,6 +3373,7 @@ public static partial class Scenarios {
                 HexTactica.Harness.Replay.Close();
                 string tampered = HexTactica.Harness.Replay.turns.Count > 2 ? HexTactica.Harness.Replay.turns[2].file : null;
                 int caught = 0;
+                bool corrected = false;
                 if (tampered != null) {
                     string text = File.ReadAllText(tampered);
                     System.Text.RegularExpressions.Match sm = System.Text.RegularExpressions.Regex.Match(text, "\"Strength\":(\\d+)");
@@ -3382,12 +3383,13 @@ public static partial class Scenarios {
                     guard = 0;
                     while (HexTactica.Harness.Replay.Index < 2 && HexTactica.Harness.Replay.NextAction() && guard++ < 500) { }
                     caught = HexTactica.Harness.Replay.Desyncs.Count;
+                    corrected = HexTactica.Harness.Replay.Corrections == 1 && HexTactica.Harness.Replay.Index == 2;
                     HexTactica.Harness.Replay.Close();
                 }
                 HexTactica.Harness.Replay.Loader = HexTactica.Harness.ScenarioLoader.LoadBoardFromPath;
                 try { Directory.Delete(root, true); } catch (Exception) { }
-                detail = "recorded " + boards.Count + " turns: " + attacks + " attacks, " + ranInto + " run into in the fog, " + buys + " purchases, " + captures + " captures; replay opened " + opened + ", reached the last turn " + reached + " (" + idx + ", " + guard + " steps)" + ", ends as recorded " + same + ", desyncs " + desyncs + (desyncs > 0 ? " (" + first + ")" : "") + "; a board with a unit's strength changed caught " + (caught > 0);
-                return opened && reached && same && desyncs == 0 && attacks > 0 && caught > 0;
+                detail = "recorded " + boards.Count + " turns: " + attacks + " attacks, " + ranInto + " run into in the fog, " + buys + " purchases, " + captures + " captures; replay opened " + opened + ", reached the last turn " + reached + " (" + idx + ", " + guard + " steps)" + ", ends as recorded " + same + ", desyncs " + desyncs + (desyncs > 0 ? " (" + first + ")" : "") + ", corrections " + corrections + "; a board with a unit's strength changed caught " + (caught > 0) + ", corrected by loading it (an error, counted) " + corrected;
+                return opened && reached && same && desyncs == 0 && corrections == 0 && attacks > 0 && caught > 0 && corrected;
             }
             case "fogGame": {
                 int actions = 0, broken = 0, blindShots = 0, bumps = 0, shots = 0;

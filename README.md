@@ -117,3 +117,19 @@ A supply unit aboard something links to its side's network through what carries 
   restocked) while the ship has supplies of its own or a supply ship beside it restocks it, or in harbor; once the
   ship's supplies are gone, its cargo starves.
 - An HQ supplies only the side it began with: a captured HQ supplies nobody until it is retaken.
+
+## Replays and game logs
+
+Every game is recorded (`game.log` plus a board for each turn) and can be replayed from the main menu. A replay plays
+the logged orders again through the game's own rules and checks every result, and every turn's starting board, against
+the recording. A mismatch is a desync: it is reported as an error, and the replay then loads the recorded board to carry
+on (`Replay.CorrectDesyncs`, counted in `Replay.Corrections`). That load is error correction, never the normal way from
+one turn to the next. For turns played over the network, correction is to be turned off: there a desync means an
+incompatible client or cheating, so it is reported and play stops.
+
+Planned, not built yet:
+- **"Save replay" at game end.** Every game stays recorded by default; leaving the box unchecked deletes that game's
+  log files.
+- **Managing game logs.** An easier way to see and delete recordings.
+- **Player-facing recordings.** Today a recording also serves debugging: it holds turn boards, save points and the AI's
+  reasoning. A player needs only the basic order log a replay plays from.

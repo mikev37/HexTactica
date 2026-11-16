@@ -11,7 +11,8 @@ namespace HexTactica.Harness {
     /// resigning) is ordered again on the board and the game plays it by its own rules (GameLog.Lines reads the lines
     /// it wrote). Nothing is set to the log's result: what came of each order is checked against the log, and at each
     /// turn's start the board is checked against that turn's recorded board; every difference is a desync (Desyncs,
-    /// and an error in the console). Boards are loaded only to start, or to jump to a turn (Show, Previous, Next).
+    /// and an error in the console). Boards are loaded to start, to jump to a turn (Show, Previous, Next), and, as an
+    /// error correction only, after a desync (CorrectDesyncs, Corrections): never as the normal way from turn to turn.
     ///
     /// A recording folder holds the board at the start of every turn (turn-NNN-Side.dat) and the
     /// game's log (game.log): what each side did that turn, and the AI's reasoning. A replay loads
@@ -161,6 +162,7 @@ namespace HexTactica.Harness {
             ViewAs = -1;
             Index = -1;
             Desyncs.Clear();
+            Corrections = 0;
             Show(0);
             if (BuiltInPanel) ReplayPanel.Ensure();
             return true;
@@ -274,8 +276,9 @@ namespace HexTactica.Harness {
 
         /// <summary>
         /// The turn after the one on screen, reached as the game reaches it: the turn is ended (captures, upkeep, the
-        /// next side's start). The board is then checked against the recording's board for that turn (Verify); it is
-        /// never loaded from it.
+        /// next side's start). The board is then checked against the recording's board for that turn (Verify). Only when
+        /// that fails (a desync: a log or game that does not play back as recorded) is the recorded board loaded, as an
+        /// error correction (CorrectDesyncs); a replay that plays back as recorded never loads one.
         /// </summary>
         static void Advance() {
             GameController gc = GameController.gc;
@@ -283,25 +286,44 @@ namespace HexTactica.Harness {
             if (gc == null) { Halted = true; return; }
             if (gc.gameOver) {
                 Desync("the game is over here, the recording goes on to turn " + (next + 1));
-                Halted = true;
-                if (Changed != null) Changed();
+                Correct(next);
                 return;
             }
             if (!turnEnded) {
                 try { gc.EndTurn(); }
                 catch (Exception e) {
-                    Desync("ending the turn failed: " + e.Message);
-                    Halted = true;
-                    if (Changed != null) Changed();
+                    Desync("ending the turn failed: " + e);
+                    Correct(next);
                     return;
                 }
             }
             Index = next;
             LastAction = "";
             Freeze();
-            Verify(turns[next].file);
+            if (Verify(turns[next].file) > 0) { Correct(next); return; }
             Prepare(turns[next]);
             if (Changed != null) Changed();
+        }
+
+        /// <summary>
+        /// After a desync, whether the recorded board is loaded to carry on from (a replay: true), or the desync is only
+        /// reported and play stops (false: for turns played over the network, where a desync means an incompatible
+        /// client or cheating, not something to paper over).
+        /// </summary>
+        public static bool CorrectDesyncs = true;
+        /// <summary>How many times a recorded board was loaded to correct a desync. Each one is an error; a sound log needs none.</summary>
+        public static int Corrections { get; private set; }
+
+        static void Correct(int turn) {
+            if (!CorrectDesyncs) {
+                Halted = true;
+                Debug.LogError("Replay desync at turn " + (turn + 1) + ": not corrected; the replay stops here.");
+                if (Changed != null) Changed();
+                return;
+            }
+            Corrections++;
+            Debug.LogError("Replay desync at turn " + (turn + 1) + ": ERROR CORRECTION, loading the recorded board " + Path.GetFileName(turns[turn].file) + " to carry on (correction " + Corrections + "; a replay that plays back as recorded never needs this).");
+            Show(turn);
         }
 
         /// <summary>
