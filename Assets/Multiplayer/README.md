@@ -17,17 +17,16 @@ There is no game server to run. Each device keeps the game in step by itself; a 
   the money).
 - **A difference is a desync.** It is reported and never papered over. That device plays nothing more, nobody can
   act, and the host decides (see *The host*).
-- **Each device keeps its own copy of each game**: the board at the start of the latest turn it has, saved like a
-  saved game (its local game log continues from it), in `<persistentDataPath>/multiplayer/copy-*`. A copy is written
-  at every turn's start, when a turn's end is played or sent, and at the game's end. It is never written mid-turn,
-  because a board saved mid-turn would forget which units have already acted.
-- **Opening a game loads that copy and plays only the log after it**: at most the turn in progress and anything
-  since. Moves the player has seen are applied at once; newer ones play on screen, sped up
-  (`MultiplayerSettings.catchUpMoveSpeed`). A copy is used only if the log still agrees with it: the entry it stands
-  after must have the same board check line, and the board must check the same once loaded. Otherwise, and on a new
-  device, a reinstall, or after the host went on from their own board, the game is rebuilt from the board it is
-  played on from, with the whole log. Finishing with a game (closing its post-game screen, or leaving it) deletes
-  its copy.
+- **Opening a game starts from the latest turn this device has.** The game log already saves the board at every
+  turn's start (`turn-NNN-Side.dat` in its folder). Per game, a small index (`<persistentDataPath>/multiplayer/index-*`)
+  records which of those files is the latest, the log entry it stands at, its board check line, and the log's place
+  after it. Opening loads that board (the local game log goes on from that turn) and plays only the log after it:
+  at most the turn in progress and anything since. Moves the player has seen are applied at once; newer ones play on
+  screen, sped up (`MultiplayerSettings.catchUpMoveSpeed`).
+- The index is used only if the log still agrees with it (the entry it stands after has the same check line) and
+  the board loads to the same check. Otherwise, and on a new device, a reinstall, or after the host went on from
+  their own board, the game is rebuilt from the board it is played on from, with the whole log. Finishing with a
+  game deletes its index; its game logs stay, like any game's.
 - A game that is open is polled every couple of seconds, so the opponent's moves show as they make them.
 - **No device is a server.** Whoever's turn it is writes. The store refuses a write that is out of order (every
   value has a write lock), and a device that finds the log has moved on under it reloads the game as it stands.
@@ -184,8 +183,8 @@ Engine hooks outside this folder: `GameController.PlayedElsewhere`, `FogOfWar.Is
 folder store; the board is switched between them by opening the game as each player.
 - `mp-lobby`: codes, joining, claiming, removing, versions, spectators, code reuse, leaving, linking.
 - `mp-turns`: three rounds on two devices, by catching up and by watching live, with the same board throughout;
-  each reopening starts from the device's own copy and plays only the other player's turn; a copy the log disagrees
-  with, or whose board is not as kept, is passed over.
+  each reopening starts from the game log's latest turn board and plays only the other player's turn; no board is
+  saved twice; an index the log disagrees with, or naming the wrong board, is passed over.
 - `mp-ai`: who runs an AI side, and a spectator.
 - `mp-clock`: when clocks start, skipping a player out of time.
 - `mp-desync`: a tampered board found, reported, and put right by the host; the host ending the game.
@@ -195,10 +194,9 @@ Not covered headless: the screens (type-checked only), anything in the Unity edi
 
 ## Known traps
 
-- **Copies only at a turn's start.** A board saved mid-turn loads with every unit ready to act again
-  (`MpSession.WriteCopy` is called only at turn boundaries). The copy for this device's own turn end is taken when
-  the turn ends, then written once the store has that entry, so it never runs ahead of the log.
-
+- **Turn starts only.** The index names a turn's start, never a point mid-turn: a board saved mid-turn would load
+  with every unit ready to act again. For this device's own turn end, the index is written only once the store has
+  that entry, so it never runs ahead of the log.
 - **Finishing units.** A replay never finishes units, but live orders must: finishing is when captures start and
   supply is recalculated (`Replay.FinishLive`).
 - **The game's end** goes to the log only once what ended it is over. A side resigning ends the game before its

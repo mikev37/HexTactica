@@ -175,6 +175,7 @@ namespace HexTactica.Harness {
         }
 
         public static void Stop() {
+            LastTurnBoard = null; LastTurnPoint = null;
             if (writer == null) return;
             Unit.Attacked -= OnAttack;
             Building.Captured -= OnCapture;
@@ -228,6 +229,9 @@ namespace HexTactica.Harness {
             try {
                 File.WriteAllText(Path.Combine(Folder, file), Snapshot(p, "snapshot of round " + round + ", " + side + " to move"));
                 Line("   (board saved as " + file + ")");
+                writer.Flush();
+                LastTurnBoard = Path.Combine(Folder, file);
+                LastTurnPoint = new SavePoint { folder = Folder, length = writer.BaseStream.Position, turns = turns };
             } catch (Exception e) {
                 Line("   (could not save board: " + e.Message + ")");
             }
@@ -237,6 +241,10 @@ namespace HexTactica.Harness {
 
         static int turns;
         static int TurnIndex() { return turns++; }
+
+        /// <summary>The board file this recording saved at the latest turn's start (null: none yet), and the log's place just after it (loading that board with this point goes on with the same log: ScenarioLoader.WithSavePoint).</summary>
+        public static string LastTurnBoard { get; private set; }
+        public static SavePoint LastTurnPoint { get; private set; }
 
         static void OnFinished(Unit u) {
             if (writer == null || u == null) return;

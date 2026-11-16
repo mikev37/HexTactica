@@ -335,30 +335,30 @@ public static partial class Scenarios {
         for (int i = 0; i < log.Count; i++) if (log[i].n != i) inOrder = false;
         int desyncs = Replay.Desyncs.Count - desyncsBefore;
 
-        // A copy the log no longer agrees with, and one whose board is not what it says: each is passed over, and the
-        // game is rebuilt from its board (as on a new device), still ending as it stands.
+        // An index the log no longer agrees with, and one naming a board that is not the one it says: each is passed
+        // over, and the game is rebuilt from its board (as on a new device), still ending as it stands.
         string folder = Path.Combine(Application.persistentDataPath, "multiplayer");
-        string txt = Directory.GetFiles(folder, "copy-bob-" + code + "-*.txt").FirstOrDefault(), dat = txt != null ? txt.Substring(0, txt.Length - 4) + ".dat" : null;
-        bool badCheck = false, badBoard = false;
+        string txt = Directory.GetFiles(folder, "index-bob-" + code + "-*.txt").FirstOrDefault();
+        bool badCheck = false, badBoard = false, noBoardCopies = Directory.GetFiles(folder, "copy-*").Length == 0;
         if (txt != null) {
             string kept = File.ReadAllText(txt);
-            File.WriteAllText(txt, kept.Substring(0, kept.IndexOf('\n') + 1) + "units: tampered");
+            string[] lines = kept.Split('\n');
+            File.WriteAllText(txt, string.Join("\n", lines.Take(5).ToArray()) + "\nunits: tampered");
             Device("bob", "Bob");
             MpOpen(code);
             badCheck = !MpSession.OpenedFromCopy && MpSession.OpenedFrom == 0 && GameLog.BoardCheck() == bobCheck && !MpSession.Diverged;
-            // (Opening wrote nothing new: the copy is put back as it was, then its board swapped for the starting one.)
-            File.WriteAllText(txt, kept);
-            KeyValuePair<int, string> start = Wait(Mp.Base(Wait(Mp.Load(code))));
-            File.WriteAllText(dat, start.Value);
+            // (Opening wrote no index: the old one is put back, naming the game's starting board in place of its turn's.)
+            lines[1] = Path.Combine(folder, Wait(Mp.Load(code)).code + "-" + Wait(Mp.Load(code)).epoch + "-base.dat");
+            File.WriteAllText(txt, string.Join("\n", lines));
             Device("bob", "Bob");
             MpOpen(code);
             badBoard = !MpSession.OpenedFromCopy && MpSession.OpenedFrom == 0 && GameLog.BoardCheck() == bobCheck && !MpSession.Diverged;
         }
         r.Add("opened from: " + string.Join(", ", opens.ToArray()) + "; each reopening from the device's own copy, only the other's turn played " + fromCopies
-              + "; a copy the log disagrees with passed over " + badCheck + ", one whose board is not as kept passed over " + badBoard);
+              + "; no board saved twice (only the game log's turn boards, and an index) " + noBoardCopies + "; an index the log disagrees with passed over " + badCheck + ", one naming the wrong board passed over " + badBoard);
         r.Add("rounds: bob caught up " + caughtUp + "/3, alice watched live " + watched + "/2; log " + log.Count + " entries in order " + inOrder + " (" + orders + " of orders: " + moves + " moves, " + attacks + " attacks; " + turns + " turn ends); desyncs " + desyncs + "; only the player to move may act, each sees through their own side " + gatesOk);
         detail = string.Join("; ", r.ToArray());
-        return ok && caughtUp == 3 && watched == 2 && inOrder && turns == 6 && moves > 0 && desyncs == 0 && gatesOk && fromCopies && badCheck && badBoard;
+        return ok && caughtUp == 3 && watched == 2 && inOrder && turns == 6 && moves > 0 && desyncs == 0 && gatesOk && fromCopies && badCheck && badBoard && noBoardCopies;
     }
 
     static string aliceCheck = "", bobCheck = "";
