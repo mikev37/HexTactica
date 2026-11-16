@@ -48,6 +48,10 @@ public class StrikeResult {
     /// <summary>The building on the target tile that took damage, and how much.</summary>
     public Building building;
     public int buildingDamage;
+    /// <summary>The screen shows what it did (the tile's new look, the building's, each unit's hit): Strikes.Reveal. Animation only.</summary>
+    [System.NonSerialized] public bool revealed;
+    /// <summary>The tiles of the blast whose look waits for Reveal (their ground, their building). Animation only.</summary>
+    [System.NonSerialized] public readonly List<HexTile> held = new List<HexTile>();
 }
 
 /// <summary>
@@ -429,6 +433,14 @@ public static class Strikes {
         StrikeResult r = new StrikeResult { strike = s };
         if (s == null || s.weapon == null || s.target == null) return r;
         r.hits.AddRange(Hits(s, t => t.RealOccupier));
+        // On screen the blast's tiles and buildings keep their look (the wear of the fight, the crater, the building's
+        // damage) until the explosion covers them (Reveal): a missile shows it when its Impact hides the ground.
+        if (!s.splash && GameController.gc != null && !GameController.gc.headless)
+            foreach (HexTile t in Blast(s.target, s.Radius)) {
+                t.HoldLook();
+                if (t.building != null) t.building.HoldCondition();
+                r.held.Add(t);
+            }
         foreach (StrikeHit h in r.hits) {
             h.unit.TakeStrike(h.damage);
             // A fight on a tile wears its ground (or the building on it), as any attack does.
@@ -485,17 +497,42 @@ public static class Strikes {
 
     static Vector3 PositionOf(HexTile t) { return t.unitPlacement != null ? t.unitPlacement.position : t.transform.position; }
 
-    /// <summary>The explosion where it landed and each unit's hit (its strength as it now is, its death), for whoever can see the tile.</summary>
+    /// <summary>A strike that landed at once (a shot, a splash): its explosion and what it did, together.</summary>
     internal static void ShowImpact(StrikeResult r) {
+        ShowBlast(r, false);
+        Reveal(r);
+    }
+
+    /// <summary>
+    /// The strike's explosion effect (strikeExplosion; for a shot, else its weaponImpact) and strikeSound where it landed,
+    /// for whoever can see the tile. <paramref name="arrival"/>: a missile's own Impact state is its explosion, so only
+    /// an explosion it was given is added and nothing is borrowed. Nothing for a splash.
+    /// </summary>
+    internal static void ShowBlast(StrikeResult r, bool arrival) {
         if (r == null || GameController.gc == null || GameController.gc.headless) return;
         Strike s = r.strike;
-        if (!s.splash && s.target != null && s.weapon != null) {
-            Player v = FogOfWar.Viewer;
-            bool seen = v == null || FogOfWar.TileVisible(v, s.target);
-            GameObject boom = s.weapon.strikeExplosion != null ? s.weapon.strikeExplosion : s.weapon.weaponImpact;
-            if (seen && boom != null) GameObject.Instantiate(boom, PositionOf(s.target), Quaternion.identity);
-            if (seen && s.weapon.strikeSound != null && GameSounds.On) GameSounds.Play(s.weapon.strikeSound);
+        if (s.splash || s.target == null || s.weapon == null) return;
+        Player v = FogOfWar.Viewer;
+        if (v != null && !FogOfWar.TileVisible(v, s.target)) return;
+        GameObject boom = s.weapon.strikeExplosion != null ? s.weapon.strikeExplosion : arrival ? null : s.weapon.weaponImpact;
+        if (boom != null) GameObject.Instantiate(boom, PositionOf(s.target), Quaternion.identity);
+        if (s.weapon.strikeSound != null && GameSounds.On) GameSounds.Play(s.weapon.strikeSound);
+    }
+
+    /// <summary>
+    /// The screen shows what the strike did, once: the tile's new ground (a crater), the building's damage, each unit's
+    /// hit (its strength as it now is, its death). For a missile, when its Impact explosion covers the tile
+    /// (Unit.StrikeCovered), else when Impact ends.
+    /// </summary>
+    internal static void Reveal(StrikeResult r) {
+        if (r == null || r.revealed) return;
+        r.revealed = true;
+        foreach (HexTile t in r.held) {
+            if (t == null) continue;
+            t.ShowLook();
+            if (t.building != null) t.building.ShowCondition();
         }
+        r.held.Clear();
         foreach (StrikeHit h in r.hits) if (h.unit != null) h.unit.ShowHit();
     }
 }

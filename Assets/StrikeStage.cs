@@ -7,8 +7,13 @@ using UnityEngine;
 ///
 ///   - Launched, on the state its Launch trigger plays: it has left the screen; the unit is removed.
 ///   - Landed, on the state its Fall trigger plays (a copy of the unit, falling onto the tile its strike lands on): it has
-///     hit the ground; the explosion and the hits are shown, and its Impact trigger is set.
-///   - Impact Done, on the state its Impact trigger plays: the copy is removed.
+///     hit the ground; its strikeSound plays and its Impact trigger is set.
+///   - Impact Done, on the state its Impact trigger plays (the explosion, big enough to hide the tile): the copy is
+///     removed. The tile's new ground, the building's damage and the units' hits appear at the clip's StrikeCovered
+///     animation event (Unit.StrikeCovered), or here if the clip has none.
+///
+/// The unit's Flying bool is true from its launch on (the pad unit as Launch is set; the copy from its first frame), so
+/// its animator can keep it out of on-the-pad states.
 ///
 /// A unit whose controller has no such trigger skips that stage at once (Unit.HasAnimatorParameter).
 /// </summary>

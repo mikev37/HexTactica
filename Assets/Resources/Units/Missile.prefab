@@ -111,7 +111,7 @@ MonoBehaviour:
   strikeRevealRadius: 2
   craterTerrain: {fileID: 11400000, guid: 572719be81234fee8dc2b775c8662a57, type: 2}
   buildingDamage: 5
-  strikeExplosion: {fileID: 3652074506526222895, guid: be06207489c25d44583186eb7bbb18a3, type: 3}
+  strikeExplosion: {fileID: 0}
   strikeSound: {fileID: 0}
   launchSeenWithin: 10
   launchRevealRadius: 1

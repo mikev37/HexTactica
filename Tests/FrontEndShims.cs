@@ -88,15 +88,12 @@ namespace UnityEditor.Events {
 }
 namespace UnityEngine {
     // (The campaign's screens: stars and flags that pop along a curve, a map that zooms.)
-    public struct Keyframe { public float time, value; public Keyframe(float t, float v) { time = t; value = v; } public Keyframe(float t, float v, float inTangent, float outTangent) { time = t; value = v; } }
+    public struct Keyframe { public float time, value; public Keyframe(float t, float v) { time = t; value = v; } }
     public class WaitForSecondsRealtime { public WaitForSecondsRealtime(float seconds) { } }
     public class AnimationCurve {
         public AnimationCurve(params Keyframe[] keys) { }
         public float Evaluate(float t) { return t; }
         public static AnimationCurve EaseInOut(float t0, float v0, float t1, float v1) { return new AnimationCurve(); }
-        public static AnimationCurve Constant(float t0, float t1, float v) { return new AnimationCurve(); }
-        public int length { get { return 0; } }
-        public int AddKey(Keyframe k) { return 0; }
     }
     [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
     public class RequireComponent : System.Attribute { public RequireComponent(System.Type t) { } }

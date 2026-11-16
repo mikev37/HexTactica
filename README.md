@@ -80,16 +80,23 @@ its art arrives.
 - **Aiming.** Select it, click a tile in range: the target and the tiles its blast reaches show the Threat sprite
   (`Sprites/UI/Threat`, `HexTileUIData.strike`), and every unit you know of on them shows what it would lose (as things
   stand now: a delayed strike hits what is there when it lands). Click the target again to fire.
-- **Its animator** is its own, `Animations/Missile/Missile.controller`: the units' shared controller (idle, fire, death)
-  plus three triggers and states, **Launch** (it climbs off the screen where it stood), **Fall** (at its side's next
-  turn a copy of it falls onto the target) and **Impact** (after the explosion). Each of those states carries a
-  **StrikeStage** behaviour (Launched, Landed, Impact Done): the game waits for the state to end, so the clips alone set
-  the timing. The explosion is the unit's *Strike Explosion* (the Missile: `Animations/Explosion`, a placeholder), shown
-  when Fall ends. Any unit can use this: give its controller the triggers and states; a controller without one skips
-  that stage. The controller and its three placeholder clips (`Missile Launch/Fall/Impact.anim`) are made by
-  `Editor/MissileAnimator.cs` the first time the project opens, and the Missile prefab is switched to it (only if it
-  still has the shared controller). After that they are ordinary assets to edit; *HexTactica ▸ Units ▸ Recreate Missile
-  Animator* puts the defaults back (it asks first).
+- **Its animator** is authored by hand (no code makes or edits it). What the code sets on it:
+  - **Started** (bool): true on its first frame, as on every unit.
+  - **Flying** (bool): true as Launch is set on the pad unit, and on the arrival copy before its first frame; never
+    set back. Keep on-the-pad states (idle) behind *Flying false*.
+  - **Launch** (trigger): on the pad, as it is fired. Its state carries **StrikeStage** *Launched*: when it ends, the
+    unit is removed.
+  - **Fall** (trigger): at its side's next turn start, on a copy made from the prefab at the target tile. Its state
+    carries StrikeStage *Landed*: when it ends, the strike sound plays and Impact is set.
+  - **Impact** (trigger): the explosion, big enough to hide the tile. An optional animation event **StrikeCovered** on
+    its clip is the moment the crater, the building's damage and the units' hits appear (until then the blast's tiles
+    and buildings keep their old look); without it they appear when the state ends. Its state carries StrikeStage
+    *Impact Done*: when it ends, the copy is removed.
+  - **Die** (trigger): killed in its silo, as any unit.
+  A missing trigger skips its stage at once; a stage still playing after 15 s is cut (`Unit.StageTimeout`). The code
+  only places the root (the pad, then the target tile) and never moves, flips or rotates it: climbing off screen,
+  coming in from above and turning nose-down are the clips' work, on child objects. *Strike Explosion* is an optional
+  extra effect (empty on the Missile).
 - **Fog of war.** Once launched it is off the board (its tile is free: the silo can build another); while its launch
   plays it is shown to whoever sees its launch tile, and its fall to whoever sees the target.
 - **Launch warning.** A side with a unit within 10 tiles of the launch (or sight of it) sees the launch tile and the

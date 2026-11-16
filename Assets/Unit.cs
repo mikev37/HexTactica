@@ -158,7 +158,7 @@ public class Unit : MonoBehaviour
     public TerrainData craterTerrain;
     [Tooltip("Damage its ground or ballistic attack does to a building on the tile it lands on (Building.health; any attack on a unit standing on a building does 1).")]
     public int buildingDamage;
-    [Tooltip("What its ground or ballistic attack shows where it lands (an explosion). Empty: its weapon impact.")]
+    [Tooltip("An extra effect its ground or ballistic attack shows where it lands. Empty: a shot shows its weapon impact; a unit that self-destructs as a ballistic strike shows nothing extra, since its own animator's Impact state is the explosion.")]
     [LooksOnly] public GameObject strikeExplosion;
     [Tooltip("Played where its ground or ballistic attack lands.")]
     [LooksOnly] public AudioClip strikeSound;
@@ -215,6 +215,8 @@ public class Unit : MonoBehaviour
     /// off every list and off its tile, so nothing reads it afterwards.
     /// </summary>
     void OnDestroy() {
+        // A strike's arrival removed before it showed what it did (its timeout, the scene closing): show it now.
+        if (arriving != null) { StrikeResult r = arriving; arriving = null; Strikes.Reveal(r); }
         if (dead) return;
         dead = true;
         if (owner != null && owner.units != null) owner.units.Remove(this);
@@ -1298,6 +1300,7 @@ public class Unit : MonoBehaviour
             ShownAt = pad;
             Strikes.Performing(this);
             PlaySound(fireSound);
+            SetAnimatorBool("Flying", true);
             PlayStage("Launch", StrikeStage.Stage.Launched);
         } else expendAfterShot = true;
     }
@@ -1319,19 +1322,34 @@ public class Unit : MonoBehaviour
                 Destroy(gameObject);
                 return;
             case StrikeStage.Stage.Landed: {
-                if (arriving == null) return;
-                StrikeResult r = arriving;
-                arriving = null;
-                Strikes.ShowImpact(r);
+                if (arriving == null || landed) return;
+                landed = true;
+                Strikes.ShowBlast(arriving, true);
                 PlayStage("Impact", StrikeStage.Stage.ImpactDone);
                 return;
             }
             case StrikeStage.Stage.ImpactDone:
                 if (ShownAt == null) return;
                 ShownAt = null;
+                StrikeCovered();   // (if its Impact clip has no StrikeCovered event)
                 Destroy(gameObject);
                 return;
         }
+    }
+
+    /// <summary>The copy reached the ground (its Fall state ended): its Impact plays. Animation only.</summary>
+    [System.NonSerialized] bool landed;
+
+    /// <summary>
+    /// Animation event for the Impact clip, at the moment its explosion hides the tile: the tile's new ground, the
+    /// building's damage and the units' hits appear (Strikes.Reveal). Without the event they appear when Impact ends.
+    /// Does nothing before the copy has landed, or twice.
+    /// </summary>
+    public void StrikeCovered() {
+        if (arriving == null || !landed) return;
+        StrikeResult r = arriving;
+        arriving = null;
+        Strikes.Reveal(r);
     }
 
     /// <summary>Hit by a strike (Strikes.Resolve): the strength is lost now, as in any attack; the screen shows it when the strike is seen to land (ShowHit).</summary>
@@ -1383,6 +1401,7 @@ public class Unit : MonoBehaviour
         arriving = r;
         ShownAt = r.strike.target;
         Strikes.Performing(this);
+        SetAnimatorBool("Flying", true);
         PlayStage("Fall", StrikeStage.Stage.Landed);
     }
 
