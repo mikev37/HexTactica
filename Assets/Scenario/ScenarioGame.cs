@@ -235,6 +235,26 @@ public static class ScenarioGame {
         return true;
     }
 
+    /// <summary>
+    /// A scripted strike, as the player orders one: <paramref name="u"/> (a unit that targets ground, or whose attack
+    /// lands later) strikes <paramref name="target"/> from where it stands, and has then used its turn. False if it did
+    /// not (it has used its turn, it is not such a unit, or the tile is out of its range).
+    /// </summary>
+    public static bool Strike(Unit u, HexTile target) {
+        if (u == null || u.tile == null || u.RealStrength <= 0 || !u.active || target == null) return false;
+        if (!Strikes.Order(u, target)) return false;
+        u.FinishActive();
+        return true;
+    }
+
+    /// <summary>Is a strike (whose, by what kind of unit, aimed where) the one a trigger means?</summary>
+    public static bool MatchesStrike(Strike s, UnitFilter f) {
+        if (s == null || !SideIs(s.owner, f.side)) return false;
+        if (!KindIs(s.kind, s.weapon != null ? GameController.DisplayName(s.weapon, s.owner) : s.kind, f.kind)) return false;
+        if (f.inArea && (s.target == null || Distance(s.target.x, s.target.y, f.x, f.y) > Mathf.Max(0, f.radius))) return false;
+        return true;
+    }
+
     public static int Money(long side) { Player p = Resolve(side); return p != null ? p.money : 0; }
 
     /// <summary>Out of supplies: a unit that carries them and has none left loses strength every turn.</summary>

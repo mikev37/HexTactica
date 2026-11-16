@@ -33,6 +33,8 @@ static class TriggerFields {
             case TriggerCondition.UnitsAtMost:
             case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value" };
             case TriggerCondition.UnitSpotted: return new[] { "SeenBy", "Side", "UnitKind", "UnitTag", "InArea", "Count" };
+            case TriggerCondition.StrikeLaunched:
+            case TriggerCondition.StrikeLanded: return new[] { "Side", "UnitKind", "InArea", "Count" };
             case TriggerCondition.BuildingCaptured:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.BuildingOwned: return new[] { "Side", "BuildingKind", "InArea", "Count" };
@@ -90,6 +92,7 @@ static class TriggerFields {
             case TriggerActionType.Dialogue: return new[] { "Lines" };
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
             case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TileX", "TileY");
+            case TriggerActionType.StrikeTile: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY" };
             case TriggerActionType.CameraFrameBoard: return new string[0];
             case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
             case TriggerActionType.SetPurchases:
@@ -128,7 +131,7 @@ static class TriggerFields {
                 if (a == TriggerActionType.SpawnUnit) return "For";
                 if (a == TriggerActionType.GiveMoney) return "To";
                 return "New Owner";
-            case "UnitSide": return a == TriggerActionType.OrderUnits ? "Whose Units Move" : "Whose Units";
+            case "UnitSide": return a == TriggerActionType.OrderUnits ? "Whose Units Move" : a == TriggerActionType.StrikeTile ? "Whose Units Strike" : "Whose Units";
             case "AtUnit": return a == TriggerActionType.ShowMarker ? "On Unit (Follows It)" : "On Unit";
             case "Target": return "Attack Unit";
             case "TargetSide": return "Or Nearest Of";
@@ -190,6 +193,8 @@ static class TriggerFields {
             case TriggerCondition.UnitUnloaded: return units + " gets out of a transport" + times;
             case TriggerCondition.UnitSpent: return units + " has used its turn";
             case TriggerCondition.UnitSpotted: return Side(t.SeenBy) + " spots " + units + times;
+            case TriggerCondition.StrikeLaunched: return units + " launches a strike" + times;
+            case TriggerCondition.StrikeLanded: return "a strike by " + units + " lands" + times;
             case TriggerCondition.BuildingOwned: return building + " held by " + Side(t.Side);
             case TriggerCondition.AfterTrigger: return "after '" + t.AfterTrigger + "'";
             case TriggerCondition.AllOf: return "all of " + Names(t.Parts);
@@ -215,6 +220,7 @@ static class TriggerFields {
             }
             case TriggerActionType.CameraFocus: return "Camera to " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (a.Zoom > 0 ? ", zoom " + a.Zoom : "");
             case TriggerActionType.OrderUnits: return units + (string.IsNullOrEmpty(a.Target) ? (a.TargetSide != TriggerSide.Any ? " attack the nearest of " + Side(a.TargetSide) + "'s units" : " move toward " + at) : " attack '" + a.Target + "'");
+            case TriggerActionType.StrikeTile: return Units(Side(a.UnitSide) + "'s", a.UnitKind, a.UnitTag, false, 0, 0, 0) + " strike " + at;
             case TriggerActionType.CameraFrameBoard: return "Camera on the whole board";
             case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";

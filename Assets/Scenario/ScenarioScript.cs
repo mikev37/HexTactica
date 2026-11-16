@@ -84,6 +84,8 @@ public class ScenarioScript : MonoBehaviour {
         HexTile.BuildingOpened += OnBuildingOpened;
         Transporting.Boarded += OnBoarded;
         Transporting.Unloaded += OnUnloaded;
+        Strikes.Fired += OnStrikeFired;
+        Strikes.Landed += OnStrikeLanded;
     }
 
     void OnDestroy() {
@@ -98,6 +100,8 @@ public class ScenarioScript : MonoBehaviour {
             HexTile.BuildingOpened -= OnBuildingOpened;
             Transporting.Boarded -= OnBoarded;
             Transporting.Unloaded -= OnUnloaded;
+            Strikes.Fired -= OnStrikeFired;
+            Strikes.Landed -= OnStrikeLanded;
             registered = false;
         }
         if (Instance == this) Instance = null;
@@ -186,6 +190,8 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitSpotted:
             case TriggerCondition.UnitBoarded:
             case TriggerCondition.UnitUnloaded:
+            case TriggerCondition.StrikeLaunched:
+            case TriggerCondition.StrikeLanded:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
             case TriggerCondition.TurnOver:
@@ -355,6 +361,8 @@ public class ScenarioScript : MonoBehaviour {
 
     void OnDied(Unit u) {
         if (!Counting || u == null) return;
+        // Expended by its own attack (a missile launched): gone from the board, not killed.
+        if (Unit.Expending) { seen.Remove(u); return; }
         HexTile at = u.RealTile;
         Count(TriggerCondition.UnitKilled, t => ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)));
         // Dying is being damaged down to nothing (unless the frame already saw it at 0).
@@ -391,6 +399,16 @@ public class ScenarioScript : MonoBehaviour {
     void OnUnloaded(Unit transport, Unit cargo, HexTile onto) {
         if (!Counting || cargo == null) return;
         Count(TriggerCondition.UnitUnloaded, t => ScenarioGame.MatchesAt(cargo, onto, UnitFilter.Of(t)));
+    }
+
+    void OnStrikeFired(Unit u, Strike s, bool delayed) {
+        if (!Counting || s == null) return;
+        Count(TriggerCondition.StrikeLaunched, t => ScenarioGame.MatchesStrike(s, UnitFilter.Of(t)));
+    }
+
+    void OnStrikeLanded(StrikeResult r) {
+        if (!Counting || r == null || r.strike == null || r.strike.splash) return;   // (the splash of a shot is that shot's)
+        Count(TriggerCondition.StrikeLanded, t => ScenarioGame.MatchesStrike(r.strike, UnitFilter.Of(t)));
     }
 
     void OnBuildingOpened(Building b) {
@@ -522,6 +540,19 @@ public class ScenarioScript : MonoBehaviour {
                     if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY)))
                         Warn(t, "Order Units: " + u.name + " could not move or attack (it has used its turn, or nothing is in reach).");
                 }
+                BoardChanged();
+                return;
+            }
+            case TriggerActionType.StrikeTile: {
+                // (The tile is the target here, not an area the units must be in.)
+                UnitFilter who = UnitFilter.Of(a); who.inArea = false;
+                List<Unit> strikers = ScenarioGame.Units(who);
+                HexTile aim = ScenarioGame.Tile(a.TileX, a.TileY);
+                if (aim == null) { Warn(t, "Strike Tile: no tile (" + a.TileX + "," + a.TileY + ")."); return; }
+                int struck = 0;
+                foreach (Unit u in strikers) if (u.StrikesArea && ScenarioGame.Strike(u, aim)) struck++;
+                if (struck == 0) Warn(t, "Strike Tile: no unit of " + ScenarioGame.SideName(a.UnitSide) + (string.IsNullOrEmpty(a.UnitKind) ? "" : " (" + a.UnitKind + ")")
+                    + " could strike (" + a.TileX + "," + a.TileY + "): none that strikes ground or from afar has the tile in range and its turn left.");
                 BoardChanged();
                 return;
             }

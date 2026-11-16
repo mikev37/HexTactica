@@ -866,12 +866,14 @@ public static partial class Scenarios {
                  Put("Hauler", a, -1, 1); Unit m = Put("Marine", a, -2, 1); m.supplies = 2; m.Strength = 4; Put("Grunt", o, 4, 3); },
              "Cargo gets what its transport gets: aboard the APC inside supply a grunt is healed; a marine (strength 4, 2 supplies) aboard a hauler at sea is resupplied as on supplied ground while the ship has supplies of its own (healed a strength, restocked), and starves once the ship's are gone.");
         n += ExportScriptChecks(make);
+        n += ExportStrikeChecks(make);
         make("attrition-rule-amphibious", "attritionAmphibious", (a, o) => { water(-1, 2, -7, 7); Put("Marine", a, -2, 1); Put("Grunt", a, -2, 2); Put("Grunt", o, 5, 0); },
              "A Marine can enter water beside land but not open water away from it; a Grunt cannot enter water.");
         return n;
     }
 
     static bool RuleCheck(ScenarioFile.Loaded l, out string detail) {
+        if (l.meta.Get("check", "") == "scriptStrike" || l.meta.Get("check", "").StartsWith("strike") || l.meta.Get("check", "").StartsWith("aiStrike")) return StrikeCheck(l, out detail);   // strikes (StrikeChecks.cs)
         if (l.meta.Get("check", "").StartsWith("script")) return ScriptCheck(l, out detail);   // scenario triggers (ScenarioTriggerChecks.cs)
         GameController gc = Rig.gc;
         Player a = l.ai, o = l.other;

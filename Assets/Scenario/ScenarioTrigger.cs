@@ -75,6 +75,10 @@ public enum TriggerCondition {
     UnitBoarded = 30,
     /// <summary>A unit matching the unit filter has got out of a transport (In Area: the tile it got out onto within the area): Count times.</summary>
     UnitUnloaded = 31,
+    /// <summary>A unit of Side (of Unit Kind) has ordered a strike (Strikes: a missile launched, a barrage fired on ground); In Area: aimed at a tile within the area: Count times.</summary>
+    StrikeLaunched = 32,
+    /// <summary>A strike by a unit of Side (of Unit Kind) has landed (a missile arriving, a barrage); In Area: on a tile within the area: Count times.</summary>
+    StrikeLanded = 33,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -137,6 +141,8 @@ public enum TriggerActionType {
     SetPurchases = 27,
     /// <summary>Fog of war is switched on or off (On) for the rest of the game.</summary>
     SetFog = 28,
+    /// <summary>The units matching the unit filter that strike (they target ground, or their attack lands later: Strikes) strike the tile, if it is in their range: at once, or launched to land when their side's next turn starts. Each then has used its turn.</summary>
+    StrikeTile = 29,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>

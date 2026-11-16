@@ -65,6 +65,7 @@ namespace HexTactica.Harness {
                 UnitController.uc.units.Clear();
             }
             if (BuildingController.bc != null) BuildingController.bc.Clear();
+            Strikes.Clear();   // nothing in the air on a new board (the file's own are loaded below)
 
             if (GameController.gc != null) {
                 GameController.gc.gameOver = false;
@@ -168,6 +169,10 @@ namespace HexTactica.Harness {
 
         static bool Finish(JSONObject obj, string path, string redKind) {
 
+            // Strikes in the air when the file was saved (a missile launched, not yet landed), and the ground one that
+            // landed that turn lit up (after the fog was reset, above).
+            LoadStrikes(obj);
+
             // The scenario's triggers (and, in a save, how far they got): replace the last board's.
             ScenarioScript.LoadFromBoard(obj, path);
 
@@ -182,6 +187,21 @@ namespace HexTactica.Harness {
 
             if (Loaded != null) Loaded(path);
             return true;
+        }
+
+        /// <summary>The file's strikes in the air (Strikes.FileKey) and lit ground (Strikes.LitKey), put back as they were.</summary>
+        static void LoadStrikes(JSONObject obj) {
+            JSONObject strikes = obj.GetField(Strikes.FileKey);
+            if (strikes != null && strikes.list != null)
+                foreach (JSONObject sj in strikes.list)
+                    if (sj != null && sj.type == JSONObject.Type.Object) JsonUtility.FromJson<StrikeData>(sj.Print()).Load();
+            JSONObject lit = obj.GetField(Strikes.LitKey);
+            if (lit != null && lit.list != null)
+                foreach (JSONObject lj in lit.list) {
+                    if (lj == null || lj.type != JSONObject.Type.Object) continue;
+                    JSONObject o = lj.GetField("owner_id"), x = lj.GetField("x"), y = lj.GetField("y"), r = lj.GetField("radius");
+                    if (o != null && x != null && y != null && r != null) Strikes.LoadLit(o.longValue, (int)x.intValue, (int)y.intValue, (int)r.intValue);
+                }
         }
 
         /// <summary>A file was loaded onto the board (its path), from anywhere: the menus, the map editor, HexTactica ▸ Load Scenario File. Screens that show the board's settings (the map editor's sides) read them again.</summary>

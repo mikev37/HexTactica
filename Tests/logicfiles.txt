@@ -9,6 +9,8 @@ SupplyPoint.cs
 GameController.cs
 GameAssets.cs
 ThreatReach.cs
+Strikes.cs
+StrikeFlight.cs
 UnitController.cs
 AIPlayer.cs
 GoTo.cs
@@ -72,6 +74,7 @@ UI/SpriteLayout.cs
 ColorObjectUnit.cs
 UI/SupplyOverlay.cs
 AI/AIScore.cs
+AI/AIStrike.cs
 Resources/Units/LocomotionInference.cs
 Harness/LegacyAI.cs
 AI/AICoordinator.cs

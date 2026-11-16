@@ -20,6 +20,7 @@ namespace HexTactica.Testing {
         public static void NewGame(int radius) {
             Building.all.Clear();
             FogOfWar.Reset();
+            Strikes.Clear();
 
             gc = New<GameController>();
             gc.players = new List<Player>();

@@ -175,6 +175,8 @@ public static class ScenarioFile {
                 u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, prefab, id, u.supplies, u.fuel, u.ammo, prefab, carrier));
         }
         sb.Append("\n]");
+        // Strikes in the air, as the game's own save writes them.
+        sb.Append(Strikes.SaveJson());
         // A scenario script (its triggers), as the game's own save writes it (LevelEditor.BoardJson).
         if (ScriptToSave != null) { sb.Append(",\n\"").Append(ScenarioScript.FileKey).Append("\":").Append(ScriptToSave.Print(true)); ScriptToSave = null; }
         sb.Append("\n}\n");
@@ -347,6 +349,17 @@ public static class ScenarioFile {
         }
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
+        // Strikes in the air and ground lit up, as the game's loader puts them back (ScenarioLoader.LoadStrikes).
+        foreach (Dictionary<string, string> s in Array(json, Strikes.FileKey)) {
+            Func<string, int> n = k => { int v; return s.ContainsKey(k) && int.TryParse(s[k], out v) ? v : 0; };
+            new StrikeData { owner_id = s.ContainsKey("owner_id") ? long.Parse(s["owner_id"]) : -1, kind = s.ContainsKey("kind") ? s["kind"] : "", strength = n("strength"), veterancy = n("veterancy"),
+                             attackBonus = n("attackBonus"), fromX = n("fromX"), fromY = n("fromY"), x = n("x"), y = n("y"), day = n("day"),
+                             seenBy = s.ContainsKey("seenBy") ? s["seenBy"] : "" }.Load();
+        }
+        foreach (Dictionary<string, string> s in Array(json, Strikes.LitKey)) {
+            Func<string, int> n = k => { int v; return s.ContainsKey(k) && int.TryParse(s[k], out v) ? v : 0; };
+            Strikes.LoadLit(s.ContainsKey("owner_id") ? long.Parse(s["owner_id"]) : -1, n("x"), n("y"), n("radius"));
+        }
         // The scenario's script (its triggers), as the game loads it (ScenarioLoader); none: no triggers.
         ScenarioScript.LoadFromBoard(json.Contains("\"" + ScenarioScript.FileKey + "\"") ? new Defective.JSON.JSONObject(json) : null, path);
         return l;

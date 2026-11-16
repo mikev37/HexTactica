@@ -1184,6 +1184,10 @@ public class AIPlayer : MonoBehaviour, IAIController {
         // Put down this turn to strike: it makes the strike its transport planned for it.
         AIAction? done = AIAssault.CarryOut(unit, map); if (done.HasValue) return done.Value;
         AIAction a = DecideForUnit(unit);
+        // A unit spent by its strike is never spent on an ordinary attack the tactical choice made (AIStrike weighs its strikes).
+        if (unit.StrikesArea && unit.selfDestructs && (a.kind == AIActionKind.Attack || a.kind == AIActionKind.MoveAndAttack))
+            a = a.kind == AIActionKind.MoveAndAttack && a.destination != null && a.destination != unit.tile
+                ? AIAction.Move(unit, a.destination, a.score, a.reason + " (holds its strike)") : AIAction.Wait(unit, "holds its strike");
         // Riding to the assault: getting in a transport is weighed against what the unit would do on foot.
         a = BoardOrNot(unit, a);
         // A decision path that does not go through the tactical choice (which already leaves out tiles
@@ -1462,6 +1466,14 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (unit == null) return AIAction.Wait(null, "null");
         // A carrier: it holds for the aircraft landing on it, or (empty) sails toward ours (AIAir.DecideCarrier).
         if (AIAir.IsCarrier(unit)) { AIAction? ca = AIAir.DecideCarrier(unit, map); if (ca.HasValue) return ca.Value; }
+        // A unit that strikes ground or from afar (Strikes): the best tile to strike, if one is worth it (AIStrike).
+        if (unit.StrikesArea && map != null) {
+            AIAction? strike = AIStrike.Decide(unit, map);
+            if (strike.HasValue) return strike.Value;
+            // A unit spent by its strike that sees nothing worth it holds rather than strike at whatever is near
+            // (a unit that cannot move has nothing else to do).
+            if (unit.selfDestructs && unit.moveRange <= 0) return AIAction.Wait(unit, "holds its strike: nothing worth " + AIStrike.SpendShare.ToString("0%") + " of it in range");
+        }
         AIWorld.NoAssist = noAssist.Count > 0 ? noAssist : null;
         AITactical.Intents = intents;
         AITactical.Assignments = assignments;

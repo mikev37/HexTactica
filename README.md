@@ -48,6 +48,54 @@ count them in its forecasts or estimates of the enemy, and knows its units are f
 with its allies. Where allies come into the code: `Player.Allied/Friendly/Hostile`; tests `rule-allies`,
 `ai-allies-hold-fire`, `ai-allies-battle` (Blue and Green, a third side, against Red).
 
+## Strikes: missiles, barrages, bombs
+
+Four attributes on a unit (its prefab's Unit, header *Strike*), each on or off by itself, so a unit can have any mix:
+
+| Attribute | What it does |
+|---|---|
+| **Targets Ground** | It attacks a tile, not a unit: any tile in its range and line of fire, whatever is on it, seen or not. |
+| **Blast Radius** (0-3) | Its attack also hits every unit within this many tiles of the target (1: the seven tiles), friend and foe, each with that unit's ordinary damage (`Unit.DamageFrom`, the one formula), with no answer and no retreat. On a unit that aims at units and fires at once, it is the splash around its ordinary shot. |
+| **Ballistic** | Its attack lands at the start of its owner's next turn, on the tile it was aimed at, on whatever is there then. An enemy side knows it is coming only if it saw the unit fire (it saw the launch tile); none knows where it is aimed. |
+| **Self Destructs** | It is expended by its attack (not killed: no loss is counted or logged). With Ballistic it leaves the board as it is launched, and there is nothing left to attack. |
+
+Also under *Strike*: **Strike Reveal Radius** (its owner sees that far round the target until the end of the turn it
+lands), **Crater Terrain** (the target tile becomes this: land only; water stays water, a bridge falls as bridges do, a
+building's tile is the building's), **Building Damage** (to a building on the target tile), and for looks only
+**Strike Explosion**, **Strike Sound**, **Launch Seconds**, **Land Seconds**.
+
+**The Missile** (`Resources/Units/Missile`) has all four: 30,000 gold, built at the Missile Silo, cannot move (so a silo
+holds one at a time), range 2-10, blast radius 1, reveals 2, leaves a **Crater** (`Resources/Tiles/Crater`, also
+paintable in the map editor). Its look is placeholder art (`Sprites/Units/Missile`); the crater uses `craters_0` until
+its art arrives.
+
+- **Aiming.** Select it, click a tile in range: the target and the tiles its blast reaches show the Threat sprite
+  (`Sprites/UI/Threat`, `HexTileUIData.strike`), and every unit you know of on them shows what it would lose (as things
+  stand now: a delayed strike hits what is there when it lands). Click the target again to fire.
+- **Its animator** is `StrikeFlight` on the prefab: on launch it climbs off the top of the screen; at its side's next turn
+  a copy falls from above onto the target, then the explosion plays. Motion is in code, so it plays with no clips; an
+  Animator with a `Launch` or `Land` trigger is told too, for art on top. The explosion is *Strike Explosion*, else the
+  unit's weapon impact (placeholder until the large explosion arrives).
+- **Saves, the game log and replays.** A strike in the air is in every save (`"strikes"`, and `"lit"` for ground lit up
+  that turn): the in-game save, the map editor's, the game log's turn snapshots. The log has `Blue Missile (-4,0)
+  launches at (3,0)` (an action, which a replay plays again) and `Blue Missile strike lands on (3,0): Red Tank (3,0) -6
+  destroyed, ...; ground Grassland destroyed` (worked out again in a replay, not played from the line). The post-game
+  record credits its kills to the Missile.
+- **Scenario scripts** have Strike Tile, Strike Launched and Strike Landed (`Assets/Scenario/README.md`); a Missile is
+  placed like any unit in the map editor or by Spawn Unit.
+- **The AI** (`AI/AIStrike.cs`) aims where its strike destroys the most enemy material, by what its side knows, less its
+  own and its allies' units under the blast; a unit that can move counts half against a delayed strike. A self-destructing
+  unit fires only for at least 40% of its own worth (5% when it is about to be destroyed anyway); otherwise it holds.
+  It learns of strikes only as a player does (`Strikes.KnownTo`): its own, target and all; an enemy's only if it saw the
+  launch, and then only who fired, from where and with what, never the target. A launch it did not see changes nothing
+  (test `ai-strike-unseen` plays move for move as with nothing in the air). Against one it saw, each unit's danger is the
+  share of its side's units in reach that one blast around its tile would also catch (part of `AIMap.ExpectedLoss`), so
+  crowds spread out or leave reach. It never walks under its own strike. AI code may not read the list of every strike
+  in the air (`Strikes.InFlight`) or the strike events: test `ai-strike-blind` checks the AI's source for it. It buys missiles by the purchase rules' generic
+  value for a unit that fires from afar without moving (about 12,000 for the 30,000 Missile).
+- Tests: `strike-missile`, `strike-attributes`, `strike-save`, `strike-log-replay`, `script-strike`, `ai-strike-fire`,
+  `ai-strike-spread`, `ai-strike-blind` (`Tests/StrikeChecks.cs`; `ONLY=rules NAME=strike bash Tests/run.sh Assets`).
+
 ## Supply carried by transports, ships and aircraft
 
 A supply unit aboard something links to its side's network through what carries it (SupplyNetwork.CarriedLinked):

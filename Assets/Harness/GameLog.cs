@@ -87,6 +87,8 @@ namespace HexTactica.Harness {
             GameController.Resigned += OnResigned;
             Transporting.Boarded += OnBoarded;
             Transporting.Unloaded += OnUnloaded;
+            Strikes.Fired += OnStrikeFired;
+            Strikes.Landed += OnStrikeLanded;
             AIPlayer.Trace = Line;
             AITactical.DecisionLog = Line;
             AISupplyPlanner.DebugLog = Line;
@@ -179,6 +181,8 @@ namespace HexTactica.Harness {
             GameController.Resigned -= OnResigned;
             Transporting.Boarded -= OnBoarded;
             Transporting.Unloaded -= OnUnloaded;
+            Strikes.Fired -= OnStrikeFired;
+            Strikes.Landed -= OnStrikeLanded;
             if (AIPlayer.Trace == (Action<string>)Line) AIPlayer.Trace = null;
             if (AITactical.DecisionLog == (Action<string>)Line) AITactical.DecisionLog = null;
             if (AISupplyPlanner.DebugLog == (Action<string>)Line) AISupplyPlanner.DebugLog = null;
@@ -319,9 +323,25 @@ namespace HexTactica.Harness {
         /// <summary>Every unit lost, and how: out of fuel, aboard a transport that went down, starved in upkeep, or in combat (the attack line after it says by whom).</summary>
         static void OnDied(Unit u) {
             if (writer == null || u == null) return;
+            // Expended by its own attack (a missile launched): not a loss; its launch or attack line says where it went.
+            if (Unit.Expending) { lastSeen.Remove(u); return; }
             string cause = ditching.Remove(u) ? Lines.Fuel : u.owner != null && u.owner.eliminated ? Lines.Eliminated
                          : u.trasnporter != null ? Lines.Aboard : Player.InUpkeep ? Lines.Supply : Lines.Combat;
             Line(Lines.Dies(u, cause));
+        }
+
+        static void OnStrikeFired(Unit u, Strike s, bool delayed) {
+            if (writer == null || u == null || s == null) return;
+            // A move and strike: the move first (the unit only "finishes" after).
+            FlushMove(u, s.from);
+            Line(Lines.StrikeFired(u, s.from, s.target, delayed));
+        }
+
+        static void OnStrikeLanded(StrikeResult r) {
+            if (writer == null || r == null || r.strike == null) return;
+            Line(Lines.StrikeLanded(r));
+            // A hit moves nobody; a unit destroyed is off the board.
+            if (GameController.gc != null && GameController.gc.gameOver) GameOver();
         }
 
         static void OnDitch(Unit u) {
@@ -530,7 +550,7 @@ namespace HexTactica.Harness {
 
             List<Unit> units = new List<Unit>();
             foreach (Unit u in AllUnits()) if (u != null && u.tile != null && u.Strength > 0) units.Add(u);
-            if (units.Count == 0) { sb.Append(",\n\"units\":[]\n}\n"); return sb.ToString(); }   // (the JSON reader does not take "[\n]")
+            if (units.Count == 0) { sb.Append(",\n\"units\":[]").Append(Strikes.SaveJson()).Append("\n}\n"); return sb.ToString(); }   // (the JSON reader does not take "[\n]")
             sb.Append(",\n\"units\":[");
             first = true;
             foreach (Unit u in units) {
@@ -543,7 +563,10 @@ namespace HexTactica.Harness {
                     u.tile.x, u.tile.y, u.tile.z, u.Strength, u.Veterancy, Q(prefab), u.owner != null ? u.owner.id : 0,
                     u.supplies, u.fuel, u.ammo, Q(prefab), carrier));
             }
-            sb.Append("\n]\n}\n");
+            sb.Append("\n]");
+            // Strikes in the air and ground lit up: a replay's board of this turn has them, so they land in it as they did.
+            sb.Append(Strikes.SaveJson());
+            sb.Append("\n}\n");
             return sb.ToString();
         }
     }
