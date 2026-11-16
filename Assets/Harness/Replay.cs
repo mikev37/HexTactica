@@ -630,11 +630,26 @@ namespace HexTactica.Harness {
             Warn("no " + side + " " + kind + " at (" + x1 + "," + y1 + ") or aboard a transport there");
         }
 
+        /// <summary>
+        /// Do <paramref name="a"/> as if fog of war were off (the game's own rule: a move running into a unit it cannot
+        /// see stops there and is fired on — in a replay the fog is the viewer's, not the mover's, and the log already
+        /// says where every move ended). Fog is put back as it was, without being redrawn.
+        /// </summary>
+        static void Unfogged(Action a) {
+            GameController gc = GameController.gc;
+            bool was = gc != null && gc.fogOfWar;
+            if (was) gc.fogOfWar = false;
+            try { a(); } finally { if (was) gc.fogOfWar = true; }
+        }
+
         /// <summary>The unit walks up to the transport and gets in, as ordered in play; if the game will not have it, it is put aboard as the log says.</summary>
         static void Board(Unit rider, Unit transport) {
-            List<HexTile> steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile);
+            List<HexTile> steps = null;
+            Unfogged(() => steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile));
             bool headless = GameController.gc != null && GameController.gc.headless;
-            if (steps == null || !rider.WalkAndBoard(steps, transport, !headless) || rider.trasnporter != transport) {
+            bool walked = false;
+            if (steps != null) Unfogged(() => walked = rider.WalkAndBoard(steps, transport, !headless));
+            if (!walked || rider.trasnporter != transport) {
                 if (rider.trasnporter != transport) Transporting.Embark(transport, rider);
             }
         }
@@ -657,9 +672,15 @@ namespace HexTactica.Harness {
         static void Move(Unit u, HexTile to, bool thenAttacks) {
             if (u == null || to == null || u.tile == to) return;
             if (to.occupier != null && to.occupier != u) { Warn("(" + to.x + "," + to.y + ") is taken: the move is left out"); return; }
-            List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathTo(u, to) : null;
-            if (steps != null) u.MoveAlong(steps, thenAttacks, true);
-            else u.TeleportTo(to, u.tile.Distance(to), thenAttacks);
+            // Without fog: what the viewer of the replay cannot see must not stop the move (the recorded game's
+            // ambushes are in the log, as attacks, and are played from there).
+            Unfogged(() => {
+                List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathTo(u, to) : null;
+                if (steps == null || !u.MoveAlong(steps, thenAttacks, true) || u.tile != to) {
+                    if (u.tile != to && to.occupier == null) u.TeleportTo(to, u.tile.Distance(to), thenAttacks);
+                }
+            });
+            if (u.tile != to) Warn(GameLog.Lines.Who(u) + " did not get to (" + to.x + "," + to.y + ")");
         }
 
         /// <summary>The path the game's own search gives the unit to <paramref name="to"/> this turn (its tile first), as a player's click follows; null if it does not reach.</summary>
