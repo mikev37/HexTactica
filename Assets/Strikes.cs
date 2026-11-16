@@ -23,8 +23,9 @@ public class Strike {
     public Unit spareA, spareB;
     /// <summary>The round it was fired in.</summary>
     public int day;
-    /// <summary>The enemy sides that saw it launched (they saw the unit that fired it as it fired: FogOfWar.Sees). Filled
-    /// before it goes in the air, never changed after. Only these sides know it is coming (Strikes.KnownTo).</summary>
+    /// <summary>The other sides that saw it launched: they saw the unit that fired it as it fired (FogOfWar.Sees), or had a
+    /// unit within its launchSeenWithin. Filled before it goes in the air, never changed after. Only the hostile ones among
+    /// them know it is coming (Strikes.KnownTo); every one is warned on screen (LaunchWarning).</summary>
     public readonly List<Player> seenBy = new List<Player>();
 
     public int Radius { get { return weapon != null ? Mathf.Max(0, weapon.blastRadius) : 0; } }
@@ -144,7 +145,7 @@ public static class Strikes {
     public static event Action<StrikeResult> Landed;
 
     /// <summary>A new board: nothing in the air.</summary>
-    public static void Clear() { inFlight = new Strike[0]; busyUntil = 0f; }
+    public static void Clear() { inFlight = new Strike[0]; launchedThisTurn = new Strike[0]; performing.Clear(); }
 
     internal static void Add(Strike s) {
         if (s == null) return;
@@ -152,6 +153,13 @@ public static class Strikes {
         Array.Copy(inFlight, next, inFlight.Length);
         next[inFlight.Length] = s;
         inFlight = next;
+    }
+
+    /// <summary>Has <paramref name="p"/> a unit on the board within <paramref name="range"/> tiles of <paramref name="at"/>? (0: none counts.)</summary>
+    static bool WithinOf(Player p, HexTile at, int range) {
+        if (range <= 0 || at == null || p == null || p.units == null) return false;
+        foreach (Unit o in p.units) if (o != null && o.Strength > 0 && o.tile != null && o.tile.Distance(at) <= range) return true;
+        return false;
     }
 
     /// <summary>A side is out of the game: what it had in the air is gone with it.</summary>
@@ -178,6 +186,48 @@ public static class Strikes {
                                            attackBonus = s.attackBonus, target = own ? s.target : null });
         }
         return known;
+    }
+
+    // The launches of the turn under way (cleared as any turn starts: LandFor). Replaced whole, never changed in place.
+    static Strike[] launchedThisTurn = new Strike[0];
+
+    /// <summary>Did <paramref name="watcher"/> see this launch (and not make it)? Its warning, and its place in the list of sites, are for it alone.</summary>
+    public static bool Warns(Strike s, Player watcher) {
+        return s != null && watcher != null && s.owner != watcher && s.seenBy.Contains(watcher);
+    }
+
+    /// <summary>
+    /// Should the player at the screen be warned of this launch (LaunchWarning)? Under fog, only the side shown on screen
+    /// (FogOfWar.Viewer), and only if it saw the launch (Warns): with fog on and no side shown, nobody. Without fog every
+    /// launch is in plain sight: any side played by a person that saw it.
+    /// </summary>
+    public static bool WarnsScreen(Strike s) {
+        if (s == null) return false;
+        if (FogOfWar.On) return Warns(s, FogOfWar.Viewer);
+        foreach (Player p in s.seenBy) if (p != null && AIControl.Of(p) == null && Warns(s, p)) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// The launch sites of this turn <paramref name="watcher"/> saw (Warns), in the order launched, each once: what its
+    /// warning may show and cycle through. A launch it did not see (beyond Launch Seen Within and out of its sight) is
+    /// never in it.
+    /// </summary>
+    public static List<HexTile> SitesWarned(Player watcher) {
+        List<HexTile> sites = new List<HexTile>();
+        Strike[] now = launchedThisTurn;
+        for (int i = 0; i < now.Length; i++)
+            if (Warns(now[i], watcher) && now[i].from != null && !sites.Contains(now[i].from)) sites.Add(now[i].from);
+        return sites;
+    }
+
+    /// <summary>The launch sites of this turn the player at the screen may be shown (WarnsScreen), worked out afresh on every call.</summary>
+    public static List<HexTile> SitesWarnedScreen() {
+        List<HexTile> sites = new List<HexTile>();
+        Strike[] now = launchedThisTurn;
+        for (int i = 0; i < now.Length; i++)
+            if (WarnsScreen(now[i]) && now[i].from != null && !sites.Contains(now[i].from)) sites.Add(now[i].from);
+        return sites;
     }
 
     /// <summary>The unit prefab <paramref name="p"/> fields under <paramref name="kind"/> (as a loaded save finds its units).</summary>
@@ -317,10 +367,20 @@ public static class Strikes {
             // In the air it is its prefab's weapon at the strength it left with: the unit may be gone when it lands.
             Unit prefab = Prefab(u.owner, s.kind);
             if (prefab != null) s.weapon = prefab;
-            // Who saw it go: the enemy sides that see the unit as it fires (no fog: all of them). Only they know it is coming.
+            Strike[] turn = new Strike[launchedThisTurn.Length + 1];
+            Array.Copy(launchedThisTurn, turn, launchedThisTurn.Length);
+            turn[launchedThisTurn.Length] = s;
+            // Who saw it go: the sides that see the unit as it fires (no fog: all of them), and those with a unit within its
+            // launchSeenWithin, whatever their sight: they also see the ground round the launch tile until their turn ends.
             GameController gc = GameController.gc;
             if (gc != null && gc.players != null)
-                foreach (Player p in gc.players) if (p != null && !p.eliminated && Player.Hostile(p, u.owner) && FogOfWar.Sees(p, u)) s.seenBy.Add(p);
+                foreach (Player p in gc.players) {
+                    if (p == null || p == u.owner || p.eliminated) continue;
+                    bool near = WithinOf(p, u.tile, u.launchSeenWithin);
+                    if (near || FogOfWar.Sees(p, u)) s.seenBy.Add(p);
+                    if (near) FogOfWar.Flare(p, u.tile, Mathf.Max(0, u.launchRevealRadius));
+                }
+            launchedThisTurn = turn;
             Add(s);
             if (u.selfDestructs) u.Expend(true);
             else u.ShowStrikeFired(null);
@@ -338,7 +398,10 @@ public static class Strikes {
     /// lands, in the order it was launched.
     /// </summary>
     public static void LandFor(Player p) {
-        if (p == null || inFlight.Length == 0 || BoardView.current != null) return;
+        if (BoardView.current != null) return;
+        // A new turn: no launches yet this turn (LaunchWarning's sites).
+        launchedThisTurn = new Strike[0];
+        if (p == null || inFlight.Length == 0) return;
         List<Strike> mine = new List<Strike>(), rest = new List<Strike>();
         foreach (Strike s in inFlight) (s.owner == p ? mine : rest).Add(s);
         if (mine.Count == 0) return;
@@ -392,14 +455,19 @@ public static class Strikes {
 
     // ------------------------------------------------------------------ on screen (nothing here changes the rules)
 
-    static float busyUntil;
+    // The units playing a launch or an arrival (removed when their animation ends: StrikeStage).
+    static readonly List<Unit> performing = new List<Unit>();
 
     /// <summary>A launch or an arrival is still playing: the AI and a turn's end wait for it, as for any animation (Unit.AnyAnimating).</summary>
     public static bool Showing {
-        get { return GameController.gc != null && !GameController.gc.headless && Time.time < busyUntil; }
+        get {
+            if (GameController.gc == null || GameController.gc.headless) return false;
+            performing.RemoveAll(u => u == null || u.ShownAt == null);
+            return performing.Count > 0;
+        }
     }
 
-    internal static void Busy(float seconds) { busyUntil = Mathf.Max(busyUntil, Time.time + Mathf.Max(0f, seconds)); }
+    internal static void Performing(Unit u) { if (u != null && !performing.Contains(u)) performing.Add(u); }
 
     /// <summary>
     /// A strike from the air has landed: a unit that was expended as it launched is shown arriving (its prefab, playing

@@ -10,7 +10,7 @@ GameController.cs
 GameAssets.cs
 ThreatReach.cs
 Strikes.cs
-StrikeFlight.cs
+StrikeStage.cs
 UnitController.cs
 AIPlayer.cs
 GoTo.cs

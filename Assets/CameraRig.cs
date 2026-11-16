@@ -29,7 +29,11 @@ public class CameraRig : MonoBehaviour {
         if (c != null && c.orthographic && c.GetComponent<CameraRig>() == null) c.gameObject.AddComponent<CameraRig>();
     }
 
+    /// <summary>The camera rig in the open scene, if any.</summary>
+    public static CameraRig Instance { get; private set; }
+
     void Awake() {
+        Instance = this;
         cam = GetComponent<Camera>();
         // A scenario's camera actions (ScenarioGame): Camera Focus and Camera Frame Board.
         ScenarioGame.CameraFocusHook = FocusOn;
@@ -37,12 +41,16 @@ public class CameraRig : MonoBehaviour {
     }
 
     void OnDestroy() {
+        if (Instance == this) Instance = null;
         if (ScenarioGame.CameraFocusHook == (System.Action<Vector3, float, float>)FocusOn) ScenarioGame.CameraFocusHook = null;
         if (ScenarioGame.CameraFrameHook == (System.Action)Frame) ScenarioGame.CameraFrameHook = null;
     }
 
     // A glide to a point (FocusOn): from, to, and when.
     bool focusing;
+    /// <summary>The glide is a notice (Notice: a missile launch), the lowest priority: the player's own camera input, or
+    /// any other glide, cuts it short.</summary>
+    bool noticing;
     Vector3 focusFrom, focusTo;
     float sizeFrom, sizeTo, focusStart, focusSeconds;
 
@@ -60,7 +68,29 @@ public class CameraRig : MonoBehaviour {
         focusStart = Time.unscaledTime;
         focusSeconds = Mathf.Max(0f, seconds);
         focusing = true;
+        noticing = false;
         if (focusSeconds <= 0f) Glide();
+    }
+
+    /// <summary>
+    /// Glide the view to <paramref name="world"/> over <paramref name="seconds"/>, keeping the zoom, at the lowest
+    /// priority (a missile launch, LaunchWarning): not while a scenario's glide (FocusOn) is under way, and cut short by
+    /// the player moving or zooming the camera, or by any other glide. False if it did not start.
+    /// </summary>
+    public bool Notice(Vector3 world, float seconds) {
+        if (cam == null || (focusing && !noticing)) return false;
+        FocusOn(world, 0f, seconds);
+        noticing = true;
+        return true;
+    }
+
+    /// <summary>The player is moving or zooming the camera this frame (mouse drag or wheel, the camera keys).</summary>
+    bool PlayerMovesCamera() {
+        if (!Application.isFocused || Time.frameCount <= ignoreInputUntil) return false;
+        if (OurInput() && (Input.GetMouseButton(1) || Input.GetMouseButton(2) || Mathf.Abs(Input.mouseScrollDelta.y) > 0f)) return true;
+        return Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.DownArrow)
+            || Input.GetKeyDown(KeyCode.Home) || Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus)
+            || Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus);
     }
 
     void Glide() {
@@ -93,7 +123,9 @@ public class CameraRig : MonoBehaviour {
             Frame();
             framed = true;
         }
-        if (focusing) { Glide(); return; }   // a scenario moves the camera: the player's input waits until it is there
+        // A notice's glide gives way to the player's own camera input at once.
+        if (focusing && noticing && PlayerMovesCamera()) { focusing = false; noticing = false; }
+        if (focusing) { Glide(); if (!focusing) noticing = false; return; }   // a scenario moves the camera: the player's input waits until it is there
         if (!Application.isFocused || Time.frameCount <= ignoreInputUntil) return;   // not ours (OurInput)
         if (Input.GetKeyDown(KeyCode.Home)) Frame();
 

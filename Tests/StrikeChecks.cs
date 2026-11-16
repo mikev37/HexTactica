@@ -70,11 +70,18 @@ public static partial class Scenarios {
              "The board of ai-strike-spread with the missile's launch unseen by Red (played from that check).");
         n++;
         make("ai-strike-blind", "aiStrikeBlind", (a, o) => {
-                 Rig.PlaceBuilding("Missile Silo", a, -4, 0); Put("Missile", a, -4, 0);
-                 Put("Missile", a, 2, 0);
-                 Put("Tank", o, 4, 0); Put("Tank", o, 4, 1); Put("Grunt", o, 4, -1);
+                 Put("Missile", a, -6, 3);
+                 Put("Missile", a, 3, -2);
+                 Put("Tank", o, 5, -2); Put("Grunt", o, 6, -3);
              },
-             "The AI learns of strikes only as a player does. Under fog, Blue launches a missile Red cannot see (from its silo far away) and one Red can (beside its tanks): Red knows of one, the seen one, with who fired it and from where but not its target; Blue knows of both, targets and all. No AI code reads the list of every strike in the air (Strikes.InFlight): the AI's source is checked for it.");
+             "The AI learns of strikes only as a player does. Under fog, Blue launches a missile more than 10 tiles from any Red unit and out of Red's sight, and one beside Red's units: Red knows of one, the near one, with who fired it and from where but not its target; Blue knows of both, targets and all. No AI code reads the list of every strike in the air (Strikes.InFlight) or the strike events: the AI's source is checked for it.");
+        n++;
+        make("strike-launch-seen", "strikeLaunchSeen", (a, o) => {
+                 Put("Missile", a, -2, 0);
+                 Put("Missile", a, -6, 3);
+                 Put("Grunt", o, 6, -2);
+             },
+             "A launch is seen from far off. Under fog, Red's only unit is 8 tiles from one Blue missile (beyond its sight) and 12 from another. The near launch: Red learns of it (where from, not where to) and sees the launch tile and the tiles round it (not two away) until the end of its next turn; the player at the screen is warned if that is Red, and the sites its warning cycles through are the near one only (never the far one); a new turn starts with none. The far one: Red knows nothing and sees nothing there.");
         n++;
         make("script-strike", "scriptStrike", (a, o) => {
                  Rig.PlaceBuilding("Missile Silo", a, -4, 0); Put("Missile", a, -4, 0);
@@ -308,11 +315,11 @@ public static partial class Scenarios {
             }
             case "aiStrikeBlind": {
                 gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
-                Unit far = At(-4, 0), near = At(2, 0);
+                Unit far = At(-6, 3), near = At(3, -2);
                 bool farHidden = !FogOfWar.Sees(o, far), nearSeen = FogOfWar.Sees(o, near);
-                bool ordered = Strikes.Order(far, Rig.At(4, 0)) & Strikes.Order(near, Rig.At(4, 1));
+                bool ordered = Strikes.Order(far, Rig.At(2, 0)) & Strikes.Order(near, Rig.At(6, -3));
                 List<StrikeSighting> red = Strikes.KnownTo(o), blue = Strikes.KnownTo(a);
-                bool redKnows = red.Count == 1 && red[0].from == Rig.At(2, 0) && red[0].owner == a && red[0].target == null && red[0].weapon != null;
+                bool redKnows = red.Count == 1 && red[0].from == Rig.At(3, -2) && red[0].owner == a && red[0].target == null && red[0].weapon != null;
                 bool blueKnows = blue.Count == 2 && blue.TrueForAll(s => s.target != null);
                 // The AI's source never names the full list (or the internals it is made from).
                 List<string> offenders = new List<string>();
@@ -330,9 +337,41 @@ public static partial class Scenarios {
                     foreach (System.Text.RegularExpressions.Match m in use.Matches(code))
                         if (m.Groups[2].Success || !allowed.Contains(m.Groups[1].Value)) offenders.Add(Path.GetFileName(file) + ": " + m.Value);
                 }
-                detail = "under fog: Red sees the silo's missile " + !farHidden + ", the one beside it " + nearSeen + "; both launched " + ordered + "; Red knows of " + red.Count + " (the seen one, firer and launch tile, no target: " + redKnows
+                detail = "under fog: Red sees the far missile " + !farHidden + ", the one beside it " + nearSeen + "; both launched " + ordered + "; Red knows of " + red.Count + " (the seen one, firer and launch tile, no target: " + redKnows
                        + "); Blue knows of " + blue.Count + " with targets " + blueKnows + "; AI files checked " + files.Count + ", using what the AI may not: " + (offenders.Count == 0 ? "none" : string.Join(", ", offenders.ToArray()));
                 return farHidden && nearSeen && ordered && redKnows && blueKnows && offenders.Count == 0 && files.Count > 10;
+            }
+            case "strikeLaunchSeen": {
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                Unit near = At(-2, 0), far = At(-6, 3);
+                HexTile padNear = Rig.At(-2, 0), padFar = Rig.At(-6, 3);
+                List<HexTile> ring1 = Strikes.Blast(padNear, 1), ring2 = Strikes.Blast(padNear, 2).FindAll(t => t.Distance(padNear) == 2);
+                bool darkBefore = !ring1.Exists(t => FogOfWar.TileVisible(o, t)) && !FogOfWar.Sees(o, near) && !FogOfWar.Sees(o, far);
+                bool ordered = Strikes.Order(near, Rig.At(2, 0)) & Strikes.Order(far, Rig.At(-2, 3));
+                Strike sNear = Strikes.InFlight.FirstOrDefault(s => s.from == padNear), sFar = Strikes.InFlight.FirstOrDefault(s => s.from == padFar);
+                FogOfWar.Refresh();
+                List<StrikeSighting> red = Strikes.KnownTo(o);
+                bool knowsNear = red.Count == 1 && red[0].from == padNear && red[0].target == null && sNear != null && sNear.seenBy.Contains(o);
+                bool knowsNotFar = sFar != null && !sFar.seenBy.Contains(o);
+                bool lit = ring1.TrueForAll(t => FogOfWar.TileVisible(o, t)), notWider = !ring2.Exists(t => FogOfWar.TileVisible(o, t)), farDark = !FogOfWar.TileVisible(o, padFar);
+                Player viewer = FogOfWar.Viewer;
+                bool warnNear = Strikes.WarnsScreen(sNear), warnFar = Strikes.WarnsScreen(sFar);
+                bool warnRight = viewer == o ? warnNear && !warnFar : viewer == a ? !warnNear && !warnFar : true;
+                // The sites the warning may cycle through: Red's holds the near launch only; Blue's (its own launches) none.
+                List<HexTile> redSites = Strikes.SitesWarned(o), blueSites = Strikes.SitesWarned(a);
+                bool sitesRight = redSites.Count == 1 && redSites[0] == padNear && blueSites.Count == 0;
+                bool screenSitesRight = viewer == o ? Strikes.SitesWarnedScreen().SequenceEqual(redSites) : viewer == a ? Strikes.SitesWarnedScreen().Count == 0 : true;
+                gc.EndTurn(); FogOfWar.Refresh();
+                bool litOnRedTurn = ring1.TrueForAll(t => FogOfWar.TileVisible(o, t));
+                bool sitesCleared = Strikes.SitesWarned(o).Count == 0;
+                gc.EndTurn(); FogOfWar.Refresh();
+                bool goneAfter = !ring1.Exists(t => FogOfWar.TileVisible(o, t));
+                detail = "Red sees nothing of either launch tile before " + darkBefore + "; both launched " + ordered + "; Red knows of the near one only (from, no target) " + knowsNear + ", not the far one " + knowsNotFar
+                       + "; launch tile and the ring round it lit for Red " + lit + ", two away still dark " + notWider + ", far launch tile dark " + farDark
+                       + "; viewer " + (viewer == o ? "Red" : viewer == a ? "Blue" : "none") + ": warned of the near " + warnNear + ", the far " + warnFar
+                       + "; sites Red may cycle " + redSites.Count + " (the near launch only " + sitesRight + ", the screen's list the same " + screenSitesRight + "), none left next turn " + sitesCleared
+                       + "; still lit on Red's turn " + litOnRedTurn + ", dark again after it " + goneAfter;
+                return darkBefore && ordered && knowsNear && knowsNotFar && lit && notWider && farDark && warnRight && sitesRight && screenSitesRight && sitesCleared && litOnRedTurn && goneAfter;
             }
             case "aiStrikeControl": {
                 detail = "the control board of ai-strike-spread (played there)";
