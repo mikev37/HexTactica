@@ -38,21 +38,33 @@ namespace HexTactica.Harness {
 
             // ---------------------------------------------------------- header
 
-            /// <summary>A side: its id, name, faction ("-" none), and who plays it. Written at the start of a recording and again when a save is resumed (who plays it may have changed).</summary>
+            /// <summary>
+            /// A side: its id, name, faction ("-" none), who plays it, and its team when it has allies in this game
+            /// (" | team 1": the Allies rule on and a team other than 0; sides with the same team are allies). Written at
+            /// the start of a recording and again when a save is resumed (who plays it may have changed).
+            /// </summary>
             public static string Side(Player p) {
-                return "side: " + p.id.ToString(Inv) + " " + p.personal_name + " | faction " + (p.faction != null ? p.faction.name : "-") + " | " + (AIControl.Of(p) != null ? "AI" : "human");
+                int team = p.team != 0 && GameController.AlliancesOn ? p.team : 0;
+                return "side: " + p.id.ToString(Inv) + " " + p.personal_name + " | faction " + (p.faction != null ? p.faction.name : "-") + " | " + (AIControl.Of(p) != null ? "AI" : "human")
+                     + (team != 0 ? " | team " + team.ToString(Inv) : "");
             }
-            static readonly Regex side = new Regex(@"^side: (-?\d+) (.+) \| faction (.+) \| (AI|human)$");
+            static readonly Regex side = new Regex(@"^side: (-?\d+) (.+) \| faction (.+) \| (AI|human)(?: \| team (-?\d+))?$");
             public static bool ReadSide(string line, out long id, out string name, out string faction, out bool ai) {
+                int team;
+                return ReadSide(line, out id, out name, out faction, out ai, out team);
+            }
+            /// <summary>As above, with its team (0: on nobody's side but its own, or a log from before teams were written).</summary>
+            public static bool ReadSide(string line, out long id, out string name, out string faction, out bool ai, out int team) {
                 Match m = side.Match(line);
-                id = 0; name = faction = null; ai = false;
+                id = 0; name = faction = null; ai = false; team = 0;
                 if (!m.Success) return false;
                 id = long.Parse(m.Groups[1].Value, Inv); name = m.Groups[2].Value;
                 faction = m.Groups[3].Value == "-" ? "" : m.Groups[3].Value; ai = m.Groups[4].Value == "AI";
+                if (m.Groups[5].Success) team = int.Parse(m.Groups[5].Value, Inv);
                 return true;
             }
 
-            /// <summary>How many tiles lie between the first two sides' HQs: the line "front" is measured along (0 the first's HQ, 1 the second's).</summary>
+            /// <summary>How many tiles lie between the first side's HQ and its first enemy's: the line "front" is measured along (0 the first's HQ, 1 the enemy's).</summary>
             public static string Axis(int tiles) { return "axis: " + tiles.ToString(Inv); }
             static readonly Regex axis = new Regex(@"^axis: (\d+)$");
             public static bool ReadAxis(string line, out int tiles) { Match m = axis.Match(line); tiles = m.Success ? int.Parse(m.Groups[1].Value, Inv) : 0; return m.Success; }

@@ -43,6 +43,13 @@ Allies: players choose, or the map fixes it on or off) turns them on or off as a
 - win together: the game is over when the sides left are all allies (enemy HQs taken or enemy sides eliminated), and every
   side of the winning team has won (`GameController.Won`), including one already knocked out.
 
+The post-game report compares you and your allies ("your side") with everyone you fought, gives every side a units
+table, and has two findings of its own for each team: **Best assist** (one side's unit destroying an enemy unit that had
+been killing an ally's units, the more it had killed and the more of them it still had within reach the better) and **who
+carried the team** (each side's share of the enemy worth destroyed and of the team's losses). The report follows each
+unit through the game log by where it stands (`GameRecord.Track`); thresholds are `assistKills` and `teamKills` on the
+FrontEndSettings asset's insights.
+
 The AI treats an ally as neither friend to command nor enemy: it never targets an ally's units, HQ or buildings, does not
 count them in its forecasts or estimates of the enemy, and knows its units are fed on an ally's supply. It does not plan
 with its allies. Where allies come into the code: `Player.Allied/Friendly/Hostile`; tests `rule-allies`,

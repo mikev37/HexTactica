@@ -552,6 +552,8 @@ public static partial class Scenarios {
                  Put("Tank", o, 4, -1); Put("Tank", o, 4, 1); Put("Grunt", o, 3, 0); Put("Grunt", o, 3, 2); Put("Grunt", o, 3, -2);
                  Put("Artillery", o, 5, 0); Put("Supplies", o, 5, -1); },
              "Blue and Green, allies, each played by this AI, against Red played by this AI, for six rounds. No unit ever fires on an ally's unit, no side ever makes capture progress on an ally's building, and no AI orders anything a player could not.");
+        make("rule-allies-report", "alliesReport", (a, o) => { },
+             "The post-game report's allied findings, from a game log written out by hand: Blue (a human) and Yellow are allies against Green. Green's Tank kills a Yellow Grunt and a Yellow Recon; Blue's Gunship then destroys it while a Yellow Grunt is within its reach. A Yellow Artillery destroying a Green Recon that had killed only Yellow's units is no assist (an ally avenging itself), nor is a Blue Grunt killing a Green Grunt that killed nothing. The report names the best assist, Blue's Gunship for Yellow, with the Tank's two kills and the Yellow unit it could still reach, and says how Blue and Yellow split the fighting.");
         make("rule-retreat-away", "retreatAway", (a, o) => { Put("Tank", a, 1, 0); Put("Grunt", o, 0, 0); },
              "A Red grunt attacked by a Blue tank beside it retreats straight back, to one of the three tiles on its far side; with those three taken it is pinned, never sliding sideways (still beside the tank).");
         make("ai-land-steps-layout", "landStepsLayout", (a, o) => {
@@ -1256,12 +1258,102 @@ public static partial class Scenarios {
                 };
                 Action<Building, Player, int, int> taken = (b, side, before, after) => { if (b != null && side != null && b.owner != null && Player.Allied(side, b.owner) && after > 0) bad.Add(side.personal_name + " capturing " + b.owner.personal_name + "'s " + Pos(b.tile)); };
                 Unit.Attacking += watch; Building.Captured += taken;
+                // Recorded, for the post-game report: it must know all three sides and who was allied with whom.
+                string root = Path.Combine(Path.GetTempPath(), "hextactica-allies-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+                HexTactica.Harness.GameLog.Start(l.path, "Full", root);
+                string folder = HexTactica.Harness.GameLog.Folder;
                 try { for (int i = 0; i < 18 && !gc.gameOver; i++) ScenarioFile.PlayTurn(); }
-                finally { Unit.Attacking -= watch; Building.Captured -= taken; }
-                detail = "after round " + gc.days + (gc.gameOver ? " (over, " + gc.WinnersName() + " won)" : "") + ": attacks on enemies Blue " + hits[0] + ", Green " + hits[1] + ", Red " + hits[2]
+                finally { Unit.Attacking -= watch; Building.Captured -= taken; HexTactica.Harness.GameLog.EndIfOver(); HexTactica.Harness.GameLog.Stop(); }
+                GameRecord rec = GameRecord.Read(folder);
+                string reportOk = rec == null ? "no game log" : "";
+                bool report = false;
+                if (rec != null) {
+                    // From Red's side (an AI): its enemies are Blue and Green together. From Blue's, as a human: "your side" (Blue and Green).
+                    List<GameInsights.UnitTable> tables = GameInsights.UnitTablesOf(rec, o.id);
+                    string red = GameInsights.Report(rec, o.id);
+                    GameRecord.Side blueSide = rec.SideOf(a.id); if (blueSide != null) blueSide.ai = false;
+                    string blue = GameInsights.Report(rec, a.id);
+                    List<GameInsights.Finding> blueFindings = GameInsights.Findings(rec, a.id);
+                    GameInsights.Finding strength = blueFindings.Find(f => f.title == "How the strength went");
+                    bool teams = rec.sides.Count == 3 && rec.Allied(a.id, 7) && !rec.Allied(a.id, o.id) && !rec.Allied(7, o.id);
+                    bool tablesOk = tables.Count == 3 && tables.Exists(t => t.title.StartsWith("Green") && t.title.Contains("allied with Blue"))
+                                 && tables.Exists(t => t.title.StartsWith("Red") && !t.title.Contains("allied"));
+                    // Fronts are measured from Blue's HQ (-6,0) to its first enemy's, Red's (6,0): 12 tiles, not to its ally Green's.
+                    bool axis = rec.axisLength == 12;
+                    bool words = strength != null && strength.body.Contains("your side") && red.Contains("Blue and Green") && blue.Contains("Green (allied with you)");
+                    // Every unit the log placed and still has alive stands where the game has a unit of its side and kind.
+                    int placedAlive = 0, misplaced = 0;
+                    foreach (GameRecord.Track t in rec.tracks) {
+                        if (!t.alive || t.aboard != null) continue;
+                        placedAlive++;
+                        HexTile at = Rig.At(t.x, t.y);
+                        Unit u = at != null ? at.occupier : null;
+                        if (u == null || u.owner == null || u.owner.id != t.side || GameRecord.KindOf(HexTactica.Harness.GameLog.Lines.UnitName(u)) != t.kind) {
+                            misplaced++;
+                            reportOk += "[misplaced: " + t.side + " " + t.kind + " at " + t.x + "," + t.y + ", board has " + (u != null ? (u.owner != null ? u.owner.id + " " : "") + u.name : "nothing") + "] ";
+                        }
+                    }
+                    int deadTracks = rec.tracks.Count(t => !t.alive), losses = rec.losses.Count;
+                    bool tracks = misplaced == 0 && deadTracks == losses;
+                    reportOk += "tracked " + placedAlive + " units on the board, misplaced " + misplaced + ", " + deadTracks + " lost of " + losses + " losses logged; ";
+                    report = teams && tablesOk && axis && words && tracks;
+                    reportOk += "report: teams read " + teams + ", 3 units tables " + tablesOk + " (" + string.Join(" | ", tables.Select(t => t.title).ToArray()) + "), front axis " + rec.axisLength
+                             + ", your side / Blue and Green " + words + (strength != null ? " [" + strength.body + "]" : " [no strength finding]");
+                    if (Environment.GetEnvironmentVariable("REPORT") == "1") Console.WriteLine("\n== report, Blue as a human\n" + blue + "\n== report, Red\n" + red);
+                }
+                try { Directory.Delete(root, true); } catch (Exception) { }
+                detail = reportOk + "; after round " + gc.days + (gc.gameOver ? " (over, " + gc.WinnersName() + " won)" : "") + ": attacks on enemies Blue " + hits[0] + ", Green " + hits[1] + ", Red " + hits[2]
                        + "; material Blue " + ScenarioFile.Material(a) + ", Green " + ScenarioFile.Material(g) + ", Red " + ScenarioFile.Material(o)
                        + "; at allies: " + (bad.Count == 0 ? "none" : string.Join("; ", bad.ToArray()));
-                return bad.Count == 0 && hits[0] + hits[1] > 0;
+                return bad.Count == 0 && hits[0] + hits[1] > 0 && report;
+            }
+            case "alliesReport": {
+                string[] log = {
+                    "side: 1 Blue | faction - | human | team 1",
+                    "side: 2 Yellow | faction - | AI | team 1",
+                    "side: 3 Green | faction - | AI",
+                    "axis: 10",
+                    "== round 1: Green to move",
+                    "   Green Tank moved (0,0) -> (1,0)",
+                    "   Yellow Grunt (2,0) dies: combat",
+                    "   Green Tank (1,0) attacks Yellow Grunt (2,0): deals 6, takes 1, Grunt destroyed -> 9 v 0",
+                    "   Green Recon moved (-8,5) -> (-7,4)",
+                    "   Yellow Grunt (-7,3) dies: combat",
+                    "   Green Recon (-7,4) attacks Yellow Grunt (-7,3): deals 6, takes 0, Grunt destroyed -> 8 v 0",
+                    "== round 1: Yellow to move",
+                    "   Yellow Grunt moved (6,0) -> (5,-1)",
+                    "   Green Recon (-7,4) dies: combat",
+                    "   Yellow Artillery (-9,4) attacks Green Recon (-7,4): deals 8, takes 0, Recon destroyed -> 10 v 0",
+                    "== round 2: Green to move",
+                    "   Green Tank moved (1,0) -> (3,-1)",
+                    "   Yellow Recon (4,-1) dies: combat",
+                    "   Green Tank (3,-1) attacks Yellow Recon (4,-1): deals 5, takes 0, Recon destroyed -> 9 v 0",
+                    "== round 2: Blue to move",
+                    "   Green Grunt (-5,1) dies: combat",
+                    "   Blue Grunt (-5,2) attacks Green Grunt (-5,1): deals 10, takes 0, Grunt destroyed -> 10 v 0",
+                    "   Blue Gunship moved (-3,0) -> (2,-1)",
+                    "   Green Tank (3,-1) dies: combat",
+                    "   Blue Gunship (2,-1) attacks Green Tank (3,-1): deals 9, takes 0, Tank destroyed -> 10 v 0",
+                };
+                GameRecord rec = GameRecord.FromLines(log);
+                GameRecord.Track tank = rec.tracks.Find(t => t.side == 3 && t.kind == "Tank");
+                bool tracked = tank != null && tank.kills.Count == 2 && tank.kills.TrueForAll(v => v.side == 2) && tank.killedBy != null && tank.killedBy.kind == "Gunship"
+                            && tank.killedBy.side == 1 && tank.inReachAtDeath != null && tank.inReachAtDeath.ContainsKey(2) && tank.inReachAtDeath[2] == 1;
+                List<GameInsights.Finding> found = GameInsights.Findings(rec, 1);
+                GameInsights.Finding assist = found.Find(f => f.title.StartsWith("Best assist"));
+                GameInsights.Finding shares = found.Find(f => f.body.StartsWith("Your side destroyed"));
+                bool assistOk = assist != null && assist.title == "Best assist: your Gunship for Yellow"
+                             && assist.body == "Your Gunship destroyed Green's Tank in round 2. That Tank had taken out 2 of Yellow's units (1 Grunt and 1 Recon), and it still had 1 of Yellow's units within striking distance.";
+                bool sharesOk = shares != null && shares.body.Contains("\nYou: ") && shares.body.Contains("\nYellow: ") && shares.body.Contains("2 kills") && shares.body.Contains("1 kill)");
+                // From Green's side (an AI): the same assist, said of Blue.
+                GameInsights.Finding greenView = GameInsights.Findings(rec, 3).Find(f => f.title.StartsWith("Best assist"));
+                bool greenOk = greenView != null && greenView.title == "Best assist: Blue's Gunship for Yellow";
+                detail = "tracked: Green's Tank killed " + (tank != null ? tank.kills.Count : -1) + " Yellow units, killed by " + (tank != null && tank.killedBy != null ? tank.killedBy.side + " " + tank.killedBy.kind : "?")
+                       + ", Yellow units in reach " + (tank != null && tank.inReachAtDeath != null && tank.inReachAtDeath.ContainsKey(2) ? tank.inReachAtDeath[2] : 0) + " (" + tracked + ")"
+                       + "; [" + (assist != null ? assist.title + ": " + assist.body : "no assist") + "] " + assistOk
+                       + "; [" + (shares != null ? shares.title + ": " + shares.body.Replace("\n", " / ") : "no shares") + "] " + sharesOk
+                       + "; Green's view: " + (greenView != null ? greenView.title : "none") + " " + greenOk;
+                return tracked && assistOk && sharesOk && greenOk;
             }
             case "retreatAway": {
                 Unit tank = Rig.At(1, 0).occupier, g = Rig.At(0, 0).occupier;
@@ -5094,6 +5186,15 @@ public static partial class Scenarios {
                 // STATS=you: written as the post-game screen writes it for a human playing Red ("you").
                 if (Environment.GetEnvironmentVariable("STATS") == "you") { GameRecord.Side me = rec.SideOf(l.other.id); if (me != null) me.ai = false; }
                 Console.WriteLine("\n== post-game report (viewer: Red)\n" + GameInsights.Report(rec, l.other.id));
+                // The units the log placed (GameRecord.Track) against the board as the game ended.
+                int placed = 0, wrong = 0; List<string> where = new List<string>();
+                foreach (GameRecord.Track t in rec.tracks) {
+                    if (!t.alive || t.aboard != null) continue;
+                    placed++;
+                    HexTile at = Rig.At(t.x, t.y); Unit u = at != null ? at.occupier : null;
+                    if (u == null || u.owner == null || u.owner.id != t.side || GameRecord.KindOf(HexTactica.Harness.GameLog.Lines.UnitName(u)) != t.kind) { wrong++; if (where.Count < 5) where.Add(t.kind + "@" + t.x + "," + t.y); }
+                }
+                Console.WriteLine("tracks: " + placed + " placed on the board, " + wrong + " not where the game has them" + (where.Count > 0 ? " (" + string.Join(" ", where.ToArray()) + ")" : "") + "; " + rec.tracks.Count(t => !t.alive) + " lost of " + rec.losses.Count + " losses");
             }
         }
     }

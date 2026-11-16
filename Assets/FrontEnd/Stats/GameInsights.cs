@@ -11,7 +11,9 @@ using UnityEngine;
 /// production passed over. Each finding is a heading and a few sentences, as a player would tell it after the game.
 ///
 /// Written from the viewer's side ("you", "your"): the human player at the screen, or the first side when every side
-/// is played by an AI. Material is what units are worth as they stand (cost x the share of full strength left), in thousands.
+/// is played by an AI. With allies or more than two sides, what compares two sides (strength, the front, cities) compares
+/// the viewer and its allies ("your side") with every side they fought; what is said of one side's units is said of
+/// every side, against all its enemies; and every side has a units table. Material is what units are worth as they stand (cost x the share of full strength left), in thousands.
 /// Findings only appear where there is enough to say something (the thresholds are in <see cref="Limits"/>).
 /// </summary>
 public static class GameInsights {
@@ -38,6 +40,10 @@ public static class GameInsights {
         public int supplyLosses = 3;         // losses to supply worth a word
         public float fedByOne = 0.4f;        // "fed into" one kind of the enemy's: it killed at least this share of them
         public float evenTrade = 0.5f;       // a stalemate trades at least this evenly (fewer losses / more losses); below, it is one-sided
+        [Tooltip("Allies: a best assist needs the enemy unit destroyed to have killed at least this many of the allies' units.")]
+        public int assistKills = 2;
+        [Tooltip("Allies: how a team split the fighting is said once its sides between them have killed at least this many units.")]
+        public int teamKills = 3;
         [Tooltip("Unit names (or their endings) said the same in the plural: \"Artillery\", \"Supplies\".")]
         public List<string> samePlural = new List<string> { "Artillery", "Supplies", "Anti Air", "Cache" };
     }
@@ -67,12 +73,14 @@ public static class GameInsights {
     }
 
     /// <summary>
-    /// "Blue won in round 31." / "No winner after 30 rounds." <paramref name="side"/>: the players who won together, by id
-    /// (the winner and its allies: the game knows who is allied, the log does not); null: the log's winner alone.
+    /// "Blue won in round 31." / "Blue and Green won together in round 31." / "No winner after 30 rounds."
+    /// <paramref name="side"/>: the players who won together, by id (the winner and its allies); null: the winner and
+    /// its allies as the log has them (a log from before teams were written: the winner alone).
     /// </summary>
     public static string Headline(GameRecord s, long viewer, ICollection<long> side = null) {
         if (s == null) return "No statistics were recorded for this game.";
         Ctx c = new Ctx(s, viewer);
+        if (side == null && s.over && s.winner >= 0) { List<long> team = s.SideAndAllies(s.winner); if (team.Count > 1) side = team; }
         int rounds = s.lastRound + 1;
         string gaveUp = "";
         foreach (long id in s.resigned) gaveUp += " " + Cap(c.Name(id)) + " resigned.";
@@ -96,6 +104,9 @@ public static class GameInsights {
         if (s == null || s.sides.Count < 2) return all;
         Ctx c = new Ctx(s, viewer);
         Add(all, Strength(c));
+        // Allies: for each team (the viewer's first), its best assist and how its sides split the fighting.
+        foreach (Group team in c.Teams) Add(all, BestAssist(c, team));
+        foreach (Group team in c.Teams) Add(all, TeamShares(c, team));
         Add(all, Stalemate(c));
         Add(all, Cities(c));
         foreach (GameRecord.Side side in c.Sides) Add(all, FedIn(c, side.id));
@@ -114,14 +125,16 @@ public static class GameInsights {
     static Finding Strength(Ctx c) {
         List<int> rounds = c.Rounds;
         if (rounds.Count < 2) return null;
-        long a = c.Viewer, b = c.Other(a);
+        Group a = c.Us, b = c.Them;
+        if (a.ids.Count == 0 || b.ids.Count == 0) return null;
+        Func<Group, Group> other = g => g == a ? b : a;
         int ma0 = c.Material(rounds[0], a), mb0 = c.Material(rounds[0], b);
         if (ma0 <= 0 && mb0 <= 0) return null;
-        long weak = ma0 <= mb0 ? a : b, strong = c.Other(weak);
+        Group weak = ma0 <= mb0 ? a : b, strong = other(weak);
         int w0 = Math.Min(ma0, mb0), s0 = Math.Max(ma0, mb0);
         StringBuilder sb = new StringBuilder();
         if (s0 > 0 && w0 < s0 * 0.9f) {
-            sb.Append(Cap(c.Name(weak))).Append(" started at ").Append(Fraction(w0, s0)).Append(' ').Append(c.Poss(strong)).Append(" strength (")
+            sb.Append(Cap(weak.name)).Append(" started at ").Append(Fraction(w0, s0)).Append(' ').Append(strong.poss).Append(" strength (")
               .Append(K(w0)).Append(" vs ").Append(K(s0)).Append(')');
             int level = -1;
             foreach (int r in rounds.Skip(1)) if (c.Material(r, weak) >= c.Material(r, strong)) { level = r; break; }
@@ -131,27 +144,99 @@ public static class GameInsights {
                 sb.Append(" and never drew level; the gap was widest in round ").Append(widest).Append(" (").Append(K(c.Material(widest, weak))).Append(" vs ").Append(K(c.Material(widest, strong))).Append(").");
             }
         } else {
-            sb.Append("Both sides started about even (").Append(K(ma0)).Append(" for ").Append(c.Name(a)).Append(", ").Append(K(mb0)).Append(" for ").Append(c.Name(b)).Append(").");
-            int lead = -1; long leader = -1;
+            sb.Append("Both sides started about even (").Append(K(ma0)).Append(" for ").Append(a.name).Append(", ").Append(K(mb0)).Append(" for ").Append(b.name).Append(").");
+            int lead = -1; Group leader = null;
             foreach (int r in rounds) {
                 int x = c.Material(r, a), y = c.Material(r, b);
                 if (Math.Max(x, y) > 0 && Math.Abs(x - y) > 0.25f * Math.Max(x, y)) { lead = r; leader = x > y ? a : b; break; }
             }
-            if (lead >= 0) sb.Append(' ').Append(Cap(c.Name(leader))).Append(" pulled clearly ahead by round ").Append(lead).Append(" (").Append(K(c.Material(lead, leader))).Append(" vs ").Append(K(c.Material(lead, c.Other(leader)))).Append(").");
+            if (lead >= 0) sb.Append(' ').Append(Cap(leader.name)).Append(" pulled clearly ahead by round ").Append(lead).Append(" (").Append(K(c.Material(lead, leader))).Append(" vs ").Append(K(c.Material(lead, other(leader)))).Append(").");
         }
         int last = rounds[rounds.Count - 1];
-        sb.Append(" At the end: ").Append(K(c.Material(last, a))).Append(" for ").Append(c.Name(a)).Append(", ").Append(K(c.Material(last, b))).Append(" for ").Append(c.Name(b)).Append('.');
-        int boughtA = c.s.buys.Where(x => x.side == a).Sum(x => x.cost), boughtB = c.s.buys.Where(x => x.side == b).Sum(x => x.cost);
+        sb.Append(" At the end: ").Append(K(c.Material(last, a))).Append(" for ").Append(a.name).Append(", ").Append(K(c.Material(last, b))).Append(" for ").Append(b.name).Append('.');
+        int boughtA = c.s.buys.Where(x => a.Has(x.side)).Sum(x => x.cost), boughtB = c.s.buys.Where(x => b.Has(x.side)).Sum(x => x.cost);
         if (boughtA + boughtB > 0)
-            sb.Append(' ').Append(Cap(c.Name(a))).Append(" spent ").Append(K(boughtA)).Append(" on units, ").Append(c.Name(b)).Append(' ').Append(K(boughtB)).Append('.');
+            sb.Append(' ').Append(Cap(a.name)).Append(" spent ").Append(K(boughtA)).Append(" on units, ").Append(b.name).Append(' ').Append(K(boughtB)).Append('.');
         return new Finding { title = "How the strength went", body = sb.ToString() };
+    }
+
+    /// <summary>
+    /// The best assist within <paramref name="team"/>: one side's unit destroying an enemy unit that had been killing an
+    /// ally's units — the more of the ally's it had killed, and the more of them it still had within reach, the better.
+    /// </summary>
+    static Finding BestAssist(Ctx c, Group team) {
+        GameRecord.Track best = null; long bestAlly = -1; int bestScore = 0, bestOnAlly = 0, bestReach = 0;
+        foreach (GameRecord.Track t in c.s.tracks) {
+            GameRecord.Track k = t.killedBy;
+            if (k == null || !team.Has(k.side) || team.Has(t.side)) continue;
+            // The ally it hurt most (not the killer's own side: that is not an assist).
+            foreach (long ally in team.ids) {
+                if (ally == k.side) continue;
+                int onAlly = t.kills.Count(v => v.side == ally);
+                if (onAlly < limits.assistKills) continue;
+                int reach = 0;
+                if (t.inReachAtDeath != null) t.inReachAtDeath.TryGetValue(ally, out reach);
+                int score = 2 * onAlly + reach;
+                if (score > bestScore) { best = t; bestAlly = ally; bestScore = score; bestOnAlly = onAlly; bestReach = reach; }
+            }
+        }
+        if (best == null) return null;
+        GameRecord.Track killer = best.killedBy;
+        List<GameRecord.Track> victims = best.kills.Where(v => v.side == bestAlly).ToList();
+        StringBuilder sb = new StringBuilder();
+        sb.Append(Cap(c.Poss(killer.side))).Append(' ').Append(killer.kind).Append(" destroyed ").Append(c.Poss(best.side)).Append(' ').Append(best.kind)
+          .Append(" in round ").Append(best.diedRound).Append(". That ").Append(best.kind).Append(" had taken out ").Append(bestOnAlly).Append(" of ").Append(c.Poss(bestAlly))
+          .Append(" units (").Append(KindList(victims)).Append(')');
+        int onKiller = best.kills.Count(v => v.side == killer.side);
+        if (onKiller > 0) sb.Append(", besides ").Append(onKiller).Append(" of ").Append(c.Poss(killer.side)).Append(" own");
+        if (bestReach > 0) sb.Append(", and it still had ").Append(bestReach).Append(" of ").Append(c.Poss(bestAlly)).Append(" units within striking distance");
+        sb.Append('.');
+        string title = "Best assist: " + c.Poss(killer.side) + " " + killer.kind + " for " + c.Name(bestAlly);
+        return new Finding { title = Cap(title), body = sb.ToString() };
+    }
+
+    /// <summary>How <paramref name="team"/>'s sides split the fighting: each one's share of the enemy worth destroyed, and of the team's losses.</summary>
+    static Finding TeamShares(Ctx c, Group team) {
+        Dictionary<long, int> destroyed = new Dictionary<long, int>(), lost = new Dictionary<long, int>(), kills = new Dictionary<long, int>();
+        foreach (long id in team.ids) { destroyed[id] = 0; lost[id] = 0; kills[id] = 0; }
+        foreach (GameRecord.Loss l in c.s.losses) {
+            if (team.Has(l.side)) lost[l.side] += l.cost;
+            else if (team.Has(l.killerSide)) { destroyed[l.killerSide] += l.cost; kills[l.killerSide]++; }
+        }
+        int allKills = kills.Values.Sum(), allDestroyed = destroyed.Values.Sum(), allLost = lost.Values.Sum();
+        if (allKills < limits.teamKills || allDestroyed <= 0) return null;
+        // "Your side destroyed 55k of enemy units and lost 30k." then a line per side: "Green: 21k destroyed (38%, 3 kills), 18k lost (60%)."
+        StringBuilder sb = new StringBuilder();
+        sb.Append(Cap(team.name)).Append(" destroyed ").Append(K(allDestroyed)).Append(" of enemy units").Append(allLost > 0 ? " and lost " + K(allLost) : "").Append('.');
+        List<long> order = team.ids.OrderByDescending(id => destroyed[id]).ToList();
+        foreach (long id in order) {
+            sb.Append('\n').Append(Cap(c.Name(id))).Append(": ").Append(K(destroyed[id])).Append(" destroyed (").Append(Percent(destroyed[id], allDestroyed)).Append(", ")
+              .Append(kills[id]).Append(kills[id] == 1 ? " kill)" : " kills)");
+            if (allLost > 0) sb.Append(", ").Append(K(lost[id])).Append(" lost (").Append(Percent(lost[id], allLost)).Append(')');
+            sb.Append('.');
+        }
+        // One side did most of the killing: it carried the team.
+        long top = order[0];
+        string title = destroyed[top] >= 0.65f * allDestroyed ? Cap(c.Name(top)) + " carried " + team.name : "How " + team.name + " split the fighting";
+        return new Finding { title = title, body = sb.ToString() };
+    }
+
+    static string Percent(int part, int whole) { return (whole > 0 ? Mathf.RoundToInt(100f * part / whole) : 0) + "%"; }
+
+    /// <summary>"2 Grunts, 1 Recon and 1 Supplies": units by kind, most first.</summary>
+    static string KindList(List<GameRecord.Track> units) {
+        List<string> parts = units.GroupBy(u => u.kind).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).Select(g => g.Count() + " " + Plural(g.Key, g.Count())).ToList();
+        if (parts.Count <= 1) return parts.Count == 1 ? parts[0] : "";
+        return string.Join(", ", parts.GetRange(0, parts.Count - 1).ToArray()) + " and " + parts[parts.Count - 1];
     }
 
     /// <summary>The longest stretch where both sides kept losing units and the front barely moved.</summary>
     static Finding Stalemate(Ctx c) {
         List<int> rounds = c.Rounds;
         if (c.s.axisLength <= 0 || rounds.Count < limits.stallRounds) return null;
-        long a = c.Viewer, b = c.Other(a);
+        Group a = c.Us, b = c.Them;
+        if (a.ids.Count == 0 || b.ids.Count == 0) return null;
+        Func<Group, Group> other = g => g == a ? b : a;
         int bestFrom = -1, bestTo = -1;
         for (int i = 0; i < rounds.Count; i++) {
             float lo = float.MaxValue, hi = float.MinValue;
@@ -167,16 +252,16 @@ public static class GameInsights {
             }
         }
         if (bestFrom < 0) return null;
-        long focus = c.Lost(b, bestFrom, bestTo) >= c.Lost(a, bestFrom, bestTo) ? b : a;
-        int lost = c.Lost(focus, bestFrom, bestTo), killed = c.Lost(c.Other(focus), bestFrom, bestTo);
+        Group focus = c.Lost(b, bestFrom, bestTo) >= c.Lost(a, bestFrom, bestTo) ? b : a;
+        int lost = c.Lost(focus, bestFrom, bestTo), killed = c.Lost(other(focus), bestFrom, bestTo);
         bool even = lost > 0 && killed >= limits.evenTrade * lost;
         StringBuilder sb = new StringBuilder();
-        sb.Append("In rounds ").Append(bestFrom).Append('–').Append(bestTo).Append(' ').Append(c.Name(focus)).Append(" lost ")
+        sb.Append("In rounds ").Append(bestFrom).Append('–').Append(bestTo).Append(' ').Append(focus.name).Append(" lost ")
           .Append(lost).Append(" units and killed ").Append(killed).Append(even ? ", and the front barely moved" : ", and gained no ground for it");
         float f0 = c.Front(bestFrom), f1 = c.Front(bestTo);
         sb.Append(" (it moved ").Append(Mathf.RoundToInt(Mathf.Abs(f1 - f0) * c.s.axisLength)).Append(Mathf.RoundToInt(Mathf.Abs(f1 - f0) * c.s.axisLength) == 1 ? " tile" : " tiles").Append(" in ").Append(bestTo - bestFrom + 1).Append(" rounds).");
-        sb.Append(" Worth lost in that stretch: ").Append(K(c.ValueLost(a, bestFrom, bestTo))).Append(" for ").Append(c.Name(a)).Append(", ").Append(K(c.ValueLost(b, bestFrom, bestTo))).Append(" for ").Append(c.Name(b)).Append('.');
-        string title = even ? "A grinding stalemate (rounds " + bestFrom + "–" + bestTo + ")" : Cap(c.Name(focus)) + " bled units for no ground (rounds " + bestFrom + "–" + bestTo + ")";
+        sb.Append(" Worth lost in that stretch: ").Append(K(c.ValueLost(a, bestFrom, bestTo))).Append(" for ").Append(a.name).Append(", ").Append(K(c.ValueLost(b, bestFrom, bestTo))).Append(" for ").Append(b.name).Append('.');
+        string title = even ? "A grinding stalemate (rounds " + bestFrom + "–" + bestTo + ")" : Cap(focus.name) + " bled units for no ground (rounds " + bestFrom + "–" + bestTo + ")";
         return new Finding { title = title, body = sb.ToString() };
     }
 
@@ -184,7 +269,9 @@ public static class GameInsights {
     static Finding Cities(Ctx c) {
         List<int> rounds = c.Rounds;
         if (rounds.Count < 3) return null;
-        long a = c.Viewer, b = c.Other(a);
+        Group a = c.Us, b = c.Them;
+        if (a.ids.Count == 0 || b.ids.Count == 0) return null;
+        Func<Group, Group> other = g => g == a ? b : a;
         Dictionary<string, int> seen = new Dictionary<string, int>();
         foreach (int r in rounds) {
             string key = c.Cities(r, a) + ":" + c.Cities(r, b);
@@ -201,21 +288,21 @@ public static class GameInsights {
         else if (most.Value * 2 >= rounds.Count) {
             if (ca == cb) sb.Append("Both sides held ").Append(ca).Append(" cities each for most of the game.");
             else {
-                long more = ca > cb ? a : b;
-                sb.Append(Cap(c.Name(more))).Append(' ').Append(c.Verb(more, "held", "held")).Append(' ').Append(Math.Max(ca, cb)).Append(" cities to ")
-                  .Append(c.Poss(c.Other(more))).Append(' ').Append(Math.Min(ca, cb)).Append(" for most of the game.");
+                Group more = ca > cb ? a : b;
+                sb.Append(Cap(more.name)).Append(' ').Append(c.Verb(more, "held", "held")).Append(' ').Append(Math.Max(ca, cb)).Append(" cities to ")
+                  .Append(other(more).poss).Append(' ').Append(Math.Min(ca, cb)).Append(" for most of the game.");
             }
         } else {
-            sb.Append("Cities changed hands through the game: ").Append(c.Cities(first, a)).Append('–').Append(c.Cities(first, b)).Append(" (").Append(c.Name(a)).Append('–').Append(c.Name(b))
+            sb.Append("Cities changed hands through the game: ").Append(c.Cities(first, a)).Append('–').Append(c.Cities(first, b)).Append(" (").Append(a.name).Append('–').Append(b.name)
               .Append(") at the start, ").Append(c.Cities(last, a)).Append('–').Append(c.Cities(last, b)).Append(" at the end.");
         }
-        int takenA = c.s.captures.Count(x => x.side == a), takenB = c.s.captures.Count(x => x.side == b);
-        if (takenA + takenB > 0) sb.Append(' ').Append(Cap(c.Name(a))).Append(" took ").Append(takenA).Append(takenA == 1 ? " building, " : " buildings, ").Append(c.Name(b)).Append(' ').Append(takenB).Append('.');
+        int takenA = c.s.captures.Count(x => a.Has(x.side)), takenB = c.s.captures.Count(x => b.Has(x.side));
+        if (takenA + takenB > 0) sb.Append(' ').Append(Cap(a.name)).Append(" took ").Append(takenA).Append(takenA == 1 ? " building, " : " buildings, ").Append(b.name).Append(' ').Append(takenB).Append('.');
         // Income: where it started, and where it ended (what each side could buy with).
         int ia0 = c.Income(first, a), ib0 = c.Income(first, b), ia1 = c.Income(last, a), ib1 = c.Income(last, b);
         if (ia1 + ib1 > 0 && (ia0 != ia1 || ib0 != ib1))
             sb.Append(" Income went from ").Append(ia0).Append(" vs ").Append(ib0).Append(" to ").Append(ia1).Append(" vs ").Append(ib1)
-              .Append(" (").Append(c.Name(a)).Append(" vs ").Append(c.Name(b)).Append(") a turn.");
+              .Append(" (").Append(a.name).Append(" vs ").Append(b.name).Append(") a turn.");
         return new Finding { title = "Cities and income", body = sb.ToString() };
     }
 
@@ -225,7 +312,8 @@ public static class GameInsights {
     /// faction trades for a dearer version it hardly bought — that the side never contested it, and what it bought instead.
     /// </summary>
     static Finding FedIn(Ctx c, long side) {
-        long enemy = c.Other(side);
+        Group enemy = c.EnemiesOf(side);
+        if (enemy.ids.Count == 0) return null;
         string kind = null; int worst = 0;
         foreach (string k in c.KindsOf(side)) {
             int lost = c.LostOf(side, k), fielded = c.Fielded(side, k);
@@ -241,16 +329,16 @@ public static class GameInsights {
         if (bought > 0) sb.Append(c.Verb(side, "bought", "bought")).Append(' ').Append(bought).Append(' ').Append(Plural(kind, bought)).Append(started > 0 ? " (and started with " + started + ")" : "");
         else sb.Append(c.Verb(side, "started with", "started with")).Append(' ').Append(started).Append(' ').Append(Plural(kind, started));
         sb.Append(" and lost ").Append(lost_.Count);
-        List<KeyValuePair<string, int>> killers = lost_.Where(x => x.killerSide == enemy && x.killerKind != "").GroupBy(x => x.killerKind)
+        List<KeyValuePair<string, int>> killers = lost_.Where(x => enemy.Has(x.killerSide) && x.killerKind != "").GroupBy(x => x.killerKind)
             .Select(g => new KeyValuePair<string, int>(g.Key, g.Count())).OrderByDescending(kv => kv.Value).ToList();
         if (killers.Count > 0) {
             sb.Append(": ");
             for (int i = 0; i < Math.Min(3, killers.Count); i++) {
                 if (i > 0) sb.Append(i == Math.Min(3, killers.Count) - 1 ? " and " : ", ");
-                sb.Append(killers[i].Value).Append(" to ").Append(i == 0 ? c.Poss(enemy) + " " : "").Append(Plural(killers[i].Key, 2));
+                sb.Append(killers[i].Value).Append(" to ").Append(i == 0 ? enemy.poss + " " : "").Append(Plural(killers[i].Key, 2));
             }
         }
-        int otherWays = lost_.Count(x => x.killerSide != enemy);
+        int otherWays = lost_.Count(x => !enemy.Has(x.killerSide));
         if (otherWays > 0) sb.Append(otherWays == lost_.Count ? ", none in combat" : "; " + otherWays + " outside combat (supply, fuel, aboard a transport, or with their side)");
         sb.Append('.');
         int kills = c.KillsBy(side, kind);
@@ -262,12 +350,12 @@ public static class GameInsights {
         } else sb.Append(" They killed nothing.");
 
         // The worst turn: most of this kind lost in one enemy turn.
-        var turns = lost_.Where(x => x.turnOf == enemy).GroupBy(x => x.round).Select(g => new { round = g.Key, n = g.Count() }).OrderByDescending(x => x.n).ToList();
+        var turns = lost_.Where(x => enemy.Has(x.turnOf)).GroupBy(x => x.round).Select(g => new { round = g.Key, n = g.Count() }).OrderByDescending(x => x.n).ToList();
         if (turns.Count > 0 && turns[0].n >= limits.badRoundLosses) {
             int fieldedThen = c.Fielded(side, kind, turns[0].round);
             sb.Append("\nIn round ").Append(turns[0].round).Append(", ").Append(Number(turns[0].n)).Append(' ').Append(Plural(kind, turns[0].n))
               .Append(fieldedThen > 0 && fieldedThen <= turns[0].n ? " — all " + c.PossIts(side) + " " + Plural(kind, 2) + " on the board — " : " ")
-              .Append("died in ").Append(c.Poss(enemy)).Append(" turn.");
+              .Append("died in ").Append(enemy.poss).Append(" turn.");
         }
 
         // The other side's main killer of them, and how this side answered it.
@@ -283,18 +371,18 @@ public static class GameInsights {
                     string own = GameRecord.KindOf(GameController.UnitName(r.replacement));
                     int boughtOwn = c.Bought(side, own);
                     if (boughtOwn > 2) continue;
-                    sb.Append('\n').Append(Cap(c.Name(side))).Append(" never contested ").Append(c.Poss(enemy)).Append(' ').Append(Plural(answerTo, 2)).Append(". ")
+                    sb.Append('\n').Append(Cap(c.Name(side))).Append(" never contested ").Append(enemy.poss).Append(' ').Append(Plural(answerTo, 2)).Append(". ")
                       .Append(f.name).Append(" swaps the ").Append(answerTo).Append(" for the ").Append(r.replacement.cost.ToString("N0", CultureInfo.InvariantCulture)).Append(' ').Append(own)
                       .Append(", and ").Append(c.Name(side)).Append(' ').Append(c.Verb(side, "bought", "bought")).Append(' ').Append(boughtOwn).Append(" all game.");
                     break;
                 }
             }
             // Its answer: the kind of its own that killed the most of that killer.
-            var answer = c.s.losses.Where(x => x.side == enemy && x.kind == answerTo && x.killerSide == side && x.killerKind != "")
+            var answer = c.s.losses.Where(x => enemy.Has(x.side) && x.kind == answerTo && x.killerSide == side && x.killerKind != "")
                 .GroupBy(x => x.killerKind).Select(g => new { kind = g.Key, n = g.Count() }).OrderByDescending(x => x.n).FirstOrDefault();
             if (answer != null && answer.kind != kind) {
                 int ab = c.Bought(side, answer.kind) + c.Started(side, answer.kind);
-                var died = c.s.losses.Where(x => x.side == side && x.kind == answer.kind && x.killerSide == enemy && x.killerKind != "")
+                var died = c.s.losses.Where(x => x.side == side && x.kind == answer.kind && enemy.Has(x.killerSide) && x.killerKind != "")
                     .GroupBy(x => x.killerKind).Select(g => new { kind = g.Key, n = g.Count() }).OrderByDescending(x => x.n).Take(2).ToList();
                 sb.Append(' ').Append(Cap(c.Poss(side))).Append(" answer to them was ").Append(ab).Append(' ').Append(Plural(answer.kind, ab))
                   .Append(" (").Append(answer.n).Append(answer.n == 1 ? " kill" : " kills").Append(" on them)");
@@ -307,7 +395,7 @@ public static class GameInsights {
         }
         // "Fed into" one answer when it took a good share of them; else they were simply worn down.
         string title = killers.Count > 0 && killers[0].Value >= limits.fedByOne * lost_.Count
-            ? Cap(c.Poss(side)) + " " + Plural(kind, 2) + " fed into " + c.Poss(enemy) + " " + Plural(killers[0].Key, 2)
+            ? Cap(c.Poss(side)) + " " + Plural(kind, 2) + " fed into " + enemy.poss + " " + Plural(killers[0].Key, 2)
             : Cap(c.Poss(side)) + " " + Plural(kind, 2) + " were worn down";
         return new Finding { title = title, body = sb.ToString() };
     }
@@ -317,13 +405,14 @@ public static class GameInsights {
     /// from how far, and how far the other side could reach.
     /// </summary>
     static Finding Unanswered(Ctx c, long side) {
-        long enemy = c.Other(side);
+        Group enemy = c.EnemiesOf(side);
+        if (enemy.ids.Count == 0) return null;
         Finding best = null; int bestKills = 0;
         foreach (string k in c.KindsOf(side)) {
-            List<GameRecord.Attack> shots = c.s.attacks.Where(x => x.side == side && x.kind == k && x.targetSide == enemy).ToList();
+            List<GameRecord.Attack> shots = c.s.attacks.Where(x => x.side == side && x.kind == k && enemy.Has(x.targetSide)).ToList();
             int kills = shots.Count(x => x.killed);
             if (kills < limits.killerKills) continue;
-            List<GameRecord.Attack> onIt = c.s.attacks.Where(x => x.side == enemy && x.targetKind == k && x.targetSide == side).ToList();
+            List<GameRecord.Attack> onIt = c.s.attacks.Where(x => enemy.Has(x.side) && x.targetKind == k && x.targetSide == side).ToList();
             int lastHit = onIt.Count > 0 ? onIt.Max(x => x.round) : -1;
             int lastRound = c.s.lastRound;
             int from = lastHit + 1;
@@ -339,7 +428,7 @@ public static class GameInsights {
             sb.Append(Cap(c.Poss(side))).Append(' ').Append(Plural(k, 2)).Append(" fired ").Append(Rate(after.Count, shotRounds)).Append(" from round ").Append(firstShot);
             int fullKills = after.Count(x => x.killed && c.FullStrength(x.targetKind, x.targetStrength));
             if (killsAfter > 0 && fullKills >= 0.6f * killsAfter) sb.Append(", and most shots that killed took out a full-strength unit");
-            sb.Append(". They killed ").Append(killsAfter).Append(' ').Append(c.Name(enemy)).Append(" units in rounds ").Append(firstShot).Append('–').Append(lastShot);
+            sb.Append(". They killed ").Append(killsAfter).Append(' ').Append(enemy.name).Append(" units in rounds ").Append(firstShot).Append('–').Append(lastShot);
             var victims = after.Where(x => x.killed).GroupBy(x => x.targetKind).Select(g => new { kind = g.Key, n = g.Count() }).OrderByDescending(x => x.n).Take(2).ToList();
             if (victims.Count > 0) {
                 sb.Append(": ");
@@ -348,21 +437,21 @@ public static class GameInsights {
             int allKills = shots.Count(x => x.killed);
             if (allKills > killsAfter) sb.Append(" (").Append(allKills).Append(" over the whole game)");
             sb.Append(".\n");
-            if (onIt.Count == 0) sb.Append(Cap(c.Name(enemy))).Append(" never attacked one");
-            else sb.Append(Cap(c.Name(enemy))).Append(" didn't attack one once after round ").Append(lastHit);
+            if (onIt.Count == 0) sb.Append(Cap(enemy.name)).Append(" never attacked one");
+            else sb.Append(Cap(enemy.name)).Append(" didn't attack one once after round ").Append(lastHit);
             sb.Append('.');
             float dist = after.Count > 0 ? (float)after.Average(x => x.distance) : 0f;
             GameRecord.Kind reach = c.KindsOf(enemy).Select(x => c.s.KindNamed(x)).Where(x => x != null && !x.Air).OrderByDescending(x => x.range).FirstOrDefault();
             GameRecord.Kind kk = c.s.KindNamed(k);
             if (dist >= 2f) {
                 sb.Append(" They fired from ").Append(dist.ToString("0.#", CultureInfo.InvariantCulture)).Append(" tiles away on average");
-                if (reach != null && reach.range < dist) sb.Append("; ").Append(c.Poss(enemy)).Append(" longest ground reach was ").Append(reach.range).Append(" (").Append(Plural(reach.name, 2)).Append(')');
+                if (reach != null && reach.range < dist) sb.Append("; ").Append(enemy.poss).Append(" longest ground reach was ").Append(reach.range).Append(" (").Append(Plural(reach.name, 2)).Append(')');
                 sb.Append('.');
             }
-            List<string> air = c.KindsOf(enemy).Where(x => { GameRecord.Kind q = c.s.KindNamed(x); return q != null && q.Air && c.s.attacks.Any(a => a.side == enemy && a.kind == x); }).ToList();
+            List<string> air = c.KindsOf(enemy).Where(x => { GameRecord.Kind q = c.s.KindNamed(x); return q != null && q.Air && c.s.attacks.Any(a => enemy.Has(a.side) && a.kind == x); }).ToList();
             if (air.Count > 0 && kk != null && !kk.Air) {
-                int airLost = c.s.losses.Count(x => x.side == enemy && air.Contains(x.kind) && x.round >= from);
-                if (airLost > 0) sb.Append(' ').Append(Cap(c.Poss(enemy))).Append(" aircraft, which could have reached them, lost ").Append(airLost).Append(" in the same rounds.");
+                int airLost = c.s.losses.Count(x => enemy.Has(x.side) && air.Contains(x.kind) && x.round >= from);
+                if (airLost > 0) sb.Append(' ').Append(Cap(enemy.poss)).Append(" aircraft, which could have reached them, lost ").Append(airLost).Append(" in the same rounds.");
             }
             best = new Finding { title = Cap(Plural(k, 2)) + " had no answer (rounds " + firstShot + "–" + lastShot + ")", body = sb.ToString() };
         }
@@ -436,13 +525,17 @@ public static class GameInsights {
     /// <summary>What the trade column means (the post-game screen shows it under the tables).</summary>
     public const string TradeNote = "Trade: the worth a kind destroyed (damage x the target's cost per strength point) for the worth it lost; above 1 it paid for itself.";
 
-    /// <summary>Each side's kinds of unit: started, bought, lost, kills, and the worth they destroyed for the worth they lost.</summary>
+    /// <summary>Each side's kinds of unit: started, bought, lost, kills, and the worth they destroyed for the worth they lost. Every side, allies together.</summary>
     public static List<UnitTable> UnitTablesOf(GameRecord s, long viewer) {
         List<UnitTable> tables = new List<UnitTable>();
         if (s == null) return tables;
         Ctx c = new Ctx(s, viewer);
         foreach (GameRecord.Side side in c.Sides) {
-            UnitTable t = new UnitTable { title = Cap(c.Name(side.id)) + (side.faction.Length > 0 ? " (" + side.faction + ")" : "") };
+            // A side with allies says so: "Green (allied with you)", "Red (allied with Gold)".
+            List<long> allies = s.SideAndAllies(side.id); allies.Remove(side.id);
+            string with = allies.Count == 0 ? "" : ", allied with " + string.Join(" and ", allies.Select(id => c.Name(id)).ToArray());
+            string bracket = (side.faction.Length > 0 ? side.faction : "") + (side.faction.Length > 0 ? with : with.Length > 0 ? with.Substring(2) : "");
+            UnitTable t = new UnitTable { title = Cap(c.Name(side.id)) + (bracket.Length > 0 ? " (" + bracket + ")" : "") };
             foreach (string k in c.KindsOf(side.id).OrderByDescending(k => c.Bought(side.id, k) + c.Started(side.id, k))) {
                 float tr = c.TradeOf(side.id, k);
                 t.rows.Add(new[] {
@@ -520,33 +613,75 @@ public static class GameInsights {
 
     // ------------------------------------------------------------------ reading the statistics
 
+    /// <summary>
+    /// Some sides taken together: one side, a side and its allies, or every side hostile to one. A two-sided game has
+    /// groups of one; with allies or more than two sides, the comparisons (strength, front, cities) are between the
+    /// viewer's side (it and its allies) and everyone it fought.
+    /// </summary>
+    public class Group {
+        public readonly List<long> ids = new List<long>();
+        public string name, poss, its;
+        public bool Has(long id) { return ids.Contains(id); }
+        public bool Single { get { return ids.Count == 1; } }
+    }
+
     /// <summary>The statistics, read from the viewer's side.</summary>
     class Ctx {
         public readonly GameRecord s;
         public readonly long Viewer;
         public readonly bool ViewerHuman;
+        /// <summary>Every side in the log's order, with allies kept together (a team where its first side is).</summary>
         public readonly List<GameRecord.Side> Sides;
         public readonly List<int> Rounds;
+        /// <summary>The viewer and its allies; every side they fought.</summary>
+        public readonly Group Us, Them;
         readonly Dictionary<int, GameRecord.Snap> byRound = new Dictionary<int, GameRecord.Snap>();
+        readonly Dictionary<long, Group> enemiesOf = new Dictionary<long, Group>();
 
         public Ctx(GameRecord s, long viewer) {
             this.s = s;
-            Sides = s.sides.Take(2).ToList();
-            Viewer = Sides.Exists(x => x.id == viewer) ? viewer : (Sides.Count > 0 ? Sides[0].id : -1);
+            Viewer = s.sides.Exists(x => x.id == viewer) ? viewer : (s.sides.Count > 0 ? s.sides[0].id : -1);
             GameRecord.Side v = s.SideOf(Viewer);
             ViewerHuman = v != null && !v.ai;
+            Sides = new List<GameRecord.Side>();
+            foreach (GameRecord.Side x in s.sides)
+                if (!Sides.Contains(x)) foreach (long id in s.SideAndAllies(x.id)) if (!Sides.Exists(y => y.id == id)) Sides.Add(s.SideOf(id));
+            Us = Make(s.SideAndAllies(Viewer));
+            Them = EnemiesOf(Viewer);
             // The last snapshot of each round: the board as the round ended.
             foreach (GameRecord.Snap sn in s.snaps) byRound[sn.round] = sn;
             Rounds = byRound.Keys.OrderBy(r => r).ToList();
         }
 
-        public long Other(long id) { foreach (GameRecord.Side x in Sides) if (x.id != id) return x.id; return -1; }
+        /// <summary>Every side hostile to <paramref name="side"/> (in a two-sided game: the other one).</summary>
+        public Group EnemiesOf(long side) {
+            Group g;
+            if (enemiesOf.TryGetValue(side, out g)) return g;
+            List<long> ids = new List<long>();
+            foreach (GameRecord.Side x in Sides) if (s.Hostile(x.id, side)) ids.Add(x.id);
+            return enemiesOf[side] = Make(ids);
+        }
+
+        /// <summary>A group of these sides, named: "you", "Red", "your side" (you and your allies), "Red and Gold".</summary>
+        Group Make(List<long> ids) {
+            Group g = new Group();
+            g.ids.AddRange(ids);
+            if (ids.Count == 1) { g.name = Name(ids[0]); g.poss = Poss(ids[0]); g.its = PossIts(ids[0]); return g; }
+            if (ViewerHuman && ids.Contains(Viewer)) { g.name = "your side"; g.poss = "your side's"; g.its = "your"; return g; }
+            List<string> names = ids.Select(id => Name(id)).ToList();
+            g.name = names.Count == 0 ? "nobody" : names.Count == 1 ? names[0] : string.Join(", ", names.GetRange(0, names.Count - 1).ToArray()) + " and " + names[names.Count - 1];
+            g.poss = g.name + "'s";
+            g.its = "their";
+            return g;
+        }
+
         bool You(long id) { return ViewerHuman && id == Viewer; }
         public string Name(long id) { if (You(id)) return "you"; GameRecord.Side x = s.SideOf(id); return x != null ? x.name : "?"; }
         public string Poss(long id) { if (You(id)) return "your"; return Name(id) + "'s"; }
         /// <summary>"its" for a side, "your" for the viewer.</summary>
         public string PossIts(long id) { return You(id) ? "your" : "its"; }
         public string Verb(long id, string you, string it) { return You(id) ? you : it; }
+        public string Verb(Group g, string you, string it) { return g.Single && You(g.ids[0]) ? you : it; }
 
         GameRecord.SideSnap At(int round, long id) {
             GameRecord.Snap sn;
@@ -556,11 +691,39 @@ public static class GameInsights {
         public int Material(int round, long id) { GameRecord.SideSnap x = At(round, id); return x != null ? x.material : 0; }
         public int Cities(int round, long id) { GameRecord.SideSnap x = At(round, id); return x != null ? x.cities : 0; }
         public int Income(int round, long id) { GameRecord.SideSnap x = At(round, id); return x != null ? x.income : 0; }
-        /// <summary>The front in a round: midway between the two sides' average positions on the HQ-to-HQ line; -1 if unknown.</summary>
+        public int Material(int round, Group g) { return g.ids.Sum(id => Material(round, id)); }
+        public int Cities(int round, Group g) { return g.ids.Sum(id => Cities(round, id)); }
+        public int Income(int round, Group g) { return g.ids.Sum(id => Income(round, id)); }
+        /// <summary>Where a group's units stand on the HQ-to-HQ line, on average over its sides; -1 if unknown.</summary>
+        float FrontOf(int round, Group g) {
+            float sum = 0f; int n = 0;
+            foreach (long id in g.ids) { GameRecord.SideSnap x = At(round, id); if (x != null && x.front >= 0) { sum += x.front; n++; } }
+            return n > 0 ? sum / n : -1f;
+        }
+        /// <summary>The front in a round: midway between the viewer's side's and its enemies' average positions on the HQ-to-HQ line; -1 if unknown.</summary>
         public float Front(int round) {
-            GameRecord.SideSnap a = At(round, Viewer), b = At(round, Other(Viewer));
-            if (a == null || b == null || a.front < 0 || b.front < 0) return -1f;
-            return (a.front + b.front) * 0.5f;
+            float a = FrontOf(round, Us), b = FrontOf(round, Them);
+            if (a < 0 || b < 0) return -1f;
+            return (a + b) * 0.5f;
+        }
+        public int Lost(Group g, int from, int to) { return s.losses.Count(x => g.Has(x.side) && x.round >= from && x.round <= to); }
+        public int ValueLost(Group g, int from, int to) { return s.losses.Where(x => g.Has(x.side) && x.round >= from && x.round <= to).Sum(x => x.cost); }
+        public IEnumerable<string> KindsOf(Group g) { return g.ids.SelectMany(id => KindsOf(id)).Distinct(); }
+
+        /// <summary>Every team of two or more sides that fought together, the viewer's first.</summary>
+        public List<Group> Teams {
+            get {
+                List<Group> teams = new List<Group>();
+                if (Us.ids.Count > 1) teams.Add(Us);
+                HashSet<long> done = new HashSet<long>(Us.ids);
+                foreach (GameRecord.Side x in Sides) {
+                    if (done.Contains(x.id)) continue;
+                    List<long> ids = s.SideAndAllies(x.id);
+                    foreach (long id in ids) done.Add(id);
+                    if (ids.Count > 1) teams.Add(Make(ids));
+                }
+                return teams;
+            }
         }
         public int Lost(long side, int from, int to) { return s.losses.Count(x => x.side == side && x.round >= from && x.round <= to); }
         /// <summary>What the units it lost in those rounds cost.</summary>
