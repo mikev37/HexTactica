@@ -237,7 +237,8 @@ namespace HexTactica.Harness {
             HexTile was;
             lastSeen.TryGetValue(u, out was);
             if (u.tile != null && was != null && was != u.tile)
-                Line(Lines.Moved(u, was, u.tile));
+                Line(Lines.Moved(u, was, u.tile, u.orderedTo));
+            u.orderedTo = null;
             if (u.tile != null) lastSeen[u] = u.tile;
         }
 
@@ -245,7 +246,7 @@ namespace HexTactica.Harness {
         static void FlushMove(Unit u, HexTile now) {
             HexTile was;
             if (u == null || now == null || !lastSeen.TryGetValue(u, out was) || was == now) return;
-            Line(Lines.Moved(u, was, now));
+            Line(Lines.Moved(u, was, now, u.orderedTo));   // (the order is cleared when the unit finishes: "ran into" names it too)
             lastSeen[u] = now;
         }
 
@@ -358,7 +359,8 @@ namespace HexTactica.Harness {
 
         static void OnRanInto(Unit mover, Unit hidden, HexTile stoppedAt) {
             if (writer == null || mover == null || hidden == null) return;
-            Line("   " + Who(mover) + " ran into " + Who(hidden) + " at " + D(hidden.tile) + " (unseen, fog of war): stopped at " + D(stoppedAt));
+            Line("   " + Who(mover) + " ran into " + Who(hidden) + " at " + D(hidden.tile) + " (unseen, fog of war): stopped at " + D(stoppedAt)
+                 + (mover.orderedTo != null && mover.orderedTo != stoppedAt ? ", ordered to " + D(mover.orderedTo) : ""));
         }
 
         static void OnCapture(Building b, Player side, int before, int after) {

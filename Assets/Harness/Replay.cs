@@ -610,7 +610,8 @@ namespace HexTactica.Harness {
             if (u != null && u.owner == owner && u.Strength > 0 && GameLog.Lines.UnitName(u) == kind) {
                 Unit carrier = to.occupier;
                 if (carrier != null && carrier != u && carrier.owner == owner && Transporting.CanCarry(carrier, u)) { Board(u, carrier); return; }
-                Move(u, to, fires);
+                int ox, oy;
+                Move(u, to, fires, GameLog.Lines.ReadMoveOrder(t.events[e], out ox, out oy) ? Tile(ox, oy) : null);
                 return;
             }
             // Getting off: the transport is the unit standing where the cargo was at the start of the turn...
@@ -683,19 +684,39 @@ namespace HexTactica.Harness {
         /// The move, ordered as in play: the unit walks the path the game finds for it to <paramref name="to"/> (its
         /// animation and sounds with it). Only when the game finds none (the board is not as it was) is it set there.
         /// </summary>
-        static void Move(Unit u, HexTile to, bool thenAttacks) {
+        static void Move(Unit u, HexTile to, bool thenAttacks) { Move(u, to, thenAttacks, null); }
+
+        /// <param name="ordered">Where the recorded game ordered it, when it stopped short of that at <paramref name="to"/> (the log's "ordered to"); null when it got where it was ordered.</param>
+        static void Move(Unit u, HexTile to, bool thenAttacks, HexTile ordered) {
             if (u == null || to == null || u.tile == to) return;
-            if (to.occupier != null && to.occupier != u) { Warn("(" + to.x + "," + to.y + ") is taken: the move is left out"); return; }
+            string order = ordered != null ? " (ordered to " + D(ordered) + ", stopped short at " + D(to) + " in the recorded game)" : " (ordered to " + D(to) + ")";
+            if (to.occupier != null && to.occupier != u) { Warn(GameLog.Lines.Who(u) + order + ": " + D(to) + " is taken here by " + GameLog.Lines.Who(to.occupier) + "; the move is left out"); return; }
             // Under the recorded game's own fog rule, from the mover's side (path-finding and moving go by what its
-            // side knows), as the game played it.
+            // side knows), as the game played it — to where the recorded move ended (a stop short and the shot that
+            // stopped it are played from the log's own lines).
             List<HexTile> steps = GameController.gc != null && !GameController.gc.headless ? PathTo(u, to) : null;
-            if (steps != null) u.MoveAlong(steps, thenAttacks, true);
+            Unit inTheWay = null;
+            if (steps != null && FogOfWar.On)
+                for (int i = 1; i < steps.Count && inTheWay == null; i++) {
+                    Unit o = steps[i] != null ? steps[i].occupier : null;
+                    if (o != null && o != u && Player.Hostile(o.owner, u.owner)) inTheWay = o;
+                }
+            HexTile was = u.tile;
+            if (steps != null && inTheWay == null) u.MoveAlong(steps, thenAttacks, true);
             if (u.tile != to) {
-                // The game would not take it there (it knew otherwise than the recorded game did): put where the log has it.
-                if (steps != null) Warn(GameLog.Lines.Who(u) + " stopped at (" + u.tile.x + "," + u.tile.y + "), not (" + to.x + "," + to.y + "): put where the log has it");
+                // The game here would not take it there (its side knew otherwise than in the recorded game): it is put
+                // where the log has it, and the console says where it was ordered, where the game here took or would
+                // have stopped it, and where the recording has it.
+                string here = steps == null ? "no path to " + D(to) + " from " + D(was)
+                            : inTheWay != null ? "its path runs into " + GameLog.Lines.Who(inTheWay) + " at " + D(inTheWay.tile) + ", which it would stop at"
+                            : "it stopped at " + D(u.tile);
+                if (!(GameController.gc != null && GameController.gc.headless))
+                    Warn(GameLog.Lines.Who(u) + " from " + D(was) + order + ": here " + here + "; put at " + D(to) + " as recorded");
                 if (to.occupier == null) u.TeleportTo(to, u.tile.Distance(to), thenAttacks);
             }
         }
+
+        static string D(HexTile t) { return GameLog.Lines.D(t); }
 
         /// <summary>The path the game's own search gives the unit to <paramref name="to"/> this turn (its tile first), as a player's click follows; null if it does not reach.</summary>
         static List<HexTile> PathTo(Unit u, HexTile to) {

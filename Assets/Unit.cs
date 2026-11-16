@@ -819,6 +819,8 @@ public class Unit : MonoBehaviour
 
     /// <summary>The enemy that stopped this unit's last move (fog of war), if any. For logs and tests.</summary>
     [System.NonSerialized] public Unit ambushedBy;
+    /// <summary>Where its last move was ordered to (MoveAlong's last step), whether or not it got there; null once logged. For logs.</summary>
+    [System.NonSerialized] public HexTile orderedTo;
 
     /// <summary>
     /// Move along <paramref name="steps"/> (its first tile the unit's own), animated or not. Fuel is
@@ -834,6 +836,7 @@ public class Unit : MonoBehaviour
     internal bool MoveAlong(List<HexTile> steps, bool thenAttacks, bool animate) {
         ambushedBy = null;
         if (steps == null || steps.Count == 0 || tile == null) return false;
+        orderedTo = steps[steps.Count - 1];
         // Aboard a transport it does not move by itself: it gets off (Transporting.Unload). (A move from aboard left
         // its new tile naming it as the occupier while it stayed aboard: a ghost there once the transport moved on.)
         if (trasnporter != null) { Debug.LogWarning(name + " was told to move while aboard " + trasnporter.name + ": it stays aboard"); return false; }
