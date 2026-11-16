@@ -132,8 +132,10 @@ A supply unit aboard something links to its side's network through what carries 
   line follows the water.
 - What a carried supply unit then gives: its own range around its carrier; a ship only while beside land, an aircraft
   only over land. Water is never supplied ground: no sea tile is in anyone's supply, not even the one a ship carrying
-  supply floats on. A ship is in supply only in harbor; at sea it lives on its own supplies (and mends while it has
-  them).
+  supply floats on. A ship is in supply in harbor, or at sea while a supply unit it carries is linked (above): it is
+  then healed, rearmed, refuelled and restocked each turn like a unit on supplied ground, so a convoy never needs
+  rotating out. Otherwise at sea it lives on its own supplies (and mends while it has them). An aircraft carrying
+  supply gets no such thing: it runs on its fuel and supplies as always.
 - Supply aboard a transport aboard another (a truck in a ship) is carried by the outermost: it links and spreads by the
   ship's rules.
 - What a ship carries is resupplied at the start of the turn as on supplied ground (healed, rearmed, refuelled,

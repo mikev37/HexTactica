@@ -764,6 +764,12 @@ public static partial class Scenarios {
                  Put("Transport Helo", a, -5, 3);
                  Put("Grunt", a, 6, -1); Put("Grunt", o, 7, -2); },
              "Convoys: a ship with a supply unit aboard is a link if within one move (its own path) of supplied ground or of another linked carrier, to any length, and gives supply to land only beside it. Ten tiles of sea between Blue's shore and an island, ships moving 3: TS A within a move of Blue's shore, TS B within a move of A only, TS C within a move of B only and beside the island. C is linked through B through A, the Blue grunt on the island is supplied, A and B out at sea give nothing, and the supply line runs from the grunt through C, B and A to the HQ. Without A, B and C are cut off. A helicopter with supplies aboard in A's place over the water (linked by Blue's shore, giving nothing over water) links B in turn: a ship links through an aircraft.");
+        make("attrition-rule-linked-ship-supplied", "linkedShipSupplied", (a, o) => {
+                 water(-4, 5, -7, 7);
+                 Put("Hauler", a, -1, 0); Put("Hauler", a, 5, 0);
+                 Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
+                 Put("Grunt", o, 7, -2); },
+             "A ship carrying a linked supply unit is supplied: a Hauler within a move of Blue's shore with Supplies aboard, its own supplies down to 1, fuel to 3 and strength 4, is full again and at 5 after a turn; a Hauler out of reach with Supplies aboard (cut off) runs down a supply as any ship at sea.");
         make("attrition-rule-carrier", "carrierRule", (a, o) => {
                  water(-4, 5, -7, 7);
                  Rig.At(-5, 0).terrain = T("Grassland"); Rig.PlaceBuilding("NavalYard", a, -5, 0);
@@ -3740,6 +3746,20 @@ public static partial class Scenarios {
                 endTurn(); endTurn();
                 detail = "beside it: fuel " + g.fuel + "/" + g.fuelMax + ", supplies " + g.supplies + "/" + g.suppliesMax + "; away: fuel " + far.fuel + "; the supply ship beside it: fuel " + sb2.fuel;
                 return g.fuel == g.fuelMax && g.supplies == g.suppliesMax && far.fuel == 10 && sb2.fuel == 10;
+            }
+            case "linkedShipSupplied": {
+                Unit near = Rig.At(-1, 0).occupier, far = Rig.At(5, 0).occupier;
+                Unit sn = Rig.At(-6, 2).occupier, sf = Rig.At(-6, 3).occupier;
+                Action<Unit, Unit> aboard = (ship, sup) => { sup.tile.occupier = null; sup.tile = ship.tile; sup.trasnporter = ship; ship.transported.Add(sup); };
+                aboard(near, sn); aboard(far, sf);
+                near.supplies = 1; near.fuel = Mathf.Min(3, near.fuelMax); near.Strength = 4;
+                far.supplies = 2; far.moveRange = 1;   // too slow to reach the other: cut off
+                a.Resupply();
+                bool linked = Player.LinkedShip(sn.Hub) == near && !SupplyNetwork.Solve(a, false).connectedHubs.Contains(sf.Hub);
+                endTurn(); endTurn();
+                detail = "linked: supplies " + near.supplies + "/" + near.suppliesMax + ", fuel " + near.fuel + "/" + near.fuelMax + ", strength " + near.Strength
+                         + "; cut off: supplies " + far.supplies;
+                return linked && near.supplies == near.suppliesMax && near.fuel == near.fuelMax && near.Strength == 5 && far.supplies == 1;
             }
             case "shipCarriedSupply": {
                 Unit ta = Rig.At(-1, 0).occupier, tb = Rig.At(3, 0).occupier, tc = Rig.At(5, 0).occupier, helo = Rig.At(-5, 3).occupier;
