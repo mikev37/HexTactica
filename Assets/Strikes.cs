@@ -561,6 +561,8 @@ public static class Strikes {
             if (u != null && p != null && u.owner != null && u.owner != p) continue;
             pads.RemoveAt(i);
             if (u == null) continue;
+            // Not launched yet (still idling before its Launch state): it goes once its launch has played (Unit.StrikeStageEnded).
+            if (!u.LaunchPlayed) { GameObject.Destroy(u.gameObject, Unit.StageTimeout); continue; }
             performing.Remove(u);
             u.ShownAt = null;
             GameObject.Destroy(u.gameObject);

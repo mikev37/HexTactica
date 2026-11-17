@@ -25,6 +25,11 @@ public class StrikeStage : StateMachineBehaviour {
     [Tooltip("Which stage of a strike ends when this state ends.")]
     public Stage stage;
 
+    override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex) {
+        Unit unit = animator.GetComponent<Unit>();
+        if (unit != null) unit.StrikeStageEntered(stage);
+    }
+
     override public void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex) {
         Unit unit = animator.GetComponent<Unit>();
         if (unit == null) return;

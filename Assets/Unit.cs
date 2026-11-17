@@ -1315,8 +1315,8 @@ public class Unit : MonoBehaviour
         try { DieActual(); } finally { Expending = false; }
         if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
         if (launch) {
+            // (Waited for once its Launch state starts playing, StrikeStageEntered: not while it idles before it.)
             ShownAt = pad;
-            Strikes.Performing(this);
             // No longer a target: its strength, veterancy and status go at once; it turns toward its target, as to shoot.
             HideOwnUI();
             if (aim != null && pad != null) Face(pad.transform.position, aim.transform.position);
@@ -1345,6 +1345,8 @@ public class Unit : MonoBehaviour
                 if (ShownAt == null || arriving != null || launchPlayed) return;
                 launchPlayed = true;
                 Strikes.Performed(this);
+                // Its side's turn ended before it had launched: nothing left to show it for.
+                if (GameController.gc != null && GameController.gc.activePlayer != owner) { ShownAt = null; Destroy(gameObject); }
                 return;
             case StrikeStage.Stage.Landed: {
                 // The moment of impact: it is where it fell, its Weapon Impact goes off, and the tiles, buildings and
@@ -1384,6 +1386,15 @@ public class Unit : MonoBehaviour
 
     /// <summary>Its launch has played (StrikeStage Launched): it stays on the pad until its side's turn ends. Animation only.</summary>
     [System.NonSerialized] bool launchPlayed;
+    internal bool LaunchPlayed { get { return launchPlayed; } }
+
+    /// <summary>
+    /// A strike's stage has started playing (StrikeStage, on entering its state). Launched: from now until its clip has
+    /// played, a turn's end and the AI wait for it, as for any attack (not while the unit still idles before it).
+    /// </summary>
+    public void StrikeStageEntered(StrikeStage.Stage stage) {
+        if (stage == StrikeStage.Stage.Launched && ShownAt != null && arriving == null && !launchPlayed) Strikes.Performing(this);
+    }
 
     /// <summary>The copy hit the ground (its Fall state began to blend out, or ended): its Impact plays. Animation only.</summary>
     [System.NonSerialized] bool landed;
