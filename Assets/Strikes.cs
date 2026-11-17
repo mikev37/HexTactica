@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -48,6 +49,12 @@ public class StrikeResult {
     /// <summary>The building on the target tile that took damage, and how much.</summary>
     public Building building;
     public int buildingDamage;
+    /// <summary>The screen shows what it did (the tile's new look, the building's, each unit's hit): Strikes.Reveal. Animation only.</summary>
+    [System.NonSerialized] public bool revealed;
+    /// <summary>The tiles of the blast whose look waits for Reveal (their ground, their building). Animation only.</summary>
+    [System.NonSerialized] public readonly List<HexTile> held = new List<HexTile>();
+    /// <summary>Units lost by what it did besides its hits (the ground under them gone, aboard a unit it destroyed): their deaths play at Reveal.</summary>
+    [System.NonSerialized] public readonly List<Unit> lost = new List<Unit>();
 }
 
 /// <summary>
@@ -382,14 +389,14 @@ public static class Strikes {
                 }
             launchedThisTurn = turn;
             Add(s);
-            if (u.selfDestructs) u.Expend(true);
-            else u.ShowStrikeFired(null);
+            if (u.selfDestructs) u.Expend(true, target);
+            else u.ShowStrikeFired(null, target);
             FogOfWar.Changed();
             return true;
         }
         StrikeResult r = Resolve(s);
-        u.ShowStrikeFired(r);
-        if (u.selfDestructs) u.Expend(false);
+        u.ShowStrikeFired(r, target);
+        if (u.selfDestructs) u.Expend(false, target);
         return true;
     }
 
@@ -406,9 +413,43 @@ public static class Strikes {
         foreach (Strike s in inFlight) (s.owner == p ? mine : rest).Add(s);
         if (mine.Count == 0) return;
         inFlight = rest.ToArray();
-        foreach (Strike s in mine) {
-            StrikeResult r = Resolve(s);
+        List<StrikeResult> landed = new List<StrikeResult>();
+        foreach (Strike s in mine) landed.Add(Resolve(s));
+        // On screen they come down one after another (each weapon's arrivalStagger), in the order they were launched.
+        GameController gc = GameController.gc;
+        if (gc == null || gc.headless) return;
+        arrivalsQueued += landed.Count;
+        arrivalsOn = gc;
+        gc.StartCoroutine(Arrive(landed));
+    }
+
+    /// <summary>Strikes landed this turn still waiting to be shown coming down (Arrive), and the controller showing them.</summary>
+    static int arrivalsQueued;
+    static GameController arrivalsOn;
+
+    static IEnumerator Arrive(List<StrikeResult> landed) {
+        float at = Time.time;
+        foreach (StrikeResult r in landed) {
+            while (Time.time < at) yield return null;
+            arrivalsQueued--;
             ShowArrival(r);
+            Unit w = r.strike.weapon;
+            at = Time.time + (w != null ? Mathf.Max(0f, w.arrivalStagger) : 0f);
+        }
+    }
+
+    /// <summary>
+    /// Strikes landing on screen: one still to come down, or come down and not yet exploded (Unit.StrikeCovered).
+    /// Nobody acts until the last has (the player's clicks, purchases and unloads; the AI).
+    /// </summary>
+    public static bool Landing {
+        get {
+            if (GameController.gc == null || GameController.gc.headless) return false;
+            if (arrivalsOn == null) arrivalsQueued = 0;   // (the scene it was showing in is gone)
+            if (arrivalsQueued > 0) return true;
+            performing.RemoveAll(u => u == null || u.ShownAt == null);
+            foreach (Unit u in performing) if (u.StrikeUnrevealed) return true;
+            return false;
         }
     }
 
@@ -429,6 +470,37 @@ public static class Strikes {
         StrikeResult r = new StrikeResult { strike = s };
         if (s == null || s.weapon == null || s.target == null) return r;
         r.hits.AddRange(Hits(s, t => t.RealOccupier));
+        // On screen the blast's tiles and buildings keep their look (the wear of the fight, the crater, the building's
+        // damage) until the explosion covers them (Reveal): a missile shows it when its Impact hides the ground.
+        if (!s.splash && GameController.gc != null && !GameController.gc.headless) {
+            foreach (HexTile t in Blast(s.target, s.Radius)) {
+                t.HoldLook();
+                if (t.building != null) t.building.HoldCondition();
+                r.held.Add(t);
+            }
+            resolving = r;
+        }
+        try { Land(s, r); } finally { resolving = null; }
+        FogOfWar.Changed();
+        if (Landed != null) Landed(r);
+        return r;
+    }
+
+    /// <summary>The strike being resolved on screen, whose losses wait for Reveal (DeferDeath); null otherwise.</summary>
+    static StrikeResult resolving;
+
+    /// <summary>
+    /// A unit lost while a strike is resolved, not by its hit (the ground under it gone, aboard a unit it destroyed):
+    /// its death plays when the strike is seen to land (Reveal), as its hits do. False: no strike is being resolved on
+    /// screen; play it now.
+    /// </summary>
+    internal static bool DeferDeath(Unit u) {
+        if (resolving == null || u == null) return false;
+        if (!resolving.lost.Contains(u)) resolving.lost.Add(u);
+        return true;
+    }
+
+    static void Land(Strike s, StrikeResult r) {
         foreach (StrikeHit h in r.hits) {
             h.unit.TakeStrike(h.damage);
             // A fight on a tile wears its ground (or the building on it), as any attack does.
@@ -448,9 +520,6 @@ public static class Strikes {
             }
             if (s.weapon.strikeRevealRadius > 0) FogOfWar.Flare(s.owner, s.target, s.weapon.strikeRevealRadius);
         }
-        FogOfWar.Changed();
-        if (Landed != null) Landed(r);
-        return r;
     }
 
     // ------------------------------------------------------------------ on screen (nothing here changes the rules)
@@ -462,6 +531,7 @@ public static class Strikes {
     public static bool Showing {
         get {
             if (GameController.gc == null || GameController.gc.headless) return false;
+            if (Landing) return true;
             performing.RemoveAll(u => u == null || u.ShownAt == null);
             return performing.Count > 0;
         }
@@ -477,25 +547,57 @@ public static class Strikes {
         if (GameController.gc == null || GameController.gc.headless || r.strike.target == null) return;
         Unit w = r.strike.weapon;
         if (w != null && w.selfDestructs && w.ballistic) {
-            Unit body = GameObject.Instantiate(w.gameObject, PositionOf(r.strike.target), Quaternion.identity).GetComponent<Unit>();
-            if (body != null) { body.owner = r.strike.owner; body.BeginArrival(r); return; }
+            // It appears at random near where it left (its launch site) and travels to its target.
+            Vector3 end = PositionOf(r.strike.target);
+            Vector3 start = end;
+            if (r.strike.from != null) {
+                Vector2 off = UnityEngine.Random.insideUnitCircle * Mathf.Max(0f, w.arrivalSpread);   // (looks only: not the game's seeded dice)
+                start = PositionOf(r.strike.from) + new Vector3(off.x, off.y, 0f);
+            }
+            Unit body = GameObject.Instantiate(w.gameObject, start, Quaternion.identity).GetComponent<Unit>();
+            if (body != null) { body.owner = r.strike.owner; body.BeginArrival(r, start, end); return; }
         }
         ShowImpact(r);
     }
 
     static Vector3 PositionOf(HexTile t) { return t.unitPlacement != null ? t.unitPlacement.position : t.transform.position; }
 
-    /// <summary>The explosion where it landed and each unit's hit (its strength as it now is, its death), for whoever can see the tile.</summary>
+    /// <summary>A strike that landed at once (a shot, a splash): its explosion and what it did, together.</summary>
     internal static void ShowImpact(StrikeResult r) {
+        ShowBlast(r, false);
+        Reveal(r);
+    }
+
+    /// <summary>
+    /// The strike's weaponImpact and strikeSound where it landed, for whoever can see the tile. <paramref name="arrival"/>:
+    /// a missile's own Impact state is its explosion, so only the sound plays. Nothing for a splash.
+    /// </summary>
+    internal static void ShowBlast(StrikeResult r, bool arrival) {
         if (r == null || GameController.gc == null || GameController.gc.headless) return;
         Strike s = r.strike;
-        if (!s.splash && s.target != null && s.weapon != null) {
-            Player v = FogOfWar.Viewer;
-            bool seen = v == null || FogOfWar.TileVisible(v, s.target);
-            GameObject boom = s.weapon.strikeExplosion != null ? s.weapon.strikeExplosion : s.weapon.weaponImpact;
-            if (seen && boom != null) GameObject.Instantiate(boom, PositionOf(s.target), Quaternion.identity);
-            if (seen && s.weapon.strikeSound != null && GameSounds.On) GameSounds.Play(s.weapon.strikeSound);
+        if (s.splash || s.target == null || s.weapon == null) return;
+        Player v = FogOfWar.Viewer;
+        if (v != null && !FogOfWar.TileVisible(v, s.target)) return;
+        if (!arrival && s.weapon.weaponImpact != null) GameObject.Instantiate(s.weapon.weaponImpact, PositionOf(s.target), Quaternion.identity);
+        if (s.weapon.strikeSound != null && GameSounds.On) GameSounds.Play(s.weapon.strikeSound);
+    }
+
+    /// <summary>
+    /// The screen shows what the strike did, once: the tile's new ground (a crater), the building's damage, each unit's
+    /// hit (its strength as it now is, its death). For a missile, when its Impact explosion covers the tile
+    /// (Unit.StrikeCovered), else when Impact ends.
+    /// </summary>
+    internal static void Reveal(StrikeResult r) {
+        if (r == null || r.revealed) return;
+        r.revealed = true;
+        foreach (HexTile t in r.held) {
+            if (t == null) continue;
+            t.ShowLook();
+            if (t.building != null) t.building.ShowCondition();
         }
+        r.held.Clear();
         foreach (StrikeHit h in r.hits) if (h.unit != null) h.unit.ShowHit();
+        foreach (Unit u in r.lost) if (u != null) u.ShowHit();
+        r.lost.Clear();
     }
 }

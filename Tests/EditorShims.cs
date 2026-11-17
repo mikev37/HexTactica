@@ -31,15 +31,6 @@ namespace UnityEditor {
         public static UnityEngine.GameObject SaveAsPrefabAssetAndConnect(UnityEngine.GameObject g, string path, InteractionMode m) { return g; }
         public static UnityEngine.Object InstantiatePrefab(UnityEngine.Object o, UnityEngine.Transform parent) { return o; }
         public static bool IsPartOfPrefabInstance(UnityEngine.Object o) { return false; }
-        public static UnityEngine.GameObject LoadPrefabContents(string path) { return new UnityEngine.GameObject(); }
-        public static void UnloadPrefabContents(UnityEngine.GameObject g) { }
-    }
-    public struct EditorCurveBinding { public static EditorCurveBinding FloatCurve(string path, Type type, string property) { return new EditorCurveBinding(); } }
-    public static class AnimationUtility {
-        public enum TangentMode { Free, Auto, Linear, Constant, ClampedAuto }
-        public static void SetEditorCurve(UnityEngine.AnimationClip clip, EditorCurveBinding b, UnityEngine.AnimationCurve c) { }
-        public static void SetKeyLeftTangentMode(UnityEngine.AnimationCurve c, int i, TangentMode m) { }
-        public static void SetKeyRightTangentMode(UnityEngine.AnimationCurve c, int i, TangentMode m) { }
     }
     public static class EditorUtility {
         public static bool DisplayDialog(string t, string m, string ok, string cancel) { return false; }
@@ -127,26 +118,7 @@ namespace UnityEditor {
     public static class Selection { public static UnityEngine.Object activeObject; }
     public class GenericMenu { public delegate void MenuFunction(); public void AddItem(UnityEngine.GUIContent c, bool on, MenuFunction f) { } public void DropDown(UnityEngine.Rect r) { } }
 }
-namespace UnityEditor.Animations {
-    public enum AnimatorConditionMode { If = 1, IfNot = 2, Greater = 3, Less = 4, Equals = 6, NotEqual = 7 }
-    public class AnimatorStateTransition { public float duration, exitTime; public bool hasExitTime, canTransitionToSelf; public void AddCondition(AnimatorConditionMode m, float t, string p) { } }
-    public class AnimatorState {
-        public UnityEngine.Motion motion;
-        public T AddStateMachineBehaviour<T>() where T : UnityEngine.StateMachineBehaviour, new() { return new T(); }
-        public AnimatorStateTransition AddTransition(AnimatorState to) { return new AnimatorStateTransition(); }
-    }
-    public class AnimatorStateMachine {
-        public AnimatorState AddState(string name, UnityEngine.Vector3 at) { return new AnimatorState(); }
-        public AnimatorStateTransition AddAnyStateTransition(AnimatorState to) { return new AnimatorStateTransition(); }
-    }
-    public class AnimatorControllerLayer { public AnimatorStateMachine stateMachine = new AnimatorStateMachine(); }
-    public class AnimatorController : UnityEngine.RuntimeAnimatorController {
-        public AnimatorControllerLayer[] layers = { new AnimatorControllerLayer() };
-        public void AddParameter(string name, UnityEngine.AnimatorControllerParameterType type) { }
-    }
-}
 namespace UnityEngine {
-    public enum AnimatorControllerParameterType { Float = 1, Int = 3, Bool = 4, Trigger = 9 }
     public enum EventType { Repaint, Layout }
     public enum FocusType { Passive, Keyboard }
 }

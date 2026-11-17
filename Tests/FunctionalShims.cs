@@ -532,6 +532,7 @@ namespace UnityEngine {
         public static float Range(float a, float b) { return a; }
         public static int Range(int a, int b) { return a; }
         public static float value { get { return 0.5f; } }
+        public static Vector2 insideUnitCircle { get { return Vector2.zero; } }
         public static void InitState(int seed) { }
     }
 

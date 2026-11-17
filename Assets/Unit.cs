@@ -158,10 +158,14 @@ public class Unit : MonoBehaviour
     public TerrainData craterTerrain;
     [Tooltip("Damage its ground or ballistic attack does to a building on the tile it lands on (Building.health; any attack on a unit standing on a building does 1).")]
     public int buildingDamage;
-    [Tooltip("What its ground or ballistic attack shows where it lands (an explosion). Empty: its weapon impact.")]
-    [LooksOnly] public GameObject strikeExplosion;
     [Tooltip("Played where its ground or ballistic attack lands.")]
     [LooksOnly] public AudioClip strikeSound;
+    [Tooltip("Ballistic strikes that self-destruct: how far (world units) from its launch site, at random, the arriving copy appears before it travels to its target.")]
+    [LooksOnly] public float arrivalSpread = 1f;
+    [Tooltip("Ballistic strikes that self-destruct: seconds the arriving copy takes to travel from where it appears to its target (its Fall plays meanwhile; Impact waits for it to get there).")]
+    [LooksOnly] public float arrivalTravelSeconds = 1f;
+    [Tooltip("Seconds before the next strike of the same turn comes down after this one (strikes land one after another, in the order they were launched).")]
+    [LooksOnly] public float arrivalStagger = 0.2f;
 
     /// <summary>Its attack is worked out over an area or later, not as a duel with one unit (Strikes): it aims at ground, hits an area, or lands after a delay.</summary>
     public bool StrikesArea { get { return targetsGround || ballistic; } }
@@ -215,6 +219,8 @@ public class Unit : MonoBehaviour
     /// off every list and off its tile, so nothing reads it afterwards.
     /// </summary>
     void OnDestroy() {
+        // A strike's arrival removed before it showed what it did (its timeout, the scene closing): show it now.
+        if (arriving != null) { StrikeResult r = arriving; arriving = null; Strikes.Reveal(r); }
         if (dead) return;
         dead = true;
         if (owner != null && owner.units != null) owner.units.Remove(this);
@@ -258,6 +264,8 @@ public class Unit : MonoBehaviour
     internal void Perish() {
         DieActual();
         if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
+        // Lost to a strike's crater (or a bridge it brought down): its death plays when the strike is seen to land.
+        if (Strikes.DeferDeath(this)) return;
         Die();
     }
 
@@ -329,7 +337,16 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Off the board, playing a stage of its strike (launch, fall, impact): its animator decides when it ends (StrikeStage).
+        // A strike's arriving copy travels from near its launch site to its target (its Fall plays meanwhile).
+        if (travelling) {
+            float k = travelSeconds <= 0f ? 1f : Mathf.Clamp01((Time.time - travelStart) / travelSeconds);
+            transform.position = Vector3.Lerp(travelFrom, travelTo, k);
+            if (k >= 1f) {
+                travelling = false;
+                if (impactWaiting) { impactWaiting = false; StrikeStageEnded(StrikeStage.Stage.Landed); }
+            }
+        }
+        // Off the board but still on screen, playing a stage of its strike (launch, fall, impact): its animator decides when it ends (StrikeStage).
         if (ShownAt != null) return;
         // A strike's hits wait for this unit's shot to land (AttackResolve), a couple of seconds at most.
         if (pendingImpact != null && Time.time - impactAt > 2.5f) ShowPendingImpact();
@@ -613,13 +630,7 @@ public class Unit : MonoBehaviour
         // Its own UI goes: strength, veterancy and warnings are not shown for a unit aboard. (Kept from an
         // earlier boarding not yet undone — boarded again, or moved between transports — so it all comes
         // back on getting off: cleared here, the pips hidden the first time were never shown again.)
-        foreach (Transform t in GetComponentsInChildren<Transform>(true)) {
-            if (t == transform || !t.gameObject.activeSelf) continue;
-            if (IsOwnUI(t)) {
-                t.gameObject.SetActive(false);
-                if (!hiddenUI.Contains(t.gameObject)) hiddenUI.Add(t.gameObject);
-            }
-        }
+        HideOwnUI();
         // The walk there (if it moved to board) is played out first, at full size.
         boardingWalk.Clear();
         if (path != null && path.Count > 0) boardingWalk.AddRange(path);
@@ -648,6 +659,26 @@ public class Unit : MonoBehaviour
     }
 
     /// <summary>A child that is this unit's own UI: strength pips, veterancy, status icons.</summary>
+    /// <summary>
+    /// Its own UI (IsOwnUI: strength label, pips, veterancy, status icons) is switched off, to come back with ShowOwnUI:
+    /// aboard a transport, or for good once it can no longer be targeted (launched; a strike's arriving copy).
+    /// </summary>
+    void HideOwnUI() {
+        foreach (Transform t in GetComponentsInChildren<Transform>(true)) {
+            if (t == transform || !t.gameObject.activeSelf) continue;
+            if (IsOwnUI(t)) {
+                t.gameObject.SetActive(false);
+                if (!hiddenUI.Contains(t.gameObject)) hiddenUI.Add(t.gameObject);
+            }
+        }
+    }
+
+    /// <summary>Turned to face <paramref name="to"/> from <paramref name="from"/>, as a unit turns to shoot (Fire): its sprites are drawn for facing right.</summary>
+    void Face(Vector3 from, Vector3 to) {
+        if (Mathf.Abs(to.x - from.x) < 0.001f) return;
+        transform.rotation = to.x < from.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+    }
+
     internal static bool IsOwnUI(Transform t) {
         if (t.GetComponent<Canvas>() != null || t.name == "HealthCircles" || t.name == "Veterancy" || t.name == "Canvas") return true;
         foreach (MonoBehaviour m in t.GetComponents<MonoBehaviour>())
@@ -1288,7 +1319,7 @@ public class Unit : MonoBehaviour
     /// plays where it stood (seen by whoever sees that tile), and it is removed when that state ends (StrikeStage
     /// Launched). Otherwise its death plays once its shot has landed.
     /// </summary>
-    internal void Expend(bool launch) {
+    internal void Expend(bool launch, HexTile aim = null) {
         if (dead) return;
         HexTile pad = tile;
         Expending = true;
@@ -1297,7 +1328,11 @@ public class Unit : MonoBehaviour
         if (launch) {
             ShownAt = pad;
             Strikes.Performing(this);
+            // No longer a target: its strength, veterancy and status go at once; it turns toward its target, as to shoot.
+            HideOwnUI();
+            if (aim != null && pad != null) Face(pad.transform.position, aim.transform.position);
             PlaySound(fireSound);
+            SetAnimatorBool("Flying", true);
             PlayStage("Launch", StrikeStage.Stage.Launched);
         } else expendAfterShot = true;
     }
@@ -1319,19 +1354,46 @@ public class Unit : MonoBehaviour
                 Destroy(gameObject);
                 return;
             case StrikeStage.Stage.Landed: {
-                if (arriving == null) return;
-                StrikeResult r = arriving;
-                arriving = null;
-                Strikes.ShowImpact(r);
+                if (arriving == null || landed) return;
+                // Its Fall ended before it got there: Impact waits until it arrives (Update).
+                if (travelling) { impactWaiting = true; return; }
+                landed = true;
+                Strikes.ShowBlast(arriving, true);
                 PlayStage("Impact", StrikeStage.Stage.ImpactDone);
                 return;
             }
             case StrikeStage.Stage.ImpactDone:
                 if (ShownAt == null) return;
                 ShownAt = null;
+                StrikeCovered();   // (if its Impact clip has no StrikeCovered event)
                 Destroy(gameObject);
                 return;
         }
+    }
+
+    /// <summary>The copy reached the ground (its Fall state ended): its Impact plays. Animation only.</summary>
+    [System.NonSerialized] bool landed;
+    /// <summary>The copy's travel to its target (BeginArrival). Animation only.</summary>
+    [System.NonSerialized] bool travelling, impactWaiting;
+    [System.NonSerialized] Vector3 travelFrom, travelTo;
+    [System.NonSerialized] float travelStart, travelSeconds;
+
+    /// <summary>A strike's copy on its way to its target: fog of war judges it where its sprite is (FogOfWar.ShownToViewer).</summary>
+    public bool Travelling { get { return travelling; } }
+
+    /// <summary>A strike's copy that has not yet shown what its strike did (Strikes.Landing: actions wait for it).</summary>
+    internal bool StrikeUnrevealed { get { return arriving != null; } }
+
+    /// <summary>
+    /// Animation event for the Impact clip, at the moment its explosion hides the tile: the tile's new ground, the
+    /// building's damage and the units' hits appear (Strikes.Reveal). Without the event they appear when Impact ends.
+    /// Does nothing before the copy has landed, or twice.
+    /// </summary>
+    public void StrikeCovered() {
+        if (arriving == null || !landed) return;
+        StrikeResult r = arriving;
+        arriving = null;
+        Strikes.Reveal(r);
     }
 
     /// <summary>Hit by a strike (Strikes.Resolve): the strength is lost now, as in any attack; the screen shows it when the strike is seen to land (ShowHit).</summary>
@@ -1352,9 +1414,10 @@ public class Unit : MonoBehaviour
     /// This unit fired a strike (Strikes.Order): its fire animation and sound; <paramref name="r"/>, what the strike
     /// did if it landed at once, is shown when the shot lands (AttackResolve), as an ordinary attack's hit is.
     /// </summary>
-    internal void ShowStrikeFired(StrikeResult r) {
+    internal void ShowStrikeFired(StrikeResult r, HexTile aim = null) {
         if (GameController.gc == null || GameController.gc.headless) return;
         target = null;
+        if (aim != null && tile != null) Face(tile.transform.position, aim.transform.position);
         pendingImpact = r; impactAt = Time.time;
         firing = true; firedAt = Time.time;
         if (animator != null) animator.SetTrigger("Fire!");
@@ -1378,11 +1441,19 @@ public class Unit : MonoBehaviour
     /// shown and its Impact trigger plays; when that ends (Impact Done) it is removed. Fog of war shows it as it shows the
     /// tile it falls on.
     /// </summary>
-    internal void BeginArrival(StrikeResult r) {
+    internal void BeginArrival(StrikeResult r, Vector3 start, Vector3 end) {
         dead = true;
+        transform.position = start;
+        travelFrom = start; travelTo = end;
+        travelStart = Time.time; travelSeconds = Mathf.Max(0f, arrivalTravelSeconds);
+        travelling = start != end;
         arriving = r;
         ShownAt = r.strike.target;
         Strikes.Performing(this);
+        // Never a target: no strength, veterancy or status. Facing the way it flew, from its launch tile to its target.
+        HideOwnUI();
+        Face(start, end);
+        SetAnimatorBool("Flying", true);
         PlayStage("Fall", StrikeStage.Stage.Landed);
     }
 
@@ -1515,7 +1586,8 @@ public class Unit : MonoBehaviour
             Unit c = transported[i];
             if (c == null) continue;
             c.DieActual();
-            if (GameController.gc == null || !GameController.gc.headless) c.FallAboard();
+            // (Aboard a unit a strike destroys: its death plays with its transport's, when the strike is seen to land.)
+            if ((GameController.gc == null || !GameController.gc.headless) && !Strikes.DeferDeath(c)) c.FallAboard();
         }
         transported.Clear();
         if (trasnporter != null) { trasnporter.transported.Remove(this); trasnporter = null; }

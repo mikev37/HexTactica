@@ -163,11 +163,47 @@ public class HexTile : MonoBehaviour
         terrain = td;
         damage = 0;
         damageLevel = 0;
+        road = td.road;
+        // (A strike's change waiting for its explosion: the ground keeps the look it had, HoldLook.)
+        if (lookHeld) return;
         upper.sprite = td.upper_normal;
         lower.sprite = td.lower;
         water.sprite = td.water;
         floor.sprite = td.floor;
-        road = td.road;
+        drawRoads();
+        neighbors.ForEach(x => x.drawRoads());
+    }
+
+    // ---- a strike's change shown under its explosion (Strikes.Resolve, Strikes.Reveal) ----
+
+    /// <summary>The tile keeps the look it has while a change to it waits for the explosion that hides it: its sprites are not written.</summary>
+    /// <summary>How many strikes landing on screen hold the tile's look (overlapping blasts: it changes under the last explosion).</summary>
+    [System.NonSerialized] int lookHolds;
+    [System.NonSerialized] bool heldRoad;
+    bool lookHeld { get { return lookHolds > 0; } }
+
+    /// <summary>Whether a road is drawn here: the road the tile shows (the one it had, while its look is held).</summary>
+    bool RoadShown { get { return lookHeld ? heldRoad : road; } }
+
+    /// <summary>
+    /// Keep the look the tile has now (its sprites and road) while its terrain changes underneath, until ShowLook: a
+    /// strike's crater appears when its explosion covers the tile, not when the rules make it. The rules see the new
+    /// terrain at once. Nothing without sprites (headless).
+    /// </summary>
+    public void HoldLook() {
+        if (upper == null) return;
+        if (lookHolds++ == 0) heldRoad = road;
+    }
+
+    /// <summary>Show the tile as it now is (after HoldLook): its terrain's sprites, its damage picture, its roads and its neighbours'.</summary>
+    public void ShowLook() {
+        if (lookHolds == 0 || --lookHolds > 0) return;
+        if (terrain != null) {
+            if (lower != null) lower.sprite = terrain.lower;
+            if (water != null) water.sprite = terrain.water;
+            if (floor != null) floor.sprite = terrain.floor;
+            RefreshDamageSprite();
+        }
         drawRoads();
         neighbors.ForEach(x => x.drawRoads());
     }
@@ -260,9 +296,9 @@ public class HexTile : MonoBehaviour
         road_rd.gameObject.SetActive(false);
         road_lu.gameObject.SetActive(false);
         road_ld.gameObject.SetActive(false);
-        if (!road) return;
+        if (!RoadShown) return;
         neighbors.ForEach(tile => {
-            if (tile.road) {
+            if (tile.RoadShown) {
                 if (tile.x == x) {
                     if (tile.z > z) {
                         road_up.gameObject.SetActive(true);
@@ -425,7 +461,7 @@ public class HexTile : MonoBehaviour
 
     /// <summary>The terrain's damage picture for the health it has left (TerrainData.Stage), or its normal top sprite.</summary>
     public void RefreshDamageSprite() {
-        if (terrain == null) return;
+        if (terrain == null || lookHeld) return;
         Sprite[] states = terrain.DamageStates;
         int stage = TerrainData.Stage(terrain.health, damage, states.Length);
         damageLevel = stage;
@@ -515,6 +551,8 @@ public class HexTile : MonoBehaviour
     /// next idle unit's tile (TurnControls), so both go the same way.
     /// </summary>
     public void ClickBoard() {
+        // Strikes coming down: nothing is done until the last has exploded (Strikes.Landing).
+        if (Strikes.Landing) return;
         lastClicked = this;
         // The unit here as the player at the screen knows it: under fog of war, one it does not
         // see is not there, so the click does what it would on an empty tile and gives nothing away.
