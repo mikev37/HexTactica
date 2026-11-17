@@ -23,6 +23,8 @@ namespace HexTactica.Multiplayer {
         public TMP_Text joinCode;
         [Tooltip("{0} the code.")]
         public string joinCodeFormat = "{0}";
+        [Tooltip("Shown in place of the code until the game store has the game (hosting, or hosting failed).")]
+        public string noCodeYet = "------";
         [Tooltip("The join code's own panel (shown only for a networked lobby). Optional.")]
         public GameObject joinCodePanel;
         [Tooltip("The lobby's name: the host's to change until the game starts. Optional.")]
@@ -104,7 +106,11 @@ namespace HexTactica.Multiplayer {
         }
 
         /// <summary>The join code to the clipboard, to paste in a message to the others.</summary>
-        public void CopyCode() { if (Code.Length > 0) GUIUtility.systemCopyBuffer = Code; }
+        public void CopyCode() {
+            if (Code.Length == 0) { Say("There is no code to copy yet."); return; }
+            GUIUtility.systemCopyBuffer = Code;
+            Say("Copied " + Code + ".");
+        }
 
         /// <summary>The pre-game screen is a lobby: take over its rows and rules, host the game if it is not hosted yet, else show it as it stands.</summary>
         public void Begin(PreGameMenu m, List<PlayerSetupRow> made, List<AI.AIProfile> withProfiles, List<Faction> withFactions) {
@@ -127,6 +133,8 @@ namespace HexTactica.Multiplayer {
             }
             if (menu.startButton != null) menu.startButton.gameObject.SetActive(Hosting);
             if (menu.details != null) menu.details.text = AboutTheMap(MatchSetup.FilePath);
+            // No code until the store has the game (the scene's sample text must never pass for one).
+            if (joinCode != null) joinCode.text = Code.Length > 0 ? string.Format(joinCodeFormat, Code) : noCodeYet;
             foreach (PlayerSetupRow row in rows) if (row.playerLabel != null) row.playerLabel.gameObject.SetActive(false);   // (who holds a side is in its drop-down)
             if (Hosting && Code.Length == 0) HostNew();
             else nextPoll = 0f;
@@ -149,7 +157,7 @@ namespace HexTactica.Multiplayer {
             try { text = File.ReadAllText(MatchSetup.FilePath); }
             catch (System.Exception e) { Say("Could not read " + MatchSetup.FilePath + ": " + e.Message); return; }
             MpResult r = await Mp.Host(Path.GetFileNameWithoutExtension(MatchSetup.FilePath), text);
-            if (!r.ok) { Say(r.error); return; }
+            if (!r.ok) { Say(r.error); if (joinCode != null) joinCode.text = noCodeYet; return; }
             MatchSetup.NetCode = r.game.code;
             // The sides as the scenario has them: the AI's stay the AI's, the first human side is the host's, the
             // other human sides are open for others to take.

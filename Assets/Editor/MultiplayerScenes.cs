@@ -223,7 +223,7 @@ static partial class FrontEndScenes {
             MpJoinPanel jp = w.AddComponent<MpJoinPanel>();
             Text(w.transform, "Heading", "Join Game", 40, TextAlignmentOptions.Left, FontStyles.Bold);
             Text(w.transform, "Hint", "Type the join code the host shows (with or without the game's name before it).", 22, TextAlignmentOptions.Left, FontStyles.Normal);
-            jp.code = Field(w.transform, "K7Q2MX");
+            jp.code = Field(w.transform, "Join code");
             jp.status = Text(w.transform, "Status", "", 22, TextAlignmentOptions.Left, FontStyles.Italic);
             Flexible(jp.status.gameObject, true);
             GameObject buttons = Row(w.transform, "Buttons", 60f);
@@ -321,7 +321,7 @@ static partial class FrontEndScenes {
             Place((RectTransform)p.transform, new Vector2(1f, 1f), new Vector2(-250f, -170f), new Vector2(420f, 260f));
             VLayout(p, 20, 8f);
             Text(p.transform, "Heading", "Join code", 26, TextAlignmentOptions.Left, FontStyles.Bold);
-            lobby.joinCode = Text(p.transform, "Code", "K7Q2MX", 56, TextAlignmentOptions.Center, FontStyles.Bold);
+            lobby.joinCode = Text(p.transform, "Code", "------", 56, TextAlignmentOptions.Center, FontStyles.Bold);
             Text(p.transform, "Hint", "Give this to the other players: they type it in Join Game.", 18, TextAlignmentOptions.Left, FontStyles.Italic);
             Btn(p.transform, "Copy", lobby.CopyCode, -1f, 22f);
             lobby.joinCodePanel = p;
