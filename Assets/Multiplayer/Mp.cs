@@ -306,13 +306,19 @@ namespace HexTactica.Multiplayer {
             });
         }
 
-        /// <summary>The host sets who plays a side in the lobby: open to join, the AI (with a profile), or the host's own device ("Local").</summary>
-        public static Task<MpResult> HostSetSlot(string code, long side, MpSlotKind kind, string profile) {
+        /// <summary>
+        /// The host sets who plays a side in the lobby: open to join, the AI (with a profile), or a person in the lobby
+        /// (<paramref name="player"/>; "" the host, whose device plays it: "Local").
+        /// </summary>
+        public static Task<MpResult> HostSetSlot(string code, long side, MpSlotKind kind, string profile, string player = "") {
             return HostChange(code, g => {
                 MpSlot s = g.Slot(side);
                 if (s == null) return;
+                MpMember m = kind == MpSlotKind.Player ? g.Member(string.IsNullOrEmpty(player) ? g.host : player) : null;
+                if (kind == MpSlotKind.Player && m == null) return;
                 s.kind = kind; s.profile = kind == MpSlotKind.AI ? profile ?? "" : "";
-                s.player = kind == MpSlotKind.Player ? g.host : ""; s.playerName = kind == MpSlotKind.Player ? PlayerName : "";
+                s.player = m != null ? m.id : ""; s.playerName = m != null ? m.name : "";
+                if (m != null) m.spectator = false;
             });
         }
 

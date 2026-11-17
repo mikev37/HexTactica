@@ -7,28 +7,27 @@ using UnityEngine.UI;
 namespace HexTactica.Multiplayer {
 
     /// <summary>
-    /// Over a networked game (the MultiplayerOverlay scene, loaded by GameSession):
-    /// - under the turn banner, whose turn it is ("It's Bob's turn (Red)"), what is going on (catching up on what
-    ///   happened, watching), and anything that went wrong;
+    /// Over a networked game (the MultiplayerOverlay scene, loaded by GameSession). Whose turn it is is the turn
+    /// banner's to say (it names the person playing a side on another device). This adds, under the banner:
+    /// - a strip, only when there is something to say: catching up on what happened, watching (a spectator), a problem
+    ///   reaching the game store; and Skip their turn once the player to move is out of time (any player may);
     /// - the turn clock beside the banner, on the player's own turn once the limit is near (MultiplayerSettings
     ///   .clockShowsWithinSeconds; always, for a 1-minute game);
-    /// - Skip their turn, under it, once the player to move is out of time (any player may);
     /// - a desync: guests are told something went wrong and the host is deciding; the host gets what differed, why it
     ///   can happen, and Continue from my board / End the game;
     /// - for the host, Players: everyone in the game with Remove, and each side with nobody to play it (its player left
     ///   or was removed) with Give to (a player in the game), AI, or Eliminate.
     /// </summary>
     public class MpOverlay : MonoBehaviour {
-        [Header("Whose turn")]
+        [Header("Under the banner")]
+        [Tooltip("The strip under the turn banner: shown only when it has something to say.")]
+        public GameObject statusPanel;
+        [Tooltip("What is going on: catching up, watching, a side waiting for the host.")]
         public TMP_Text turnLine;
-        public string yourTurn = "Your turn";
-        [Tooltip("{0} the player's name, {1} the side.")]
-        public string theirTurn = "It's {0}'s turn ({1})";
-        [Tooltip("{0} the side.")]
-        public string aiTurn = "The AI is playing {0}";
-        public string openTurn = "{0} has nobody to play it: waiting for the host";
         public string catchingUp = "Catching up on what happened...";
         public string watching = "Watching";
+        [Tooltip("{0} the side.")]
+        public string openTurn = "{0} has nobody to play it: waiting for the host";
         [Tooltip("Status and problems (no connection, removed by the host). Optional.")]
         public TMP_Text notice;
 
@@ -69,21 +68,21 @@ namespace HexTactica.Multiplayer {
         void Update() {
             MpGame g = MpSession.Game;
             GameController gc = GameController.gc;
+            string status = g == null || gc == null ? (MpSession.State == MpSession.Phase.Opening ? catchingUp : "") : Status(g, gc);
+            if (turnLine != null) turnLine.text = status;
             if (notice != null) notice.text = MpSession.Notice;
-            if (g == null || gc == null) {
-                if (turnLine != null) turnLine.text = MpSession.State == MpSession.Phase.Opening ? catchingUp : "";
-                Show(clock != null ? clock.gameObject : null, false);
-                Show(skipButton != null ? skipButton.gameObject : null, false);
-                return;
-            }
-            if (turnLine != null) turnLine.text = TurnLine(g, gc);
+            bool skip = g != null && gc != null && MpSession.CanSkip;
+            Show(skipButton != null ? skipButton.gameObject : null, skip);
+            Show(turnLine != null ? turnLine.gameObject : null, status.Length > 0);
+            Show(notice != null ? notice.gameObject : null, MpSession.Notice.Length > 0);
+            Show(statusPanel, status.Length > 0 || MpSession.Notice.Length > 0 || skip);
+            if (g == null || gc == null) { Show(clock != null ? clock.gameObject : null, false); return; }
 
             double? left = MpSession.SecondsLeft;
             MultiplayerSettings s = MultiplayerSettings.Get;
             bool clockOn = left.HasValue && MpSession.MyTurn && (g.turnSeconds <= s.clockShowsWithinSeconds || left.Value <= s.clockShowsWithinSeconds);
             Show(clock != null ? clock.gameObject : null, clockOn);
             if (clockOn) clock.Show(left.Value);
-            Show(skipButton != null ? skipButton.gameObject : null, MpSession.CanSkip);
 
             bool desync = g.desync.Length > 0 || MpSession.Diverged;
             Show(desyncPanel, desync);
@@ -99,18 +98,14 @@ namespace HexTactica.Multiplayer {
 
         static void Show(GameObject go, bool on) { if (go != null && go.activeSelf != on) go.SetActive(on); }
 
-        string TurnLine(MpGame g, GameController gc) {
+        /// <summary>What the strip says beyond the banner: catching up, watching, a side waiting for the host; "" nothing.</summary>
+        string Status(MpGame g, GameController gc) {
             if (MpSession.State == MpSession.Phase.Opening || MpSession.State == MpSession.Phase.CatchingUp) return catchingUp;
             if (MpSession.State == MpSession.Phase.Ended || gc.gameOver) return "";
             Player p = gc.activePlayer;
-            if (p == null) return "";
-            MpSlot slot = g.Slot(p.id);
-            string line;
-            if (MpSession.MyTurn && slot != null && slot.kind == MpSlotKind.Player) line = yourTurn;
-            else if (slot == null || slot.kind == MpSlotKind.AI) line = string.Format(aiTurn, p.personal_name);
-            else if (slot.kind == MpSlotKind.Open) line = string.Format(openTurn, p.personal_name);
-            else line = string.Format(theirTurn, slot.playerName, p.personal_name);
-            return MpSession.Spectating ? watching + " - " + line : line;
+            MpSlot slot = p != null ? g.Slot(p.id) : null;
+            if (slot != null && slot.kind == MpSlotKind.Open) return string.Format(openTurn, p.personal_name);
+            return MpSession.Spectating ? watching : "";
         }
 
         // ------------------------------------------------------------------ buttons

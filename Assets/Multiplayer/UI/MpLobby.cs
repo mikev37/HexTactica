@@ -10,17 +10,21 @@ namespace HexTactica.Multiplayer {
 
     /// <summary>
     /// The pre-game screen as a networked game's lobby (on the PreGame scene beside its PreGameMenu, which hands over to
-    /// it when MatchSetup.Networked). Shows the join code (name#code) for the others, and for each side who plays it:
-    /// open (any joined player can take it), the host's device ("Local"), or the AI. The host sets the sides, the
+    /// it when MatchSetup.Networked). Shows the join code in a panel of its own, and for each side who plays it: open
+    /// (any joined player can take it), a person in the lobby (by name: the host's own sides are played on the host's
+    /// device), or the AI. The host sets the sides, the
     /// rules, the turn limit and the lobby's name (the scenario's at first, locked once the game starts), removes
     /// players, and starts the game once no side is open. A player takes an open side or gives theirs up, and picks
     /// its faction. Everyone sees the others' changes within a couple of seconds (MultiplayerSettings.livePollSeconds).
     /// When the host starts, each device goes into the game.
     /// </summary>
     public class MpLobby : MonoBehaviour {
-        [Tooltip("The game's name#code, for the others to join with.")]
+        [Tooltip("The join code alone (what the others type in Join Game), big.")]
         public TMP_Text joinCode;
-        public string joinCodeFormat = "Join code: <b>{0}</b>";
+        [Tooltip("{0} the code.")]
+        public string joinCodeFormat = "{0}";
+        [Tooltip("The join code's own panel (shown only for a networked lobby). Optional.")]
+        public GameObject joinCodePanel;
         [Tooltip("The lobby's name: the host's to change until the game starts. Optional.")]
         public TMP_InputField lobbyName;
         [Tooltip("How long a player has for a turn (MultiplayerSettings.turnLimits). Optional.")]
@@ -33,7 +37,10 @@ namespace HexTactica.Multiplayer {
 
         [Header("Words")]
         public string openLabel = "Open (to join)";
-        public string localLabel = "Local (host)";
+        [Tooltip("A person in the lobby, in the side's drop-down: {0} their name.")]
+        public string personLabel = "{0}";
+        [Tooltip("The host, in the side's drop-down: {0} their name.")]
+        public string hostLabel = "{0} (host)";
         public string openSeat = "open";
         public string takeSeat = "Take";
         public string giveUpSeat = "Give up";
@@ -50,7 +57,13 @@ namespace HexTactica.Multiplayer {
         float nextPoll;
         bool polling, starting, leaving;
 
-        const int ControlOpen = 0, ControlLocal = 1, ControlAi = 2;
+        // The side drop-down: Open, then each person in the lobby (people[i] at 1 + i), then the AI (default), then
+        // the AI with each profile.
+        const int ControlOpen = 0;
+        string defaultAiLabel = "AI", profileAiLabel = "AI: {0}";
+        readonly List<string> people = new List<string>();
+        string peopleKey = null;
+        int ControlAi { get { return 1 + people.Count; } }
 
         static bool Hosting { get { return MatchSetup.NetHosting; } }
         static string Code { get { return MatchSetup.NetCode; } }
@@ -59,10 +72,39 @@ namespace HexTactica.Multiplayer {
 
         /// <summary>Who plays a side, as the lobby offers it: open, the host's device, the AI (default), the AI with each profile.</summary>
         public List<string> Controls(string defaultAi, string profileAi, List<AI.AIProfile> withProfiles) {
-            List<string> c = new List<string> { openLabel, localLabel, defaultAi };
+            defaultAiLabel = defaultAi; profileAiLabel = profileAi;
+            List<string> c = new List<string> { openLabel, string.Format(hostLabel, Mp.PlayerName), defaultAi };
             c.AddRange(withProfiles.Select(x => string.Format(profileAi, x.profileName)));
             return c;
         }
+
+        /// <summary>The side drop-downs list the lobby's people as they are now (rebuilt when someone joins, leaves or is renamed).</summary>
+        void ListPeople(MpGame g) {
+            List<MpMember> list = g.members.OrderBy(m => m.id == g.host ? 0 : 1).ToList();
+            string key = string.Join("|", list.Select(m => m.id + "=" + m.name).ToArray());
+            if (key == peopleKey) return;
+            peopleKey = key;
+            people.Clear(); people.AddRange(list.Select(m => m.id));
+            List<string> options = new List<string> { openLabel };
+            options.AddRange(list.Select(m => string.Format(m.id == g.host ? hostLabel : personLabel, m.name)));
+            options.Add(defaultAiLabel);
+            options.AddRange(profiles.Select(x => string.Format(profileAiLabel, x.profileName)));
+            foreach (PlayerSetupRow row in rows) if (row.control != null) { row.control.ClearOptions(); row.control.AddOptions(options); }
+        }
+
+        /// <summary>What the lobby says about the map: its description and size (not the round or when the file was written, which say nothing here).</summary>
+        static string AboutTheMap(string path) {
+            try {
+                Defective.JSON.JSONObject obj = new Defective.JSON.JSONObject(File.ReadAllText(path));
+                Defective.JSON.JSONObject about = obj.GetField("description"), width = obj.GetField("width");
+                string text = about != null && about.isString ? about.stringValue : "";
+                if (width != null) text += (text.Length > 0 ? "\n\n" : "") + "Board " + width.intValue + " wide";
+                return text;
+            } catch (System.Exception) { return ""; }
+        }
+
+        /// <summary>The join code to the clipboard, to paste in a message to the others.</summary>
+        public void CopyCode() { if (Code.Length > 0) GUIUtility.systemCopyBuffer = Code; }
 
         /// <summary>The pre-game screen is a lobby: take over its rows and rules, host the game if it is not hosted yet, else show it as it stands.</summary>
         public void Begin(PreGameMenu m, List<PlayerSetupRow> made, List<AI.AIProfile> withProfiles, List<Faction> withFactions) {
@@ -84,6 +126,8 @@ namespace HexTactica.Multiplayer {
                 turnLimit.onValueChanged.AddListener(SetTurnLimit);
             }
             if (menu.startButton != null) menu.startButton.gameObject.SetActive(Hosting);
+            if (menu.details != null) menu.details.text = AboutTheMap(MatchSetup.FilePath);
+            foreach (PlayerSetupRow row in rows) if (row.playerLabel != null) row.playerLabel.gameObject.SetActive(false);   // (who holds a side is in its drop-down)
             if (Hosting && Code.Length == 0) HostNew();
             else nextPoll = 0f;
         }
@@ -146,9 +190,10 @@ namespace HexTactica.Multiplayer {
 
         void OnControl(PlayerSetupRow row, int i) {
             if (!Hosting || game == null || row.Side == null) return;
-            MpSlotKind kind = i == ControlOpen ? MpSlotKind.Open : i == ControlLocal ? MpSlotKind.Player : MpSlotKind.AI;
+            MpSlotKind kind = i == ControlOpen ? MpSlotKind.Open : i < ControlAi ? MpSlotKind.Player : MpSlotKind.AI;
+            string person = kind == MpSlotKind.Player ? people[i - 1] : "";
             string profile = i > ControlAi && i - ControlAi - 1 < profiles.Count ? profiles[i - ControlAi - 1].profileName : "";
-            Do(Mp.HostSetSlot(Code, row.Side.id, kind, profile));
+            Do(Mp.HostSetSlot(Code, row.Side.id, kind, profile, person));
         }
 
         void OnFaction(PlayerSetupRow row, int i) {
@@ -195,7 +240,7 @@ namespace HexTactica.Multiplayer {
 
         int ControlOf(MpSlot s) {
             if (s.kind == MpSlotKind.Open) return ControlOpen;
-            if (s.kind == MpSlotKind.Player) return ControlLocal;
+            if (s.kind == MpSlotKind.Player) { int at = people.IndexOf(s.player); return at >= 0 ? 1 + at : ControlOpen; }
             int p = profiles.FindIndex(x => x.profileName == s.profile);
             return p >= 0 ? ControlAi + 1 + p : ControlAi;
         }
@@ -204,8 +249,9 @@ namespace HexTactica.Multiplayer {
             game = g;
             bool host = g.host == Mp.Me;
             bool player = g.Member(Mp.Me) != null && !g.Member(Mp.Me).spectator || g.IsPlayer(Mp.Me);
-            if (joinCode != null) joinCode.text = string.Format(joinCodeFormat, g.Title);
-            else if (menu.details != null) menu.details.text = string.Format(joinCodeFormat, g.Title);   // (a pre-game scene not updated for lobbies)
+            ListPeople(g);
+            if (joinCode != null) joinCode.text = string.Format(joinCodeFormat, g.code);
+            else if (menu.details != null) menu.details.text = "Join code: " + g.code;   // (a pre-game scene not updated for lobbies)
             if (menu.title != null) menu.title.text = g.name;
             if (lobbyName != null) {
                 if (!lobbyName.isFocused) lobbyName.text = g.name;
@@ -232,8 +278,6 @@ namespace HexTactica.Multiplayer {
                     row.faction.SetValueWithoutNotify(factions.FindIndex(f => f.name == s.faction) + 1);
                     row.faction.interactable = !s.factionLocked && (host || mine);
                 }
-                if (row.playerLabel != null)
-                    row.playerLabel.text = s.kind == MpSlotKind.Player ? s.playerName + (s.player == g.host ? " (host)" : "") : s.kind == MpSlotKind.Open ? openSeat : "";
                 if (row.seatButton != null) {
                     bool take = !host && player && s.kind == MpSlotKind.Open, leave = !host && mine;
                     row.seatButton.gameObject.SetActive(take || leave);

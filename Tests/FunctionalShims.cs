@@ -501,6 +501,8 @@ namespace UnityEngine {
         public static Vector2 mouseScrollDelta { get { return new Vector2(); } }
     }
     public enum KeyCode { None, Space, Escape, Return, KeypadEnter, Tab, Home, End, LeftArrow, RightArrow, UpArrow, DownArrow, Equals, Minus, KeypadPlus, KeypadMinus, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
+    /// <summary>The clipboard (GUIUtility.systemCopyBuffer).</summary>
+    public static class GUIUtility { public static string systemCopyBuffer = ""; }
     public static class Application {
         public static string persistentDataPath { get { return "/tmp/hextactica"; } }
         /// <summary>The game's version (Player Settings): settable, so a test can play two devices on different versions.</summary>

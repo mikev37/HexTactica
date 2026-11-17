@@ -83,6 +83,9 @@ namespace HexTactica.Multiplayer {
         /// <summary>A call to the store is under way.</summary>
         static bool busy;
         static bool hooked;
+        /// <summary>Sending failed (no connection): not tried again before this time (unscaled seconds).</summary>
+        static float retryAt;
+        static float retryWait = 2f;
         static int desyncsSeen;
         /// <summary>The entry count at which the turn on the board began (which turn the clock in the game's meta is for).</summary>
         static int turnBeganAt;
@@ -122,6 +125,9 @@ namespace HexTactica.Multiplayer {
         public static bool MyTurn {
             get { return State == Phase.Live && !Blocked && gc != null && !gc.gameOver && gc.activePlayer != null && DriverOf(gc.activePlayer) == Mp.Me && Mp.Me.Length > 0; }
         }
+
+        /// <summary>This device is in step with the log and may add to it (the in-game menu's Resign, at any time).</summary>
+        public static bool InStep { get { return State == Phase.Live && !Blocked && !busy && current == null && incoming.Count == 0 && gc != null && !gc.gameOver; } }
 
         /// <summary>Nothing may be played here now: others' orders are being played, a desync waits for the host, or this player only watches.</summary>
         static bool Blocked { get { return applying || Diverged || Spectating || (Game != null && Game.desync.Length > 0); } }
@@ -253,10 +259,22 @@ namespace HexTactica.Multiplayer {
             GameLog.Start("multiplayer " + (Game != null ? Game.Title : ""), "Human", null);
         }
 
+        /// <summary>The banner's name for a side a person plays on another device.</summary>
+        static string NameOf(Player p) {
+            if (Game == null || p == null) return null;
+            MpSlot s = Game.Slot(p.id);
+            if (s == null || s.kind != MpSlotKind.Player || s.player == Mp.Me) return null;
+            return s.playerName;
+        }
+
+        static string EndLine() { return Game != null && Game.state == MpState.Terminated ? "Ended by the host" : null; }
+
         static void Hook() {
             if (hooked) return;
             hooked = true;
             GameController.PlayedElsewhere = Elsewhere;
+            GameController.PlayerNameOf = NameOf;
+            GameController.EndLineOverride = EndLine;
             GameLog.Written += OnWritten;
             GameController.TurnStarted += OnTurnStarted;
             GameController.GameEnded += OnGameEnded;
@@ -266,6 +284,8 @@ namespace HexTactica.Multiplayer {
             if (!hooked) return;
             hooked = false;
             if (GameController.PlayedElsewhere == (Func<Player, bool>)Elsewhere) GameController.PlayedElsewhere = null;
+            if (GameController.PlayerNameOf == (Func<Player, string>)NameOf) GameController.PlayerNameOf = null;
+            if (GameController.EndLineOverride == (Func<string>)EndLine) GameController.EndLineOverride = null;
             GameLog.Written -= OnWritten;
             GameController.TurnStarted -= OnTurnStarted;
             GameController.GameEnded -= OnGameEnded;
@@ -278,6 +298,7 @@ namespace HexTactica.Multiplayer {
             State = Phase.None; Game = null; Spectating = false; Diverged = false; Notice = ""; savedAt = -1;
             incoming.Clear(); current = null; pending.Clear(); outbox.Clear();
             applying = busy = false;
+            retryAt = 0f; retryWait = 2f;
             Replay.Instant = false;
             Unit.MoveSpeedScale = 1f;
             Say();
@@ -591,6 +612,8 @@ namespace HexTactica.Multiplayer {
         /// the board is final by then.
         /// </summary>
         static void OnGameEnded() {
+            if (State == Phase.CatchingUp && current != null && current.kind != MpEntryKind.Over && current.kind != MpEntryKind.End && !(Game != null && Game.Finished))
+                Debug.LogWarning("Multiplayer: the game ended while " + (Game != null ? Game.Title : "a game") + " was being opened, at entry " + (current != null ? current.n.ToString() : "?") + " (" + Replay.LastAction + "). Please report this with the console above.\n" + Environment.StackTrace);
             if (State != Phase.Live || applying || Diverged || gc == null) return;
             QueueOrders();
             pending.Add(new Send {
@@ -609,6 +632,7 @@ namespace HexTactica.Multiplayer {
         /// </summary>
         static async void Flush() {
             if (busy || State != Phase.Live) return;
+            if (Time.unscaledTime < retryAt) return;
             busy = true;
             bool resync = false;
             try {
@@ -623,9 +647,17 @@ namespace HexTactica.Multiplayer {
                         if (s.save != null) WriteCopy(Applied, s.save);
                         if (r.game != null) Game = r.game;
                         PlayerPrefs.SetString(SeenKey(Game), Applied.ToString(CultureInfo.InvariantCulture));
+                        retryWait = 2f;
                         if (Notice.Length > 0) { Notice = ""; Say(); }
                     } else if (r.conflict) { resync = true; break; }
-                    else { Notice = r.error ?? "Could not reach the game store."; Say(); break; }
+                    else {
+                        // Out of reach (no connection, the service down): kept, and tried again later, longer each time (at most a minute).
+                        Notice = (r.error ?? "Could not reach the game store.") + " Your moves are kept and will be sent when it can be reached.";
+                        retryAt = Time.unscaledTime + retryWait;
+                        retryWait = Mathf.Min(retryWait * 2f, 60f);
+                        Say();
+                        break;
+                    }
                 }
             } finally { busy = false; }
             if (resync) {

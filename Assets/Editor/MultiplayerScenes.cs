@@ -20,9 +20,11 @@ using HexTactica.Multiplayer;
 /// Update Scenes adds the networked game's widgets to scenes made before them, changing nothing else:
 /// - MainMenu: Host Game and Join Game (copies of your Load Scenario button), the Join Game window, and the
 ///   player's name and games drop-down in the top right corner;
-/// - PreGame: the lobby (join code, its name, turn limit, who is in it) at the top of the setup panel, and on the
-///   Side Row prefab who holds the side and a Take / Give up button;
-/// - InGameMenu: Leave game (a copy of your Exit button), with saving and loading hidden in a networked game;
+/// - PreGame: the lobby (its name, turn limit, who is in it) at the top of the setup panel, the join code in a panel of
+///   its own on the right (with Copy), and a Take / Give up button on the Side Row prefab (an earlier Player label is
+///   removed: the side's drop-down says who plays it);
+/// - InGameMenu: saving and loading hidden in a networked game (an earlier Leave game button is removed);
+/// - MultiplayerOverlay: an earlier whose-turn panel replaced by the strip under the turn banner;
 /// - PostGame: Play again hidden for a networked game.
 /// Each step is skipped once done.
 /// </summary>
@@ -60,15 +62,7 @@ static partial class FrontEndScenes {
         MpOverlay m = canvas.gameObject.AddComponent<MpOverlay>();
         Transform root = canvas.transform;
 
-        GameObject top = Go("Turn", root, typeof(Image));
-        Panel(top, new Color(PanelColor.r, PanelColor.g, PanelColor.b, 0.8f));
-        Place((RectTransform)top.transform, new Vector2(0.5f, 1f), new Vector2(0f, -190f), new Vector2(760f, 110f));
-        VLayout(top, 10, 4f);
-        m.turnLine = Text(top.transform, "Whose turn", "It's Bob's turn (Red)", 28, TextAlignmentOptions.Center, FontStyles.Bold);
-        m.notice = Text(top.transform, "Notice", "", 20, TextAlignmentOptions.Center, FontStyles.Italic);
-        m.skipButton = Btn(top.transform, "Skip their turn", m.Skip, -1f, 22f);
-        m.skipButton.gameObject.SetActive(false);
-
+        StatusStrip(root, m);
         m.clock = ClockFace(root);
         m.clock.gameObject.SetActive(false);
 
@@ -101,6 +95,36 @@ static partial class FrontEndScenes {
         desync.SetActive(false);
     }
 
+    /// <summary>
+    /// The strip just under the turn banner's line (top centre): what is going on (catching up, watching), a problem
+    /// reaching the game store, and Skip their turn under them. Hidden while it has nothing to say.
+    /// </summary>
+    static void StatusStrip(Transform root, MpOverlay m) {
+        GameObject top = Go("Status", root, typeof(Image));
+        Panel(top, new Color(PanelColor.r, PanelColor.g, PanelColor.b, 0.8f));
+        RectTransform rt = (RectTransform)top.transform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0f, -52f); rt.sizeDelta = new Vector2(520f, 0f);
+        VLayout(top, 8, 4f);
+        top.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        m.turnLine = Text(top.transform, "What is going on", "Catching up on what happened...", 20, TextAlignmentOptions.Center, FontStyles.Bold);
+        m.notice = Text(top.transform, "Notice", "", 18, TextAlignmentOptions.Center, FontStyles.Italic);
+        m.skipButton = Btn(top.transform, "Skip their turn", m.Skip, -1f, 20f);
+        m.skipButton.gameObject.SetActive(false);
+        m.statusPanel = top;
+        top.SetActive(false);
+    }
+
+    /// <summary>MultiplayerOverlay made before the turn banner named people: its big turn panel becomes the strip under the banner, the clock moves beside it.</summary>
+    static void UpdateMpOverlay(MpOverlay m, List<string> done) {
+        if (m.statusPanel != null) return;
+        Transform old = m.transform.Find("Turn");
+        if (old != null) Object.DestroyImmediate(old.gameObject);
+        StatusStrip(m.transform, m);
+        if (m.clock != null) Place((RectTransform)m.clock.transform, new Vector2(0.5f, 1f), new Vector2(300f, -70f), new Vector2(120f, 120f));
+        done.Add("whose-turn panel replaced by a status strip under the turn banner; the clock moved beside the banner");
+    }
+
     /// <summary>The turn clock: a round face, a minute hand and a second hand turning about its centre, the time in digits under it.</summary>
     static MpClock ClockFace(Transform root) {
         GameObject g = Go("Turn Clock", root, typeof(Image));
@@ -108,7 +132,7 @@ static partial class FrontEndScenes {
         Image face = g.GetComponent<Image>();
         face.sprite = Builtin("Knob"); face.color = TextColor;
         c.face = face;
-        Place((RectTransform)g.transform, new Vector2(0.5f, 1f), new Vector2(470f, -110f), new Vector2(120f, 120f));
+        Place((RectTransform)g.transform, new Vector2(0.5f, 1f), new Vector2(300f, -70f), new Vector2(120f, 120f));
         c.minuteHand = Hand(g.transform, "Minute hand", 8f, 44f, new Color(0.1f, 0.12f, 0.16f, 1f));
         c.secondHand = Hand(g.transform, "Second hand", 3f, 54f, new Color(0.85f, 0.2f, 0.2f, 1f));
         c.digits = Text(g.transform, "Time left", "0:00", 22, TextAlignmentOptions.Center, FontStyles.Bold);
@@ -254,6 +278,10 @@ static partial class FrontEndScenes {
             link.SetActive(false);
             done.Add("linking another device added to the games list");
         }
+        if (games != null && (menu.mainPanelOnly == null || menu.mainPanelOnly.Length == 0)) {
+            menu.mainPanelOnly = new[] { games.gameObject };
+            done.Add("networked games list shown on the main panel only");
+        }
     }
 
     /// <summary>The lobby on the setup panel, and on the Side Row prefab who holds the side with Take / Give up.</summary>
@@ -262,8 +290,6 @@ static partial class FrontEndScenes {
             MpLobby lobby = m.gameObject.AddComponent<MpLobby>();
             Transform panel = m.title != null ? m.title.transform.parent : m.transform;
             int at = m.title != null ? m.title.transform.GetSiblingIndex() + 1 : 0;
-            lobby.joinCode = Text(panel, "Join code", "", 26, TextAlignmentOptions.Left, FontStyles.Normal);
-            lobby.joinCode.transform.SetSiblingIndex(at++);
             GameObject nameRow = Row(panel, "Lobby name", 48f);
             nameRow.transform.SetSiblingIndex(at++);
             Text(nameRow.transform, "Label", "Name", 22, TextAlignmentOptions.Left, FontStyles.Normal).gameObject.Let(g => Size(g, 150f, -1f));
@@ -281,10 +307,30 @@ static partial class FrontEndScenes {
             lobby.status = Text(panel, "Lobby status", "", 22, TextAlignmentOptions.Left, FontStyles.Italic);
             lobby.status.transform.SetSiblingIndex(at++);
             // Shown only for a networked lobby.
-            GameObject[] parts = { lobby.joinCode.gameObject, nameRow, limitRow, panel.Find("Players heading").gameObject, lobby.members.GetComponentInParent<ScrollRect>().gameObject, lobby.status.gameObject };
+            GameObject[] parts = { nameRow, limitRow, panel.Find("Players heading").gameObject, lobby.members.GetComponentInParent<ScrollRect>().gameObject, lobby.status.gameObject };
             m.lobby = lobby;
             m.lobbyOnly = parts;
-            done.Add("networked lobby added (join code, name, turn limit, players)");
+            done.Add("networked lobby added (name, turn limit, players)");
+        }
+        if (m.lobby.joinCodePanel == null) {
+            MpLobby lobby = m.lobby;
+            // A lobby made before the panel had the code as a line on the setup panel: the panel replaces it.
+            if (lobby.joinCode != null) Object.DestroyImmediate(lobby.joinCode.gameObject);
+            GameObject p = Go("Join code", m.transform, typeof(Image));
+            Panel(p, PanelColor);
+            Place((RectTransform)p.transform, new Vector2(1f, 1f), new Vector2(-250f, -170f), new Vector2(420f, 260f));
+            VLayout(p, 20, 8f);
+            Text(p.transform, "Heading", "Join code", 26, TextAlignmentOptions.Left, FontStyles.Bold);
+            lobby.joinCode = Text(p.transform, "Code", "K7Q2MX", 56, TextAlignmentOptions.Center, FontStyles.Bold);
+            Text(p.transform, "Hint", "Give this to the other players: they type it in Join Game.", 18, TextAlignmentOptions.Left, FontStyles.Italic);
+            Btn(p.transform, "Copy", lobby.CopyCode, -1f, 22f);
+            lobby.joinCodePanel = p;
+            List<GameObject> parts = new List<GameObject>();
+            foreach (GameObject g in m.lobbyOnly) if (g != null) parts.Add(g);
+            parts.Add(p);
+            m.lobbyOnly = parts.ToArray();
+            p.SetActive(false);
+            done.Add("join code moved to its own panel on the right, with Copy");
         }
         if (m.rowTemplate != null && m.rowTemplate.seatButton == null) {
             string path = AssetDatabase.GetAssetPath(m.rowTemplate.gameObject);
@@ -294,34 +340,48 @@ static partial class FrontEndScenes {
                     PlayerSetupRow r = root.GetComponent<PlayerSetupRow>();
                     if (r != null && r.seatButton == null) {
                         int at = r.sideName != null ? r.sideName.transform.GetSiblingIndex() + 1 : root.transform.childCount;
-                        r.playerLabel = Text(root.transform, "Player", "", 20, TextAlignmentOptions.Left, FontStyles.Italic);
-                        Size(r.playerLabel.gameObject, 130f, -1f);
-                        r.playerLabel.transform.SetSiblingIndex(at);
                         r.seatButton = Btn(root.transform, "Take", null, 110f, 20f);
-                        r.seatButton.transform.SetSiblingIndex(at + 1);
+                        r.seatButton.transform.SetSiblingIndex(at);
                         r.seatLabel = r.seatButton.GetComponentInChildren<TMP_Text>();
                         r.seatButton.gameObject.SetActive(false);
                         PrefabUtility.SaveAsPrefabAsset(root, path);
-                        done.Add("Side Row prefab: who holds the side, Take / Give up");
+                        done.Add("Side Row prefab: Take / Give up");
+                    }
+                } finally { PrefabUtility.UnloadPrefabContents(root); }
+            }
+        }
+        // Who holds a side is in its drop-down: the Player label an earlier version added only squeezed the side's name.
+        if (m.rowTemplate != null && m.rowTemplate.playerLabel != null) {
+            string path = AssetDatabase.GetAssetPath(m.rowTemplate.gameObject);
+            if (!string.IsNullOrEmpty(path)) {
+                GameObject root = PrefabUtility.LoadPrefabContents(path);
+                try {
+                    PlayerSetupRow r = root.GetComponent<PlayerSetupRow>();
+                    if (r != null && r.playerLabel != null) {
+                        Object.DestroyImmediate(r.playerLabel.gameObject);
+                        r.playerLabel = null;
+                        PrefabUtility.SaveAsPrefabAsset(root, path);
+                        done.Add("Side Row prefab: the Player label removed (the side's drop-down says who plays it)");
                     }
                 } finally { PrefabUtility.UnloadPrefabContents(root); }
             }
         }
     }
 
-    /// <summary>Leave game (a copy of your Exit to main menu button, before it); saving and loading hidden in a networked game.</summary>
+    /// <summary>Saving and loading hidden in a networked game (Resign and Exit to main menu cover leaving one).</summary>
     static void UpdateInGameMenuMultiplayer(InGameMenu m, List<string> done) {
-        if (m.leaveButton != null) return;
-        Button exit = FindButton(m.transform, "ExitToMainMenu");
-        if (exit == null) return;
-        m.leaveButton = CopyButton(exit, "Leave game", m.LeaveGame, true);
-        m.leaveButton.gameObject.SetActive(false);
+        if (m.leaveButton != null) {
+            Object.DestroyImmediate(m.leaveButton.gameObject);
+            m.leaveButton = null;
+            done.Add("Leave game button removed (Resign and Exit to main menu cover it)");
+        }
+        if (m.hiddenInNetworked != null && m.hiddenInNetworked.Length > 0) return;
         List<GameObject> hide = new List<GameObject>();
         Transform w = m.window != null ? m.window.transform : m.transform;
         foreach (string n in new[] { "Save heading", "Save", "Load heading", "Saves" }) { Transform t = w.Find(n); if (t != null) hide.Add(t.gameObject); }
         if (m.loadButton != null) hide.Add(m.loadButton.gameObject);
         m.hiddenInNetworked = hide.ToArray();
-        done.Add("Leave game button added; saving and loading hidden in a networked game");
+        if (hide.Count > 0) done.Add("saving and loading hidden in a networked game");
     }
 
     static void UpdatePostGameMultiplayer(PostGameScreen m, List<string> done) {
