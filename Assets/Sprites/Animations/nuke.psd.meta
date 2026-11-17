@@ -104,7 +104,7 @@ ScriptedImporter:
   layeredSpriteImportData:
   - name: Layer 19
     originalName: 
-    pivot: {x: 0.5, y: 0.25}
+    pivot: {x: 0.49708095, y: 0.12503484}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -126,7 +126,7 @@ ScriptedImporter:
     spritePosition: {x: 36, y: 16}
   - name: Layer 18
     originalName: 
-    pivot: {x: 0.5, y: 0.3}
+    pivot: {x: 0.50000006, y: 0.08099372}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -148,7 +148,7 @@ ScriptedImporter:
     spritePosition: {x: 12, y: 26}
   - name: Layer 17
     originalName: 
-    pivot: {x: 0.5, y: 0.3}
+    pivot: {x: 0.5122876, y: 0.12349629}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -170,7 +170,7 @@ ScriptedImporter:
     spritePosition: {x: 36, y: 31}
   - name: Layer 16
     originalName: 
-    pivot: {x: 0.5, y: 0.3}
+    pivot: {x: 0.5000001, y: 0.10421585}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -192,7 +192,7 @@ ScriptedImporter:
     spritePosition: {x: 81, y: 16}
   - name: Layer 20
     originalName: 
-    pivot: {x: 0.5, y: 0.3}
+    pivot: {x: 0.5192535, y: 0.10137157}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -214,7 +214,7 @@ ScriptedImporter:
     spritePosition: {x: 64, y: 9}
   - name: Layer 14
     originalName: 
-    pivot: {x: 0.5, y: 0.35}
+    pivot: {x: 0.51673526, y: 0.10913169}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -236,7 +236,7 @@ ScriptedImporter:
     spritePosition: {x: 87, y: 26}
   - name: Layer 13
     originalName: 
-    pivot: {x: 0.5, y: 0.4}
+    pivot: {x: 0.5034475, y: 0.11688149}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -258,7 +258,7 @@ ScriptedImporter:
     spritePosition: {x: 109, y: 29}
   - name: Layer 12
     originalName: 
-    pivot: {x: 0.5, y: 0.45}
+    pivot: {x: 0.51404136, y: 0.14370658}
     alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
@@ -280,8 +280,8 @@ ScriptedImporter:
     spritePosition: {x: 114, y: 37}
   - name: Layer 11
     originalName: 
-    pivot: {x: 0.5, y: 0.5}
-    alignment: 0
+    pivot: {x: 0.48975146, y: 0.16460437}
+    alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
     rect:
@@ -302,8 +302,8 @@ ScriptedImporter:
     spritePosition: {x: 158, y: 34}
   - name: Layer 10
     originalName: 
-    pivot: {x: 0.5, y: 0.5}
-    alignment: 0
+    pivot: {x: 0.5114648, y: 0.18327926}
+    alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
     rect:
@@ -324,8 +324,8 @@ ScriptedImporter:
     spritePosition: {x: 178, y: 32}
   - name: Layer 9
     originalName: 
-    pivot: {x: 0.5, y: 0.5}
-    alignment: 0
+    pivot: {x: 0.50387776, y: 0.28950855}
+    alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
     rect:
@@ -346,8 +346,8 @@ ScriptedImporter:
     spritePosition: {x: 183, y: 41}
   - name: Layer 8
     originalName: 
-    pivot: {x: 0.5, y: 0.5}
-    alignment: 0
+    pivot: {x: 0.49608797, y: 0.33980986}
+    alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
     rect:
@@ -368,8 +368,8 @@ ScriptedImporter:
     spritePosition: {x: 184, y: 37}
   - name: Layer 7
     originalName: 
-    pivot: {x: 0.5, y: 0.5}
-    alignment: 0
+    pivot: {x: 0.5041454, y: 0.3626222}
+    alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
     rect:
@@ -390,8 +390,8 @@ ScriptedImporter:
     spritePosition: {x: 212, y: 53}
   - name: Layer 6
     originalName: 
-    pivot: {x: 0.5, y: 0.5}
-    alignment: 0
+    pivot: {x: 0.49574074, y: 0.28682902}
+    alignment: 9
     border: {x: 0, y: 0, z: 0, w: 0}
     customData: 
     rect:
