@@ -280,6 +280,7 @@ public class GameController : MonoBehaviour
 
     /// <summary>A turn's end has been asked for and waits for the animations still playing (EndTurnWhenStill).</summary>
     public bool EndTurnPending { get { return endTurnPending; } }
+    bool endTurnHeldLogged;
 
     /// <summary>
     /// End the turn once nothing is moving on screen: every walk, retreat, boarding and shot already
@@ -291,6 +292,7 @@ public class GameController : MonoBehaviour
         if (headless || gameOver) { EndTurn(); return; }
         if (endTurnPending) return;
         endTurnPending = true;
+        endTurnHeldLogged = false;
         endTurnAskedAt = Time.unscaledTime;
     }
 
@@ -303,6 +305,10 @@ public class GameController : MonoBehaviour
         if (endTurnPending && (!Unit.AnyAnimating() || Time.unscaledTime - endTurnAskedAt > maxEndTurnWait)) {
             endTurnPending = false;
             EndTurn();
+        } else if (endTurnPending && !endTurnHeldLogged && Time.unscaledTime - endTurnAskedAt > 1f) {
+            // Held over a second: say what by, once (nothing on screen should hold it that long).
+            endTurnHeldLogged = true;
+            Debug.LogWarning("End of turn waiting for: " + Unit.AnimatingReport());
         }
         if (HexTactica.Harness.Replay.Active) return;   // a replay: nobody plays
         if (Input.GetKeyDown("t") && !fogOfWar) {   // a debug read-out of every unit's reach: not under fog
