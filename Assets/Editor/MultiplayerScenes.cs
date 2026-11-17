@@ -67,10 +67,9 @@ static partial class FrontEndScenes {
         m.clock.gameObject.SetActive(false);
 
         m.playersButton = Btn(root, "Players", m.TogglePlayers, 200f, 22f);
-        Place((RectTransform)m.playersButton.transform, new Vector2(1f, 1f), new Vector2(-130f, -150f), new Vector2(200f, 46f));
         GameObject players = Go("Players", root, typeof(Image));
         Panel(players, PanelColor);
-        Place((RectTransform)players.transform, new Vector2(1f, 1f), new Vector2(-330f, -470f), new Vector2(620f, 560f));
+        PlacePlayers(m.playersButton, players);
         VLayout(players, 20, 10f);
         Text(players.transform, "Heading", "Players", 30, TextAlignmentOptions.Left, FontStyles.Bold);
         m.memberRows = ScrollList(players.transform, "Members", -1f, 220f);
@@ -115,8 +114,27 @@ static partial class FrontEndScenes {
         top.SetActive(false);
     }
 
+    /// <summary>
+    /// The host's Players button just left of the turn banner (clear of the HUD and the production panel on the right),
+    /// and its panel a window in the middle of the screen while open.
+    /// </summary>
+    static void PlacePlayers(Button button, GameObject panel) {
+        Place((RectTransform)button.transform, new Vector2(0.5f, 1f), new Vector2(-330f, -30f), new Vector2(170f, 44f));
+        Place((RectTransform)panel.transform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(680f, 600f));
+    }
+
+    /// <summary>MultiplayerOverlay with the Players button and panel at the top right, over the production panel: moved.</summary>
+    static void UpdateMpOverlayPlayers(MpOverlay m, List<string> done) {
+        if (m.playersButton == null || m.playersPanel == null) return;
+        RectTransform b = (RectTransform)m.playersButton.transform;
+        if (b.anchorMin.x < 0.99f || b.anchorMin.y < 0.99f) return;   // (already moved)
+        PlacePlayers(m.playersButton, m.playersPanel);
+        done.Add("Players button moved beside the turn banner, its panel to the middle (off the production panel)");
+    }
+
     /// <summary>MultiplayerOverlay made before the turn banner named people: its big turn panel becomes the strip under the banner, the clock moves beside it.</summary>
     static void UpdateMpOverlay(MpOverlay m, List<string> done) {
+        UpdateMpOverlayPlayers(m, done);
         if (m.statusPanel != null) return;
         Transform old = m.transform.Find("Turn");
         if (old != null) Object.DestroyImmediate(old.gameObject);
@@ -322,7 +340,7 @@ static partial class FrontEndScenes {
             VLayout(p, 20, 8f);
             Text(p.transform, "Heading", "Join code", 26, TextAlignmentOptions.Left, FontStyles.Bold);
             lobby.joinCode = Text(p.transform, "Code", "------", 56, TextAlignmentOptions.Center, FontStyles.Bold);
-            Text(p.transform, "Hint", "Give this to the other players: they type it in Join Game.", 18, TextAlignmentOptions.Left, FontStyles.Italic);
+            lobby.joinCodeNote = Text(p.transform, "Hint", "Give this to the other players: they type it in Join Game.", 18, TextAlignmentOptions.Left, FontStyles.Italic);
             Btn(p.transform, "Copy", lobby.CopyCode, -1f, 22f);
             lobby.joinCodePanel = p;
             List<GameObject> parts = new List<GameObject>();
@@ -331,6 +349,13 @@ static partial class FrontEndScenes {
             m.lobbyOnly = parts.ToArray();
             p.SetActive(false);
             done.Add("join code moved to its own panel on the right, with Copy");
+        }
+        if (m.lobby.joinCodePanel != null && m.lobby.joinCodeNote == null) {
+            Transform hint = m.lobby.joinCodePanel.transform.Find("Hint");
+            if (hint != null && hint.GetComponent<TMP_Text>() != null) {
+                m.lobby.joinCodeNote = hint.GetComponent<TMP_Text>();
+                done.Add("join code panel's note linked (it says why there is no code when hosting fails)");
+            }
         }
         if (m.rowTemplate != null && m.rowTemplate.seatButton == null) {
             string path = AssetDatabase.GetAssetPath(m.rowTemplate.gameObject);
