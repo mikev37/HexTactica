@@ -466,16 +466,36 @@ public class Unit : MonoBehaviour
     /// its tile? The AI waits for these before its next action, so what is on screen matches the
     /// board (a unit is never shot where its sprite no longer is).
     /// </summary>
-    public bool Animating {
+    public bool Animating { get { return AnimatingReason != null; } }
+
+    /// <summary>What it is still playing that the AI and a turn's end wait for (Animating), or null: for the log when a turn's end is held.</summary>
+    public string AnimatingReason {
         get {
-            if (Strength <= 0 || tile == null) return false;
-            if (path.Count > 0 || attacking || retreatHold > 0f || boardingWalk.Count > 0 || refuelHopTo != null) return true;
+            if (Strength <= 0 || tile == null) return null;
+            if (path.Count > 0) return "walking";
+            if (attacking) return "about to fire";
+            if (retreatHold > 0f) return "retreating";
+            if (boardingWalk.Count > 0) return "boarding";
+            if (refuelHopTo != null) return "refuelling";
             // Its shot has not landed yet (at most a couple of seconds: a fire animation without the
             // event that lands the shot must not hold the AI up for every action after it).
-            if (firing && Time.time - firedAt < 2.5f) return true;
-            if (trasnporter == null && tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f) return true;
-            return false;
+            if (firing && Time.time - firedAt < 2.5f) return "firing";
+            if (trasnporter == null && tile.unitPlacement != null && Vector2.Distance(transform.position, tile.unitPlacement.position) > 0.15f)
+                return "drawn " + Vector2.Distance(transform.position, tile.unitPlacement.position).ToString("0.00") + " from its tile";
+            return null;
         }
+    }
+
+    /// <summary>Everything Unit.AnyAnimating is waiting for, for the log (GameController: a turn's end held over a second).</summary>
+    public static string AnimatingReport() {
+        List<string> what = new List<string>();
+        if (Strikes.Showing) what.Add("a strike playing");
+        if (UnitController.uc != null)
+            foreach (Unit u in UnitController.uc.units) {
+                string r = u != null ? u.AnimatingReason : null;
+                if (r != null) what.Add(u.name + (u.tile != null ? " at (" + u.tile.x + "," + u.tile.y + ")" : "") + ": " + r);
+            }
+        return what.Count > 0 ? string.Join("; ", what.ToArray()) : "nothing";
     }
 
     /// <summary>The tile the sprite was last on, while it is still walking or sliding (animation only).</summary>
