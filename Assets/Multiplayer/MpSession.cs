@@ -275,9 +275,22 @@ namespace HexTactica.Multiplayer {
             GameController.PlayedElsewhere = Elsewhere;
             GameController.PlayerNameOf = NameOf;
             GameController.EndLineOverride = EndLine;
+            Replay.Watched = Watching;
             GameLog.Written += OnWritten;
             GameController.TurnStarted += OnTurnStarted;
             GameController.GameEnded += OnGameEnded;
+        }
+
+        /// <summary>
+        /// Whether this device's player sees any of these tiles (fog on): what another device did there plays at a
+        /// watchable pace; what was all in fog plays at once (Replay.Shown), so nobody waits on moves they cannot see.
+        /// </summary>
+        static bool Watching(IEnumerable<HexTile> tiles) {
+            if (!FogOfWar.On) return true;
+            Player viewer = FogOfWar.Viewer;
+            if (viewer == null) return true;   // (a spectator, or nobody's view: everything shows)
+            foreach (HexTile t in tiles) if (t != null && FogOfWar.TileVisible(viewer, t)) return true;
+            return false;
         }
 
         static void Unhook() {
@@ -286,6 +299,7 @@ namespace HexTactica.Multiplayer {
             if (GameController.PlayedElsewhere == (Func<Player, bool>)Elsewhere) GameController.PlayedElsewhere = null;
             if (GameController.PlayerNameOf == (Func<Player, string>)NameOf) GameController.PlayerNameOf = null;
             if (GameController.EndLineOverride == (Func<string>)EndLine) GameController.EndLineOverride = null;
+            if (Replay.Watched == (Func<IEnumerable<HexTile>, bool>)Watching) Replay.Watched = null;
             GameLog.Written -= OnWritten;
             GameController.TurnStarted -= OnTurnStarted;
             GameController.GameEnded -= OnGameEnded;
@@ -449,6 +463,9 @@ namespace HexTactica.Multiplayer {
         /// it. Orders wait for the board to be still (as in play); at once when headless or catching up on what was
         /// seen. False when there is nothing to do just now.
         /// </summary>
+        /// <summary>The most orders hidden in fog played in one frame (each is instant; this only bounds a frame's work).</summary>
+        const int hiddenPerFrame = 40;
+
         static bool StepIncoming() {
             if (Diverged || gc == null) return false;
             if (current == null) {
@@ -459,7 +476,8 @@ namespace HexTactica.Multiplayer {
                 if (current.n > Applied) { Diverge("the log's entry " + current.n + " arrived where " + Applied + " was expected"); return false; }
             }
             applying = true;
-            bool still = gc.headless || Replay.Instant || !Unit.AnyAnimating();
+            // (After an order all in fog, what it set moving cannot be seen: no need to wait for it.)
+            bool still = gc.headless || Replay.Instant || !Unit.AnyAnimating() || (begun && !Replay.LastOrderSeen);
             switch (current.kind) {
                 case MpEntryKind.Orders:
                     if (!begun) { Replay.BeginOrders(current.lines); begun = true; }
@@ -845,7 +863,11 @@ namespace HexTactica.Multiplayer {
                 MultiplayerSettings s = MultiplayerSettings.Get;
                 // What happened while the player was away plays speeded up; what happens as they watch, as it is played.
                 Unit.MoveSpeedScale = State == Phase.CatchingUp ? Mathf.Max(1f, s.catchUpMoveSpeed) : 1f;
-                StepIncoming();
+                // Orders all in fog take no time: the next one follows in the same frame (a few dozen at most per frame).
+                for (int i = 0; i < hiddenPerFrame; i++) {
+                    if (!StepIncoming()) break;
+                    if (Replay.LastOrderSeen || current == null || current.kind != MpEntryKind.Orders || !begun) break;
+                }
                 if (current == null && incoming.Count == 0) { Settle(); Say(); }
             } else if (State == Phase.Live && !applying) {
                 QueueOrders();
