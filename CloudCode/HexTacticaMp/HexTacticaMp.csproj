@@ -18,5 +18,7 @@
   <ItemGroup>
     <PackageReference Include="Com.Unity.Services.CloudCode.Core" Version="*" />
     <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="*" />
+    <!-- ILogger (the module's log lines, shown in the dashboard's Cloud Code logs). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
   </ItemGroup>
 </Project>
