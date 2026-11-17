@@ -80,6 +80,8 @@ public class BuildingController : MonoBehaviour {
         if (b.owner.money < unit.cost) return null;
         HexTile t = b.tile;
         if (t == null || t.occupier != null || !unit.CanEnter(t)) return null;
+        // A strike launched from here is still in the air: the next waits until it has landed (Strikes.LaunchedFrom).
+        if (Strikes.LaunchedFrom(t)) return null;
         if (allowed != null && !allowed(t)) return null;
         Unit made = Spawner != null ? Spawner(b.owner, unit, t) : UnitController.uc.CreateUnit(b.owner, unit, t);
         if (made == null) return null;

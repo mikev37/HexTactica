@@ -156,14 +156,12 @@ public class Unit : MonoBehaviour
     public int strikeRevealRadius;
     [Tooltip("The tile its ground or ballistic attack lands on is destroyed and becomes this terrain (land only: water stays water, a bridge falls as bridges do, a building's ground is the building's). Empty: the ground is only worn, as by any attack.")]
     public TerrainData craterTerrain;
-    [Tooltip("Damage its ground or ballistic attack does to a building on the tile it lands on (Building.health; any attack on a unit standing on a building does 1).")]
+    [Tooltip("Damage its ground or ballistic attack does to what stands on every tile of its blast: a building (Building.health), else the ground (its damage pictures; destroyed at 0, a forest to stumps). The target tile's ground becomes Crater Terrain instead.")]
     public int buildingDamage;
     [Tooltip("Played where its ground or ballistic attack lands.")]
     [LooksOnly] public AudioClip strikeSound;
-    [Tooltip("Ballistic strikes that self-destruct: how far (world units) from its launch site, at random, the arriving copy appears before it travels to its target.")]
+    [Tooltip("Ballistic strikes that self-destruct: how far (world units) from its launch site, at random, the arriving copy appears; it travels to its target as its Fall state plays.")]
     [LooksOnly] public float arrivalSpread = 1f;
-    [Tooltip("Ballistic strikes that self-destruct: seconds the arriving copy takes to travel from where it appears to its target (its Fall plays meanwhile; Impact waits for it to get there).")]
-    [LooksOnly] public float arrivalTravelSeconds = 1f;
     [Tooltip("Seconds before the next strike of the same turn comes down after this one (strikes land one after another, in the order they were launched).")]
     [LooksOnly] public float arrivalStagger = 0.2f;
 
@@ -337,15 +335,6 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // A strike's arriving copy travels from near its launch site to its target (its Fall plays meanwhile).
-        if (travelling) {
-            float k = travelSeconds <= 0f ? 1f : Mathf.Clamp01((Time.time - travelStart) / travelSeconds);
-            transform.position = Vector3.Lerp(travelFrom, travelTo, k);
-            if (k >= 1f) {
-                travelling = false;
-                if (impactWaiting) { impactWaiting = false; StrikeStageEnded(StrikeStage.Stage.Landed); }
-            }
-        }
         // Off the board but still on screen, playing a stage of its strike (launch, fall, impact): its animator decides when it ends (StrikeStage).
         if (ShownAt != null) return;
         // A strike's hits wait for this unit's shot to land (AttackResolve), a couple of seconds at most.
@@ -1333,6 +1322,7 @@ public class Unit : MonoBehaviour
             if (aim != null && pad != null) Face(pad.transform.position, aim.transform.position);
             PlaySound(fireSound);
             SetAnimatorBool("Flying", true);
+            Strikes.Launched(this);
             PlayStage("Launch", StrikeStage.Stage.Launched);
         } else expendAfterShot = true;
     }
@@ -1341,7 +1331,8 @@ public class Unit : MonoBehaviour
     void PlayStage(string trigger, StrikeStage.Stage stage) {
         if (animator != null && animator.runtimeAnimatorController != null && HasAnimatorParameter(trigger)) {
             animator.SetTrigger(trigger);
-            Destroy(gameObject, StageTimeout);   // (only if the state never ends)
+            // (Only if the state never ends. A launched unit is removed when its side's turn ends: Strikes.Launched.)
+            if (stage != StrikeStage.Stage.Launched) Destroy(gameObject, StageTimeout);
         } else StrikeStageEnded(stage);
     }
 
@@ -1349,16 +1340,18 @@ public class Unit : MonoBehaviour
     public void StrikeStageEnded(StrikeStage.Stage stage) {
         switch (stage) {
             case StrikeStage.Stage.Launched:
-                if (ShownAt == null || arriving != null) return;
-                ShownAt = null;
-                Destroy(gameObject);
+                // Its launch has played: nothing waits for it now, but it stays on its pad, as its Launch left it, until
+                // its side's turn ends (Strikes.Launched).
+                if (ShownAt == null || arriving != null || launchPlayed) return;
+                launchPlayed = true;
+                Strikes.Performed(this);
                 return;
             case StrikeStage.Stage.Landed: {
                 if (arriving == null || landed) return;
-                // Its Fall ended before it got there: Impact waits until it arrives (Update).
-                if (travelling) { impactWaiting = true; return; }
+                // Its Fall is over: it is where it fell.
+                if (travelling) { travelling = false; transform.position = travelTo; }
                 landed = true;
-                Strikes.ShowBlast(arriving, true);
+                Strikes.ShowBlast(arriving);
                 PlayStage("Impact", StrikeStage.Stage.ImpactDone);
                 return;
             }
@@ -1371,12 +1364,33 @@ public class Unit : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Each frame of a strike's stage (StrikeStage). Launched: once its clip has played through, the launch is over.
+    /// Landed: the arriving copy is as far from where it appeared to its target as its Fall state has played, and
+    /// gets there as that state blends out (<paramref name="leaving"/>, <paramref name="leavingT"/> the blend's progress).
+    /// </summary>
+    public void StrikeStageUpdate(StrikeStage.Stage stage, float t, bool leaving, float leavingT) {
+        if (stage == StrikeStage.Stage.Launched) { if (t >= 1f) StrikeStageEnded(stage); return; }
+        if (stage != StrikeStage.Stage.Landed || !travelling) return;
+        float k = Mathf.Clamp01(t);
+        if (leaving) {
+            if (travelLeaving < 0f) travelLeaving = travelDone;
+            k = Mathf.Lerp(travelLeaving, 1f, Mathf.Clamp01(leavingT));
+        }
+        travelDone = Mathf.Max(travelDone, k);
+        transform.position = Vector3.Lerp(travelFrom, travelTo, travelDone);
+    }
+
+    /// <summary>Its launch has played (StrikeStage Launched): it stays on the pad until its side's turn ends. Animation only.</summary>
+    [System.NonSerialized] bool launchPlayed;
+
     /// <summary>The copy reached the ground (its Fall state ended): its Impact plays. Animation only.</summary>
     [System.NonSerialized] bool landed;
-    /// <summary>The copy's travel to its target (BeginArrival). Animation only.</summary>
-    [System.NonSerialized] bool travelling, impactWaiting;
+    /// <summary>The copy's travel to its target over its Fall state (BeginArrival, StrikeStageUpdate). Animation only.</summary>
+    [System.NonSerialized] bool travelling;
     [System.NonSerialized] Vector3 travelFrom, travelTo;
-    [System.NonSerialized] float travelStart, travelSeconds;
+    /// <summary>How far along it was when its Fall state began to blend out (-1: not yet), and how far it is now.</summary>
+    [System.NonSerialized] float travelLeaving = -1f, travelDone;
 
     /// <summary>A strike's copy on its way to its target: fog of war judges it where its sprite is (FogOfWar.ShownToViewer).</summary>
     public bool Travelling { get { return travelling; } }
@@ -1445,7 +1459,7 @@ public class Unit : MonoBehaviour
         dead = true;
         transform.position = start;
         travelFrom = start; travelTo = end;
-        travelStart = Time.time; travelSeconds = Mathf.Max(0f, arrivalTravelSeconds);
+        travelLeaving = -1f; travelDone = 0f;
         travelling = start != end;
         arriving = r;
         ShownAt = r.strike.target;
