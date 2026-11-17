@@ -5782,6 +5782,8 @@ MonoBehaviour:
   optionsPanel: {fileID: 1751292025}
   replayPanel: {fileID: 1046784270}
   joinPanel: {fileID: 346417791}
+  mainPanelOnly:
+  - {fileID: 693477032}
   replayList: {fileID: 251736047}
   watchButton: {fileID: 1362704412}
   loadList: {fileID: 1051819215}
