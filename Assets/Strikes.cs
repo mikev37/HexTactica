@@ -52,6 +52,8 @@ public class StrikeResult {
     [System.NonSerialized] public bool revealed;
     /// <summary>The tiles of the blast whose look waits for Reveal (their ground, their building). Animation only.</summary>
     [System.NonSerialized] public readonly List<HexTile> held = new List<HexTile>();
+    /// <summary>Units lost by what it did besides its hits (the ground under them gone, aboard a unit it destroyed): their deaths play at Reveal.</summary>
+    [System.NonSerialized] public readonly List<Unit> lost = new List<Unit>();
 }
 
 /// <summary>
@@ -386,14 +388,14 @@ public static class Strikes {
                 }
             launchedThisTurn = turn;
             Add(s);
-            if (u.selfDestructs) u.Expend(true);
-            else u.ShowStrikeFired(null);
+            if (u.selfDestructs) u.Expend(true, target);
+            else u.ShowStrikeFired(null, target);
             FogOfWar.Changed();
             return true;
         }
         StrikeResult r = Resolve(s);
-        u.ShowStrikeFired(r);
-        if (u.selfDestructs) u.Expend(false);
+        u.ShowStrikeFired(r, target);
+        if (u.selfDestructs) u.Expend(false, target);
         return true;
     }
 
@@ -435,12 +437,35 @@ public static class Strikes {
         r.hits.AddRange(Hits(s, t => t.RealOccupier));
         // On screen the blast's tiles and buildings keep their look (the wear of the fight, the crater, the building's
         // damage) until the explosion covers them (Reveal): a missile shows it when its Impact hides the ground.
-        if (!s.splash && GameController.gc != null && !GameController.gc.headless)
+        if (!s.splash && GameController.gc != null && !GameController.gc.headless) {
             foreach (HexTile t in Blast(s.target, s.Radius)) {
                 t.HoldLook();
                 if (t.building != null) t.building.HoldCondition();
                 r.held.Add(t);
             }
+            resolving = r;
+        }
+        try { Land(s, r); } finally { resolving = null; }
+        FogOfWar.Changed();
+        if (Landed != null) Landed(r);
+        return r;
+    }
+
+    /// <summary>The strike being resolved on screen, whose losses wait for Reveal (DeferDeath); null otherwise.</summary>
+    static StrikeResult resolving;
+
+    /// <summary>
+    /// A unit lost while a strike is resolved, not by its hit (the ground under it gone, aboard a unit it destroyed):
+    /// its death plays when the strike is seen to land (Reveal), as its hits do. False: no strike is being resolved on
+    /// screen; play it now.
+    /// </summary>
+    internal static bool DeferDeath(Unit u) {
+        if (resolving == null || u == null) return false;
+        if (!resolving.lost.Contains(u)) resolving.lost.Add(u);
+        return true;
+    }
+
+    static void Land(Strike s, StrikeResult r) {
         foreach (StrikeHit h in r.hits) {
             h.unit.TakeStrike(h.damage);
             // A fight on a tile wears its ground (or the building on it), as any attack does.
@@ -460,9 +485,6 @@ public static class Strikes {
             }
             if (s.weapon.strikeRevealRadius > 0) FogOfWar.Flare(s.owner, s.target, s.weapon.strikeRevealRadius);
         }
-        FogOfWar.Changed();
-        if (Landed != null) Landed(r);
-        return r;
     }
 
     // ------------------------------------------------------------------ on screen (nothing here changes the rules)
@@ -534,5 +556,7 @@ public static class Strikes {
         }
         r.held.Clear();
         foreach (StrikeHit h in r.hits) if (h.unit != null) h.unit.ShowHit();
+        foreach (Unit u in r.lost) if (u != null) u.ShowHit();
+        r.lost.Clear();
     }
 }

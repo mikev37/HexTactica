@@ -84,7 +84,8 @@ its art arrives.
   - **Started** (bool): true on its first frame, as on every unit.
   - **Flying** (bool): true as Launch is set on the pad unit, and on the arrival copy before its first frame; never
     set back. Keep on-the-pad states (idle) behind *Flying false*.
-  - **Launch** (trigger): on the pad, as it is fired. Its state carries **StrikeStage** *Launched*: when it ends, the
+  - **Launch** (trigger): on the pad, as it is fired. Its state carries **StrikeStage** (a state behaviour, added
+    with *Add Behaviour* as CleanUpOnDeath is on Dying; not a parameter) set to *Launched*: when it ends, the
     unit is removed.
   - **Fall** (trigger): at its side's next turn start, on a copy made from the prefab at the target tile. Its state
     carries StrikeStage *Landed*: when it ends, the strike sound plays and Impact is set.
@@ -94,8 +95,11 @@ its art arrives.
     *Impact Done*: when it ends, the copy is removed.
   - **Die** (trigger): killed in its silo, as any unit.
   A missing trigger skips its stage at once; a stage still playing after 15 s is cut (`Unit.StageTimeout`). The code
-  only places the root (the pad, then the target tile) and never moves, flips or rotates it: climbing off screen,
-  coming in from above and turning nose-down are the clips' work, on child objects. *Strike Explosion* is an optional
+  places the root (the pad, then the target tile) and turns it to face its target as any unit turns to shoot (the
+  copy faces the way it flew, launch tile to target); it never moves or tilts it: climbing off screen, coming in from
+  above and turning nose-down are the clips' work, on child objects. Its strength, veterancy and status UI are hidden
+  by the code as it launches (and on the copy), so clips need not touch them. Units lost to the crater (or aboard a
+  unit the strike destroys) die with the hits, at StrikeCovered. *Strike Explosion* is an optional
   extra effect (empty on the Missile).
 - **Fog of war.** Once launched it is off the board (its tile is free: the silo can build another); while its launch
   plays it is shown to whoever sees its launch tile, and its fall to whoever sees the target.

@@ -260,6 +260,8 @@ public class Unit : MonoBehaviour
     internal void Perish() {
         DieActual();
         if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
+        // Lost to a strike's crater (or a bridge it brought down): its death plays when the strike is seen to land.
+        if (Strikes.DeferDeath(this)) return;
         Die();
     }
 
@@ -615,13 +617,7 @@ public class Unit : MonoBehaviour
         // Its own UI goes: strength, veterancy and warnings are not shown for a unit aboard. (Kept from an
         // earlier boarding not yet undone — boarded again, or moved between transports — so it all comes
         // back on getting off: cleared here, the pips hidden the first time were never shown again.)
-        foreach (Transform t in GetComponentsInChildren<Transform>(true)) {
-            if (t == transform || !t.gameObject.activeSelf) continue;
-            if (IsOwnUI(t)) {
-                t.gameObject.SetActive(false);
-                if (!hiddenUI.Contains(t.gameObject)) hiddenUI.Add(t.gameObject);
-            }
-        }
+        HideOwnUI();
         // The walk there (if it moved to board) is played out first, at full size.
         boardingWalk.Clear();
         if (path != null && path.Count > 0) boardingWalk.AddRange(path);
@@ -650,6 +646,26 @@ public class Unit : MonoBehaviour
     }
 
     /// <summary>A child that is this unit's own UI: strength pips, veterancy, status icons.</summary>
+    /// <summary>
+    /// Its own UI (IsOwnUI: strength label, pips, veterancy, status icons) is switched off, to come back with ShowOwnUI:
+    /// aboard a transport, or for good once it can no longer be targeted (launched; a strike's arriving copy).
+    /// </summary>
+    void HideOwnUI() {
+        foreach (Transform t in GetComponentsInChildren<Transform>(true)) {
+            if (t == transform || !t.gameObject.activeSelf) continue;
+            if (IsOwnUI(t)) {
+                t.gameObject.SetActive(false);
+                if (!hiddenUI.Contains(t.gameObject)) hiddenUI.Add(t.gameObject);
+            }
+        }
+    }
+
+    /// <summary>Turned to face <paramref name="to"/> from <paramref name="from"/>, as a unit turns to shoot (Fire): its sprites are drawn for facing right.</summary>
+    void Face(Vector3 from, Vector3 to) {
+        if (Mathf.Abs(to.x - from.x) < 0.001f) return;
+        transform.rotation = to.x < from.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+    }
+
     internal static bool IsOwnUI(Transform t) {
         if (t.GetComponent<Canvas>() != null || t.name == "HealthCircles" || t.name == "Veterancy" || t.name == "Canvas") return true;
         foreach (MonoBehaviour m in t.GetComponents<MonoBehaviour>())
@@ -1290,7 +1306,7 @@ public class Unit : MonoBehaviour
     /// plays where it stood (seen by whoever sees that tile), and it is removed when that state ends (StrikeStage
     /// Launched). Otherwise its death plays once its shot has landed.
     /// </summary>
-    internal void Expend(bool launch) {
+    internal void Expend(bool launch, HexTile aim = null) {
         if (dead) return;
         HexTile pad = tile;
         Expending = true;
@@ -1299,6 +1315,9 @@ public class Unit : MonoBehaviour
         if (launch) {
             ShownAt = pad;
             Strikes.Performing(this);
+            // No longer a target: its strength, veterancy and status go at once; it turns toward its target, as to shoot.
+            HideOwnUI();
+            if (aim != null && pad != null) Face(pad.transform.position, aim.transform.position);
             PlaySound(fireSound);
             SetAnimatorBool("Flying", true);
             PlayStage("Launch", StrikeStage.Stage.Launched);
@@ -1370,9 +1389,10 @@ public class Unit : MonoBehaviour
     /// This unit fired a strike (Strikes.Order): its fire animation and sound; <paramref name="r"/>, what the strike
     /// did if it landed at once, is shown when the shot lands (AttackResolve), as an ordinary attack's hit is.
     /// </summary>
-    internal void ShowStrikeFired(StrikeResult r) {
+    internal void ShowStrikeFired(StrikeResult r, HexTile aim = null) {
         if (GameController.gc == null || GameController.gc.headless) return;
         target = null;
+        if (aim != null && tile != null) Face(tile.transform.position, aim.transform.position);
         pendingImpact = r; impactAt = Time.time;
         firing = true; firedAt = Time.time;
         if (animator != null) animator.SetTrigger("Fire!");
@@ -1401,6 +1421,9 @@ public class Unit : MonoBehaviour
         arriving = r;
         ShownAt = r.strike.target;
         Strikes.Performing(this);
+        // Never a target: no strength, veterancy or status. Facing the way it flew, from its launch tile to its target.
+        HideOwnUI();
+        if (r.strike.from != null) Face(r.strike.from.transform.position, r.strike.target.transform.position);
         SetAnimatorBool("Flying", true);
         PlayStage("Fall", StrikeStage.Stage.Landed);
     }
@@ -1534,7 +1557,8 @@ public class Unit : MonoBehaviour
             Unit c = transported[i];
             if (c == null) continue;
             c.DieActual();
-            if (GameController.gc == null || !GameController.gc.headless) c.FallAboard();
+            // (Aboard a unit a strike destroys: its death plays with its transport's, when the strike is seen to land.)
+            if ((GameController.gc == null || !GameController.gc.headless) && !Strikes.DeferDeath(c)) c.FallAboard();
         }
         transported.Clear();
         if (trasnporter != null) { trasnporter.transported.Remove(this); trasnporter = null; }
