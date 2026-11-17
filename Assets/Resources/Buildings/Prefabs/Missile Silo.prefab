@@ -107,8 +107,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd96e398d33e518f721e2f0349e1dbad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  personal_name: Stronghold
-  type: 6
+  personal_name: Missile Silo
+  type: 1
   tile: {fileID: 0}
   _owner: {fileID: 0}
   home: {fileID: 0}
@@ -133,6 +133,7 @@ MonoBehaviour:
   refuel: 0
   resupply: 0
   healStacksWithSupply: 0
+  captureThreshold: 10
   _capturePoints: 0
   _capturingPlayer: {fileID: 0}
   health: 10
@@ -141,7 +142,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: db798deeacab98b4695f405e542fdf54, type: 3}
   destroyedSprite: {fileID: 21300000, guid: e265330808d066f478466bed5af78852, type: 3}
   buildable:
-  - {fileID: 9081080694409079478, guid: a3156b28b42b498dad912afc33b18562, type: 3}
+  - {fileID: 6223875986925024759, guid: 21b4901d8289fdf46b5c35ee80a90a77, type: 3}
 --- !u!1 &8428887425335908075
 GameObject:
   m_ObjectHideFlags: 0
