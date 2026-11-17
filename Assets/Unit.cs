@@ -158,8 +158,6 @@ public class Unit : MonoBehaviour
     public TerrainData craterTerrain;
     [Tooltip("Damage its ground or ballistic attack does to a building on the tile it lands on (Building.health; any attack on a unit standing on a building does 1).")]
     public int buildingDamage;
-    [Tooltip("An extra effect its ground or ballistic attack shows where it lands. Empty: a shot shows its weapon impact; a unit that self-destructs as a ballistic strike shows nothing extra, since its own animator's Impact state is the explosion.")]
-    [LooksOnly] public GameObject strikeExplosion;
     [Tooltip("Played where its ground or ballistic attack lands.")]
     [LooksOnly] public AudioClip strikeSound;
     [Tooltip("Ballistic strikes that self-destruct: how far (world units) from its launch site, at random, the arriving copy appears before it travels to its target.")]

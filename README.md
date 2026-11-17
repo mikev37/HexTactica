@@ -69,7 +69,8 @@ Four attributes on a unit (its prefab's Unit, header *Strike*), each on or off b
 Also under *Strike*: **Strike Reveal Radius** (its owner sees that far round the target until the end of the turn it
 lands), **Crater Terrain** (the target tile becomes this: land only; water stays water, a bridge falls as bridges do, a
 building's tile is the building's), **Building Damage** (to a building on the target tile), and for looks only
-**Strike Explosion** and **Strike Sound**. How long a launch or a fall takes is its animator's (below).
+**Strike Sound** (a ground strike shows its *Weapon Impact* on the target tile; a missile's explosion is its own
+Impact state). How long a launch or a fall takes is its animator's (below).
 
 **The Missile** (`Resources/Units/Missile`) has all four: 30,000 gold, built at the Missile Silo, cannot move (so a silo
 holds one at a time), range 2-10, blast radius 1, reveals 2, seen launching from 10 tiles (revealing 1 round its launch
@@ -102,8 +103,7 @@ its art arrives.
   copy faces the way it flew, launch tile to target); it never moves or tilts it: climbing off screen, coming in from
   above and turning nose-down are the clips' work, on child objects. Its strength, veterancy and status UI are hidden
   by the code as it launches (and on the copy), so clips need not touch them. Units lost to the crater (or aboard a
-  unit the strike destroys) die with the hits, at StrikeCovered. *Strike Explosion* is an optional
-  extra effect (empty on the Missile).
+  unit the strike destroys) die with the hits, at StrikeCovered.
 - **Fog of war.** Once launched it is off the board (its tile is free: the silo can build another); while its launch
   plays it is shown to whoever sees its launch tile, and its fall to whoever sees the target.
 - **Launch warning.** A side with a unit within 10 tiles of the launch (or sight of it) sees the launch tile and the

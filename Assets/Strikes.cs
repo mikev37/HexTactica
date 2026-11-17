@@ -569,9 +569,8 @@ public static class Strikes {
     }
 
     /// <summary>
-    /// The strike's explosion effect (strikeExplosion; for a shot, else its weaponImpact) and strikeSound where it landed,
-    /// for whoever can see the tile. <paramref name="arrival"/>: a missile's own Impact state is its explosion, so only
-    /// an explosion it was given is added and nothing is borrowed. Nothing for a splash.
+    /// The strike's weaponImpact and strikeSound where it landed, for whoever can see the tile. <paramref name="arrival"/>:
+    /// a missile's own Impact state is its explosion, so only the sound plays. Nothing for a splash.
     /// </summary>
     internal static void ShowBlast(StrikeResult r, bool arrival) {
         if (r == null || GameController.gc == null || GameController.gc.headless) return;
@@ -579,8 +578,7 @@ public static class Strikes {
         if (s.splash || s.target == null || s.weapon == null) return;
         Player v = FogOfWar.Viewer;
         if (v != null && !FogOfWar.TileVisible(v, s.target)) return;
-        GameObject boom = s.weapon.strikeExplosion != null ? s.weapon.strikeExplosion : arrival ? null : s.weapon.weaponImpact;
-        if (boom != null) GameObject.Instantiate(boom, PositionOf(s.target), Quaternion.identity);
+        if (!arrival && s.weapon.weaponImpact != null) GameObject.Instantiate(s.weapon.weaponImpact, PositionOf(s.target), Quaternion.identity);
         if (s.weapon.strikeSound != null && GameSounds.On) GameSounds.Play(s.weapon.strikeSound);
     }
 
