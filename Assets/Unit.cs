@@ -29,6 +29,8 @@ public class Unit : MonoBehaviour
     [LooksOnly] public AudioClip fireSound;
     [Tooltip("Played when the unit dies.")]
     [LooksOnly] public AudioClip dieSound;
+    [Tooltip("Played where its ground or ballistic attack lands.")]
+    [LooksOnly] public AudioClip strikeSound;
     [Tooltip("Seconds the move loop takes to fade out once the unit arrives.")]
     [LooksOnly] public float moveLoopFadeOut = 0.5f;
     [Tooltip("Pitch the move loop slides down to as it fades out (1 = no change).")]
@@ -134,39 +136,6 @@ public class Unit : MonoBehaviour
     public bool retaliates = true;
     [Tooltip("Its attacks ignore the defender's cover (napalm, flamethrowers): no cover off its damage, and a defender cannot use the ground to fire first on it (an ambush by veterancy alone still can).")]
     public bool ignoresCover;
-
-    [Header("Strike (each on its own: any mix of them makes a unit)")]
-    [Tooltip("Target ground: it attacks a tile, not a unit: any tile in its range, whatever stands there, seen or not. What it hits is whatever is on the tiles when the attack lands (Strikes).")]
-    public bool targetsGround;
-    [Range(0, 3)]
-    [Tooltip("Area of effect: its attack also hits every unit within this many tiles of its target (1: the seven tiles), friend and foe alike, with no answer and no retreat. 0: the target only.")]
-    public int blastRadius;
-    [Tooltip("Self-destruct: it is expended by its own attack (a missile, a bomb). With a ballistic delay it leaves the board as it is launched and cannot be attacked after.")]
-    public bool selfDestructs;
-    [Tooltip("Ballistic delay: its attack lands at the start of its owner's next turn, on the tile it was aimed at (a unit aimed at: the tile it stood on), hitting whatever is there then. Sides that see it fire, or have a unit within Launch Seen Within of it, know a strike is coming, not where; others learn of it when it lands.")]
-    public bool ballistic;
-    [Range(0, 30)]
-    [Tooltip("Ballistic delay: a side with any unit within this many tiles of it when it launches sees the launch whatever its sight (a rocket going up is seen from far off): it knows a strike is coming (its AI too), its player is warned (LaunchWarning), and it sees the ground around the launch tile (Launch Reveal Radius). 0: only a side that sees the unit fire.")]
-    public int launchSeenWithin;
-    [Range(0, 3)]
-    [Tooltip("Ballistic delay: the tiles round the launch tile a side that sees the launch (Launch Seen Within) sees until the end of its own next turn. 0: the launch tile only.")]
-    public int launchRevealRadius;
-    [Range(0, 6)]
-    [Tooltip("Fog of war: when its attack on ground or its ballistic attack lands, its owner sees every tile within this many steps of the target until the end of that turn (0: nothing revealed).")]
-    public int strikeRevealRadius;
-    [Tooltip("The tile its ground or ballistic attack lands on is destroyed and becomes this terrain (land only: water stays water, a bridge falls as bridges do, a building's ground is the building's). Empty: the ground is only worn, as by any attack.")]
-    public TerrainData craterTerrain;
-    [Tooltip("Damage its ground or ballistic attack does to what stands on every tile of its blast: a building (Building.health), else the ground (its damage pictures; destroyed at 0, a forest to stumps). The target tile's ground becomes Crater Terrain instead.")]
-    public int buildingDamage;
-    [Tooltip("Played where its ground or ballistic attack lands.")]
-    [LooksOnly] public AudioClip strikeSound;
-    [Tooltip("Ballistic strikes that self-destruct: how far (world units) from its launch site, at random, the arriving copy appears; it travels to its target as its Fall state plays.")]
-    [LooksOnly] public float arrivalSpread = 1f;
-    [Tooltip("Seconds before the next strike of the same turn comes down after this one (strikes land one after another, in the order they were launched).")]
-    [LooksOnly] public float arrivalStagger = 0.2f;
-
-    /// <summary>Its attack is worked out over an area or later, not as a duel with one unit (Strikes): it aims at ground, hits an area, or lands after a delay.</summary>
-    public bool StrikesArea { get { return targetsGround || ballistic; } }
 
     [Header("Vision (fog of war)")]
     [Range(0, 10)]
@@ -306,6 +275,37 @@ public class Unit : MonoBehaviour
     Vector3 homeScale = Vector3.one;
     bool scaleKnown;
     UnityEngine.Rendering.SortingGroup cargoGroup;
+
+    [Header("Strike (each on its own: any mix of them makes a unit)")]
+    [Tooltip("Target ground: it attacks a tile, not a unit: any tile in its range, whatever stands there, seen or not. What it hits is whatever is on the tiles when the attack lands (Strikes).")]
+    public bool targetsGround;
+    [Range(0, 3)]
+    [Tooltip("Area of effect: its attack also hits every unit within this many tiles of its target (1: the seven tiles), friend and foe alike, with no answer and no retreat. 0: the target only.")]
+    public int blastRadius;
+    [Tooltip("Self-destruct: it is expended by its own attack (a missile, a bomb). With a ballistic delay it leaves the board as it is launched and cannot be attacked after.")]
+    public bool selfDestructs;
+    [Tooltip("Ballistic delay: its attack lands at the start of its owner's next turn, on the tile it was aimed at (a unit aimed at: the tile it stood on), hitting whatever is there then. Sides that see it fire, or have a unit within Launch Seen Within of it, know a strike is coming, not where; others learn of it when it lands.")]
+    public bool ballistic;
+    [Range(0, 30)]
+    [Tooltip("Ballistic delay: a side with any unit within this many tiles of it when it launches sees the launch whatever its sight (a rocket going up is seen from far off): it knows a strike is coming (its AI too), its player is warned (LaunchWarning), and it sees the ground around the launch tile (Launch Reveal Radius). 0: only a side that sees the unit fire.")]
+    public int launchSeenWithin;
+    [Range(0, 3)]
+    [Tooltip("Ballistic delay: the tiles round the launch tile a side that sees the launch (Launch Seen Within) sees until the end of its own next turn. 0: the launch tile only.")]
+    public int launchRevealRadius;
+    [Range(0, 6)]
+    [Tooltip("Fog of war: when its attack on ground or its ballistic attack lands, its owner sees every tile within this many steps of the target until the end of that turn (0: nothing revealed).")]
+    public int strikeRevealRadius;
+    [Tooltip("The tile its ground or ballistic attack lands on is destroyed and becomes this terrain (land only: water stays water, a bridge falls as bridges do, a building's ground is the building's). Empty: the ground is only worn, as by any attack.")]
+    public TerrainData craterTerrain;
+    [Tooltip("Damage its ground or ballistic attack does to what stands on every tile of its blast: a building (Building.health), else the ground (its damage pictures; destroyed at 0, a forest to stumps). The target tile's ground becomes Crater Terrain instead.")]
+    public int buildingDamage;
+    [Tooltip("Ballistic strikes that self-destruct: how far (world units) from its launch site, at random, the arriving copy appears; it travels to its target as its Fall state plays.")]
+    [LooksOnly] public float arrivalSpread = 1f;
+    [Tooltip("Seconds before the next strike of the same turn comes down after this one (strikes land one after another, in the order they were launched).")]
+    [LooksOnly] public float arrivalStagger = 0.2f;
+
+    /// <summary>Its attack is worked out over an area or later, not as a duel with one unit (Strikes): it aims at ground, hits an area, or lands after a delay.</summary>
+    public bool StrikesArea { get { return targetsGround || ballistic; } }
 
     [Header("AI Variables")]
     public int threatValue;
