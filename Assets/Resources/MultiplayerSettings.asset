@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b620ca74a146b7bcc6fb789330f61e, type: 3}
   m_Name: MultiplayerSettings
   m_EditorClassIdentifier: Assembly-CSharp::HexTactica.Multiplayer.MultiplayerSettings
-  backend: 0
+  backend: 1
   sharedFolder: 
   ugsModule: HexTacticaMp
   listPollSeconds: 15
