@@ -68,6 +68,8 @@ namespace HexTactica.Multiplayer {
             string failed = await Store.SignIn();
             if (failed != null) return LastError = failed;
             signedIn = true;
+            // Once, on the first use: which backend this is, so nobody has to take the settings on faith.
+            Debug.Log("Multiplayer: games are kept in " + Store + "; this device plays as player " + Store.PlayerId + ".");
             return null;
         }
 

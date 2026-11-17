@@ -23,6 +23,8 @@ namespace HexTactica.Multiplayer {
 
         public string PlayerId { get { return player; } }
 
+        public override string ToString() { return "a shared folder (" + root + ")"; }
+
         public Task<string> SignIn() {
             try { Directory.CreateDirectory(root); return Task.FromResult<string>(null); }
             catch (Exception e) { return Task.FromResult("Could not open the folder " + root + ": " + e.Message); }

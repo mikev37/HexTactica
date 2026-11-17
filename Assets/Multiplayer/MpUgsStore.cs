@@ -31,6 +31,10 @@ namespace HexTactica.Multiplayer {
 
         public string PlayerId { get { return AuthenticationService.Instance.IsSignedIn ? AuthenticationService.Instance.PlayerId : ""; } }
 
+        public override string ToString() {
+            return "Unity Gaming Services (Cloud Code module " + module + "; project " + Application.cloudProjectId + "; each game is the Cloud Save custom item mp-<code>-<epoch>)";
+        }
+
         static string Item(string game) { return "mp-" + game; }
 
         public async Task<string> SignIn() {
