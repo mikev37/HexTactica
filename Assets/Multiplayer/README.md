@@ -167,6 +167,10 @@ What it uses:
    (the top menu bar, Unity 2022 and later; the window's environment is the one the game uses) lists `Assets/Multiplayer/HexTacticaMp.ccmr`; select it and Deploy. If it is not listed,
    make one with **Assets ▸ Create ▸ Services ▸ Cloud Code C# Module Reference** pointing at
    `CloudCode/HexTacticaMp/HexTacticaMp.sln`.
+   The log must say **Publishing HexTacticaMp.ccm**, and the dashboard (Cloud Code ▸ Modules) must list HexTacticaMp
+   with one endpoint, Write. Do not use the reference's **Generate Solution**: it makes Unity's template module
+   (`Project`, with SayHello and GetServerTime). If one was made, delete its folder (search for `Project.csproj`),
+   and its module on the dashboard.
 5. **Device linking** (optional): **Project Settings ▸ Services ▸ Authentication ▸ ID Providers**, add **Code-Link**.
 6. **Switch the backend**: in MultiplayerSettings, Backend = Unity Gaming Services.
 
