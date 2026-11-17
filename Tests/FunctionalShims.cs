@@ -418,11 +418,14 @@ namespace UnityEngine {
         public AnimatorControllerParameter[] parameters { get { return new AnimatorControllerParameter[0]; } }
         public void ResetTrigger(string s) { }
         public AnimatorStateInfo GetCurrentAnimatorStateInfo(int layer) { return new AnimatorStateInfo(); }
+        public bool IsInTransition(int layer) { return false; }
+        public AnimatorTransitionInfo GetAnimatorTransitionInfo(int layer) { return new AnimatorTransitionInfo(); }
         public void Rebind() { }
         public void Update(float dt) { }
     }
     public class AnimatorControllerParameter { public string name; }
-    public struct AnimatorStateInfo { public float normalizedTime { get { return 0; } } }
+    public struct AnimatorStateInfo { public float normalizedTime { get { return 0; } } public int fullPathHash { get { return 0; } } }
+    public struct AnimatorTransitionInfo { public float normalizedTime { get { return 0; } } }
     public class StateMachineBehaviour : ScriptableObject {
         public virtual void OnStateEnter(Animator a, AnimatorStateInfo s, int l) { }
         public virtual void OnStateExit(Animator a, AnimatorStateInfo s, int l) { }

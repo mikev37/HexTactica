@@ -288,7 +288,8 @@ public class Building : MonoBehaviour {
     /// <summary>The units this building may build now.</summary>
     public List<Unit> Purchasable() {
         List<Unit> list = new List<Unit>();
-        if (CanProduce) foreach (Unit u in Offered(owner)) if (CanBuild(u)) list.Add(u);
+        // (Nothing while a strike launched from here is in the air: Strikes.LaunchedFrom.)
+        if (CanProduce && !Strikes.LaunchedFrom(tile)) foreach (Unit u in Offered(owner)) if (CanBuild(u)) list.Add(u);
         return list;
     }
 

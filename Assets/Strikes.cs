@@ -518,6 +518,9 @@ public static class Strikes {
                 TerrainData was = s.target.terrain;
                 if (s.target.Crater(s.weapon.craterTerrain)) r.groundWas = was;
             }
+            // The rest of the blast: what stands on each tile (its building, else its ground) takes the same damage.
+            if (s.weapon.buildingDamage > 0)
+                foreach (HexTile t in Blast(s.target, s.Radius)) if (t != s.target) t.Damage(s.weapon.buildingDamage);
             if (s.weapon.strikeRevealRadius > 0) FogOfWar.Flare(s.owner, s.target, s.weapon.strikeRevealRadius);
         }
     }
@@ -538,6 +541,41 @@ public static class Strikes {
     }
 
     internal static void Performing(Unit u) { if (u != null && !performing.Contains(u)) performing.Add(u); }
+    internal static void Performed(Unit u) { performing.Remove(u); }
+
+    // Launched units left on their pads (their Launch's last frame: open doors, smoke), until their side's turn ends.
+    static readonly List<Unit> pads = new List<Unit>();
+
+    /// <summary>A unit launched from its pad: it stays on screen there until its side's turn ends, then is removed.</summary>
+    internal static void Launched(Unit u) {
+        if (u == null) return;
+        GameController.TurnEnding -= ClearPads;
+        GameController.TurnEnding += ClearPads;
+        pads.RemoveAll(x => x == null);
+        if (!pads.Contains(u)) pads.Add(u);
+    }
+
+    static void ClearPads(Player p) {
+        for (int i = pads.Count - 1; i >= 0; i--) {
+            Unit u = pads[i];
+            if (u != null && p != null && u.owner != null && u.owner != p) continue;
+            pads.RemoveAt(i);
+            if (u == null) continue;
+            performing.Remove(u);
+            u.ShownAt = null;
+            GameObject.Destroy(u.gameObject);
+        }
+    }
+
+    /// <summary>
+    /// A strike launched from <paramref name="pad"/> is still in the air: nothing is built there until it has landed (at
+    /// the start of its side's next turn), so a silo launches at most once per turn and its next missile waits a turn.
+    /// </summary>
+    public static bool LaunchedFrom(HexTile pad) {
+        if (pad == null) return false;
+        foreach (Strike s in inFlight) if (s.from == pad) return true;
+        return false;
+    }
 
     /// <summary>
     /// A strike from the air has landed: a unit that was expended as it launched is shown arriving (its prefab, playing
@@ -564,21 +602,20 @@ public static class Strikes {
 
     /// <summary>A strike that landed at once (a shot, a splash): its explosion and what it did, together.</summary>
     internal static void ShowImpact(StrikeResult r) {
-        ShowBlast(r, false);
+        ShowBlast(r);
         Reveal(r);
     }
 
     /// <summary>
-    /// The strike's weaponImpact and strikeSound where it landed, for whoever can see the tile. <paramref name="arrival"/>:
-    /// a missile's own Impact state is its explosion, so only the sound plays. Nothing for a splash.
+    /// The strike's weaponImpact and strikeSound where it landed, for whoever can see the tile. Nothing for a splash.
     /// </summary>
-    internal static void ShowBlast(StrikeResult r, bool arrival) {
+    internal static void ShowBlast(StrikeResult r) {
         if (r == null || GameController.gc == null || GameController.gc.headless) return;
         Strike s = r.strike;
         if (s.splash || s.target == null || s.weapon == null) return;
         Player v = FogOfWar.Viewer;
         if (v != null && !FogOfWar.TileVisible(v, s.target)) return;
-        if (!arrival && s.weapon.weaponImpact != null) GameObject.Instantiate(s.weapon.weaponImpact, PositionOf(s.target), Quaternion.identity);
+        if (s.weapon.weaponImpact != null) GameObject.Instantiate(s.weapon.weaponImpact, PositionOf(s.target), Quaternion.identity);
         if (s.weapon.strikeSound != null && GameSounds.On) GameSounds.Play(s.weapon.strikeSound);
     }
 

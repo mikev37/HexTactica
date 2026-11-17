@@ -21,7 +21,7 @@ public static partial class Scenarios {
                  Put("Tank", o, 3, 0); Put("Grunt", o, 4, 0); Put("Grunt", o, 3, 1); Put("Grunt", o, 5, -1);
                  Put("Artillery", a, 2, 0);
              },
-             "The Missile (targets ground, blast radius 1, ballistic, self-destructs): the silo builds one only while its tile is free; aimed at a tile, the preview lists the units the player knows of on the seven tiles with what each would lose (friend and foe: a Blue artillery beside the target); launched, it leaves the board at once (not a loss: no 'dies' line, no Died for scripts), every enemy side is shown the launch, nothing is hit yet and nothing can attack it; at the start of Blue's next turn it lands: each unit on the seven tiles loses what the preview said (its ordinary damage), one two tiles away nothing, the tile becomes a Crater, and Blue sees two tiles around it until its turn ends.");
+             "The Missile (targets ground, blast radius 1, ballistic, self-destructs): the silo builds one only while its tile is free, and none while its missile is in the air (until it lands); aimed at a tile, the preview lists the units the player knows of on the seven tiles with what each would lose (friend and foe: a Blue artillery beside the target); launched, it leaves the board at once (not a loss: no 'dies' line, no Died for scripts), every enemy side is shown the launch, nothing is hit yet and nothing can attack it; at the start of Blue's next turn it lands: each unit on the seven tiles loses what the preview said (its ordinary damage), one two tiles away nothing, the tile becomes a Crater, the ground of the six round it is worn by its Building Damage, and Blue sees two tiles around it until its turn ends.");
         n++;
         make("strike-attributes", "strikeAttributes", (a, o) => {
                  Put("Artillery", a, -1, -4); Put("Grunt", o, 2, -4); Put("Grunt", o, 3, -4);
@@ -151,7 +151,15 @@ public static partial class Scenarios {
                 Unit.Died -= died;
                 bool gone = missile.tile == null && !a.units.Contains(missile) && !Rig.uc.units.Contains(missile) && Strikes.InFlight.Count == 1 && expendedSeen == 1;
                 bool nothingYet = Rig.uc.units.All(u => u == null || !before.ContainsKey(u) || u.Strength == before[u]);
-                bool freeAgain = offered != null && Rig.bc.Produce(silo, offered) != null && a.money == 70000;
+                // The silo is free (the missile is off the board) but builds nothing while its missile is in the air.
+                bool waits = offered != null && missile.tile == null && Rig.At(-4, 0).occupier == null && Rig.bc.Produce(silo, offered) == null
+                             && a.money == 100000 && silo.Purchasable().Count == 0 && Strikes.LaunchedFrom(Rig.At(-4, 0));
+                // The rest of the blast: each tile's ground that can be worn (health) as it was.
+                List<HexTile> ring = Strikes.Blast(aim, 1).FindAll(t => t != aim && t.building == null && t.terrain != null && t.terrain.health > 0);
+                Dictionary<HexTile, int> worn = new Dictionary<HexTile, int>();
+                foreach (HexTile t in ring) worn[t] = t.damage;
+                Dictionary<HexTile, TerrainData> ground = new Dictionary<HexTile, TerrainData>();
+                foreach (HexTile t in ring) ground[t] = t.terrain;
                 gc.EndTurn();
                 bool stillUp = Strikes.InFlight.Count == 1 && Rig.uc.units.All(u => u == null || !before.ContainsKey(u) || u.Strength == before[u]);
                 // Blue's next turn: it lands.
@@ -169,13 +177,15 @@ public static partial class Scenarios {
                 bool crater = aim.terrain != null && aim.terrain.name == "Crater";
                 bool litNow = dark.Count > 0 && dark.TrueForAll(t => FogOfWar.TileVisible(a, t));
                 bool landed = Strikes.InFlight.Count == 0;
+                bool ringWorn = ring.Count > 0 && ring.TrueForAll(t => t.terrain != ground[t] || t.damage >= worn[t] + missile.buildingDamage || t.damage >= t.terrain.health);
+                bool freeAgain = offered != null && !Strikes.LaunchedFrom(Rig.At(-4, 0)) && Rig.bc.Produce(silo, offered) != null && a.money == 70000;
                 gc.EndTurn();
                 bool litEnds = dark.Exists(t => !FogOfWar.TileVisible(a, t));
-                detail = "missile as made " + shape + "; silo full: no second " + oneAtATime + ", built again once launched " + freeAgain + "; may aim at (3,0), not at (-3,0) (too close) " + canOrder
+                detail = "missile as made " + shape + "; silo full: no second " + oneAtATime + ", none while it is in the air " + waits + ", built again once it has landed " + freeAgain + "; may aim at (3,0), not at (-3,0) (too close) " + canOrder
                        + "; preview " + preview.Count + " units (the Blue unit among them " + friendlyHit + "); launched " + ordered + ", gone from the board (Died told as expended) " + gone + ", nothing hit yet " + nothingYet + ", still in the air on Red's turn " + stillUp
                        + "; landed " + landed + ": " + string.Join(", ", hits.ToArray()) + "; as previewed " + asPreviewed + "; two tiles away untouched " + farSafe + "; crater " + crater
-                       + "; " + dark.Count + " tiles within 2 Blue did not see: all seen after landing " + litNow + ", dark again after Blue's turn " + litEnds;
-                return shape && oneAtATime && freeAgain && canOrder && ordered && gone && nothingYet && stillUp && landed && asPreviewed && friendlyHit && farSafe && crater && litNow && litEnds;
+                       + ", the " + ring.Count + " wearable tiles round it worn by " + missile.buildingDamage + " " + ringWorn + "; " + dark.Count + " tiles within 2 Blue did not see: all seen after landing " + litNow + ", dark again after Blue's turn " + litEnds;
+                return shape && oneAtATime && waits && freeAgain && ringWorn && canOrder && ordered && gone && nothingYet && stillUp && landed && asPreviewed && friendlyHit && farSafe && crater && litNow && litEnds;
             }
             case "strikeAttributes": {
                 Unit groundArty = At(-1, -4), areaArty = At(-3, -1), selfTank = At(-1, 2), lateArty = At(-3, 5);
