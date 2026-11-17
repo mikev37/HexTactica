@@ -177,8 +177,10 @@ public class HexTile : MonoBehaviour
     // ---- a strike's change shown under its explosion (Strikes.Resolve, Strikes.Reveal) ----
 
     /// <summary>The tile keeps the look it has while a change to it waits for the explosion that hides it: its sprites are not written.</summary>
-    [System.NonSerialized] bool lookHeld;
+    /// <summary>How many strikes landing on screen hold the tile's look (overlapping blasts: it changes under the last explosion).</summary>
+    [System.NonSerialized] int lookHolds;
     [System.NonSerialized] bool heldRoad;
+    bool lookHeld { get { return lookHolds > 0; } }
 
     /// <summary>Whether a road is drawn here: the road the tile shows (the one it had, while its look is held).</summary>
     bool RoadShown { get { return lookHeld ? heldRoad : road; } }
@@ -189,15 +191,13 @@ public class HexTile : MonoBehaviour
     /// terrain at once. Nothing without sprites (headless).
     /// </summary>
     public void HoldLook() {
-        if (upper == null || lookHeld) return;
-        lookHeld = true;
-        heldRoad = road;
+        if (upper == null) return;
+        if (lookHolds++ == 0) heldRoad = road;
     }
 
     /// <summary>Show the tile as it now is (after HoldLook): its terrain's sprites, its damage picture, its roads and its neighbours'.</summary>
     public void ShowLook() {
-        if (!lookHeld) return;
-        lookHeld = false;
+        if (lookHolds == 0 || --lookHolds > 0) return;
         if (terrain != null) {
             if (lower != null) lower.sprite = terrain.lower;
             if (water != null) water.sprite = terrain.water;
@@ -551,6 +551,8 @@ public class HexTile : MonoBehaviour
     /// next idle unit's tile (TurnControls), so both go the same way.
     /// </summary>
     public void ClickBoard() {
+        // Strikes coming down: nothing is done until the last has exploded (Strikes.Landing).
+        if (Strikes.Landing) return;
         lastClicked = this;
         // The unit here as the player at the screen knows it: under fog of war, one it does not
         // see is not there, so the click does what it would on an empty tile and gives nothing away.

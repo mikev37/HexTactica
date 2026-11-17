@@ -162,6 +162,12 @@ public class Unit : MonoBehaviour
     [LooksOnly] public GameObject strikeExplosion;
     [Tooltip("Played where its ground or ballistic attack lands.")]
     [LooksOnly] public AudioClip strikeSound;
+    [Tooltip("Ballistic strikes that self-destruct: how far (world units) from its launch site, at random, the arriving copy appears before it travels to its target.")]
+    [LooksOnly] public float arrivalSpread = 1f;
+    [Tooltip("Ballistic strikes that self-destruct: seconds the arriving copy takes to travel from where it appears to its target (its Fall plays meanwhile; Impact waits for it to get there).")]
+    [LooksOnly] public float arrivalTravelSeconds = 1f;
+    [Tooltip("Seconds before the next strike of the same turn comes down after this one (strikes land one after another, in the order they were launched).")]
+    [LooksOnly] public float arrivalStagger = 0.2f;
 
     /// <summary>Its attack is worked out over an area or later, not as a duel with one unit (Strikes): it aims at ground, hits an area, or lands after a delay.</summary>
     public bool StrikesArea { get { return targetsGround || ballistic; } }
@@ -333,7 +339,16 @@ public class Unit : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Off the board, playing a stage of its strike (launch, fall, impact): its animator decides when it ends (StrikeStage).
+        // A strike's arriving copy travels from near its launch site to its target (its Fall plays meanwhile).
+        if (travelling) {
+            float k = travelSeconds <= 0f ? 1f : Mathf.Clamp01((Time.time - travelStart) / travelSeconds);
+            transform.position = Vector3.Lerp(travelFrom, travelTo, k);
+            if (k >= 1f) {
+                travelling = false;
+                if (impactWaiting) { impactWaiting = false; StrikeStageEnded(StrikeStage.Stage.Landed); }
+            }
+        }
+        // Off the board but still on screen, playing a stage of its strike (launch, fall, impact): its animator decides when it ends (StrikeStage).
         if (ShownAt != null) return;
         // A strike's hits wait for this unit's shot to land (AttackResolve), a couple of seconds at most.
         if (pendingImpact != null && Time.time - impactAt > 2.5f) ShowPendingImpact();
@@ -1342,6 +1357,8 @@ public class Unit : MonoBehaviour
                 return;
             case StrikeStage.Stage.Landed: {
                 if (arriving == null || landed) return;
+                // Its Fall ended before it got there: Impact waits until it arrives (Update).
+                if (travelling) { impactWaiting = true; return; }
                 landed = true;
                 Strikes.ShowBlast(arriving, true);
                 PlayStage("Impact", StrikeStage.Stage.ImpactDone);
@@ -1358,6 +1375,16 @@ public class Unit : MonoBehaviour
 
     /// <summary>The copy reached the ground (its Fall state ended): its Impact plays. Animation only.</summary>
     [System.NonSerialized] bool landed;
+    /// <summary>The copy's travel to its target (BeginArrival). Animation only.</summary>
+    [System.NonSerialized] bool travelling, impactWaiting;
+    [System.NonSerialized] Vector3 travelFrom, travelTo;
+    [System.NonSerialized] float travelStart, travelSeconds;
+
+    /// <summary>A strike's copy on its way to its target: fog of war judges it where its sprite is (FogOfWar.ShownToViewer).</summary>
+    public bool Travelling { get { return travelling; } }
+
+    /// <summary>A strike's copy that has not yet shown what its strike did (Strikes.Landing: actions wait for it).</summary>
+    internal bool StrikeUnrevealed { get { return arriving != null; } }
 
     /// <summary>
     /// Animation event for the Impact clip, at the moment its explosion hides the tile: the tile's new ground, the
@@ -1416,14 +1443,18 @@ public class Unit : MonoBehaviour
     /// shown and its Impact trigger plays; when that ends (Impact Done) it is removed. Fog of war shows it as it shows the
     /// tile it falls on.
     /// </summary>
-    internal void BeginArrival(StrikeResult r) {
+    internal void BeginArrival(StrikeResult r, Vector3 start, Vector3 end) {
         dead = true;
+        transform.position = start;
+        travelFrom = start; travelTo = end;
+        travelStart = Time.time; travelSeconds = Mathf.Max(0f, arrivalTravelSeconds);
+        travelling = start != end;
         arriving = r;
         ShownAt = r.strike.target;
         Strikes.Performing(this);
         // Never a target: no strength, veterancy or status. Facing the way it flew, from its launch tile to its target.
         HideOwnUI();
-        if (r.strike.from != null) Face(r.strike.from.transform.position, r.strike.target.transform.position);
+        Face(start, end);
         SetAnimatorBool("Flying", true);
         PlayStage("Fall", StrikeStage.Stage.Landed);
     }

@@ -218,15 +218,15 @@ public class Building : MonoBehaviour {
 
     /// <summary>The picture for the health it has left: its own, a damage picture, or the destroyed one.</summary>
     /// <summary>A strike's damage waiting for its explosion to cover the tile: the building keeps the look it had (HoldCondition).</summary>
-    [System.NonSerialized] bool conditionHeld;
+    [System.NonSerialized] int conditionHolds;
+    bool conditionHeld { get { return conditionHolds > 0; } }
 
     /// <summary>Keep the building's look while its damage changes underneath, until ShowCondition (a strike's damage appears under its explosion).</summary>
-    public void HoldCondition() { conditionHeld = true; }
+    public void HoldCondition() { conditionHolds++; }
 
     /// <summary>Show the building as it now is (after HoldCondition).</summary>
     public void ShowCondition() {
-        if (!conditionHeld) return;
-        conditionHeld = false;
+        if (conditionHolds == 0 || --conditionHolds > 0) return;
         RefreshCondition();
     }
 

@@ -87,7 +87,10 @@ its art arrives.
   - **Launch** (trigger): on the pad, as it is fired. Its state carries **StrikeStage** (a state behaviour, added
     with *Add Behaviour* as CleanUpOnDeath is on Dying; not a parameter) set to *Launched*: when it ends, the
     unit is removed.
-  - **Fall** (trigger): at its side's next turn start, on a copy made from the prefab at the target tile. Its state
+  - **Fall** (trigger): at its side's next turn start, on a copy made from the prefab. The copy appears at random
+    within *Arrival Spread* of its launch site and travels to the target tile over *Arrival Travel Seconds* (1 s) while
+    Fall plays; Impact waits for it to get there. A side's strikes come down one after another, *Arrival Stagger*
+    (0.2 s) apart, in launch order, and nobody (player or AI) can act until the last has exploded. Its state
     carries StrikeStage *Landed*: when it ends, the strike sound plays and Impact is set.
   - **Impact** (trigger): the explosion, big enough to hide the tile. An optional animation event **StrikeCovered** on
     its clip is the moment the crater, the building's damage and the units' hits appear (until then the blast's tiles

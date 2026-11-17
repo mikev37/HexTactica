@@ -42,6 +42,7 @@ public class TransportMenu : MonoBehaviour {
     /// around the transport.
     /// </summary>
     public static void PickCargo(Unit cargo) {
+        if (Strikes.Landing) return;   // strikes coming down: nothing is done until the last has exploded
         Unit transport = open;
         if (transport == null || cargo == null || cargo.trasnporter != transport) return;
         HexTile target = null;
@@ -62,6 +63,7 @@ public class TransportMenu : MonoBehaviour {
     /// The panel stays open on the transport while it has anything left aboard.
     /// </summary>
     public static void UnloadOnto(HexTile onto) {
+        if (Strikes.Landing) return;   // strikes coming down: nothing is done until the last has exploded
         Unit cargo = pendingCargo, transport = pendingTransport;
         HexTile anchor = pendingAnchor;
         pendingCargo = null; pendingTransport = null; pendingAnchor = null;

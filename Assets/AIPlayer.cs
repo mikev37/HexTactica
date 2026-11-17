@@ -135,6 +135,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
         if (!GameController.gc.activePlayer.Equals(player)) { turnPrepared = false; Abandon(); MaybeSpeculate(); return; }
         // Our turn is over and waits for what is still playing on screen (GameController.EndTurnWhenStill).
         if (GameController.gc.EndTurnPending) return;
+        // Strikes coming down on screen: nobody acts until the last has exploded (as the player at the screen waits).
+        if (Strikes.Landing) return;
 
         // A thought under way: act on it once it is ready (the frame is free meanwhile).
         if (thinking != null) {

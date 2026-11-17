@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -412,9 +413,43 @@ public static class Strikes {
         foreach (Strike s in inFlight) (s.owner == p ? mine : rest).Add(s);
         if (mine.Count == 0) return;
         inFlight = rest.ToArray();
-        foreach (Strike s in mine) {
-            StrikeResult r = Resolve(s);
+        List<StrikeResult> landed = new List<StrikeResult>();
+        foreach (Strike s in mine) landed.Add(Resolve(s));
+        // On screen they come down one after another (each weapon's arrivalStagger), in the order they were launched.
+        GameController gc = GameController.gc;
+        if (gc == null || gc.headless) return;
+        arrivalsQueued += landed.Count;
+        arrivalsOn = gc;
+        gc.StartCoroutine(Arrive(landed));
+    }
+
+    /// <summary>Strikes landed this turn still waiting to be shown coming down (Arrive), and the controller showing them.</summary>
+    static int arrivalsQueued;
+    static GameController arrivalsOn;
+
+    static IEnumerator Arrive(List<StrikeResult> landed) {
+        float at = Time.time;
+        foreach (StrikeResult r in landed) {
+            while (Time.time < at) yield return null;
+            arrivalsQueued--;
             ShowArrival(r);
+            Unit w = r.strike.weapon;
+            at = Time.time + (w != null ? Mathf.Max(0f, w.arrivalStagger) : 0f);
+        }
+    }
+
+    /// <summary>
+    /// Strikes landing on screen: one still to come down, or come down and not yet exploded (Unit.StrikeCovered).
+    /// Nobody acts until the last has (the player's clicks, purchases and unloads; the AI).
+    /// </summary>
+    public static bool Landing {
+        get {
+            if (GameController.gc == null || GameController.gc.headless) return false;
+            if (arrivalsOn == null) arrivalsQueued = 0;   // (the scene it was showing in is gone)
+            if (arrivalsQueued > 0) return true;
+            performing.RemoveAll(u => u == null || u.ShownAt == null);
+            foreach (Unit u in performing) if (u.StrikeUnrevealed) return true;
+            return false;
         }
     }
 
@@ -496,6 +531,7 @@ public static class Strikes {
     public static bool Showing {
         get {
             if (GameController.gc == null || GameController.gc.headless) return false;
+            if (Landing) return true;
             performing.RemoveAll(u => u == null || u.ShownAt == null);
             return performing.Count > 0;
         }
@@ -511,8 +547,15 @@ public static class Strikes {
         if (GameController.gc == null || GameController.gc.headless || r.strike.target == null) return;
         Unit w = r.strike.weapon;
         if (w != null && w.selfDestructs && w.ballistic) {
-            Unit body = GameObject.Instantiate(w.gameObject, PositionOf(r.strike.target), Quaternion.identity).GetComponent<Unit>();
-            if (body != null) { body.owner = r.strike.owner; body.BeginArrival(r); return; }
+            // It appears at random near where it left (its launch site) and travels to its target.
+            Vector3 end = PositionOf(r.strike.target);
+            Vector3 start = end;
+            if (r.strike.from != null) {
+                Vector2 off = UnityEngine.Random.insideUnitCircle * Mathf.Max(0f, w.arrivalSpread);   // (looks only: not the game's seeded dice)
+                start = PositionOf(r.strike.from) + new Vector3(off.x, off.y, 0f);
+            }
+            Unit body = GameObject.Instantiate(w.gameObject, start, Quaternion.identity).GetComponent<Unit>();
+            if (body != null) { body.owner = r.strike.owner; body.BeginArrival(r, start, end); return; }
         }
         ShowImpact(r);
     }

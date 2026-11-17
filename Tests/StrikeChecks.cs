@@ -328,9 +328,10 @@ public static partial class Scenarios {
                 files.Add(Path.Combine(assets, "AIPlayer.cs"));
                 if (Directory.Exists(Path.Combine(assets, "OldAI"))) files.AddRange(Directory.GetFiles(Path.Combine(assets, "OldAI"), "*.cs", SearchOption.AllDirectories));
                 // (Code only, comments stripped.) The AI may use only these of Strikes: what its side knows (KnownTo), and its
-                // own strikes (Preview, Blast, Targets, CanOrder, Order). Anything else (InFlight, the Fired and Landed events,
+                // own strikes (Preview, Blast, Targets, CanOrder, Order), and Landing: the screen still showing strikes come down
+                // (only its own land at its turn's start), which the player at the screen waits for too. Anything else (InFlight, the Fired and Landed events,
                 // a save's StrikeData) would tell it of strikes it did not see, or where they are aimed.
-                HashSet<string> allowed = new HashSet<string> { "KnownTo", "Preview", "Blast", "Targets", "CanOrder", "Order" };
+                HashSet<string> allowed = new HashSet<string> { "KnownTo", "Preview", "Blast", "Targets", "CanOrder", "Order", "Landing" };
                 System.Text.RegularExpressions.Regex use = new System.Text.RegularExpressions.Regex(@"\bStrikes\s*\.\s*(\w+)|\b(InFlight|StrikeData)\b");
                 foreach (string file in files) {
                     string code = System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(file), @"//[^\n]*|/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);

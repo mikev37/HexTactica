@@ -67,6 +67,7 @@ public class ProductionPanel : MonoBehaviour {
     }
 
     void Buy(Unit u) {
+        if (Strikes.Landing) return;   // strikes coming down: nothing is done until the last has exploded
         Building b = BuildingMenu.open;
         if (b != null && BuildingController.bc != null && BuildingController.bc.Produce(b, u) != null) BuildingMenu.open = null;
     }
