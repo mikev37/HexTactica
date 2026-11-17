@@ -527,10 +527,10 @@ public static class Strikes {
 
     // ------------------------------------------------------------------ on screen (nothing here changes the rules)
 
-    // The units playing a launch or an arrival (removed when their animation ends: StrikeStage).
+    // The strikes' copies coming down and exploding (removed when their animation ends: StrikeStage). Not launches.
     static readonly List<Unit> performing = new List<Unit>();
 
-    /// <summary>A launch or an arrival is still playing: the AI and a turn's end wait for it, as for any animation (Unit.AnyAnimating).</summary>
+    /// <summary>A strike still coming down or exploding: the AI, replays and a turn's end wait for it, as for any animation (Unit.AnyAnimating). A launch is waited for by nothing.</summary>
     public static bool Showing {
         get {
             if (GameController.gc == null || GameController.gc.headless) return false;
@@ -541,7 +541,6 @@ public static class Strikes {
     }
 
     internal static void Performing(Unit u) { if (u != null && !performing.Contains(u)) performing.Add(u); }
-    internal static void Performed(Unit u) { performing.Remove(u); }
 
     // Launched units left on their pads (their Launch's last frame: open doors, smoke), until their side's turn ends.
     static readonly List<Unit> pads = new List<Unit>();
@@ -563,7 +562,6 @@ public static class Strikes {
             if (u == null) continue;
             // Not launched yet (still idling before its Launch state): it goes once its launch has played (Unit.StrikeStageEnded).
             if (!u.LaunchPlayed) { GameObject.Destroy(u.gameObject, Unit.StageTimeout); continue; }
-            performing.Remove(u);
             u.ShownAt = null;
             GameObject.Destroy(u.gameObject);
         }
