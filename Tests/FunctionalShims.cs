@@ -180,6 +180,9 @@ namespace UnityEngine {
         public static int GetInt(string k, int d) { return d; }
         public static void SetFloat(string k, float v) { }
         public static void SetInt(string k, int v) { }
+        static readonly System.Collections.Generic.Dictionary<string, string> strings = new System.Collections.Generic.Dictionary<string, string>();
+        public static string GetString(string k, string d) { string v; return strings.TryGetValue(k, out v) ? v : d; }
+        public static void SetString(string k, string v) { strings[k] = v; }
         public static void Save() { }
     }
     public class Motion : Object { }
@@ -255,6 +258,7 @@ namespace UnityEngine {
         public Vector3 position, localPosition, localScale, up, right;
         public Vector3 lossyScale { get { return localScale; } }
         public Quaternion rotation, localRotation;
+        public Vector3 localEulerAngles, eulerAngles;
         public Transform parent;
         public void SetParent(Transform p, bool worldPositionStays) { parent = p; }
         public Transform Find(string n) { return null; }
@@ -502,6 +506,8 @@ namespace UnityEngine {
     public enum KeyCode { None, Space, Escape, Return, KeypadEnter, Tab, Home, End, LeftArrow, RightArrow, UpArrow, DownArrow, Equals, Minus, KeypadPlus, KeypadMinus, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
     public static class Application {
         public static string persistentDataPath { get { return "/tmp/hextactica"; } }
+        /// <summary>The game's version (Player Settings): settable, so a test can play two devices on different versions.</summary>
+        public static string version = "1.0";
         public static string dataPath { get { return "/tmp/hextactica"; } }
         public static bool isPlaying { get { return true; } }
         public static bool CanStreamedLevelBeLoaded(string scene) { return false; }
@@ -511,7 +517,39 @@ namespace UnityEngine {
         public static void Quit() { }
     }
     public static class JsonUtility {
-        public static string ToJson(object o) { return "{}"; }
+        /// <summary>
+        /// Unity's: the object's serialized fields (public, or marked SerializeField) as a JSON object: numbers, bools,
+        /// strings, enums (as numbers), nested serializable structs and classes, lists and arrays; a reference to a
+        /// Unity object as its instance id (0 here).
+        /// </summary>
+        public static string ToJson(object o) { System.Text.StringBuilder sb = new System.Text.StringBuilder(); Write(sb, o, 0); return sb.ToString(); }
+        static void Write(System.Text.StringBuilder sb, object o, int depth) {
+            if (o == null) { sb.Append("null"); return; }
+            Type t = o.GetType();
+            System.Globalization.CultureInfo inv = System.Globalization.CultureInfo.InvariantCulture;
+            if (o is string) { sb.Append('"'); foreach (char c in (string)o) { if (c == '"' || c == '\\') sb.Append('\\').Append(c); else if (c == '\n') sb.Append("\\n"); else if (c < ' ') sb.Append("\\u").Append(((int)c).ToString("x4")); else sb.Append(c); } sb.Append('"'); return; }
+            if (o is bool) { sb.Append((bool)o ? "true" : "false"); return; }
+            if (t.IsEnum) { sb.Append(Convert.ToInt64(o).ToString(inv)); return; }
+            if (o is float) { sb.Append(((float)o).ToString("R", inv)); return; }
+            if (o is double) { sb.Append(((double)o).ToString("R", inv)); return; }
+            if (t.IsPrimitive) { sb.Append(Convert.ToString(o, inv)); return; }
+            if (o is Object) { sb.Append("{\"instanceID\":0}"); return; }
+            if (depth > 8) { sb.Append("{}"); return; }
+            if (o is System.Collections.IList) {
+                sb.Append('['); bool first = true;
+                foreach (object e in (System.Collections.IList)o) { if (!first) sb.Append(','); first = false; Write(sb, e, depth + 1); }
+                sb.Append(']'); return;
+            }
+            sb.Append('{'); bool f = true;
+            foreach (System.Reflection.FieldInfo fi in t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)) {
+                if (fi.IsStatic || fi.IsInitOnly || fi.IsNotSerialized) continue;
+                if (!fi.IsPublic && fi.GetCustomAttributes(typeof(SerializeField), true).Length == 0) continue;
+                if (!f) sb.Append(','); f = false;
+                sb.Append('"').Append(fi.Name).Append("\":");
+                Write(sb, fi.GetValue(o), depth + 1);
+            }
+            sb.Append('}');
+        }
         /// <summary>Unity's: the public fields of <typeparamref name="T"/> (numbers, bools, strings, enums) from a JSON object; others left at their defaults.</summary>
         public static T FromJson<T>(string s) {
             object o = Activator.CreateInstance(typeof(T));

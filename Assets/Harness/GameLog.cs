@@ -175,6 +175,7 @@ namespace HexTactica.Harness {
         }
 
         public static void Stop() {
+            LastTurnBoard = null; LastTurnPoint = null;
             if (writer == null) return;
             Unit.Attacked -= OnAttack;
             Building.Captured -= OnCapture;
@@ -201,8 +202,13 @@ namespace HexTactica.Harness {
             writer = null;
         }
 
+        /// <summary>Every line as it is written to game.log (a networked game sends its orders on from here: Multiplayer/MpSession).</summary>
+        public static event Action<string> Written;
+
         static void Line(string s) {
-            if (writer != null) writer.WriteLine(s);
+            if (writer == null) return;
+            writer.WriteLine(s);
+            if (Written != null) Written(s);
         }
 
         // ------------------------------------------------------------------ events
@@ -223,6 +229,9 @@ namespace HexTactica.Harness {
             try {
                 File.WriteAllText(Path.Combine(Folder, file), Snapshot(p, "snapshot of round " + round + ", " + side + " to move"));
                 Line("   (board saved as " + file + ")");
+                writer.Flush();
+                LastTurnBoard = Path.Combine(Folder, file);
+                LastTurnPoint = new SavePoint { folder = Folder, length = writer.BaseStream.Position, turns = turns };
             } catch (Exception e) {
                 Line("   (could not save board: " + e.Message + ")");
             }
@@ -232,6 +241,10 @@ namespace HexTactica.Harness {
 
         static int turns;
         static int TurnIndex() { return turns++; }
+
+        /// <summary>The board file this recording saved at the latest turn's start (null: none yet), and the log's place just after it (loading that board with this point goes on with the same log: ScenarioLoader.WithSavePoint).</summary>
+        public static string LastTurnBoard { get; private set; }
+        public static SavePoint LastTurnPoint { get; private set; }
 
         static void OnFinished(Unit u) {
             if (writer == null || u == null) return;
@@ -426,6 +439,26 @@ namespace HexTactica.Harness {
                 if (b.producesSupply && !b.IsHQ) sb.Append(" store ").Append(b.supplies).Append('/').Append(b.suppliesMax);
                 sb.Append(';');
             }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// The board in one line, the same on every device that has played the same orders (a networked game checks it at
+        /// each turn's start): every unit (place, strength, ammunition, supplies, fuel), every building (owner, capture
+        /// points, store) and each side's money, each list in a fixed order.
+        /// </summary>
+        public static string BoardCheck() {
+            List<string> units = new List<string>(Roster().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+            units.Sort(StringComparer.Ordinal);
+            List<string> buildings = new List<string>();
+            foreach (string b in Buildings().Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)) buildings.Add(b.Trim());
+            buildings.Sort(StringComparer.Ordinal);
+            StringBuilder sb = new StringBuilder();
+            sb.Append("units: ").Append(string.Join(" ", units.ToArray()));
+            sb.Append(" | buildings: ").Append(string.Join("; ", buildings.ToArray()));
+            sb.Append(" | money:");
+            GameController gc = GameController.gc;
+            if (gc != null) foreach (Player p in gc.players) if (p != null) sb.Append(' ').Append(p.personal_name).Append('=').Append(p.money.ToString(CultureInfo.InvariantCulture)).Append(p.eliminated ? "(out)" : "").Append(';');
             return sb.ToString();
         }
 

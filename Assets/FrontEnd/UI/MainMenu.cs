@@ -14,6 +14,8 @@ public class MainMenu : MonoBehaviour {
     public GameObject unitsPanel;
     public GameObject optionsPanel;
     public GameObject replayPanel;
+    [Tooltip("Networked games: Join Game's panel (an MpJoinPanel). Optional.")]
+    public GameObject joinPanel;
 
     [Header("Replay")]
     [Tooltip("The recorded games (game logs) that can be watched again.")]
@@ -28,6 +30,17 @@ public class MainMenu : MonoBehaviour {
     public TMPro.TMP_Text playButtonLabel;
     public string playScenarioLabel = "Set up game";
     public string playSaveLabel = "Continue";
+    [Tooltip("The button's text while hosting a networked game (Host Game): the scenario becomes its lobby.")]
+    public string hostScenarioLabel = "Host game";
+    [Tooltip("The Load panel's heading, changed to say so while hosting. Optional.")]
+    public TMPro.TMP_Text loadHeading;
+    public string loadHeadingText = "Load Scenario";
+    public string hostHeadingText = "Host Game: pick a scenario";
+    [Tooltip("The Load panel's tabs (Scenarios, Saved games): hidden while hosting, which takes scenarios only. Optional.")]
+    public GameObject loadTabs;
+
+    /// <summary>The Load panel was opened by Host Game: the scenario picked is hosted as a networked game.</summary>
+    bool hosting;
 
     [Header("Map Editor")]
     public FileList editorList;
@@ -45,13 +58,22 @@ public class MainMenu : MonoBehaviour {
     }
 
     void Show(GameObject panel) {
-        foreach (GameObject p in new[] { mainPanel, loadPanel, editorPanel, unitsPanel, optionsPanel, replayPanel })
+        foreach (GameObject p in new[] { mainPanel, loadPanel, editorPanel, unitsPanel, optionsPanel, replayPanel, joinPanel })
             if (p != null) p.SetActive(p == panel);
+        if (panel != loadPanel) hosting = false;
+        if (loadHeading != null) loadHeading.text = hosting ? hostHeadingText : loadHeadingText;
+        if (loadTabs != null) loadTabs.SetActive(!hosting);
         UpdateButtons();
     }
 
     public void ShowMain() { Show(mainPanel); }
-    public void ShowLoadScenario() { Show(loadPanel); if (loadList != null) loadList.ShowScenarios(); }
+    public void ShowLoadScenario() { hosting = false; Show(loadPanel); if (loadList != null) loadList.ShowScenarios(); }
+
+    /// <summary>Host Game: the Load panel, scenarios only; the one picked becomes a networked game's lobby.</summary>
+    public void ShowHostGame() { hosting = true; Show(loadPanel); if (loadList != null) loadList.ShowScenarios(); UpdateButtons(); }
+
+    /// <summary>Join Game: the join code panel.</summary>
+    public void ShowJoinGame() { if (joinPanel != null) Show(joinPanel); }
     public void ShowMapEditor() { Show(editorPanel); if (editorList != null) editorList.ShowEditable(); }
     public void ShowUnitExplorer() { Show(unitsPanel); }
     public void ShowOptions() { Show(optionsPanel); }
@@ -69,7 +91,7 @@ public class MainMenu : MonoBehaviour {
 
     void UpdateButtons() {
         if (playButton != null) playButton.interactable = loadList != null && loadList.Selected != null;
-        if (playButtonLabel != null && loadList != null) playButtonLabel.text = loadList.source == FileList.Source.Saves ? playSaveLabel : playScenarioLabel;
+        if (playButtonLabel != null && loadList != null) playButtonLabel.text = hosting ? hostScenarioLabel : loadList.source == FileList.Source.Saves ? playSaveLabel : playScenarioLabel;
         if (editButton != null) editButton.interactable = editorList != null && editorList.Selected != null;
         if (watchButton != null) watchButton.interactable = replayList != null && replayList.Selected != null;
     }
@@ -77,7 +99,8 @@ public class MainMenu : MonoBehaviour {
     /// <summary>Set up the picked scenario, or play on the picked saved game.</summary>
     public void Play() {
         if (loadList == null || loadList.Selected == null) return;
-        if (loadList.source == FileList.Source.Saves) MatchSetup.PlaySave(loadList.Selected);
+        if (hosting) MatchSetup.HostNetworked(loadList.Selected);
+        else if (loadList.source == FileList.Source.Saves) MatchSetup.PlaySave(loadList.Selected);
         else MatchSetup.SetUp(loadList.Selected);
     }
 

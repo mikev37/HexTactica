@@ -263,6 +263,9 @@ public static class ScenarioFile {
             Player side;
             if (!byId.TryGetValue(id, out side)) { side = Rig.AddPlayer(pd.ContainsKey("personal_name") ? pd["personal_name"] : "Side " + id, id); byId[id] = side; l.sides.Add(side); }
             int team; if (pd.ContainsKey("team") && int.TryParse(pd["team"], out team)) side.team = team;
+            // A board saved in play (a game log's snapshot) has each side's money and whether it is out, as the game's loader reads them.
+            int money; if (pd.ContainsKey("money") && int.TryParse(pd["money"], out money)) side.money = money;
+            if (pd.ContainsKey("eliminated") && pd["eliminated"] == "true") side.eliminated = true;
         }
         Func<long, Player> sideOf = id => { Player s; return byId.TryGetValue(id, out s) ? s : null; };
         foreach (Dictionary<string, string> b in Array(json, "buildings")) {
@@ -274,6 +277,7 @@ public static class ScenarioFile {
             int n;
             if (b.ContainsKey("capturePoints") && int.TryParse(b["capturePoints"], out n) && (n > 0 || owner == null)) made.capturePoints = n;
             if (b.ContainsKey("supplies") && int.TryParse(b["supplies"], out n)) made.supplies = n;
+            if (b.ContainsKey("income") && int.TryParse(b["income"], out n)) made.income = n;   // (as the game's loader: a board saved in play keeps what it was earning)
             long cid = b.ContainsKey("capturingPlayerId") ? long.Parse(b["capturingPlayerId"]) : -1;
             made.capturingPlayer = sideOf(cid);
         }
@@ -349,6 +353,12 @@ public static class ScenarioFile {
         }
         string active = Regex.Match(json, "\"active\"\\s*:\\s*(\\d+)").Groups[1].Value;
         Rig.gc.activePlayer = active == OTHER_ID.ToString() ? l.other : l.ai;
+        // The round it was saved on (a board saved in play), as the game's loader reads it (ScenarioLoader.DayOf).
+        {
+            Defective.JSON.JSONObject whole = new Defective.JSON.JSONObject(json);
+            Defective.JSON.JSONObject day = whole.GetField("day");
+            if (day != null && day.isNumber) Rig.gc.days = (int)day.longValue;
+        }
         // Strikes in the air and ground lit up, as the game's loader puts them back (ScenarioLoader.LoadStrikes).
         foreach (Dictionary<string, string> s in Array(json, Strikes.FileKey)) {
             Func<string, int> n = k => { int v; return s.ContainsKey(k) && int.TryParse(s[k], out v) ? v : 0; };

@@ -112,6 +112,14 @@ public class GameController : MonoBehaviour
     /// <summary>A scenario's dialogue is on screen (ScenarioDialogue): the game is held until it is closed.</summary>
     public static bool ScriptHold;
 
+    /// <summary>
+    /// A networked game (Multiplayer/MpSession): is this side played on another device? Its orders arrive over the
+    /// network and are played here by the game's own rules; nobody at this screen may order its units, end its turn or
+    /// buy for it, and the screen never shows its view. Null (no networked game): no side is.
+    /// </summary>
+    public static System.Func<Player, bool> PlayedElsewhere;
+    public static bool IsPlayedElsewhere(Player p) { return PlayedElsewhere != null && p != null && PlayedElsewhere(p); }
+
     [Header("Purchases")]
     [Tooltip("Can units be bought at buildings? (A scenario sets this; when it does not, Standard and Sandbox allow purchases and Attrition does not.)")]
     public bool purchasesAllowed = true;

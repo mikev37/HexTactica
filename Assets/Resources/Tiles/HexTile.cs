@@ -577,7 +577,7 @@ public class HexTile : MonoBehaviour
         } else if (unloading) {
             // The tile picked for the unit being unloaded (the transport moves to its picked tile first, if it unloads from there).
             TransportMenu.UnloadOnto(this);
-        } else if (seen != null && Transporting.IsTransport(seen) && seen.transported.Count > 0 && seen.owner == GameController.gc.activePlayer
+        } else if (seen != null && Transporting.IsTransport(seen) && seen.transported.Count > 0 && seen.owner == GameController.gc.activePlayer && !GameController.IsPlayedElsewhere(seen.owner)
                    && (state == UIState.SELECTED || (state == UIState.FREE && !seen.active))) {
             // A transport clicked again once selected, or after its turn is over (units can still
             // be put down then): what is aboard.
@@ -599,7 +599,7 @@ public class HexTile : MonoBehaviour
             }
             HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
         } else {
-            if (seen != null && (state == UIState.FREE || state == UIState.RANGE) && seen.active && seen.owner.Equals(GameController.gc.activePlayer)) {
+            if (seen != null && (state == UIState.FREE || state == UIState.RANGE) && seen.active && seen.owner.Equals(GameController.gc.activePlayer) && !GameController.IsPlayedElsewhere(seen.owner)) {
                 Unit sel = seen;
                 GameController.gc.activeUnit = sel;
                 HexGenerator.forAllTiles(x => { x.G = 0; x.Reset(); return 0; });

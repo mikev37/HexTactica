@@ -269,7 +269,7 @@ namespace HexTactica.Harness {
         static bool advancePending;
 
         static void Desync(string what) {
-            string s = "turn " + (Index + 1) + ": " + what + (string.IsNullOrEmpty(LastAction) ? "" : " (\"" + LastAction + "\")");
+            string s = (live != null ? "" : "turn " + (Index + 1) + ": ") + what + (string.IsNullOrEmpty(LastAction) ? "" : " (\"" + LastAction + "\")");
             Desyncs.Add(s);
             Debug.LogError("Replay desync, " + s);
         }
@@ -504,7 +504,89 @@ namespace HexTactica.Harness {
             return u.owner != null && u.owner == Side(side) && (!exactKind || GameLog.Lines.UnitName(u) == kind);
         }
 
-        static bool Animate { get { return GameController.gc != null && !GameController.gc.headless; } }
+        static bool Animate { get { return GameController.gc != null && !GameController.gc.headless && !Instant; } }
+
+        // ---------------------------------------------------------------- orders played live (a networked game)
+
+        /// <summary>Orders are played with no animation: the board is as it will be at once (catching a networked game up to where it stands).</summary>
+        public static bool Instant;
+        /// <summary>The batch of orders being played live (BeginOrders), or null.</summary>
+        static Turn live;
+
+        /// <summary>Is this log line an order the replay plays (a move, attack, strike, boarding or getting off, purchase, resigning), going by the board's sides?</summary>
+        public static bool IsOrder(string line) {
+            GameController gc = GameController.gc;
+            if (gc == null || string.IsNullOrEmpty(line)) return false;
+            List<string> were = new List<string>(sides);
+            sides.Clear();
+            foreach (Player p in gc.players) if (p != null) sides.Add(p.personal_name);
+            try { return IsAction(line); }
+            finally { sides.Clear(); sides.AddRange(were); }
+        }
+
+        /// <summary>
+        /// Orders from another device, in the log's own lines, to be played on the board in play (not a recording: no
+        /// replay is opened, the game goes on recording): each is ordered through the game's rules as a replay orders it
+        /// (NextOrder), and what comes of it is checked against its line (Desyncs). One batch at a time; a move and the
+        /// attack made from where it ends must be in the same batch (they are written together).
+        /// </summary>
+        public static void BeginOrders(IList<string> lines) {
+            logSides.Clear(); logFactions.Clear();
+            live = new Turn { file = "", round = -1, side = "" };
+            live.events.AddRange(lines);
+            Prepare(live);
+        }
+
+        /// <summary>Orders of the batch left to play.</summary>
+        public static int OrdersLeft {
+            get {
+                if (live == null) return 0;
+                int n = 0;
+                for (int i = Step; i < live.actions.Count; i++) if (!played.Contains(live.actions[i])) n++;
+                return n;
+            }
+        }
+
+        /// <summary>Play the batch's next order. False when it has none left (the batch is done).</summary>
+        public static bool NextOrder() {
+            Turn t = live;
+            if (t == null) return false;
+            while (Step < t.actions.Count && played.Contains(t.actions[Step])) Step++;
+            if (Step >= t.actions.Count) { live = null; LastAction = ""; return false; }
+            int e = t.actions[Step++];
+            LastAction = t.events[e].Trim();
+            try { Apply(t, e); FinishLive(t, e); }
+            catch (Exception ex) { Desync("playing it failed: " + ex); }
+            if (Step >= t.actions.Count) { live = null; LastAction = ""; }
+            return true;
+        }
+
+        /// <summary>
+        /// Orders played live end as they ended in play: the unit that moved is finished once its move is over (or, if
+        /// it fired from where it stopped, once it has fired), and one that attacked once it has. Finishing is a rule,
+        /// not a formality (Unit.FinishActive): infantry ending on a building starts to take it, supply is worked out
+        /// again. (A replay never finishes units: it loads each turn's recorded board instead.)
+        /// </summary>
+        static void FinishLive(Turn t, int e) {
+            string line = t.events[e];
+            string side, unit; int x1, y1, x2, y2;
+            GameLog.Lines.AttackLine at;
+            Unit u = null;
+            if (GameLog.Lines.ReadMoved(line, sides, out side, out unit, out x1, out y1, out x2, out y2)) {
+                int next = t.actions.IndexOf(e) + 1;
+                GameLog.Lines.AttackLine then;
+                if (next < t.actions.Count && !played.Contains(t.actions[next]) && GameLog.Lines.ReadAttack(t.events[t.actions[next]], sides, out then)
+                    && then.side == side && then.unit == unit && then.fromX == x2 && then.fromY == y2) return;   // (it fires next: finished after)
+                HexTile end = Tile(x2, y2);
+                u = end != null ? end.occupier : null;
+                if (u != null && (u.owner != Side(side) || GameLog.Lines.UnitName(u) != unit)) u = null;   // (the line has where it stopped, ambushed or not)
+            } else if (GameLog.Lines.ReadAttack(line, sides, out at)) {
+                HexTile from = Tile(at.fromX, at.fromY);
+                u = from != null ? from.occupier : null;
+                if (u != null && (u.owner != Side(at.side) || GameLog.Lines.UnitName(u) != at.unit)) u = null;
+            }
+            if (u != null && u.tile != null && u.Strength > 0 && u.active) u.FinishActive();
+        }
 
         /// <summary>
         /// One logged action, ordered as a player or the AI orders it, through the game's own rules (paths, fog,

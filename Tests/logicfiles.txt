@@ -143,3 +143,9 @@ FrontEnd/Campaign/CampaignMap.cs
 FrontEnd/Campaign/MissionRating.cs
 FrontEnd/Campaign/CampaignProgress.cs
 FrontEnd/Campaign/MapView.cs
+Multiplayer/MpModel.cs
+Multiplayer/IMpStore.cs
+Multiplayer/MpFolderStore.cs
+Multiplayer/MultiplayerSettings.cs
+Multiplayer/Mp.cs
+Multiplayer/MpSession.cs

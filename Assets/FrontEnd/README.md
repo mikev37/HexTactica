@@ -39,6 +39,11 @@ methods through their On Click lists. Lists such as files, units, sides and pale
 | InGameMenu (Esc, over the game) | `InGameMenu` | **Resume**, **Save** (named, into the saves folder), **Load** a saved game, **Exit to main menu**. The game is held while it is open. |
 | MapEditor (over SampleScene) | `MapEditorPanel`, `PaletteButton`, `MapPlayerRow` | Tools: **Look**, **Terrain** (click or drag), **Units** (shown by base units, one faction's, or all), **Buildings**. Placement uses the chosen side, or neutral for buildings; clicking a unit or building again removes it. **Sides**: add or remove sides, rename them, change their colour, and fix a side's faction or leave it "Any". Also sets the name, width (**Resize**), fog, purchases, special units and **Allies** (players choose, or always on or off). Which sides are allies is not edited here: set each Player's *Team* in the inspector and save. **New**, **Load**, **Save**, **Play** (pre-game on it) and **Exit**. |
 
+| MainMenu: Host Game, Join Game, Games (top right) | `MainMenu`, `MpJoinPanel`, `MpGamesMenu` | Networked games. **Host Game** picks a scenario like Load Scenario; it opens as a lobby. **Join Game** takes a join code, to play or **Watch**. **Games .** (**Games !** when one waits on you) lists your games, the player's name beside it. See `Assets/Multiplayer/README.md`. |
+| PreGame as a lobby | `MpLobby` (beside `PreGameMenu`) | For a networked game: the join code, the lobby's name, the turn limit, who is in it; each side open, Local (the host) or AI, with Take / Give up for the others. Only the host changes the rules and starts. |
+| MultiplayerOverlay (over a networked game) | `MpOverlay`, `MpClock` | Whose turn it is, the turn clock, Skip their turn, a desync, the host's Players panel. |
+| TurnNotice (over any screen) | `MpNotice` | "Your turn in Tidal Ridge#K7Q2MX": Open or Dismiss. |
+
 `GameSession` is created in every game scene, never in the menus. It opens what the menu asked for (`MatchSetup`),
 loads the overlays, and holds the game while one is open (`GameController.Paused`). The HUD, turn banner, fog view,
 building registry and camera rig now install only in a scene with a GameController (`GameScene`), not in the menu.
