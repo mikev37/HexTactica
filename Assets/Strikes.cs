@@ -439,7 +439,7 @@ public static class Strikes {
     }
 
     /// <summary>
-    /// Strikes landing on screen: one still to come down, or come down and not yet exploded (Unit.StrikeCovered).
+    /// Strikes landing on screen: one still to come down, or come down and not yet hit (Unit.StrikeStageEnded, Landed).
     /// Nobody acts until the last has (the player's clicks, purchases and unloads; the AI).
     /// </summary>
     public static bool Landing {
@@ -621,8 +621,8 @@ public static class Strikes {
 
     /// <summary>
     /// The screen shows what the strike did, once: the tile's new ground (a crater), the building's damage, each unit's
-    /// hit (its strength as it now is, its death). For a missile, when its Impact explosion covers the tile
-    /// (Unit.StrikeCovered), else when Impact ends.
+    /// hit (its strength as it now is, its death): at the moment of impact, as its Weapon Impact goes off (a missile:
+    /// as its Fall state starts to blend out, Unit.StrikeStageEnded).
     /// </summary>
     internal static void Reveal(StrikeResult r) {
         if (r == null || r.revealed) return;

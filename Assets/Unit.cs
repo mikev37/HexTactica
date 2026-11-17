@@ -1347,18 +1347,21 @@ public class Unit : MonoBehaviour
                 Strikes.Performed(this);
                 return;
             case StrikeStage.Stage.Landed: {
+                // The moment of impact: it is where it fell, its Weapon Impact goes off, and the tiles, buildings and
+                // units show what the strike did, under it.
                 if (arriving == null || landed) return;
-                // Its Fall is over: it is where it fell.
-                if (travelling) { travelling = false; transform.position = travelTo; }
                 landed = true;
-                Strikes.ShowBlast(arriving);
+                travelling = false; transform.position = travelTo;
+                StrikeResult r = arriving;
+                arriving = null;
+                Strikes.ShowBlast(r);
+                Strikes.Reveal(r);
                 PlayStage("Impact", StrikeStage.Stage.ImpactDone);
                 return;
             }
             case StrikeStage.Stage.ImpactDone:
                 if (ShownAt == null) return;
                 ShownAt = null;
-                StrikeCovered();   // (if its Impact clip has no StrikeCovered event)
                 Destroy(gameObject);
                 return;
         }
@@ -1366,49 +1369,33 @@ public class Unit : MonoBehaviour
 
     /// <summary>
     /// Each frame of a strike's stage (StrikeStage). Launched: once its clip has played through, the launch is over.
-    /// Landed: the arriving copy is as far from where it appeared to its target as its Fall state has played, and
-    /// gets there as that state blends out (<paramref name="leaving"/>, <paramref name="leavingT"/> the blend's progress).
+    /// Landed: the arriving copy travels from where it appeared to its target as its Fall state plays (<paramref
+    /// name="t"/>, eased out: most of the way early, as a falling clip comes in fast and settles), and hits as the
+    /// state starts to blend out (<paramref name="leaving"/>), or when it ends.
     /// </summary>
-    public void StrikeStageUpdate(StrikeStage.Stage stage, float t, bool leaving, float leavingT) {
+    public void StrikeStageUpdate(StrikeStage.Stage stage, float t, bool leaving) {
         if (stage == StrikeStage.Stage.Launched) { if (t >= 1f) StrikeStageEnded(stage); return; }
-        if (stage != StrikeStage.Stage.Landed || !travelling) return;
-        float k = Mathf.Clamp01(t);
-        if (leaving) {
-            if (travelLeaving < 0f) travelLeaving = travelDone;
-            k = Mathf.Lerp(travelLeaving, 1f, Mathf.Clamp01(leavingT));
-        }
-        travelDone = Mathf.Max(travelDone, k);
-        transform.position = Vector3.Lerp(travelFrom, travelTo, travelDone);
+        if (stage != StrikeStage.Stage.Landed) return;
+        if (leaving) { StrikeStageEnded(stage); return; }
+        if (!travelling) return;
+        float left = 1f - Mathf.Clamp01(t);
+        transform.position = Vector3.Lerp(travelFrom, travelTo, 1f - left * left * left);
     }
 
     /// <summary>Its launch has played (StrikeStage Launched): it stays on the pad until its side's turn ends. Animation only.</summary>
     [System.NonSerialized] bool launchPlayed;
 
-    /// <summary>The copy reached the ground (its Fall state ended): its Impact plays. Animation only.</summary>
+    /// <summary>The copy hit the ground (its Fall state began to blend out, or ended): its Impact plays. Animation only.</summary>
     [System.NonSerialized] bool landed;
     /// <summary>The copy's travel to its target over its Fall state (BeginArrival, StrikeStageUpdate). Animation only.</summary>
     [System.NonSerialized] bool travelling;
     [System.NonSerialized] Vector3 travelFrom, travelTo;
-    /// <summary>How far along it was when its Fall state began to blend out (-1: not yet), and how far it is now.</summary>
-    [System.NonSerialized] float travelLeaving = -1f, travelDone;
 
     /// <summary>A strike's copy on its way to its target: fog of war judges it where its sprite is (FogOfWar.ShownToViewer).</summary>
     public bool Travelling { get { return travelling; } }
 
     /// <summary>A strike's copy that has not yet shown what its strike did (Strikes.Landing: actions wait for it).</summary>
     internal bool StrikeUnrevealed { get { return arriving != null; } }
-
-    /// <summary>
-    /// Animation event for the Impact clip, at the moment its explosion hides the tile: the tile's new ground, the
-    /// building's damage and the units' hits appear (Strikes.Reveal). Without the event they appear when Impact ends.
-    /// Does nothing before the copy has landed, or twice.
-    /// </summary>
-    public void StrikeCovered() {
-        if (arriving == null || !landed) return;
-        StrikeResult r = arriving;
-        arriving = null;
-        Strikes.Reveal(r);
-    }
 
     /// <summary>Hit by a strike (Strikes.Resolve): the strength is lost now, as in any attack; the screen shows it when the strike is seen to land (ShowHit).</summary>
     internal void TakeStrike(int damage) {
@@ -1459,7 +1446,6 @@ public class Unit : MonoBehaviour
         dead = true;
         transform.position = start;
         travelFrom = start; travelTo = end;
-        travelLeaving = -1f; travelDone = 0f;
         travelling = start != end;
         arriving = r;
         ShownAt = r.strike.target;
