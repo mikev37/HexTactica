@@ -327,7 +327,7 @@ public static partial class Scenarios {
                 gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
                 Unit far = At(-6, 3), near = At(3, -2);
                 bool farHidden = !FogOfWar.Sees(o, far), nearSeen = FogOfWar.Sees(o, near);
-                bool ordered = Strikes.Order(far, Rig.At(2, 0)) & Strikes.Order(near, Rig.At(6, -3));
+                bool ordered = Strikes.Order(far, Rig.At(2, 0)) & Strikes.Order(near, Rig.At(-3, 0));   // (8 and 6 away: beyond its minimum range of 5)
                 List<StrikeSighting> red = Strikes.KnownTo(o), blue = Strikes.KnownTo(a);
                 bool redKnows = red.Count == 1 && red[0].from == Rig.At(3, -2) && red[0].owner == a && red[0].target == null && red[0].weapon != null;
                 bool blueKnows = blue.Count == 2 && blue.TrueForAll(s => s.target != null);
@@ -358,7 +358,7 @@ public static partial class Scenarios {
                 HexTile padNear = Rig.At(-2, 0), padFar = Rig.At(-6, 3);
                 List<HexTile> ring1 = Strikes.Blast(padNear, 1), ring2 = Strikes.Blast(padNear, 2).FindAll(t => t.Distance(padNear) == 2);
                 bool darkBefore = !ring1.Exists(t => FogOfWar.TileVisible(o, t)) && !FogOfWar.Sees(o, near) && !FogOfWar.Sees(o, far);
-                bool ordered = Strikes.Order(near, Rig.At(2, 0)) & Strikes.Order(far, Rig.At(-2, 3));
+                bool ordered = Strikes.Order(near, Rig.At(4, 0)) & Strikes.Order(far, Rig.At(0, 3));   // (both 6 away: beyond its minimum range of 5)
                 Strike sNear = Strikes.InFlight.FirstOrDefault(s => s.from == padNear), sFar = Strikes.InFlight.FirstOrDefault(s => s.from == padFar);
                 FogOfWar.Refresh();
                 List<StrikeSighting> red = Strikes.KnownTo(o);

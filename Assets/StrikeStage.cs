@@ -5,8 +5,8 @@ using UnityEngine;
 /// told how far that stage of its strike has played (Unit.StrikeStageUpdate) and when it is over (Unit.StrikeStageEnded).
 /// The animation decides how long each stage takes and what it looks like; the code only follows it.
 ///
-///   - Launched, on the state its Launch trigger plays: once its clip has played through (or the state is left), the
-///     launch is over and nothing waits for it; the unit stays on its pad as the clip left it until its side's turn ends.
+///   - Launched, on the state its Launch trigger plays: nothing waits for it (play, the AI and replays carry on); once
+///     its clip has played through, the unit stays on its pad as the clip left it until its side's turn ends.
 ///   - Landed, on the state its Fall trigger plays (a copy of the unit, appearing near its launch site): the copy travels
 ///     to its target as the state plays. The moment the state starts to blend out (or ends) is the impact: its
 ///     weaponImpact and strikeSound play, the tiles, buildings and units show what the strike did, and its Impact
@@ -24,11 +24,6 @@ public class StrikeStage : StateMachineBehaviour {
 
     [Tooltip("Which stage of a strike ends when this state ends.")]
     public Stage stage;
-
-    override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex) {
-        Unit unit = animator.GetComponent<Unit>();
-        if (unit != null) unit.StrikeStageEntered(stage);
-    }
 
     override public void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex) {
         Unit unit = animator.GetComponent<Unit>();
