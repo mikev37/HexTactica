@@ -725,8 +725,8 @@ MonoBehaviour:
   Vulnerability: 0
   ammoPerShot: 1
   moveAndAttack: 0
-  AttackRange: 10
-  MinRange: 2
+  AttackRange: 18
+  MinRange: 5
   retaliates: 0
   ignoresCover: 0
   targetsGround: 1

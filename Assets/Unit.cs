@@ -127,7 +127,7 @@ public class Unit : MonoBehaviour
     public int ammoPerShot = 1;
     [Tooltip("If False unit has to move OR attack")]
     public bool moveAndAttack;
-    [Range(0, 10)]
+    [Range(0, 18)]
     [Tooltip("Range in which unit can attack")]
     public int AttackRange;
     public int MinRange;
