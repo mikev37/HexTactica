@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
+using HexTactica.Multiplayer;
 using UnityEngine.UI;
 
 /// <summary>
@@ -79,6 +80,7 @@ static partial class FrontEndScenes {
         UpdateScene<OptionsPanel>(s.mainMenuScene, UpdateOptions);
         UpdateScene<MainMenu>(s.mainMenuScene, UpdateMainMenu);
         UpdateScene<InGameMenu>(s.inGameMenuScene, UpdateInGameMenu);
+        UpdateScene<MpOverlay>(MpSettings().overlayScene, UpdateMpOverlay);
         // (A scene that does not exist yet is made new.)
         List<string> made = new List<string>();
         Make(s.replayScene, BuildReplay, true, made);
@@ -847,12 +849,9 @@ static partial class FrontEndScenes {
         TextMeshProUGUI locked = Text(g.transform, "Fixed by the map", "fixed", 16, TextAlignmentOptions.Left, FontStyles.Italic);
         Size(locked.gameObject, 50f, -1f);
         r.lockedMark = locked.gameObject;
-        // A networked lobby: who holds the side, and Take / Give up (hidden otherwise).
-        r.playerLabel = Text(g.transform, "Player", "", 20, TextAlignmentOptions.Left, FontStyles.Italic);
-        Size(r.playerLabel.gameObject, 130f, -1f);
-        r.playerLabel.transform.SetSiblingIndex(r.sideName.transform.GetSiblingIndex() + 1);
+        // A networked lobby: Take / Give up (hidden otherwise; who plays the side is in its drop-down).
         r.seatButton = Btn(g.transform, "Take", null, 110f, 20f);
-        r.seatButton.transform.SetSiblingIndex(r.playerLabel.transform.GetSiblingIndex() + 1);
+        r.seatButton.transform.SetSiblingIndex(r.sideName.transform.GetSiblingIndex() + 1);
         r.seatLabel = r.seatButton.GetComponentInChildren<TMP_Text>();
         r.seatButton.gameObject.SetActive(false);
         return r;

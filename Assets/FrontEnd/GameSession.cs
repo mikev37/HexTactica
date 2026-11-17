@@ -74,8 +74,8 @@ public class GameSession : MonoBehaviour {
                 break;
             case SessionMode.Networked:
                 // The game as the store has it: the board it is played on from, then its log (MpSession). The overlay
-                // over it says whose turn it is, and what is going on while the game is opened.
-                GameController.Paused = false;
+                // over it says what is going on while the game is opened. The scene's own board is held meanwhile.
+                GameController.Paused = true;
                 SceneManager.LoadScene(HexTactica.Multiplayer.MultiplayerSettings.Get.overlayScene, LoadSceneMode.Additive);
                 yield return OpenNetworked();
                 break;
@@ -104,8 +104,8 @@ public class GameSession : MonoBehaviour {
         System.Threading.Tasks.Task<bool> open = HexTactica.Multiplayer.MpSession.Open(MatchSetup.NetCode);
         while (!open.IsCompleted) yield return null;
         if (open.IsFaulted) Debug.LogError("Could not open the networked game " + MatchSetup.NetCode + ": " + open.Exception);
-        // Not opened (the overlay says why): the scene's own board is held, not played; the menu key leads back.
-        if (open.IsFaulted || !open.Result) GameController.Paused = true;
+        // Not opened (the overlay says why): the scene's own board stays held, not played; the menu key leads back.
+        GameController.Paused = open.IsFaulted || !open.Result;
         Frame();
     }
 

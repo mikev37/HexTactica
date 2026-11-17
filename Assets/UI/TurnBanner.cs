@@ -49,6 +49,8 @@ public class TurnBanner : MonoBehaviour {
     /// </summary>
     /// <summary>What the end of the game says: "<paramref name="winner"/> wins", or "Draw" (no winner).</summary>
     public static string EndLine(Player winner) {
+        string instead = GameController.EndLineOverride != null ? GameController.EndLineOverride() : null;
+        if (!string.IsNullOrEmpty(instead)) return instead;
         if (winner == null) return "Draw";
         // Allies win together: "Blue and Green win".
         string side = GameController.gc != null ? GameController.gc.WinnersName() : winner.personal_name;
@@ -58,6 +60,9 @@ public class TurnBanner : MonoBehaviour {
     public static string Line(Player p, int day, bool human, bool thinking = false) {
         if (p == null) return "";
         if (human) return p.personal_name + " \u2014 your turn, day " + (day + 1);
+        // A networked game: a person plays this side on another device.
+        string who = GameController.PlayerNameOf != null ? GameController.PlayerNameOf(p) : null;
+        if (!string.IsNullOrEmpty(who)) return p.personal_name + " \u2014 " + who + "'s turn, day " + (day + 1);
         return p.personal_name + (thinking ? " is thinking" : " is moving");
     }
 
@@ -82,6 +87,8 @@ public class TurnBanner : MonoBehaviour {
         GameController gc = GameController.gc;
         if (gc == null) return;
         Player p = gc.activePlayer;
+        // A board loaded after a game ended (gameOver cleared again): its end is no longer news.
+        if (!gc.gameOver && wasOver) bannerAt = -100f;
         if (gc.gameOver && !wasOver) {
             bannerAt = Time.unscaledTime;
             bannerHold = endHold;
@@ -118,8 +125,9 @@ public class TurnBanner : MonoBehaviour {
         if (gc.gameOver) line = EndLine(gc.winner);
         else {
             line = Line(p, gc.days, human, !human && Thinking(p));
-            // An AI's line ends in dots that keep going, so it never looks stuck.
-            if (!human) line += new string('.', 1 + (int)(Time.unscaledTime * 3f) % 3);
+            // An AI's line ends in dots that keep going, so it never looks stuck (not a person's on another device).
+            bool person = GameController.PlayerNameOf != null && !string.IsNullOrEmpty(GameController.PlayerNameOf(p));
+            if (!human && !person) line += new string('.', 1 + (int)(Time.unscaledTime * 3f) % 3);
         }
         Color stripe = p != null ? p.displayColor : Color.white;
         Rect top = new Rect(Screen.width * 0.5f - 220f, 10f, 440f, 34f);

@@ -24,10 +24,8 @@ public class InGameMenu : MonoBehaviour {
     public string defaultName = "{0} round {1}";
 
     [Header("Networked game")]
-    [Tooltip("Leave the networked game for good (it goes from your list). The host leaving ends it for everyone. Shown only in a networked game.")]
-    public Button leaveButton;
-    public string leaveLabel = "Leave game";
-    public string hostLeaveLabel = "End game for everyone";
+    [Tooltip("(No longer used: Resign and Exit to main menu cover leaving a networked game. HexTactica ▸ Front End ▸ Update Scenes removes the button.)")]
+    [HideInInspector] public Button leaveButton;
     [Tooltip("Hidden in a networked game: saving and loading (the game is kept in the store, not in saves).")]
     public GameObject[] hiddenInNetworked = new GameObject[0];
 
@@ -50,19 +48,11 @@ public class InGameMenu : MonoBehaviour {
         if (resignButton != null) resignButton.interactable = Resigner() != null;
         bool net = HexTactica.Multiplayer.MpSession.Active;
         foreach (GameObject g in hiddenInNetworked) if (g != null) g.SetActive(!net);
-        if (leaveButton != null) {
-            leaveButton.gameObject.SetActive(net);
-            TMP_Text t = leaveButton.GetComponentInChildren<TMP_Text>(true);
-            if (t != null) t.text = HexTactica.Multiplayer.MpSession.IsHost ? hostLeaveLabel : leaveLabel;
-        }
+        if (leaveButton != null) leaveButton.gameObject.SetActive(false);
     }
 
-    /// <summary>Leave the networked game for good: a player's sides wait for the host to hand them on; the host's leaving ends it for everyone.</summary>
-    public async void LeaveGame() {
-        HexTactica.Multiplayer.MpGame g = HexTactica.Multiplayer.MpSession.Game;
-        if (g != null) await HexTactica.Multiplayer.Mp.Leave(g.code);
-        MatchSetup.ToMainMenu();
-    }
+    /// <summary>(Kept so a scene made before it was removed still finds its button's method. Exit to main menu.)</summary>
+    public void LeaveGame() { ExitToMainMenu(); }
 
     /// <summary>The options over the menu (their Back returns here).</summary>
     public void ShowOptions() {
@@ -75,8 +65,15 @@ public class InGameMenu : MonoBehaviour {
     static Player Resigner() {
         GameController gc = GameController.gc;
         if (gc == null || gc.gameOver || gc.rules == RuleSet.Sandbox) return null;
-        // A networked game: only on the player's own turn (it goes to the others in its place in the log).
-        if (HexTactica.Multiplayer.MpSession.Active) return HexTactica.Multiplayer.MpSession.MyTurn && FogOfWar.IsHuman(gc.activePlayer) ? gc.activePlayer : null;
+        // A networked game: the side this player holds (the one to move if it is theirs), whenever this device is in
+        // step with the log; it goes to the others in its place in the log, like any order.
+        if (HexTactica.Multiplayer.MpSession.Active) {
+            HexTactica.Multiplayer.MpGame g = HexTactica.Multiplayer.MpSession.Game;
+            if (g == null || !HexTactica.Multiplayer.MpSession.InStep) return null;
+            string me = HexTactica.Multiplayer.Mp.Me;
+            if (gc.activePlayer != null && !gc.activePlayer.eliminated && g.Holds(me, gc.activePlayer.id)) return gc.activePlayer;
+            return gc.players.Find(p => p != null && !p.eliminated && g.Holds(me, p.id));
+        }
         if (gc.activePlayer != null && !gc.activePlayer.eliminated && FogOfWar.IsHuman(gc.activePlayer)) return gc.activePlayer;
         foreach (Player p in gc.players) if (p != null && !p.eliminated && FogOfWar.IsHuman(p)) return p;
         return null;

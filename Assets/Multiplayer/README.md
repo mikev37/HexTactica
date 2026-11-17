@@ -54,7 +54,7 @@ the backend (`IMpStore`). Nothing in them depends on a particular backend.
 - The analog clock (minute and second hands) shows beside the banner on your own turn once 5 minutes or less are
   left (`clockShowsWithinSeconds`; always, in a 1-minute game).
 - When the player to move is out of time, **any other player may skip the rest of their turn** (the button under
-  the turn line). What they did stands, and the next side moves.
+  the turn banner). What they did stands, and the next side moves.
 - Clocks are on the honor system: a device's clock is trusted.
 
 ## The host
@@ -64,7 +64,9 @@ the backend (`IMpStore`). Nothing in them depends on a particular backend.
 - **Removing a player** (lobby or game): they cannot come back. In a game under way their sides wait for the host's
   Players panel: **Give** to another player in the game (someone who joined later, or one already playing), the
   **AI**, or **Eliminate** (the side resigns and its units go).
-- A player who **leaves** (in-game menu) is handled the same way. The host leaving ends the game for everyone.
+- **Leaving a game under way** is the in-game menu's **Resign** (your side is out; the game goes on for the others)
+  or **Exit to main menu** (you stay in the game and can open it again from your list). A player who leaves a lobby
+  (Back) frees their side. The host leaving the lobby ends it for everyone.
 - **A desync**: guests are told something went wrong. The host sees what differed ("this device has unit
   RGr(0,0)s4; the log has RGr(0,0)s6") and why it can happen (different versions, a tampered game), with two
   choices:
@@ -87,6 +89,32 @@ the backend (`IMpStore`). Nothing in them depends on a particular backend.
 - **Linking another device** (Games ▸ Link another device): Get code on the new device, Confirm it on the device
   you already play on, then Use it on the new device. The new device becomes you, with all your games. For a phone
   and a PC, or after a reinstall.
+
+## On screen
+
+- **Whose turn** is the turn banner's: the line at the top names the side and, for a side played on another device,
+  its player ("Red — Bob's turn, day 3"); the big colored banner shows as your own turn begins. The overlay adds no
+  turn line of its own.
+- Under the banner, a small strip shows only when there is something to say: catching up on what happened, watching,
+  a side waiting for the host, a problem reaching the store, and **Skip their turn** when it applies.
+- The turn clock sits beside the banner.
+- In the lobby, the **join code** has a panel of its own on the right (just the code, e.g. K7Q2MX, and Copy). The
+  code is all anyone types; the game's name shown elsewhere with it (Tidal Ridge#K7Q2MX) is only a label.
+- The main menu's games list shows on the main panel only (not over Host Game, Join Game or Load Scenario).
+
+## No connection
+
+- **Reading** (polling, opening a game): a failed read is shown in the strip under the banner (or the games list)
+  and tried again at the next poll. Nothing is lost.
+- **Writing your turn**: the moves you made are kept in memory and sent again, waiting longer each time (doubling, up
+  to a minute). The strip says your moves are kept. Once the store takes them, play goes on.
+- **If the app is closed** before an unsent turn reaches the store, that turn is lost; the game stays at the last
+  turn the store has, and you play it again. (Future work: keep unsent entries on disk and send them at the next
+  launch.)
+- Sign-in is retried the same way.
+- **Unity Gaming Services by region**: since 30 June 2026, organizations based in mainland China, Hong Kong and Macau
+  can no longer use Cloud Code or Cloud Save (Authentication still works). Players there may also be unable to reach
+  the services. If they matter, keep another backend behind `IMpStore` in mind.
 
 ## Notifications
 

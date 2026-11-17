@@ -119,6 +119,10 @@ public class GameController : MonoBehaviour
     /// </summary>
     public static System.Func<Player, bool> PlayedElsewhere;
     public static bool IsPlayedElsewhere(Player p) { return PlayedElsewhere != null && p != null && PlayedElsewhere(p); }
+    /// <summary>A networked game: the name of the person playing <paramref name="p"/> on another device (null: the AI's, or nobody's), for the turn banner.</summary>
+    public static System.Func<Player, string> PlayerNameOf;
+    /// <summary>What the end of the game says instead of who won (a networked game ended by its host), null: who won.</summary>
+    public static System.Func<string> EndLineOverride;
 
     [Header("Purchases")]
     [Tooltip("Can units be bought at buildings? (A scenario sets this; when it does not, Standard and Sandbox allow purchases and Attrition does not.)")]

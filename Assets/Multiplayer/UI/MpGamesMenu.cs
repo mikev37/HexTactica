@@ -93,9 +93,20 @@ namespace HexTactica.Multiplayer {
             if (listPanel.activeSelf && MpWatcher.Instance != null) MpWatcher.Instance.ListNow();
         }
 
+        Color? toggleColor;
+
         void Draw() {
             bool waiting = Mp.Games.Exists(g => g.myTurn);
-            if (toggleLabel != null) toggleLabel.text = string.Format(toggleFormat, waiting ? turnMark : idleMark);
+            if (toggleLabel != null) {
+                toggleLabel.text = string.Format(toggleFormat, waiting ? turnMark : idleMark);
+                toggleLabel.fontStyle = waiting ? FontStyles.Bold : FontStyles.Normal;
+            }
+            // Highlighted as a game waiting on the player is in the list.
+            Image face = toggleButton != null ? toggleButton.targetGraphic as Image : null;
+            if (face != null) {
+                if (!toggleColor.HasValue) toggleColor = face.color;
+                face.color = waiting ? yourTurnColor : toggleColor.Value;
+            }
             foreach (MpGameRow r in made) if (r != null) Destroy(r.gameObject);
             made.Clear();
             if (status != null) status.text = Mp.LastError.Length > 0 ? Mp.LastError : Mp.Games.Count == 0 ? empty : "";

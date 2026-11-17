@@ -16,6 +16,8 @@ public class MainMenu : MonoBehaviour {
     public GameObject replayPanel;
     [Tooltip("Networked games: Join Game's panel (an MpJoinPanel). Optional.")]
     public GameObject joinPanel;
+    [Tooltip("Shown only with the main panel (the networked games list and name, top right): hidden under every other panel. Empty: the MpGamesMenu under this menu.")]
+    public GameObject[] mainPanelOnly = new GameObject[0];
 
     [Header("Replay")]
     [Tooltip("The recorded games (game logs) that can be watched again.")]
@@ -60,6 +62,12 @@ public class MainMenu : MonoBehaviour {
     void Show(GameObject panel) {
         foreach (GameObject p in new[] { mainPanel, loadPanel, editorPanel, unitsPanel, optionsPanel, replayPanel, joinPanel })
             if (p != null) p.SetActive(p == panel);
+        GameObject[] mainOnly = mainPanelOnly;
+        if (mainOnly == null || mainOnly.Length == 0) {
+            HexTactica.Multiplayer.MpGamesMenu games = GetComponentInChildren<HexTactica.Multiplayer.MpGamesMenu>(true);
+            mainOnly = games != null ? new[] { games.gameObject } : new GameObject[0];
+        }
+        foreach (GameObject g in mainOnly) if (g != null) g.SetActive(panel == mainPanel);
         if (panel != loadPanel) hosting = false;
         if (loadHeading != null) loadHeading.text = hosting ? hostHeadingText : loadHeadingText;
         if (loadTabs != null) loadTabs.SetActive(!hosting);
