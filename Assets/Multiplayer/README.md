@@ -163,8 +163,8 @@ What it uses:
    **Edit ▸ Preferences ▸ Cloud Code** if Unity does not find it. In `CloudCode/HexTacticaMp` run `dotnet build` once. It fetches
    the packages and shows whether this code matches their current version. The module was written against Unity's
    documentation but **could not be compiled here**; fix any namespace the compiler names (Cloud Save's models,
-   `ApiException`), then pin the package versions in the `.csproj`. Then deploy it: **Window ▸ Unity Gaming
-   Services ▸ Deployment** lists `Assets/Multiplayer/HexTacticaMp.ccmr`; select it and Deploy. If it is not listed,
+   `ApiException`), then pin the package versions in the `.csproj`. Then deploy it: **Services ▸ Deployment**
+   (the top menu bar, Unity 2022 and later; the window's environment is the one the game uses) lists `Assets/Multiplayer/HexTacticaMp.ccmr`; select it and Deploy. If it is not listed,
    make one with **Assets ▸ Create ▸ Services ▸ Cloud Code C# Module Reference** pointing at
    `CloudCode/HexTacticaMp/HexTacticaMp.sln`.
 5. **Device linking** (optional): **Project Settings ▸ Services ▸ Authentication ▸ ID Providers**, add **Code-Link**.
