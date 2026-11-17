@@ -2191,6 +2191,8 @@ MonoBehaviour:
   titleStart: <b><size=115%>
   titleEnd: </size></b>
   noStatistics: This game was not recorded (no game log), so there is nothing to report.
+  playAgainButton: {fileID: 396421770}
+  endedByHost: The host ended the game.
 --- !u!114 &1210179661
 MonoBehaviour:
   m_ObjectHideFlags: 0

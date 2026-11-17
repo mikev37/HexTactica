@@ -38,4 +38,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/MissionResult.unity
     guid: 35b414e46ab8e3548af9e252aa5af155
+  - enabled: 1
+    path: Assets/Scenes/MultiplayerOverlay.unity
+    guid: 58933aea06c236e4eaeba9160fd1fee1
+  - enabled: 1
+    path: Assets/Scenes/TurnNotice.unity
+    guid: 3d63efa9ec9adfb47b475e174647dc73
   m_configObjects: {}
