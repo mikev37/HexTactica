@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    HexTactica's Cloud Code module (Unity Gaming Services): the one piece of networked games that runs in the cloud.
+    It only stores values for the game clients, since Cloud Save lets players read game data but not write it. See
+    Assets/Multiplayer/README.md for deploying it. Pin the package versions to what `dotnet add package` gives you.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>HexTacticaMp</RootNamespace>
+    <AssemblyName>HexTacticaMp</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Only this folder's own code: never a template project generated underneath it. -->
+    <Compile Remove="*/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Com.Unity.Services.CloudCode.Core" Version="*" />
+    <PackageReference Include="Com.Unity.Services.CloudCode.Apis" Version="*" />
+  </ItemGroup>
+</Project>
