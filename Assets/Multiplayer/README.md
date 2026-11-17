@@ -155,9 +155,12 @@ What it uses:
    Services**, link to it.
 2. **Install the packages** (Package Manager, Unity Registry): Authentication, Cloud Save, Cloud Code, and
    Deployment (to deploy the module from the editor).
-3. **Turn on the code**: **Edit ▸ Project Settings ▸ Player ▸ Scripting Define Symbols**, add `HEXTACTICA_UGS` (for
-   every platform you build: Standalone, Android, iOS).
-4. **Deploy the module**: install the .NET 8 SDK. In `CloudCode/HexTacticaMp` run `dotnet build` once. It fetches
+3. **Turn on the code**: **Edit ▸ Project Settings ▸ Player ▸ Other Settings ▸ Script Compilation ▸ Scripting Define
+   Symbols**, add `HEXTACTICA_UGS` (for every platform you build: Standalone, Android, iOS).
+4. **Deploy the module**: it runs on Unity's servers, not in the game, so it is a separate .NET project that Unity's
+   editor does not compile with the game; the Deployment window builds it with the .NET SDK. Install the .NET SDK
+   Cloud Code currently targets (.NET 10 at the time of writing; the `.csproj` says `net10.0`), and set its path in
+   **Edit ▸ Preferences ▸ Cloud Code** if Unity does not find it. In `CloudCode/HexTacticaMp` run `dotnet build` once. It fetches
    the packages and shows whether this code matches their current version. The module was written against Unity's
    documentation but **could not be compiled here**; fix any namespace the compiler names (Cloud Save's models,
    `ApiException`), then pin the package versions in the `.csproj`. Then deploy it: **Window ▸ Unity Gaming
