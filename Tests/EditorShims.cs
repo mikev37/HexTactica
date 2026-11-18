@@ -31,6 +31,8 @@ namespace UnityEditor {
         public static UnityEngine.GameObject SaveAsPrefabAssetAndConnect(UnityEngine.GameObject g, string path, InteractionMode m) { return g; }
         public static UnityEngine.Object InstantiatePrefab(UnityEngine.Object o, UnityEngine.Transform parent) { return o; }
         public static bool IsPartOfPrefabInstance(UnityEngine.Object o) { return false; }
+        public static UnityEngine.GameObject LoadPrefabContents(string path) { return new UnityEngine.GameObject(); }
+        public static void UnloadPrefabContents(UnityEngine.GameObject g) { }
     }
     public static class EditorUtility {
         public static bool DisplayDialog(string t, string m, string ok, string cancel) { return false; }

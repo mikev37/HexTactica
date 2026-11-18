@@ -692,6 +692,16 @@ public static partial class Scenarios {
                  Put("Supplies", a, 3, 3); Put("Supplies", a, 4, 3); Put("APC", a, 2, -6); Put("APC", a, 0, -6);
                  Put("Grunt", o, -4, 4); Put("Grunt", o, -3, 4); Put("Grunt", o, -2, 4); },
              "Supply through a chain of two supply units (the HQ feeds A, A feeds B, B feeds a grunt): both are linked, and the line drawn from the grunt runs through B, then A, to the HQ, each once (it used to turn back from A to B: two hubs drawn feeding each other). Two supply units next to each other far from any supply are not linked, supply nothing (not even each other), and have no line. And for every placement of two supply units near the HQ, every one-tile move of one of them previewed, every placement with both aboard transports, and with both aboard one transport (and its moves previewed), the line from each linked one is drawn and ends at the HQ, passing each once, tile to tile and never over an enemy (from a transport it follows the way the transport would drive to supplied ground). Selecting A also shows what depends on it: B, with its line back to A; nothing depends on B.");
+        make("rule-supply-transit", "supplyTransit", (a, o) => {
+                                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 Put("Supplies", a, -6, 6);
+                 for (int y = -5; y <= -1; y++) Put("Grunt", o, 5, y);   // parked: the check sets them out
+                 Put("Fighter", o, 6, -5); Put("Fighter", o, 6, -4); },
+             "Supply in transit keeps clear of the enemy (SupplyNetwork.Exposed): a supply unit aboard a transport links only if the transport can reach supplied ground in one move without using a tile on or beside an enemy unit that could attack it, its own tile included. Blue's HQ at (-6,0), an APC carrying supplies at (2,0). Linked with nobody about; cut off by a line of Red grunts across the board at x=-1 three tiles apart (the APC could drive between them before: it may not now); linked again with Red fighters in the same places (a jet cannot attack a truck); linked round a single Red grunt beside the way it would take with nobody about (moves to spare to go round), its supply line never on or beside the grunt; cut off with a Red grunt beside the APC; linked on supplied ground with a Red grunt beside it (no transit). A supply unit on foot in supply with a Red grunt beside it is linked (it is not in transit).");
+        make("fog-rule-supply-transit-unseen", "supplyTransitUnseen", (a, o) => {
+                                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 for (int y = -5; y <= -1; y++) Put("Grunt", o, 5, y); },   // parked: the check sets them out
+             "Known unknowns (SupplyNetwork.UnseenContacts, SupplyContacts): under fog, supply in transit is cut by enemies its side does not see as well, and the screen shows it cut, with a contact marker saying why. Blue's HQ at (-6,0), an APC carrying supplies at (2,0), Blue the screen's player. A line of Red grunts at x=-1 Blue does not see: cut off, truly and as shown; a contact on the way the APC would have taken, on or beside an unseen grunt, never on one; seen by a Blue recon: still cut, no contact. A single unseen Red grunt beside the way it would take (moves to spare): linked round it (the supply line goes round), one contact where the way was changed, beside the grunt. No unseen enemy, or fog off: no contacts.");
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
@@ -1082,7 +1092,10 @@ public static partial class Scenarios {
                     for (int i = 0; i < pth.Count; i++) {
                         if (pth[i].occupier != null && pth[i].occupier.owner != l.ai) return false;
                         if (i > 0 && pth[i].Distance(pth[i - 1]) != 1) return false;
-                        if (i > 1 && pth[i] == pth[i - 2]) return false;   // straight back where it came from
+                        // Straight back where it came from: never, except where the line reaches the supply unit feeding it and
+                        // goes on along that one's own way (a carrier exposed where it stands, linked by standing in another's
+                        // supply, whose transit leaves the way the line came in).
+                        if (i > 1 && pth[i] == pth[i - 2] && !(pth[i - 1] == hubA.tile || pth[i - 1] == hubB.tile)) return false;
                     }
                     return true;
                 };
@@ -1163,6 +1176,124 @@ public static partial class Scenarios {
                 detail += "; " + aboard + " placements with both aboard APCs" + (boarded ? "" : " (could not board)") + ", " + one + " with both aboard one (and " + onePreview + " previewed moves)" + (both ? "" : " (could not put both in one)");
                 detail += "; " + placements + " placements of two supply units and " + previews + " previewed moves, " + bad + " lines not ending at the HQ" + (firstBad != null ? " (first: " + firstBad + ")" : "");
                 return deps && linked && viaBoth && line && strandedOk && placements > 0 && aboard > 0 && one > 0 && onePreview > 0 && bad == 0;
+            }
+            case "supplyTransit":
+            case "supplyTransitUnseen": {
+                bool fog = l.meta.Get("check", "") == "supplyTransitUnseen";
+                Building hq = GameController.HQOf(a);
+                Unit apc = Rig.At(2, 0).occupier;
+                SupplyPoint hub = apc.transported.Count > 0 && apc.transported[0] != null ? apc.transported[0].Hub : null;
+                List<Unit> red = new List<Unit>();
+                foreach (Unit u in o.units) if (u != null && u.tile != null && u.Hub == null && !u.name.StartsWith("HQ")) red.Add(u);
+                List<Unit> grunts = red.FindAll(u => u.locomotion == Locomotion.Boots), jets = red.FindAll(u => u.locomotion == Locomotion.Jet);
+                List<HexTile> park = new List<HexTile>();
+                foreach (HexTile t in Rig.hg.tiles) if (t.x >= 5 && t.occupier == null && t.building == null) park.Add(t);
+                Action clear = () => { int k = 0; foreach (Unit u in red) { u.TeleportTo(park[k++], 0); } };
+                Action<HexTile> moveApc = t => { apc.TeleportTo(t, 0); apc.SetCargoTile(t); };
+                Func<bool> linked = () => SupplyNetwork.Solve(a, false).connectedHubs.Contains(hub);
+                Func<List<Unit>, bool> wall = units => {
+                    clear(); int[] ys = { -6, -3, 0, 3, 6 };
+                    for (int i = 0; i < ys.Length && i < units.Count; i++) units[i].TeleportTo(Rig.At(-1, ys[i]), 0);
+                    return units.Count >= ys.Length;
+                };
+                // The supply line from the APC: never on or beside an enemy that could attack it.
+                Func<List<HexTile>, bool> clearOfEnemy = pth => { foreach (HexTile t in pth) if (SupplyNetwork.Exposed(apc, t)) return false; return pth.Count > 1; };
+                Func<List<HexTile>, string> tiles = pth => { List<string> sh = new List<string>(); foreach (HexTile t in pth) sh.Add(Pos(t)); return string.Join(" ", sh.ToArray()); };
+                int moves = apc.moveRange;
+                // A tile beside the way the APC would drive to supply with nobody about, three or more tiles from it (out of its sight).
+                Func<HexTile> besideWay = () => {
+                    clear();
+                    List<HexTile> way = SupplyOverlay.SourcePath(a, apc.tile, SupplyNetwork.Solve(a, false), null, null);
+                    for (int k = 2; k < way.Count; k++)
+                        foreach (HexTile n in way[k].neighbors)
+                            if (n != null && !way.Contains(n) && n.occupier == null && n.building == null && n.Distance(apc.tile) >= 3) return n;
+                    return null;
+                };
+                List<string> r = new List<string>();
+                if (!fog) {
+                    clear(); bool free = linked();
+                    bool w = wall(grunts), cutByWall = !linked();
+                    bool wj = jets.Count >= 2; clear();
+                    if (wj) { jets[0].TeleportTo(Rig.At(-1, -1), 0); jets[1].TeleportTo(Rig.At(-1, 1), 0); grunts[0].TeleportTo(Rig.At(-1, 4), 0); }
+                    // Fighters (and one grunt far off the way) where the wall was: a jet does not intercept a truck.
+                    bool jetsLet = !wj || linked();
+                    foreach (Unit j in jets) j.TeleportTo(Rig.At(-1, j == jets[0] ? -3 : 0), 0);
+                    jetsLet = jetsLet && linked();
+                    // A grunt beside the way it would take with nobody about (with moves to spare to go round): round it.
+                    HexTile near = besideWay();
+                    apc.moveRange = 10;
+                    grunts[0].TeleportTo(near, 0);
+                    SupplyNetwork.Result round = SupplyNetwork.Solve(a, false);
+                    bool roundLinked = round.connectedHubs.Contains(hub);
+                    List<HexTile> line = SupplyOverlay.SourcePath(a, apc.tile, round, null, null);
+                    bool lineClear = clearOfEnemy(line) && line[line.Count - 1] == hq.tile;
+                    apc.moveRange = moves;
+                    clear(); grunts[0].TeleportTo(Rig.At(3, 0), 0);
+                    bool besideCut = !linked();
+                    clear(); moveApc(Rig.At(-4, 0)); grunts[0].TeleportTo(Rig.At(-4, 1), 0);
+                    bool onGround = linked();
+                    clear(); moveApc(Rig.At(2, 0));
+                    Unit foot = null; foreach (Unit u in a.units) if (u != null && u.Hub != null && !u.Hub.producer && u.trasnporter == null) foot = u;
+                    foot.TeleportTo(Rig.At(-4, -1), 0); grunts[0].TeleportTo(Rig.At(-3, -1), 0);
+                    bool footLinked = SupplyNetwork.Solve(a, false).connectedHubs.Contains(foot.Hub);
+                    clear(); SupplyNetwork.Solve(a, false);
+                    detail = "nobody about: linked " + free + "; a line of grunts across x=-1 " + w + ": cut off " + cutByWall + "; fighters there instead: linked " + jetsLet
+                           + "; a grunt beside the way at " + Pos(near) + ": linked " + roundLinked + ", line " + tiles(line) + " clear of it " + lineClear
+                           + "; a grunt beside the APC: cut off " + besideCut + "; on supplied ground with a grunt beside: linked " + onGround
+                           + "; supply on foot in supply with a grunt beside: linked " + footLinked;
+                    return free && w && cutByWall && wj && jetsLet && roundLinked && lineClear && besideCut && onGround && footLinked;
+                }
+                // Under fog, Blue the screen's player.
+                AIPlayer blueAI = a.GetComponent<AIPlayer>(); if (blueAI != null) blueAI.enabled = false;
+                gc.activePlayer = a;
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                try {
+                    Func<bool> unseenAll = () => { FogOfWar.Changed(); FogOfWar.Refresh(); foreach (Unit u in grunts) if (u.tile != null && u.tile.x < 5 && FogOfWar.Sees(a, u)) return false; return true; };
+                    clear(); SupplyNetwork.Solve(a, false);
+                    bool viewer = FogOfWar.Viewer == a;
+                    bool noneAtFirst = SupplyNetwork.UnseenContacts(a).Count == 0;
+                    bool w = wall(grunts); bool hidden = unseenAll();
+                    bool trulyCut = !linked();
+                    bool shownCut = !apc.tile.isSuppliedShown(a) && !apc.tile.isSupplied(a);
+                    List<HexTile> contacts = SupplyNetwork.UnseenContacts(a);
+                    bool contactOk = contacts.Count > 0;
+                    foreach (HexTile c in contacts) {
+                        bool beside = false;
+                        foreach (Unit g in grunts) if (g.tile != null && g.tile.Distance(c) <= 1) beside = true;
+                        if (!beside || (c.occupier != null && c.occupier.owner == o)) contactOk = false;
+                    }
+                    r.Add("viewer Blue " + viewer + "; no contacts at first " + noneAtFirst + "; an unseen line of grunts " + (w && hidden) + ": truly cut off " + trulyCut + ", shown cut off " + shownCut + "; contacts " + tiles(contacts) + ", each beside a grunt and on none " + contactOk);
+                    // Seen: a Blue recon by the line.
+                    Unit rec = Put("Recon", a, 1, 0); rec.visionRange = 8;
+                    FogOfWar.Changed(); FogOfWar.Refresh();
+                    bool seen = true; foreach (Unit g in grunts) if (!FogOfWar.Sees(a, g)) seen = false;
+                    bool stillCut = !linked(), noContact = SupplyNetwork.UnseenContacts(a).Count == 0;
+                    rec.TeleportTo(Rig.At(-6, 6), 0); FogOfWar.Changed(); FogOfWar.Refresh();
+                    r.Add("seen by a recon " + seen + ": still cut off " + stillCut + ", no contact " + noContact);
+                    // One unseen grunt beside the way (moves to spare): linked round it, a contact where the way was changed.
+                    rec.visionRange = 1;   // parked by Blue's HQ, out of the way
+                    HexTile near = besideWay();
+                    apc.moveRange = 10;
+                    grunts[0].TeleportTo(near, 0);
+                    bool hidden1 = unseenAll();
+                    SupplyNetwork.Result round = SupplyNetwork.Solve(a, false);
+                    bool roundLinked = round.connectedHubs.Contains(hub);
+                    List<HexTile> line = SupplyOverlay.SourcePath(a, apc.tile, round, null, null);
+                    bool lineClear = clearOfEnemy(line);
+                    List<HexTile> c1 = SupplyNetwork.UnseenContacts(a);
+                    bool contact1 = c1.Count == 1 && c1[0].Distance(grunts[0].tile) <= 1 && c1[0] != grunts[0].tile;
+                    apc.moveRange = moves;
+                    r.Add("one unseen grunt beside the way at " + Pos(near) + " " + hidden1 + ": linked round it " + roundLinked + ", line " + tiles(line) + " clear of it " + lineClear + "; contacts " + tiles(c1) + " " + contact1);
+                    gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
+                    bool fogOff = SupplyNetwork.UnseenContacts(a).Count == 0;
+                    r.Add("fog off: no contacts " + fogOff);
+                    detail = string.Join(" | ", r.ToArray());
+                    return viewer && noneAtFirst && w && hidden && trulyCut && shownCut && contactOk && seen && stillCut && noContact && hidden1 && roundLinked && lineClear && contact1 && fogOff;
+                } finally {
+                    gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
+                    if (blueAI != null) blueAI.enabled = true;
+                    clear(); apc.moveRange = moves; SupplyNetwork.Solve(a, false);
+                }
             }
             case "attritionSupplyLine": {
                 Unit g = Rig.At(-2, 0).occupier, sup = Rig.At(-3, 0).occupier;

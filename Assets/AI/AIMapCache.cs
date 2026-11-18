@@ -18,7 +18,7 @@ namespace HexTactica.AI {
     /// when that unit's mark is unchanged and no changed tile lies within that distance plus one (a tile beside where
     /// it could go can block it). A supply network stands when its supply units' marks, the buildings and the terrain
     /// are unchanged and no changed tile lies on it or beside it (an enemy unit there would cut it, one gone could let
-    /// it through).
+    /// it through), nor within a move + 1 of a carrier whose transit it looked at (SupplyNetwork.Result.transits).
     ///
     /// AIVERIFY (the harness): every cache kept is also worked out afresh and compared; Mismatches counts the differences.
     /// </summary>
@@ -113,13 +113,17 @@ namespace HexTactica.AI {
             if (tiles != null) foreach (HexTile t in tiles) { int d = origin.Distance(t); if (d > far) far = d; }
             return far;
         }
-        /// <summary>No changed tile on or beside the network.</summary>
+        /// <summary>
+        /// No changed tile on or beside the network, nor within a move + 1 of a carrier whose transit it looked at (a unit
+        /// there could block the carrier's way, or expose a tile of it: SupplyNetwork.Exposed).
+        /// </summary>
         bool NetworkUntouched(SupplyNetwork.Result r) {
             if (r == null) return false;
             foreach (HexTile t in changedTiles) {
                 if (r.depth.ContainsKey(t)) return false;
                 foreach (HexTile n in t.neighbors) if (n != null && r.depth.ContainsKey(n)) return false;
             }
+            for (int i = 0; i < r.transits.Count; i++) if (!Untouched(r.transits[i].Key, r.transits[i].Value)) return false;   // its way: within its range; what exposes it: one more
             return true;
         }
         bool HubsUnchanged(Player p) {

@@ -61,6 +61,15 @@ A supply unit aboard something links to its side's network through what carries 
 
 - A land transport or an aircraft links when, in one move of its own (its real move: range, terrain, fuel, enemies in
   the way), it can get onto supplied ground. Beside supplied ground is not enough.
+- That move is a **transit** (SupplyNetwork.Exposed, TransitField): it may not use any tile on or beside an enemy unit
+  that could attack the carrier — one with firepower whose weapons target the carrier's locomotion (a fighter does not
+  intercept a truck; it does a transport helicopter). The carrier's own tile counts: one beside such an enemy links only
+  if it already stands on supplied ground. It applies to every carried link (ships and convoys too), and the supply line
+  follows the transit's way. A supply unit on foot is never in transit: it links by standing in supply, as before.
+- Under fog, the screen shows a transit cut (or sent round) by an enemy its side does not see as it truly is, and marks a
+  **contact** (Assets/Resources/SupplyContact.prefab, SupplyContacts) on the first tile of the way the carrier would have
+  taken knowing only what it sees that such an enemy exposes. It tells only that something is on or beside that tile.
+  Everything else in the shown supply still leaves unseen enemies out. The AI plans with the enemies it knows of.
 - A ship links when, in one move, it can get beside supplied ground or onto a supplied harbor. Any supplied shore
   counts, not only a harbor: a shoreline city in supply links a supply ship lying off it.
 - A ship also links through another carrier with supply aboard that is linked (a convoy, any length), and through an

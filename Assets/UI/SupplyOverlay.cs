@@ -253,15 +253,21 @@ public class SupplyOverlay : MonoBehaviour {
     /// to ground supplied in <paramref name="f"/> (a ship, which cannot go ashore: beside it, where its cargo can step off): the tiles
     /// from <paramref name="from"/> to the nearest such tile (fewest movement points, then the board's
     /// order), then the supplied tile beside it if it is not supplied itself. Planned as its side knows
-    /// the board (fog of war): around the enemies it sees, never through them. Null if there is none.
+    /// the board (fog of war): around the enemies it sees, never through them; in transit (SupplyNetwork.TransitField),
+    /// clear of every enemy that could attack it, those it does not see too (the network is cut by them, and
+    /// SupplyContacts marks where). Null if there is none.
     /// </summary>
     static List<HexTile> DriveToSupply(Unit transport, HexTile from, SupplyNetwork.Result f) {
         HexTactica.AI.MoveField field;
-        using (FogOfWar.Concealing(transport.owner))
-            field = HexTactica.AI.AIPath.ThisTurnFrom(transport, from, transport.moveRange);
+        bool exposed;
+        using (SupplyNetwork.WithUnseen(transport.owner)) using (FogOfWar.Concealing(transport.owner)) {
+            exposed = SupplyNetwork.Exposed(transport, from);
+            field = SupplyNetwork.TransitField(transport, from, transport.moveRange);
+        }
         HexTile best = null, step = null; int bestCost = int.MaxValue;
         bool ship = LocomotionRules.IsNaval(transport.locomotion);
         foreach (HexTile t in field.Tiles) {
+            if (exposed && t != from) continue;   // exposed where it stands: no transit (only ground it is on, or beside for a ship)
             if (!field.ReachableThisTurn(t) && t != from) continue;
             HexTile onto = null;
             if (Ground(t, f)) onto = t;
@@ -294,14 +300,18 @@ public class SupplyOverlay : MonoBehaviour {
 
     /// <summary>
     /// The way <paramref name="carrier"/>, on <paramref name="from"/>, would move in one move to <paramref name="target"/>
-    /// or beside it (a ship cannot sail onto the land an aircraft is over): its own path, planned as its side knows the
-    /// board (fog of war). Null if it cannot get there.
+    /// or beside it (a ship cannot sail onto the land an aircraft is over): its own path in transit, planned as its side
+    /// knows the board (fog of war), as DriveToSupply. Null if it cannot get there.
     /// </summary>
     static List<HexTile> MoveTo(Unit carrier, HexTile from, HexTile target) {
         if (from == target) return new List<HexTile> { from };
         HexTactica.AI.MoveField field;
-        using (FogOfWar.Concealing(carrier.owner))
-            field = HexTactica.AI.AIPath.ThisTurnFrom(carrier, from, carrier.moveRange);
+        bool exposed;
+        using (SupplyNetwork.WithUnseen(carrier.owner)) using (FogOfWar.Concealing(carrier.owner)) {
+            exposed = SupplyNetwork.Exposed(carrier, from);
+            field = SupplyNetwork.TransitField(carrier, from, carrier.moveRange);
+        }
+        if (exposed) { HexTactica.AI.AIPath.Release(field); return null; }
         HexTile best = null; int bestCost = int.MaxValue;
         foreach (HexTile t in field.Tiles) {
             if (!field.ReachableThisTurn(t) && t != from) continue;
