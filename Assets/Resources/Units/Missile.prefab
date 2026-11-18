@@ -700,8 +700,9 @@ MonoBehaviour:
   orderSound: {fileID: 0}
   moveBurstSound: {fileID: 0}
   moveLoopSound: {fileID: 0}
-  fireSound: {fileID: 0}
-  dieSound: {fileID: 0}
+  fireSound: {fileID: 8300000, guid: 757c138779c12e642b48c77c14d09358, type: 3}
+  dieSound: {fileID: 8300000, guid: 98947044707741d43a41f176d592dfaa, type: 3}
+  strikeSound: {fileID: 8300000, guid: e735277ce8a035b47acc56386ccf666e, type: 3}
   moveLoopFadeOut: 0.5
   moveLoopEndPitch: 0.6
   textArea: {fileID: 2954183134625488855}
@@ -729,18 +730,6 @@ MonoBehaviour:
   MinRange: 5
   retaliates: 0
   ignoresCover: 0
-  targetsGround: 1
-  blastRadius: 1
-  selfDestructs: 1
-  ballistic: 1
-  launchSeenWithin: 10
-  launchRevealRadius: 1
-  strikeRevealRadius: 2
-  craterTerrain: {fileID: 11400000, guid: 572719be81234fee8dc2b775c8662a57, type: 2}
-  buildingDamage: 5
-  strikeSound: {fileID: 0}
-  arrivalSpread: 1
-  arrivalStagger: 0.2
   visionRange: 1
   stealthRange: 0
   detectRange: 0
@@ -774,6 +763,17 @@ MonoBehaviour:
   parachutePrefab: {fileID: 0}
   dropHeight: 0.6
   dropSpeed: 0.6
+  targetsGround: 1
+  blastRadius: 1
+  selfDestructs: 1
+  ballistic: 1
+  launchSeenWithin: 10
+  launchRevealRadius: 1
+  strikeRevealRadius: 2
+  craterTerrain: {fileID: 11400000, guid: 572719be81234fee8dc2b775c8662a57, type: 2}
+  buildingDamage: 5
+  arrivalSpread: 1
+  arrivalStagger: 0.2
   threatValue: 0
   attacking: 0
   target: {fileID: 0}
