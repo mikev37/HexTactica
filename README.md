@@ -63,8 +63,8 @@ A supply unit aboard something links to its side's network through what carries 
   the way), it can get onto supplied ground. Beside supplied ground is not enough.
 - That move is a **transit** (SupplyNetwork.Exposed, TransitField): it may not use any tile on or beside an enemy unit
   that could attack the carrier — one with firepower whose weapons target the carrier's locomotion (a fighter does not
-  intercept a truck; it does a transport helicopter). The carrier's own tile counts: one beside such an enemy links only
-  if it already stands on supplied ground. It applies to every carried link (ships and convoys too), and the supply line
+  intercept a truck; it does a transport helicopter). Only the tiles it moves through count, not the one it stands on:
+  a carrier beside such an enemy still links if it can drive off clear of it. It applies to every carried link (ships and convoys too), and the supply line
   follows the transit's way. A supply unit on foot is never in transit: it links by standing in supply, as before.
 - Under fog, **the screen shows the supply network as it truly is** (SupplyNetwork.FillUnseenHoles): a line or ring of
   enemies the side does not see that cuts supply off shows as cut off (the oddity is a reason to look). The one thing

@@ -13,13 +13,17 @@ using UnityEngine;
 ///     another tile is picked.
 /// Whether a picked tile is in supply is shown by the board's supply borders alone.
 /// Everything follows the picked tile, not the pointer, so it works the same with a finger.
-/// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there.
+/// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there, and for an enemy supply
+/// unit (or a transport carrying one) its supply line too, in its colour: the way its supply comes, as the network truly
+/// has it, so you can see how your units turn it and where to cut it. Under fog, only as far as you see along it.
 /// </summary>
 public class SupplyOverlay : MonoBehaviour {
 
     public static SupplyOverlay instance;
 
     readonly List<LineRenderer> lines = new List<LineRenderer>();
+    /// <summary>The enemy's supply line (ShowEnemy): apart from the selection's, which comes and goes with it.</summary>
+    readonly List<LineRenderer> enemyLines = new List<LineRenderer>();
     Material lineMaterial;
 
     // What is shown now, to redo it only when something changes.
@@ -340,7 +344,9 @@ public class SupplyOverlay : MonoBehaviour {
         lr.colorGradient = g;
     }
 
-    LineRenderer Line(int i) {
+    LineRenderer Line(int i) { return Line(lines, i); }
+
+    LineRenderer Line(List<LineRenderer> lines, int i) {
         while (lines.Count <= i) {
             LineRenderer template = Resources.Load<LineRenderer>(LinePrefab);
             if (template != null) {
@@ -380,6 +386,34 @@ public class SupplyOverlay : MonoBehaviour {
 
     // ------------------------------------------------------------------ enemy move and threat
 
+    /// <summary>
+    /// The supply line of <paramref name="enemy"/>, if it is a supply unit or carries one: from where it stands back to the
+    /// HQ (SourcePath, the network as it truly is: its carriers' routes are the network's own), in its side's colour. Under
+    /// fog, from it as far as the viewer sees each tile along it: the line stops where it goes into the fog (it does not
+    /// show where the enemy's supply comes from beyond what you see).
+    /// </summary>
+    void ShowEnemyLine(Unit enemy) {
+        foreach (LineRenderer l in enemyLines) if (l != null) l.gameObject.SetActive(false);
+        List<HexTile> path = EnemyLine(enemy);
+        if (path.Count < 2) return;
+        Show(Line(enemyLines, 0), path, enemy.owner.displayColor, 1f, 1f);
+    }
+
+    /// <summary>The tiles ShowEnemyLine draws for <paramref name="enemy"/> (empty if it carries no supply).</summary>
+    public static List<HexTile> EnemyLine(Unit enemy) {
+        List<HexTile> path = new List<HexTile>();
+        if (enemy == null || enemy.tile == null || enemy.owner == null || CarriedSupplies(enemy).Count == 0) return path;
+        Player p = enemy.owner;
+        using (SupplyNetwork.AsPlayed()) path = SourcePath(p, enemy.tile, SupplyNetwork.Solve(p, false), null);
+        Player viewer = FogOfWar.On ? FogOfWar.Viewer : null;
+        if (viewer != null && !Player.Friendly(viewer, p)) {
+            int seen = 0;
+            while (seen < path.Count && FogOfWar.TileVisible(viewer, path[seen])) seen++;
+            if (seen < path.Count) path = path.GetRange(0, seen);
+        }
+        return path;
+    }
+
     /// <summary>Is an enemy's move and threat on show (tiles in ENEMY_MOVE / ENEMY_THREAT)?</summary>
     public static bool enemyShown;
 
@@ -393,6 +427,7 @@ public class SupplyOverlay : MonoBehaviour {
         using (FogOfWar.Concealing(FogOfWar.Viewer))
             foreach (HexTile t in enemy.tile.CheckMovementRange(enemy)) if (t != null && (t == enemy.tile || (t.G != 0 && t.CanEndTurnHere(enemy)))) moves.Add(t);
         if (!moves.Contains(enemy.tile)) moves.Add(enemy.tile);
+        if (instance != null) instance.ShowEnemyLine(enemy);
         HashSet<HexTile> threat = new HashSet<HexTile>();
         if (enemy.Firepower > 0) {
             if (enemy.moveAndAttack) foreach (HexTile m in moves) foreach (HexTile a in m.AllInAttackRange(enemy)) threat.Add(a);
@@ -410,6 +445,7 @@ public class SupplyOverlay : MonoBehaviour {
     public static void HideEnemy() {
         if (!enemyShown) return;
         enemyShown = false;
+        if (instance != null) foreach (LineRenderer l in instance.enemyLines) if (l != null) l.gameObject.SetActive(false);
         HexGenerator.forAllTiles(x => { if (x.state == UIState.ENEMY_MOVE || x.state == UIState.ENEMY_THREAT) x.Reset(); return 0; });
     }
 }

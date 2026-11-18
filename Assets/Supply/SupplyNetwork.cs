@@ -21,7 +21,8 @@ using UnityEngine;
 /// lies within one move of the transport. Ships and aircraft with supply aboard also link through
 /// each other (convoys: CarriedLinked); a ship gives supply only beside the shore, an aircraft only
 /// over land. That move is a transit: it never uses a tile on or beside an enemy unit that could attack
-/// the carrier (Exposed), its own tile included. Supply units on foot are not in transit: they stand in supply.
+/// the carrier (Exposed) on its way (where it stands is not on its way: only the tiles it moves through). Supply units on
+/// foot are not in transit: they stand in supply.
 /// </summary>
 public static class SupplyNetwork {
 
@@ -751,7 +752,8 @@ public static class SupplyNetwork {
     /// <summary>
     /// The tiles <paramref name="mover"/> on <paramref name="at"/> can reach in one move in transit, its own tile included:
     /// the player's own move field (AIPath.ThisTurnFrom, as HexTile shows moves), so supply reach is exactly movement,
-    /// keeping clear of every tile it would be exposed on (TransitField). Exposed where it stands: nothing at all.
+    /// keeping clear of every tile it would be exposed on (TransitField). Where it stands does not count, exposed or not:
+    /// only the tiles it moves through.
     /// </summary>
     static Reach MoveReach(Unit mover, HexTile at) {
         Reach reach;
@@ -762,12 +764,10 @@ public static class SupplyNetwork {
         }
         long __q = HexTactica.AI.AIPerf.Begin();
         reach = new Reach(at);
-        if (!Exposed(mover, at)) {
-            reach.Add(at, 0, null);
-            HexTactica.AI.MoveField f = TransitField(mover, at, HexTactica.AI.AIPath.RangeThisTurn(mover));
-            foreach (HexTile t in f.Tiles) if (t != at && f.ReachableThisTurn(t)) reach.Add(t, f.Get(t).used, f.ParentOf(t));
-            HexTactica.AI.AIPath.Release(f);
-        }
+        reach.Add(at, 0, null);
+        HexTactica.AI.MoveField f = TransitField(mover, at, HexTactica.AI.AIPath.RangeThisTurn(mover));
+        foreach (HexTile t in f.Tiles) if (t != at && f.ReachableThisTurn(t)) reach.Add(t, f.Get(t).used, f.ParentOf(t));
+        HexTactica.AI.AIPath.Release(f);
         if (reachMemo != null) reachMemo[k] = reach;
         HexTactica.AI.AIPerf.End("supply: carrier reach (memo miss)", __q);
         return reach;
@@ -778,7 +778,7 @@ public static class SupplyNetwork {
     /// <summary>
     /// The move <paramref name="transport"/> on <paramref name="from"/> could make carrying supply (the supply line follows
     /// it too): its own move field, entering no tile it would be exposed on (Exposed). Whether <paramref name="from"/> is
-    /// exposed is the caller's to ask (a carrier exposed where it stands has no transit). Release it when done.
+    /// exposed does not matter (only the tiles it moves through). Release it when done.
     /// </summary>
     public static HexTactica.AI.MoveField TransitField(Unit transport, HexTile from, int range) {
         if (SupplyLayer() == null) return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t));
@@ -951,7 +951,8 @@ public static class SupplyNetwork {
                 if (known == null || (truly != null && SameWay(truly, known))) continue;
                 for (int i = 0; i < known.Count; i++) {
                     HexTile t = known[i];
-                    if (!ExposedToUnseen(carrier, t) && !(i + 1 < known.Count && UnseenOn(known[i + 1]))) continue;
+                    // Where it stands is not on its way (exposure there does not count); a tile it moves through is.
+                    if ((i == 0 || !ExposedToUnseen(carrier, t)) && !(i + 1 < known.Count && UnseenOn(known[i + 1]))) continue;
                     HexTile c = ContactNear(t, viewer);
                     if (c != null && !contacts.Contains(c)) contacts.Add(c);
                     break;
