@@ -66,10 +66,14 @@ A supply unit aboard something links to its side's network through what carries 
   intercept a truck; it does a transport helicopter). The carrier's own tile counts: one beside such an enemy links only
   if it already stands on supplied ground. It applies to every carried link (ships and convoys too), and the supply line
   follows the transit's way. A supply unit on foot is never in transit: it links by standing in supply, as before.
-- Under fog, the screen shows a transit cut (or sent round) by an enemy its side does not see as it truly is, and marks a
-  **contact** (Assets/Resources/SupplyContact.prefab, SupplyContacts) on the first tile of the way the carrier would have
-  taken knowing only what it sees that such an enemy exposes. It tells only that something is on or beside that tile.
-  Everything else in the shown supply still leaves unseen enemies out. The AI plans with the enemies it knows of.
+- Under fog, **spreading supply never gives an enemy away, but missing supply is explained.** The supply borders are worked
+  out on the board as the side knows it: an enemy it does not see neither cuts a corridor nor blocks a transit there.
+  The game plays by the real network, though, and a unit that truly does not receive supply is shown so (its unfed and
+  unsupplied icons read the real network), with a **contact** marker (Assets/Resources/SupplyContact.prefab, placed by
+  SupplyContacts) at the first place on its supply line, as the side knows it, where an unseen enemy stops the supply: a
+  tile of a carrier's transit exposed to one, or the tile beside one standing in a corridor
+  (SupplyOverlay.UnseenContacts). It tells only that something is on or beside that tile. A way an unseen enemy merely
+  sends round, still delivering, is not marked. The AI plans with the enemies it knows of, and does not use contacts.
 - A ship links when, in one move, it can get beside supplied ground or onto a supplied harbor. Any supplied shore
   counts, not only a harbor: a shoreline city in supply links a supply ship lying off it.
 - A ship also links through another carrier with supply aboard that is linked (a convoy, any length), and through an
@@ -87,6 +91,8 @@ A supply unit aboard something links to its side's network through what carries 
   restocked) while the ship has supplies of its own or a supply ship beside it restocks it, or in harbor; once the
   ship's supplies are gone, its cargo starves.
 - An HQ supplies only the side it began with: a captured HQ supplies nobody until it is retaken.
+- An enemy unit standing on a supply building (HQ, forward base, city) stops its supply while it is there; an ally's or
+  one's own does not.
 
 ## Replays and game logs
 

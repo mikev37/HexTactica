@@ -162,8 +162,8 @@ public static class SupplyNetwork {
         // The relay below asks a carrier's move reach again on every pass until nothing changes: worked out once per solve
         // (nothing moves during one).
         Dictionary<ReachKey, HashSet<HexTile>> outer = reachMemo;
-        Dictionary<ExposureKey, HashSet<HexTile>> outerExposure = exposureMemo;
-        if (outer == null) { reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>(); exposureMemo = new Dictionary<ExposureKey, HashSet<HexTile>>(); }
+        Dictionary<ExposureKey, Dictionary<HexTile, bool>> outerExposure = exposureMemo;
+        if (outer == null) { reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>(); exposureMemo = new Dictionary<ExposureKey, Dictionary<HexTile, bool>>(); }
         long __p = HexTactica.AI.AIPerf.Begin();
         try { return SolveOnce(player, applyDrain, movedHub, hypotheticalTile, excluded, staticOnly, moved, onlyMoved); }
         finally { reachMemo = outer; exposureMemo = outerExposure; HexTactica.AI.AIPerf.End("supply: SupplyNetwork.Solve", __p); }
@@ -176,15 +176,16 @@ public static class SupplyNetwork {
     public static System.IDisposable KeepReach() { return new ReachScope(); }
     sealed class ReachScope : System.IDisposable {
         readonly Dictionary<ReachKey, HashSet<HexTile>> outer = reachMemo;
-        readonly Dictionary<ExposureKey, HashSet<HexTile>> outerExposure = exposureMemo;
-        public ReachScope() { if (outer == null) { reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>(); exposureMemo = new Dictionary<ExposureKey, HashSet<HexTile>>(); } }
+        readonly Dictionary<ExposureKey, Dictionary<HexTile, bool>> outerExposure = exposureMemo;
+        public ReachScope() { if (outer == null) { reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>(); exposureMemo = new Dictionary<ExposureKey, Dictionary<HexTile, bool>>(); } }
         public void Dispose() { reachMemo = outer; exposureMemo = outerExposure; }
     }
 
     /// <summary>
-    /// Every tile a carrier of one side and locomotion would be exposed on (Exposed), on one board, worked out once per
-    /// solve (or KeepReach scope) from the enemy units themselves (each marks its tile and those beside it) rather than
-    /// asked tile by tile on every carrier's search. Nothing moves inside one.
+    /// Whether a carrier of one side and locomotion is exposed on each tile asked about (Exposed), on one board, kept for
+    /// the solve (or KeepReach scope): every carrier's search and every relay pass asks the same tiles again. Kept as asked,
+    /// tile by tile, by the same rule (the tile's occupier and its neighbours'), so it answers exactly as asking afresh
+    /// would. Nothing moves inside one.
     /// </summary>
     struct ExposureKey : System.IEquatable<ExposureKey> {
         public Player owner; public Locomotion loco; public BoardView view;
@@ -192,25 +193,7 @@ public static class SupplyNetwork {
         public override bool Equals(object o) { return o is ExposureKey && Equals((ExposureKey)o); }
         public override int GetHashCode() { return (owner != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(owner) : 0) * 31 + (int)loco; }
     }
-    [System.ThreadStatic] static Dictionary<ExposureKey, HashSet<HexTile>> exposureMemo;
-
-    static HashSet<HexTile> ExposedTiles(Unit transport) {
-        ExposureKey k = new ExposureKey { owner = transport.owner, loco = transport.locomotion, view = BoardView.current };
-        HashSet<HexTile> set;
-        if (exposureMemo.TryGetValue(k, out set)) return set;
-        set = new HashSet<HexTile>();
-        List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
-        if (all != null)
-            for (int i = 0; i < all.Count; i++) {
-                Unit e = all[i];
-                HexTile at = e != null ? e.tile : null;
-                if (at == null || at.occupier != e || !CouldAttack(e, transport)) continue;   // on the board in this view, and a threat to it
-                set.Add(at);
-                foreach (HexTile n in at.neighbors) if (n != null) set.Add(n);
-            }
-        exposureMemo[k] = set;
-        return set;
-    }
+    [System.ThreadStatic] static Dictionary<ExposureKey, Dictionary<HexTile, bool>> exposureMemo;
     /// <summary>A carrier's reach depends on the board it is read on: the real one, or a side's copy (the screen's network
     /// under fog is solved on the viewer's copy inside the real solve, Publish; a reach from the real board would leak
     /// the enemies it does not see into it).</summary>
@@ -697,11 +680,18 @@ public static class SupplyNetwork {
     /// </summary>
     public static bool Exposed(Unit transport, HexTile t) {
         if (transport == null || t == null) return false;
-        if (exposureMemo != null) {
-            bool memo = ExposedTiles(transport).Contains(t);
-            if (HexTactica.AI.AIMap.Verify) { Dictionary<ExposureKey, HashSet<HexTile>> m = exposureMemo; exposureMemo = null; HexTactica.AI.AIMap.CountCheck("transit exposure", Exposed(transport, t) != memo); exposureMemo = m; }
-            return memo;
-        }
+        Dictionary<ExposureKey, Dictionary<HexTile, bool>> memo = exposureMemo;
+        if (memo == null) return ExposedNow(transport, t);
+        ExposureKey k = new ExposureKey { owner = transport.owner, loco = transport.locomotion, view = BoardView.current };
+        Dictionary<HexTile, bool> tiles;
+        if (!memo.TryGetValue(k, out tiles)) memo[k] = tiles = new Dictionary<HexTile, bool>();
+        bool e;
+        if (!tiles.TryGetValue(t, out e)) tiles[t] = e = ExposedNow(transport, t);
+        else if (HexTactica.AI.AIMap.Verify) HexTactica.AI.AIMap.CountCheck("transit exposure", ExposedNow(transport, t) != e);
+        return e;
+    }
+
+    static bool ExposedNow(Unit transport, HexTile t) {
         if (CouldAttack(t.occupier, transport)) return true;
         List<HexTile> ns = t.neighbors;
         for (int i = 0; i < ns.Count; i++) if (ns[i] != null && CouldAttack(ns[i].occupier, transport)) return true;
@@ -738,7 +728,7 @@ public static class SupplyNetwork {
     /// with strength and firepower, whose weapons can target the transport's locomotion (Unit.CanTarget: a fighter does not
     /// intercept a truck). Its ammunition and this turn's state do not count: a unit that could fire on it is a threat.
     /// </summary>
-    // (It reads the transport's owner and locomotion only: ExposedTiles keys on them.)
+    // (It reads the transport's owner and locomotion only: Exposed's memo keys on them.)
     public static bool CouldAttack(Unit enemy, Unit transport) {
         if (enemy == null || transport == null || enemy == transport) return false;
         if (!Player.Hostile(enemy.owner, transport.owner)) return false;
