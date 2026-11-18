@@ -808,7 +808,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
 
     BoardView NewView() {
         long __v = AIPerf.Begin();
-        BoardView v = FogOfWar.Conceal(player, true, Profile.fogMemoryTurns) ?? BoardView.Snapshot();
+        // What it knows, but its supply as it truly is (as its screen would show it): Knowledge.supplyAsItIs.
+        BoardView v = FogOfWar.Conceal(player, true, Profile.fogMemoryTurns, true) ?? BoardView.Snapshot();
         AIPerf.End("main thread: copy the board", __v);
         return v;
     }

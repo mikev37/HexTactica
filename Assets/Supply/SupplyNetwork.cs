@@ -20,7 +20,8 @@ using UnityEngine;
 /// to the network as far as the transport could carry it: it is connected if supplied ground
 /// lies within one move of the transport. Ships and aircraft with supply aboard also link through
 /// each other (convoys: CarriedLinked); a ship gives supply only beside the shore, an aircraft only
-/// over land.
+/// over land. That move is a transit: it never uses a tile on or beside an enemy unit that could attack
+/// the carrier (Exposed), its own tile included. Supply units on foot are not in transit: they stand in supply.
 /// </summary>
 public static class SupplyNetwork {
 
@@ -31,8 +32,8 @@ public static class SupplyNetwork {
     /// </summary>
     public static bool StoreOnlyWhenNeeded = true;
 
-    /// <summary>Under fog, the screen's player's own supply as the screen shows it (borders, out-of-supply icons) is worked out on the board as it knows it (HexTile.supplyShown): enemy units it does not see do not cut it. Other sides' supply is shown as it truly is, on the tiles the viewer sees. Off: the true network is shown.</summary>
-    public static bool ShownAsKnown = true;
+    /// <summary>Under fog, the screen shows the screen's side's (and its allies') supply as it truly is, cuts by enemies it does not see included, but for the tile each such enemy stands on, shown as it would be without the enemies it does not see (HexTile.supplyShown): a one-tile hole would pinpoint it; a line or ring cutting supply off shows as cut off, a reason to look. Other sides' supply is shown as it truly is, on the tiles the viewer sees. Off: the true network is shown, holes and all.</summary>
+    public static bool FillUnseenHoles = true;
 
     /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
     public static bool FlagsFollowPublish = true;
@@ -61,6 +62,23 @@ public static class SupplyNetwork {
         /// supply unit whose carrier it reached. The supply line follows these back toward the HQ (SupplyOverlay).
         /// </summary>
         public readonly Dictionary<SupplyPoint, SupplyPoint> linkedThrough = new Dictionary<SupplyPoint, SupplyPoint>();
+        /// <summary>
+        /// Each carried supply unit this network links, the way its carrier links it (RouteFor): the carrier's tiles from
+        /// where it stands to the tile it links from (only its own tile when it stands on supplied ground). The supply line
+        /// draws this, and the contacts compare it with the way its side would know (UnseenContacts): one choice of way.
+        /// </summary>
+        public readonly Dictionary<SupplyPoint, List<HexTile>> routes = new Dictionary<SupplyPoint, List<HexTile>>();
+        /// <summary>A ship's carried supply linked by sailing beside supplied ground: the ground it puts it on (beside the route's end).</summary>
+        public readonly Dictionary<SupplyPoint, HexTile> landings = new Dictionary<SupplyPoint, HexTile>();
+        /// <summary>
+        /// Every carrier's transit this solve looked at: where it stood and its move range. A link through one depends on
+        /// the enemy units within that range + 1 of it (on its way, or beside it), not only on those on or beside the field
+        /// (AIMap keeps a network only while none of them changed). Friendly units never change a transit: it passes
+        /// through them, and is exposed only by enemies.
+        /// </summary>
+        public readonly List<KeyValuePair<HexTile, int>> transits = new List<KeyValuePair<HexTile, int>>();
+        /// <summary>The side this network is (Solve's player).</summary>
+        public Player owner;
         /// <summary>
         /// With RecordLinked set when it was solved: the field before cut-off supply buildings gave
         /// out of their stores, i.e. the ground a supply unit standing there would link to the network
@@ -151,10 +169,12 @@ public static class SupplyNetwork {
                         bool staticOnly, Dictionary<SupplyPoint, HexTile> moved, bool onlyMoved) {
         // The relay below asks a carrier's move reach again on every pass until nothing changes: worked out once per solve
         // (nothing moves during one).
-        Dictionary<ReachKey, HashSet<HexTile>> outer = reachMemo;
-        if (outer == null) reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>();
+        Dictionary<ReachKey, Reach> outer = reachMemo;
+        Dictionary<ExposureKey, Dictionary<HexTile, bool>> outerExposure = exposureMemo;
+        if (outer == null) { reachMemo = new Dictionary<ReachKey, Reach>(); exposureMemo = new Dictionary<ExposureKey, Dictionary<HexTile, bool>>(); }
+        long __p = HexTactica.AI.AIPerf.Begin();
         try { return SolveOnce(player, applyDrain, movedHub, hypotheticalTile, excluded, staticOnly, moved, onlyMoved); }
-        finally { reachMemo = outer; }
+        finally { reachMemo = outer; exposureMemo = outerExposure; HexTactica.AI.AIPerf.End("supply: SupplyNetwork.Solve", __p); }
     }
 
     /// <summary>
@@ -163,22 +183,41 @@ public static class SupplyNetwork {
     /// </summary>
     public static System.IDisposable KeepReach() { return new ReachScope(); }
     sealed class ReachScope : System.IDisposable {
-        readonly Dictionary<ReachKey, HashSet<HexTile>> outer = reachMemo;
-        public ReachScope() { if (outer == null) reachMemo = new Dictionary<ReachKey, HashSet<HexTile>>(); }
-        public void Dispose() { reachMemo = outer; }
+        readonly Dictionary<ReachKey, Reach> outer = reachMemo;
+        readonly Dictionary<ExposureKey, Dictionary<HexTile, bool>> outerExposure = exposureMemo;
+        public ReachScope() { if (outer == null) { reachMemo = new Dictionary<ReachKey, Reach>(); exposureMemo = new Dictionary<ExposureKey, Dictionary<HexTile, bool>>(); } }
+        public void Dispose() { reachMemo = outer; exposureMemo = outerExposure; }
     }
+
+    /// <summary>
+    /// Whether a carrier of one side and locomotion is exposed on each tile asked about (Exposed), on one board, kept for
+    /// the solve (or KeepReach scope): every carrier's search and every relay pass asks the same tiles again. Kept as asked,
+    /// tile by tile, by the same rule (the tile's occupier and its neighbours'), so it answers exactly as asking afresh
+    /// would. Nothing moves inside one.
+    /// </summary>
+    struct ExposureKey : System.IEquatable<ExposureKey> {
+        public Player owner; public Locomotion loco; public BoardView view;
+        public bool Equals(ExposureKey o) { return ReferenceEquals(owner, o.owner) && loco == o.loco && ReferenceEquals(view, o.view); }
+        public override bool Equals(object o) { return o is ExposureKey && Equals((ExposureKey)o); }
+        public override int GetHashCode() { return (owner != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(owner) : 0) * 31 + (int)loco; }
+    }
+    [System.ThreadStatic] static Dictionary<ExposureKey, Dictionary<HexTile, bool>> exposureMemo;
+    /// <summary>A carrier's reach depends on the board it is read on: the real one, or a side's copy (the screen's network
+    /// under fog is solved on the viewer's copy inside the real solve, Publish; a reach from the real board would leak
+    /// the enemies it does not see into it).</summary>
     struct ReachKey : System.IEquatable<ReachKey> {
-        public Unit mover; public HexTile at; public int range, steps;
-        public bool Equals(ReachKey o) { return ReferenceEquals(mover, o.mover) && ReferenceEquals(at, o.at) && range == o.range && steps == o.steps; }
+        public Unit mover; public HexTile at; public int range, steps; public BoardView view;
+        public bool Equals(ReachKey o) { return ReferenceEquals(mover, o.mover) && ReferenceEquals(at, o.at) && range == o.range && steps == o.steps && ReferenceEquals(view, o.view); }
         public override bool Equals(object o) { return o is ReachKey && Equals((ReachKey)o); }
         public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(mover) * 31 + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(at); }
     }
-    [System.ThreadStatic] static Dictionary<ReachKey, HashSet<HexTile>> reachMemo;
+    [System.ThreadStatic] static Dictionary<ReachKey, Reach> reachMemo;
 
     static Result SolveOnce(Player player, bool applyDrain, SupplyPoint movedHub, HexTile hypotheticalTile, SupplyPoint excluded,
                         bool staticOnly, Dictionary<SupplyPoint, HexTile> moved, bool onlyMoved) {
 
         Result result = new Result();
+        result.owner = player;
         if (player == null || HexGenerator.hg == null) return result;
 
         // Seed from every supply-producing building this player owns.
@@ -361,19 +400,31 @@ public static class SupplyNetwork {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });
-        // What the screen shows (real board only). The screen's player's own network is worked out on the board as it
-        // knows it, under fog: an enemy it does not see does not cut it (that would give the enemy away). Another side's
-        // network is the true one: a tile of it the viewer sees shows supplied when it is, though the supplier and the
-        // chain up to it are in the fog (HexTilePlayerSupplyDisplay draws it only on tiles the viewer sees).
+        // What the screen shows (real board only): the true network. The game never shows a unit in supply that is not,
+        // nor cut off when it is not. Under fog, the one exception is the tile an enemy the screen's side does not see
+        // stands on, shown as it would be without the enemies it does not see (FillUnseenHoles): a one-tile hole in its
+        // supply would pinpoint it. A line or ring of them cutting supply off shows as cut off (the oddity is a reason to
+        // look), and a transit they stop or send round is marked with a contact (UnseenContacts, SupplyContacts). Another
+        // side's network: a tile of it the viewer sees shows supplied when it is, though the supplier and the chain up to
+        // it are in the fog (HexTilePlayerSupplyDisplay draws it only on tiles the viewer sees).
         if (BoardView.current == null) {
-            Result shown = result;
-            Player viewer = ShownAsKnown && FogOfWar.On ? FogOfWar.Viewer : null;
-            if (viewer != null && viewer == player && again != null) using (FogOfWar.Concealing(viewer)) shown = again();
+            Player viewer = FillUnseenHoles && FogOfWar.On ? FogOfWar.Viewer : null;
+            Dictionary<HexTile, int> filled = null;
+            if (viewer != null && Player.Friendly(viewer, player) && again != null) {
+                Dictionary<HexTile, List<Unit>> holes = UnseenBy(viewer);
+                if (holes != null) {
+                    Result known;
+                    using (FogOfWar.Concealing(viewer)) known = again();
+                    filled = new Dictionary<HexTile, int>();
+                    foreach (HexTile h in holes.Keys) filled[h] = known.DepthAt(h);
+                }
+            }
             // Borders to redraw: only where being supplied (as shown) changed, and beside it.
             List<HexTile> flipped = new List<HexTile>();
             HexGenerator.forAllTiles(t => {
                 if (t.supplyShown == null) t.supplyShown = new Dictionary<Player, int>();
-                int now = shown.DepthAt(t), was;
+                int now, was;
+                if (filled == null || !filled.TryGetValue(t, out now)) now = result.DepthAt(t);
                 if (!t.supplyShown.TryGetValue(player, out was) || (was > 0) != (now > 0)) flipped.Add(t);
                 t.supplyShown[player] = now;
                 return 0;
@@ -450,12 +501,16 @@ public static class SupplyNetwork {
     }
 
     /// <summary>
-    /// Buildings push supply out along generic ground movement. Cost model matches
+    /// Buildings push supply out along generic ground movement, while no enemy unit stands on them. Cost model matches
     /// AIPath.StepCost so that the field the AI reasons about is the field the game
     /// actually produces.
     /// </summary>
     static void FloodFromBuilding(Building b, Result result) {
         if (b.tile == null) return;
+        // An enemy unit standing on it stops its supply (the flood only ever looked at the tiles it stepped onto, so one
+        // on the building's own tile let supply through). An ally's does not.
+        Unit on = SupplyOccupier(b.tile);
+        if (on != null && on.Strength > 0 && Player.Hostile(on.owner, b.owner)) return;
         Flood(b.tile, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
     }
 
@@ -485,6 +540,7 @@ public static class SupplyNetwork {
         Dictionary<HexTile, int> cost = new Dictionary<HexTile, int> { { at, 0 } };
         Queue<HexTile> q = new Queue<HexTile>();
         q.Enqueue(at);
+        FogOfWar.Knowledge layer = SupplyLayer();
         while (q.Count > 0) {
             HexTile t = q.Dequeue();
             if (t != at && linkedBoats.Contains(t)) return true;
@@ -495,7 +551,8 @@ public static class SupplyNetwork {
             foreach (HexTile n in t.neighbors) {
                 if (n == null || n.terrain == null || cost.ContainsKey(n)) continue;
                 if (n.terrain.elevation >= 0 && !IsOurYard(n, owner)) continue;   // water (and our yards) only
-                if (n.occupier != null && Player.Hostile(n.occupier.owner, owner)) continue;
+                Unit no = SupplyOccupier(n, layer);
+                if (no != null && Player.Hostile(no.owner, owner)) continue;
                 cost[n] = cost[t] + 1;
                 q.Enqueue(n);
             }
@@ -529,7 +586,8 @@ public static class SupplyNetwork {
             // Not across water: onto the land beside it, a step shorter.
             foreach (HexTile n in origin.neighbors) {
                 if (n == null || n.terrain == null || n.terrain.elevation < 0) continue;
-                if (n.occupier != null && Player.Hostile(n.occupier.owner, u.owner)) continue;
+                Unit no = SupplyOccupier(n);
+                if (no != null && Player.Hostile(no.owner, u.owner)) continue;
                 Flood(n, hub.range - 1, u.terrainScramble, u.owner, Locomotion.Wheels, result);
             }
             return;
@@ -573,15 +631,47 @@ public static class SupplyNetwork {
     static bool CarriedLinked(Unit transport, HexTile at, SupplyPoint hub, List<SupplyPoint> hubs, Result result, HashSet<SupplyPoint> activated,
                               SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
         if (transport == null || at == null) return false;
+        // Its transit, for AIMap's cache (Result.transits): recorded here, in the solve that owns the result.
+        result.transits.Add(new KeyValuePair<HexTile, int>(at, HexTactica.AI.AIPath.RangeThisTurn(transport)));
+        SupplyPoint via; HexTile landing;
+        List<HexTile> route = RouteFor(transport, at, hub, result, hubs, activated, movedHub, hypotheticalTile, moved, out via, out landing);
+        if (route == null) return false;
+        result.routes[hub] = route;
+        if (via != null) result.linkedThrough[hub] = via;
+        if (landing != null) result.landings[hub] = landing;
+        return true;
+    }
+
+    /// <summary>
+    /// The one choice of the way a carrier links the supply it carries, for the network (CarriedLinked), the supply line
+    /// and the contacts alike. <paramref name="transport"/> on <paramref name="at"/> carrying <paramref name="hub"/>, with
+    /// <paramref name="result"/> the supply it could link to and the supply units of <paramref name="hubs"/> in
+    /// <paramref name="activated"/> (all of them, if null) those whose carriers it could link through (where the moved ones
+    /// stand, and what carries them, as the solve has them):
+    /// - on supplied ground: no transit (only its own tile);
+    /// - a land carrier or an aircraft: the tile of supplied ground in reach (MoveReach) that takes fewest movement points,
+    ///   then the board's order; an aircraft with none, a convoy (below);
+    /// - a ship: a convoy first (the shore another ship supplies is ground it could reach, but the link, and the line drawn
+    ///   for it, is that ship, along the water), else the tile beside supplied ground in reach, as above, with the ground it
+    ///   puts its cargo on (<paramref name="landing"/>: beside it, the board's order first);
+    /// - a convoy: the carrier first in the board's order whose tile, or one beside it, is in reach (a ship's: a ship's or an
+    ///   aircraft's; an aircraft's: a ship's off land), its supply unit <paramref name="via"/>, and the way to that tile or
+    ///   beside it, fewest movement points first.
+    /// The tiles from <paramref name="at"/>, or null if it does not link.
+    /// </summary>
+    static List<HexTile> RouteFor(Unit transport, HexTile at, SupplyPoint hub, Result result, List<SupplyPoint> hubs, HashSet<SupplyPoint> activated,
+                                  SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved, out SupplyPoint via, out HexTile landing) {
+        via = null; landing = null;
         bool ship = LocomotionRules.IsNaval(transport.locomotion), air = LocomotionRules.IsAirborne(transport.locomotion);
-        // A ship tries its convoy first: the shore another ship supplies is ground it could reach, but the link (and
-        // the line drawn for it) is that ship, along the water — not across the land beside them both.
-        if (!ship && WithinMoveOfSupply(transport, at, result)) return true;
-        if (!ship && !air) return false;
-        HashSet<HexTile> reach = null;
+        if (!ship) {
+            List<HexTile> direct = DirectRoute(transport, at, result, out landing);
+            if (direct != null) return direct;
+            if (!air) return null;
+        }
+        Reach reach = null;
         SupplyPoint best = null; HexTile bestTile = null;
         foreach (SupplyPoint other in hubs) {
-            if (other == null || other == hub || other.producer || !activated.Contains(other) || other.myUnit == null) continue;
+            if (other == null || other == hub || other.producer || other.myUnit == null || (activated != null && !activated.Contains(other))) continue;
             Unit c = CarrierOf(other, moved);
             if (c == null || c == other.myUnit || c == transport || c.owner != transport.owner) continue;
             bool cShip = LocomotionRules.IsNaval(c.locomotion), cAir = LocomotionRules.IsAirborne(c.locomotion);
@@ -593,29 +683,310 @@ public static class SupplyNetwork {
             if (!near) foreach (HexTile n in ct.neighbors) if (n != null && reach.Contains(n)) { near = true; break; }
             if (near && (best == null || CombatMath.Precedes(ct, bestTile))) { best = other; bestTile = ct; }
         }
-        if (best == null) return ship && WithinMoveOfSupply(transport, at, result);
-        result.linkedThrough[hub] = best;
+        if (best == null) return ship ? DirectRoute(transport, at, result, out landing) : null;
+        HexTile target = bestTile;
+        HexTile end = reach.Best(t => t == target || t.neighbors.Contains(target));
+        via = best;
+        return reach.PathTo(end);
+    }
+
+    /// <summary>RouteFor straight to supply: no transit on supplied ground; else to supplied ground in reach (a ship: beside it, with its landing). Null if none.</summary>
+    static List<HexTile> DirectRoute(Unit transport, HexTile at, Result result, out HexTile landing) {
+        landing = null;
+        if (SuppliedGround(at, result)) return new List<HexTile> { at };
+        bool ship = LocomotionRules.IsNaval(transport.locomotion);
+        Reach reach = MoveReach(transport, at);
+        HexTile end = reach.Best(t => ship ? BesideSupplied(t, result) != null : SuppliedGround(t, result));
+        if (end == null) return null;
+        if (ship) landing = BesideSupplied(end, result);
+        return reach.PathTo(end);
+    }
+
+    /// <summary>The supplied ground beside <paramref name="t"/> first in the board's order, or null.</summary>
+    static HexTile BesideSupplied(HexTile t, Result result) {
+        HexTile best = null;
+        foreach (HexTile n in t.neighbors) if (n != null && SuppliedGround(n, result) && (best == null || CombatMath.Precedes(n, best))) best = n;
+        return best;
+    }
+
+    /// <summary>
+    /// A carrier's transit from one tile (MoveReach): the tiles it reaches this turn, each with the movement points it takes
+    /// and the tile it comes from, so the way to any of them is kept (Best, PathTo), not searched again.
+    /// </summary>
+    public sealed class Reach {
+        public readonly HexTile at;
+        readonly Dictionary<HexTile, int> cost = new Dictionary<HexTile, int>();
+        readonly Dictionary<HexTile, HexTile> parent = new Dictionary<HexTile, HexTile>();
+        public Reach(HexTile at) { this.at = at; }
+        List<HexTile> ordered;
+        internal void Add(HexTile t, int used, HexTile from) { cost[t] = used; if (from != null) parent[t] = from; ordered = null; }
+        /// <summary>Is <paramref name="t"/> reached?</summary>
+        public bool Contains(HexTile t) { return t != null && cost.ContainsKey(t); }
+        /// <summary>The tiles reached.</summary>
+        public ICollection<HexTile> Tiles { get { return cost.Keys; } }
+        /// <summary>The tile <paramref name="goal"/> accepts that takes fewest movement points, then the board's order; null if none.</summary>
+        public HexTile Best(System.Func<HexTile, bool> goal) {
+            if (ordered == null) {   // once per reach: then each ask stops at the first tile that will do
+                ordered = new List<HexTile>(cost.Keys);
+                ordered.Sort((a, b) => cost[a] != cost[b] ? cost[a].CompareTo(cost[b]) : CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
+            }
+            for (int i = 0; i < ordered.Count; i++) if (goal(ordered[i])) return ordered[i];
+            return null;
+        }
+        /// <summary>The tiles from <see cref="at"/> to <paramref name="t"/>, both included (null if not reached).</summary>
+        public List<HexTile> PathTo(HexTile t) {
+            if (!Contains(t)) return null;
+            List<HexTile> path = new List<HexTile>();
+            int guard = 0;
+            for (HexTile cur = t; cur != null && guard++ < 4096; ) {
+                path.Add(cur);
+                HexTile p;
+                cur = cur != at && parent.TryGetValue(cur, out p) ? p : null;
+            }
+            path.Reverse();
+            return path;
+        }
+    }
+
+    /// <summary>
+    /// The tiles <paramref name="mover"/> on <paramref name="at"/> can reach in one move in transit, its own tile included:
+    /// the player's own move field (AIPath.ThisTurnFrom, as HexTile shows moves), so supply reach is exactly movement,
+    /// keeping clear of every tile it would be exposed on (TransitField). Exposed where it stands: nothing at all.
+    /// </summary>
+    static Reach MoveReach(Unit mover, HexTile at) {
+        Reach reach;
+        ReachKey k = new ReachKey { mover = mover, at = at, range = HexTactica.AI.AIPath.RangeThisTurn(mover), steps = HexTactica.AI.AIPath.StepBudget(mover), view = BoardView.current };
+        if (reachMemo != null && reachMemo.TryGetValue(k, out reach)) {
+            if (HexTactica.AI.AIMap.Verify) { Dictionary<ReachKey, Reach> m = reachMemo; reachMemo = null; HexTactica.AI.AIMap.CountCheck("carrier reach", !new HashSet<HexTile>(MoveReach(mover, at).Tiles).SetEquals(reach.Tiles)); reachMemo = m; }
+            return reach;
+        }
+        long __q = HexTactica.AI.AIPerf.Begin();
+        reach = new Reach(at);
+        if (!Exposed(mover, at)) {
+            reach.Add(at, 0, null);
+            HexTactica.AI.MoveField f = TransitField(mover, at, HexTactica.AI.AIPath.RangeThisTurn(mover));
+            foreach (HexTile t in f.Tiles) if (t != at && f.ReachableThisTurn(t)) reach.Add(t, f.Get(t).used, f.ParentOf(t));
+            HexTactica.AI.AIPath.Release(f);
+        }
+        if (reachMemo != null) reachMemo[k] = reach;
+        HexTactica.AI.AIPerf.End("supply: carrier reach (memo miss)", __q);
+        return reach;
+    }
+
+    // ------------------------------------------------------------------ transit
+
+    /// <summary>
+    /// The move <paramref name="transport"/> on <paramref name="from"/> could make carrying supply (the supply line follows
+    /// it too): its own move field, entering no tile it would be exposed on (Exposed). Whether <paramref name="from"/> is
+    /// exposed is the caller's to ask (a carrier exposed where it stands has no transit). Release it when done.
+    /// </summary>
+    public static HexTactica.AI.MoveField TransitField(Unit transport, HexTile from, int range) {
+        if (SupplyLayer() == null) return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t));
+        return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t) || BlockedForSupply(transport, t));
+    }
+
+    /// <summary>
+    /// Would <paramref name="transport"/> be exposed in transit on <paramref name="t"/>: an enemy unit that could attack it
+    /// (CouldAttack) on that tile or beside it? On the board as the thread knows it: the real board for the game's rules,
+    /// a side's copy for what it knows (an AI's thinking, the screen's network under fog).
+    /// </summary>
+    public static bool Exposed(Unit transport, HexTile t) {
+        if (transport == null || t == null) return false;
+        Dictionary<ExposureKey, Dictionary<HexTile, bool>> memo = exposureMemo;
+        if (memo == null) return ExposedNow(transport, t);
+        ExposureKey k = new ExposureKey { owner = transport.owner, loco = transport.locomotion, view = BoardView.current };
+        Dictionary<HexTile, bool> tiles;
+        if (!memo.TryGetValue(k, out tiles)) memo[k] = tiles = new Dictionary<HexTile, bool>();
+        bool e;
+        if (!tiles.TryGetValue(t, out e)) tiles[t] = e = ExposedNow(transport, t);
+        else if (HexTactica.AI.AIMap.Verify) HexTactica.AI.AIMap.CountCheck("transit exposure", ExposedNow(transport, t) != e);
+        return e;
+    }
+
+    static bool ExposedNow(Unit transport, HexTile t) {
+        FogOfWar.Knowledge layer = SupplyLayer();
+        if (CouldAttack(SupplyOccupier(t, layer), transport)) return true;
+        List<HexTile> ns = t.neighbors;
+        for (int i = 0; i < ns.Count; i++) if (ns[i] != null && CouldAttack(SupplyOccupier(ns[i], layer), transport)) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Who stands on <paramref name="t"/> for supply: its occupier, except on a side's copy made for its AI's thinking
+    /// (FogOfWar.Knowledge.supplyAsItIs), where supply goes as it truly is: an enemy unit it does not see stands where it
+    /// really is, and one it only believes in is not where it is believed to be. Its movement and fire still go by what it
+    /// knows. Elsewhere (the real board, the screen's known board): the occupier.
+    /// </summary>
+    static Unit SupplyOccupier(HexTile t) { return SupplyOccupier(t, SupplyLayer()); }
+
+    /// <summary>SupplyOccupier with the thread's layer already looked up (SupplyLayer: the hot loops look it up once).</summary>
+    static Unit SupplyOccupier(HexTile t, FogOfWar.Knowledge k) {
+        Unit u = t.occupier;
+        if (k == null) return u;
+        bool[] d = k.supplyDiffers;
+        int i = t.viewId;
+        if (d == null || i < 0 || i >= d.Length || !d[i]) return u;
+        if (u != null && k.believed.Contains(u)) u = null;
+        Unit hidden;
+        if (u == null && k.supplyEnemies.TryGetValue(t, out hidden)) u = hidden;
+        return u;
+    }
+
+    /// <summary>The knowledge whose supply goes as it truly is (FogOfWar.Knowledge.supplyAsItIs) on this thread's board, or null.</summary>
+    static FogOfWar.Knowledge SupplyLayer() {
+        BoardView v = BoardView.current;
+        FogOfWar.Knowledge k = v != null ? v.Fog : null;
+        return k != null && k.supplyAsItIs ? k : null;
+    }
+
+    /// <summary>An enemy unit the copy has not got stands on <paramref name="t"/>, for supply (SupplyOccupier): a carrier's transit cannot go there.</summary>
+    static bool BlockedForSupply(Unit transport, HexTile t) {
+        FogOfWar.Knowledge k = SupplyLayer();
+        if (k == null) return false;
+        Unit u = SupplyOccupier(t, k);
+        return u != null && u != t.occupier && Player.Hostile(u.owner, transport.owner);
+    }
+
+    /// <summary>Is an enemy unit the side in WithUnseen does not see standing on <paramref name="t"/> (false outside it)?</summary>
+    public static bool UnseenOn(HexTile t) {
+        Dictionary<HexTile, List<Unit>> u = unseen;
+        return u != null && t != null && u.ContainsKey(t);
+    }
+
+    /// <summary>Would <paramref name="transport"/> be exposed on <paramref name="t"/> to an enemy unit the side in WithUnseen does not see (false outside it)?</summary>
+    public static bool ExposedToUnseen(Unit transport, HexTile t) {
+        Dictionary<HexTile, List<Unit>> u = unseen;
+        if (u == null || transport == null || t == null) return false;
+        if (UnseenThreatOn(u, t, transport)) return true;
+        foreach (HexTile n in t.neighbors) if (n != null && UnseenThreatOn(u, n, transport)) return true;
+        return false;
+    }
+
+    static bool UnseenThreatOn(Dictionary<HexTile, List<Unit>> u, HexTile t, Unit transport) {
+        List<Unit> l;
+        if (!u.TryGetValue(t, out l)) return false;
+        foreach (Unit e in l) if (CouldAttack(e, transport)) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Could <paramref name="enemy"/> attack <paramref name="transport"/>: a hostile unit standing on the board (not cargo),
+    /// with strength and firepower, whose weapons can target the transport's locomotion (Unit.CanTarget: a fighter does not
+    /// intercept a truck). Its ammunition and this turn's state do not count: a unit that could fire on it is a threat.
+    /// </summary>
+    // (It reads the transport's owner and locomotion only: Exposed's memo keys on them.)
+    public static bool CouldAttack(Unit enemy, Unit transport) {
+        if (enemy == null || transport == null || enemy == transport) return false;
+        if (!Player.Hostile(enemy.owner, transport.owner)) return false;
+        if (enemy.trasnporter != null && enemy.trasnporter != enemy) return false;
+        return enemy.Strength > 0 && enemy.Firepower > 0 && enemy.CanTarget(transport);
+    }
+
+    /// <summary>
+    /// Enemy units <see cref="WithUnseen"/>'s side does not see, by the tile they really stand on (a board copy made for
+    /// that side has taken them off it). Per thread; null outside the scope.
+    /// </summary>
+    [System.ThreadStatic] static Dictionary<HexTile, List<Unit>> unseen;
+
+    /// <summary>
+    /// Until disposed, the enemy units <paramref name="viewer"/> does not see are known on this thread by where they really
+    /// stand (UnseenOn, ExposedToUnseen), for marking where they stop or turn a transit (UnseenContacts). Nothing the
+    /// network solves reads them. Made on the real board (enter a concealed
+    /// copy inside it, not around it); nothing (no scope) under no fog, for nobody, or inside a copy.
+    /// </summary>
+    public static System.IDisposable WithUnseen(Player viewer) { return new UnseenScope(viewer); }
+
+    /// <summary>The enemy units on the board <paramref name="viewer"/> does not see, by their tile (real board, under fog; null if none).</summary>
+    static Dictionary<HexTile, List<Unit>> UnseenBy(Player viewer) {
+        if (viewer == null || !FogOfWar.On || BoardView.current != null || UnitController.uc == null) return null;
+        Dictionary<HexTile, List<Unit>> map = null;
+        foreach (Unit u in UnitController.uc.units) {
+            if (u == null || u.tile == null || u.Strength <= 0 || u.owner == null || !Player.Hostile(u.owner, viewer)) continue;
+            if (u.trasnporter != null && u.trasnporter != u) continue;
+            if (FogOfWar.Sees(viewer, u)) continue;
+            if (map == null) map = new Dictionary<HexTile, List<Unit>>();
+            List<Unit> l;
+            if (!map.TryGetValue(u.tile, out l)) map[u.tile] = l = new List<Unit>();
+            l.Add(u);
+        }
+        return map;
+    }
+    sealed class UnseenScope : System.IDisposable {
+        readonly Dictionary<HexTile, List<Unit>> outer = unseen;
+        public UnseenScope(Player viewer) { Dictionary<HexTile, List<Unit>> map = UnseenBy(viewer); if (map != null) unseen = map; }
+        public void Dispose() { unseen = outer; }
+    }
+
+    /// <summary>
+    /// Known unknowns: where <paramref name="viewer"/>'s supply in transit is stopped, or sent round, by enemy units it does
+    /// not see. The network and the supply line show it as it truly is (the cut, or the detour); the contact says why. For
+    /// each of its supply units aboard a carrier not on supplied ground: the network's own way for it (Result.routes, none
+    /// if it is cut off) against the way RouteFor would choose on the board as its side knows it, to the same supply. Where
+    /// they differ, the first tile of the known way exposed to an unseen enemy (ExposedToUnseen), or beside one standing in
+    /// its way, is where the contact goes (ContactNear: never on one of the side's or its allies' units, never on the unseen
+    /// enemy itself). Real board, main thread; empty without fog or with no enemy unseen. Each tile once, in the board's
+    /// order.
+    /// </summary>
+    public static List<HexTile> UnseenContacts(Player viewer) {
+        List<HexTile> contacts = new List<HexTile>();
+        if (viewer == null || BoardView.current != null || !FogOfWar.On) return contacts;
+        using (AsPlayed()) using (WithUnseen(viewer)) {
+            if (unseen == null) return contacts;
+            Result real = SolveMoved(viewer, new Dictionary<SupplyPoint, HexTile>());
+            foreach (Unit u in viewer.units) {
+                SupplyPoint hub = u != null ? u.Hub : null;
+                if (hub == null || hub.producer || u.trasnporter == null || u.Strength <= 0) continue;
+                Unit carrier = Outermost(u.trasnporter);
+                HexTile at = carrier != null ? carrier.tile : null;
+                if (at == null) continue;
+                Result net = SolveWithout(viewer, hub);   // the supply it links to
+                if (SuppliedGround(at, net)) continue;   // no transit
+                List<HexTile> truly;
+                real.routes.TryGetValue(hub, out truly);
+                List<SupplyPoint> convoy = new List<SupplyPoint>(net.connectedHubs);
+                List<HexTile> known;
+                SupplyPoint via; HexTile landing;
+                using (FogOfWar.Concealing(viewer))
+                    known = RouteFor(carrier, at, hub, net, convoy, null, null, null, null, out via, out landing);
+                if (known == null || (truly != null && SameWay(truly, known))) continue;
+                for (int i = 0; i < known.Count; i++) {
+                    HexTile t = known[i];
+                    if (!ExposedToUnseen(carrier, t) && !(i + 1 < known.Count && UnseenOn(known[i + 1]))) continue;
+                    HexTile c = ContactNear(t, viewer);
+                    if (c != null && !contacts.Contains(c)) contacts.Add(c);
+                    break;
+                }
+            }
+        }
+        contacts.Sort((a, b) => CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
+        return contacts;
+    }
+
+    static bool SameWay(List<HexTile> a, List<HexTile> b) {
+        if (a.Count != b.Count) return false;
+        for (int i = 0; i < a.Count; i++) if (a[i] != b[i]) return false;
         return true;
     }
 
     /// <summary>
-    /// The tiles <paramref name="mover"/> on <paramref name="at"/> can reach in one move, its own tile included: the
-    /// player's own move field (AIPath.ThisTurnFrom, as HexTile shows moves), so supply reach is exactly movement.
+    /// UnseenContacts' marker tile for a stop at <paramref name="t"/>: that tile, else the nearest tile beside it (then the
+    /// board's order), that has an unseen enemy on or beside it, holds none of the viewer's side, and is not the unseen
+    /// enemy's own. Null if there is none.
     /// </summary>
-    static HashSet<HexTile> MoveReach(Unit mover, HexTile at) {
-        HashSet<HexTile> reach;
-        ReachKey k = new ReachKey { mover = mover, at = at, range = HexTactica.AI.AIPath.RangeThisTurn(mover), steps = HexTactica.AI.AIPath.StepBudget(mover) };
-        if (reachMemo != null && reachMemo.TryGetValue(k, out reach)) {
-            if (HexTactica.AI.AIMap.Verify) { Dictionary<ReachKey, HashSet<HexTile>> m = reachMemo; reachMemo = null; HexTactica.AI.AIMap.CountCheck("carrier reach", !MoveReach(mover, at).SetEquals(reach)); reachMemo = m; }
-            return reach;
-        }
-        reach = new HashSet<HexTile>();
-        reach.Add(at);
-        HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurnFrom(mover, at, HexTactica.AI.AIPath.RangeThisTurn(mover));
-        foreach (HexTile t in f.Tiles) if (f.ReachableThisTurn(t)) reach.Add(t);
-        HexTactica.AI.AIPath.Release(f);
-        if (reachMemo != null) reachMemo[k] = reach;
-        return reach;
+    static HexTile ContactNear(HexTile t, Player viewer) {
+        System.Func<HexTile, bool> ok = c => {
+            if (c == null || UnseenOn(c)) return false;
+            Unit on = c.occupier;
+            if (on != null && Player.Friendly(on.owner, viewer)) return false;
+            foreach (HexTile n in c.neighbors) if (UnseenOn(n)) return true;
+            return false;
+        };
+        if (ok(t)) return t;
+        List<HexTile> near = new List<HexTile>();
+        foreach (HexTile n in t.neighbors) if (ok(n)) near.Add(n);
+        if (near.Count == 0) return null;
+        near.Sort((a, b) => CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
+        return near[0];
     }
 
     static bool SuppliedGround(HexTile t, Result result) {
@@ -624,20 +995,16 @@ public static class SupplyNetwork {
 
     /// <summary>
     /// Can <paramref name="transport"/> standing on <paramref name="at"/> get its cargo to supplied ground in one move,
-    /// moving as it moves (its range, terrain, fuel and locomotion; enemies block)? A land transport or an aircraft must
+    /// moving as it moves (its range, terrain, fuel and locomotion; enemies block) and in transit (never on or beside an
+    /// enemy that could attack it: Exposed)? A land transport or an aircraft must
     /// reach a supplied ground tile itself; a ship, which cannot go ashore, one beside the water it reaches (or a
     /// supplied harbor it can enter). Water is never supplied ground (a ship's supply covers the water it floats on,
     /// but nothing links to that).
     /// </summary>
     public static bool WithinMoveOfSupply(Unit transport, HexTile at, Result result) {
         if (transport == null || at == null) return false;
-        if (SuppliedGround(at, result)) return true;
-        bool ship = LocomotionRules.IsNaval(transport.locomotion);
-        foreach (HexTile t in MoveReach(transport, at)) {
-            if (SuppliedGround(t, result)) return true;
-            if (ship) foreach (HexTile n in t.neighbors) if (SuppliedGround(n, result)) return true;
-        }
-        return false;
+        HexTile landing;
+        return DirectRoute(transport, at, result, out landing) != null;
     }
 
     /// <summary>
@@ -682,6 +1049,7 @@ public static class SupplyNetwork {
         HexTactica.AI.AIHeap<HexTile> open = new HexTactica.AI.AIHeap<HexTile>();
         cost[origin] = 0;
         open.Push(origin, 0);
+        FogOfWar.Knowledge layer = SupplyLayer();   // once, not per tile
 
         while (open.Count > 0) {
             HexTile current = open.Pop();
@@ -697,7 +1065,8 @@ public static class SupplyNetwork {
                 if (n == null || n.terrain == null) continue;
 
                 // An enemy unit standing in the corridor severs it.
-                if (n.occupier != null && Player.Hostile(n.occupier.owner, owner)) continue;
+                Unit no = SupplyOccupier(n, layer);
+                if (no != null && Player.Hostile(no.owner, owner)) continue;
                 // On and off a bridge only by road, as units move (a harbor is open from every side: LocomotionRules.IsHarbor).
                 if (!LocomotionRules.BridgeStep(current, n, loco)) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).

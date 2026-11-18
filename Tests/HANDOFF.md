@@ -16,8 +16,10 @@ my understanding rather than something I verified, it says so.
   to tell an AI mistake from a flawed idea. Merely acknowledging an issue isn't addressing it.
 - New behaviour goes behind an on/off flag in `AIProfile`; keep `Assets/AI/TestProfile.asset` in sync with code defaults.
 - Every test is a Unity-loadable scenario file (`Tests/Scenarios/*.dat`, written by `PROBE=export`).
-- AI thinking time matters more than strength. HQ is intentionally worse than an FOB. Fog supply display must not
-  reveal enemy positions. Never make visuals in code. Legacy AI is not used. No noise.
+- AI thinking time matters more than strength. HQ is intentionally worse than an FOB. The game must not lie to the player: under fog the
+  supply shown is the true network (a cut by unseen enemies shows as cut), except that an unseen enemy's own tile is
+  filled in so no one-tile hole pinpoints it (SupplyNetwork.FillUnseenHoles); a transit unseen enemies stop or send
+  round is marked with a contact, never on a friendly unit (SupplyNetwork.UnseenContacts). Never make visuals in code. Legacy AI is not used. No noise.
 - **Nothing about UI, unit or level design is written in code, and code is never used for configuration.** UI is
   prefabs (and scenes) edited in Unity — no widgets built, laid out, styled or "repaired" at run time, no fallbacks
   for an older prefab; units are their prefabs and levels are scenario files; tunable values live in assets or

@@ -209,6 +209,16 @@ namespace HexTactica.AI {
             return Compute(mover, Single(origin), 0, false, range);
         }
 
+        /// <summary>
+        /// As above, never entering a tile <paramref name="avoid"/> says no to (supply carried in transit keeps clear of
+        /// enemies that could attack its carrier: SupplyNetwork.TransitField). The origin is not asked.
+        /// </summary>
+        public static MoveField ThisTurnFrom(Unit mover, HexTile origin, int range, Func<HexTile, bool> avoid) {
+            long __p = AIPerf.Begin();
+            try { return ComputeField(mover, Single(origin), 0, false, range, avoid); }
+            finally { AIPerf.End("path: AIPath.Compute (maxTurns 0)" + AIPerf.Caller(), __p); }
+        }
+
         public static MoveField MultiTurn(Unit mover, int maxTurns) {
             return Compute(mover, Single(mover.tile), maxTurns, false);
         }
@@ -237,7 +247,7 @@ namespace HexTactica.AI {
                                         bool ignoreEnemies,
                                         int rangeOverride) {
             long __p = AIPerf.Begin();
-            try { return ComputeField(mover, sources, maxTurns, ignoreEnemies, rangeOverride); }
+            try { return ComputeField(mover, sources, maxTurns, ignoreEnemies, rangeOverride, null); }
             finally { AIPerf.End("path: AIPath.Compute (maxTurns " + (maxTurns <= 0 ? "0" : maxTurns <= 1 ? "1" : "2+") + ")" + AIPerf.Caller(), __p); }
         }
 
@@ -267,7 +277,8 @@ namespace HexTactica.AI {
                                         IEnumerable<KeyValuePair<HexTile, Eta>> sources,
                                         int maxTurns,
                                         bool ignoreEnemies,
-                                        int rangeOverride) {
+                                        int rangeOverride,
+                                        Func<HexTile, bool> avoid) {
 
             MoveField field;
             if (pool.Count > 0) { field = pool.Pop(); field.Reset(mover); } else field = new MoveField(mover);
@@ -306,6 +317,7 @@ namespace HexTactica.AI {
                     HexTile next = neighbors[i];
                     if (next == null || closed.Contains(next)) continue;
                     if (!CanPassThrough(mover, next, ignoreEnemies)) continue;
+                    if (avoid != null && avoid(next)) continue;
 
                     int cost = StepCost(mover, current, next);
                     if (cost == int.MaxValue) continue;

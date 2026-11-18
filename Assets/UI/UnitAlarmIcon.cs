@@ -60,6 +60,14 @@ public class UnitAlarmIcon : MonoBehaviour {
         return at.tile != null && UnfedAt(at);
     }
 
+    /// <summary>Does the screen show <paramref name="u"/> as not resupplied where it stands (as Starving reads it, whatever its supplies)?</summary>
+    public static bool UnfedShown(Unit u) {
+        if (u == null || u.owner == null) return false;
+        Unit at = u;
+        while (at.trasnporter != null) at = at.trasnporter;
+        return at.tile != null && UnfedAt(at);
+    }
+
     static bool UnfedAt(Unit x) {
         bool supplied = x.tile.isSuppliedShown(x.owner);
         Building service = Building.ServicingUnder(x);
