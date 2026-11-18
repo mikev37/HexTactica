@@ -714,19 +714,20 @@ public static class FogOfWar {
     /// believed in. Null (nothing to conceal) with fog off, for an AI that sees everything, or inside
     /// another copy (which already stands for someone's knowledge or the plain board). Main thread.
     /// </summary>
-    public static BoardView Conceal(Player p, bool beliefs = false, int memoryTurns = 0) {
+    public static BoardView Conceal(Player p, bool beliefs = false, int memoryTurns = 0, bool supplyAsItIs = false) {
         if (!On || p == null || BoardView.current != null || KnowsAll(p)) return null;
         Refresh();
         BoardView v = BoardView.Snapshot();
         Knowledge k = new Knowledge(p);
+        k.supplyAsItIs = supplyAsItIs;
         using (v.Enter()) k.Build(beliefs, memoryTurns);
         v.Fog = k;
         return v;
     }
 
     /// <summary>For using-blocks: enter <see cref="Conceal"/>'s copy, or nothing when there is nothing to conceal.</summary>
-    public static IDisposable Concealing(Player p, bool beliefs = false, int memoryTurns = 0) {
-        BoardView v = Conceal(p, beliefs, memoryTurns);
+    public static IDisposable Concealing(Player p, bool beliefs = false, int memoryTurns = 0, bool supplyAsItIs = false) {
+        BoardView v = Conceal(p, beliefs, memoryTurns, supplyAsItIs);
         return v != null ? v.Enter() : Nothing.instance;
     }
 
@@ -742,6 +743,15 @@ public static class FogOfWar {
         public readonly HashSet<Unit> visible = new HashSet<Unit>();
         /// <summary>Enemies standing where they were last seen.</summary>
         public readonly HashSet<Unit> believed = new HashSet<Unit>();
+        /// <summary>
+        /// A side's copy made for its AI's thinking (AIPlayer.NewView): its supply is solved as it truly is, as the screen
+        /// shows it (SupplyNetwork.SupplyOccupier). The enemy units it does not see stand, for supply alone, where they really
+        /// are (<see cref="supplyEnemies"/>), and those it only believes in are not where it believes them. Everything else
+        /// in the copy (movement, fire, threat) is what it knows.
+        /// </summary>
+        public bool supplyAsItIs;
+        /// <summary>supplyAsItIs: each enemy unit not seen, on the board (not cargo), by the tile it really stands on.</summary>
+        public readonly Dictionary<HexTile, Unit> supplyEnemies = new Dictionary<HexTile, Unit>();
         /// <summary>Tiles seen when it was made.</summary>
         public readonly HashSet<HexTile> visibleTiles = new HashSet<HexTile>();
         /// <summary>When each tile was last seen, and each building's owner as last seen (kept for a thought elsewhere; with beliefs only).</summary>
@@ -782,6 +792,7 @@ public static class FogOfWar {
             foreach (Unit u in all) {
                 if (u == null || Player.Friendly(u.owner, player) || u.tile == null) continue;   // ours and our allies': always known
                 if (u.Strength > 0 && Sees(player, u)) { visible.Add(u); continue; }
+                if (supplyAsItIs && u.Strength > 0 && u.tile.occupier == u) supplyEnemies[u.tile] = u;
                 if (u.tile.occupier == u) u.tile.occupier = null;
                 u.tile = null;
                 if (beliefs && u.trasnporter == null && u.Strength > 0) toBelieve.Add(u);

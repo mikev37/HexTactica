@@ -161,6 +161,13 @@ public class SupplyOverlay : MonoBehaviour {
         return SourcePathWithLegs(p, from, field, preview, null);
     }
 
+    /// <summary>Where <paramref name="hub"/>'s unit stands (or is being moved to, in <paramref name="preview"/>).</summary>
+    static HexTile TileOfHub(SupplyPoint hub, Dictionary<SupplyPoint, HexTile> preview) {
+        HexTile t;
+        if (preview != null && preview.TryGetValue(hub, out t) && t != null) return t;
+        return hub.myUnit != null ? hub.myUnit.tile : null;
+    }
+
     /// <summary>
     /// As above; <paramref name="legs"/>, if given, gets one entry per tile of the line: the carrier whose transit
     /// enters that tile (it drives or sails there carrying supply), or null where supply flows over the ground.
@@ -209,54 +216,36 @@ public class SupplyOverlay : MonoBehaviour {
             }
             if (source == null || source.producer) break;   // a building or the HQ: the root
             seen.Add(source);
-            Unit carrier = source.myUnit != null ? source.myUnit.trasnporter : null;
-            // A convoy: it links through another carrier (SupplyNetwork.CarriedLinked). The line goes the way this
-            // carrier would move to it (its own path), then on from that carrier.
-            SupplyPoint via;
-            if (carrier != null && whole.linkedThrough.TryGetValue(source, out via) && via != null && !seen.Contains(via)) {
-                HexTile viaTile = TileOfHub(via, preview);
-                List<HexTile> leg = viaTile != null ? MoveTo(carrier, top, viaTile) : null;
-                if (leg != null) {
-                    for (int i = 1; i < leg.Count; i++) points.Add(leg[i]);
-                    mark(carrier);
-                    if (points[points.Count - 1] != viaTile) points.Add(viaTile);
-                    mark(null);
-                    f = SolveWithout(p, seen, preview);
-                    at = viaTile; next = via;
-                    continue;
+            Unit carrier = SupplyNetwork.Outermost(source.myUnit != null ? source.myUnit.trasnporter : null);
+            // Carried supply links the way the network chose for it (Result.routes, SupplyNetwork.RouteFor): its carrier's
+            // tiles to the tile it links from, then on from there (through another carrier, on the ground beside a ship, or
+            // up the supply it reached). The line draws that one way, the network's own.
+            List<HexTile> route;
+            if (carrier != null && whole.routes.TryGetValue(source, out route) && route != null && route.Count > 0 && route[0] == top) {
+                for (int i = 1; i < route.Count; i++) points.Add(route[i]);
+                mark(carrier);
+                f = SolveWithout(p, seen, preview);
+                SupplyPoint via;
+                if (whole.linkedThrough.TryGetValue(source, out via) && via != null && !seen.Contains(via)) {
+                    HexTile viaTile = TileOfHub(via, preview);
+                    if (viaTile != null) {
+                        if (points[points.Count - 1] != viaTile) { points.Add(viaTile); mark(null); }
+                        at = viaTile; next = via;
+                        continue;
+                    }
                 }
+                HexTile landing;
+                if (whole.landings.TryGetValue(source, out landing) && landing != null) { points.Add(landing); mark(null); }
+                at = points[points.Count - 1];
+                if (at == top && f.DepthAt(at) <= 0) break;   // on supplied ground it no longer finds: nothing more to draw
+                continue;
             }
-            if (carrier != null) {
-                // Aboard: if its transport can drive straight to ground the network supplies without
-                // any supply unit that is aboard something, that is its link (rather than through a
-                // neighbouring transport's supply unit that itself links by driving back past it).
-                HashSet<SupplyPoint> ground = new HashSet<SupplyPoint>(seen);
-                foreach (Unit u in p.units) { SupplyPoint sp = u != null ? u.Hub : null; if (sp != null && u.trasnporter != null) ground.Add(sp); }
-                List<HexTile> direct = DriveToSupply(carrier, top, SolveWithout(p, ground, preview));
-                if (direct != null && Linked(p, source, preview)) {
-                    for (int i = 1; i < direct.Count; i++) points.Add(direct[i]);
-                    MarkDrive(legs, points, carrier);
-                    f = SolveWithout(p, seen, preview);
-                    at = direct[direct.Count - 1];
-                    continue;
-                }
-            }
+            if (carrier != null) break;   // carried and not linked: stranded, it feeds itself
             // What feeds it: the network without it and without every hub already on the line
             // (else the next hub's field, which reaches back over this one, would lead the line
             // back to it: two hubs drawn feeding each other, neither reaching the HQ).
             f = SolveWithout(p, seen, preview);
-            if (f.DepthAt(top) <= 0) {
-                // Aboard a transport it links over the transport's move (SupplyNetwork): the line
-                // follows the way the transport would drive to supplied ground (or beside it) and
-                // carries on from there.
-                Unit transport = source.myUnit != null ? source.myUnit.trasnporter : null;
-                if (transport == null || !Linked(p, source, preview)) break;   // stranded: it feeds itself
-                List<HexTile> drive = DriveToSupply(transport, top, f);
-                if (drive == null) break;
-                for (int i = 1; i < drive.Count; i++) points.Add(drive[i]);
-                MarkDrive(legs, points, transport);
-                top = drive[drive.Count - 1];
-            }
+            if (f.DepthAt(top) <= 0) break;
             at = top;
         }
         mark(null);
@@ -265,87 +254,8 @@ public class SupplyOverlay : MonoBehaviour {
         return points;
     }
 
-    /// <summary>A drive (DriveToSupply) just added to the line: its tiles are the carrier's transit; a ship's last, the land it puts its cargo on, is not.</summary>
-    static void MarkDrive(List<Unit> legs, List<HexTile> points, Unit carrier) {
-        if (legs == null) return;
-        while (legs.Count < points.Count) legs.Add(carrier);
-        HexTile last = points[points.Count - 1];
-        if (LocomotionRules.IsNaval(carrier.locomotion) && last.terrain != null && last.terrain.elevation >= 0) legs[legs.Count - 1] = null;
-    }
 
 
-    /// <summary>
-    /// The way <paramref name="transport"/>, standing on <paramref name="from"/>, would drive in one move
-    /// to ground supplied in <paramref name="f"/> (a ship, which cannot go ashore: beside it, where its cargo can step off): the tiles
-    /// from <paramref name="from"/> to the nearest such tile (fewest movement points, then the board's
-    /// order), then the supplied tile beside it if it is not supplied itself. The way the network truly links it
-    /// (SupplyNetwork.TransitField, its range this turn): around every enemy, clear of any that could attack it, those its
-    /// side does not see too (the line does not lie; where those turned or stopped it, SupplyContacts marks a contact).
-    /// Null if there is none.
-    /// </summary>
-    static List<HexTile> DriveToSupply(Unit transport, HexTile from, SupplyNetwork.Result f) {
-        bool exposed = SupplyNetwork.Exposed(transport, from);
-        HexTactica.AI.MoveField field = SupplyNetwork.TransitField(transport, from, HexTactica.AI.AIPath.RangeThisTurn(transport));
-        HexTile best = null, step = null; int bestCost = int.MaxValue;
-        bool ship = LocomotionRules.IsNaval(transport.locomotion);
-        foreach (HexTile t in field.Tiles) {
-            if (exposed && t != from) continue;   // exposed where it stands: no transit (only ground it is on, or beside for a ship)
-            if (!field.ReachableThisTurn(t) && t != from) continue;
-            HexTile onto = null;
-            if (Ground(t, f)) onto = t;
-            else if (ship) foreach (HexTile n in t.neighbors) if (Ground(n, f) && (onto == null || CombatMath.Precedes(n, onto))) onto = n;
-            if (onto == null) continue;
-            int cost = t == from ? 0 : field.Get(t).used;
-            if (best == null || cost < bestCost || (cost == bestCost && CombatMath.Precedes(t, best))) { best = t; bestCost = cost; step = onto; }
-        }
-        List<HexTile> path = null;
-        if (best != null) {
-            path = best == from ? new List<HexTile> { from } : field.PathTo(best);
-            if (path.Count == 0) path.Add(from);
-            if (step != best) path.Add(step);
-        }
-        HexTactica.AI.AIPath.Release(field);
-        return path;
-    }
-
-    /// <summary>Supplied ground (SupplyNetwork.WithinMoveOfSupply's rule: water is never supplied ground).</summary>
-    static bool Ground(HexTile t, SupplyNetwork.Result f) {
-        return t != null && t.terrain != null && t.terrain.elevation >= 0 && f.DepthAt(t) > 0;
-    }
-
-    /// <summary>Where <paramref name="hub"/>'s unit stands (or is being moved to, in <paramref name="preview"/>).</summary>
-    static HexTile TileOfHub(SupplyPoint hub, Dictionary<SupplyPoint, HexTile> preview) {
-        HexTile t;
-        if (preview != null && preview.TryGetValue(hub, out t) && t != null) return t;
-        return hub.myUnit != null ? hub.myUnit.tile : null;
-    }
-
-    /// <summary>
-    /// The way <paramref name="carrier"/>, on <paramref name="from"/>, would move in one move to <paramref name="target"/>
-    /// or beside it (a ship cannot sail onto the land an aircraft is over): its own path in transit, the way the network
-    /// truly links it, as DriveToSupply. Null if it cannot get there.
-    /// </summary>
-    static List<HexTile> MoveTo(Unit carrier, HexTile from, HexTile target) {
-        if (from == target) return new List<HexTile> { from };
-        if (SupplyNetwork.Exposed(carrier, from)) return null;
-        HexTactica.AI.MoveField field = SupplyNetwork.TransitField(carrier, from, HexTactica.AI.AIPath.RangeThisTurn(carrier));
-        HexTile best = null; int bestCost = int.MaxValue;
-        foreach (HexTile t in field.Tiles) {
-            if (!field.ReachableThisTurn(t) && t != from) continue;
-            if (t != target && !target.neighbors.Contains(t)) continue;
-            int cost = t == from ? 0 : field.Get(t).used;
-            // Onto it if it can (an aircraft over a ship), else the nearest tile beside it; then fewest movement points, then board order.
-            bool isT = t == target, bestT = best == target;
-            if (best == null || (isT && !bestT) || (isT == bestT && (cost < bestCost || (cost == bestCost && CombatMath.Precedes(t, best))))) { best = t; bestCost = cost; }
-        }
-        List<HexTile> path = null;
-        if (best != null) {
-            path = best == from ? new List<HexTile> { from } : field.PathTo(best);
-            if (path.Count == 0) path.Add(from);
-        }
-        HexTactica.AI.AIPath.Release(field);
-        return path;
-    }
 
     static bool Linked(Player p, SupplyPoint hub, Dictionary<SupplyPoint, HexTile> preview) {
         SupplyNetwork.Result r = preview != null ? SupplyNetwork.SolveMoved(p, preview) : SupplyNetwork.Solve(p, false);

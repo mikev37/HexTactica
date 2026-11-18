@@ -709,7 +709,7 @@ public static partial class Scenarios {
         make("fog-rule-supply-cut-unseen", "supplyCutUnseen", (a, o) => {
                  Put("Supplies", a, -3, 0); Put("Fighter", a, 0, 0);
                  for (int y = -5; y <= 0; y++) Put("Grunt", o, 5, y); },   // parked: the check rings the helicopter with them
-             "Supply cut by enemies the side does not see (the helicopter case): Blue's supply unit at (-3,0), linked to the HQ, supplies a Blue helicopter at (0,0); six stealthy Red grunts ring the helicopter, cutting it off (a stealthy land unit is not spotted by an aircraft beside it). The screen does not lie: the helicopter's tile shows out of supply and the helicopter unfed, as it truly is; the ring's own tiles show as Blue's supply would be without them (no one-tile hole pinpoints a grunt; a supplied ring round an unsupplied tile is the oddity that says look). No contact: no transit. At Blue's next turn it is not refuelled or rearmed. Also reported, not checked: whether the AI, planning with what it knows, reads the helicopter as resupplied there.");
+             "Supply cut by enemies the side does not see (the helicopter case): Blue's supply unit at (-3,0), linked to the HQ, supplies a Blue helicopter at (0,0); six stealthy Red grunts ring the helicopter, cutting it off (a stealthy land unit is not spotted by an aircraft beside it). The screen does not lie: the helicopter's tile shows out of supply and the helicopter unfed, as it truly is; the ring's own tiles show as Blue's supply would be without them (no one-tile hole pinpoints a grunt; a supplied ring round an unsupplied tile is the oddity that says look). No contact: no transit. At Blue's next turn it is not refuelled or rearmed. The AI, on its copy of the board (AIPlayer.NewView), reads the helicopter's supply as the screen shows it, cut off (FogOfWar.Knowledge.supplyAsItIs), while the grunts are still not on its copy for movement and fire.");
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
@@ -1241,17 +1241,19 @@ public static partial class Scenarios {
                     bool noContact = SupplyNetwork.UnseenContacts(a).Count == 0;
                     // What the AI knows: its map as it reads the board, made on its side's knowledge (as AIPlayer thinks).
                     bool aiThinks;
-                    using (FogOfWar.Concealing(a, true, 2)) {
+                    bool aiKnowsGrunts;
+                    using (FogOfWar.Concealing(a, true, 2, true)) {   // as AIPlayer.NewView makes it
                         HexTactica.AI.AIMap m = new HexTactica.AI.AIMap(a, a.GetComponent<AIPlayer>().Profile);
                         aiThinks = m.Heals(heli, heli.tile);
+                        aiKnowsGrunts = ring.Exists(g => g.tile != null);   // its movement and fire still do not
                     }
                     heli.fuel = 5; heli.ammo = 0;
                     endTurn(); endTurn();   // Red's turn, then the start of Blue's
                     bool starved = heli.fuel < 5 && heli.ammo == 0;
                     detail = "layout (helicopter in supply, supply unit linked) " + layout + "; ring of grunts unseen " + unseen + ": helicopter's tile shown in supply " + shown + ", truly " + truly
                            + "; shown as not resupplied " + icon + "; the ring's own tiles shown as without it " + ringFilled + " (" + filledIn + " of 6 filled in)" + "; no contact (no transit) " + noContact
-                           + "; the AI reads it as resupplied there " + aiThinks + "; at Blue's next turn: fuel " + heli.fuel + " (was 5), ammo " + heli.ammo + " (not resupplied " + starved + ")";
-                    return layout && unseen && !shown && !truly && icon && ringFilled && noContact && starved;
+                           + "; the AI reads it as resupplied there " + aiThinks + " (as the screen: no), the grunts on its copy " + aiKnowsGrunts + " (no)" + "; at Blue's next turn: fuel " + heli.fuel + " (was 5), ammo " + heli.ammo + " (not resupplied " + starved + ")";
+                    return layout && unseen && !shown && !truly && icon && ringFilled && noContact && !aiThinks && !aiKnowsGrunts && starved;
                 } finally {
                     gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
                     if (blueAI != null) blueAI.enabled = true;

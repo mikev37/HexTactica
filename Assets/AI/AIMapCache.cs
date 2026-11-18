@@ -86,8 +86,30 @@ namespace HexTactica.AI {
                 foreach (KeyValuePair<Unit, Mark> kv in marks)
                     if (!now.ContainsKey(kv.Key)) { changedUnits.Add(kv.Key); movedUnits.Add(kv.Key); if (kv.Value.tile != null) TileChanged(kv.Key, kv.Value.tile); }
             }
-            marks = now; terrainSig = ts; supplySig = bs;
+            // Enemy units the copy has not got, where they really stand for supply (FogOfWar.Knowledge.supplyAsItIs): one
+            // that moved, came or went changes the supply as the networks are solved, though not the copy's marks.
+            Dictionary<Unit, HexTile> hiddenNow = null;
+            FogOfWar.Knowledge k = BoardView.current != null ? BoardView.current.Fog : null;
+            if (k != null && k.supplyAsItIs && k.supplyEnemies.Count > 0) {
+                hiddenNow = new Dictionary<Unit, HexTile>();
+                foreach (KeyValuePair<HexTile, Unit> kv in k.supplyEnemies) hiddenNow[kv.Value] = kv.Key;
+            }
+            if (!first) {
+                if (hiddenNow != null)
+                    foreach (KeyValuePair<Unit, HexTile> kv in hiddenNow) {
+                        HexTile was = null;
+                        if (hiddenMarks != null && hiddenMarks.TryGetValue(kv.Key, out was) && was == kv.Value) continue;
+                        if (was != null) TileChanged(kv.Key, was);
+                        TileChanged(kv.Key, kv.Value);
+                    }
+                if (hiddenMarks != null)
+                    foreach (KeyValuePair<Unit, HexTile> kv in hiddenMarks)
+                        if (hiddenNow == null || !hiddenNow.ContainsKey(kv.Key)) TileChanged(kv.Key, kv.Value);
+            }
+            marks = now; terrainSig = ts; supplySig = bs; hiddenMarks = hiddenNow;
         }
+        /// <summary>ReadDelta: the last read's enemy units not on the copy, by the tile they really stand on for supply.</summary>
+        Dictionary<Unit, HexTile> hiddenMarks;
 
         void TileChanged(Unit u, HexTile t) { changedTiles.Add(t); changedBy.Add(new KeyValuePair<Unit, HexTile>(u, t)); }
 
