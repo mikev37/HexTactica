@@ -635,6 +635,8 @@ public static partial class Scenarios {
             ScenarioFile.Save(Path.Combine(Dir, name + ".dat"), test, ai, other, ai);
             n++;
         };
+        makeFog("fog-ai-unseen-at-once", "fogAiUnseen", (a, o) => { Put("Tank", a, -3, 0); Put("Tank", a, 3, 1); Put("Grunt", o, 4, 0); },
+             "Blue (the AI) moves while Red watches (Red's grunt sees 2 tiles). A Blue tank moving far from anything Red sees is all in fog: done at once, with no pause after it (AIExecutor.LastActionSeen false; FogSettings.hiddenAiActionsAtOnce). One moving beside Red's grunt is seen and played as usual. With the setting off, every move counts as seen.", "Human");
         makeFog("fog-rule-unit-detector", "fogUnitDetect", (a, o) => { Put("Grunt", a, -4, 0); Put("Recon", o, 1, 0); },
              "A unit's detectRange works as a Radar's: a stealthy Red recon (stealth 3) five tiles from a Blue grunt (vision 2) is unseen; with the grunt's detectRange 5 it is seen, and six tiles off it is not. Each time it goes from unseen to seen it is announced once (FogOfWar.StealthSpotted, the cue for the detection sound), not again while it stays seen.", "Human");
         makeFog("fog-rule-int-ops", "fogIntOps", (a, o) => {
@@ -2603,6 +2605,28 @@ public static partial class Scenarios {
                 detail = "hull " + p[0].size.x + "x" + p[0].size.y + " at " + p[0].position.x + "," + p[0].position.y + "; turret at " + p[1].position.x + "," + p[1].position.y + " " + p[1].angle
                        + "deg; flag " + p[2].angle + "deg scale " + p[2].scale.x + "," + p[2].scale.y + "; empty " + none;
                 return hull && turret && flag && none;
+            }
+            case "fogAiUnseen": {
+                PinVision(); FogOfWar.Refresh();
+                Unit far = Rig.At(-3, 0).occupier, near = Rig.At(3, 1).occupier;
+                gc.fogViewer = gc.players.IndexOf(o); gc.fogShownOnScreen = true;
+                AIMap map = new AIMap(a, a.GetComponent<AIPlayer>().Profile);
+                FogSettings fs = FogSettings.Instance;
+                bool was = fs.hiddenAiActionsAtOnce;
+                try {
+                    fs.hiddenAiActionsAtOnce = true;
+                    bool viewerRed = FogOfWar.Viewer == o;
+                    bool movedFar = HexTactica.AI.AIExecutor.Execute(HexTactica.AI.AIAction.Move(far, Rig.At(-3, 1), 0f, "test"), map, true) && far.tile == Rig.At(-3, 1);
+                    bool farSeen = HexTactica.AI.AIExecutor.LastActionSeen;
+                    bool movedNear = HexTactica.AI.AIExecutor.Execute(HexTactica.AI.AIAction.Move(near, Rig.At(3, 2), 0f, "test"), map, true) && near.tile == Rig.At(3, 2);
+                    bool nearSeen = HexTactica.AI.AIExecutor.LastActionSeen;
+                    fs.hiddenAiActionsAtOnce = false;
+                    map = new AIMap(a, a.GetComponent<AIPlayer>().Profile);
+                    bool movedOff = HexTactica.AI.AIExecutor.Execute(HexTactica.AI.AIAction.Move(far, Rig.At(-4, 1), 0f, "test"), map, true) && far.tile == Rig.At(-4, 1);
+                    bool offSeen = HexTactica.AI.AIExecutor.LastActionSeen;
+                    detail = "viewer Red " + viewerRed + "; far tank moved " + movedFar + ", counted seen " + farSeen + "; tank beside Red's grunt moved " + movedNear + ", seen " + nearSeen + "; setting off: moved " + movedOff + ", seen " + offSeen;
+                    return viewerRed && movedFar && !farSeen && movedNear && nearSeen && movedOff && offSeen;
+                } finally { fs.hiddenAiActionsAtOnce = was; }
             }
             case "fogUnitDetect": {
                 PinVision();

@@ -147,6 +147,8 @@ public class AIPlayer : MonoBehaviour, IAIController {
             if (TakeScriptChange(t.unit)) { Dispatch(); return; }
             Outcome o = Act(t, false);
             if (o == Outcome.NotDone) { Dispatch(); return; }   // nothing was done: the next unit thinks at once
+            // Done all in fog (FogSettings.hiddenAiActionsAtOnce): nothing to watch, so the next unit thinks at once.
+            if (o == Outcome.Did && !HexTactica.AI.AIExecutor.LastActionSeen) { Dispatch(); return; }
             timer = actionInterval;
             return;
         }
@@ -158,7 +160,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
             AIAction a = held; holding = false;
             if (TakeScriptChange(a.unit)) { Dispatch(); return; }
             Run(a.unit, a, false);
-            timer = actionInterval;
+            timer = HexTactica.AI.AIExecutor.LastActionSeen ? actionInterval : 0f;
             return;
         }
 

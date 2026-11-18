@@ -510,6 +510,27 @@ namespace HexTactica.Harness {
 
         /// <summary>Orders are played with no animation: the board is as it will be at once (catching a networked game up to where it stands).</summary>
         public static bool Instant;
+
+        /// <summary>
+        /// Live orders (BeginOrders): whether the viewer can see any of these tiles. An order whose every tile is hidden
+        /// from them is played at once rather than animated (it would only be time spent looking at fog). Null: all
+        /// are watched.
+        /// </summary>
+        public static Func<IEnumerable<HexTile>, bool> Watched;
+        /// <summary>The last order NextOrder played could be seen (or nothing it touched was checked). False: it was all in fog, played at once.</summary>
+        public static bool LastOrderSeen { get; private set; } = true;
+        static bool orderSeen, orderChecked;
+        /// <summary>Live orders played so far: seen by the viewer, and all in fog (played at once). For the tests.</summary>
+        public static int OrdersSeen, OrdersInFog;
+
+        /// <summary>Whether to animate what happens on these tiles: Animate, and the viewer sees one of them. Notes what was seen for LastOrderSeen.</summary>
+        static bool Shown(IEnumerable<HexTile> tiles) {
+            if (Watched == null) return Animate;
+            orderChecked = true;
+            bool seen = Watched(tiles);
+            if (seen) orderSeen = true;
+            return Animate && seen;
+        }
         /// <summary>The batch of orders being played live (BeginOrders), or null.</summary>
         static Turn live;
 
@@ -555,8 +576,11 @@ namespace HexTactica.Harness {
             if (Step >= t.actions.Count) { live = null; LastAction = ""; return false; }
             int e = t.actions[Step++];
             LastAction = t.events[e].Trim();
+            orderSeen = false; orderChecked = false;
             try { Apply(t, e); FinishLive(t, e); }
             catch (Exception ex) { Desync("playing it failed: " + ex); }
+            LastOrderSeen = Watched == null || orderSeen || !orderChecked;
+            if (LastOrderSeen) OrdersSeen++; else OrdersInFog++;
             if (Step >= t.actions.Count) { live = null; LastAction = ""; }
             return true;
         }
@@ -645,6 +669,7 @@ namespace HexTactica.Harness {
                 }
                 if (attacker == null) { Desync("no " + at.side + " " + at.unit + " at (" + at.fromX + "," + at.fromY + ") to attack: the attack is not played"); return; }
                 if (defender == null) { Desync("no " + at.targetSide + " " + at.targetUnit + " at (" + at.atX + "," + at.atY + ") to be attacked: the attack is not played"); return; }
+                Shown(new[] { attacker.tile, defender.tile });
                 attacker.OrderAttack(defender);
                 CheckAttack(at, attacker, defender);
             } else if (GameLog.Lines.ReadStrikeFired(line, sides, out fired)) {
@@ -653,6 +678,7 @@ namespace HexTactica.Harness {
                 Unit striker = UnitAt(fired.side, fired.unit, fired.fromX, fired.fromY);
                 HexTile aim = Tile(fired.x, fired.y);
                 if (striker == null || aim == null) { Desync("no " + fired.side + " " + fired.unit + " at (" + fired.fromX + "," + fired.fromY + ") to strike (" + fired.x + "," + fired.y + ")"); return; }
+                Shown(new[] { striker.tile, aim });
                 if (!Strikes.Order(striker, aim)) Desync(fired.unit + " could not strike (" + fired.x + "," + fired.y + ") on the board as it is");
             } else if (GameLog.Lines.ReadCargo(line, sides, out cargo)) {
                 Unit transport = UnitAt(cargo.transportSide, cargo.transportUnit, cargo.transportX, cargo.transportY);
@@ -665,12 +691,14 @@ namespace HexTactica.Harness {
                     Unit rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, true));
                     if (rider == null) rider = transport.transported.Find(u => u != null && Is(u, cargo.side, cargo.unit, false));
                     HexTile where = Tile(cargo.x, cargo.y);
+                    Shown(new[] { transport.tile, where });
                     if (rider == null) Desync("no " + cargo.unit + " aboard " + GameLog.Lines.Who(transport) + " to get off");
                     else if (!Transporting.Unload(transport, rider, where)) Desync(GameLog.Lines.Who(rider) + " could not get off " + GameLog.Lines.Who(transport) + " at " + (where != null ? D(where) : "?"));
                 }
             } else if (GameLog.Lines.ReadBuy(line, sides, out side, out unit, out cost)) {
                 Buy(line, side, unit, cost);
             } else if (GameLog.Lines.ReadResigns(line, sides, out a)) {
+                orderSeen = true;
                 GameController gc = GameController.gc;
                 Player p = Side(a), was = gc != null ? gc.activePlayer : null;
                 if (gc == null || p == null) { Desync("no side " + a + " to resign"); return; }
@@ -762,7 +790,7 @@ namespace HexTactica.Harness {
         static void Board(Unit rider, Unit transport) {
             List<HexTile> steps = rider.tile == transport.tile || transport.tile.neighbors.Contains(rider.tile) ? new List<HexTile> { rider.tile } : PathBeside(rider, transport.tile);
             if (steps == null) { Desync(GameLog.Lines.Who(rider) + " at " + D(rider.tile) + " has no path to " + GameLog.Lines.Who(transport) + " at " + D(transport.tile) + " here"); return; }
-            rider.WalkAndBoard(steps, transport, Animate);
+            rider.WalkAndBoard(steps, transport, Shown(new List<HexTile>(steps) { transport.tile }));
             if (rider.trasnporter != transport) Desync(GameLog.Lines.Who(rider) + " did not get aboard " + GameLog.Lines.Who(transport) + " at " + D(transport.tile) + " (it is at " + D(rider.tile) + ")");
         }
 
@@ -784,7 +812,7 @@ namespace HexTactica.Harness {
             string order = " from " + D(was) + " ordered to " + D(target) + (ordered != null ? " (stopped short at " + D(to) + " in the recorded game)" : "");
             List<HexTile> steps = PathTo(u, target);
             if (steps == null) { Desync(GameLog.Lines.Who(u) + order + ": the game here finds no path; it stays at " + D(was)); return; }
-            u.MoveAlong(steps, thenAttacks, Animate);
+            u.MoveAlong(steps, thenAttacks, Shown(steps));
             Unit ambusher = u.ambushedBy;
             if (ambusher != null) {
                 // The hidden unit's fire is the log's next attack by it on this unit where it stopped: played with the move.

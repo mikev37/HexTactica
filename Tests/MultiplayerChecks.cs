@@ -287,6 +287,7 @@ public static partial class Scenarios {
         long blueId = l.ai.id, redId = l.other.id;
         string code = MpStartGame(l.ai, l.other, false, 0);
         int desyncsBefore = Replay.Desyncs.Count;
+        int seenBefore = Replay.OrdersSeen, fogBefore = Replay.OrdersInFog;
         bool ok = true;
         int caughtUp = 0, watched = 0;
         bool gatesOk = true;
@@ -357,8 +358,12 @@ public static partial class Scenarios {
         r.Add("opened from: " + string.Join(", ", opens.ToArray()) + "; each reopening from the device's own copy, only the other's turn played " + fromCopies
               + "; no board saved twice (only the game log's turn boards, and an index) " + noBoardCopies + "; an index the log disagrees with passed over " + badCheck + ", one naming the wrong board passed over " + badBoard);
         r.Add("rounds: bob caught up " + caughtUp + "/3, alice watched live " + watched + "/2; log " + log.Count + " entries in order " + inOrder + " (" + orders + " of orders: " + moves + " moves, " + attacks + " attacks; " + turns + " turn ends); desyncs " + desyncs + "; only the player to move may act, each sees through their own side " + gatesOk);
+        // Each order the other device made is judged by what this one's player sees: at a watchable pace if any tile it
+        // touches is in their sight, else at once. Either way it plays to the same board (the boards matched above).
+        int seen = Replay.OrdersSeen - seenBefore, inFog = Replay.OrdersInFog - fogBefore;
+        r.Add("orders played here: " + seen + " in sight, " + inFog + " all in fog (played at once), fog " + Rig.gc.fogOfWar);
         detail = string.Join("; ", r.ToArray());
-        return ok && caughtUp == 3 && watched == 2 && inOrder && turns == 6 && moves > 0 && desyncs == 0 && gatesOk && fromCopies && badCheck && badBoard && noBoardCopies;
+        return ok && caughtUp == 3 && watched == 2 && inOrder && turns == 6 && seen + inFog > 0 && (Rig.gc.fogOfWar || inFog == 0) && moves > 0 && desyncs == 0 && gatesOk && fromCopies && badCheck && badBoard && noBoardCopies;
     }
 
     static string aliceCheck = "", bobCheck = "";

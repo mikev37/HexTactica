@@ -98,6 +98,11 @@ the backend (`IMpStore`). Nothing in them depends on a particular backend.
 - Under the banner, a small strip shows only when there is something to say: catching up on what happened, watching,
   a side waiting for the host, a problem reaching the store, and **Skip their turn** when it applies.
 - The turn clock sits beside the banner.
+- **Others' moves you cannot see take no time.** Each order from another device is played at a watchable pace only if
+  you can see a tile it touches (its path, the attacker or target, where a strike lands, where a unit is bought or
+  unloaded); an order all in fog is played at once, and the next follows straight away (`Replay.Watched`,
+  `MpSession.Watching`). With fog off, or for a spectator, everything is shown. The AI's own turns work the same way
+  (any game, not only networked), behind **FogSettings ▸ Hidden AI Actions At Once** (on by default).
 - In the lobby, the **join code** has a panel of its own on the right (just the code, e.g. K7Q2MX, and Copy). The
   code is all anyone types; the game's name shown elsewhere with it (Tidal Ridge#K7Q2MX) is only a label.
 - The main menu's games list shows on the main panel only (not over Host Game, Join Game or Load Scenario).
