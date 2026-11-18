@@ -752,6 +752,12 @@ public static class FogOfWar {
         public bool supplyAsItIs;
         /// <summary>supplyAsItIs: each enemy unit not seen, on the board (not cargo), by the tile it really stands on.</summary>
         public readonly Dictionary<HexTile, Unit> supplyEnemies = new Dictionary<HexTile, Unit>();
+        /// <summary>
+        /// supplyAsItIs: by tile (HexTile.viewId), whether supply may see someone other than the copy's occupier there (a
+        /// unit not seen really stands there, or a believed one is placed there). Everywhere else supply reads the occupier
+        /// as it is (SupplyNetwork.SupplyOccupier asks this first: one array read on its hot path).
+        /// </summary>
+        internal bool[] supplyDiffers;
         /// <summary>Tiles seen when it was made.</summary>
         public readonly HashSet<HexTile> visibleTiles = new HashSet<HexTile>();
         /// <summary>When each tile was last seen, and each building's owner as last seen (kept for a thought elsewhere; with beliefs only).</summary>
@@ -808,6 +814,13 @@ public static class FogOfWar {
                 u.tile = g.tile;
                 u.Strength = Mathf.Max(1, g.strength);
                 believed.Add(u);
+            }
+            if (supplyAsItIs) {
+                int n = 0;
+                if (HexGenerator.hg != null && HexGenerator.hg.tiles != null) foreach (HexTile t in HexGenerator.hg.tiles) if (t != null && t.viewId >= n) n = t.viewId + 1;
+                supplyDiffers = new bool[n];
+                foreach (HexTile t in supplyEnemies.Keys) if (t.viewId >= 0 && t.viewId < n) supplyDiffers[t.viewId] = true;
+                foreach (Unit u in believed) if (u.tile != null && u.tile.viewId >= 0 && u.tile.viewId < n) supplyDiffers[u.tile.viewId] = true;
             }
             if (beliefs) {
                 Dictionary<string, Kind> ks;

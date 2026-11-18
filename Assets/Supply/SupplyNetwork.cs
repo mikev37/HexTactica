@@ -540,6 +540,7 @@ public static class SupplyNetwork {
         Dictionary<HexTile, int> cost = new Dictionary<HexTile, int> { { at, 0 } };
         Queue<HexTile> q = new Queue<HexTile>();
         q.Enqueue(at);
+        FogOfWar.Knowledge layer = SupplyLayer();
         while (q.Count > 0) {
             HexTile t = q.Dequeue();
             if (t != at && linkedBoats.Contains(t)) return true;
@@ -550,7 +551,7 @@ public static class SupplyNetwork {
             foreach (HexTile n in t.neighbors) {
                 if (n == null || n.terrain == null || cost.ContainsKey(n)) continue;
                 if (n.terrain.elevation >= 0 && !IsOurYard(n, owner)) continue;   // water (and our yards) only
-                Unit no = SupplyOccupier(n);
+                Unit no = SupplyOccupier(n, layer);
                 if (no != null && Player.Hostile(no.owner, owner)) continue;
                 cost[n] = cost[t] + 1;
                 q.Enqueue(n);
@@ -632,10 +633,8 @@ public static class SupplyNetwork {
         if (transport == null || at == null) return false;
         // Its transit, for AIMap's cache (Result.transits): recorded here, in the solve that owns the result.
         result.transits.Add(new KeyValuePair<HexTile, int>(at, HexTactica.AI.AIPath.RangeThisTurn(transport)));
-        List<SupplyPoint> convoy = new List<SupplyPoint>();
-        foreach (SupplyPoint other in hubs) if (other != null && activated.Contains(other)) convoy.Add(other);
         SupplyPoint via; HexTile landing;
-        List<HexTile> route = RouteFor(transport, at, hub, result, convoy, o => CarrierOf(o, moved), o => TileOf(o, movedHub, hypotheticalTile, moved), out via, out landing);
+        List<HexTile> route = RouteFor(transport, at, hub, result, hubs, activated, movedHub, hypotheticalTile, moved, out via, out landing);
         if (route == null) return false;
         result.routes[hub] = route;
         if (via != null) result.linkedThrough[hub] = via;
@@ -646,8 +645,9 @@ public static class SupplyNetwork {
     /// <summary>
     /// The one choice of the way a carrier links the supply it carries, for the network (CarriedLinked), the supply line
     /// and the contacts alike. <paramref name="transport"/> on <paramref name="at"/> carrying <paramref name="hub"/>, with
-    /// <paramref name="result"/> the supply it could link to and <paramref name="convoy"/> the linked supply units whose
-    /// carriers it could link through:
+    /// <paramref name="result"/> the supply it could link to and the supply units of <paramref name="hubs"/> in
+    /// <paramref name="activated"/> (all of them, if null) those whose carriers it could link through (where the moved ones
+    /// stand, and what carries them, as the solve has them):
     /// - on supplied ground: no transit (only its own tile);
     /// - a land carrier or an aircraft: the tile of supplied ground in reach (MoveReach) that takes fewest movement points,
     ///   then the board's order; an aircraft with none, a convoy (below);
@@ -659,8 +659,8 @@ public static class SupplyNetwork {
     ///   beside it, fewest movement points first.
     /// The tiles from <paramref name="at"/>, or null if it does not link.
     /// </summary>
-    static List<HexTile> RouteFor(Unit transport, HexTile at, SupplyPoint hub, Result result, List<SupplyPoint> convoy,
-                                  System.Func<SupplyPoint, Unit> carrierOf, System.Func<SupplyPoint, HexTile> tileOf, out SupplyPoint via, out HexTile landing) {
+    static List<HexTile> RouteFor(Unit transport, HexTile at, SupplyPoint hub, Result result, List<SupplyPoint> hubs, HashSet<SupplyPoint> activated,
+                                  SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved, out SupplyPoint via, out HexTile landing) {
         via = null; landing = null;
         bool ship = LocomotionRules.IsNaval(transport.locomotion), air = LocomotionRules.IsAirborne(transport.locomotion);
         if (!ship) {
@@ -670,17 +670,17 @@ public static class SupplyNetwork {
         }
         Reach reach = null;
         SupplyPoint best = null; HexTile bestTile = null;
-        foreach (SupplyPoint other in convoy) {
-            if (other == null || other == hub || other.producer || other.myUnit == null) continue;
-            Unit c = carrierOf(other);
+        foreach (SupplyPoint other in hubs) {
+            if (other == null || other == hub || other.producer || other.myUnit == null || (activated != null && !activated.Contains(other))) continue;
+            Unit c = CarrierOf(other, moved);
             if (c == null || c == other.myUnit || c == transport || c.owner != transport.owner) continue;
             bool cShip = LocomotionRules.IsNaval(c.locomotion), cAir = LocomotionRules.IsAirborne(c.locomotion);
-            HexTile ct = tileOf(other);
+            HexTile ct = TileOf(other, movedHub, hypotheticalTile, moved);
             if (ct == null) continue;
             if (ship ? !(cShip || cAir) : !(cShip && Unit.BordersLand(ct))) continue;
             if (reach == null) reach = MoveReach(transport, at);
-            bool near = reach.tiles.Contains(ct);
-            if (!near) foreach (HexTile n in ct.neighbors) if (n != null && reach.tiles.Contains(n)) { near = true; break; }
+            bool near = reach.Contains(ct);
+            if (!near) foreach (HexTile n in ct.neighbors) if (n != null && reach.Contains(n)) { near = true; break; }
             if (near && (best == null || CombatMath.Precedes(ct, bestTile))) { best = other; bestTile = ct; }
         }
         if (best == null) return ship ? DirectRoute(transport, at, result, out landing) : null;
@@ -715,24 +715,27 @@ public static class SupplyNetwork {
     /// </summary>
     public sealed class Reach {
         public readonly HexTile at;
-        public readonly HashSet<HexTile> tiles = new HashSet<HexTile>();
         readonly Dictionary<HexTile, int> cost = new Dictionary<HexTile, int>();
         readonly Dictionary<HexTile, HexTile> parent = new Dictionary<HexTile, HexTile>();
         public Reach(HexTile at) { this.at = at; }
-        internal void Add(HexTile t, int used, HexTile from) { tiles.Add(t); cost[t] = used; if (from != null) parent[t] = from; }
+        List<HexTile> ordered;
+        internal void Add(HexTile t, int used, HexTile from) { cost[t] = used; if (from != null) parent[t] = from; ordered = null; }
+        /// <summary>Is <paramref name="t"/> reached?</summary>
+        public bool Contains(HexTile t) { return t != null && cost.ContainsKey(t); }
+        /// <summary>The tiles reached.</summary>
+        public ICollection<HexTile> Tiles { get { return cost.Keys; } }
         /// <summary>The tile <paramref name="goal"/> accepts that takes fewest movement points, then the board's order; null if none.</summary>
         public HexTile Best(System.Func<HexTile, bool> goal) {
-            HexTile best = null; int bestCost = int.MaxValue;
-            foreach (HexTile t in tiles) {
-                if (!goal(t)) continue;
-                int c = cost[t];
-                if (best == null || c < bestCost || (c == bestCost && CombatMath.Precedes(t, best))) { best = t; bestCost = c; }
+            if (ordered == null) {   // once per reach: then each ask stops at the first tile that will do
+                ordered = new List<HexTile>(cost.Keys);
+                ordered.Sort((a, b) => cost[a] != cost[b] ? cost[a].CompareTo(cost[b]) : CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
             }
-            return best;
+            for (int i = 0; i < ordered.Count; i++) if (goal(ordered[i])) return ordered[i];
+            return null;
         }
         /// <summary>The tiles from <see cref="at"/> to <paramref name="t"/>, both included (null if not reached).</summary>
         public List<HexTile> PathTo(HexTile t) {
-            if (t == null || !tiles.Contains(t)) return null;
+            if (!Contains(t)) return null;
             List<HexTile> path = new List<HexTile>();
             int guard = 0;
             for (HexTile cur = t; cur != null && guard++ < 4096; ) {
@@ -754,7 +757,7 @@ public static class SupplyNetwork {
         Reach reach;
         ReachKey k = new ReachKey { mover = mover, at = at, range = HexTactica.AI.AIPath.RangeThisTurn(mover), steps = HexTactica.AI.AIPath.StepBudget(mover), view = BoardView.current };
         if (reachMemo != null && reachMemo.TryGetValue(k, out reach)) {
-            if (HexTactica.AI.AIMap.Verify) { Dictionary<ReachKey, Reach> m = reachMemo; reachMemo = null; HexTactica.AI.AIMap.CountCheck("carrier reach", !MoveReach(mover, at).tiles.SetEquals(reach.tiles)); reachMemo = m; }
+            if (HexTactica.AI.AIMap.Verify) { Dictionary<ReachKey, Reach> m = reachMemo; reachMemo = null; HexTactica.AI.AIMap.CountCheck("carrier reach", !new HashSet<HexTile>(MoveReach(mover, at).Tiles).SetEquals(reach.Tiles)); reachMemo = m; }
             return reach;
         }
         long __q = HexTactica.AI.AIPerf.Begin();
@@ -778,6 +781,7 @@ public static class SupplyNetwork {
     /// exposed is the caller's to ask (a carrier exposed where it stands has no transit). Release it when done.
     /// </summary>
     public static HexTactica.AI.MoveField TransitField(Unit transport, HexTile from, int range) {
+        if (SupplyLayer() == null) return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t));
         return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t) || BlockedForSupply(transport, t));
     }
 
@@ -800,9 +804,10 @@ public static class SupplyNetwork {
     }
 
     static bool ExposedNow(Unit transport, HexTile t) {
-        if (CouldAttack(SupplyOccupier(t), transport)) return true;
+        FogOfWar.Knowledge layer = SupplyLayer();
+        if (CouldAttack(SupplyOccupier(t, layer), transport)) return true;
         List<HexTile> ns = t.neighbors;
-        for (int i = 0; i < ns.Count; i++) if (ns[i] != null && CouldAttack(SupplyOccupier(ns[i]), transport)) return true;
+        for (int i = 0; i < ns.Count; i++) if (ns[i] != null && CouldAttack(SupplyOccupier(ns[i], layer), transport)) return true;
         return false;
     }
 
@@ -812,23 +817,33 @@ public static class SupplyNetwork {
     /// really is, and one it only believes in is not where it is believed to be. Its movement and fire still go by what it
     /// knows. Elsewhere (the real board, the screen's known board): the occupier.
     /// </summary>
-    static Unit SupplyOccupier(HexTile t) {
+    static Unit SupplyOccupier(HexTile t) { return SupplyOccupier(t, SupplyLayer()); }
+
+    /// <summary>SupplyOccupier with the thread's layer already looked up (SupplyLayer: the hot loops look it up once).</summary>
+    static Unit SupplyOccupier(HexTile t, FogOfWar.Knowledge k) {
         Unit u = t.occupier;
-        BoardView v = BoardView.current;
-        FogOfWar.Knowledge k = v != null ? v.Fog : null;
-        if (k == null || !k.supplyAsItIs) return u;
+        if (k == null) return u;
+        bool[] d = k.supplyDiffers;
+        int i = t.viewId;
+        if (d == null || i < 0 || i >= d.Length || !d[i]) return u;
         if (u != null && k.believed.Contains(u)) u = null;
         Unit hidden;
         if (u == null && k.supplyEnemies.TryGetValue(t, out hidden)) u = hidden;
         return u;
     }
 
-    /// <summary>An enemy unit the copy has not got stands on <paramref name="t"/>, for supply (SupplyOccupier): a carrier's transit cannot go there.</summary>
-    static bool BlockedForSupply(Unit transport, HexTile t) {
+    /// <summary>The knowledge whose supply goes as it truly is (FogOfWar.Knowledge.supplyAsItIs) on this thread's board, or null.</summary>
+    static FogOfWar.Knowledge SupplyLayer() {
         BoardView v = BoardView.current;
         FogOfWar.Knowledge k = v != null ? v.Fog : null;
-        if (k == null || !k.supplyAsItIs) return false;
-        Unit u = SupplyOccupier(t);
+        return k != null && k.supplyAsItIs ? k : null;
+    }
+
+    /// <summary>An enemy unit the copy has not got stands on <paramref name="t"/>, for supply (SupplyOccupier): a carrier's transit cannot go there.</summary>
+    static bool BlockedForSupply(Unit transport, HexTile t) {
+        FogOfWar.Knowledge k = SupplyLayer();
+        if (k == null) return false;
+        Unit u = SupplyOccupier(t, k);
         return u != null && u != t.occupier && Player.Hostile(u.owner, transport.owner);
     }
 
@@ -932,7 +947,7 @@ public static class SupplyNetwork {
                 List<HexTile> known;
                 SupplyPoint via; HexTile landing;
                 using (FogOfWar.Concealing(viewer))
-                    known = RouteFor(carrier, at, hub, net, convoy, o => CarrierOf(o, null), o => TileOf(o, null, null, null), out via, out landing);
+                    known = RouteFor(carrier, at, hub, net, convoy, null, null, null, null, out via, out landing);
                 if (known == null || (truly != null && SameWay(truly, known))) continue;
                 for (int i = 0; i < known.Count; i++) {
                     HexTile t = known[i];
@@ -1034,6 +1049,7 @@ public static class SupplyNetwork {
         HexTactica.AI.AIHeap<HexTile> open = new HexTactica.AI.AIHeap<HexTile>();
         cost[origin] = 0;
         open.Push(origin, 0);
+        FogOfWar.Knowledge layer = SupplyLayer();   // once, not per tile
 
         while (open.Count > 0) {
             HexTile current = open.Pop();
@@ -1049,7 +1065,7 @@ public static class SupplyNetwork {
                 if (n == null || n.terrain == null) continue;
 
                 // An enemy unit standing in the corridor severs it.
-                Unit no = SupplyOccupier(n);
+                Unit no = SupplyOccupier(n, layer);
                 if (no != null && Player.Hostile(no.owner, owner)) continue;
                 // On and off a bridge only by road, as units move (a harbor is open from every side: LocomotionRules.IsHarbor).
                 if (!LocomotionRules.BridgeStep(current, n, loco)) continue;

@@ -73,7 +73,11 @@ A supply unit aboard something links to its side's network through what carries 
   stop a transit or send it round, a **contact** marker (Assets/Resources/SupplyContact.prefab, placed by SupplyContacts;
   SupplyNetwork.UnseenContacts) sits on the first tile of the way the carrier would take knowing only what it sees that
   they touch: something is on or beside it. It never sits on one of the side's units or on the unseen enemy itself.
-  The AI plans with the enemies it knows of, and does not use contacts.
+  The AI's supply goes the same way: on its copy of the board, supply is solved as it truly is (enemy units it does not
+  see stand where they really are for supply alone: FogOfWar.Knowledge.supplyAsItIs), so it reads its supply as its
+  screen would show it; its movement, fire and threat still go by what it knows. It does not use contacts in planning.
+- The way a carrier links its supply is chosen once, by the network (SupplyNetwork.RouteFor, recorded in Result.routes):
+  the supply line draws that way, and the contacts compare it with the way the side would choose knowing what it sees.
 - A ship links when, in one move, it can get beside supplied ground or onto a supplied harbor. Any supplied shore
   counts, not only a harbor: a shoreline city in supply links a supply ship lying off it.
 - A ship also links through another carrier with supply aboard that is linked (a convoy, any length), and through an
