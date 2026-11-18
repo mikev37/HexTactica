@@ -838,6 +838,18 @@ public class Unit : MonoBehaviour
         transform.position = tile.unitPlacement.position;
         spriteTile = tile;
         if (animator != null) animator.SetBool("Moving", false);
+        // Its cargo still walking to it (boarded where the transport was) is aboard now, not left to walk after it.
+        for (int i = 0; i < transported.Count; i++) if (transported[i] != null) transported[i].SnapAboard();
+    }
+
+    /// <summary>Aboard at once: no walk to the transport, no slide into the slot (boarding not animated).</summary>
+    void SnapAboard() {
+        if (trasnporter == null || boardingWalk.Count == 0) return;
+        boardingWalk.Clear();
+        SettleAboard(trasnporter);
+        transform.localPosition = Vector3.zero;
+        if (scaleKnown) transform.localScale = homeScale * cargoScale;
+        if (animator != null) animator.SetBool("Moving", false);
     }
 
     internal bool MoveAlong(List<HexTile> steps, bool thenAttacks, bool animate) {
@@ -1023,7 +1035,9 @@ public class Unit : MonoBehaviour
             path = new List<HexTile>(steps);   // OnBoarded plays it out before stepping in
             if (animator != null) animator.SetBool("Moving", true);
         }
-        return Transporting.BoardFrom(transport, this, from);
+        bool boarded = Transporting.BoardFrom(transport, this, from);
+        if (boarded && !animate) SnapAboard();
+        return boarded;
     }
 
     /// <summary>Move without animation or tile-state churn. Used by the headless harness.</summary>
