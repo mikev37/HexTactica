@@ -18,7 +18,7 @@ namespace HexTactica.AI {
     /// when that unit's mark is unchanged and no changed tile lies within that distance plus one (a tile beside where
     /// it could go can block it). A supply network stands when its supply units' marks, the buildings and the terrain
     /// are unchanged and no changed tile lies on it or beside it (an enemy unit there would cut it, one gone could let
-    /// it through), nor within a move + 1 of a carrier whose transit it looked at (SupplyNetwork.Result.transits).
+    /// it through), nor an enemy's within a move + 1 of a carrier whose transit it looked at (SupplyNetwork.Result.transits).
     ///
     /// AIVERIFY (the harness): every cache kept is also worked out afresh and compared; Mismatches counts the differences.
     /// </summary>
@@ -34,6 +34,8 @@ namespace HexTactica.AI {
         long terrainSig;
         /// <summary>Tiles whose occupant changed since the last read.</summary>
         readonly HashSet<HexTile> changedTiles = new HashSet<HexTile>();
+        /// <summary>Each tile a unit left or took since the last read, with the unit (changedTiles, by who).</summary>
+        readonly List<KeyValuePair<Unit, HexTile>> changedBy = new List<KeyValuePair<Unit, HexTile>>();
         /// <summary>Units whose mark changed (or that appeared or went) since the last read.</summary>
         readonly HashSet<Unit> changedUnits = new HashSet<Unit>();
         /// <summary>Units whose reach could have changed: moved, boarded or put down, fuel or ammunition changed, appeared or went.</summary>
@@ -59,6 +61,7 @@ namespace HexTactica.AI {
         /// <summary>Read the board's marks and work out what changed since the last read.</summary>
         void ReadDelta() {
             changedTiles.Clear();
+            changedBy.Clear();
             changedUnits.Clear();
             Dictionary<Unit, Mark> now = new Dictionary<Unit, Mark>();
             List<Unit> all = UnitController.uc != null ? UnitController.uc.units : null;
@@ -74,17 +77,19 @@ namespace HexTactica.AI {
             if (!first) {
                 foreach (KeyValuePair<Unit, Mark> kv in now) {
                     Mark was;
-                    if (!marks.TryGetValue(kv.Key, out was)) { changedUnits.Add(kv.Key); movedUnits.Add(kv.Key); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); continue; }
+                    if (!marks.TryGetValue(kv.Key, out was)) { changedUnits.Add(kv.Key); movedUnits.Add(kv.Key); if (kv.Value.tile != null) TileChanged(kv.Key, kv.Value.tile); continue; }
                     if (was.Same(kv.Value)) continue;
                     changedUnits.Add(kv.Key);
                     if (!was.SameReach(kv.Value)) movedUnits.Add(kv.Key);
-                    if (was.tile != kv.Value.tile || was.rides != kv.Value.rides) { if (was.tile != null) changedTiles.Add(was.tile); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); }
+                    if (was.tile != kv.Value.tile || was.rides != kv.Value.rides) { if (was.tile != null) TileChanged(kv.Key, was.tile); if (kv.Value.tile != null) TileChanged(kv.Key, kv.Value.tile); }
                 }
                 foreach (KeyValuePair<Unit, Mark> kv in marks)
-                    if (!now.ContainsKey(kv.Key)) { changedUnits.Add(kv.Key); movedUnits.Add(kv.Key); if (kv.Value.tile != null) changedTiles.Add(kv.Value.tile); }
+                    if (!now.ContainsKey(kv.Key)) { changedUnits.Add(kv.Key); movedUnits.Add(kv.Key); if (kv.Value.tile != null) TileChanged(kv.Key, kv.Value.tile); }
             }
             marks = now; terrainSig = ts; supplySig = bs;
         }
+
+        void TileChanged(Unit u, HexTile t) { changedTiles.Add(t); changedBy.Add(new KeyValuePair<Unit, HexTile>(u, t)); }
 
         /// <summary>
         /// The map's shape as land movement sees it: every tile's terrain, damage and road, and every building's place,
@@ -114,8 +119,8 @@ namespace HexTactica.AI {
             return far;
         }
         /// <summary>
-        /// No changed tile on or beside the network, nor within a move + 1 of a carrier whose transit it looked at (a unit
-        /// there could block the carrier's way, or expose a tile of it: SupplyNetwork.Exposed).
+        /// No changed tile on or beside the network, nor an enemy's within a move + 1 of a carrier whose transit it looked at
+        /// (one there could block the carrier's way, or expose a tile of it: SupplyNetwork.Exposed).
         /// </summary>
         bool NetworkUntouched(SupplyNetwork.Result r) {
             if (r == null) return false;
@@ -123,7 +128,13 @@ namespace HexTactica.AI {
                 if (r.depth.ContainsKey(t)) return false;
                 foreach (HexTile n in t.neighbors) if (n != null && r.depth.ContainsKey(n)) return false;
             }
-            for (int i = 0; i < r.transits.Count; i++) if (!Untouched(r.transits[i].Key, r.transits[i].Value)) return false;   // its way: within its range; what exposes it: one more
+            // Its way lies within its range; what exposes it, one more. Only an enemy's coming or going changes a transit (it
+            // passes through friends); the network's own supply units moving are HubsUnchanged's.
+            if (r.transits.Count > 0)
+                foreach (KeyValuePair<Unit, HexTile> c in changedBy) {
+                    if (c.Key == null || r.owner == null || !Player.Hostile(c.Key.owner, r.owner)) continue;
+                    for (int i = 0; i < r.transits.Count; i++) if (c.Value.Distance(r.transits[i].Key) <= r.transits[i].Value + 1) return false;
+                }
             return true;
         }
         bool HubsUnchanged(Player p) {

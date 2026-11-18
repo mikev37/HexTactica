@@ -2,9 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Known unknowns on the board: a contact marker on each tile where the screen's player's supply in transit is cut off,
-/// or sent another way, by an enemy it does not see (SupplyNetwork.UnseenContacts). It says why a transport's supply is
-/// cut when nothing in sight explains it; it says only that something is on or beside that tile, never what.
+/// Known unknowns on the board: a contact marker on each tile where the screen's player's supply is truly not received
+/// because of an enemy it does not see (SupplyOverlay.UnseenContacts): a corridor cut, or a transit stopped. The supply
+/// shown spreading never gives an unseen enemy away; a unit that misses supply is shown unfed, and the marker says
+/// why. It says only that something is on or beside that tile, never what.
 ///
 /// The marker is its prefab, Assets/Resources/SupplyContact.prefab (any look: sprites, text, animation), stood at the
 /// tile's unit placement. Worked out again whenever supply is published or the screen's side changes. Installed in
@@ -35,7 +36,7 @@ public class SupplyContacts : MonoBehaviour {
         if (v == viewer && SupplyNetwork.Published == published) return;
         viewer = v;
         published = SupplyNetwork.Published;
-        Show(v != null ? SupplyNetwork.UnseenContacts(v) : new List<HexTile>());
+        Show(v != null ? SupplyOverlay.UnseenContacts(v) : new List<HexTile>());
     }
 
     void Show(List<HexTile> tiles) {

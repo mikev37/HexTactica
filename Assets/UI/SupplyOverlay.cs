@@ -158,7 +158,17 @@ public class SupplyOverlay : MonoBehaviour {
 
     /// <summary>As above, with the supply units in <paramref name="preview"/> standing where it says (a move being previewed), if given.</summary>
     public static List<HexTile> SourcePath(Player p, HexTile from, SupplyNetwork.Result field, Dictionary<SupplyPoint, HexTile> preview) {
+        return SourcePathWithLegs(p, from, field, preview, null);
+    }
+
+    /// <summary>
+    /// As above; <paramref name="legs"/>, if given, gets one entry per tile of the line: the carrier whose transit
+    /// enters that tile (it drives or sails there carrying supply), or null where supply flows over the ground.
+    /// </summary>
+    public static List<HexTile> SourcePathWithLegs(Player p, HexTile from, SupplyNetwork.Result field, Dictionary<SupplyPoint, HexTile> preview, List<Unit> legs) {
         List<HexTile> points = new List<HexTile>();
+        if (legs != null) legs.Clear();
+        System.Action<Unit> mark = c => { if (legs != null) while (legs.Count < points.Count) legs.Add(c); };
         if (from == null) return points;
         HashSet<SupplyPoint> seen = new HashSet<SupplyPoint>();
         // Supply carried on 'from' (a ship out at sea gives nothing where it floats): its line starts there, whatever the field.
@@ -178,9 +188,11 @@ public class SupplyOverlay : MonoBehaviour {
                 // cross the land beside two ships to the one that supplies it, not along the water.)
                 top = at;
                 if (points.Count == 0 || points[points.Count - 1] != at) points.Add(at);
+                mark(null);
                 source = HubOn(p, at, preview, seen);
             } else {
                 top = Climb(at, f, points);
+                mark(null);
                 // Several supply units can share a tile (all aboard one transport): each in turn.
                 source = HubOn(p, top, preview, seen);
                 // Up on the shore with nothing there: the supply came from a ship beside it (the sea is never supplied,
@@ -192,7 +204,7 @@ public class SupplyOverlay : MonoBehaviour {
                         SupplyPoint h = Carried(HubOn(p, n, preview, seen));
                         if (h != null && (ship == null || CombatMath.Precedes(n, ship))) { ship = n; aboard = h; }
                     }
-                    if (ship != null) { points.Add(ship); top = ship; source = aboard; }
+                    if (ship != null) { points.Add(ship); mark(null); top = ship; source = aboard; }
                 }
             }
             if (source == null || source.producer) break;   // a building or the HQ: the root
@@ -206,7 +218,9 @@ public class SupplyOverlay : MonoBehaviour {
                 List<HexTile> leg = viaTile != null ? MoveTo(carrier, top, viaTile) : null;
                 if (leg != null) {
                     for (int i = 1; i < leg.Count; i++) points.Add(leg[i]);
+                    mark(carrier);
                     if (points[points.Count - 1] != viaTile) points.Add(viaTile);
+                    mark(null);
                     f = SolveWithout(p, seen, preview);
                     at = viaTile; next = via;
                     continue;
@@ -221,6 +235,7 @@ public class SupplyOverlay : MonoBehaviour {
                 List<HexTile> direct = DriveToSupply(carrier, top, SolveWithout(p, ground, preview));
                 if (direct != null && Linked(p, source, preview)) {
                     for (int i = 1; i < direct.Count; i++) points.Add(direct[i]);
+                    MarkDrive(legs, points, carrier);
                     f = SolveWithout(p, seen, preview);
                     at = direct[direct.Count - 1];
                     continue;
@@ -239,13 +254,84 @@ public class SupplyOverlay : MonoBehaviour {
                 List<HexTile> drive = DriveToSupply(transport, top, f);
                 if (drive == null) break;
                 for (int i = 1; i < drive.Count; i++) points.Add(drive[i]);
+                MarkDrive(legs, points, transport);
                 top = drive[drive.Count - 1];
             }
             at = top;
         }
+        mark(null);
         if (preview != null) SupplyNetwork.SolvePreview(p, preview);   // the preview stays on the board
         else SupplyNetwork.Solve(p, false);
         return points;
+    }
+
+    /// <summary>A drive (DriveToSupply) just added to the line: its tiles are the carrier's transit; a ship's last, the land it puts its cargo on, is not.</summary>
+    static void MarkDrive(List<Unit> legs, List<HexTile> points, Unit carrier) {
+        if (legs == null) return;
+        while (legs.Count < points.Count) legs.Add(carrier);
+        HexTile last = points[points.Count - 1];
+        if (LocomotionRules.IsNaval(carrier.locomotion) && last.terrain != null && last.terrain.elevation >= 0) legs[legs.Count - 1] = null;
+    }
+
+    // ------------------------------------------------------------------ known unknowns
+
+    /// <summary>
+    /// Where <paramref name="viewer"/>'s supply is truly not received because of an enemy it does not see, under fog: one
+    /// tile for each break, for the contact markers (SupplyContacts). Spreading supply as the screen shows it never gives
+    /// an unseen enemy away (SupplyNetwork.ShownAsKnown); a unit that misses supply is told why.
+    ///
+    /// For each of its units the network truly does not reach but the screen shows reached (a supply unit truly cut off but
+    /// shown linked; any other unit the network feeds, truly unsupplied but shown supplied): its supply line as the side
+    /// knows the board (SourcePath on the concealed board, as the line is drawn), and on it, from the unit back to the HQ,
+    /// the first place an unseen enemy stops it: a tile of a carrier's transit exposed to one (SupplyNetwork.ExposedToUnseen:
+    /// that tile), or a tile one stands on where supply flows over the ground (the tile before it on the line, beside it).
+    /// The supply truly fails only through such a place (a way as known that no unseen enemy stops is a way the real
+    /// network has too), so every such unit has one. Only that tile is told: something is on or beside it, never what.
+    /// Real board, main thread; empty without fog or with no enemy unseen. Each tile once, in the board's order.
+    /// </summary>
+    public static List<HexTile> UnseenContacts(Player viewer) {
+        List<HexTile> contacts = new List<HexTile>();
+        if (viewer == null || BoardView.current != null || !FogOfWar.On) return contacts;
+        using (SupplyNetwork.AsPlayed()) using (SupplyNetwork.WithUnseen(viewer)) {
+            if (!SupplyNetwork.AnyUnseen) return contacts;
+            SupplyNetwork.Result real = SupplyNetwork.SolveMoved(viewer, new Dictionary<SupplyPoint, HexTile>());
+            List<Unit> hubs = new List<Unit>(), fed = new List<Unit>();
+            foreach (Unit u in viewer.units) {
+                if (u == null || u.tile == null || u.Strength <= 0) continue;
+                SupplyPoint sp = u.Hub;
+                if (sp != null && !sp.producer) { if (!real.connectedHubs.Contains(sp)) hubs.Add(u); continue; }
+                if (sp != null || u.trasnporter != null) continue;
+                if (LocomotionRules.NeedsBase(u.locomotion) && !LocomotionRules.ResuppliedInSupply(u.locomotion)) continue;   // the network does not feed it
+                if (!u.tile.isSupplied(viewer)) fed.Add(u);
+            }
+            if (hubs.Count == 0 && fed.Count == 0) return contacts;
+            using (FogOfWar.Concealing(viewer)) {
+                SupplyNetwork.Result known = SupplyNetwork.SolveMoved(viewer, new Dictionary<SupplyPoint, HexTile>());
+                List<HexTile> from = new List<HexTile>();
+                foreach (Unit u in hubs) if (known.connectedHubs.Contains(u.Hub) && !from.Contains(u.tile)) from.Add(u.tile);
+                foreach (Unit u in fed) if (known.DepthAt(u.tile) > 0 && !from.Contains(u.tile)) from.Add(u.tile);
+                List<Unit> legs = new List<Unit>();
+                foreach (HexTile t in from) {
+                    List<HexTile> line = SourcePathWithLegs(viewer, t, known, null, legs);
+                    HexTile c = FirstUnseenStop(line, legs);
+                    if (c != null && !contacts.Contains(c)) contacts.Add(c);
+                }
+            }
+        }
+        contacts.Sort((a, b) => CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
+        return contacts;
+    }
+
+    /// <summary>UnseenContacts' rule along one line: the first place an unseen enemy stops the supply, null if none does.</summary>
+    static HexTile FirstUnseenStop(List<HexTile> line, List<Unit> legs) {
+        for (int i = 0; i < line.Count; i++) {
+            HexTile t = line[i];
+            Unit leg = i < legs.Count ? legs[i] : null, next = i + 1 < legs.Count ? legs[i + 1] : null;
+            if (leg != null && SupplyNetwork.ExposedToUnseen(leg, t)) return t;
+            if (next != null && SupplyNetwork.ExposedToUnseen(next, t)) return t;   // where a transit starts: the carrier's own tile
+            if (SupplyNetwork.UnseenOn(t)) return i > 0 ? line[i - 1] : t;   // stands in the way: beside it
+        }
+        return null;
     }
 
     /// <summary>
@@ -254,13 +340,13 @@ public class SupplyOverlay : MonoBehaviour {
     /// from <paramref name="from"/> to the nearest such tile (fewest movement points, then the board's
     /// order), then the supplied tile beside it if it is not supplied itself. Planned as its side knows
     /// the board (fog of war): around the enemies it sees, never through them; in transit (SupplyNetwork.TransitField),
-    /// clear of every enemy that could attack it, those it does not see too (the network is cut by them, and
-    /// SupplyContacts marks where). Null if there is none.
+    /// clear of every enemy it sees that could attack it (one it does not see cuts the network, not the line: the line is
+    /// the way as known, and SupplyContacts marks where on it the supply is truly stopped). Null if there is none.
     /// </summary>
     static List<HexTile> DriveToSupply(Unit transport, HexTile from, SupplyNetwork.Result f) {
         HexTactica.AI.MoveField field;
         bool exposed;
-        using (SupplyNetwork.WithUnseen(transport.owner)) using (FogOfWar.Concealing(transport.owner)) {
+        using (FogOfWar.Concealing(transport.owner)) {
             exposed = SupplyNetwork.Exposed(transport, from);
             field = SupplyNetwork.TransitField(transport, from, transport.moveRange);
         }
@@ -307,7 +393,7 @@ public class SupplyOverlay : MonoBehaviour {
         if (from == target) return new List<HexTile> { from };
         HexTactica.AI.MoveField field;
         bool exposed;
-        using (SupplyNetwork.WithUnseen(carrier.owner)) using (FogOfWar.Concealing(carrier.owner)) {
+        using (FogOfWar.Concealing(carrier.owner)) {
             exposed = SupplyNetwork.Exposed(carrier, from);
             field = SupplyNetwork.TransitField(carrier, from, carrier.moveRange);
         }

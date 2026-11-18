@@ -60,8 +60,18 @@ public class UnitAlarmIcon : MonoBehaviour {
         return at.tile != null && UnfedAt(at);
     }
 
+    /// <summary>Does the screen show <paramref name="u"/> as not resupplied where it stands (as Starving reads it, whatever its supplies)?</summary>
+    public static bool UnfedShown(Unit u) {
+        if (u == null || u.owner == null) return false;
+        Unit at = u;
+        while (at.trasnporter != null) at = at.trasnporter;
+        return at.tile != null && UnfedAt(at);
+    }
+
     static bool UnfedAt(Unit x) {
-        bool supplied = x.tile.isSuppliedShown(x.owner);
+        // Truly (as the turn's upkeep reads it), not as the borders show it under fog: a unit that misses supply is told,
+        // and a contact marker says why (SupplyContacts).
+        bool supplied = x.tile.isSupplied(x.owner);
         Building service = Building.ServicingUnder(x);
         if (service != null) {
             bool network = (LocomotionRules.ResuppliedInSupply(x.locomotion) || !LocomotionRules.NeedsBase(x.locomotion)) && supplied;
