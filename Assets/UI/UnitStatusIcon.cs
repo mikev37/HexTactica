@@ -106,12 +106,9 @@ public class UnitStatusIcon : MonoBehaviour {
                     && unit.supplies <= Mathf.CeilToInt(unit.suppliesMax * lowThreshold);
 
             case UnitStatusKind.Unsupplied:
-                // Whether it truly receives supply, not as the borders show it: under fog the borders leave out enemies its
-                // side does not see (they never give one away), but a unit that misses supply is told (and a contact
-                // marker says why: SupplyContacts).
                 return unit.tile != null
                     && unit.owner != null
-                    && !unit.tile.isSupplied(unit.owner);
+                    && !unit.tile.isSuppliedShown(unit.owner);
 
             case UnitStatusKind.HubDisconnected:
                 return hub != null && !hub.connected;

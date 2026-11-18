@@ -69,9 +69,7 @@ public class UnitAlarmIcon : MonoBehaviour {
     }
 
     static bool UnfedAt(Unit x) {
-        // Truly (as the turn's upkeep reads it), not as the borders show it under fog: a unit that misses supply is told,
-        // and a contact marker says why (SupplyContacts).
-        bool supplied = x.tile.isSupplied(x.owner);
+        bool supplied = x.tile.isSuppliedShown(x.owner);
         Building service = Building.ServicingUnder(x);
         if (service != null) {
             bool network = (LocomotionRules.ResuppliedInSupply(x.locomotion) || !LocomotionRules.NeedsBase(x.locomotion)) && supplied;

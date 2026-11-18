@@ -83,9 +83,9 @@ public class HexTile : MonoBehaviour
     }
 
     /// <summary>
-    /// Each player's supply as the screen's player knows the board (SupplyNetwork.ShownAsKnown, real board only):
-    /// under fog an enemy that player does not see does not cut supply here, nor does an enemy supply unit it does
-    /// not see give supply. Null (or no entry): the same as <see cref="supply"/>.
+    /// Each player's supply as the screen shows it (real board only): the true network, but under fog the tile an enemy
+    /// the screen's side does not see stands on shows as it would without such enemies (SupplyNetwork.FillUnseenHoles),
+    /// so no one-tile hole gives it away. Null (or no entry): the same as <see cref="supply"/>.
     /// </summary>
     [System.NonSerialized] public Dictionary<Player, int> supplyShown;
 

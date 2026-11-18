@@ -32,8 +32,8 @@ public static class SupplyNetwork {
     /// </summary>
     public static bool StoreOnlyWhenNeeded = true;
 
-    /// <summary>Under fog, the screen's player's own supply as the screen shows it (borders, out-of-supply icons) is worked out on the board as it knows it (HexTile.supplyShown): enemy units it does not see do not cut it. Other sides' supply is shown as it truly is, on the tiles the viewer sees. Off: the true network is shown.</summary>
-    public static bool ShownAsKnown = true;
+    /// <summary>Under fog, the screen shows the screen's side's (and its allies') supply as it truly is, cuts by enemies it does not see included, but for the tile each such enemy stands on, shown as it would be without the enemies it does not see (HexTile.supplyShown): a one-tile hole would pinpoint it; a line or ring cutting supply off shows as cut off, a reason to look. Other sides' supply is shown as it truly is, on the tiles the viewer sees. Off: the true network is shown, holes and all.</summary>
+    public static bool FillUnseenHoles = true;
 
     /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
     public static bool FlagsFollowPublish = true;
@@ -392,21 +392,31 @@ public static class SupplyNetwork {
             if (t.supply != null && t.supply.ContainsKey(player)) t.supply[player] = result.DepthAt(t);
             return 0;
         });
-        // What the screen shows (real board only). The screen's player's own network is worked out on the board as it
-        // knows it, under fog: an enemy it does not see does not cut it (that would give the enemy away). Another side's
-        // network is the true one: a tile of it the viewer sees shows supplied when it is, though the supplier and the
-        // chain up to it are in the fog (HexTilePlayerSupplyDisplay draws it only on tiles the viewer sees).
+        // What the screen shows (real board only): the true network. The game never shows a unit in supply that is not,
+        // nor cut off when it is not. Under fog, the one exception is the tile an enemy the screen's side does not see
+        // stands on, shown as it would be without the enemies it does not see (FillUnseenHoles): a one-tile hole in its
+        // supply would pinpoint it. A line or ring of them cutting supply off shows as cut off (the oddity is a reason to
+        // look), and a transit they stop or send round is marked with a contact (UnseenContacts, SupplyContacts). Another
+        // side's network: a tile of it the viewer sees shows supplied when it is, though the supplier and the chain up to
+        // it are in the fog (HexTilePlayerSupplyDisplay draws it only on tiles the viewer sees).
         if (BoardView.current == null) {
-            Result shown = result;
-            Player viewer = ShownAsKnown && FogOfWar.On ? FogOfWar.Viewer : null;
-            // Spreading supply never gives an unseen enemy away. Where supply is truly not received because of one, the
-            // screen says so on the unit that misses it, and SupplyContacts marks where (UnseenContacts).
-            if (viewer != null && viewer == player && again != null) using (FogOfWar.Concealing(viewer)) shown = again();
+            Player viewer = FillUnseenHoles && FogOfWar.On ? FogOfWar.Viewer : null;
+            Dictionary<HexTile, int> filled = null;
+            if (viewer != null && Player.Friendly(viewer, player) && again != null) {
+                Dictionary<HexTile, List<Unit>> holes = UnseenBy(viewer);
+                if (holes != null) {
+                    Result known;
+                    using (FogOfWar.Concealing(viewer)) known = again();
+                    filled = new Dictionary<HexTile, int>();
+                    foreach (HexTile h in holes.Keys) filled[h] = known.DepthAt(h);
+                }
+            }
             // Borders to redraw: only where being supplied (as shown) changed, and beside it.
             List<HexTile> flipped = new List<HexTile>();
             HexGenerator.forAllTiles(t => {
                 if (t.supplyShown == null) t.supplyShown = new Dictionary<Player, int>();
-                int now = shown.DepthAt(t), was;
+                int now, was;
+                if (filled == null || !filled.TryGetValue(t, out now)) now = result.DepthAt(t);
                 if (!t.supplyShown.TryGetValue(player, out was) || (was > 0) != (now > 0)) flipped.Add(t);
                 t.supplyShown[player] = now;
                 return 0;
@@ -698,9 +708,6 @@ public static class SupplyNetwork {
         return false;
     }
 
-    /// <summary>Inside WithUnseen, with an enemy unit its side does not see.</summary>
-    public static bool AnyUnseen { get { return unseen != null; } }
-
     /// <summary>Is an enemy unit the side in WithUnseen does not see standing on <paramref name="t"/> (false outside it)?</summary>
     public static bool UnseenOn(HexTile t) {
         Dictionary<HexTile, List<Unit>> u = unseen;
@@ -744,27 +751,130 @@ public static class SupplyNetwork {
 
     /// <summary>
     /// Until disposed, the enemy units <paramref name="viewer"/> does not see are known on this thread by where they really
-    /// stand (UnseenOn, ExposedToUnseen), for telling the screen's player why its supply is not received
-    /// (SupplyOverlay.UnseenContacts). Nothing the network solves reads them. Made on the real board (enter a concealed
+    /// stand (UnseenOn, ExposedToUnseen), for marking where they stop or turn a transit (UnseenContacts). Nothing the
+    /// network solves reads them. Made on the real board (enter a concealed
     /// copy inside it, not around it); nothing (no scope) under no fog, for nobody, or inside a copy.
     /// </summary>
     public static System.IDisposable WithUnseen(Player viewer) { return new UnseenScope(viewer); }
+
+    /// <summary>The enemy units on the board <paramref name="viewer"/> does not see, by their tile (real board, under fog; null if none).</summary>
+    static Dictionary<HexTile, List<Unit>> UnseenBy(Player viewer) {
+        if (viewer == null || !FogOfWar.On || BoardView.current != null || UnitController.uc == null) return null;
+        Dictionary<HexTile, List<Unit>> map = null;
+        foreach (Unit u in UnitController.uc.units) {
+            if (u == null || u.tile == null || u.Strength <= 0 || u.owner == null || !Player.Hostile(u.owner, viewer)) continue;
+            if (u.trasnporter != null && u.trasnporter != u) continue;
+            if (FogOfWar.Sees(viewer, u)) continue;
+            if (map == null) map = new Dictionary<HexTile, List<Unit>>();
+            List<Unit> l;
+            if (!map.TryGetValue(u.tile, out l)) map[u.tile] = l = new List<Unit>();
+            l.Add(u);
+        }
+        return map;
+    }
     sealed class UnseenScope : System.IDisposable {
         readonly Dictionary<HexTile, List<Unit>> outer = unseen;
-        public UnseenScope(Player viewer) {
-            if (viewer == null || !FogOfWar.On || BoardView.current != null || UnitController.uc == null) return;
-            Dictionary<HexTile, List<Unit>> map = new Dictionary<HexTile, List<Unit>>();
-            foreach (Unit u in UnitController.uc.units) {
-                if (u == null || u.tile == null || u.Strength <= 0 || u.owner == null || !Player.Hostile(u.owner, viewer)) continue;
-                if (u.trasnporter != null && u.trasnporter != u) continue;
-                if (FogOfWar.Sees(viewer, u)) continue;
-                List<Unit> l;
-                if (!map.TryGetValue(u.tile, out l)) map[u.tile] = l = new List<Unit>();
-                l.Add(u);
-            }
-            if (map.Count > 0) unseen = map;
-        }
+        public UnseenScope(Player viewer) { Dictionary<HexTile, List<Unit>> map = UnseenBy(viewer); if (map != null) unseen = map; }
         public void Dispose() { unseen = outer; }
+    }
+
+    /// <summary>
+    /// Known unknowns: where <paramref name="viewer"/>'s supply in transit is stopped, or sent round, by enemy units it does
+    /// not see. The network and the supply line show it as it truly is (the cut, or the detour); the contact says why. For
+    /// each of its supply units aboard a carrier not on supplied ground: the way the carrier would take knowing only the
+    /// enemies its side sees (fewest movement points to the nearest tile it links from, then the board's order, as the
+    /// supply line picks it), to the ground the network truly supplies. The first tile of that way exposed to an unseen
+    /// enemy (ExposedToUnseen), or beside one standing in its way, is where the contact goes (ContactNear: never on one of
+    /// the side's or its allies' units, never on the unseen enemy itself). A way no unseen enemy touches is the way the
+    /// carrier truly takes: no contact. Real board, main thread; empty without fog or with no enemy unseen. Each tile once,
+    /// in the board's order.
+    /// </summary>
+    public static List<HexTile> UnseenContacts(Player viewer) {
+        List<HexTile> contacts = new List<HexTile>();
+        if (viewer == null || BoardView.current != null || !FogOfWar.On) return contacts;
+        using (AsPlayed()) using (WithUnseen(viewer)) {
+            if (unseen == null) return contacts;
+            List<KeyValuePair<SupplyPoint, Result>> carried = new List<KeyValuePair<SupplyPoint, Result>>();
+            foreach (Unit u in viewer.units) {
+                SupplyPoint hub = u != null ? u.Hub : null;
+                if (hub == null || hub.producer || u.trasnporter == null || u.Strength <= 0) continue;
+                Unit carrier = Outermost(u.trasnporter);
+                if (carrier == null || carrier.tile == null) continue;
+                Result net = SolveWithout(viewer, hub);   // the ground it would link to, as the network truly supplies it
+                if (!SuppliedGround(carrier.tile, net)) carried.Add(new KeyValuePair<SupplyPoint, Result>(hub, net));
+            }
+            foreach (KeyValuePair<SupplyPoint, Result> kv in carried) {
+                Unit carrier = Outermost(kv.Key.myUnit.trasnporter);
+                List<HexTile> way;
+                using (FogOfWar.Concealing(viewer)) way = KnownWay(carrier, carrier.tile, kv.Key, kv.Value);
+                if (way == null) continue;   // no way even as it sees the board: cut by what it sees
+                for (int i = 0; i < way.Count; i++) {
+                    HexTile t = way[i];
+                    if (!ExposedToUnseen(carrier, t) && !(i + 1 < way.Count && UnseenOn(way[i + 1]))) continue;
+                    HexTile c = ContactNear(t, viewer);
+                    if (c != null && !contacts.Contains(c)) contacts.Add(c);
+                    break;
+                }
+            }
+        }
+        contacts.Sort((a, b) => CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
+        return contacts;
+    }
+
+    /// <summary>
+    /// UnseenContacts' marker tile for a stop at <paramref name="t"/>: that tile, else the nearest tile beside it (then the
+    /// board's order), that has an unseen enemy on or beside it, holds none of the viewer's side, and is not the unseen
+    /// enemy's own. Null if there is none.
+    /// </summary>
+    static HexTile ContactNear(HexTile t, Player viewer) {
+        System.Func<HexTile, bool> ok = c => {
+            if (c == null || UnseenOn(c)) return false;
+            Unit on = c.occupier;
+            if (on != null && Player.Friendly(on.owner, viewer)) return false;
+            foreach (HexTile n in c.neighbors) if (UnseenOn(n)) return true;
+            return false;
+        };
+        if (ok(t)) return t;
+        List<HexTile> near = new List<HexTile>();
+        foreach (HexTile n in t.neighbors) if (ok(n)) near.Add(n);
+        if (near.Count == 0) return null;
+        near.Sort((a, b) => CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
+        return near[0];
+    }
+
+    /// <summary>
+    /// The way <paramref name="carrier"/> on <paramref name="at"/> would take carrying <paramref name="hub"/>, on the board
+    /// as the thread knows it (UnseenContacts: its side's), to a tile it links from in <paramref name="net"/> (supplied
+    /// ground; for a ship, beside it; for ships and aircraft, a linked carrier it would convoy through: CarriedLinked).
+    /// Null if it is exposed where it stands or reaches none.
+    /// </summary>
+    static List<HexTile> KnownWay(Unit carrier, HexTile at, SupplyPoint hub, Result net) {
+        if (Exposed(carrier, at)) return null;
+        HexTactica.AI.MoveField field = TransitField(carrier, at, HexTactica.AI.AIPath.RangeThisTurn(carrier));
+        bool ship = LocomotionRules.IsNaval(carrier.locomotion), air = LocomotionRules.IsAirborne(carrier.locomotion);
+        HashSet<HexTile> convoy = new HashSet<HexTile>();
+        if (ship || air)
+            foreach (SupplyPoint other in net.connectedHubs) {
+                if (other == null || other == hub || other.producer || other.myUnit == null) continue;
+                Unit oc = Outermost(other.myUnit.trasnporter);
+                if (oc == null || oc == carrier || oc.owner != carrier.owner || oc.tile == null) continue;
+                bool cShip = LocomotionRules.IsNaval(oc.locomotion), cAir = LocomotionRules.IsAirborne(oc.locomotion);
+                if (ship ? !(cShip || cAir) : !(cShip && Unit.BordersLand(oc.tile))) continue;
+                convoy.Add(oc.tile);
+                foreach (HexTile n in oc.tile.neighbors) if (n != null) convoy.Add(n);
+            }
+        HexTile best = null; int bestCost = int.MaxValue;
+        foreach (HexTile t in field.Tiles) {
+            if (t != at && !field.ReachableThisTurn(t)) continue;
+            bool goal = convoy.Contains(t) || (!ship && SuppliedGround(t, net));
+            if (!goal && ship) foreach (HexTile n in t.neighbors) if (SuppliedGround(n, net)) { goal = true; break; }
+            if (!goal) continue;
+            int cost = t == at ? 0 : field.Get(t).used;
+            if (best == null || cost < bestCost || (cost == bestCost && CombatMath.Precedes(t, best))) { best = t; bestCost = cost; }
+        }
+        List<HexTile> way = best == null ? null : best == at ? new List<HexTile> { at } : field.PathTo(best);
+        HexTactica.AI.AIPath.Release(field);
+        return way;
     }
 
     static bool SuppliedGround(HexTile t, Result result) {

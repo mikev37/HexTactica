@@ -273,83 +273,19 @@ public class SupplyOverlay : MonoBehaviour {
         if (LocomotionRules.IsNaval(carrier.locomotion) && last.terrain != null && last.terrain.elevation >= 0) legs[legs.Count - 1] = null;
     }
 
-    // ------------------------------------------------------------------ known unknowns
-
-    /// <summary>
-    /// Where <paramref name="viewer"/>'s supply is truly not received because of an enemy it does not see, under fog: one
-    /// tile for each break, for the contact markers (SupplyContacts). Spreading supply as the screen shows it never gives
-    /// an unseen enemy away (SupplyNetwork.ShownAsKnown); a unit that misses supply is told why.
-    ///
-    /// For each of its units the network truly does not reach but the screen shows reached (a supply unit truly cut off but
-    /// shown linked; any other unit the network feeds, truly unsupplied but shown supplied): its supply line as the side
-    /// knows the board (SourcePath on the concealed board, as the line is drawn), and on it, from the unit back to the HQ,
-    /// the first place an unseen enemy stops it: a tile of a carrier's transit exposed to one (SupplyNetwork.ExposedToUnseen:
-    /// that tile), or a tile one stands on where supply flows over the ground (the tile before it on the line, beside it).
-    /// The supply truly fails only through such a place (a way as known that no unseen enemy stops is a way the real
-    /// network has too), so every such unit has one. Only that tile is told: something is on or beside it, never what.
-    /// Real board, main thread; empty without fog or with no enemy unseen. Each tile once, in the board's order.
-    /// </summary>
-    public static List<HexTile> UnseenContacts(Player viewer) {
-        List<HexTile> contacts = new List<HexTile>();
-        if (viewer == null || BoardView.current != null || !FogOfWar.On) return contacts;
-        using (SupplyNetwork.AsPlayed()) using (SupplyNetwork.WithUnseen(viewer)) {
-            if (!SupplyNetwork.AnyUnseen) return contacts;
-            SupplyNetwork.Result real = SupplyNetwork.SolveMoved(viewer, new Dictionary<SupplyPoint, HexTile>());
-            List<Unit> hubs = new List<Unit>(), fed = new List<Unit>();
-            foreach (Unit u in viewer.units) {
-                if (u == null || u.tile == null || u.Strength <= 0) continue;
-                SupplyPoint sp = u.Hub;
-                if (sp != null && !sp.producer) { if (!real.connectedHubs.Contains(sp)) hubs.Add(u); continue; }
-                if (sp != null || u.trasnporter != null) continue;
-                if (LocomotionRules.NeedsBase(u.locomotion) && !LocomotionRules.ResuppliedInSupply(u.locomotion)) continue;   // the network does not feed it
-                if (!u.tile.isSupplied(viewer)) fed.Add(u);
-            }
-            if (hubs.Count == 0 && fed.Count == 0) return contacts;
-            using (FogOfWar.Concealing(viewer)) {
-                SupplyNetwork.Result known = SupplyNetwork.SolveMoved(viewer, new Dictionary<SupplyPoint, HexTile>());
-                List<HexTile> from = new List<HexTile>();
-                foreach (Unit u in hubs) if (known.connectedHubs.Contains(u.Hub) && !from.Contains(u.tile)) from.Add(u.tile);
-                foreach (Unit u in fed) if (known.DepthAt(u.tile) > 0 && !from.Contains(u.tile)) from.Add(u.tile);
-                List<Unit> legs = new List<Unit>();
-                foreach (HexTile t in from) {
-                    List<HexTile> line = SourcePathWithLegs(viewer, t, known, null, legs);
-                    HexTile c = FirstUnseenStop(line, legs);
-                    if (c != null && !contacts.Contains(c)) contacts.Add(c);
-                }
-            }
-        }
-        contacts.Sort((a, b) => CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
-        return contacts;
-    }
-
-    /// <summary>UnseenContacts' rule along one line: the first place an unseen enemy stops the supply, null if none does.</summary>
-    static HexTile FirstUnseenStop(List<HexTile> line, List<Unit> legs) {
-        for (int i = 0; i < line.Count; i++) {
-            HexTile t = line[i];
-            Unit leg = i < legs.Count ? legs[i] : null, next = i + 1 < legs.Count ? legs[i + 1] : null;
-            if (leg != null && SupplyNetwork.ExposedToUnseen(leg, t)) return t;
-            if (next != null && SupplyNetwork.ExposedToUnseen(next, t)) return t;   // where a transit starts: the carrier's own tile
-            if (SupplyNetwork.UnseenOn(t)) return i > 0 ? line[i - 1] : t;   // stands in the way: beside it
-        }
-        return null;
-    }
 
     /// <summary>
     /// The way <paramref name="transport"/>, standing on <paramref name="from"/>, would drive in one move
     /// to ground supplied in <paramref name="f"/> (a ship, which cannot go ashore: beside it, where its cargo can step off): the tiles
     /// from <paramref name="from"/> to the nearest such tile (fewest movement points, then the board's
-    /// order), then the supplied tile beside it if it is not supplied itself. Planned as its side knows
-    /// the board (fog of war): around the enemies it sees, never through them; in transit (SupplyNetwork.TransitField),
-    /// clear of every enemy it sees that could attack it (one it does not see cuts the network, not the line: the line is
-    /// the way as known, and SupplyContacts marks where on it the supply is truly stopped). Null if there is none.
+    /// order), then the supplied tile beside it if it is not supplied itself. The way the network truly links it
+    /// (SupplyNetwork.TransitField, its range this turn): around every enemy, clear of any that could attack it, those its
+    /// side does not see too (the line does not lie; where those turned or stopped it, SupplyContacts marks a contact).
+    /// Null if there is none.
     /// </summary>
     static List<HexTile> DriveToSupply(Unit transport, HexTile from, SupplyNetwork.Result f) {
-        HexTactica.AI.MoveField field;
-        bool exposed;
-        using (FogOfWar.Concealing(transport.owner)) {
-            exposed = SupplyNetwork.Exposed(transport, from);
-            field = SupplyNetwork.TransitField(transport, from, transport.moveRange);
-        }
+        bool exposed = SupplyNetwork.Exposed(transport, from);
+        HexTactica.AI.MoveField field = SupplyNetwork.TransitField(transport, from, HexTactica.AI.AIPath.RangeThisTurn(transport));
         HexTile best = null, step = null; int bestCost = int.MaxValue;
         bool ship = LocomotionRules.IsNaval(transport.locomotion);
         foreach (HexTile t in field.Tiles) {
@@ -386,18 +322,13 @@ public class SupplyOverlay : MonoBehaviour {
 
     /// <summary>
     /// The way <paramref name="carrier"/>, on <paramref name="from"/>, would move in one move to <paramref name="target"/>
-    /// or beside it (a ship cannot sail onto the land an aircraft is over): its own path in transit, planned as its side
-    /// knows the board (fog of war), as DriveToSupply. Null if it cannot get there.
+    /// or beside it (a ship cannot sail onto the land an aircraft is over): its own path in transit, the way the network
+    /// truly links it, as DriveToSupply. Null if it cannot get there.
     /// </summary>
     static List<HexTile> MoveTo(Unit carrier, HexTile from, HexTile target) {
         if (from == target) return new List<HexTile> { from };
-        HexTactica.AI.MoveField field;
-        bool exposed;
-        using (FogOfWar.Concealing(carrier.owner)) {
-            exposed = SupplyNetwork.Exposed(carrier, from);
-            field = SupplyNetwork.TransitField(carrier, from, carrier.moveRange);
-        }
-        if (exposed) { HexTactica.AI.AIPath.Release(field); return null; }
+        if (SupplyNetwork.Exposed(carrier, from)) return null;
+        HexTactica.AI.MoveField field = SupplyNetwork.TransitField(carrier, from, HexTactica.AI.AIPath.RangeThisTurn(carrier));
         HexTile best = null; int bestCost = int.MaxValue;
         foreach (HexTile t in field.Tiles) {
             if (!field.ReachableThisTurn(t) && t != from) continue;

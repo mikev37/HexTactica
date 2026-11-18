@@ -423,7 +423,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, -4, 0);
-            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the supply the screen shows does not give enemies away (SupplyNetwork.ShownAsKnown): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is truly cut off (its upkeep goes by that); the borders still show it supplied (spreading supply never gives the line away), but the grunt is shown unfed and one contact marker (SupplyOverlay.UnseenContacts) on its way to the FOB, beside the line and on none of it, says why; once a Blue recon sees the line, shown cut off, and no contact; with fog off the screen shows the network as it is. An enemy's supply is shown as it is on tiles Blue sees: a tile a Blue recon sees shows in Red's supply, though the Red supply unit giving it is in the fog.");
+            Dictionary<string, string> test = Test("fog-rule-supply-shown", "rules", "Human", 4, "fogSupplyShown", "Under fog, the screen shows the supply network as it truly is, but for the tiles enemies it does not see stand on (SupplyNetwork.FillUnseenHoles): a Blue grunt at the edge of a forward base's supply, a line of Red grunts Blue does not see cutting it off. The grunt is shown cut off and unfed, as it truly is (an oddity that is a reason to look); the wall's own tiles show as Blue's supply would be without it (no one-tile hole pinpoints a grunt), every other tile as it is; no contact (no transit). Once a Blue recon sees the line, its tiles show as they are. With fog off the screen shows the network as it is. An enemy's supply is shown as it is on tiles Blue sees: a tile a Blue recon sees shows in Red's supply, though the Red supply unit giving it is in the fog.");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "fog-rule-supply-shown.dat"), test, ai, other, ai);
             n++;
@@ -705,11 +705,11 @@ public static partial class Scenarios {
         make("fog-rule-supply-transit-unseen", "supplyTransitUnseen", (a, o) => {
                                   Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  for (int y = -5; y <= -1; y++) Put("Grunt", o, 5, y); },   // parked: the check sets them out
-             "Known unknowns (SupplyOverlay.UnseenContacts, SupplyContacts) for supply in transit: under fog, enemies its side does not see truly cut a transit, the borders spread as the side knows the board (never giving them away), and a unit that misses supply is told so, with a contact marker saying why. Blue's HQ at (-6,0), an APC carrying supplies at (2,0), Blue the screen's player. A line of Red grunts at x=-1 Blue does not see: truly cut off; the borders as Blue knows them, the APC shown unfed; a contact on the way the APC would take, beside an unseen grunt, on none; seen by a recon: still cut, no contact (nothing unseen to explain). A single unseen Red grunt beside the way (moves to spare): truly linked round it, so nothing is missed and nothing is marked; the line drawn is the way as known. No unseen enemy, or fog off: no contacts.");
+             "Known unknowns for supply in transit (SupplyNetwork.UnseenContacts, SupplyContacts): under fog the screen shows the network and the supply line as they truly are, and where enemies its side does not see stop a transit or send it round, a contact marker says why: beside such an enemy, never on it, never on one of the side's units. Blue's HQ at (-6,0), an APC carrying supplies at (2,0), Blue the screen's player. A line of Red grunts at x=-1 Blue does not see: cut off, truly and as shown, the APC unfed; a contact. Seen by a recon: still cut, no contact. A single unseen Red grunt beside the way (moves to spare): linked round it, the supply line the true way clear of it, one contact. With a Blue helicopter parked where that contact would go (it does not spot the stealthy grunt beside it), the contact goes beside it instead. No unseen enemy, or fog off: no contacts.");
         make("fog-rule-supply-cut-unseen", "supplyCutUnseen", (a, o) => {
                  Put("Supplies", a, -3, 0); Put("Fighter", a, 0, 0);
                  for (int y = -5; y <= 0; y++) Put("Grunt", o, 5, y); },   // parked: the check rings the helicopter with them
-             "Supply cut by enemies the side does not see (the helicopter case): Blue's supply unit at (-3,0), linked to the HQ, supplies a Blue helicopter at (0,0); six stealthy Red grunts ring the helicopter, cutting it off (a stealthy land unit is not spotted by an aircraft beside it). The screen shows supply spreading as Blue knows the board (the ring is not given away: the helicopter's tile is shown in supply), but the helicopter is truly cut off: at the start of Blue's turn it is not refuelled or rearmed (upkeep goes by the real network), it shows as not resupplied, and a contact marker (SupplyNetwork.UnseenContacts) sits on its way to supply, beside a grunt and on none, saying why. Also reported, not checked: whether the AI, planning with what it knows, reads the helicopter as resupplied there (as the borders show) — it does not use contacts yet.");
+             "Supply cut by enemies the side does not see (the helicopter case): Blue's supply unit at (-3,0), linked to the HQ, supplies a Blue helicopter at (0,0); six stealthy Red grunts ring the helicopter, cutting it off (a stealthy land unit is not spotted by an aircraft beside it). The screen does not lie: the helicopter's tile shows out of supply and the helicopter unfed, as it truly is; the ring's own tiles show as Blue's supply would be without them (no one-tile hole pinpoints a grunt; a supplied ring round an unsupplied tile is the oddity that says look). No contact: no transit. At Blue's next turn it is not refuelled or rearmed. Also reported, not checked: whether the AI, planning with what it knows, reads the helicopter as resupplied there.");
         make("ui-selection-overlays", "uiOverlays", (a, o) => {
                  Put("Artillery", a, -3, 0); Put("Grunt", a, -1, 0); Put("Grunt", o, 0, 0); Put("Tank", o, 2, -2);
                  Rig.PlaceBuilding("City", null, -2, 3); Put("Grunt", a, -2, 3); Rig.PlaceBuilding("City", o, 3, 3); Put("Grunt", a, 3, 3); },
@@ -1233,9 +1233,12 @@ public static partial class Scenarios {
                     SupplyNetwork.Solve(a, false);
                     bool shown = heli.tile.isSuppliedShown(a), truly = heli.tile.isSupplied(a);
                     bool icon = UnitAlarmIcon.UnfedShown(heli);
-                    List<HexTile> contacts = SupplyOverlay.UnseenContacts(a);
-                    bool contactOk = contacts.Count > 0;
-                    foreach (HexTile c in contacts) { bool beside = false; foreach (Unit g in ring) if (g.tile.Distance(c) <= 1) beside = true; if (!beside || (c.occupier != null && c.occupier.owner == o)) contactOk = false; }
+                    // Each ring tile shows as Blue's supply would be without the unseen grunts; some of them are in it.
+                    SupplyNetwork.Result known; using (FogOfWar.Concealing(a)) known = SupplyNetwork.SolveMoved(a, new Dictionary<SupplyPoint, HexTile>());
+                    bool ringFilled = true; int filledIn = 0;
+                    foreach (Unit g in ring) { if (g.tile.isSuppliedShown(a) != known.DepthAt(g.tile) > 0) ringFilled = false; if (g.tile.isSuppliedShown(a) && !g.tile.isSupplied(a)) filledIn++; }
+                    ringFilled = ringFilled && filledIn > 0;
+                    bool noContact = SupplyNetwork.UnseenContacts(a).Count == 0;
                     // What the AI knows: its map as it reads the board, made on its side's knowledge (as AIPlayer thinks).
                     bool aiThinks;
                     using (FogOfWar.Concealing(a, true, 2)) {
@@ -1246,9 +1249,9 @@ public static partial class Scenarios {
                     endTurn(); endTurn();   // Red's turn, then the start of Blue's
                     bool starved = heli.fuel < 5 && heli.ammo == 0;
                     detail = "layout (helicopter in supply, supply unit linked) " + layout + "; ring of grunts unseen " + unseen + ": helicopter's tile shown in supply " + shown + ", truly " + truly
-                           + "; shown as not resupplied " + icon + "; contacts " + string.Join(" ", contacts.ConvertAll(Pos).ToArray()) + " (beside a grunt, on none " + contactOk + ")"
+                           + "; shown as not resupplied " + icon + "; the ring's own tiles shown as without it " + ringFilled + " (" + filledIn + " of 6 filled in)" + "; no contact (no transit) " + noContact
                            + "; the AI reads it as resupplied there " + aiThinks + "; at Blue's next turn: fuel " + heli.fuel + " (was 5), ammo " + heli.ammo + " (not resupplied " + starved + ")";
-                    return layout && unseen && shown && !truly && icon && contactOk && starved;
+                    return layout && unseen && !shown && !truly && icon && ringFilled && noContact && starved;
                 } finally {
                     gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
                     if (blueAI != null) blueAI.enabled = true;
@@ -1326,47 +1329,61 @@ public static partial class Scenarios {
                 gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
                 try {
                     Func<bool> unseenAll = () => { FogOfWar.Changed(); FogOfWar.Refresh(); foreach (Unit u in grunts) if (u.tile != null && u.tile.x < 5 && FogOfWar.Sees(a, u)) return false; return true; };
+                    // A contact: beside an unseen grunt, on none of them, on no Blue unit.
+                    Func<HexTile, bool> contactOk = c => {
+                        if (c == null || (c.occupier != null && (c.occupier.owner == o || c.occupier.owner == a))) return false;
+                        foreach (Unit g in grunts) if (g.tile != null && g.tile.Distance(c) <= 1 && !FogOfWar.Sees(a, g)) return true;
+                        return false;
+                    };
                     clear(); SupplyNetwork.Solve(a, false);
                     bool viewer = FogOfWar.Viewer == a;
-                    bool noneAtFirst = SupplyOverlay.UnseenContacts(a).Count == 0;
+                    bool noneAtFirst = SupplyNetwork.UnseenContacts(a).Count == 0;
+                    // An unseen wall: the screen shows the APC's supply cut off as it truly is, and a contact says why.
                     bool w = wall(grunts); bool hidden = unseenAll();
                     bool trulyCut = !linked();
-                    // The borders spread as Blue knows the board (the wall is not given away); the APC is told it is unfed.
-                    bool shownAsKnown = apc.tile.isSuppliedShown(a) && !apc.tile.isSupplied(a) && UnitAlarmIcon.UnfedShown(apc);
-                    List<HexTile> contacts = SupplyOverlay.UnseenContacts(a);
-                    bool contactOk = contacts.Count > 0;
-                    foreach (HexTile c in contacts) {
-                        bool beside = false;
-                        foreach (Unit g in grunts) if (g.tile != null && g.tile.Distance(c) <= 1) beside = true;
-                        if (!beside || (c.occupier != null && c.occupier.owner == o)) contactOk = false;
-                    }
-                    r.Add("viewer Blue " + viewer + "; no contacts at first " + noneAtFirst + "; an unseen line of grunts " + (w && hidden) + ": truly cut off " + trulyCut + ", borders as known and the APC shown unfed " + shownAsKnown + "; contacts " + tiles(contacts) + ", each beside a grunt and on none " + contactOk);
-                    // Seen: a Blue recon by the line.
+                    bool shownCut = !apc.tile.isSuppliedShown(a) && UnitAlarmIcon.UnfedShown(apc);
+                    List<HexTile> contacts = SupplyNetwork.UnseenContacts(a);
+                    bool wallContact = contacts.Count > 0 && contacts.TrueForAll(c => contactOk(c));
+                    r.Add("viewer Blue " + viewer + "; no contacts at first " + noneAtFirst + "; an unseen line of grunts " + (w && hidden) + ": truly cut off " + trulyCut + ", shown cut off and the APC unfed " + shownCut + "; contacts " + tiles(contacts) + ", each beside an unseen grunt, on none, on no Blue unit " + wallContact);
+                    // Seen: a Blue recon by the line. Still cut, nothing unseen to explain.
                     Unit rec = Put("Recon", a, 1, 0); rec.visionRange = 8;
                     FogOfWar.Changed(); FogOfWar.Refresh();
                     bool seen = true; foreach (Unit g in grunts) if (!FogOfWar.Sees(a, g)) seen = false;
-                    bool stillCut = !linked(), noContact = SupplyOverlay.UnseenContacts(a).Count == 0;
-                    rec.TeleportTo(Rig.At(-6, 6), 0); FogOfWar.Changed(); FogOfWar.Refresh();
+                    bool stillCut = !linked(), noContact = SupplyNetwork.UnseenContacts(a).Count == 0;
+                    rec.TeleportTo(Rig.At(-6, 6), 0); rec.visionRange = 1; FogOfWar.Changed(); FogOfWar.Refresh();
                     r.Add("seen by a recon " + seen + ": still cut off " + stillCut + ", no contact " + noContact);
-                    // One unseen grunt beside the way (moves to spare): truly linked round it, so nothing is missed and nothing is marked.
-                    rec.visionRange = 1;   // parked by Blue's HQ, out of the way
+                    // One unseen grunt beside the way (moves to spare): linked round it; the supply line shows the way it truly
+                    // goes (clear of the grunt), and a contact says why it goes round.
                     HexTile near = besideWay();
                     apc.moveRange = 10;
                     grunts[0].TeleportTo(near, 0);
                     bool hidden1 = unseenAll();
                     SupplyNetwork.Result round = SupplyNetwork.Solve(a, false);
-                    bool roundLinked = round.connectedHubs.Contains(hub);
+                    bool roundLinked = round.connectedHubs.Contains(hub) && apc.tile.isSuppliedShown(a);
                     List<HexTile> line = SupplyOverlay.SourcePath(a, apc.tile, round, null, null);
-                    bool lineEnds = line.Count > 1 && line[line.Count - 1] == hq.tile;
-                    List<HexTile> c1 = SupplyOverlay.UnseenContacts(a);
-                    bool contact1 = c1.Count == 0;
+                    bool lineTrue = clearOfEnemy(line) && line[line.Count - 1] == hq.tile;
+                    List<HexTile> c1 = SupplyNetwork.UnseenContacts(a);
+                    bool detourContact = c1.Count == 1 && contactOk(c1[0]);
+                    r.Add("one unseen grunt beside the way at " + Pos(near) + " " + hidden1 + ": linked round it " + roundLinked + ", line " + tiles(line) + " the true way, clear of it " + lineTrue + "; contact " + tiles(c1) + " " + detourContact);
+                    // The same, with a Blue helicopter parked on the way where the contact would go (it does not spot a stealthy
+                    // grunt beside it): the contact goes beside it, never on it.
+                    List<HexTile> way0;
+                    { Unit gg = grunts[0]; HexTile keep = gg.tile; clear(); way0 = SupplyOverlay.SourcePath(a, apc.tile, SupplyNetwork.Solve(a, false), null, null); gg.TeleportTo(keep, 0); }
+                    HexTile first = way0.Find(t => t.Distance(near) <= 1);
+                    grunts[0].stealthRange = 3;
+                    Unit heli = Put("Fighter", a, first.x, first.y); heli.locomotion = Locomotion.Rotor;
+                    bool hidden2 = unseenAll() && !FogOfWar.Sees(a, grunts[0]);
+                    SupplyNetwork.Solve(a, false);
+                    List<HexTile> c2 = SupplyNetwork.UnseenContacts(a);
+                    bool offFriend = c2.Count == 1 && c2[0] != first && contactOk(c2[0]);
+                    r.Add("a Blue helicopter at " + Pos(first) + " where the contact would go, the grunt stealthy and unseen " + hidden2 + ": contact " + tiles(c2) + ", not on the helicopter " + offFriend);
+                    heli.TeleportTo(Rig.At(-6, 5), 0); grunts[0].stealthRange = 0;
                     apc.moveRange = moves;
-                    r.Add("one unseen grunt beside the way at " + Pos(near) + " " + hidden1 + ": linked round it " + roundLinked + ", line " + tiles(line) + " to the HQ " + lineEnds + "; no contact (nothing missed) " + contact1);
                     gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
-                    bool fogOff = SupplyOverlay.UnseenContacts(a).Count == 0;
+                    bool fogOff = SupplyNetwork.UnseenContacts(a).Count == 0;
                     r.Add("fog off: no contacts " + fogOff);
                     detail = string.Join(" | ", r.ToArray());
-                    return viewer && noneAtFirst && w && hidden && trulyCut && shownAsKnown && contactOk && seen && stillCut && noContact && hidden1 && roundLinked && lineEnds && contact1 && fogOff;
+                    return viewer && noneAtFirst && w && hidden && trulyCut && shownCut && wallContact && seen && stillCut && noContact && hidden1 && roundLinked && lineTrue && detourContact && hidden2 && offFriend && fogOff;
                 } finally {
                     gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
                     if (blueAI != null) blueAI.enabled = true;
@@ -2318,20 +2335,20 @@ public static partial class Scenarios {
                 gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
                 bool unseen = true; foreach (Unit w in wall) if (FogOfWar.Sees(a, w)) unseen = false;
                 SupplyNetwork.Solve(a, false);
-                bool trulyCut = !g.tile.isSupplied(a), shownSupplied = g.tile.isSuppliedShown(a);
-                // Not receiving supply is told: the grunt shows unsupplied, and a contact on its way to the FOB, beside the wall.
-                bool toldUnfed = UnitAlarmIcon.UnfedShown(g);
-                List<HexTile> contacts = SupplyOverlay.UnseenContacts(a);
-                bool contactOk = contacts.Count == 1;
-                foreach (HexTile c in contacts) { bool beside = false; foreach (Unit w in wall) if (w.tile.Distance(c) <= 1) beside = true; if (!beside || (c.occupier != null && c.occupier.owner == o)) contactOk = false; }
-                r.Add("viewer " + (FogOfWar.Viewer != null ? FogOfWar.Viewer.personal_name : "none") + "; before the wall the grunt is supplied " + before + "; the wall unseen by Blue " + unseen + ": truly cut off " + trulyCut + " (its upkeep goes by this), shown supplied " + shownSupplied + " (the screen does not give the wall away); the grunt shown unfed " + toldUnfed + ", one contact beside the wall, on none " + contactOk + " (" + string.Join(" ", contacts.ConvertAll(Pos).ToArray()) + ")");
-                // Seen: a Blue recon beside the wall.
+                // The screen shows the true network: the grunt cut off (a reason to look). The tiles the wall stands on are
+                // filled as Blue's supply would be without it, so no one-tile hole gives a grunt away. No contact: no transit.
+                bool trulyCut = !g.tile.isSupplied(a), shownCut0 = !g.tile.isSuppliedShown(a) && UnitAlarmIcon.UnfedShown(g);
+                bool filled = true; foreach (Unit w in wall) if (w.tile.isSupplied(a) || !w.tile.isSuppliedShown(a)) filled = false;
+                int holes = 0; foreach (HexTile t in Rig.hg.tiles) if (t.isSuppliedShown(a) != t.isSupplied(a) && !wall.Exists(w => w.tile == t)) holes++;
+                bool noContact0 = SupplyNetwork.UnseenContacts(a).Count == 0;
+                r.Add("viewer " + (FogOfWar.Viewer != null ? FogOfWar.Viewer.personal_name : "none") + "; before the wall the grunt is supplied " + before + "; the wall unseen by Blue " + unseen + ": truly cut off " + trulyCut + ", shown cut off and unfed " + shownCut0 + "; the wall's own tiles shown filled " + filled + ", every other tile shown as it is " + (holes == 0) + "; no contact " + noContact0);
+                // Seen: a Blue recon beside the wall. Its tiles show as they are (out of supply).
                 Unit rec = Put("Recon", a, 0, 1);
                 FogOfWar.Changed(); FogOfWar.Refresh();
                 SupplyNetwork.Solve(a, false);
                 bool seenNow = FogOfWar.Sees(a, wall[3]), shownCut = !g.tile.isSuppliedShown(a);
-                bool noContact = SupplyOverlay.UnseenContacts(a).Count == 0;
-                r.Add("a Blue recon beside it sees the wall " + seenNow + ": shown cut off " + shownCut + ", no contact (nothing unseen to explain) " + noContact);
+                bool seenHole = !wall[3].tile.isSuppliedShown(a);
+                r.Add("a Blue recon beside it sees the wall " + seenNow + ": shown cut off " + shownCut + ", a seen grunt's tile shown out of supply " + seenHole);
                 // Red's supply: a Red supply unit at (10,0) linked to Red's HQ, out of Blue's sight, supplies (7,0), which a
                 // Blue recon at (5,0) sees: it shows in Red's supply.
                 Unit rs = Put("Supplies", o, 10, 0); Unit rec2 = Put("Recon", a, 5, 0); rec2.visionRange = 2;
@@ -2348,7 +2365,7 @@ public static partial class Scenarios {
                 r.Add("fog off: shown as it is " + fogOff);
                 if (blueAI != null) blueAI.enabled = true;
                 detail = string.Join(" | ", r.ToArray());
-                return before && unseen && trulyCut && shownSupplied && toldUnfed && contactOk && seenNow && shownCut && noContact && fogOff && rsHidden && wallSeen && redTrue && redShown;
+                return before && unseen && trulyCut && shownCut0 && filled && holes == 0 && noContact0 && seenNow && shownCut && seenHole && fogOff && rsHidden && wallSeen && redTrue && redShown;
             }
             case "fobStorePips": {
                 // A FOB (Blue) with 3 of 6 in store, Blue's HQ, and a Red FOB with 5. Blue is the screen's player.
