@@ -2618,9 +2618,20 @@ public static partial class Scenarios {
                     map = new AIMap(a, a.GetComponent<AIPlayer>().Profile);
                     bool movedOff = HexTactica.AI.AIExecutor.Execute(HexTactica.AI.AIAction.Move(far, Rig.At(-4, 1), 0f, "test"), map, true) && far.tile == Rig.At(-4, 1);
                     bool offSeen = HexTactica.AI.AIExecutor.LastActionSeen;
-                    detail = "viewer Red " + viewerRed + "; far tank moved " + movedFar + ", counted seen " + farSeen + "; tank beside Red's grunt moved " + movedNear + ", seen " + nearSeen + "; setting off: moved " + movedOff + ", seen " + offSeen;
-                    return viewerRed && movedFar && !farSeen && movedNear && nearSeen && movedOff && offSeen;
-                } finally { fs.hiddenAiActionsAtOnce = was; }
+                    // Fog not drawn: everything paced as seen, unless judgeUnseenWhenFogHidden (for testing) judges by Red's view all the same.
+                    fs.hiddenAiActionsAtOnce = true; gc.fogShownOnScreen = false; FogOfWar.Changed();
+                    map = new AIMap(a, a.GetComponent<AIPlayer>().Profile);
+                    HexTactica.AI.AIExecutor.Execute(HexTactica.AI.AIAction.Move(far, Rig.At(-4, 2), 0f, "test"), map, true);
+                    bool hiddenFogSeen = HexTactica.AI.AIExecutor.LastActionSeen;
+                    fs.judgeUnseenWhenFogHidden = true; FogOfWar.Changed();
+                    map = new AIMap(a, a.GetComponent<AIPlayer>().Profile);
+                    bool judgeRed = FogOfWar.Judge == o && FogOfWar.Viewer == null;
+                    HexTactica.AI.AIExecutor.Execute(HexTactica.AI.AIAction.Move(far, Rig.At(-3, 2), 0f, "test"), map, true);
+                    bool judgedSeen = HexTactica.AI.AIExecutor.LastActionSeen;
+                    detail = "viewer Red " + viewerRed + "; far tank moved " + movedFar + ", counted seen " + farSeen + "; tank beside Red's grunt moved " + movedNear + ", seen " + nearSeen + "; setting off: moved " + movedOff + ", seen " + offSeen
+                           + "; fog not drawn: seen " + hiddenFogSeen + "; judged by Red's view anyway: judge Red " + judgeRed + ", seen " + judgedSeen;
+                    return viewerRed && movedFar && !farSeen && movedNear && nearSeen && movedOff && offSeen && hiddenFogSeen && judgeRed && !judgedSeen;
+                } finally { fs.hiddenAiActionsAtOnce = was; fs.judgeUnseenWhenFogHidden = false; gc.fogShownOnScreen = true; }
             }
             case "fogUnitDetect": {
                 PinVision();

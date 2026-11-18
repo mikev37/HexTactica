@@ -90,7 +90,7 @@ namespace HexTactica.AI {
         /// <summary>Whether the watching player sees any of these tiles (always, with fog off, nobody watching, or the setting off).</summary>
         public static bool Watched(IEnumerable<HexTile> tiles) {
             if (!FogSettings.Instance.hiddenAiActionsAtOnce || !FogOfWar.On) return true;
-            Player viewer = FogOfWar.Viewer;
+            Player viewer = FogOfWar.Judge;
             if (viewer == null) return true;
             foreach (HexTile t in tiles) if (t != null && FogOfWar.TileVisible(viewer, t)) return true;
             return false;
