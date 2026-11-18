@@ -88,7 +88,7 @@ namespace HexTactica.Multiplayer {
             }
             string id = PlayerPrefs.GetString(IdKey, "");
             if (string.IsNullOrEmpty(id)) { id = Guid.NewGuid().ToString("N").Substring(0, 12); PlayerPrefs.SetString(IdKey, id); PlayerPrefs.Save(); }
-            string folder = string.IsNullOrEmpty(s.sharedFolder) ? Path.Combine(Application.persistentDataPath, "multiplayer-shared") : s.sharedFolder;
+            string folder = string.IsNullOrEmpty(s.sharedFolder) ? MpPaths.Shared : s.sharedFolder;
             MpFolderStore store = new MpFolderStore(folder, id);
             store.PlayerChanged += p => { PlayerPrefs.SetString(IdKey, p); PlayerPrefs.Save(); };
             return store;

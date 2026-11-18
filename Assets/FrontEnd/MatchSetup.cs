@@ -87,7 +87,7 @@ public static class MatchSetup {
         if (g == null) return false;
         string text = await HexTactica.Multiplayer.Mp.Scenario(g);
         if (text == null) return false;
-        string folder = System.IO.Path.Combine(UnityEngine.Application.persistentDataPath, "multiplayer");
+        string folder = HexTactica.Multiplayer.MpPaths.Local;
         System.IO.Directory.CreateDirectory(folder);
         string path = System.IO.Path.Combine(folder, GameFiles.SafeName(g.name) + "#" + g.code + ".dat");
         System.IO.File.WriteAllText(path, text);

@@ -176,7 +176,7 @@ namespace HexTactica.Multiplayer {
             finally { ScenarioLoader.ControlFromFile = fromFile; ScenarioLoader.SidesAsFiled = asFiled; }
         }
 
-        static string Folder { get { return Path.Combine(Application.persistentDataPath, "multiplayer"); } }
+        static string Folder { get { return MpPaths.Local; } }
         static string SeenKey(MpGame g) { return "mp-seen-" + Mp.Me + "-" + g.code + "-" + g.epoch; }
 
         // ------------------------------------------------------------------ where this device's game stands: the game log's own turn boards
