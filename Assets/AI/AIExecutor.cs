@@ -79,7 +79,38 @@ namespace HexTactica.AI {
             return null;
         }
 
+        /// <summary>
+        /// Whether the last action Execute carried out could be seen by the player watching (FogOfWar.Viewer): some
+        /// tile it touched was in their sight, or nothing was checked. False: it was all in fog, done at once (no
+        /// animation), and the AI need not pause after it (FogSettings.hiddenAiActionsAtOnce).
+        /// </summary>
+        public static bool LastActionSeen { get; private set; } = true;
+        static bool actionSeen, actionChecked;
+
+        /// <summary>Whether the watching player sees any of these tiles (always, with fog off, nobody watching, or the setting off).</summary>
+        public static bool Watched(IEnumerable<HexTile> tiles) {
+            if (!FogSettings.Instance.hiddenAiActionsAtOnce || !FogOfWar.On) return true;
+            Player viewer = FogOfWar.Viewer;
+            if (viewer == null) return true;
+            foreach (HexTile t in tiles) if (t != null && FogOfWar.TileVisible(viewer, t)) return true;
+            return false;
+        }
+
+        /// <summary>Whether to animate what happens on these tiles (they can be seen), noting it for LastActionSeen.</summary>
+        static bool Shown(IEnumerable<HexTile> tiles) {
+            actionChecked = true;
+            bool seen = Watched(tiles);
+            if (seen) actionSeen = true;
+            return seen;
+        }
+
         public static bool Execute(AIAction action, AIMap map, bool headless) {
+            actionSeen = false; actionChecked = false;
+            try { return Carry(action, map, headless); }
+            finally { LastActionSeen = actionSeen || !actionChecked; }
+        }
+
+        static bool Carry(AIAction action, AIMap map, bool headless) {
             if (action.unit == null) return false;
             if (OnIllegal != null) { string why = WhyIllegal(action); if (why != null) OnIllegal(action, why); }
 
@@ -112,7 +143,7 @@ namespace HexTactica.AI {
                         steps = PathFor(cargo, action.destination, headless, map);
                         if (steps == null) return false;
                     }
-                    bool boarded = cargo.WalkAndBoard(steps, action.transport, !headless);
+                    bool boarded = cargo.WalkAndBoard(steps, action.transport, !headless && Shown(new List<HexTile>(steps) { action.transport != null ? action.transport.tile : null }));
                     if (boarded || cargo.tile != start) {
                         map.Invalidate(cargo);
                         if (action.transport != null) map.Invalidate(action.transport);
@@ -127,6 +158,7 @@ namespace HexTactica.AI {
                         if (!DoMove(action.unit, action.via, headless, map)) return false;
                         if (action.unit.tile != action.via) return true;
                     }
+                    Shown(new[] { action.unit.tile, action.destination });
                     if (Transporting.Unload(action.unit, action.target, action.destination)) {
                         map.Invalidate(action.unit);
                         map.Invalidate(action.target);
@@ -141,6 +173,7 @@ namespace HexTactica.AI {
                     // Units under the blast now (hit, perhaps destroyed): their caches go.
                     List<Unit> under = new List<Unit>();
                     foreach (HexTile t in Strikes.Blast(aim, striker.blastRadius)) if (t.occupier != null) under.Add(t.occupier);
+                    Shown(new[] { striker.tile, aim });
                     if (!Strikes.Order(striker, aim)) return false;
                     map.Invalidate(striker);
                     foreach (Unit x in under) map.Invalidate(x);
@@ -194,6 +227,7 @@ namespace HexTactica.AI {
                 if (field.Reachable(dest))
                     for (HexTile t = dest; t != null && steps.Count < 256; t = t == unit.tile ? null : field.ParentOf(t)) steps.Insert(0, t);
                 if (steps.Count == 0 || steps[0] != unit.tile) { steps.Clear(); steps.Add(unit.tile); steps.Add(dest); }
+                Shown(steps);   // (nothing animates headless: noted for LastActionSeen all the same)
                 unit.MoveAlong(steps, thenAttacks, false);
             } else if (headless) {
                 // Reconstruct step count from the planner's own field so fuel is
@@ -207,7 +241,7 @@ namespace HexTactica.AI {
                     Debug.LogWarning("AI: " + unit.name + " cannot reach (" + dest.x + "," + dest.y + ") on the board as it stands: it stays put");
                     return false;
                 }
-                unit.MoveAlong(steps, thenAttacks, true);
+                unit.MoveAlong(steps, thenAttacks, Shown(steps));
             }
 
             map.Invalidate(unit);
@@ -226,6 +260,7 @@ namespace HexTactica.AI {
             if (!FogOfWar.CanTarget(attacker.owner, defender)) return false;
             if (!CombatMath.InFireRange(attacker, attacker.tile, defender.tile, defender)) return false;   // range, and line of fire
 
+            Shown(new[] { attacker.tile, defender.tile });
             attacker.OrderAttack(defender);
 
             map.Invalidate(attacker);

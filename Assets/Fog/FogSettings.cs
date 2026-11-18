@@ -25,6 +25,10 @@ public class FogSettings : ScriptableObject {
     [Tooltip("Opacity of the viewer's own units that no enemy sees.")]
     [Range(0, 1)] public float ownHiddenAlpha = 0.5f;
 
+    [Header("Turns played out of sight")]
+    [Tooltip("An AI action the viewer cannot see any of (every tile of its path, the attacker's and target's tiles, where a strike lands or cargo is put down, all in fog) is done at once, with no pause after it, so a turn mostly out of sight is not spent watching fog. Off: every AI action is animated and paced as if seen. (Another device's moves in a networked game are always treated this way.)")]
+    public bool hiddenAiActionsAtOnce = true;
+
     public const string ResourceName = "FogSettings";
     static FogSettings instance;
 
