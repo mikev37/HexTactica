@@ -870,6 +870,16 @@ public class Unit : MonoBehaviour
     /// it — the mover answering as usual (OrderAttack with surprise: the hidden unit always fires
     /// first). Returns true if the unit reached the end of the path.
     /// </summary>
+    /// <summary>Put the sprite on its tile now (nothing left to walk or slide): a move that is not animated.</summary>
+    void SnapSprite() {
+        if (tile == null || tile.unitPlacement == null || trasnporter != null) return;
+        if (path != null) path.Clear();
+        slideFirst = null;
+        transform.position = tile.unitPlacement.position;
+        spriteTile = tile;
+        if (animator != null) animator.SetBool("Moving", false);
+    }
+
     internal bool MoveAlong(List<HexTile> steps, bool thenAttacks, bool animate) {
         ambushedBy = null;
         if (steps == null || steps.Count == 0 || tile == null) return false;
@@ -910,6 +920,9 @@ public class Unit : MonoBehaviour
         // Carried units ride along rather than being left behind on the old tile.
         SetCargoTile(dest);
         FogOfWar.Changed();
+        // Not animated (headless, an instant replay, or an AI or remote move all out of the viewer's sight): the
+        // sprite is put on its tile at once, not slid there at walking pace.
+        if (!animate) SnapSprite();
 
         if (ambusher != null) {
             ambushedBy = ambusher;
