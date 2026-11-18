@@ -287,7 +287,7 @@ namespace HexTactica.Multiplayer {
         /// </summary>
         static bool Watching(IEnumerable<HexTile> tiles) {
             if (!FogOfWar.On) return true;
-            Player viewer = FogOfWar.Viewer;
+            Player viewer = FogOfWar.Judge;
             if (viewer == null) return true;   // (a spectator, or nobody's view: everything shows)
             foreach (HexTile t in tiles) if (t != null && FogOfWar.TileVisible(viewer, t)) return true;
             return false;

@@ -28,6 +28,8 @@ public class FogSettings : ScriptableObject {
     [Header("Turns played out of sight")]
     [Tooltip("An AI action the viewer cannot see any of (every tile of its path, the attacker's and target's tiles, where a strike lands or cargo is put down, all in fog) is done at once, with no pause after it, so a turn mostly out of sight is not spent watching fog. Off: every AI action is animated and paced as if seen. (Another device's moves in a networked game are always treated this way.)")]
     public bool hiddenAiActionsAtOnce = true;
+    [Tooltip("For testing the above: with the fog not drawn (GameController.fogShownOnScreen off), still judge what is out of sight by the side whose view the screen would show (fogViewer, else the human side), so the actions it would not see visibly happen at once. Off: with the fog not drawn, everything is paced as seen.")]
+    public bool judgeUnseenWhenFogHidden = false;
 
     public const string ResourceName = "FogSettings";
     static FogSettings instance;

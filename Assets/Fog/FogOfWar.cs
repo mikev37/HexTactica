@@ -633,10 +633,32 @@ public static class FogOfWar {
     static Player viewerCached, viewerTurn;
     static int viewerFrame = -1, viewerVersion, viewerChanges;
 
+    /// <summary>
+    /// The side whose sight judges what is "out of sight" (FogSettings.hiddenAiActionsAtOnce): the Viewer; with the fog
+    /// not drawn and FogSettings.judgeUnseenWhenFogHidden on, the side that would be the viewer were it drawn (a way
+    /// to watch what gets skipped). Null: nothing is out of sight.
+    /// </summary>
+    public static Player Judge {
+        get {
+            Player v = Viewer;
+            if (v != null) return v;
+            GameController gc = GameController.gc;
+            if (!On || gc == null || gc.players == null || gc.fogShownOnScreen || !FogSettings.Instance.judgeUnseenWhenFogHidden) return null;
+            return Pov(gc);
+        }
+    }
+
     static Player FindViewer(GameController gc) {
         {
             if (LevelEditor.singleton != null && (LevelEditor.singleton.editing || LevelEditor.singleton.unit_placement || LevelEditor.singleton.building_placement)) return null;
             if (!gc.fogShownOnScreen) return null;
+            return Pov(gc);
+        }
+    }
+
+    /// <summary>Whose view the screen would show: the pinned fogViewer, else the (last) human side.</summary>
+    static Player Pov(GameController gc) {
+        {
             if (gc.fogViewer >= 0 && gc.fogViewer < gc.players.Count) return gc.players[gc.fogViewer];
             if (gc.activePlayer != null && IsHuman(gc.activePlayer)) lastHuman = gc.activePlayer;
             // (Still human: a loaded scenario may have handed the last human's side to an AI.)
