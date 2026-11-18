@@ -23,3 +23,5 @@ saves/
 
 # The Cloud Code module is a real .NET project (not one Unity generates): keep its project file.
 !CloudCode/**/*.csproj
+
+multiplayer/
