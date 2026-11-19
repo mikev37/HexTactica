@@ -191,6 +191,7 @@ public static class Tests {
             return 0;
         }
         if (probe == "chokes") { Scenarios.Chokes(Environment.GetEnvironmentVariable("FILE")); return 0; }
+        if (probe == "supplydump") { Scenarios.SupplyDump(Environment.GetEnvironmentVariable("FILE")); return 0; }
         return Scenarios.RunAll(tweak) == 0 ? 0 : 1;
     }
 }
