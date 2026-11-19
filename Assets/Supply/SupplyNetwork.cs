@@ -619,13 +619,13 @@ public static class SupplyNetwork {
     }
 
     /// <summary>
-    /// Is a supply unit carried by <paramref name="transport"/> standing on <paramref name="at"/> linked? Each carrier by
-    /// its own move (its own path, as it would go):
-    ///   - a land transport: supplied ground within one move of it (WithinMoveOfSupply);
-    ///   - a ship: supplied ground within one move (a supplied harbor, or land beside water it reaches), or another
-    ///     linked carrier — a ship or an aircraft with supply aboard — within one move. Convoys chain to any length;
-    ///   - an aircraft: supplied ground within one move, or a linked ship within one move that gives supply to land
-    ///     (one beside the shore).
+    /// Is a supply unit carried by <paramref name="transport"/> standing on <paramref name="at"/> linked? On supplied
+    /// ground, yes; else each carrier by its own move (its own path, as it would go: RouteFor) to a source of supply
+    /// (a linked supply unit, aboard or not, or a supply building spreading supply), onto it or beside it:
+    ///   - a land transport: so (WithinMoveOfSupply);
+    ///   - a ship: another linked carrier (a ship or an aircraft with supply aboard) within one move, or beside a source
+    ///     on the shore. Convoys chain to any length;
+    ///   - an aircraft: so, or a linked ship within one move that gives supply to land (one beside the shore).
     /// What it then gives is FloodFromHub's (a ship: only beside the shore; an aircraft: only over land). A link
     /// through another carrier is recorded (Result.linkedThrough) for the supply line.
     /// </summary>
@@ -649,12 +649,15 @@ public static class SupplyNetwork {
     /// <paramref name="result"/> the supply it could link to and the supply units of <paramref name="hubs"/> in
     /// <paramref name="activated"/> (all of them, if null) those whose carriers it could link through (where the moved ones
     /// stand, and what carries them, as the solve has them):
-    /// - on supplied ground: no transit (only its own tile);
-    /// - a land carrier or an aircraft: the tile of supplied ground in reach (MoveReach) that takes fewest movement points,
-    ///   then the board's order; an aircraft with none, a convoy (below);
-    /// - a ship: a convoy first (the shore another ship supplies is ground it could reach, but the link, and the line drawn
-    ///   for it, is that ship, along the water), else the tile beside supplied ground in reach, as above, with the ground it
-    ///   puts its cargo on (<paramref name="landing"/>: beside it, the board's order first);
+    /// - on supplied ground: no transit (only its own tile): already in supply is in supply;
+    /// - else it must reach a source of supply itself, not just ground some source supplies (SourceTiles): a linked supply
+    ///   unit (on foot, or aboard a carrier however deep: where its outermost carrier stands) or a supply building spreading
+    ///   supply (the HQ among them), on its tile or beside it (taken or not), in its move (MoveReach), fewest movement points
+    ///   first, then the board's order. The supply line (truck to truck to the HQ) is then the rule itself;
+    /// - a land carrier or an aircraft: so; an aircraft with none, a convoy (below);
+    /// - a ship: a convoy first (the link, and the line drawn for it, is that ship, along the water), else so, beside a
+    ///   source (a supply unit on the beach, a naval yard), with the source it reaches (<paramref name="landing"/>: beside
+    ///   it, the board's order first);
     /// - a convoy: the carrier first in the board's order whose tile, or one beside it, is in reach (a ship's: a ship's or an
     ///   aircraft's; an aircraft's: a ship's off land), its supply unit <paramref name="via"/>, and the way to that tile or
     ///   beside it, fewest movement points first.
@@ -664,8 +667,10 @@ public static class SupplyNetwork {
                                   SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved, out SupplyPoint via, out HexTile landing) {
         via = null; landing = null;
         bool ship = LocomotionRules.IsNaval(transport.locomotion), air = LocomotionRules.IsAirborne(transport.locomotion);
+        HashSet<HexTile> sources = null;
         if (!ship) {
-            List<HexTile> direct = DirectRoute(transport, at, result, out landing);
+            sources = SourceTiles(transport.owner, hub, result, hubs, activated, movedHub, hypotheticalTile, moved);
+            List<HexTile> direct = DirectRoute(transport, at, result, sources, out landing);
             if (direct != null) return direct;
             if (!air) return null;
         }
@@ -684,30 +689,58 @@ public static class SupplyNetwork {
             if (!near) foreach (HexTile n in ct.neighbors) if (n != null && reach.Contains(n)) { near = true; break; }
             if (near && (best == null || CombatMath.Precedes(ct, bestTile))) { best = other; bestTile = ct; }
         }
-        if (best == null) return ship ? DirectRoute(transport, at, result, out landing) : null;
+        if (best == null) return ship ? DirectRoute(transport, at, result, SourceTiles(transport.owner, hub, result, hubs, activated, movedHub, hypotheticalTile, moved), out landing) : null;
         HexTile target = bestTile;
         HexTile end = reach.Best(t => t == target || t.neighbors.Contains(target));
         via = best;
         return reach.PathTo(end);
     }
 
-    /// <summary>RouteFor straight to supply: no transit on supplied ground; else to supplied ground in reach (a ship: beside it, with its landing). Null if none.</summary>
-    static List<HexTile> DirectRoute(Unit transport, HexTile at, Result result, out HexTile landing) {
+    /// <summary>
+    /// RouteFor straight to a source: no transit on supplied ground; else to a tile of <paramref name="sources"/> or beside
+    /// one in reach (a ship: beside one, with the source it reaches as its landing). Null if none.
+    /// </summary>
+    static List<HexTile> DirectRoute(Unit transport, HexTile at, Result result, HashSet<HexTile> sources, out HexTile landing) {
         landing = null;
         if (SuppliedGround(at, result)) return new List<HexTile> { at };
+        if (sources == null || sources.Count == 0) return null;
         bool ship = LocomotionRules.IsNaval(transport.locomotion);
         Reach reach = MoveReach(transport, at);
-        HexTile end = reach.Best(t => ship ? BesideSupplied(t, result) != null : SuppliedGround(t, result));
+        HexTile end = reach.Best(t => (!ship && sources.Contains(t)) || BesideSource(t, sources) != null);
         if (end == null) return null;
-        if (ship) landing = BesideSupplied(end, result);
+        if (ship || !sources.Contains(end)) landing = ship ? BesideSource(end, sources) : null;
         return reach.PathTo(end);
     }
 
-    /// <summary>The supplied ground beside <paramref name="t"/> first in the board's order, or null.</summary>
-    static HexTile BesideSupplied(HexTile t, Result result) {
+    /// <summary>The source tile beside <paramref name="t"/> first in the board's order, or null.</summary>
+    static HexTile BesideSource(HexTile t, HashSet<HexTile> sources) {
         HexTile best = null;
-        foreach (HexTile n in t.neighbors) if (n != null && SuppliedGround(n, result) && (best == null || CombatMath.Precedes(n, best))) best = n;
+        foreach (HexTile n in t.neighbors) if (n != null && sources.Contains(n) && (best == null || CombatMath.Precedes(n, best))) best = n;
         return best;
+    }
+
+    /// <summary>
+    /// Where <paramref name="owner"/>'s supply comes from in <paramref name="result"/> so far, for a carrier to reach
+    /// (RouteFor): the tile of each supply unit of <paramref name="hubs"/> in <paramref name="activated"/> (all, if null)
+    /// but <paramref name="self"/> (aboard: where its outermost carrier stands, however deep it is carried), and of each of
+    /// its supply buildings spreading supply (its tile supplied: an enemy on it, or a captured HQ, spreads none).
+    /// </summary>
+    static HashSet<HexTile> SourceTiles(Player owner, SupplyPoint self, Result result, List<SupplyPoint> hubs, HashSet<SupplyPoint> activated,
+                                        SupplyPoint movedHub, HexTile hypotheticalTile, Dictionary<SupplyPoint, HexTile> moved) {
+        HashSet<HexTile> sources = new HashSet<HexTile>();
+        if (hubs != null)
+            foreach (SupplyPoint h in hubs) {
+                if (h == null || h == self || (activated != null && !activated.Contains(h))) continue;
+                HexTile t = TileOf(h, movedHub, hypotheticalTile, moved);
+                if (t != null) sources.Add(t);
+            }
+        for (int i = 0; i < Building.all.Count; i++) {
+            Building b = Building.all[i];
+            if (b == null || b.tile == null || b.owner != owner || !b.producesSupply || !b.Functioning) continue;
+            if (b.IsHQ && b.Home != owner) continue;
+            if (result.DepthAt(b.tile) > 0) sources.Add(b.tile);
+        }
+        return sources;
     }
 
     /// <summary>
@@ -995,17 +1028,15 @@ public static class SupplyNetwork {
     }
 
     /// <summary>
-    /// Can <paramref name="transport"/> standing on <paramref name="at"/> get its cargo to supplied ground in one move,
-    /// moving as it moves (its range, terrain, fuel and locomotion; enemies block) and in transit (never on or beside an
-    /// enemy that could attack it: Exposed)? A land transport or an aircraft must
-    /// reach a supplied ground tile itself; a ship, which cannot go ashore, one beside the water it reaches (or a
-    /// supplied harbor it can enter). Water is never supplied ground (a ship's supply covers the water it floats on,
-    /// but nothing links to that).
+    /// Can <paramref name="transport"/> standing on <paramref name="at"/> get its cargo to a source of supply in
+    /// <paramref name="result"/> in one move (onto it or beside it: RouteFor), moving as it moves (its range, terrain,
+    /// fuel and locomotion; enemies block) and in transit (never through a tile on or beside an enemy that could attack
+    /// it: Exposed)? Standing on supplied ground, it needs none. A ship, which cannot go ashore, reaches beside one.
     /// </summary>
     public static bool WithinMoveOfSupply(Unit transport, HexTile at, Result result) {
         if (transport == null || at == null) return false;
         HexTile landing;
-        return DirectRoute(transport, at, result, out landing) != null;
+        return DirectRoute(transport, at, result, SourceTiles(transport.owner, null, result, result.connectedHubs, null, null, null, null), out landing) != null;
     }
 
     /// <summary>

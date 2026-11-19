@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"attrition-rule-supply-aboard","kind":"rules","opponent":"Human","rounds":"4","check":"attritionSupplyAboard","question":"A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off. Exactly: with as many moves as it takes to drive onto supplied ground it links, with one fewer it does not (beside supplied ground is not enough for a land transport).","rules":"attrition"},
+"test":{"name":"attrition-rule-supply-aboard","kind":"rules","opponent":"Human","rounds":"4","check":"attritionSupplyAboard","question":"A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply, a Blue supply unit standing in the HQ's supply at (-3,0): linked to the network, because the APC could carry it beside that source in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off. Exactly: with as many moves as it takes to drive beside a source it links, with one fewer it does not (onto ground a source supplies, short of the source itself, is not enough).","rules":"attrition"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
@@ -180,6 +180,7 @@
 "units":[
 {"x":1,"y":0,"z":-1,"Strength":6,"Veterancy":0,"personalName":"APC","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"APC","transporterIndexPlusOne":0},
 {"x":2,"y":0,"z":-2,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0},
+{"x":-3,"y":0,"z":3,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0},
 {"x":6,"y":-3,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
 ]
 }

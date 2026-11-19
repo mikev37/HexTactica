@@ -413,7 +413,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, -4, 0);
-            Dictionary<string, string> test = Test("rule-supply-preview-fob", "rules", "Human", 4, "previewFob", "The player's supply preview for a truck carrying supplies, linked through a forward base: HQ at -13, FOB at -4 linked to it by two supply units, a truck carrying supplies at 1,2 moved forward to 7,2. Picked (the preview), the destination shows supplied, as it is once the move is made, even with the AI's what-if rule (a supply unit put down where it is moved to) left on the main thread; and an AI turn thought on the main thread no longer leaves that rule on.");
+            Dictionary<string, string> test = Test("rule-supply-preview-fob", "rules", "Human", 4, "previewFob", "The player's supply preview for a truck carrying supplies, linked through a forward base: HQ at -13, FOB at -4 linked to it by two supply units, a truck carrying supplies at 1,2 moved forward to 3,2 (within a move of beside the FOB, its source). Picked (the preview), the destination shows supplied, as it is once the move is made, even with the AI's what-if rule (a supply unit put down where it is moved to) left on the main thread; and an AI turn thought on the main thread no longer leaves that rule on.");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "rule-supply-preview-fob.dat"), test, ai, other, ai);
             n++;
@@ -520,8 +520,8 @@ public static partial class Scenarios {
              "Ships burn fuel only by moving (3 tiles: 3 fuel) and never starve away from port; one on its naval yard is healed and refuelled.");
         make("attrition-rule-refuel-on-landing", "attritionLandRefuel", (a, o) => { Rig.PlaceAirfield(a, -3, 2); Unit f = Put("Fighter", a, 0, 2); f.fuel = 3; f.ammo = 1; Unit g = Put("Fighter", a, 0, 4); g.fuel = 5; g.ammo = 1; Put("Grunt", o, 4, 0); },
              "A Fighter with 3 fuel flies 3 tiles onto its airport's runway (a plain move): refuelled and re-armed as it lands (fuel 14, ammo 6). Another lands there as a move and attack: nothing until its next turn (fuel 5 - 3 = 2, ammo 1). The airport is then lost before their next turn: the first burns a turn's fuel (11) and is not ditched.");
-        make("attrition-rule-supply-aboard", "attritionSupplyAboard", (a, o) => { Put("APC", a, 1, 0); Put("Supplies", a, 2, 0); Put("Grunt", o, 6, -3); },
-             "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply: linked to the network, because the APC could carry it onto supplied ground in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off. Exactly: with as many moves as it takes to drive onto supplied ground it links, with one fewer it does not (beside supplied ground is not enough for a land transport).");
+        make("attrition-rule-supply-aboard", "attritionSupplyAboard", (a, o) => { Put("APC", a, 1, 0); Put("Supplies", a, 2, 0); Put("Supplies", a, -3, 0); Put("Grunt", o, 6, -3); },
+             "A supply unit (range 4) aboard an APC (moves 6) beyond the HQ's supply, a Blue supply unit standing in the HQ's supply at (-3,0): linked to the network, because the APC could carry it beside that source in one move, and spreading supply only its own range around the APC. With the APC slowed to 1 move, it is cut off. Exactly: with as many moves as it takes to drive beside a source it links, with one fewer it does not (onto ground a source supplies, short of the source itself, is not enough).");
         make("attrition-rule-supply-line", "attritionSupplyLine", (a, o) => { Put("Supplies", a, -3, 0); Put("Grunt", a, -2, 0); Put("Grunt", o, 6, -3); },
              "A grunt supplied only through a supply unit standing at the edge of the HQ's supply: the line traced back from the grunt runs to the supply unit, then on to the HQ.");
         make("rule-bunker", "bunker", (a, o) => { Rig.PlaceBuilding("Bunker", a, 0, 0); Put("Grunt", a, 0, 0); Put("Tank", o, 1, 0); Put("Grunt", o, -1, 0); Put("Gunship", a, -3, 3); },
@@ -698,18 +698,20 @@ public static partial class Scenarios {
              "The same for every supply building (SupplyNetwork.FloodFromBuilding): Blue's FOB, far from the HQ and cut off from it, gives out of its store; a Red grunt on it stops that; gone again, it supplies as before.");
         make("ui-enemy-supply-line", "enemySupplyLine", (a, o) => {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 Put("Supplies", a, -3, 0);
                  Put("Grunt", o, 5, -2); Put("Grunt", a, 4, 2); },
              "Clicking an enemy supply unit (or a transport carrying one) shows its supply line with its move and threat (SupplyOverlay.ShowEnemy): Red, the screen's player, clicks Blue's APC carrying supplies at (2,0). With fog off the line is the whole way back to Blue's HQ, the same as Blue's own supply line from there. Under fog it runs from the APC only as far as Red sees along it: every tile shown is one Red sees, and it stops where the way goes into the fog. A Blue unit that carries no supply shows no line (SupplyOverlay.EnemyLine, what ShowEnemy draws; HideEnemy closes it).");
         make("rule-supply-transit", "supplyTransit", (a, o) => {
-                                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
-                 Put("Supplies", a, -6, 6);
+                 Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 Put("Supplies", a, -6, 6); Put("Supplies", a, -3, 0);
                  for (int y = -5; y <= -1; y++) Put("Grunt", o, 5, y);   // parked: the check sets them out
                  Put("Fighter", o, 6, -5); Put("Fighter", o, 6, -4); },
-             "Supply in transit keeps clear of the enemy (SupplyNetwork.Exposed): a supply unit aboard a transport links only if the transport can reach supplied ground in one move without moving through a tile on or beside an enemy unit that could attack it (the tile it stands on does not count). Blue's HQ at (-6,0), an APC carrying supplies at (2,0). Linked with nobody about; cut off by a line of Red grunts across the board at x=-1 three tiles apart (the APC could drive between them before: it may not now); linked again with Red fighters in the same places (a jet cannot attack a truck); linked round a single Red grunt beside the way it would take with nobody about (moves to spare to go round), its supply line never on or beside the grunt; still linked with a Red grunt beside the APC, behind it (where it stands does not count); linked on supplied ground with a Red grunt beside it (no transit). A supply unit on foot in supply with a Red grunt beside it is linked (it is not in transit).");
+             "Supply in transit keeps clear of the enemy (SupplyNetwork.Exposed): a supply unit aboard a transport links only if the transport can reach supplied ground in one move without moving through a tile on or beside an enemy unit that could attack it (the tile it stands on does not count). Blue's HQ at (-6,0), a Blue supply unit in its supply at (-3,0) (the source the APC must reach: beside it), an APC carrying supplies at (2,0). Linked with nobody about; cut off by a line of Red grunts across the board at x=-1 three tiles apart (the APC could drive between them before: it may not now); linked again with Red fighters in the same places (a jet cannot attack a truck); linked round a single Red grunt beside the way it would take with nobody about (moves to spare to go round), its supply line never on or beside the grunt; still linked with a Red grunt beside the APC, behind it (where it stands does not count); linked on supplied ground with a Red grunt beside it (no transit). A supply unit on foot in supply with a Red grunt beside it is linked (it is not in transit).");
         make("fog-rule-supply-transit-unseen", "supplyTransitUnseen", (a, o) => {
-                                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 Put("Supplies", a, -3, 0);
                  for (int y = -5; y <= -1; y++) Put("Grunt", o, 5, y); },   // parked: the check sets them out
-             "Known unknowns for supply in transit (SupplyNetwork.UnseenContacts, SupplyContacts): under fog the screen shows the network and the supply line as they truly are, and where enemies its side does not see stop a transit or send it round, a contact marker says why: beside such an enemy, never on it, never on one of the side's units. Blue's HQ at (-6,0), an APC carrying supplies at (2,0), Blue the screen's player. A line of Red grunts at x=-1 Blue does not see: cut off, truly and as shown, the APC unfed; a contact. Seen by a recon: still cut, no contact. A single unseen Red grunt beside the way (moves to spare): linked round it, the supply line the true way clear of it, one contact. With a Blue helicopter parked where that contact would go (it does not spot the stealthy grunt beside it), the contact goes beside it instead. No unseen enemy, or fog off: no contacts.");
+             "Known unknowns for supply in transit (SupplyNetwork.UnseenContacts, SupplyContacts): under fog the screen shows the network and the supply line as they truly are, and where enemies its side does not see stop a transit or send it round, a contact marker says why: beside such an enemy, never on it, never on one of the side's units. Blue's HQ at (-6,0), a Blue supply unit in its supply at (-3,0) (the source the APC must reach), an APC carrying supplies at (2,0), Blue the screen's player. A line of Red grunts at x=-1 Blue does not see: cut off, truly and as shown, the APC unfed; a contact. Seen by a recon: still cut, no contact. A single unseen Red grunt beside the way (moves to spare): linked round it, the supply line the true way clear of it, one contact. With a Blue helicopter parked where that contact would go (it does not spot the stealthy grunt beside it), the contact goes beside it instead. No unseen enemy, or fog off: no contacts.");
         make("fog-rule-supply-cut-unseen", "supplyCutUnseen", (a, o) => {
                  Put("Supplies", a, -3, 0); Put("Fighter", a, 0, 0);
                  for (int y = -5; y <= 0; y++) Put("Grunt", o, 5, y); },   // parked: the check rings the helicopter with them
@@ -783,6 +785,7 @@ public static partial class Scenarios {
              "A supply ship refuels and restocks the ships beside it at the start of the turn, as an air tanker does aircraft: the Gunboat beside it (fuel 10, 1 supply) is full after a turn; one away from it is not; a supply ship beside it is not tended by it (a tender is never tended by another).");
         make("attrition-rule-ship-carried-supply", "shipCarriedSupply", (a, o) => {
                  water(-4, 5, -7, 7);
+                 Put("Supplies", a, -5, 2);   // on the beach, in the HQ's supply: the source a ship reaches (beside it)
                  Put("Hauler", a, -1, 0); Put("Hauler", a, 3, 0); Put("Hauler", a, 5, 0);
                  Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3); Put("Supplies", a, -6, 4); Put("Supplies", a, -5, 4);
                  Put("Transport Helo", a, -5, 3);
@@ -790,6 +793,7 @@ public static partial class Scenarios {
              "Convoys: a ship with a supply unit aboard is a link if within one move (its own path) of supplied ground or of another linked carrier, to any length, and gives supply to land only beside it. Ten tiles of sea between Blue's shore and an island, ships moving 3: TS A within a move of Blue's shore, TS B within a move of A only, TS C within a move of B only and beside the island. C is linked through B through A, the Blue grunt on the island is supplied, A and B out at sea give nothing, and the supply line runs from the grunt through C, B and A to the HQ. Without A, B and C are cut off. A helicopter with supplies aboard in A's place over the water (linked by Blue's shore, giving nothing over water) links B in turn: a ship links through an aircraft.");
         make("attrition-rule-linked-ship-supplied", "linkedShipSupplied", (a, o) => {
                  water(-4, 5, -7, 7);
+                 Put("Supplies", a, -5, 2);   // on the beach, in the HQ's supply: the source a ship reaches (beside it)
                  Put("Hauler", a, -1, 0); Put("Hauler", a, 5, 0);
                  Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
                  Put("Grunt", o, 7, -2); },
@@ -802,13 +806,27 @@ public static partial class Scenarios {
              "The carrier (a hauler variant for aircraft): the naval yard sells it; it takes fighters and bombers (3 weight: a fighter and a bomber), not grunts; aircraft board it from beside it at sea; at the start of Blue's turn one aboard a carrier with supplies is refuelled, rearmed and mended, and one aboard a carrier out of supplies is not (it starves, as the cargo of any ship out of supplies does).");
         make("attrition-rule-ship-supply-upkeep", "shipSupplyUpkeep", (a, o) => {
                  water(-4, 5, -7, 7);
+                 Put("Supplies", a, -5, 2);   // on the beach, in the HQ's supply: the source a ship reaches (beside it)
                  for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
                  Put("Hauler", a, -1, 0); Put("APC", a, -6, 1); Put("Supplies", a, -6, 2); Put("Grunt", a, -6, 3);
                  Put("Gunboat", a, 0, 0);
                  Put("Grunt", o, 7, -6); },
              "Supply at sea, and what it gives: a hauler within a move of Blue's shore, beside a strip of island, carrying an APC with a supply unit inside it and a weakened grunt. (1) The supply two transports deep links and supplies the island, as supply aboard the hauler itself would (ship rules). (2) The grunt aboard, the hauler having supplies, is resupplied at the start of Blue's turn as on supplied ground: healed a strength, rearmed, refuelled. (3) The hauler itself only mends from its own supplies (+1): the water its own supply covers is not supplied ground for it. (4) When the hauler sails away, the water and the island it supplied are no longer supplied.");
+        make("rule-supply-reach-source", "supplyReachSource", (a, o) => {
+                 Put("Supplies", a, -3, 0); Unit tr = Put("Truck", a, 4, 0); Unit sup = Put("Supplies", a, 4, 1); Transporting.Load(tr, sup);
+                 Put("Grunt", o, 6, -5); },
+             "A carrier must reach a source of supply, not just ground one supplies (SupplyNetwork.RouteFor): Blue's HQ at (-6,0), a Blue supply unit on foot at (-3,0) in its supply (a source), a truck carrying supplies at (4,0) beyond it. With moves enough to drive onto the supply unit's ground but not beside the supply unit, it is cut off (it used to link); with as many as it takes to get beside it, it links. Its supply line then runs from the truck beside the supply unit, to it, and on to the HQ: what is drawn is what links it.");
+        make("rule-supply-reach-ship", "supplyReachShip", (a, o) => {
+                 water(-4, 5, -7, 7);
+                 for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
+                 Put("Supplies", a, -5, 2);   // on the beach, in the HQ's supply: the source the hauler reaches
+                 Put("Hauler", a, -1, 0); Put("APC", a, -6, 1); Put("Supplies", a, -6, 3);
+                 Put("Truck", a, 4, -1); Put("Supplies", a, -6, 4);
+                 Put("Grunt", o, 7, -6); },
+             "A ship holding supply is a source a land carrier can reach, however deep the supply sits: Blue's hauler off an island strip, linked by the supply unit on Blue's beach, carries an APC that carries a supply unit (its own spread cut to nothing here, so the island is not supplied). A truck carrying supplies at the island's far end links by driving to the tile beside the hauler: with exactly the moves that takes it links, with one fewer it is cut off.");
         make("attrition-rule-ship-line-on-water", "shipLineOnWater", (a, o) => {
                  water(-4, 5, -7, 7);
+                 Put("Supplies", a, -5, 2);   // on the beach, in the HQ's supply: the source a ship reaches (beside it)
                  for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
                  Put("Hauler", a, -1, 0); Put("Hauler", a, 3, 0);
                  Put("Supplies", a, -6, 2); Put("Supplies", a, -6, 3);
@@ -830,11 +848,12 @@ public static partial class Scenarios {
              "A landing on a coast our supply does not reach brings supply with it (a rule of the game for the AI: the troops would starve on the beach). Blue's troops and its one supply unit stand on its shore, the empty transport ship out at sea away from the naval yard, Red's land across the channel without Blue's supply. The ship comes for them; the supply unit goes aboard with the troops (it walks to where the ship comes in, not to the yard); when the first Blue troops are put down on Red's side, the ground they stand on is in Blue's supply, and the ship does not land them before the supply unit is aboard.");
         make("ai-second-supply-ashore", "supplyAshore", (a, o) => {
                  water(-4, 5, -7, 7);
+                 Put("Supplies", a, -5, 2);   // on the beach, in the HQ's supply: the source the ship links by (beside it)
                  for (int x = 0; x <= 5; x++) for (int y = -4; y <= -1; y++) { HexTile t = Rig.At(x, y); if (t != null) t.terrain = T("Grassland"); }
                  Unit h = Put("Hauler", a, -1, 0); Aboard(h, Put("Supplies", a, -6, 3)); Aboard(h, Put("Supplies", a, -6, 2));
                  Put("Grunt", a, 4, -3); Put("Grunt", a, 5, -4);
                  Put("Grunt", o, 6, 1); },
-             "A transport ship off an island, within a move of Blue's shore (linked), carrying two supply units; two Blue grunts inland on the island beyond what supply from the ship reaches. One supply unit stays aboard (the beach is supplied from the water through it: put down, it would be cut off) and the other is put ashore, from where it carries supply inland: within two Blue turns a supply unit stands on the island, one is still aboard, and more of the island is in Blue's supply than the ship alone supplied.");
+             "A transport ship off an island, within a move of the supply unit on Blue's beach (linked), carrying two supply units; two Blue grunts inland on the island beyond what supply from the ship reaches. One supply unit stays aboard (the beach is supplied from the water through it: put down, it would be cut off) and the other is put ashore, from where it carries supply inland: within two Blue turns a supply unit stands on the island, one is still aboard, and more of the island is in Blue's supply than the ship alone supplied.");
         make("attrition-ai-sea-supply", "attritionSeaSupply", (a, o) => {
                  for (int x = -1; x <= 2; x++) for (int y = -7; y <= 7; y++) { HexTile w = Rig.At(x, y); if (w != null) w.terrain = T("Water"); }
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
@@ -1049,18 +1068,21 @@ public static partial class Scenarios {
                 SupplyNetwork.Result stat = SupplyNetwork.SolveStatic(l.ai);
                 SupplyNetwork.Result net = SupplyNetwork.Solve(l.ai, false);
                 bool linked = net.connectedHubs.Contains(hub);
-                // Its own spread: nothing supplied farther from the APC than its range that the HQ does not supply.
+                // Its own spread: nothing supplied farther from the APC than its range that the rest of the network does not supply.
+                SupplyNetwork.Result rest = SupplyNetwork.SolveWithout(l.ai, hub);
                 int far = 0;
-                foreach (KeyValuePair<HexTile, int> kv in net.depth) if (kv.Value > 0 && !stat.IsSupplied(kv.Key)) far = Math.Max(far, kv.Key.Distance(apc.tile));
+                foreach (KeyValuePair<HexTile, int> kv in net.depth) if (kv.Value > 0 && !rest.IsSupplied(kv.Key)) far = Math.Max(far, kv.Key.Distance(apc.tile));
                 int gap = 99;
                 foreach (KeyValuePair<HexTile, int> kv in stat.depth) if (kv.Value > 0) gap = Math.Min(gap, kv.Key.Distance(apc.tile));
                 int moves = apc.moveRange;
                 apc.moveRange = 1;
                 bool cut = !SupplyNetwork.Solve(l.ai, false).connectedHubs.Contains(hub);
-                // Exactly its move: the fewest movement points to drive onto supplied ground links; one fewer does not.
+                // Exactly its move: the fewest movement points to drive beside a source of supply (the supply unit at -3,0 or the
+                // HQ) links; one fewer does not (onto ground they supply but not beside them is not enough).
+                HexTile src = Rig.At(-3, 0), hqT = GameController.HQOf(l.ai).tile;
                 HexTactica.AI.MoveField mf = HexTactica.AI.AIPath.ThisTurnFrom(apc, apc.tile, 99);
                 int need = 99;
-                foreach (HexTile t in mf.Tiles) if (t.terrain.elevation >= 0 && stat.IsSupplied(t) && mf.ReachableThisTurn(t)) need = Math.Min(need, mf.Get(t).used);
+                foreach (HexTile t in mf.Tiles) if (mf.ReachableThisTurn(t) && (t.Distance(src) <= 1 || t.Distance(hqT) <= 1)) need = Math.Min(need, mf.Get(t).used);
                 apc.moveRange = need;
                 bool exact = SupplyNetwork.Solve(l.ai, false).connectedHubs.Contains(hub);
                 apc.moveRange = need - 1;
@@ -1068,7 +1090,7 @@ public static partial class Scenarios {
                 apc.moveRange = moves;
                 SupplyNetwork.Solve(l.ai, false);
                 detail = "loaded " + loaded + "; HQ supply " + gap + " tiles from the APC; linked " + linked + "; spreads up to " + far + " tiles from the APC (range " + hub.range + "); with 1 move, cut off " + cut
-                       + "; " + need + " points to supplied ground: with " + need + " moves linked " + exact + ", with " + (need - 1) + " cut off " + short1;
+                       + "; " + need + " points to beside a source: with " + need + " moves linked " + exact + ", with " + (need - 1) + " cut off " + short1;
                 return loaded && gap > 1 && gap <= moves && linked && far <= hub.range && far > 0 && cut && need > 1 && need <= moves && exact && short1;
             }
             case "attritionSupplyChainLine": {
@@ -1344,7 +1366,7 @@ public static partial class Scenarios {
                     clear(); moveApc(Rig.At(-4, 0)); grunts[0].TeleportTo(Rig.At(-4, 1), 0);
                     bool onGround = linked();
                     clear(); moveApc(Rig.At(2, 0));
-                    Unit foot = null; foreach (Unit u in a.units) if (u != null && u.Hub != null && !u.Hub.producer && u.trasnporter == null) foot = u;
+                    Unit foot = Rig.At(-6, 6).occupier;
                     foot.TeleportTo(Rig.At(-4, -1), 0); grunts[0].TeleportTo(Rig.At(-3, -1), 0);
                     bool footLinked = SupplyNetwork.Solve(a, false).connectedHubs.Contains(foot.Hub);
                     clear(); SupplyNetwork.Solve(a, false);
@@ -2303,14 +2325,14 @@ public static partial class Scenarios {
             }
             case "previewFob": {
                 // HQ at -13; FOB at -4, linked to the HQ by supply units at -10,0 and -7,0. A truck carrying supplies at 1,2
-                // (inside the FOB's supply) is moved forward to 7,2 by the player: picked (the preview), then made.
+                // (inside the FOB's supply) is moved forward to 3,2 by the player: picked (the preview), then made.
                 List<string> r = new List<string>();
                 Building fob = Rig.At(-4, 0).building; fob.supplies = 4;
                 Put("Supplies", a, -10, 0); Put("Supplies", a, -7, 0);
                 Unit truck = Put("Truck", a, 1, 2); Unit cargo = Put("Supplies", a, 1, 3);
                 Transporting.Load(truck, cargo);
                 foreach (HexTile t in Rig.hg.tiles) if (t.unitPlacement == null) { t.unitPlacement = Rig.New<Transform>(); t.unitPlacement.position = new Vector3(t.x, t.y, 0f); }
-                HexTile dest = Rig.At(7, 2);
+                HexTile dest = Rig.At(3, 2);
                 SupplyNetwork.Result now = SupplyNetwork.Solve(a, false);
                 bool start = now.connectedBuildings.Contains(fob) && now.connectedHubs.Contains(cargo.Hub);
                 r.Add("FOB linked " + now.connectedBuildings.Contains(fob) + ", truck's supplies " + (now.connectedHubs.Contains(cargo.Hub) ? "linked" : "cut off"));
@@ -2328,7 +2350,7 @@ public static partial class Scenarios {
                 finally { dest.state = UIState.FREE; gc.activeUnit = null; update.Invoke(overlay, null); }
                 r.Add("Blue is a human here " + human + "; the player's preview: destination " + (previewOk ? "supplied" : "UNSUPPLIED"));
                 // The move made.
-                List<HexTile> drive = new List<HexTile>(); for (int x = 1; x <= 7; x++) drive.Add(Rig.At(x, 2));
+                List<HexTile> drive = new List<HexTile>(); for (int x = 1; x <= dest.x; x++) drive.Add(Rig.At(x, 2));
                 truck.MoveAlong(drive, false, false); truck.FinishActive();
                 SupplyNetwork.Result after = SupplyNetwork.Solve(a, false);
                 bool afterOk = after.connectedHubs.Contains(cargo.Hub) && after.IsSupplied(dest);
@@ -4110,6 +4132,63 @@ public static partial class Scenarios {
                 detail = "yard sells it " + sold + "; carries fighter and bomber " + takesAir + ", grunt " + takesGrunt + "; fighter boards from beside " + boardF + "; both aboard, full " + full
                        + "; stocked carrier: fighter fuel " + f1.fuel + "/" + f1.fuelMax + " strength " + f1.Strength + ", bomber " + b.fuel + "/" + b.fuelMax + "; empty carrier: fighter fuel " + f2.fuel;
                 return sold && takesAir && !takesGrunt && boardF && full && refuelled && notRefuelled;
+            }
+            case "supplyReachSource": {
+                Unit src = Rig.At(-3, 0).occupier, truck = Rig.At(4, 0).occupier;
+                SupplyPoint hub = truck.transported[0].Hub;
+                HexTile hq = GameController.HQOf(a).tile;
+                SupplyNetwork.Result rest = SupplyNetwork.SolveWithout(a, hub);
+                int moves = truck.moveRange;
+                HexTactica.AI.MoveField mf = HexTactica.AI.AIPath.ThisTurnFrom(truck, truck.tile, 99);
+                int toGround = 99, toSource = 99;
+                foreach (HexTile t in mf.Tiles) {
+                    if (!mf.ReachableThisTurn(t)) continue;
+                    int c = t == truck.tile ? 0 : mf.Get(t).used;
+                    if (rest.DepthAt(t) > 0) toGround = Math.Min(toGround, c);
+                    if (t.Distance(src.tile) <= 1 || t.Distance(hq) <= 1) toSource = Math.Min(toSource, c);
+                }
+                HexTactica.AI.AIPath.Release(mf);
+                bool layout = toGround < toSource;
+                truck.moveRange = toSource - 1;
+                bool groundOnlyCut = !SupplyNetwork.Solve(a, false).connectedHubs.Contains(hub);
+                truck.moveRange = toSource;
+                SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                bool linked = r.connectedHubs.Contains(hub);
+                List<Unit> legs = new List<Unit>();
+                List<HexTile> line = SupplyOverlay.SourcePathWithLegs(a, truck.tile, r, null, legs);
+                int lastLeg = legs.FindLastIndex(x => x != null);
+                bool drawn = line.Count > 2 && line[0] == truck.tile && lastLeg > 0 && line[lastLeg].Distance(src.tile) <= 1 && line.Contains(src.tile) && line[line.Count - 1] == hq;
+                truck.moveRange = moves; SupplyNetwork.Solve(a, false);
+                List<string> ls = new List<string>(); for (int i = 0; i < line.Count; i++) ls.Add(Pos(line[i]) + (legs[i] != null ? "*" : ""));
+                detail = "movement points to the supply unit's ground " + toGround + ", to beside it " + toSource + " (" + layout + "); with " + (toSource - 1) + ": cut off " + groundOnlyCut + "; with " + toSource + ": linked " + linked + ", line " + string.Join(" ", ls.ToArray()) + " (* the truck's drive) " + drawn;
+                return layout && groundOnlyCut && linked && drawn;
+            }
+            case "supplyReachShip": {
+                Unit ship = Rig.At(-1, 0).occupier, apc = Rig.At(-6, 1).occupier, sup = Rig.At(-6, 3).occupier;
+                Unit truck = Rig.At(4, -1).occupier, cargo = Rig.At(-6, 4).occupier;
+                Action<Unit, Unit> aboard = (t, c) => { c.tile.occupier = null; c.tile = t.tile; c.trasnporter = t; t.transported.Add(c); c.transform.SetParent(t.transform); };
+                aboard(apc, sup); aboard(ship, apc); sup.tile = ship.tile; aboard(truck, cargo);
+                ship.moveRange = 3;
+                sup.Hub.range = 0;   // spreads nothing: the island stays unsupplied, so only the hauler itself is there to reach
+                SupplyNetwork.Result r0 = SupplyNetwork.Solve(a, false);
+                bool shipLinked = r0.connectedHubs.Contains(sup.Hub);
+                SupplyNetwork.Result others = SupplyNetwork.SolveWithout(a, cargo.Hub);
+                bool islandDry = true; for (int x = 0; x <= 4; x++) if (others.DepthAt(Rig.At(x, -1)) > 0) islandDry = false;
+                HexTile beside = Rig.At(0, -1);
+                HexTactica.AI.MoveField mf = HexTactica.AI.AIPath.ThisTurnFrom(truck, truck.tile, 99);
+                int need = mf.ReachableThisTurn(beside) ? mf.Get(beside).used : 99;
+                HexTactica.AI.AIPath.Release(mf);
+                int moves = truck.moveRange;
+                truck.moveRange = need;
+                SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                bool linked = r.connectedHubs.Contains(cargo.Hub);
+                List<HexTile> route; r.routes.TryGetValue(cargo.Hub, out route);
+                bool toShip = route != null && route[route.Count - 1] == beside;
+                truck.moveRange = need - 1;
+                bool shortCut = !SupplyNetwork.Solve(a, false).connectedHubs.Contains(cargo.Hub);
+                truck.moveRange = moves; SupplyNetwork.Solve(a, false);
+                detail = "the hauler's supply (two deep) linked " + shipLinked + ", the island unsupplied " + islandDry + "; " + need + " points from the truck to beside the hauler: linked " + linked + ", its route ending beside the hauler " + toShip + (route != null ? " (" + string.Join(" ", route.ConvertAll(Pos).ToArray()) + ")" : "") + "; with one fewer, cut off " + shortCut;
+                return shipLinked && islandDry && need < 99 && linked && toShip && shortCut;
             }
             case "shipSupplyUpkeep": {
                 Unit ship = Rig.At(-1, 0).occupier, apc = Rig.At(-6, 1).occupier, sup = Rig.At(-6, 2).occupier, g = Rig.At(-6, 3).occupier;

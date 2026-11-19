@@ -59,8 +59,13 @@ with its allies. Where allies come into the code: `Player.Allied/Friendly/Hostil
 
 A supply unit aboard something links to its side's network through what carries it (SupplyNetwork.CarriedLinked):
 
-- A land transport or an aircraft links when, in one move of its own (its real move: range, terrain, fuel, enemies in
-  the way), it can get onto supplied ground. Beside supplied ground is not enough.
+- A carrier standing on supplied ground needs no move: already in supply is in supply.
+- Otherwise it must reach a **source** of supply itself, not just ground one supplies (SupplyNetwork.RouteFor): in one
+  move of its own (its real move: range, terrain, fuel, enemies in the way) it gets onto or beside a source's tile
+  (taken or not). A source is any linked supply unit (on foot, or aboard a transport however deep: it is where its
+  outermost carrier stands, so a ship off the shore holding supply is one a truck can drive beside) or any of the side's
+  supply buildings spreading supply (HQ, FOB, naval yard). So the supply line, truck to truck to the HQ, is the rule: a
+  truck cannot link by stepping into ground another source's supply reaches past enemies it could not drive past.
 - That move is a **transit** (SupplyNetwork.Exposed, TransitField): it may not use any tile on or beside an enemy unit
   that could attack the carrier — one with firepower whose weapons target the carrier's locomotion (a fighter does not
   intercept a truck; it does a transport helicopter). Only the tiles it moves through count, not the one it stands on:
@@ -78,8 +83,8 @@ A supply unit aboard something links to its side's network through what carries 
   screen would show it; its movement, fire and threat still go by what it knows. It does not use contacts in planning.
 - The way a carrier links its supply is chosen once, by the network (SupplyNetwork.RouteFor, recorded in Result.routes):
   the supply line draws that way, and the contacts compare it with the way the side would choose knowing what it sees.
-- A ship links when, in one move, it can get beside supplied ground or onto a supplied harbor. Any supplied shore
-  counts, not only a harbor: a shoreline city in supply links a supply ship lying off it.
+- A ship links when, in one move, it can get beside a source on the shore (a supply unit on the beach, a naval yard),
+  or onto a supplied harbor. Supplied coast with no source on it is not enough.
 - A ship also links through another carrier with supply aboard that is linked (a convoy, any length), and through an
   aircraft; an aircraft links through a linked ship that lies beside land. A ship tries its convoy first, so its supply
   line follows the water.

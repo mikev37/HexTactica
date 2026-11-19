@@ -1,7 +1,7 @@
 {
 "width":29,
 "active":112,
-"test":{"name":"rule-supply-preview-fob","kind":"rules","opponent":"Human","rounds":"4","check":"previewFob","question":"The player's supply preview for a truck carrying supplies, linked through a forward base: HQ at -13, FOB at -4 linked to it by two supply units, a truck carrying supplies at 1,2 moved forward to 7,2. Picked (the preview), the destination shows supplied, as it is once the move is made, even with the AI's what-if rule (a supply unit put down where it is moved to) left on the main thread; and an AI turn thought on the main thread no longer leaves that rule on.","rules":"standard"},
+"test":{"name":"rule-supply-preview-fob","kind":"rules","opponent":"Human","rounds":"4","check":"previewFob","question":"The player's supply preview for a truck carrying supplies, linked through a forward base: HQ at -13, FOB at -4 linked to it by two supply units, a truck carrying supplies at 1,2 moved forward to 3,2 (within a move of beside the FOB, its source). Picked (the preview), the destination shows supplied, as it is once the move is made, even with the AI's what-if rule (a supply unit put down where it is moved to) left on the main thread; and an AI turn thought on the main thread no longer leaves that rule on.","rules":"standard"},
 "tiles":[
 {"x":-14,"y":0,"z":14,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-14,"y":1,"z":13,"damage":0,"combatCount":0,"terrain":"Grassland"},
