@@ -83,7 +83,9 @@ public class SpriteShadow : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
+        shadowGo.transform.localScale = Vector3.one;
+        shadowGo.transform.localPosition = Vector3.zero;
+        shadowGo.transform.localRotation = Quaternion.identity;
         southGo.transform.position = shadowGo.transform.position + (Vector3)Vector2.down * distance;
         southR.sprite = sprite;
         southR.color = color;

@@ -21,3 +21,5 @@ MonoBehaviour:
   fadeSeconds: 0.35
   observerOpacity: 0.5
   ownHiddenAlpha: 0.5
+  hiddenAiActionsAtOnce: 1
+  judgeUnseenWhenFogHidden: 1
