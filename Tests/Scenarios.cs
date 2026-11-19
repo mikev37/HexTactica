@@ -859,7 +859,8 @@ public static partial class Scenarios {
                  Rig.PlaceBuilding("NavalYard", a, -2, 0);
                  Put("Hauler", a, -2, 0); Put("Supplies", a, -3, 1);
                  Put("Grunt", a, 4, 1); Put("Grunt", a, 4, 2);
-                 Put("Grunt", o, 6, -5); },
+                 Put("Grunt", o, 6, -5);
+                 MoveBuilding(6, 0, 7, -7); },   // Red's HQ out of the grunts' reach: holding it (it stops Red's supply) is not what this is about
              "A supply convoy: two Blue grunts already across a channel, out of supply; on Blue's shore an empty transport ship at the naval yard and a supply unit beside it. The AI puts the supply unit aboard and takes the ship over to lie off the far shore by the grunts, where its supply is linked (within a move of Blue's supplied shore) and reaches them: within three Blue turns both grunts are in supply.");
         make("ai-no-ghost-from-nested-transport", "nestedGhost", (a, o) => {
                  water(-3, 2, -7, 7);
@@ -4840,7 +4841,8 @@ public static partial class Scenarios {
             "One landing tile reserved for a Fighter landing this turn: the AI may not build a unit on it.");
         air("tanker-meets-fighter", "tankerMeets", (a, o) => { Rig.PlaceAirfield(a, -4, 2); Unit f = Put("Fighter", a, 1, -1); f.fuel = 9; Put("AirTanker", a, -3, 0); Put("Grunt", a, -5, 0); }, 1,
             "An air tanker (3 supplies) and a Fighter that is short of fuel: the tanker should end its turn beside the fighter.");
-        air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); foreach (int y in new[] { 0, -1 }) { Unit h = Put("Hauler", a, -2, y); Unit su = Put("Supplies", a, -6, y + 3); Aboard(h, su); } Put("Grunt", a, 2, 0); Put("Grunt", a, -4, 1); }, 3,
+        air("boats-supply-the-island", "boatsIsland", (a, o) => { sea(-2, 1); Rig.PlaceBuilding("NavalYard", a, -3, 0); foreach (int y in new[] { 0, -1 }) { Unit h = Put("Hauler", a, -2, y); Unit su = Put("Supplies", a, -6, y + 3); Aboard(h, su); } Put("Grunt", a, 2, 0); Put("Grunt", a, -4, 1);
+                MoveBuilding(6, 0, 7, -7); }, 3,   // Red's HQ out of the grunt's reach (holding it stops Red's supply: not what this is about)
             "A Blue grunt stranded on the shore of an island across a four-tile strait (a ship's supply reaches only the land beside it); two haulers with a supply unit aboard each at the naval yard's docks. Within three turns the haulers should link up and supply the island.");
 
         // A winding road two tiles wide over water: east along y = -3, down, and back west along y = 3.
@@ -5752,6 +5754,15 @@ public static partial class Scenarios {
     }
 
     /// <summary>OLD=Blue or OLD=Red: that side is played by the old AI (HexTactica.OldAI, frozen copy) with its own defaults.</summary>
+    /// <summary>Moves the building on (fromX,fromY) to (toX,toY): a setup's HQ placed out of the way of what a check is about.</summary>
+    static void MoveBuilding(int fromX, int fromY, int toX, int toY) {
+        HexTile from = Rig.At(fromX, fromY), to = Rig.At(toX, toY);
+        Building b = from.building;
+        from.building = null;
+        b.tile = to; to.building = b;
+        b.transform.position = to.transform.position;
+    }
+
     static void UseOldAI(ScenarioFile.Loaded l) {
         string oldSide = Environment.GetEnvironmentVariable("OLD");
         if (string.IsNullOrEmpty(oldSide)) return;
