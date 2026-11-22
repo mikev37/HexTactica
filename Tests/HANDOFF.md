@@ -18,7 +18,8 @@ my understanding rather than something I verified, it says so.
 - Every test is a Unity-loadable scenario file (`Tests/Scenarios/*.dat`, written by `PROBE=export`).
 - AI thinking time matters more than strength. HQ is intentionally worse than an FOB. The game must not lie to the player: under fog the
   supply shown is the true network (a cut by unseen enemies shows as cut), except that an unseen enemy's own tile is
-  filled in so no one-tile hole pinpoints it (SupplyNetwork.FillUnseenHoles); a transit unseen enemies stop or send
+  filled in so no one-tile hole pinpoints it (SupplyNetwork.FillUnseenHoles, from the true network's ground supply,
+  never from the board as the side knows it: nothing shown is what the side would believe); a transit unseen enemies stop or send
   round is marked with a contact, never on a friendly unit (SupplyNetwork.UnseenContacts). Never make visuals in code. Legacy AI is not used. No noise.
 - **Nothing about UI, unit or level design is written in code, and code is never used for configuration.** UI is
   prefabs (and scenes) edited in Unity — no widgets built, laid out, styled or "repaired" at run time, no fallbacks

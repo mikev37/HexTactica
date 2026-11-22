@@ -73,7 +73,8 @@ A supply unit aboard something links to its side's network through what carries 
   follows the transit's way. A supply unit on foot is never in transit: it links by standing in supply, as before.
 - Under fog, **the screen shows the supply network as it truly is** (SupplyNetwork.FillUnseenHoles): a line or ring of
   enemies the side does not see that cuts supply off shows as cut off (the oddity is a reason to look). The one thing
-  hidden is the tile such an enemy stands on: it shows as the side's supply would be without those enemies, so no
+  hidden is the tile such an enemy stands on: it shows as the true network's ground supply would reach it were the
+  tile open (supply truly beside it spreads over it; a carrier those enemies cut off gives none there either), so no
   one-tile hole pinpoints it. The supply line follows the way the network truly links a carrier. Where unseen enemies
   stop a transit or send it round, a **contact** marker (Assets/Resources/SupplyContact.prefab, shown by SupplyOverlay;
   SupplyNetwork.UnseenContacts) sits on the first tile of the way the carrier would take knowing only what it sees that
@@ -84,9 +85,9 @@ A supply unit aboard something links to its side's network through what carries 
 - **Cut supply lines.** Select a transport whose supply is cut off and it shows a cut supply line
   (Assets/Resources/SupplyLineCut.prefab, a copy of SupplyLine.prefab to restyle) from it to the source that should
   feed it, with the marker (SupplyContact.prefab) where it is cut (SupplyNetwork.CutRoute): the first tile on or beside
-  an enemy that could attack it, else the first it cannot reach this turn. The way is the one the side would take
-  knowing what it sees (under fog, the way it believes links it; else its own path to the nearest source, past any
-  enemy). Neither the cut line nor any marker shows unless that transport is selected, or the **all supply lines**
+  an enemy that could attack it, else the first it cannot reach this turn. The way drawn is the transport's own path to
+  the nearest source, past any enemy; under fog it is laid without the enemies the side does not see, so its shape
+  does not give them away (the cut, found on the board as it is, and its marker say where they are, as near as that). Neither the cut line nor any marker shows unless that transport is selected, or the **all supply lines**
   option is on (GameOptions.AllSupplyLines, kept between games; toggled in game by FrontEndSettings.supplyLinesKey,
   Tab by default; OptionsPanel.allSupplyLines, an optional toggle): every supply unit's line to what feeds it, every
   cut line, every marker.

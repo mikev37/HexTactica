@@ -33,7 +33,7 @@ public static class SupplyNetwork {
     /// </summary>
     public static bool StoreOnlyWhenNeeded = true;
 
-    /// <summary>Under fog, the screen shows the screen's side's (and its allies') supply as it truly is, cuts by enemies it does not see included, but for the tile each such enemy stands on, shown as it would be without the enemies it does not see (HexTile.supplyShown): a one-tile hole would pinpoint it; a line or ring cutting supply off shows as cut off, a reason to look. Other sides' supply is shown as it truly is, on the tiles the viewer sees. Off: the true network is shown, holes and all.</summary>
+    /// <summary>Under fog, the screen shows the screen's side's (and its allies') supply as it truly is, cuts by enemies it does not see included, but for the tile each such enemy stands on, shown as the true network's ground supply would reach it if that tile were open (HexTile.supplyShown; transits, cut or not, as they truly are): a one-tile hole would pinpoint it; a line or ring cutting supply off shows as cut off, a reason to look. Other sides' supply is shown as it truly is, on the tiles the viewer sees. Off: the true network is shown, holes and all.</summary>
     public static bool FillUnseenHoles = true;
 
     /// <summary>Supply units' linked/cut-off flags (SupplyPoint.connected) set whenever the real network is published, not only at turn start.</summary>
@@ -371,7 +371,7 @@ public static class SupplyNetwork {
         }
 
         // Publish onto the board — but never a counterfactual network missing a hub.
-        if (excluded == null && !staticOnly && moved == null && !onlyMoved) {
+        if (excluded == null && !staticOnly && moved == null && !onlyMoved && floodThrough == null) {   // (floodThrough: Publish's own fill)
             Publish(player, result, () => Solve(player, false, movedHub, hypotheticalTile, excluded, staticOnly, moved, onlyMoved));
             // The real network on the real board: each supply unit's linked/cut-off flag follows it now, not only at the
             // start of the turn (the cut-off icon read a flag set then, while the borders showed every move since).
@@ -403,7 +403,7 @@ public static class SupplyNetwork {
         });
         // What the screen shows (real board only): the true network. The game never shows a unit in supply that is not,
         // nor cut off when it is not. Under fog, the one exception is the tile an enemy the screen's side does not see
-        // stands on, shown as it would be without the enemies it does not see (FillUnseenHoles): a one-tile hole in its
+        // stands on, shown as the true network's ground supply would reach it were the tile open (FillUnseenHoles): a one-tile hole in its
         // supply would pinpoint it. A line or ring of them cutting supply off shows as cut off (the oddity is a reason to
         // look), and a transit they stop or send round is marked with a contact (UnseenContacts, SupplyContacts). Another
         // side's network: a tile of it the viewer sees shows supplied when it is, though the supplier and the chain up to
@@ -414,10 +414,15 @@ public static class SupplyNetwork {
             if (viewer != null && Player.Friendly(viewer, player) && again != null) {
                 Dictionary<HexTile, List<Unit>> holes = UnseenBy(viewer);
                 if (holes != null) {
-                    Result known;
-                    using (FogOfWar.Concealing(viewer)) known = again();
+                    // The true network, but for ground supply spreading over the holes as if nobody stood there. Not the
+                    // network on the board as the side knows it: there a carrier the unseen enemies cut off is linked, and
+                    // its supply would show on their tiles (in the fog) while the tiles it sees show none.
+                    Result open;
+                    HashSet<HexTile> outer = floodThrough;
+                    floodThrough = new HashSet<HexTile>(holes.Keys);
+                    try { open = again(); } finally { floodThrough = outer; }
                     filled = new Dictionary<HexTile, int>();
-                    foreach (HexTile h in holes.Keys) filled[h] = known.DepthAt(h);
+                    foreach (HexTile h in holes.Keys) filled[h] = open.DepthAt(h);
                 }
             }
             // Borders to redraw: only where being supplied (as shown) changed, and beside it.
@@ -511,7 +516,7 @@ public static class SupplyNetwork {
         // An enemy unit standing on it stops its supply (the flood only ever looked at the tiles it stepped onto, so one
         // on the building's own tile let supply through). An ally's does not.
         Unit on = SupplyOccupier(b.tile);
-        if (on != null && on.Strength > 0 && Player.Hostile(on.owner, b.owner)) return;
+        if (on != null && on.Strength > 0 && Player.Hostile(on.owner, b.owner) && !FloodsThrough(b.tile)) return;
         Flood(b.tile, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
     }
 
@@ -588,7 +593,7 @@ public static class SupplyNetwork {
             foreach (HexTile n in origin.neighbors) {
                 if (n == null || n.terrain == null || n.terrain.elevation < 0) continue;
                 Unit no = SupplyOccupier(n);
-                if (no != null && Player.Hostile(no.owner, u.owner)) continue;
+                if (no != null && Player.Hostile(no.owner, u.owner) && !FloodsThrough(n)) continue;
                 Flood(n, hub.range - 1, u.terrainScramble, u.owner, Locomotion.Wheels, result);
             }
             return;
@@ -880,6 +885,15 @@ public static class SupplyNetwork {
         return u != null && u != t.occupier && Player.Hostile(u.owner, transport.owner);
     }
 
+    /// <summary>
+    /// Tiles ground supply spreads over though an enemy stands on them (Publish, filling the holes unseen enemies would make:
+    /// FillUnseenHoles). Per thread; only the flood reads it (a building's own tile, a corridor, a ship's landing), never a
+    /// transit (Exposed, the carrier's way): what cuts a carrier off still cuts it off.
+    /// </summary>
+    [System.ThreadStatic] static HashSet<HexTile> floodThrough;
+
+    static bool FloodsThrough(HexTile t) { HashSet<HexTile> f = floodThrough; return f != null && f.Contains(t); }
+
     /// <summary>Is an enemy unit the side in WithUnseen does not see standing on <paramref name="t"/> (false outside it)?</summary>
     public static bool UnseenOn(HexTile t) {
         Dictionary<HexTile, List<Unit>> u = unseen;
@@ -1027,16 +1041,15 @@ public static class SupplyNetwork {
 
     /// <summary>
     /// For <paramref name="unit"/> (a transport, or a supply unit aboard one: what carries it all is what counts) carrying
-    /// supply that is cut off: the way it should go to link it, and where that way is cut. Null if it carries none cut off,
-    /// or stands on supplied ground (already in supply), or there is no source for it to make for. The way:
-    ///   - under fog, the one RouteFor chooses on the board as <paramref name="viewer"/> knows it, if there is one (it
-    ///     believes it links: the enemies it does not see cut it);
-    ///   - else the carrier's own way (as it moves, its turns' moves, AIPath) to the nearest source (SourceTiles of the
-    ///     network without what it carries), onto it, or beside it for a ship (or where that is nearer), on the board as the
-    ///     viewer knows it (enemies it does not see neither block nor turn it), whatever enemies it passes.
-    /// The cut: the first tile past its own that is exposed (Exposed, on the board as it is: who cuts it, seen or not) or
-    /// holds an enemy, else the first it cannot reach this turn. The marker: there, else the nearest beside it (the board's
-    /// order) that holds none of the viewer's side nor an enemy it does not see. Real board, main thread.
+    /// supply the network has cut off (the true network): where it should go to link it, and where that way is cut. Null
+    /// if it carries none cut off, or stands on supplied ground (already in supply), or there is no source to make for.
+    /// The way: the carrier's own path (AIPath, CutRouteTurns of its moves) to the nearest source (SourceTiles of the
+    /// network without what it carries), onto it, or beside it for a ship (or where that is nearer), whatever enemies
+    /// it passes; under fog laid with the enemies <paramref name="viewer"/> does not see off the board, so its shape
+    /// does not give them away. The cut: the first tile past its own that is exposed (Exposed, on the board as it is:
+    /// who cuts it, seen or not) or holds an enemy, else the first it cannot reach this turn. The marker: there, else
+    /// the nearest beside it (the board's order) that holds none of the viewer's side nor an enemy it does not see.
+    /// Real board, main thread.
     /// </summary>
     public static Cut CutRoute(Unit unit, Player viewer) {
         Unit carrier = Outermost(unit);
@@ -1066,39 +1079,27 @@ public static class SupplyNetwork {
             if (sources.Count == 0) return null;
             bool ship = LocomotionRules.IsNaval(carrier.locomotion);
             Player knows = viewer != null && FogOfWar.On && Player.Friendly(viewer, p) ? viewer : null;
-            List<HexTile> line = null;
-            int moves = 0;   // the tiles of the line the carrier moves through (the source it ends beside is not one)
-            if (knows != null) {
-                SupplyPoint via; HexTile landing;
-                List<SupplyPoint> convoy = new List<SupplyPoint>(net.connectedHubs);
-                using (FogOfWar.Concealing(knows))
-                    line = RouteFor(carrier, at, c.hubs[0], net, convoy, null, null, null, null, out via, out landing);
-                if (line != null) {
-                    moves = line.Count;
-                    HexTile end = line[line.Count - 1];
-                    HexTile src = via != null ? TileOf(via, null, null, null) : landing ?? (sources.Contains(end) ? end : BesideSource(end, sources));
-                    if (src != null && src != end) line.Add(src);
-                    c.source = src ?? end;
-                }
+            // The way to draw: the carrier's own path (its turns' moves) to the nearest source, onto it, or beside it for a
+            // ship (or where that is nearer), whatever enemies it passes; the cut is found on it below, on the board as it
+            // is. Under fog the path is laid with the enemies the side does not see off the board: they neither block nor
+            // turn it, so its shape does not give them away (the cut and its marker say where they are, as near as that).
+            // Nothing here is what the network decides: the network says it is cut off; this only draws to where.
+            HexTactica.AI.MoveField f;
+            List<KeyValuePair<HexTile, HexTactica.AI.Eta>> origin = new List<KeyValuePair<HexTile, HexTactica.AI.Eta>> { new KeyValuePair<HexTile, HexTactica.AI.Eta>(at, HexTactica.AI.Eta.Origin) };
+            if (knows != null) using (FogOfWar.Concealing(knows)) f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
+            else f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
+            HexTile best = null; long bestKey = long.MaxValue;
+            foreach (HexTile t in f.Tiles) {
+                if (t == at || !((!ship && sources.Contains(t)) || BesideSource(t, sources) != null)) continue;
+                long k = f.Get(t).Key;
+                if (k < bestKey || (k == bestKey && CombatMath.Precedes(t, best))) { best = t; bestKey = k; }
             }
-            if (line == null) {
-                HexTactica.AI.MoveField f;
-                List<KeyValuePair<HexTile, HexTactica.AI.Eta>> origin = new List<KeyValuePair<HexTile, HexTactica.AI.Eta>> { new KeyValuePair<HexTile, HexTactica.AI.Eta>(at, HexTactica.AI.Eta.Origin) };
-                if (knows != null) using (FogOfWar.Concealing(knows)) f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
-                else f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
-                HexTile best = null; long bestKey = long.MaxValue;
-                foreach (HexTile t in f.Tiles) {
-                    if (t == at || !((!ship && sources.Contains(t)) || BesideSource(t, sources) != null)) continue;
-                    long k = f.Get(t).Key;
-                    if (k < bestKey || (k == bestKey && CombatMath.Precedes(t, best))) { best = t; bestKey = k; }
-                }
-                if (best == null) return null;
-                line = f.PathTo(best);
-                moves = line.Count;
-                HexTile src = !ship && sources.Contains(best) ? best : BesideSource(best, sources);
-                if (src != best) line.Add(src);
-                c.source = src;
-            }
+            if (best == null) return null;
+            List<HexTile> line = f.PathTo(best);
+            int moves = line.Count;   // the tiles of the line the carrier moves through (the source it ends beside is not one)
+            HexTile src = !ship && sources.Contains(best) ? best : BesideSource(best, sources);
+            if (src != best) line.Add(src);
+            c.source = src;
             c.line = line;
             // Where it is cut: on the board as it is.
             HexTactica.AI.MoveField now = HexTactica.AI.AIPath.ThisTurnFrom(carrier, at, HexTactica.AI.AIPath.RangeThisTurn(carrier));
@@ -1234,7 +1235,7 @@ public static class SupplyNetwork {
 
                 // An enemy unit standing in the corridor severs it.
                 Unit no = SupplyOccupier(n, layer);
-                if (no != null && Player.Hostile(no.owner, owner)) continue;
+                if (no != null && Player.Hostile(no.owner, owner) && !FloodsThrough(n)) continue;
                 // On and off a bridge only by road, as units move (a harbor is open from every side: LocomotionRules.IsHarbor).
                 if (!LocomotionRules.BridgeStep(current, n, loco)) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).

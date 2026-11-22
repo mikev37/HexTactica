@@ -816,7 +816,7 @@ public static partial class Scenarios {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  Put("Supplies", a, -3, 0);
                  for (int y = -5; y <= -1; y++) Put("Grunt", o, 5, y); },   // parked: the check sets them out
-             "The cut supply line (SupplyNetwork.CutRoute, SupplyOverlay.ForSelection and AllLines; drawn with Resources/SupplyLineCut.prefab, the marker Resources/SupplyContact.prefab). Blue's HQ at (-6,0), a Blue supply unit at (-3,0), an APC carrying supplies at (2,0). Nobody about: linked, so selecting the APC shows no cut line and no marker. A line of Red grunts across x=-1: cut off; selected, the APC shows a cut line from its tile, tile by tile, to the source that should feed it (the supply unit, its tile last), cut at the first tile beside a grunt, the marker there (on no unit). With nobody about and the APC down to 1 move: cut by distance, at the first tile it cannot reach this turn. All supply lines (the option, off by default): the cut line and its marker, and each linked supply unit's line to what feeds it (the HQ). Under fog with the wall unseen: the same cut line, the marker on no unseen grunt and no Blue unit, beside a grunt.");
+             "The cut supply line (SupplyNetwork.CutRoute, SupplyOverlay.ForSelection and AllLines; drawn with Resources/SupplyLineCut.prefab, the marker Resources/SupplyContact.prefab). Blue's HQ at (-6,0), a Blue supply unit at (-3,0), an APC carrying supplies at (2,0). Nobody about: linked, so selecting the APC shows no cut line and no marker. A line of Red grunts across x=-1: cut off; selected, the APC shows a cut line from its tile, tile by tile, to the source that should feed it (the supply unit, its tile last), cut at the first tile beside a grunt, the marker there (on no unit). With nobody about and the APC down to 1 move: cut by distance, at the first tile it cannot reach this turn. All supply lines (the option, off by default): the cut line and its marker, and each linked supply unit's line to what feeds it (the HQ). Under fog with the wall unseen: the same cut line, the marker on no unseen grunt and no Blue unit, beside a grunt. And with the APC's supply reaching the grunts' tiles: it is cut off, so no grunt's tile shows its supply (a grunt's tile is filled only from supply truly beside it; it used to be filled from the board as Blue knows it, where the APC links, so its supply showed in the fog round it and not in sight).");
         make("rule-supply-reach-source", "supplyReachSource", (a, o) => {
                  Put("Supplies", a, -3, 0); Unit tr = Put("Truck", a, 4, 0); Unit sup = Put("Supplies", a, 4, 1); Transporting.Load(tr, sup);
                  Put("Grunt", o, 6, -5); },
@@ -4194,6 +4194,25 @@ public static partial class Scenarios {
                     HexTile m = fs.markers.Count == 1 ? fs.markers[0] : null;
                     fogOk = unseen && wellMade(cf) && m != null && m.occupier == null && besideGrunt(m);
                     r.Add("fog, the wall unseen " + unseen + ": cut line " + (cf != null ? tiles(cf.line) + " cut at " + Pos(cf.CutTile) : "none") + ", marker " + (m != null ? Pos(m) : "none") + " " + fogOk);
+                    // The APC's supply reaching the unseen grunts' tiles (range 4, they stand 3 off): truly cut off, it gives
+                    // none, in the fog as well as in sight. A grunt's tile is filled (no one-tile hole) only from supply
+                    // truly beside it, never from the APC as if it were linked (the bug: shown supplied in the fog round it).
+                    SupplyPoint hub = apc.transported[0].Hub; int range = hub.range; hub.range = 4;
+                    SupplyNetwork.Result truth = SupplyNetwork.Solve(a, false);
+                    bool cutStill = !truth.connectedHubs.Contains(hub);
+                    int inReach = 0; bool noneFromNowhere = true; List<string> filledShown = new List<string>();
+                    foreach (Unit g in grunts) {
+                        HexTile h = g.tile; if (h == null || h.x >= 5) continue;
+                        if (h.Distance(apc.tile) <= hub.range) inReach++;
+                        if (!h.isOwnSupplyShown(a)) continue;
+                        filledShown.Add(Pos(h));
+                        bool fed = false; foreach (HexTile n in h.neighbors) if (n != null && truth.DepthAt(n) >= 2) fed = true;
+                        if (!fed) noneFromNowhere = false;
+                    }
+                    hub.range = range; SupplyNetwork.Solve(a, false);
+                    bool fillOk = cutStill && inReach > 0 && noneFromNowhere;
+                    r.Add("the APC's supply reaching " + inReach + " unseen grunts' tiles, cut off " + cutStill + ": grunts' tiles shown supplied [" + string.Join(" ", filledShown.ToArray()) + "], each beside truly supplied ground " + fillOk);
+                    fogOk = fogOk && fillOk;
                 } finally { gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh(); clear(); SupplyNetwork.Solve(a, false); }
                 detail = string.Join(" | ", r.ToArray());
                 return noneFree && wallOk && selOk && offByDefault && allOk && distOk && fogOk;
