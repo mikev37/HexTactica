@@ -960,9 +960,13 @@ public static class SupplyNetwork {
     /// enemy itself). Real board, main thread; empty without fog or with no enemy unseen. Each tile once, in the board's
     /// order.
     /// </summary>
-    public static List<HexTile> UnseenContacts(Player viewer) {
+    public static List<HexTile> UnseenContacts(Player viewer) { return UnseenContacts(viewer, null); }
+
+    /// <summary>UnseenContacts for the supply <paramref name="only"/> carries (its outermost carrier's), or for all if null.</summary>
+    public static List<HexTile> UnseenContacts(Player viewer, Unit only) {
         List<HexTile> contacts = new List<HexTile>();
         if (viewer == null || BoardView.current != null || !FogOfWar.On) return contacts;
+        only = Outermost(only);
         using (AsPlayed()) using (WithUnseen(viewer)) {
             if (unseen == null) return contacts;
             Result real = SolveMoved(viewer, new Dictionary<SupplyPoint, HexTile>());
@@ -971,7 +975,7 @@ public static class SupplyNetwork {
                 if (hub == null || hub.producer || u.trasnporter == null || u.Strength <= 0) continue;
                 Unit carrier = Outermost(u.trasnporter);
                 HexTile at = carrier != null ? carrier.tile : null;
-                if (at == null) continue;
+                if (at == null || (only != null && carrier != only)) continue;
                 Result net = SolveWithout(viewer, hub);   // the supply it links to
                 if (SuppliedGround(at, net)) continue;   // no transit
                 List<HexTile> truly;
@@ -994,6 +998,138 @@ public static class SupplyNetwork {
         }
         contacts.Sort((a, b) => CombatMath.Precedes(a, b) ? -1 : CombatMath.Precedes(b, a) ? 1 : 0);
         return contacts;
+    }
+
+    /// <summary>
+    /// Supply in transit that is cut off, as the supply line shows it (CutRoute): the carrier, the way to the source that
+    /// should feed it, the first tile of that way its supply cannot get through, and where the marker for it stands.
+    /// </summary>
+    public sealed class Cut {
+        /// <summary>The outermost carrier, and the supply units aboard it that are cut off.</summary>
+        public Unit carrier;
+        public readonly List<SupplyPoint> hubs = new List<SupplyPoint>();
+        /// <summary>From the carrier's tile to the source (the source's own tile last).</summary>
+        public List<HexTile> line;
+        /// <summary>The source that should feed it: a supply unit's (or what carries it) or a supply building's tile.</summary>
+        public HexTile source;
+        /// <summary>Index in <see cref="line"/> of the first tile the supply does not get through.</summary>
+        public int cut = -1;
+        /// <summary>Why: an enemy that could attack the carrier on it or beside it (else, out of its move).</summary>
+        public bool exposed;
+        /// <summary>Where the marker goes: at the cut, or beside it (never on one of the side's units, never on an enemy it does not see). Null if nowhere.</summary>
+        public HexTile marker;
+        /// <summary>The tile the line is cut at.</summary>
+        public HexTile CutTile { get { return line != null && cut >= 0 && cut < line.Count ? line[cut] : null; } }
+    }
+
+    /// <summary>How many turns' moves away CutRoute looks for the source a cut-off carrier should reach.</summary>
+    public const int CutRouteTurns = 6;
+
+    /// <summary>
+    /// For <paramref name="unit"/> (a transport, or a supply unit aboard one: what carries it all is what counts) carrying
+    /// supply that is cut off: the way it should go to link it, and where that way is cut. Null if it carries none cut off,
+    /// or stands on supplied ground (already in supply), or there is no source for it to make for. The way:
+    ///   - under fog, the one RouteFor chooses on the board as <paramref name="viewer"/> knows it, if there is one (it
+    ///     believes it links: the enemies it does not see cut it);
+    ///   - else the carrier's own way (as it moves, its turns' moves, AIPath) to the nearest source (SourceTiles of the
+    ///     network without what it carries), onto it, or beside it for a ship (or where that is nearer), on the board as the
+    ///     viewer knows it (enemies it does not see neither block nor turn it), whatever enemies it passes.
+    /// The cut: the first tile past its own that is exposed (Exposed, on the board as it is: who cuts it, seen or not) or
+    /// holds an enemy, else the first it cannot reach this turn. The marker: there, else the nearest beside it (the board's
+    /// order) that holds none of the viewer's side nor an enemy it does not see. Real board, main thread.
+    /// </summary>
+    public static Cut CutRoute(Unit unit, Player viewer) {
+        Unit carrier = Outermost(unit);
+        if (carrier == null || carrier.tile == null || carrier.owner == null || BoardView.current != null) return null;
+        Player p = carrier.owner;
+        HexTile at = carrier.tile;
+        using (AsPlayed()) {
+            Result real = SolveMoved(p, new Dictionary<SupplyPoint, HexTile>());
+            Cut c = new Cut { carrier = carrier };
+            foreach (Unit u in p.units) {
+                SupplyPoint h = u != null ? u.Hub : null;
+                if (h == null || h.producer || u.trasnporter == null || u.Strength <= 0 || Outermost(u.trasnporter) != carrier) continue;
+                if (!real.connectedHubs.Contains(h)) c.hubs.Add(h);
+            }
+            if (c.hubs.Count == 0) return null;
+            // The supply it should link to: the network without all it carries.
+            Dictionary<SupplyPoint, HexTile> others = new Dictionary<SupplyPoint, HexTile>();
+            foreach (Unit u in p.units) {
+                SupplyPoint h = u != null ? u.Hub : null;
+                if (h == null || u.tile == null || (u.trasnporter != null && Outermost(u.trasnporter) == carrier)) continue;
+                others[h] = u.tile;
+            }
+            Result net = SolvePlanned(p, others);
+            if (SuppliedGround(at, net)) return null;
+            HashSet<HexTile> sources = SourceTiles(p, null, net, net.connectedHubs, null, null, null, null);
+            sources.Remove(at);
+            if (sources.Count == 0) return null;
+            bool ship = LocomotionRules.IsNaval(carrier.locomotion);
+            Player knows = viewer != null && FogOfWar.On && Player.Friendly(viewer, p) ? viewer : null;
+            List<HexTile> line = null;
+            int moves = 0;   // the tiles of the line the carrier moves through (the source it ends beside is not one)
+            if (knows != null) {
+                SupplyPoint via; HexTile landing;
+                List<SupplyPoint> convoy = new List<SupplyPoint>(net.connectedHubs);
+                using (FogOfWar.Concealing(knows))
+                    line = RouteFor(carrier, at, c.hubs[0], net, convoy, null, null, null, null, out via, out landing);
+                if (line != null) {
+                    moves = line.Count;
+                    HexTile end = line[line.Count - 1];
+                    HexTile src = via != null ? TileOf(via, null, null, null) : landing ?? (sources.Contains(end) ? end : BesideSource(end, sources));
+                    if (src != null && src != end) line.Add(src);
+                    c.source = src ?? end;
+                }
+            }
+            if (line == null) {
+                HexTactica.AI.MoveField f;
+                List<KeyValuePair<HexTile, HexTactica.AI.Eta>> origin = new List<KeyValuePair<HexTile, HexTactica.AI.Eta>> { new KeyValuePair<HexTile, HexTactica.AI.Eta>(at, HexTactica.AI.Eta.Origin) };
+                if (knows != null) using (FogOfWar.Concealing(knows)) f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
+                else f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
+                HexTile best = null; long bestKey = long.MaxValue;
+                foreach (HexTile t in f.Tiles) {
+                    if (t == at || !((!ship && sources.Contains(t)) || BesideSource(t, sources) != null)) continue;
+                    long k = f.Get(t).Key;
+                    if (k < bestKey || (k == bestKey && CombatMath.Precedes(t, best))) { best = t; bestKey = k; }
+                }
+                if (best == null) return null;
+                line = f.PathTo(best);
+                moves = line.Count;
+                HexTile src = !ship && sources.Contains(best) ? best : BesideSource(best, sources);
+                if (src != best) line.Add(src);
+                c.source = src;
+            }
+            c.line = line;
+            // Where it is cut: on the board as it is.
+            HexTactica.AI.MoveField now = HexTactica.AI.AIPath.ThisTurnFrom(carrier, at, HexTactica.AI.AIPath.RangeThisTurn(carrier));
+            for (int i = 1; i < moves && c.cut < 0; i++) {
+                HexTile t = line[i];
+                Unit on = t.occupier;
+                if (Exposed(carrier, t) || (on != null && Player.Hostile(on.owner, p))) { c.cut = i; c.exposed = true; }
+                else if (!now.ReachableThisTurn(t)) c.cut = i;
+            }
+            HexTactica.AI.AIPath.Release(now);
+            if (c.cut < 0) c.cut = Mathf.Max(1, moves - 1);   // stranded with the way clear (the rules found none): the end
+            if (c.cut >= line.Count) c.cut = line.Count - 1;
+            using (WithUnseen(knows)) c.marker = MarkerNear(line[c.cut], knows ?? viewer ?? p);
+            return c;
+        }
+    }
+
+    /// <summary>
+    /// The cut marker's tile for <paramref name="t"/>: it, else the tile beside it first in the board's order, that holds
+    /// none of <paramref name="viewer"/>'s side and no enemy it does not see (UnseenOn, inside WithUnseen). Null if none.
+    /// </summary>
+    static HexTile MarkerNear(HexTile t, Player viewer) {
+        System.Func<HexTile, bool> ok = c => {
+            if (c == null || UnseenOn(c)) return false;
+            Unit on = c.occupier;
+            return on == null || !Player.Friendly(on.owner, viewer);
+        };
+        if (ok(t)) return t;
+        HexTile best = null;
+        foreach (HexTile n in t.neighbors) if (ok(n) && (best == null || CombatMath.Precedes(n, best))) best = n;
+        return best;
     }
 
     static bool SameWay(List<HexTile> a, List<HexTile> b) {

@@ -71,6 +71,8 @@ public class FrontEndSettings : ScriptableObject {
     [Header("Game")]
     [Tooltip("Opens and closes the in-game menu.")]
     public KeyCode menuKey = KeyCode.Escape;
+    [Tooltip("Shows or hides every supply line of your side at once, cut ones and their markers too (the option GameOptions.AllSupplyLines, kept between games).")]
+    public KeyCode supplyLinesKey = KeyCode.Tab;
 
     [Header("Post-game report")]
     public GameInsights.Limits insights = new GameInsights.Limits();
