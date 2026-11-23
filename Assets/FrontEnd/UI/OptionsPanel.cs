@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// The options (a panel of the main menu): master, music and sound-effects volume, full screen, resolution, graphics
-/// quality, vertical sync. A change takes effect at once and is kept (GameOptions, in PlayerPrefs).
+/// quality, vertical sync, all supply lines. A change takes effect at once and is kept (GameOptions, in PlayerPrefs).
 /// </summary>
 public class OptionsPanel : MonoBehaviour {
     [Tooltip("Master volume: every sound.")]
@@ -22,6 +22,8 @@ public class OptionsPanel : MonoBehaviour {
     public TMP_Dropdown resolution;
     public TMP_Dropdown quality;
     public Toggle vSync;
+    [Tooltip("Every supply line of your side at once (GameOptions.AllSupplyLines; its key in game: FrontEndSettings.supplyLinesKey). Optional.")]
+    public Toggle allSupplyLines;
 
     [Tooltip("What Close goes back to: the main menu's buttons, or the in-game menu's window.")]
     public GameObject returnTo;
@@ -40,6 +42,7 @@ public class OptionsPanel : MonoBehaviour {
         if (effectsVolume != null) effectsVolume.onValueChanged.AddListener(v => { GameOptions.EffectsVolume = v; ShowVolume(); });
         if (fullScreen != null) fullScreen.onValueChanged.AddListener(v => GameOptions.FullScreen = v);
         if (vSync != null) vSync.onValueChanged.AddListener(v => GameOptions.VSync = v);
+        if (allSupplyLines != null) allSupplyLines.onValueChanged.AddListener(v => GameOptions.AllSupplyLines = v);
         if (quality != null) quality.onValueChanged.AddListener(i => GameOptions.Quality = i);
         if (resolution != null) resolution.onValueChanged.AddListener(i => { if (i >= 0 && i < resolutions.Count) GameOptions.SetResolution(resolutions[i].x, resolutions[i].y); });
     }
@@ -51,6 +54,7 @@ public class OptionsPanel : MonoBehaviour {
         ShowVolume();
         if (fullScreen != null) fullScreen.SetIsOnWithoutNotify(Screen.fullScreen);
         if (vSync != null) vSync.SetIsOnWithoutNotify(QualitySettings.vSyncCount > 0);
+        if (allSupplyLines != null) allSupplyLines.SetIsOnWithoutNotify(GameOptions.AllSupplyLines);
         if (quality != null) {
             quality.ClearOptions();
             quality.AddOptions(QualitySettings.names.ToList());

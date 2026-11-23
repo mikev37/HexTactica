@@ -3,12 +3,12 @@ using UnityEngine;
 /// <summary>
 /// The player's options, kept between runs (PlayerPrefs, saved as each changes) and put in force when the game starts,
 /// before the first scene: master volume, music volume, sound-effects volume, full screen, resolution, graphics
-/// quality, vertical sync. The options panel (OptionsPanel) changes them. Music (MusicManager) plays at
+/// quality, vertical sync, all supply lines. The options panel (OptionsPanel) changes them. Music (MusicManager) plays at
 /// MusicVolume, every sound effect (GameSounds, a unit's sounds) at EffectsVolume, all under the master volume.
 /// </summary>
 public static class GameOptions {
     const string VolumeKey = "options.volume", MusicKey = "options.music", EffectsKey = "options.effects", FullScreenKey = "options.fullscreen", WidthKey = "options.width", HeightKey = "options.height",
-                 QualityKey = "options.quality", VSyncKey = "options.vsync";
+                 QualityKey = "options.quality", VSyncKey = "options.vsync", SupplyLinesKey = "options.allsupplylines";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void ApplySaved() {
@@ -51,6 +51,15 @@ public static class GameOptions {
     public static bool VSync {
         get { return PlayerPrefs.GetInt(VSyncKey, QualitySettings.vSyncCount > 0 ? 1 : 0) != 0; }
         set { QualitySettings.vSyncCount = value ? 1 : 0; PlayerPrefs.SetInt(VSyncKey, value ? 1 : 0); PlayerPrefs.Save(); }
+    }
+
+    /// <summary>
+    /// Show every supply line of the screen's side at once, cut ones and their markers too (SupplyOverlay); off, only the
+    /// selected unit's. Toggled in game by FrontEndSettings.supplyLinesKey.
+    /// </summary>
+    public static bool AllSupplyLines {
+        get { return PlayerPrefs.GetInt(SupplyLinesKey, 0) != 0; }
+        set { PlayerPrefs.SetInt(SupplyLinesKey, value ? 1 : 0); PlayerPrefs.Save(); }
     }
 
     public static void SetResolution(int width, int height) {
