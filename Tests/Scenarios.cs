@@ -6436,6 +6436,20 @@ public static partial class Scenarios {
                     foreach (HexTile t in drawn) depths.Add(Pos(t) + "=" + others.DepthAt(t));
                     Console.WriteLine("     supply depth along it without this one: " + string.Join(" ", depths.ToArray()));
                 }
+                // The drawn line against the network: from the carrier's tile it must be the network's route, tile for
+                // tile, then the source it reached (a convoy's next carrier, or the source it ends beside), nothing between.
+                if (carrier != null && r.connectedHubs.Contains(h)) {
+                    List<HexTile> rt; r.routes.TryGetValue(h, out rt);
+                    List<Unit> lg = new List<Unit>();
+                    List<HexTile> dl = SupplyOverlay.SourcePathWithLegs(p, carrier.tile, r, null, lg);
+                    bool same = rt != null && dl.Count >= rt.Count;
+                    for (int i = 0; same && i < rt.Count; i++) if (dl[i] != rt[i]) same = false;
+                    SupplyPoint vv; HexTile ld; HexTile expect = null;
+                    if (r.linkedThrough.TryGetValue(h, out vv) && vv != null) expect = vv.myUnit != null && vv.myUnit.tile != null ? (SupplyNetwork.Outermost(vv.myUnit.trasnporter) ?? vv.myUnit).tile : null;
+                    else if (r.landings.TryGetValue(h, out ld)) expect = ld;
+                    if (same && expect != null && expect != rt[rt.Count - 1]) same = dl.Count > rt.Count && dl[rt.Count] == expect;
+                    Console.WriteLine("     LINECHECK " + (same ? "ok" : "MISMATCH") + " route " + (rt != null ? rt.Count : 0) + " tiles" + (expect != null ? ", then " + Pos(expect) : ""));
+                }
                 // Under fog: what each other side, as the screen's viewer, would see of this carrier's line on click.
                 if (carrier != null && GameController.gc.fogOfWar)
                     foreach (Player v in GameController.gc.players) {

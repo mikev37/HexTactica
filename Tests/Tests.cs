@@ -191,7 +191,16 @@ public static class Tests {
             return 0;
         }
         if (probe == "chokes") { Scenarios.Chokes(Environment.GetEnvironmentVariable("FILE")); return 0; }
-        if (probe == "supplydump") { Scenarios.SupplyDump(Environment.GetEnvironmentVariable("FILE")); return 0; }
+        if (probe == "supplydump") {
+            // FILE: a board, or a folder of them (every .dat under it, in order: a recorded game's turns).
+            string f = Environment.GetEnvironmentVariable("FILE");
+            if (System.IO.Directory.Exists(f)) {
+                string[] all = System.IO.Directory.GetFiles(f, "*.dat", System.IO.SearchOption.AllDirectories);
+                Array.Sort(all, StringComparer.Ordinal);
+                foreach (string one in all) { Console.WriteLine("#### " + one); Scenarios.SupplyDump(one); }
+            } else Scenarios.SupplyDump(f);
+            return 0;
+        }
         return Scenarios.RunAll(tweak) == 0 ? 0 : 1;
     }
 }
