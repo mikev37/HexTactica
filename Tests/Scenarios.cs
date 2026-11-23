@@ -699,8 +699,9 @@ public static partial class Scenarios {
         make("ui-enemy-supply-line", "enemySupplyLine", (a, o) => {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  Put("Supplies", a, -3, 0);
-                 Put("Grunt", o, 5, -2); Put("Grunt", a, 4, 2); },
-             "Clicking an enemy supply unit (or a transport carrying one) shows its supply line with its move and threat (SupplyOverlay.ShowEnemy): Red, the screen's player, clicks Blue's APC carrying supplies at (2,0). With fog off the line is the whole way back to Blue's HQ, the same as Blue's own supply line from there. Under fog it runs from the APC only as far as Red sees along it: every tile shown is one Red sees, and it stops where the way goes into the fog. A Blue unit that carries no supply shows no line (SupplyOverlay.EnemyLine, what ShowEnemy draws; HideEnemy closes it).");
+                 Put("Grunt", o, 5, -2); Put("Grunt", a, 4, 2);
+                 Put("Grunt", o, -6, 3); },   // Red's eyes on Blue's HQ, off the line (ground supply is cut only on a tile)
+             "Clicking an enemy supply unit (or a transport carrying one) shows its supply line with its move and threat (SupplyOverlay.ShowEnemy): Red, the screen's player, clicks Blue's APC carrying supplies at (2,0); a Red grunt at (-6,3) sees Blue's HQ. With fog off the line is the whole way back to Blue's HQ, the same as Blue's own supply line from there. Under fog it is drawn on every tile of it Red sees, broken where it runs through the fog: every run follows the line, tile by tile, over tiles Red sees; no tile in the fog is drawn; no tile Red sees is left out (but one seen alone between fog: no line through one tile). A Blue unit that carries no supply shows no line (SupplyOverlay.EnemyLine, what ShowEnemy draws; HideEnemy closes it).");
         make("rule-supply-transit", "supplyTransit", (a, o) => {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  Put("Supplies", a, -6, 6); Put("Supplies", a, -3, 0);
@@ -830,7 +831,12 @@ public static partial class Scenarios {
         make("rule-supply-reach-source", "supplyReachSource", (a, o) => {
                  Put("Supplies", a, -3, 0); Unit tr = Put("Truck", a, 4, 0); Unit sup = Put("Supplies", a, 4, 1); Transporting.Load(tr, sup);
                  Put("Grunt", o, 6, -5); },
-             "A carrier must reach a source of supply, not just ground one supplies (SupplyNetwork.RouteFor): Blue's HQ at (-6,0), a Blue supply unit on foot at (-3,0) in its supply (a source), a truck carrying supplies at (4,0) beyond it. With moves enough to drive onto the supply unit's ground but not beside the supply unit, it is cut off (it used to link); with as many as it takes to get beside it, it links. Its supply line then runs from the truck beside the supply unit, to it, and on to the HQ: what is drawn is what links it.");
+             "A carrier must reach a source of supply, not just ground one supplies (SupplyNetwork.RouteFor): Blue's HQ at (-6,0), a Blue supply unit on foot at (-3,0) in its supply (a source), a truck carrying supplies at (4,0) beyond it. With moves enough to drive onto the supply unit's ground but not beside the supply unit, it is cut off (it used to link); with as many as it takes to get beside it, it links. Its supply line then runs from the truck beside the supply unit, to it (the next tile after the drive: Result.landings), and on to the HQ: what is drawn is what links it.");
+        make("ui-supply-line-to-carried-source", "supplyLineCarriedSource", (a, o) => {
+                 Unit t1 = Put("Truck", a, -4, 1); Unit s1 = Put("Supplies", a, -4, 2); Transporting.Load(t1, s1);
+                 Unit t2 = Put("Truck", a, 4, 0); Unit s2 = Put("Supplies", a, 4, 1); Transporting.Load(t2, s2);
+                 Put("Grunt", o, 6, -5); },
+             "The supply line follows the network to the source a carrier links to (Result.landings), not up the field: Blue's HQ at (-6,0), a truck carrying supplies at (-4,1) well inside the HQ's supply (a source, on supplied ground: no drive), another at (4,0) beyond it. The far truck links by driving beside the near one: its line runs from it along its drive, to the near truck's tile next, and on from there to the HQ. (It used to go up the field from the end of the drive, toward the HQ, past the truck it links to: the owner's game, turn 9.)");
         make("rule-supply-reach-ship", "supplyReachShip", (a, o) => {
                  water(-4, 5, -7, 7);
                  for (int x = 0; x <= 4; x++) Rig.At(x, -1).terrain = T("Grassland");
@@ -1313,13 +1319,28 @@ public static partial class Scenarios {
                     bool noneForPlain = SupplyOverlay.EnemyLine(plain).Count == 0;
                     gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
                     bool redViews = FogOfWar.Viewer == o;
-                    List<HexTile> fogged = SupplyOverlay.EnemyLine(apc);
-                    bool allSeen = fogged.TrueForAll(t => FogOfWar.TileVisible(o, t));
-                    bool stops = fogged.Count < full.Count && !FogOfWar.TileVisible(o, full[fogged.Count]);
-                    bool prefix = true; for (int i = 0; i < fogged.Count; i++) if (fogged[i] != full[i]) prefix = false;
+                    List<List<HexTile>> runs = SupplyOverlay.EnemyLineRuns(apc);
+                    // Every run: tiles in a row along the whole line, every one seen; between them, the fog.
+                    bool runsOk = runs.Count > 0;
+                    HashSet<HexTile> drawn = new HashSet<HexTile>();
+                    foreach (List<HexTile> run in runs) {
+                        int at = full.IndexOf(run[0]);
+                        if (at < 0 || run.Count < 2) { runsOk = false; continue; }
+                        for (int i = 0; i < run.Count; i++) { if (at + i >= full.Count || full[at + i] != run[i] || !FogOfWar.TileVisible(o, run[i])) runsOk = false; drawn.Add(run[i]); }
+                    }
+                    // Every tile of the line Red sees is drawn, unless it alone is seen between fog (no line through one tile).
+                    int missed = 0, inFog = 0;
+                    for (int i = 0; i < full.Count; i++) {
+                        bool seen = FogOfWar.TileVisible(o, full[i]);
+                        if (!seen) { inFog++; continue; }
+                        bool lone = (i == 0 || !FogOfWar.TileVisible(o, full[i - 1])) && (i == full.Count - 1 || !FogOfWar.TileVisible(o, full[i + 1]));
+                        if (!lone && !drawn.Contains(full[i])) missed++;
+                    }
+                    bool hqSeen = FogOfWar.TileVisible(o, full[full.Count - 1]);
                     detail = "fog off: the APC's whole line to the HQ " + whole + " (" + full.Count + " tiles); a Blue grunt shows none " + noneForPlain
-                           + "; fog on, Red viewing " + redViews + ": " + fogged.Count + " tiles shown, each seen " + allSeen + ", the line's start " + prefix + ", stopping where it goes into the fog " + stops;
-                    return whole && noneForPlain && redViews && allSeen && prefix && stops;
+                           + "; fog on, Red viewing " + redViews + ": " + runs.Count + " runs, " + drawn.Count + " tiles drawn, each seen and in the line's order " + runsOk
+                           + ", " + inFog + " in the fog left out, seen tiles left out " + missed + " (Red sees the HQ's tile " + hqSeen + ")";
+                    return whole && noneForPlain && redViews && runsOk && inFog > 0 && missed == 0;
                 } finally {
                     gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh();
                     if (redAI != null) redAI.enabled = true;
@@ -4303,6 +4324,22 @@ public static partial class Scenarios {
                 detail = string.Join(" | ", r.ToArray());
                 return noneFree && wallOk && selOk && offByDefault && allOk && distOk && fogOk;
             }
+            case "supplyLineCarriedSource": {
+                Unit near = Rig.At(-4, 1).occupier, far = Rig.At(4, 0).occupier;
+                SupplyPoint hub = far.transported[0].Hub;
+                HexTile hq = GameController.HQOf(a).tile;
+                SupplyNetwork.Result r = SupplyNetwork.Solve(a, false);
+                bool linked = r.connectedHubs.Contains(hub) && r.connectedHubs.Contains(near.transported[0].Hub);
+                List<Unit> legs = new List<Unit>();
+                List<HexTile> line = SupplyOverlay.SourcePathWithLegs(a, far.tile, r, null, legs);
+                int lastLeg = legs.FindLastIndex(x => x == far);
+                bool beside = lastLeg > 0 && line[lastLeg].Distance(near.tile) == 1;
+                bool toIt = beside && lastLeg + 1 < line.Count && line[lastLeg + 1] == near.tile;
+                bool toHq = line.Count > 0 && line[line.Count - 1] == hq;
+                List<string> ls = new List<string>(); for (int i = 0; i < line.Count; i++) ls.Add(Pos(line[i]) + (legs[i] != null ? "*" : ""));
+                detail = "both linked " + linked + "; line " + string.Join(" ", ls.ToArray()) + " (* a truck's drive): ends its drive beside the near truck " + beside + ", to it next " + toIt + ", on to the HQ " + toHq;
+                return linked && beside && toIt && toHq;
+            }
             case "supplyReachSource": {
                 Unit src = Rig.At(-3, 0).occupier, truck = Rig.At(4, 0).occupier;
                 SupplyPoint hub = truck.transported[0].Hub;
@@ -4327,7 +4364,7 @@ public static partial class Scenarios {
                 List<Unit> legs = new List<Unit>();
                 List<HexTile> line = SupplyOverlay.SourcePathWithLegs(a, truck.tile, r, null, legs);
                 int lastLeg = legs.FindLastIndex(x => x != null);
-                bool drawn = line.Count > 2 && line[0] == truck.tile && lastLeg > 0 && line[lastLeg].Distance(src.tile) <= 1 && line.Contains(src.tile) && line[line.Count - 1] == hq;
+                bool drawn = line.Count > 2 && line[0] == truck.tile && lastLeg > 0 && line[lastLeg].Distance(src.tile) <= 1 && lastLeg + 1 < line.Count && line[lastLeg + 1] == src.tile && line[line.Count - 1] == hq;
                 truck.moveRange = moves; SupplyNetwork.Solve(a, false);
                 List<string> ls = new List<string>(); for (int i = 0; i < line.Count; i++) ls.Add(Pos(line[i]) + (legs[i] != null ? "*" : ""));
                 detail = "movement points to the supply unit's ground " + toGround + ", to beside it " + toSource + " (" + layout + "); with " + (toSource - 1) + ": cut off " + groundOnlyCut + "; with " + toSource + ": linked " + linked + ", line " + string.Join(" ", ls.ToArray()) + " (* the truck's drive) " + drawn;
@@ -6399,6 +6436,16 @@ public static partial class Scenarios {
                     foreach (HexTile t in drawn) depths.Add(Pos(t) + "=" + others.DepthAt(t));
                     Console.WriteLine("     supply depth along it without this one: " + string.Join(" ", depths.ToArray()));
                 }
+                // Under fog: what each other side, as the screen's viewer, would see of this carrier's line on click.
+                if (carrier != null && GameController.gc.fogOfWar)
+                    foreach (Player v in GameController.gc.players) {
+                        if (v == null || !Player.Hostile(v, p)) continue;
+                        GameController.gc.activePlayer = v; FogOfWar.Changed(); FogOfWar.Refresh();
+                        if (!FogOfWar.Sees(v, carrier)) { Console.WriteLine("     " + v.personal_name + " does not see it"); continue; }
+                        List<string> rs = new List<string>();
+                        foreach (List<HexTile> run in SupplyOverlay.EnemyLineRuns(carrier)) { List<string> ts = new List<string>(); foreach (HexTile t in run) ts.Add(Pos(t)); rs.Add(string.Join(" ", ts.ToArray())); }
+                        Console.WriteLine("     " + v.personal_name + " clicking it sees the line on: " + (rs.Count > 0 ? string.Join(" | ", rs.ToArray()) : "nothing"));
+                    }
             }
         }
     }

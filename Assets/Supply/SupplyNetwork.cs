@@ -69,7 +69,7 @@ public static class SupplyNetwork {
         /// draws this, and the contacts compare it with the way its side would know (UnseenContacts): one choice of way.
         /// </summary>
         public readonly Dictionary<SupplyPoint, List<HexTile>> routes = new Dictionary<SupplyPoint, List<HexTile>>();
-        /// <summary>A ship's carried supply linked by sailing beside supplied ground: the ground it puts it on (beside the route's end).</summary>
+        /// <summary>Carried supply whose carrier ends its route beside a source rather than on it: that source's tile (a ship: the shore it puts it on), where the supply line goes on from.</summary>
         public readonly Dictionary<SupplyPoint, HexTile> landings = new Dictionary<SupplyPoint, HexTile>();
         /// <summary>
         /// Every carrier's transit this solve looked at: where it stood and its move range. A link through one depends on
@@ -703,7 +703,7 @@ public static class SupplyNetwork {
 
     /// <summary>
     /// RouteFor straight to a source: no transit on supplied ground; else to a tile of <paramref name="sources"/> or beside
-    /// one in reach (a ship: beside one, with the source it reaches as its landing). Null if none.
+    /// one in reach (beside one: the source it reaches as its landing, Result.landings, for the supply line). Null if none.
     /// </summary>
     static List<HexTile> DirectRoute(Unit transport, HexTile at, Result result, HashSet<HexTile> sources, out HexTile landing) {
         landing = null;
@@ -713,7 +713,8 @@ public static class SupplyNetwork {
         Reach reach = MoveReach(transport, at);
         HexTile end = reach.Best(t => (!ship && sources.Contains(t)) || BesideSource(t, sources) != null);
         if (end == null) return null;
-        if (ship || !sources.Contains(end)) landing = ship ? BesideSource(end, sources) : null;
+        // The source it ends beside (a ship's landing; on land, the supply line goes on from it, not up the field).
+        if (ship || !sources.Contains(end)) landing = BesideSource(end, sources);
         return reach.PathTo(end);
     }
 

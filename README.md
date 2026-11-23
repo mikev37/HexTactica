@@ -96,6 +96,11 @@ A supply unit aboard something links to its side's network through what carries 
 - **Your units can be read at any time** (SupplyOverlay.Inspected): click one of yours whose move is over, or any of
   yours on the opponent's turn (the AI's, or one played on another device), and its supply line, cut line and marker
   show as if it were selected; a transport shows them right after it moves too. Any click clears it.
+- **Enemy supply lines.** Click an enemy supply unit (or a transport carrying one) and its supply line shows with its
+  move and threat (SupplyOverlay.ShowEnemy, EnemyLineRuns): the network's true way back to its HQ. Under fog it is drawn
+  on every tile of it you see, broken where it passes through the fog (the line's legs end on the enemy's supply units,
+  and one you do not see is not pointed at). A carrier's line goes from the end of its drive to the source it links to
+  (Result.landings), then on from that source.
 - The way a carrier links its supply is chosen once, by the network (SupplyNetwork.RouteFor, recorded in Result.routes):
   the supply line draws that way, and the contacts compare it with the way the side would choose knowing what it sees.
 - A ship links when, in one move, it can get beside a source on the shore (a supply unit on the beach, a naval yard),

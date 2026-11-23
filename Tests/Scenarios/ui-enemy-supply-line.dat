@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"ui-enemy-supply-line","kind":"rules","opponent":"Human","rounds":"4","check":"enemySupplyLine","question":"Clicking an enemy supply unit (or a transport carrying one) shows its supply line with its move and threat (SupplyOverlay.ShowEnemy): Red, the screen's player, clicks Blue's APC carrying supplies at (2,0). With fog off the line is the whole way back to Blue's HQ, the same as Blue's own supply line from there. Under fog it runs from the APC only as far as Red sees along it: every tile shown is one Red sees, and it stops where the way goes into the fog. A Blue unit that carries no supply shows no line (SupplyOverlay.EnemyLine, what ShowEnemy draws; HideEnemy closes it).","rules":"standard"},
+"test":{"name":"ui-enemy-supply-line","kind":"rules","opponent":"Human","rounds":"4","check":"enemySupplyLine","question":"Clicking an enemy supply unit (or a transport carrying one) shows its supply line with its move and threat (SupplyOverlay.ShowEnemy): Red, the screen's player, clicks Blue's APC carrying supplies at (2,0); a Red grunt at (-6,3) sees Blue's HQ. With fog off the line is the whole way back to Blue's HQ, the same as Blue's own supply line from there. Under fog it is drawn on every tile of it Red sees, broken where it runs through the fog: every run follows the line, tile by tile, over tiles Red sees; no tile in the fog is drawn; no tile Red sees is left out (but one seen alone between fog: no line through one tile). A Blue unit that carries no supply shows no line (SupplyOverlay.EnemyLine, what ShowEnemy draws; HideEnemy closes it).","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
@@ -182,6 +182,7 @@
 {"x":2,"y":0,"z":-2,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":1},
 {"x":-3,"y":0,"z":3,"Strength":6,"Veterancy":0,"personalName":"Supplies","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Supplies","transporterIndexPlusOne":0},
 {"x":4,"y":2,"z":-6,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":112,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0},
-{"x":5,"y":-2,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
+{"x":5,"y":-2,"z":-3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0},
+{"x":-6,"y":3,"z":3,"Strength":6,"Veterancy":0,"personalName":"Grunt","active":true,"owner_id":0,"supplies":3,"fuel":30,"ammo":6,"gameobject_name":"Grunt","transporterIndexPlusOne":0}
 ]
 }

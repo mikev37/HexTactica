@@ -23,7 +23,7 @@ using UnityEngine;
 /// Everything follows the picked tile, not the pointer, so it works the same with a finger.
 /// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there, and for an enemy supply
 /// unit (or a transport carrying one) its supply line too, in its colour: the way its supply comes, as the network truly
-/// has it, so you can see how your units turn it and where to cut it. Under fog, only as far as you see along it.
+/// has it, so you can see how your units turn it and where to cut it. Under fog, on every tile of it you see.
 /// </summary>
 public class SupplyOverlay : MonoBehaviour {
 
@@ -563,30 +563,44 @@ public class SupplyOverlay : MonoBehaviour {
     /// <summary>
     /// The supply line of <paramref name="enemy"/>, if it is a supply unit or carries one: from where it stands back to the
     /// HQ (SourcePath, the network as it truly is: its carriers' routes are the network's own), in its side's colour. Under
-    /// fog, from it as far as the viewer sees each tile along it: the line stops where it goes into the fog (it does not
-    /// show where the enemy's supply comes from beyond what you see).
+    /// fog, on every tile of it the viewer sees, broken where it runs through the fog (EnemyLineRuns): the fog's tiles are
+    /// left out because the line's legs end on the enemy's supply units, and one the viewer does not see must not be
+    /// pointed at; a tile the viewer sees hides nothing.
     /// </summary>
     void ShowEnemyLine(Unit enemy) {
         foreach (LineRenderer l in enemyLines) if (l != null) l.gameObject.SetActive(false);
         if (enemy == Inspected) return;   // the screen's own, clicked on the opponent's turn: drawn as inspected (UpdateShown)
-        List<HexTile> path = EnemyLine(enemy);
-        if (path.Count < 2) return;
-        Show(Line(enemyLines, 0), path, enemy.owner.displayColor, 1f, 1f);
+        List<List<HexTile>> runs = EnemyLineRuns(enemy);
+        for (int i = 0; i < runs.Count; i++) Show(Line(enemyLines, i), runs[i], enemy.owner.displayColor, 1f, 1f);
     }
 
-    /// <summary>The tiles ShowEnemyLine draws for <paramref name="enemy"/> (empty if it carries no supply).</summary>
+    /// <summary>The whole supply line of <paramref name="enemy"/>, as the network truly has it (empty if it carries no supply).</summary>
     public static List<HexTile> EnemyLine(Unit enemy) {
         List<HexTile> path = new List<HexTile>();
         if (enemy == null || enemy.tile == null || enemy.owner == null || CarriedSupplies(enemy).Count == 0) return path;
         Player p = enemy.owner;
         using (SupplyNetwork.AsPlayed()) path = SourcePath(p, enemy.tile, SupplyNetwork.Solve(p, false), null);
-        Player viewer = FogOfWar.On ? FogOfWar.Viewer : null;
-        if (viewer != null && !Player.Friendly(viewer, p)) {
-            int seen = 0;
-            while (seen < path.Count && FogOfWar.TileVisible(viewer, path[seen])) seen++;
-            if (seen < path.Count) path = path.GetRange(0, seen);
-        }
         return path;
+    }
+
+    /// <summary>
+    /// What ShowEnemyLine draws: EnemyLine, cut into the runs of two or more tiles in a row along it that the viewer sees
+    /// (fog off, or the viewer's own side: the whole line, one run).
+    /// </summary>
+    public static List<List<HexTile>> EnemyLineRuns(Unit enemy) {
+        List<List<HexTile>> runs = new List<List<HexTile>>();
+        List<HexTile> path = EnemyLine(enemy);
+        if (path.Count < 2) return runs;
+        Player viewer = FogOfWar.On ? FogOfWar.Viewer : null;
+        if (viewer == null || Player.Friendly(viewer, enemy.owner)) { runs.Add(path); return runs; }
+        List<HexTile> run = new List<HexTile>();
+        foreach (HexTile t in path) {
+            if (FogOfWar.TileVisible(viewer, t)) { run.Add(t); continue; }
+            if (run.Count >= 2) runs.Add(run);
+            run = new List<HexTile>();
+        }
+        if (run.Count >= 2) runs.Add(run);
+        return runs;
     }
 
     /// <summary>Is an enemy's move and threat on show (tiles in ENEMY_MOVE / ENEMY_THREAT)?</summary>
