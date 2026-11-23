@@ -17,6 +17,8 @@ using UnityEngine;
 /// Neither the cut line nor a marker shows unless that transport is selected, or all supply lines are on: the option
 /// (GameOptions.AllSupplyLines, kept between games), toggled by its key (FrontEndSettings.supplyLinesKey), shows every
 /// supply line of the screen's side at once: each supply unit's to what feeds it, every cut one, every marker.
+/// The same shows for a unit of yours clicked when it cannot be selected (Inspected): its move over, or on the opponent's
+/// turn (the AI's, or one played on another device), so supply can be read and cut at any time.
 /// Whether a picked tile is in supply is shown by the board's supply borders alone.
 /// Everything follows the picked tile, not the pointer, so it works the same with a finger.
 /// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there, and for an enemy supply
@@ -75,6 +77,26 @@ public class SupplyOverlay : MonoBehaviour {
         return p != null && FogOfWar.IsHuman(p) ? p : null;
     }
 
+    /// <summary>
+    /// A unit of the screen's side clicked but not selected (HexTile.ClickBoard): its move is over, or it is not its side's
+    /// turn. Shown as a selected one is (its supply line, its cut line and marker), with no move to pick. Any click
+    /// clears it first.
+    /// </summary>
+    public static Unit Inspected;
+
+    /// <summary>Is <paramref name="u"/> the screen's: a person's here (not the AI's, not one played on another device), and under fog, the viewer's side?</summary>
+    public static bool OnScreenSide(Unit u) {
+        if (u == null || u.owner == null || !FogOfWar.IsHuman(u.owner) || GameController.IsPlayedElsewhere(u.owner)) return false;
+        return !FogOfWar.On || (FogOfWar.Viewer != null && Player.Friendly(FogOfWar.Viewer, u.owner));
+    }
+
+    /// <summary>Is it a turn the screen's side does not play here (the AI's, or one played on another device)?</summary>
+    public static bool OpponentsTurn() {
+        GameController gc = GameController.gc;
+        Player p = gc != null ? gc.activePlayer : null;
+        return p != null && (!FogOfWar.IsHuman(p) || GameController.IsPlayedElsewhere(p));
+    }
+
     void UpdateShown() {
         GameController gc = GameController.gc;
         Unit u = gc != null ? gc.activeUnit : null;
@@ -82,7 +104,9 @@ public class SupplyOverlay : MonoBehaviour {
         // business, and the AI may be thinking on another thread while this would publish supply.
         if (u != null && !FogOfWar.IsHuman(u.owner)) u = null;
         if (u != null && (u.tile == null || u.owner == null)) u = null;
-        HexTile dest = Destination(u);
+        bool inspecting = false;
+        if (u == null && Inspected != null && Inspected.tile != null && Inspected.Strength > 0 && OnScreenSide(Inspected)) { u = Inspected; inspecting = true; }
+        HexTile dest = inspecting ? null : Destination(u);
         bool all = GameOptions.AllSupplyLines;
         Player side = ScreenSide();
         bool moved = SupplyNetwork.Published != shownPublished && Time.unscaledTime - shownAt >= RedrawEvery;
@@ -544,6 +568,7 @@ public class SupplyOverlay : MonoBehaviour {
     /// </summary>
     void ShowEnemyLine(Unit enemy) {
         foreach (LineRenderer l in enemyLines) if (l != null) l.gameObject.SetActive(false);
+        if (enemy == Inspected) return;   // the screen's own, clicked on the opponent's turn: drawn as inspected (UpdateShown)
         List<HexTile> path = EnemyLine(enemy);
         if (path.Count < 2) return;
         Show(Line(enemyLines, 0), path, enemy.owner.displayColor, 1f, 1f);

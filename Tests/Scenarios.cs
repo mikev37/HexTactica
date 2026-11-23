@@ -812,6 +812,16 @@ public static partial class Scenarios {
                  Put("Gunboat", a, 0, 0);
                  Put("Grunt", o, 7, -6); },
              "Supply at sea, and what it gives: a hauler within a move of Blue's shore, beside a strip of island, carrying an APC with a supply unit inside it and a weakened grunt. (1) The supply two transports deep links and supplies the island, as supply aboard the hauler itself would (ship rules). (2) The grunt aboard, the hauler having supplies, is resupplied at the start of Blue's turn as on supplied ground: healed a strength, rearmed, refuelled. (3) The hauler itself only mends from its own supplies (+1): the water its own supply covers is not supplied ground for it. (4) When the hauler sails away, the water and the island it supplied are no longer supplied.");
+        make("rule-supply-transit-air-wall", "supplyTransitAirWall", (a, o) => {
+                 Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 Put("Supplies", a, -3, 0);
+                 for (int y = -12; y <= 12; y++) if (Rig.At(-1, y) != null && Rig.At(-1, y).occupier == null) Put("Fighter", o, -1, y);
+                 Put("Grunt", o, 6, -5); },   // parked: the check sets it on the wall
+             "Supply in transit passes an enemy that could not attack its carrier (SupplyNetwork.PassesEnemy): Blue's HQ at (-6,0), a Blue supply unit at (-3,0), an APC carrying supplies at (2,0), and a Red fighter on every tile of x=-1, across the whole board: the APC cannot drive through any of them, but a jet cannot attack a truck, so the supply in transit is not stopped by them. Linked, its route through a fighter's tile, ending on no fighter's tile (it passes them, never stops on them); its supply line drawn along it. A Red grunt put in place of the fighter on the route: still linked, by another fighter's tile (the grunt and the tiles beside it avoided).");
+        make("ui-supply-inspect", "supplyInspect", (a, o) => {
+                 Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
+                 Put("Supplies", a, -3, 0); Put("Grunt", o, 5, -3); },
+             "Clicking a unit of yours that cannot be selected shows its supply as if selected (SupplyOverlay.Inspected): Blue (a person) with an APC carrying supplies at (2,0), Red the AI. On Blue's turn, the APC's move over: clicked, it is inspected (and its panel opens). A click on empty ground clears it. On Red's turn: the APC clicked is inspected (Red's move and threat for it shown as before, its line drawn as Blue's), a click elsewhere clears it; Red's grunt clicked on Blue's turn is not (an enemy: its own line, ShowEnemy).");
         make("ui-supply-cut-line", "supplyCutLine", (a, o) => {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  Put("Supplies", a, -3, 0);
@@ -4138,6 +4148,82 @@ public static partial class Scenarios {
                 detail = "yard sells it " + sold + "; carries fighter and bomber " + takesAir + ", grunt " + takesGrunt + "; fighter boards from beside " + boardF + "; both aboard, full " + full
                        + "; stocked carrier: fighter fuel " + f1.fuel + "/" + f1.fuelMax + " strength " + f1.Strength + ", bomber " + b.fuel + "/" + b.fuelMax + "; empty carrier: fighter fuel " + f2.fuel;
                 return sold && takesAir && !takesGrunt && boardF && full && refuelled && notRefuelled;
+            }
+            case "supplyTransitAirWall": {
+                Unit apc = Rig.At(2, 0).occupier;
+                SupplyPoint hub = apc.transported[0].Hub;
+                Unit grunt = null; foreach (Unit u in o.units) if (u != null && u.locomotion == Locomotion.Boots) grunt = u;
+                Predicate<HexTile> fighterOn = t => t.occupier != null && t.occupier.owner == o && t.occupier != grunt;
+                List<string> r = new List<string>();
+                SupplyNetwork.Result res = SupplyNetwork.Solve(a, false);
+                List<HexTile> route; res.routes.TryGetValue(hub, out route);
+                bool linked = res.connectedHubs.Contains(hub) && route != null;
+                bool through = linked && route.Exists(fighterOn);
+                bool endFree = linked && !fighterOn(route[route.Count - 1]);
+                bool cantHit = true; foreach (Unit u in o.units) if (u != grunt && SupplyNetwork.CouldAttack(u, apc)) cantHit = false;
+                Func<List<HexTile>, string> tiles = pth => { List<string> sh = new List<string>(); if (pth != null) foreach (HexTile t in pth) sh.Add(Pos(t)); return string.Join(" ", sh.ToArray()); };
+                List<HexTile> drawn = SupplyOverlay.SourcePath(a, apc.tile, res, null);
+                bool lineOk = linked && drawn.Count >= route.Count && drawn.GetRange(0, route.Count).SequenceEqual(route);
+                r.Add("a fighter on every tile of x=-1 (none could attack the APC " + cantHit + "): linked " + linked + ", route " + tiles(route) + ", through a fighter's tile " + through + ", ending on none " + endFree + ", the line along it " + lineOk);
+                // A grunt in place of the fighter it passed.
+                HexTile crossed = linked ? route.Find(fighterOn) : null;
+                bool gruntOk = false;
+                if (crossed != null) {
+                    Unit f = crossed.occupier; HexTile park = Rig.At(6, -4);
+                    f.TeleportTo(park, 0); grunt.TeleportTo(crossed, 0);
+                    SupplyNetwork.Result r2 = SupplyNetwork.Solve(a, false);
+                    List<HexTile> route2; r2.routes.TryGetValue(hub, out route2);
+                    gruntOk = r2.connectedHubs.Contains(hub) && route2 != null && route2.Exists(fighterOn) && !route2.Exists(t => t.Distance(crossed) <= 1);
+                    r.Add("a grunt in its place at " + Pos(crossed) + ": linked by another fighter's tile, clear of the grunt " + gruntOk + " (" + tiles(route2) + ")");
+                    grunt.TeleportTo(Rig.At(6, -5), 0); f.TeleportTo(crossed, 0); SupplyNetwork.Solve(a, false);
+                }
+                detail = string.Join(" | ", r.ToArray());
+                return cantHit && linked && through && endFree && lineOk && gruntOk;
+            }
+            case "supplyInspect": {
+                Unit apc = Rig.At(2, 0).occupier, grunt = Rig.At(5, -3).occupier;
+                HexTileUIData ui = ScriptableObject.CreateInstance<HexTileUIData>();
+                ui.move_possible = new Sprite(); ui.move_confirm = new Sprite(); ui.selected = new Sprite(); ui.attack_possible = new Sprite(); ui.move_arrow = new Sprite();
+                foreach (HexTile t in Rig.hg.tiles) { t.overlay = Rig.New<SpriteRenderer>(); t.arrow = Rig.New<SpriteRenderer>(); t.uiData = ui; t.state = UIState.FREE; }
+                foreach (Unit u in Rig.uc.units) if (u.textArea == null) u.textArea = Rig.New<UnityEngine.UI.Text>();
+                if (LevelEditor.singleton == null) LevelEditor.singleton = Rig.New<LevelEditor>();
+                AIPlayer blueAI = a.GetComponent<AIPlayer>(), redAI = o.GetComponent<AIPlayer>();
+                bool blueWas = blueAI != null && blueAI.enabled, redWas = redAI != null && redAI.enabled;
+                if (redAI == null) redAI = Rig.AttachAI(o, ScriptableObject.CreateInstance<AIProfile>());
+                if (blueAI != null) blueAI.enabled = false;
+                if (redAI != null) redAI.enabled = true;
+                List<string> r = new List<string>();
+                bool ok;
+                try {
+                    bool sides = FogOfWar.IsHuman(a) && !FogOfWar.IsHuman(o);
+                    gc.activePlayer = a; gc.activeUnit = null; apc.active = false;
+                    apc.tile.OnMouseDown();
+                    bool done = SupplyOverlay.Inspected == apc;
+                    r.Add("Blue a person, Red the AI " + sides + "; Blue's turn, the APC's move over, clicked: inspected " + done);
+                    Rig.At(0, 3).OnMouseDown();
+                    bool cleared = SupplyOverlay.Inspected == null;
+                    r.Add("a click on empty ground clears it " + cleared);
+                    grunt.tile.OnMouseDown();
+                    bool enemyNot = SupplyOverlay.Inspected == null && SupplyOverlay.enemyShown;
+                    r.Add("Red's grunt clicked: not inspected, shown as an enemy " + enemyNot);
+                    Rig.At(0, 3).OnMouseDown();
+                    gc.activePlayer = o; apc.active = true;
+                    bool opp = SupplyOverlay.OpponentsTurn();
+                    apc.tile.OnMouseDown();
+                    bool theirs = SupplyOverlay.Inspected == apc;
+                    SupplyOverlay.Layer layer = new SupplyOverlay.Layer(); SupplyOverlay.ForSelection(SupplyOverlay.Inspected, a, layer);
+                    r.Add("Red's turn " + opp + ": the APC clicked is inspected " + theirs + " (its move and threat shown as before " + SupplyOverlay.enemyShown + ")");
+                    Rig.At(0, 3).OnMouseDown();
+                    bool cleared2 = SupplyOverlay.Inspected == null;
+                    r.Add("a click elsewhere clears it " + cleared2);
+                    ok = sides && done && cleared && enemyNot && opp && theirs && cleared2;
+                } finally {
+                    gc.activePlayer = a; gc.activeUnit = null; SupplyOverlay.Inspected = null; SupplyOverlay.HideEnemy();
+                    if (blueAI != null) blueAI.enabled = blueWas;
+                    if (redAI != null) redAI.enabled = redWas;
+                }
+                detail = string.Join(" | ", r.ToArray());
+                return ok;
             }
             case "supplyCutLine": {
                 Building hq = GameController.HQOf(a);
