@@ -47,12 +47,9 @@ public class SupplyOverlay : MonoBehaviour {
     int shownFrameCheck;
     bool shownAll;
     Player shownSide;
-    int shownPublished = -1;
+    int shownChanges = -1;
+    Player shownViewer;
     Unit shownEnemy;
-    float shownAt = -1f;
-
-    /// <summary>How often (seconds), at most, the cut lines and markers are worked out again while supply keeps being published.</summary>
-    public const float RedrawEvery = 0.25f;
 
     void Awake() { instance = this; }
 
@@ -111,13 +108,13 @@ public class SupplyOverlay : MonoBehaviour {
         HexTile dest = inspecting ? null : Destination(u);
         bool all = GameOptions.AllSupplyLines;
         Player side = ScreenSide();
-        bool moved = SupplyNetwork.Published != shownPublished && Time.unscaledTime - shownAt >= RedrawEvery;
+        Player viewer = FogOfWar.On ? FogOfWar.Viewer : null;
+        int changes = SupplyNetwork.Changes;
         Unit enemy = enemyShown ? EnemyUnit : null;
-        if (u == shownUnit && dest == shownTile && all == shownAll && side == shownSide && enemy == shownEnemy && !moved) return;
-        shownEnemy = enemy;
-        bool reselected = u != shownUnit || dest != shownTile;
-        shownAll = all; shownSide = side; shownAt = Time.unscaledTime;
-        if (reselected || moved) {
+        if (u == shownUnit && dest == shownTile && all == shownAll && side == shownSide && enemy == shownEnemy && changes == shownChanges && viewer == shownViewer) return;
+        bool redo = u != shownUnit || dest != shownTile || changes != shownChanges || viewer != shownViewer;
+        shownEnemy = enemy; shownAll = all; shownSide = side; shownChanges = changes; shownViewer = viewer;
+        if (redo) {
             Clear();
             shownUnit = u;
             shownTile = dest;
@@ -125,27 +122,33 @@ public class SupplyOverlay : MonoBehaviour {
         }
         Layer layer = new Layer();
         if (u != null && dest == null) ForSelection(u, side, layer);
-        if (all && side != null) AllLines(side, layer);
+        if (all && side != null) layer.Add(SupplyLines.All(side));
         if (enemy != null && enemy.tile != null && enemy != u) ForEnemy(enemy, FogOfWar.On ? FogOfWar.Viewer : side, layer);
         DrawLayer(layer, side ?? (u != null ? u.owner : null));
-        shownPublished = SupplyNetwork.Published;   // after drawing: drawing solves (and publishes) supply itself
+        if (changes != SupplyNetwork.Changes) shownChanges = -1;   // supply changed while drawing: again next frame
     }
 
+    /// <summary>
+    /// The selected unit's supply line and branches: as the network stands, from SupplyLines (worked out once per change
+    /// of supply); a move being previewed (a supply unit, or a transport carrying one, with a tile picked) is a network of
+    /// its own, worked out here (SolvePreview, published so the board's supply edges show it).
+    /// </summary>
     void DrawSelection(Unit u, HexTile dest) {
         Player p = u.owner;
         List<SupplyPoint> carried = CarriedSupplies(u);
-        bool movingHub = carried.Count > 0 && dest != null;
-        // The field to read: supply units being moved (itself, or all a transport carries) show the
-        // supply they would give from there (published, so the board's supply edges show it);
-        // anything else reads the real one.
-        Dictionary<SupplyPoint, HexTile> preview = null;
-        if (movingHub) { preview = new Dictionary<SupplyPoint, HexTile>(); foreach (SupplyPoint sp in carried) preview[sp] = dest; }
-        SupplyNetwork.Result field = movingHub ? SupplyNetwork.SolvePreview(p, preview) : SupplyNetwork.Solve(p, false);
-        if (movingHub) previewPlayer = p;
-
-        HexTile from = dest ?? u.tile;
-        // The line is for supply units (and what carries them): where their supply comes from.
-        if (carried.Count > 0) DrawSupplyLine(p, from, field, preview, carried);
+        if (carried.Count == 0) return;   // the line is for supply units (and what carries them)
+        if (dest == null) {
+            Show(Line(0), SupplyLines.Line(p, u.tile), p.displayColor, 1f, 1f);
+            int n = 1;
+            foreach (KeyValuePair<SupplyPoint, List<HexTile>> kv in SupplyLines.Branches(u))
+                Show(Line(n++), kv.Value, p.displayColor, DependentAlpha, DependentWidth);
+            return;
+        }
+        Dictionary<SupplyPoint, HexTile> preview = new Dictionary<SupplyPoint, HexTile>();
+        foreach (SupplyPoint sp in carried) preview[sp] = dest;
+        SupplyNetwork.Result field = SupplyNetwork.SolvePreview(p, preview);
+        previewPlayer = p;
+        DrawSupplyLine(p, dest, field, preview, carried);
     }
 
     /// <summary>What the cut lines, the markers and (all supply lines on) every supply line show: tiles, for the screen to draw.</summary>
@@ -162,6 +165,17 @@ public class SupplyOverlay : MonoBehaviour {
         internal readonly HashSet<Unit> carriers = new HashSet<Unit>();
 
         internal void Mark(HexTile t) { if (t != null && !markers.Contains(t)) markers.Add(t); }
+
+        /// <summary>Everything <paramref name="o"/> shows, added to this.</summary>
+        public void Add(Layer o) {
+            if (o == null) return;
+            lines.AddRange(o.lines);
+            foreach (SupplyNetwork.Cut c in o.cuts) if (!cuts.Contains(c) && !carriers.Contains(c.carrier)) cuts.Add(c);
+            enemyCutRuns.AddRange(o.enemyCutRuns);
+            if (enemy == null) enemy = o.enemy;
+            foreach (HexTile t in o.markers) Mark(t);
+            foreach (Unit c in o.carriers) carriers.Add(c);
+        }
     }
 
     /// <summary>
@@ -175,9 +189,9 @@ public class SupplyOverlay : MonoBehaviour {
         if (carrier == null || carrier.tile == null || layer.carriers.Contains(carrier) || CarriedSupplies(carrier).Count == 0) return;
         layer.carriers.Add(carrier);
         Player side = viewer != null && Player.Friendly(viewer, u.owner) ? viewer : u.owner;
-        SupplyNetwork.Cut cut = SupplyNetwork.CutRoute(carrier, side);
+        SupplyNetwork.Cut cut = SupplyLines.Cut(carrier, side);
         if (cut != null) { layer.cuts.Add(cut); layer.Mark(cut.marker); return; }
-        foreach (HexTile t in SupplyNetwork.UnseenContacts(side, carrier)) layer.Mark(t);
+        foreach (HexTile t in SupplyLines.Contacts(carrier, side)) layer.Mark(t);
     }
 
     /// <summary>
@@ -190,7 +204,7 @@ public class SupplyOverlay : MonoBehaviour {
         if (enemy == null || enemy.owner == null) return;
         Unit carrier = SupplyNetwork.Outermost(enemy);
         if (carrier == null || carrier.tile == null || CarriedSupplies(carrier).Count == 0) return;
-        SupplyNetwork.Cut cut = SupplyNetwork.CutRoute(carrier, viewer);
+        SupplyNetwork.Cut cut = SupplyLines.Cut(carrier, viewer);
         if (cut == null) return;
         layer.enemy = carrier.owner;
         Player v = FogOfWar.On ? viewer : null;
@@ -220,7 +234,12 @@ public class SupplyOverlay : MonoBehaviour {
     /// </summary>
     public static void AllLines(Player side, Layer layer) {
         if (side == null) return;
-        SupplyNetwork.Result field = SupplyNetwork.Solve(side, false);
+        layer.Add(SupplyLines.All(side));
+    }
+
+    /// <summary>As above, on <paramref name="field"/>, the side's network as it stands (SupplyLines.All keeps what it makes).</summary>
+    public static void AllLines(Player side, Layer layer, SupplyNetwork.Result field) {
+        if (side == null) return;
         HashSet<HexTile> from = new HashSet<HexTile>();
         foreach (Unit u in new List<Unit>(side.units)) {
             SupplyPoint h = u != null ? u.Hub : null;
@@ -232,7 +251,7 @@ public class SupplyOverlay : MonoBehaviour {
             }
             HexTile at = carrier != null ? carrier.tile : u.tile;
             if (at == null || !from.Add(at)) continue;
-            List<HexTile> line = SourcePathWithLegs(side, at, field, null, null, 1);
+            List<HexTile> line = SourcePathWithLegs(side, at, field, null, null, 1, field);
             if (line.Count >= 2) layer.lines.Add(line);
         }
     }
@@ -339,6 +358,11 @@ public class SupplyOverlay : MonoBehaviour {
     ///   - their lines are joined from links worked out once (Lines).
     /// </summary>
     public static Dictionary<SupplyPoint, List<HexTile>> Dependents(Player p, List<SupplyPoint> carried, HexTile at, SupplyNetwork.Result field, Dictionary<SupplyPoint, HexTile> preview) {
+        return Dependents(p, carried, at, field, preview, null);
+    }
+
+    /// <summary>As above, joining lines from <paramref name="shared"/> (the network's Lines, kept by SupplyLines) if given.</summary>
+    public static Dictionary<SupplyPoint, List<HexTile>> Dependents(Player p, List<SupplyPoint> carried, HexTile at, SupplyNetwork.Result field, Dictionary<SupplyPoint, HexTile> preview, Lines shared) {
         Dictionary<SupplyPoint, List<HexTile>> deps = new Dictionary<SupplyPoint, List<HexTile>>();
         if (carried == null || carried.Count == 0 || at == null) return deps;
         Dictionary<SupplyPoint, HexTile> tileOf = new Dictionary<SupplyPoint, HexTile>();
@@ -349,7 +373,7 @@ public class SupplyOverlay : MonoBehaviour {
             if (ht != null) tileOf[h] = ht;
         }
         HashSet<SupplyPoint> could = Reaches(p, carried, at, tileOf, field, preview);
-        Lines lines = new Lines(p, field, preview);   // each link worked out once, shared by every line through it
+        Lines lines = shared ?? new Lines(p, field, preview);   // each link worked out once, shared by every line through it
         foreach (SupplyPoint h in could) {
             if (carried.Contains(h)) continue;
             HexTile ht = tileOf[h];
@@ -771,7 +795,7 @@ public class SupplyOverlay : MonoBehaviour {
     void ShowEnemyLine(Unit enemy) {
         foreach (LineRenderer l in enemyLines) if (l != null) l.gameObject.SetActive(false);
         if (enemy == Inspected) return;   // the screen's own, clicked on the opponent's turn: drawn as inspected (UpdateShown)
-        List<List<HexTile>> runs = EnemyLineRuns(enemy);
+        List<List<HexTile>> runs = SupplyLines.EnemyLine(enemy);
         for (int i = 0; i < runs.Count; i++) Show(Line(enemyLines, i), runs[i], enemy.owner.displayColor, 1f, 1f);
     }
 

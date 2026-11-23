@@ -34,6 +34,7 @@ FrontEnd/Stats/GameRecord.cs
 FrontEnd/Stats/GameInsights.cs
 Resources/Buildings/CaptureFlag.cs
 Supply/SupplyNetwork.cs
+Supply/SupplyLines.cs
 AI/AIHeap.cs
 AI/AIPath.cs
 AI/AIProfile.cs

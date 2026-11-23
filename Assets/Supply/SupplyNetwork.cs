@@ -42,6 +42,14 @@ public static class SupplyNetwork {
     /// <summary>Goes up every time a supply field is published onto the board (displays redraw only then).</summary>
     public static int Published;
 
+    /// <summary>
+    /// Bumped each time the game works supply out again because something changed: Player.Resupply (after a move, a
+    /// boarding or getting off, a death, a capture, a change of owner or terrain, a script, a load) and a turn's start
+    /// (Player.StartTurn). Unlike Published, not by drawing (the overlay's lines and previews). What the overlay shows of
+    /// the network (SupplyLines) is worked out once per value.
+    /// </summary>
+    public static int Changes;
+
     /// <summary>Record Result.linked in the solves made on this thread while set (AISupplyTree).</summary>
     [System.ThreadStatic] public static bool RecordLinked;
 

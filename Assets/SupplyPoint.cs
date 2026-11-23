@@ -44,6 +44,6 @@ public class SupplyPoint : MonoBehaviour {
 
     /// <summary>Kept so older scenes and scripts still compile; the solver drives supply now.</summary>
     internal void SupplyZone(SupplyPoint start) {
-        if (myUnit != null && myUnit.owner != null) SupplyNetwork.Solve(myUnit.owner, false);
+        if (myUnit != null && myUnit.owner != null) myUnit.owner.Resupply();
     }
 }

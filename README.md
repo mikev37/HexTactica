@@ -98,9 +98,14 @@ A supply unit aboard something links to its side's network through what carries 
 - **Your units can be read at any time** (SupplyOverlay.Inspected): click one of yours whose move is over, or any of
   yours on the opponent's turn (the AI's, or one played on another device), and its supply line, cut line and marker
   show as if it were selected; a transport shows them right after it moves too. Any click clears it.
-- **Branches.** With a supply unit (or its transport) selected, every supply unit fed through it now shows its line back
-  to it, thinner and fainter (SupplyOverlay.Dependents): whether it would be cut off without it or would link another
-  way.
+- **Branches.** With a supply unit (or its transport) selected, every supply unit fed through it now (one of the supply
+  units its line goes through) shows its line back to it, thinner and fainter (SupplyOverlay.Dependents): whether it
+  would be cut off without it or would link another way.
+- **The overlay only shows and hides.** What it draws of a network (lines, branches, cut lines, markers, enemy lines,
+  all supply lines) is worked out once per change of supply and kept (SupplyLines); a change is
+  SupplyNetwork.Changes, bumped only when the game works supply out again (Player.Resupply after a move, boarding or
+  getting off, a death, a capture, a change of owner or terrain, a script, a load; a turn's start). A move being
+  previewed is the one thing worked out on the spot (its own network).
 - **Enemy supply lines.** Click an enemy supply unit (or a transport carrying one) and its supply line shows with its
   move and threat (SupplyOverlay.ShowEnemy, EnemyLineRuns): the network's true way back to its HQ. Under fog it is drawn
   on every tile of it you see, broken where it passes through the fog (the line's legs end on the enemy's supply units,
