@@ -86,16 +86,21 @@ A supply unit aboard something links to its side's network through what carries 
   screen would show it; its movement, fire and threat still go by what it knows. It does not use contacts in planning.
 - **Cut supply lines.** Select a transport whose supply is cut off and it shows a cut supply line
   (Assets/Resources/SupplyLineCut.prefab, a copy of SupplyLine.prefab to restyle) from it to the source that should
-  feed it, with the marker (SupplyContact.prefab) where it is cut (SupplyNetwork.CutRoute): the first tile on or beside
-  an enemy that could attack it, else the first it cannot reach this turn. The way drawn is the transport's own path to
-  the nearest source, past any enemy; under fog it is laid without the enemies the side does not see, so its shape
-  does not give them away (the cut, found on the board as it is, and its marker say where they are, as near as that). Neither the cut line nor any marker shows unless that transport is selected, or the **all supply lines**
-  option is on (GameOptions.AllSupplyLines, kept between games; toggled in game by FrontEndSettings.supplyLinesKey,
-  Tab by default; OptionsPanel.allSupplyLines, an optional toggle): every supply unit's line to what feeds it, every
-  cut line, every marker.
+  feed it, with the marker (SupplyContact.prefab) where an enemy cuts it (SupplyNetwork.CutRoute). The way is the one it
+  would take this turn if no enemy stood anywhere (enemies, seen or not, neither block nor turn it) to the nearest
+  source; the cut is the first tile on or beside an enemy that could attack it (or holding one it may not pass). A
+  transport out of range of any source even with no enemy about shows neither: nothing cut it. Clicking an enemy's
+  cut-off transport shows its cut line and marker too (under fog, only what you see of them). Neither the cut line nor
+  any marker shows unless that transport is selected (or clicked), or the **all supply lines** option is on
+  (GameOptions.AllSupplyLines, kept between games; toggled in game by FrontEndSettings.supplyLinesKey, Tab by default;
+  OptionsPanel.allSupplyLines, an optional toggle): every supply unit's line to what feeds it, every cut line, every
+  marker.
 - **Your units can be read at any time** (SupplyOverlay.Inspected): click one of yours whose move is over, or any of
   yours on the opponent's turn (the AI's, or one played on another device), and its supply line, cut line and marker
   show as if it were selected; a transport shows them right after it moves too. Any click clears it.
+- **Branches.** With a supply unit (or its transport) selected, every supply unit fed through it now shows its line back
+  to it, thinner and fainter (SupplyOverlay.Dependents): whether it would be cut off without it or would link another
+  way.
 - **Enemy supply lines.** Click an enemy supply unit (or a transport carrying one) and its supply line shows with its
   move and threat (SupplyOverlay.ShowEnemy, EnemyLineRuns): the network's true way back to its HQ. Under fog it is drawn
   on every tile of it you see, broken where it passes through the fog (the line's legs end on the enemy's supply units,

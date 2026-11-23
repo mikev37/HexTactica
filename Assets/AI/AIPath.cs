@@ -213,6 +213,17 @@ namespace HexTactica.AI {
         /// As above, never entering a tile <paramref name="avoid"/> says no to (supply carried in transit keeps clear of
         /// enemies that could attack its carrier: SupplyNetwork.TransitField). The origin is not asked.
         /// </summary>
+        /// <summary>
+        /// Where <paramref name="mover"/> could go from <paramref name="origin"/> this turn with <paramref name="range"/>
+        /// movement points if no enemy were on the board (none blocks or turns it): SupplyNetwork.CutRoute, the way a cut-off
+        /// carrier would take to its source.
+        /// </summary>
+        public static MoveField ThisTurnIgnoringEnemies(Unit mover, HexTile origin, int range) {
+            long __p = AIPerf.Begin();
+            try { return ComputeField(mover, Single(origin), 0, true, range, null); }
+            finally { AIPerf.End("path: AIPath.Compute (maxTurns 0)" + AIPerf.Caller(), __p); }
+        }
+
         public static MoveField ThisTurnFrom(Unit mover, HexTile origin, int range, Func<HexTile, bool> avoid) {
             return ThisTurnFrom(mover, origin, range, avoid, null);
         }

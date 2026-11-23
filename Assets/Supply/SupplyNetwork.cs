@@ -1050,7 +1050,7 @@ public static class SupplyNetwork {
         public HexTile source;
         /// <summary>Index in <see cref="line"/> of the first tile the supply does not get through.</summary>
         public int cut = -1;
-        /// <summary>Why: an enemy that could attack the carrier on it or beside it (else, out of its move).</summary>
+        /// <summary>Why: an enemy that could attack the carrier on it or beside it, or one it may not pass on it (always, now: a carrier out of range shows no cut).</summary>
         public bool exposed;
         /// <summary>Where the marker goes: at the cut, or beside it (never on one of the side's units, never on an enemy it does not see). Null if nowhere.</summary>
         public HexTile marker;
@@ -1058,20 +1058,16 @@ public static class SupplyNetwork {
         public HexTile CutTile { get { return line != null && cut >= 0 && cut < line.Count ? line[cut] : null; } }
     }
 
-    /// <summary>How many turns' moves away CutRoute looks for the source a cut-off carrier should reach.</summary>
-    public const int CutRouteTurns = 6;
-
     /// <summary>
     /// For <paramref name="unit"/> (a transport, or a supply unit aboard one: what carries it all is what counts) carrying
-    /// supply the network has cut off (the true network): where it should go to link it, and where that way is cut. Null
-    /// if it carries none cut off, or stands on supplied ground (already in supply), or there is no source to make for.
-    /// The way: the carrier's own path (AIPath, CutRouteTurns of its moves) to the nearest source (SourceTiles of the
-    /// network without what it carries), onto it, or beside it for a ship (or where that is nearer), whatever enemies
-    /// it passes; under fog laid with the enemies <paramref name="viewer"/> does not see off the board, so its shape
-    /// does not give them away. The cut: the first tile past its own that is exposed (Exposed, on the board as it is:
-    /// who cuts it, seen or not) or holds an enemy it may not pass (PassesEnemy), else the first it cannot reach this turn. The marker: there, else
-    /// the nearest beside it (the board's order) that holds none of the viewer's side nor an enemy it does not see.
-    /// Real board, main thread.
+    /// supply the network has cut off (the true network): the way it would link if no enemy stood in it, and where an
+    /// enemy cuts that way. The way: the carrier's path this turn with no enemy on the board (AIPath.ThisTurnIgnoringEnemies:
+    /// enemies, seen or not, neither block nor turn it) to the nearest source (SourceTiles of the network without what it
+    /// carries), onto it, or beside it (a ship: beside it). The cut: the first tile past its own on or beside an enemy that
+    /// could attack it (Exposed), or holding one it may not pass (PassesEnemy). The marker: there, else the nearest beside
+    /// it (the board's order) that holds none of <paramref name="viewer"/>'s side nor an enemy it does not see.
+    /// Null (nothing shown) if it carries none cut off, stands on supplied ground, has no source in its move even with no
+    /// enemy about (out of range: no enemy cut it), or that way is not cut by an enemy. Real board, main thread.
     /// </summary>
     public static Cut CutRoute(Unit unit, Player viewer) {
         Unit carrier = Outermost(unit);
@@ -1100,41 +1096,35 @@ public static class SupplyNetwork {
             sources.Remove(at);
             if (sources.Count == 0) return null;
             bool ship = LocomotionRules.IsNaval(carrier.locomotion);
-            Player knows = viewer != null && FogOfWar.On && Player.Friendly(viewer, p) ? viewer : null;
-            // The way to draw: the carrier's own path (its turns' moves) to the nearest source, onto it, or beside it for a
-            // ship (or where that is nearer), whatever enemies it passes; the cut is found on it below, on the board as it
-            // is. Under fog the path is laid with the enemies the side does not see off the board: they neither block nor
-            // turn it, so its shape does not give them away (the cut and its marker say where they are, as near as that).
-            // Nothing here is what the network decides: the network says it is cut off; this only draws to where.
-            HexTactica.AI.MoveField f;
-            List<KeyValuePair<HexTile, HexTactica.AI.Eta>> origin = new List<KeyValuePair<HexTile, HexTactica.AI.Eta>> { new KeyValuePair<HexTile, HexTactica.AI.Eta>(at, HexTactica.AI.Eta.Origin) };
-            if (knows != null) using (FogOfWar.Concealing(knows)) f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
-            else f = HexTactica.AI.AIPath.Compute(carrier, origin, CutRouteTurns, false);
-            HexTile best = null; long bestKey = long.MaxValue;
-            foreach (HexTile t in f.Tiles) {
-                if (t == at || !((!ship && sources.Contains(t)) || BesideSource(t, sources) != null)) continue;
-                long k = f.Get(t).Key;
-                if (k < bestKey || (k == bestKey && CombatMath.Precedes(t, best))) { best = t; bestKey = k; }
-            }
-            if (best == null) return null;
-            List<HexTile> line = f.PathTo(best);
-            int moves = line.Count;   // the tiles of the line the carrier moves through (the source it ends beside is not one)
-            HexTile src = !ship && sources.Contains(best) ? best : BesideSource(best, sources);
-            if (src != best) line.Add(src);
-            c.source = src;
-            c.line = line;
-            // Where it is cut: on the board as it is.
-            HexTactica.AI.MoveField now = HexTactica.AI.AIPath.ThisTurnFrom(carrier, at, HexTactica.AI.AIPath.RangeThisTurn(carrier));
-            for (int i = 1; i < moves && c.cut < 0; i++) {
-                HexTile t = line[i];
-                Unit on = t.occupier;
-                if (Exposed(carrier, t) || (on != null && Player.Hostile(on.owner, p) && !PassesEnemy(carrier, t))) { c.cut = i; c.exposed = true; }
-                else if (!now.ReachableThisTurn(t)) c.cut = i;
-            }
-            HexTactica.AI.AIPath.Release(now);
-            if (c.cut < 0) c.cut = Mathf.Max(1, moves - 1);   // stranded with the way clear (the rules found none): the end
-            if (c.cut >= line.Count) c.cut = line.Count - 1;
-            using (WithUnseen(knows)) c.marker = MarkerNear(line[c.cut], knows ?? viewer ?? p);
+            // The way: the carrier's path this turn with no enemy on the board (none blocks or turns it, seen or not) to
+            // the nearest source, onto it or beside it (a ship: beside it). None in its move: it is simply out of range of
+            // any source, and nothing is shown (no line, no marker: no enemy cut it). The way is then found on the board as
+            // it is: where an enemy cuts it.
+            HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurnIgnoringEnemies(carrier, at, HexTactica.AI.AIPath.RangeThisTurn(carrier));
+            try {
+                HexTile best = null; int bestUsed = int.MaxValue;
+                foreach (HexTile t in f.Tiles) {
+                    if (t == at || !f.ReachableThisTurn(t) || !((!ship && sources.Contains(t)) || BesideSource(t, sources) != null)) continue;
+                    int used = f.Get(t).used;
+                    if (used < bestUsed || (used == bestUsed && CombatMath.Precedes(t, best))) { best = t; bestUsed = used; }
+                }
+                if (best == null) return null;
+                List<HexTile> line = f.PathTo(best);
+                int moves = line.Count;   // the tiles of the line the carrier moves through (the source it ends beside is not one)
+                HexTile src = !ship && sources.Contains(best) ? best : BesideSource(best, sources);
+                if (src != best) line.Add(src);
+                c.source = src;
+                c.line = line;
+                // Where it is cut: the first tile past its own on or beside an enemy that could attack it, or holding one it
+                // may not pass.
+                for (int i = 1; i < moves && c.cut < 0; i++) {
+                    HexTile t = line[i];
+                    Unit on = t.occupier;
+                    if (Exposed(carrier, t) || (on != null && Player.Hostile(on.owner, p) && !PassesEnemy(carrier, t))) { c.cut = i; c.exposed = true; }
+                }
+                if (c.cut < 0) return null;   // the nearest way is clear: what cut it off is not on it; show nothing rather than guess
+            } finally { HexTactica.AI.AIPath.Release(f); }
+            using (WithUnseen(FogOfWar.On ? viewer : null)) c.marker = MarkerNear(c.CutTile, viewer ?? p);
             return c;
         }
     }
