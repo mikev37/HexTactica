@@ -827,7 +827,7 @@ public static partial class Scenarios {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  Put("Supplies", a, -3, 0);
                  for (int y = -5; y <= -1; y++) Put("Grunt", o, 5, y); },   // parked: the check sets them out
-             "The cut supply line (SupplyNetwork.CutRoute, SupplyOverlay.ForSelection and AllLines; drawn with Resources/SupplyLineCut.prefab, the marker Resources/SupplyContact.prefab). Blue's HQ at (-6,0), a Blue supply unit at (-3,0), an APC carrying supplies at (2,0). Nobody about: linked, so selecting the APC shows no cut line and no marker. A line of Red grunts across x=-1: cut off; selected, the APC shows a cut line from its tile, tile by tile, to the source that should feed it (the supply unit, its tile last), cut at the first tile beside a grunt, the marker there (on no unit). With nobody about and the APC down to 1 move: cut by distance, at the first tile it cannot reach this turn. All supply lines (the option, off by default): the cut line and its marker, and each linked supply unit's line to what feeds it (the HQ). Under fog with the wall unseen: the same cut line, the marker on no unseen grunt and no Blue unit, beside a grunt. And with the APC's supply reaching the grunts' tiles: it is cut off, so no grunt's tile shows its supply (a grunt's tile is filled only from supply truly beside it; it used to be filled from the board as Blue knows it, where the APC links, so its supply showed in the fog round it and not in sight).");
+             "The cut supply line (SupplyNetwork.CutRoute, SupplyOverlay.ForSelection and AllLines; drawn with Resources/SupplyLineCut.prefab, the marker Resources/SupplyContact.prefab). Blue's HQ at (-6,0), a Blue supply unit at (-3,0), an APC carrying supplies at (2,0). Nobody about: linked, so selecting the APC shows no cut line and no marker. A line of Red grunts across x=-1: cut off; selected, the APC shows a cut line from its tile, tile by tile, to the source that should feed it (the supply unit, its tile last), cut at the first tile beside a grunt, the marker there (on no unit). The way is the one it would take if no enemy were there (straight along the row, through a grunt), not a detour round the wall; Red clicking the APC sees the same cut line and marker. With nobody about and the APC down to 1 move: out of range of any source, no enemy cut it: no cut line, no marker. All supply lines (the option, off by default): the cut line and its marker, and each linked supply unit's line to what feeds it (the HQ). Under fog with the wall unseen: the same cut line, the marker on no unseen grunt and no Blue unit, beside a grunt. And with the APC's supply reaching the grunts' tiles: it is cut off, so no grunt's tile shows its supply (a grunt's tile is filled only from supply truly beside it; it used to be filled from the board as Blue knows it, where the APC links, so its supply showed in the fog round it and not in sight).");
         make("rule-supply-reach-source", "supplyReachSource", (a, o) => {
                  Put("Supplies", a, -3, 0); Unit tr = Put("Truck", a, 4, 0); Unit sup = Put("Supplies", a, 4, 1); Transporting.Load(tr, sup);
                  Put("Grunt", o, 6, -5); },
@@ -4280,14 +4280,20 @@ public static partial class Scenarios {
                              && all.lines.Exists(ln => ln[0] == src.tile && ln[ln.Count - 1] == hq.tile && joined(ln));
                 List<string> ls = new List<string>(); foreach (List<HexTile> ln in all.lines) ls.Add(tiles(ln));
                 r.Add("all supply lines (off by default " + offByDefault + "): lines [" + string.Join("; ", ls.ToArray()) + "], " + all.cuts.Count + " cut, " + all.markers.Count + " marker " + allOk);
-                // Cut by distance alone.
+                // The way ignores enemies: straight along y=0, through the grunt at (-1,0), not round the wall.
+                bool straight = cw != null && cw.line.TrueForAll(t => t.y == 0);
+                r.Add("the way taken as if no enemy were there (straight along the row, through the grunt) " + straight);
+                // Red clicking Blue's cut-off APC (no fog): the same cut line and marker.
+                SupplyOverlay.Layer en = new SupplyOverlay.Layer(); SupplyOverlay.ForEnemy(apc, o, en);
+                bool enemyOk = cw != null && en.enemyCutRuns.Count == 1 && en.enemyCutRuns[0].SequenceEqual(cw.line) && en.markers.Count == 1 && en.markers[0] == cw.marker;
+                r.Add("Red clicking the APC sees its cut line and the marker " + enemyOk);
+                // Out of range alone (1 move, nobody about): no source in its move even with no enemy about: nothing shown.
                 clear(); int moves = apc.moveRange; apc.moveRange = 1; SupplyNetwork.Solve(a, false);
-                SupplyNetwork.Cut cd = SupplyNetwork.CutRoute(apc, a);
-                HexTactica.AI.MoveField mf = HexTactica.AI.AIPath.ThisTurnFrom(apc, apc.tile, 1);
-                bool distOk = wellMade(cd) && !cd.exposed && !mf.ReachableThisTurn(cd.CutTile) && mf.ReachableThisTurn(cd.line[cd.cut - 1]) || (cd != null && cd.cut == 1 && wellMade(cd) && !cd.exposed && !mf.ReachableThisTurn(cd.CutTile));
-                HexTactica.AI.AIPath.Release(mf);
+                bool cutOff = !SupplyNetwork.Solve(a, false).connectedHubs.Contains(apc.transported[0].Hub);
+                SupplyOverlay.Layer far = new SupplyOverlay.Layer(); SupplyOverlay.ForSelection(apc, a, far);
+                bool distOk = cutOff && SupplyNetwork.CutRoute(apc, a) == null && far.cuts.Count == 0 && far.markers.Count == 0;
                 apc.moveRange = moves;
-                r.Add("1 move, nobody about: cut line " + (cd != null ? tiles(cd.line) + " cut at " + Pos(cd.CutTile) : "none") + ", by distance " + distOk);
+                r.Add("1 move, nobody about: cut off " + cutOff + ", out of range: no cut line, no marker " + distOk);
                 // Under fog, the wall unseen.
                 AIPlayer blueAI = a.GetComponent<AIPlayer>(); if (blueAI != null) blueAI.enabled = false;
                 gc.activePlayer = a;
@@ -4322,7 +4328,22 @@ public static partial class Scenarios {
                     fogOk = fogOk && fillOk;
                 } finally { gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh(); clear(); SupplyNetwork.Solve(a, false); }
                 detail = string.Join(" | ", r.ToArray());
-                return noneFree && wallOk && selOk && offByDefault && allOk && distOk && fogOk;
+                return noneFree && wallOk && selOk && offByDefault && allOk && straight && enemyOk && distOk && fogOk;
+            }
+            case "supplyBranchesOwner": {
+                Player red = null; foreach (Player pl in gc.players) if (pl != null && pl.personal_name == "Red") red = pl;
+                Func<int, int, Unit> carrierAt = (x, y) => Rig.At(x, y).occupier;
+                SupplyNetwork.Result r = SupplyNetwork.Solve(red, false);
+                Func<Unit, List<string>> branches = c => {
+                    List<string> b = new List<string>();
+                    foreach (SupplyPoint h in SupplyOverlay.Dependents(red, SupplyOverlay.CarriedSupplies(c), c.tile, r, null).Keys) b.Add(Pos(SupplyNetwork.Outermost(h.myUnit.trasnporter) != null ? SupplyNetwork.Outermost(h.myUnit.trasnporter).tile : h.myUnit.tile));
+                    b.Sort(); return b;
+                };
+                List<string> road = branches(carrierAt(-3, 4)), back = branches(carrierAt(0, 8));
+                bool roadOk = road.Count == 2 && road.Contains("(2,0)") && road.Contains("(-6,5)");
+                bool backOk = back.Count == 1 && back.Contains("(8,0)");
+                detail = "the road truck at (-3,4): branches to " + string.Join(" ", road.ToArray()) + " " + roadOk + "; the truck at (0,8): to " + string.Join(" ", back.ToArray()) + " " + backOk;
+                return roadOk && backOk;
             }
             case "supplyLineCarriedSource": {
                 Unit near = Rig.At(-4, 1).occupier, far = Rig.At(4, 0).occupier;
@@ -6449,6 +6470,23 @@ public static partial class Scenarios {
                     else if (r.landings.TryGetValue(h, out ld)) expect = ld;
                     if (same && expect != null && expect != rt[rt.Count - 1]) same = dl.Count > rt.Count && dl[rt.Count] == expect;
                     Console.WriteLine("     LINECHECK " + (same ? "ok" : "MISMATCH") + " route " + (rt != null ? rt.Count : 0) + " tiles" + (expect != null ? ", then " + Pos(expect) : ""));
+                }
+                // What a click on this carrier shows as depending on it (thin branches), and how each would link without it.
+                if (carrier != null && Environment.GetEnvironmentVariable("DEPS") == "1") {
+                    List<SupplyPoint> cs = SupplyOverlay.CarriedSupplies(carrier);
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var deps = SupplyOverlay.Dependents(p, cs, carrier.tile, r, null);
+                    Console.WriteLine("     BRANCHTIME " + sw.ElapsedMilliseconds + " ms, " + r.connectedHubs.Count + " linked");
+                    List<string> dd = new List<string>(); foreach (var kv in deps) dd.Add(Pos(kv.Key.myUnit.tile));
+                    Console.WriteLine("     BRANCHES (fed through it): " + string.Join(" ", dd.ToArray()));
+                    SupplyNetwork.Result wo = SupplyNetwork.SolveWithout(p, h);
+                    foreach (SupplyPoint o2 in r.connectedHubs) {
+                        if (o2 == h || o2.producer || o2.myUnit == null) continue;
+                        HexTile l2; r.landings.TryGetValue(o2, out l2);
+                        if (l2 != carrier.tile) continue;
+                        List<HexTile> r2; wo.routes.TryGetValue(o2, out r2); HexTile l3; wo.landings.TryGetValue(o2, out l3);
+                        Console.WriteLine("     links through it now: " + Pos(o2.myUnit.tile) + "; without it: " + (wo.connectedHubs.Contains(o2) ? "linked, driving " + (r2 != null ? r2.Count : 0) + " tiles to beside " + (l3 != null ? Pos(l3) : "?") : "cut off"));
+                    }
                 }
                 // Under fog: what each other side, as the screen's viewer, would see of this carrier's line on click.
                 if (carrier != null && GameController.gc.fogOfWar)
