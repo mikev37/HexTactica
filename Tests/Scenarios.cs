@@ -4342,8 +4342,28 @@ public static partial class Scenarios {
                 List<string> road = branches(carrierAt(-3, 4)), back = branches(carrierAt(0, 8));
                 bool roadOk = road.Count == 2 && road.Contains("(2,0)") && road.Contains("(-6,5)");
                 bool backOk = back.Count == 1 && back.Contains("(8,0)");
-                detail = "the road truck at (-3,4): branches to " + string.Join(" ", road.ToArray()) + " " + roadOk + "; the truck at (0,8): to " + string.Join(" ", back.ToArray()) + " " + backOk;
-                return roadOk && backOk;
+                // Every carrier of both sides: the branches (shared links, the pre-check) exactly as the slow way draws them.
+                int carriers = 0, same = 0;
+                foreach (Player pl in gc.players) {
+                    if (pl == null) continue;
+                    SupplyNetwork.Result rr = SupplyNetwork.Solve(pl, false);
+                    HashSet<Unit> done = new HashSet<Unit>();
+                    foreach (Unit u in pl.units) {
+                        if (u == null || u.Hub == null || u.Hub.producer || u.tile == null) continue;
+                        Unit c = SupplyNetwork.Outermost(u.trasnporter) ?? u;
+                        if (!done.Add(c)) continue;
+                        List<SupplyPoint> cs = SupplyOverlay.CarriedSupplies(c);
+                        var fast = SupplyOverlay.Dependents(pl, cs, c.tile, rr, null);
+                        var slow = SupplyOverlay.DependentsReference(pl, cs, c.tile, rr, null);
+                        bool eq = fast.Count == slow.Count;
+                        foreach (var kv in slow) { List<HexTile> got; if (!fast.TryGetValue(kv.Key, out got) || !got.SequenceEqual(kv.Value)) eq = false; }
+                        carriers++; if (eq) same++;
+                    }
+                }
+                bool exact = carriers > 0 && same == carriers;
+                detail = "the road truck at (-3,4): branches to " + string.Join(" ", road.ToArray()) + " " + roadOk + "; the truck at (0,8): to " + string.Join(" ", back.ToArray()) + " " + backOk
+                       + "; every supply unit or carrier of both sides (" + carriers + "): branches as the slow way draws them " + same + " " + exact;
+                return roadOk && backOk && exact;
             }
             case "supplyLineCarriedSource": {
                 Unit near = Rig.At(-4, 1).occupier, far = Rig.At(4, 0).occupier;
@@ -6426,6 +6446,26 @@ public static partial class Scenarios {
         foreach (Player p in GameController.gc.players) {
             if (p == null) continue;
             SupplyNetwork.Result r = SupplyNetwork.Solve(p, false);
+            if (Environment.GetEnvironmentVariable("LINES") == "1") {
+                // Joined lines (SupplyOverlay.Lines) against whole ones (SourcePath), from every linked supply unit.
+                SupplyOverlay.Lines ls = new SupplyOverlay.Lines(p, r, null);
+                int same = 0, differ = 0; long tJoin = 0, tWhole = 0;
+                foreach (SupplyPoint h in r.connectedHubs) {
+                    if (h == null || h.producer || h.myUnit == null) continue;
+                    Unit c0 = h.myUnit.trasnporter != null ? SupplyNetwork.Outermost(h.myUnit.trasnporter) : null;
+                    HexTile ft = c0 != null ? c0.tile : h.myUnit.tile;
+                    if (ft == null) continue;
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    List<HexTile> j = ls.From(ft); tJoin += sw.ElapsedTicks; sw.Restart();
+                    List<HexTile> w = SupplyOverlay.SourcePathWithLegs(p, ft, r, null, null, 0, r); tWhole += sw.ElapsedTicks;
+                    if (j.SequenceEqual(w)) same++;
+                    else { differ++; List<string> a1 = new List<string>(), b1 = new List<string>(); foreach (HexTile t in j) a1.Add(Pos(t)); foreach (HexTile t in w) b1.Add(Pos(t));
+                           Console.WriteLine("  LINESDIFF from " + Pos(ft) + "\n    joined " + string.Join(" ", a1.ToArray()) + "\n    whole  " + string.Join(" ", b1.ToArray())); }
+                }
+                Console.WriteLine("  LINES " + p.personal_name + " same " + same + " differ " + differ + " links " + ls.linksWorkedOut + " wholes " + ls.wholeWorkedOut
+                                  + " joinedMs " + (tJoin * 1000 / System.Diagnostics.Stopwatch.Frequency) + " wholeMs " + (tWhole * 1000 / System.Diagnostics.Stopwatch.Frequency));
+                continue;
+            }
             Console.WriteLine("== " + p.personal_name + ": " + r.connectedHubs.Count + " supply units linked, " + r.strandedHubs.Count + " cut off");
             foreach (Unit u in p.units) {
                 if (u == null || u.Hub == null || u.tile == null) continue;
@@ -6476,7 +6516,12 @@ public static partial class Scenarios {
                     List<SupplyPoint> cs = SupplyOverlay.CarriedSupplies(carrier);
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     var deps = SupplyOverlay.Dependents(p, cs, carrier.tile, r, null);
-                    Console.WriteLine("     BRANCHTIME " + sw.ElapsedMilliseconds + " ms, " + r.connectedHubs.Count + " linked");
+                    long fast = sw.ElapsedMilliseconds; sw.Restart();
+                    var refd = SupplyOverlay.DependentsReference(p, cs, carrier.tile, r, null);
+                    long slow = sw.ElapsedMilliseconds;
+                    bool eq = deps.Count == refd.Count;
+                    foreach (var kv in refd) { List<HexTile> got; if (!deps.TryGetValue(kv.Key, out got) || !got.SequenceEqual(kv.Value)) eq = false; }
+                    Console.WriteLine("     BRANCHTIME " + fast + " " + slow + " " + (eq ? "SAME" : "DIFFER") + " " + deps.Count);
                     List<string> dd = new List<string>(); foreach (var kv in deps) dd.Add(Pos(kv.Key.myUnit.tile));
                     Console.WriteLine("     BRANCHES (fed through it): " + string.Join(" ", dd.ToArray()));
                     SupplyNetwork.Result wo = SupplyNetwork.SolveWithout(p, h);
