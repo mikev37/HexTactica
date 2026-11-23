@@ -55,6 +55,7 @@ public class Player : MonoBehaviour
         foreach (Unit u in units) if (u != null) u.suppressed = 0;
         CollectIncome();
 
+        SupplyNetwork.Changes++;
         SupplyNetwork.Result supply = SupplyNetwork.Solve(this, true);
         hubsStranded = supply.strandedHubs.Count;
         // Our allies' supply as the board now stands: our units live on it too (HexTile.isSupplied).
@@ -312,6 +313,7 @@ public class Player : MonoBehaviour
 
     /// <summary>Recompute the supply field without charging anyone for it.</summary>
     public void Resupply() {
+        SupplyNetwork.Changes++;
         SupplyNetwork.Solve(this, false);
     }
 

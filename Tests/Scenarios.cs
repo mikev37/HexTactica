@@ -822,7 +822,7 @@ public static partial class Scenarios {
         make("ui-supply-inspect", "supplyInspect", (a, o) => {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  Put("Supplies", a, -3, 0); Put("Grunt", o, 5, -3); },
-             "Clicking a unit of yours that cannot be selected shows its supply as if selected (SupplyOverlay.Inspected): Blue (a person) with an APC carrying supplies at (2,0), Red the AI. On Blue's turn, the APC's move over: clicked, it is inspected (and its panel opens). A click on empty ground clears it. On Red's turn: the APC clicked is inspected (Red's move and threat for it shown as before, its line drawn as Blue's), a click elsewhere clears it; Red's grunt clicked on Blue's turn is not (an enemy: its own line, ShowEnemy).");
+             "Clicking a unit of yours that cannot be selected shows its supply as if selected (SupplyOverlay.Inspected): Blue (a person) with an APC carrying supplies at (2,0), Red the AI. On Blue's turn, the APC's move over: clicked, it is inspected (and its panel opens). A click on empty ground clears it. On Red's turn: the APC clicked is inspected (Red's move and threat for it shown as before, its line drawn as Blue's), a click elsewhere clears it; Red's grunt clicked on Blue's turn is not (an enemy: its own line, ShowEnemy). In play, the supply aboard put down and taken on again: supply is worked out again each time (Transporting.Resupplied: an unload from the transport's panel ended no action, and the board kept the old supply).");
         make("ui-supply-cut-line", "supplyCutLine", (a, o) => {
                  Unit apc = Put("APC", a, 2, 0); Unit sup = Put("Supplies", a, 2, 1); Transporting.Load(apc, sup);
                  Put("Supplies", a, -3, 0);
@@ -4237,7 +4237,19 @@ public static partial class Scenarios {
                     Rig.At(0, 3).OnMouseDown();
                     bool cleared2 = SupplyOverlay.Inspected == null;
                     r.Add("a click elsewhere clears it " + cleared2);
-                    ok = sides && done && cleared && enemyNot && opp && theirs && cleared2;
+                    // In play (not headless), getting off and on a transport works supply out again (Transporting.Resupplied).
+                    bool wasHeadless = gc.headless; gc.headless = false;
+                    Unit cargo = apc.transported[0];
+                    int c0 = SupplyNetwork.Changes;
+                    HexTile off = Transporting.UnloadOptions(apc, cargo)[0];
+                    bool gotOff = Transporting.Unload(apc, cargo, off);
+                    int c1 = SupplyNetwork.Changes;
+                    bool gotOn = Transporting.Load(apc, cargo);
+                    int c2 = SupplyNetwork.Changes;
+                    gc.headless = wasHeadless;
+                    bool resupplied = gotOff && gotOn && c1 > c0 && c2 > c1;
+                    r.Add("in play, getting off then on again works supply out again " + resupplied + " (" + (c1 - c0) + ", " + (c2 - c1) + ")");
+                    ok = sides && done && cleared && enemyNot && opp && theirs && cleared2 && resupplied;
                 } finally {
                     gc.activePlayer = a; gc.activeUnit = null; SupplyOverlay.Inspected = null; SupplyOverlay.HideEnemy();
                     if (blueAI != null) blueAI.enabled = blueWas;
@@ -4262,11 +4274,11 @@ public static partial class Scenarios {
                 Func<SupplyNetwork.Cut, bool> wellMade = c => c != null && c.line != null && c.line.Count >= 2 && c.line[0] == apc.tile && joined(c.line)
                                                            && c.source == src.tile && c.line[c.line.Count - 1] == src.tile && c.cut >= 1 && c.cut < c.line.Count;
                 List<string> r = new List<string>();
-                clear(); SupplyNetwork.Solve(a, false);
+                clear(); a.Resupply();
                 SupplyOverlay.Layer free = new SupplyOverlay.Layer(); SupplyOverlay.ForSelection(apc, a, free);
                 bool noneFree = SupplyNetwork.CutRoute(apc, a) == null && free.cuts.Count == 0 && free.markers.Count == 0;
                 r.Add("nobody about: no cut line, no marker " + noneFree);
-                wall(); SupplyNetwork.Solve(a, false);
+                wall(); a.Resupply();
                 SupplyNetwork.Cut cw = SupplyNetwork.CutRoute(apc, a);
                 bool wallOk = wellMade(cw) && cw.exposed && besideGrunt(cw.CutTile) && cw.marker == cw.CutTile && cw.marker.occupier == null;
                 for (int i = 1; wallOk && i < cw.cut; i++) if (SupplyNetwork.Exposed(apc, cw.line[i])) wallOk = false;
@@ -4288,7 +4300,7 @@ public static partial class Scenarios {
                 bool enemyOk = cw != null && en.enemyCutRuns.Count == 1 && en.enemyCutRuns[0].SequenceEqual(cw.line) && en.markers.Count == 1 && en.markers[0] == cw.marker;
                 r.Add("Red clicking the APC sees its cut line and the marker " + enemyOk);
                 // Out of range alone (1 move, nobody about): no source in its move even with no enemy about: nothing shown.
-                clear(); int moves = apc.moveRange; apc.moveRange = 1; SupplyNetwork.Solve(a, false);
+                clear(); int moves = apc.moveRange; apc.moveRange = 1; a.Resupply();
                 bool cutOff = !SupplyNetwork.Solve(a, false).connectedHubs.Contains(apc.transported[0].Hub);
                 SupplyOverlay.Layer far = new SupplyOverlay.Layer(); SupplyOverlay.ForSelection(apc, a, far);
                 bool distOk = cutOff && SupplyNetwork.CutRoute(apc, a) == null && far.cuts.Count == 0 && far.markers.Count == 0;
@@ -4300,7 +4312,7 @@ public static partial class Scenarios {
                 gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
                 bool fogOk;
                 try {
-                    wall(); FogOfWar.Changed(); FogOfWar.Refresh(); SupplyNetwork.Solve(a, false);
+                    wall(); FogOfWar.Changed(); FogOfWar.Refresh(); a.Resupply();
                     bool unseen = grunts.TrueForAll(g => !FogOfWar.Sees(a, g));
                     SupplyOverlay.Layer fs = new SupplyOverlay.Layer(); SupplyOverlay.ForSelection(apc, a, fs);
                     SupplyNetwork.Cut cf = fs.cuts.Count == 1 ? fs.cuts[0] : null;
@@ -4311,7 +4323,7 @@ public static partial class Scenarios {
                     // none, in the fog as well as in sight. A grunt's tile is filled (no one-tile hole) only from supply
                     // truly beside it, never from the APC as if it were linked (the bug: shown supplied in the fog round it).
                     SupplyPoint hub = apc.transported[0].Hub; int range = hub.range; hub.range = 4;
-                    SupplyNetwork.Result truth = SupplyNetwork.Solve(a, false);
+                    a.Resupply(); SupplyNetwork.Result truth = SupplyNetwork.Solve(a, false);
                     bool cutStill = !truth.connectedHubs.Contains(hub);
                     int inReach = 0; bool noneFromNowhere = true; List<string> filledShown = new List<string>();
                     foreach (Unit g in grunts) {
@@ -4322,11 +4334,11 @@ public static partial class Scenarios {
                         bool fed = false; foreach (HexTile n in h.neighbors) if (n != null && truth.DepthAt(n) >= 2) fed = true;
                         if (!fed) noneFromNowhere = false;
                     }
-                    hub.range = range; SupplyNetwork.Solve(a, false);
+                    hub.range = range; a.Resupply();
                     bool fillOk = cutStill && inReach > 0 && noneFromNowhere;
                     r.Add("the APC's supply reaching " + inReach + " unseen grunts' tiles, cut off " + cutStill + ": grunts' tiles shown supplied [" + string.Join(" ", filledShown.ToArray()) + "], each beside truly supplied ground " + fillOk);
                     fogOk = fogOk && fillOk;
-                } finally { gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh(); clear(); SupplyNetwork.Solve(a, false); }
+                } finally { gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Refresh(); clear(); a.Resupply(); }
                 detail = string.Join(" | ", r.ToArray());
                 return noneFree && wallOk && selOk && offByDefault && allOk && straight && enemyOk && distOk && fogOk;
             }
@@ -4339,11 +4351,52 @@ public static partial class Scenarios {
                     foreach (SupplyPoint h in SupplyOverlay.Dependents(red, SupplyOverlay.CarriedSupplies(c), c.tile, r, null).Keys) b.Add(Pos(SupplyNetwork.Outermost(h.myUnit.trasnporter) != null ? SupplyNetwork.Outermost(h.myUnit.trasnporter).tile : h.myUnit.tile));
                     b.Sort(); return b;
                 };
+                string detail_kept = "";
                 List<string> road = branches(carrierAt(-3, 4)), back = branches(carrierAt(0, 8));
                 bool roadOk = road.Count == 2 && road.Contains("(2,0)") && road.Contains("(-6,5)");
                 bool backOk = back.Count == 1 && back.Contains("(8,0)");
-                detail = "the road truck at (-3,4): branches to " + string.Join(" ", road.ToArray()) + " " + roadOk + "; the truck at (0,8): to " + string.Join(" ", back.ToArray()) + " " + backOk;
-                return roadOk && backOk;
+                // Every carrier of both sides: the branches (shared links, the pre-check) exactly as the slow way draws them.
+                int carriers = 0, same = 0;
+                foreach (Player pl in gc.players) {
+                    if (pl == null) continue;
+                    SupplyNetwork.Result rr = SupplyNetwork.Solve(pl, false);
+                    HashSet<Unit> done = new HashSet<Unit>();
+                    foreach (Unit u in pl.units) {
+                        if (u == null || u.Hub == null || u.Hub.producer || u.tile == null) continue;
+                        Unit c = SupplyNetwork.Outermost(u.trasnporter) ?? u;
+                        if (!done.Add(c)) continue;
+                        List<SupplyPoint> cs = SupplyOverlay.CarriedSupplies(c);
+                        var fast = SupplyOverlay.Dependents(pl, cs, c.tile, rr, null);
+                        var slow = SupplyOverlay.DependentsReference(pl, cs, c.tile, rr, null);
+                        bool eq = fast.Count == slow.Count;
+                        foreach (var kv in slow) { List<HexTile> got; if (!fast.TryGetValue(kv.Key, out got) || !got.SequenceEqual(kv.Value)) eq = false; }
+                        carriers++; if (eq) same++;
+                    }
+                }
+                bool exact = carriers > 0 && same == carriers;
+                // Kept (SupplyLines): each line as SourcePath draws it; clicking around works nothing out again; a change does.
+                int linesSame = 0, linesAll = 0;
+                foreach (Player pl in gc.players) {
+                    if (pl == null) continue;
+                    SupplyNetwork.Result rr = SupplyNetwork.Solve(pl, false);
+                    foreach (Unit u in pl.units) {
+                        if (u == null || u.Hub == null || u.Hub.producer || u.tile == null) continue;
+                        linesAll++;
+                        if (SupplyLines.Line(pl, u.tile).SequenceEqual(SupplyOverlay.SourcePath(pl, u.tile, rr, null))) linesSame++;
+                    }
+                }
+                int solved0 = SupplyLines.Solved;
+                foreach (Unit c in new[] { carrierAt(-3, 4), carrierAt(0, 8), carrierAt(2, 0), carrierAt(-3, 4) }) { SupplyLines.Line(red, c.tile); SupplyLines.Branches(c); SupplyLines.Cut(c, red); }
+                int clicks = SupplyLines.Solved - solved0;
+                red.Resupply();
+                SupplyLines.Branches(carrierAt(-3, 4));
+                int afterChange = SupplyLines.Solved - solved0 - clicks;
+                bool keptOk = linesAll > 0 && linesSame == linesAll && clicks == 0 && afterChange == 1;
+                detail_kept = "kept lines as SourcePath draws them " + linesSame + "/" + linesAll + "; four clicks worked the network out again " + clicks + " times; after a change (Player.Resupply) " + afterChange + " " + keptOk;
+                exact = exact && keptOk;
+                detail = "the road truck at (-3,4): branches to " + string.Join(" ", road.ToArray()) + " " + roadOk + "; the truck at (0,8): to " + string.Join(" ", back.ToArray()) + " " + backOk
+                       + "; every supply unit or carrier of both sides (" + carriers + "): branches as the slow way draws them " + same + "; " + detail_kept + " " + exact;
+                return roadOk && backOk && exact;
             }
             case "supplyLineCarriedSource": {
                 Unit near = Rig.At(-4, 1).occupier, far = Rig.At(4, 0).occupier;
@@ -6426,6 +6479,42 @@ public static partial class Scenarios {
         foreach (Player p in GameController.gc.players) {
             if (p == null) continue;
             SupplyNetwork.Result r = SupplyNetwork.Solve(p, false);
+            if (Environment.GetEnvironmentVariable("CACHE") == "1") {
+                // Clicking every carrier of this side in turn, the supply unchanged (SupplyLines): what each click costs.
+                p.Resupply();
+                bool first = true;
+                HashSet<Unit> done = new HashSet<Unit>();
+                foreach (Unit u in p.units) {
+                    if (u == null || u.Hub == null || u.Hub.producer || u.tile == null) continue;
+                    Unit c = SupplyNetwork.Outermost(u.trasnporter) ?? u;
+                    if (!done.Add(c)) continue;
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    SupplyLines.Line(p, c.tile); SupplyLines.Branches(c); SupplyLines.Cut(c, p); SupplyLines.Contacts(c, p);
+                    Console.WriteLine("  CLICK " + (first ? "first" : "later") + " " + sw.ElapsedMilliseconds);
+                    first = false;
+                }
+                continue;
+            }
+            if (Environment.GetEnvironmentVariable("LINES") == "1") {
+                // Joined lines (SupplyOverlay.Lines) against whole ones (SourcePath), from every linked supply unit.
+                SupplyOverlay.Lines ls = new SupplyOverlay.Lines(p, r, null);
+                int same = 0, differ = 0; long tJoin = 0, tWhole = 0;
+                foreach (SupplyPoint h in r.connectedHubs) {
+                    if (h == null || h.producer || h.myUnit == null) continue;
+                    Unit c0 = h.myUnit.trasnporter != null ? SupplyNetwork.Outermost(h.myUnit.trasnporter) : null;
+                    HexTile ft = c0 != null ? c0.tile : h.myUnit.tile;
+                    if (ft == null) continue;
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    List<HexTile> j = ls.From(ft); tJoin += sw.ElapsedTicks; sw.Restart();
+                    List<HexTile> w = SupplyOverlay.SourcePathWithLegs(p, ft, r, null, null, 0, r); tWhole += sw.ElapsedTicks;
+                    if (j.SequenceEqual(w)) same++;
+                    else { differ++; List<string> a1 = new List<string>(), b1 = new List<string>(); foreach (HexTile t in j) a1.Add(Pos(t)); foreach (HexTile t in w) b1.Add(Pos(t));
+                           Console.WriteLine("  LINESDIFF from " + Pos(ft) + "\n    joined " + string.Join(" ", a1.ToArray()) + "\n    whole  " + string.Join(" ", b1.ToArray())); }
+                }
+                Console.WriteLine("  LINES " + p.personal_name + " same " + same + " differ " + differ + " links " + ls.linksWorkedOut + " wholes " + ls.wholeWorkedOut
+                                  + " joinedMs " + (tJoin * 1000 / System.Diagnostics.Stopwatch.Frequency) + " wholeMs " + (tWhole * 1000 / System.Diagnostics.Stopwatch.Frequency));
+                continue;
+            }
             Console.WriteLine("== " + p.personal_name + ": " + r.connectedHubs.Count + " supply units linked, " + r.strandedHubs.Count + " cut off");
             foreach (Unit u in p.units) {
                 if (u == null || u.Hub == null || u.tile == null) continue;
@@ -6476,7 +6565,12 @@ public static partial class Scenarios {
                     List<SupplyPoint> cs = SupplyOverlay.CarriedSupplies(carrier);
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     var deps = SupplyOverlay.Dependents(p, cs, carrier.tile, r, null);
-                    Console.WriteLine("     BRANCHTIME " + sw.ElapsedMilliseconds + " ms, " + r.connectedHubs.Count + " linked");
+                    long fast = sw.ElapsedMilliseconds; sw.Restart();
+                    var refd = SupplyOverlay.DependentsReference(p, cs, carrier.tile, r, null);
+                    long slow = sw.ElapsedMilliseconds;
+                    bool eq = deps.Count == refd.Count;
+                    foreach (var kv in refd) { List<HexTile> got; if (!deps.TryGetValue(kv.Key, out got) || !got.SequenceEqual(kv.Value)) eq = false; }
+                    Console.WriteLine("     BRANCHTIME " + fast + " " + slow + " " + (eq ? "SAME" : "DIFFER") + " " + deps.Count);
                     List<string> dd = new List<string>(); foreach (var kv in deps) dd.Add(Pos(kv.Key.myUnit.tile));
                     Console.WriteLine("     BRANCHES (fed through it): " + string.Join(" ", dd.ToArray()));
                     SupplyNetwork.Result wo = SupplyNetwork.SolveWithout(p, h);

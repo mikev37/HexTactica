@@ -142,8 +142,22 @@ public static class Transporting {
         cargo.active = false;
         cargo.OnBoarded(transport);
         FogOfWar.Changed();
+        Resupplied();
         if (Boarded != null && BoardView.current == null) Boarded(transport, cargo, stoodOn);
         return true;
+    }
+
+    /// <summary>
+    /// A unit got on or off a transport: in play, every side's supply again (Player.Resupply), as Unit.FinishActive does
+    /// after a move. Supply aboard links differently from supply on the ground, and an unload from the transport's panel
+    /// (TransportMenu.UnloadOnto) or one played back (Replay) ends no unit's action: the board's supply stayed as it was
+    /// until the next move. Not on a board view (an AI's thought), not in the headless harness (it keeps to what the rules
+    /// need: FinishActive's own resupply), not during upkeep.
+    /// </summary>
+    static void Resupplied() {
+        GameController gc = GameController.gc;
+        if (gc == null || gc.headless || gc.players == null || BoardView.current != null || Player.InUpkeep) return;
+        foreach (Player p in gc.players) if (p != null) p.Resupply();
     }
 
     /// <summary>Legal disembark tiles: vacant neighbours of the transport the cargo can enter.</summary>
@@ -203,6 +217,7 @@ public static class Transporting {
         // turn can still move and fight; one that boarded this turn has already used its turn).
         cargo.OnUnloaded(transport);
         FogOfWar.Changed();
+        Resupplied();
         if (Unloaded != null && BoardView.current == null) Unloaded(transport, cargo, onto);
         return true;
     }
