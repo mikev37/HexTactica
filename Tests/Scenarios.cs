@@ -6479,6 +6479,32 @@ public static partial class Scenarios {
         foreach (Player p in GameController.gc.players) {
             if (p == null) continue;
             SupplyNetwork.Result r = SupplyNetwork.Solve(p, false);
+            if (Environment.GetEnvironmentVariable("AWAY") == "1") {
+                // Units far from home (beyond the home band: |x| <= 5 from the HQ's side, or across): in supply, and by what.
+                Building hqb = GameController.HQOf(p);
+                if (hqb == null || hqb.tile == null) continue;
+                int sign = hqb.tile.x < 0 ? -1 : 1;
+                int inS = 0, outS = 0; List<string> where = new List<string>();
+                foreach (Unit u in p.units) {
+                    if (u == null || u.tile == null || u.trasnporter != null || u.Hub != null || LocomotionRules.IsAirborne(u.locomotion) || LocomotionRules.IsNaval(u.locomotion)) continue;
+                    if (u.tile.x * sign > 5) continue;   // home band
+                    bool sup = r.DepthAt(u.tile) > 0;
+                    if (sup) inS++; else outS++;
+                    where.Add(u.name.Split(' ')[0] + Pos(u.tile) + (sup ? "+" : "-"));
+                }
+                List<string> ships = new List<string>();
+                foreach (Unit u in p.units) {
+                    if (u == null || u.Hub == null || u.trasnporter == null) continue;
+                    Unit c = SupplyNetwork.Outermost(u.trasnporter);
+                    if (c == null || c.tile == null || !LocomotionRules.IsNaval(c.locomotion)) continue;
+                    List<HexTile> rt; r.routes.TryGetValue(u.Hub, out rt);
+                    HexTile ld; r.landings.TryGetValue(u.Hub, out ld); SupplyPoint via; r.linkedThrough.TryGetValue(u.Hub, out via);
+                    ships.Add(Pos(c.tile) + (r.connectedHubs.Contains(u.Hub) ? " linked" + (via != null ? " via ship " + Pos(SupplyNetwork.Outermost(via.myUnit.trasnporter).tile) : ld != null ? " beside " + Pos(ld) + (ld.building != null ? " (" + ld.building.name.Replace("(Clone)", "") + ")" : ld.occupier != null ? " (" + ld.occupier.name + ")" : "") : "") + " route " + (rt != null ? rt.Count : 0) : " CUT OFF"));
+                }
+                Console.WriteLine("  AWAY " + p.personal_name + ": " + inS + " in supply, " + outS + " out: " + string.Join(" ", where.ToArray()));
+                Console.WriteLine("  SHIPS " + p.personal_name + ": " + string.Join("; ", ships.ToArray()));
+                continue;
+            }
             if (Environment.GetEnvironmentVariable("CACHE") == "1") {
                 // Clicking every carrier of this side in turn, the supply unchanged (SupplyLines): what each click costs.
                 p.Resupply();
