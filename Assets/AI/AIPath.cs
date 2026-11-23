@@ -214,8 +214,17 @@ namespace HexTactica.AI {
         /// enemies that could attack its carrier: SupplyNetwork.TransitField). The origin is not asked.
         /// </summary>
         public static MoveField ThisTurnFrom(Unit mover, HexTile origin, int range, Func<HexTile, bool> avoid) {
+            return ThisTurnFrom(mover, origin, range, avoid, null);
+        }
+
+        /// <summary>
+        /// As above, passing through a tile an enemy holds where <paramref name="passEnemy"/> says yes (supply in transit
+        /// is not stopped by an enemy that could not attack its carrier: SupplyNetwork.TransitField). Such a tile is
+        /// reached like any other; whoever reads the field decides whether it may end there.
+        /// </summary>
+        public static MoveField ThisTurnFrom(Unit mover, HexTile origin, int range, Func<HexTile, bool> avoid, Func<HexTile, bool> passEnemy) {
             long __p = AIPerf.Begin();
-            try { return ComputeField(mover, Single(origin), 0, false, range, avoid); }
+            try { return ComputeField(mover, Single(origin), 0, false, range, avoid, passEnemy); }
             finally { AIPerf.End("path: AIPath.Compute (maxTurns 0)" + AIPerf.Caller(), __p); }
         }
 
@@ -278,7 +287,8 @@ namespace HexTactica.AI {
                                         int maxTurns,
                                         bool ignoreEnemies,
                                         int rangeOverride,
-                                        Func<HexTile, bool> avoid) {
+                                        Func<HexTile, bool> avoid,
+                                        Func<HexTile, bool> passEnemy = null) {
 
             MoveField field;
             if (pool.Count > 0) { field = pool.Pop(); field.Reset(mover); } else field = new MoveField(mover);
@@ -316,7 +326,7 @@ namespace HexTactica.AI {
                 for (int i = 0; i < neighbors.Count; i++) {
                     HexTile next = neighbors[i];
                     if (next == null || closed.Contains(next)) continue;
-                    if (!CanPassThrough(mover, next, ignoreEnemies)) continue;
+                    if (!CanPassThrough(mover, next, ignoreEnemies) && !(passEnemy != null && mover.CanEnter(next) && passEnemy(next))) continue;
                     if (avoid != null && avoid(next)) continue;
 
                     int cost = StepCost(mover, current, next);

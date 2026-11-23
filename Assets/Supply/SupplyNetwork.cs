@@ -69,7 +69,7 @@ public static class SupplyNetwork {
         /// draws this, and the contacts compare it with the way its side would know (UnseenContacts): one choice of way.
         /// </summary>
         public readonly Dictionary<SupplyPoint, List<HexTile>> routes = new Dictionary<SupplyPoint, List<HexTile>>();
-        /// <summary>A ship's carried supply linked by sailing beside supplied ground: the ground it puts it on (beside the route's end).</summary>
+        /// <summary>Carried supply whose carrier ends its route beside a source rather than on it: that source's tile (a ship: the shore it puts it on), where the supply line goes on from.</summary>
         public readonly Dictionary<SupplyPoint, HexTile> landings = new Dictionary<SupplyPoint, HexTile>();
         /// <summary>
         /// Every carrier's transit this solve looked at: where it stood and its move range. A link through one depends on
@@ -703,7 +703,7 @@ public static class SupplyNetwork {
 
     /// <summary>
     /// RouteFor straight to a source: no transit on supplied ground; else to a tile of <paramref name="sources"/> or beside
-    /// one in reach (a ship: beside one, with the source it reaches as its landing). Null if none.
+    /// one in reach (beside one: the source it reaches as its landing, Result.landings, for the supply line). Null if none.
     /// </summary>
     static List<HexTile> DirectRoute(Unit transport, HexTile at, Result result, HashSet<HexTile> sources, out HexTile landing) {
         landing = null;
@@ -713,7 +713,8 @@ public static class SupplyNetwork {
         Reach reach = MoveReach(transport, at);
         HexTile end = reach.Best(t => (!ship && sources.Contains(t)) || BesideSource(t, sources) != null);
         if (end == null) return null;
-        if (ship || !sources.Contains(end)) landing = ship ? BesideSource(end, sources) : null;
+        // The source it ends beside (a ship's landing; on land, the supply line goes on from it, not up the field).
+        if (ship || !sources.Contains(end)) landing = BesideSource(end, sources);
         return reach.PathTo(end);
     }
 
@@ -759,6 +760,8 @@ public static class SupplyNetwork {
         public Reach(HexTile at) { this.at = at; }
         List<HexTile> ordered;
         internal void Add(HexTile t, int used, HexTile from) { cost[t] = used; if (from != null) parent[t] = from; ordered = null; }
+        /// <summary>A tile only passed through (an enemy holds it: PassesEnemy): on the way to others, never reached itself.</summary>
+        internal void Pass(HexTile t, HexTile from) { if (from != null) parent[t] = from; }
         /// <summary>Is <paramref name="t"/> reached?</summary>
         public bool Contains(HexTile t) { return t != null && cost.ContainsKey(t); }
         /// <summary>The tiles reached.</summary>
@@ -804,7 +807,12 @@ public static class SupplyNetwork {
         reach = new Reach(at);
         reach.Add(at, 0, null);
         HexTactica.AI.MoveField f = TransitField(mover, at, HexTactica.AI.AIPath.RangeThisTurn(mover));
-        foreach (HexTile t in f.Tiles) if (t != at && f.ReachableThisTurn(t)) reach.Add(t, f.Get(t).used, f.ParentOf(t));
+        foreach (HexTile t in f.Tiles) {
+            if (t == at || !f.ReachableThisTurn(t)) continue;
+            Unit on = t.occupier;
+            if (on != null && Player.Hostile(on.owner, mover.owner)) reach.Pass(t, f.ParentOf(t));   // passed, never stopped on
+            else reach.Add(t, f.Get(t).used, f.ParentOf(t));
+        }
         HexTactica.AI.AIPath.Release(f);
         if (reachMemo != null) reachMemo[k] = reach;
         HexTactica.AI.AIPerf.End("supply: carrier reach (memo miss)", __q);
@@ -819,8 +827,22 @@ public static class SupplyNetwork {
     /// exposed does not matter (only the tiles it moves through). Release it when done.
     /// </summary>
     public static HexTactica.AI.MoveField TransitField(Unit transport, HexTile from, int range) {
-        if (SupplyLayer() == null) return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t));
-        return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t) || BlockedForSupply(transport, t));
+        if (SupplyLayer() == null) return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t), t => PassesEnemy(transport, t));
+        return HexTactica.AI.AIPath.ThisTurnFrom(transport, from, range, t => Exposed(transport, t) || BlockedForSupply(transport, t), t => PassesEnemy(transport, t));
+    }
+
+    /// <summary>
+    /// Does supply in transit pass a tile an enemy holds: one that could not attack <paramref name="transport"/>
+    /// (CouldAttack: a fighter over a truck's road, a truck, an APC)? It is not stopped there, as it is not by one beside
+    /// it; it does not end its move there either (MoveReach). Under the supply layer (an AI's copy), the enemy as it
+    /// truly stands (SupplyOccupier).
+    /// </summary>
+    static bool PassesEnemy(Unit transport, HexTile t) {
+        Unit on = t.occupier;
+        if (on == null || !Player.Hostile(on.owner, transport.owner)) return false;
+        FogOfWar.Knowledge k = SupplyLayer();
+        Unit real = k != null ? SupplyOccupier(t, k) : on;
+        return real == null || !Player.Hostile(real.owner, transport.owner) || !CouldAttack(real, transport);
     }
 
     /// <summary>
@@ -882,7 +904,7 @@ public static class SupplyNetwork {
         FogOfWar.Knowledge k = SupplyLayer();
         if (k == null) return false;
         Unit u = SupplyOccupier(t, k);
-        return u != null && u != t.occupier && Player.Hostile(u.owner, transport.owner);
+        return u != null && u != t.occupier && Player.Hostile(u.owner, transport.owner) && CouldAttack(u, transport);
     }
 
     /// <summary>
@@ -1047,7 +1069,7 @@ public static class SupplyNetwork {
     /// network without what it carries), onto it, or beside it for a ship (or where that is nearer), whatever enemies
     /// it passes; under fog laid with the enemies <paramref name="viewer"/> does not see off the board, so its shape
     /// does not give them away. The cut: the first tile past its own that is exposed (Exposed, on the board as it is:
-    /// who cuts it, seen or not) or holds an enemy, else the first it cannot reach this turn. The marker: there, else
+    /// who cuts it, seen or not) or holds an enemy it may not pass (PassesEnemy), else the first it cannot reach this turn. The marker: there, else
     /// the nearest beside it (the board's order) that holds none of the viewer's side nor an enemy it does not see.
     /// Real board, main thread.
     /// </summary>
@@ -1106,7 +1128,7 @@ public static class SupplyNetwork {
             for (int i = 1; i < moves && c.cut < 0; i++) {
                 HexTile t = line[i];
                 Unit on = t.occupier;
-                if (Exposed(carrier, t) || (on != null && Player.Hostile(on.owner, p))) { c.cut = i; c.exposed = true; }
+                if (Exposed(carrier, t) || (on != null && Player.Hostile(on.owner, p) && !PassesEnemy(carrier, t))) { c.cut = i; c.exposed = true; }
                 else if (!now.ReachableThisTurn(t)) c.cut = i;
             }
             HexTactica.AI.AIPath.Release(now);

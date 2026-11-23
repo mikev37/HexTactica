@@ -568,6 +568,7 @@ public class HexTile : MonoBehaviour
         BuildingMenu.open = null;
         // An enemy's move and threat on show: any click clears it first.
         SupplyOverlay.HideEnemy();
+        SupplyOverlay.Inspected = null;
         UnitController.uc.units.ForEach(x => x.clearDisplay());
         if (seen == null && building != null && state == UIState.FREE && GameController.gc.activeUnit == null
                  && building.owner != null && building.owner == GameController.gc.activePlayer && BuildingMenu.IsHumanTurn() && building.Purchasable().Count > 0) {
@@ -580,7 +581,8 @@ public class HexTile : MonoBehaviour
         } else if (seen != null && Transporting.IsTransport(seen) && seen.transported.Count > 0 && seen.owner == GameController.gc.activePlayer && !GameController.IsPlayedElsewhere(seen.owner)
                    && (state == UIState.SELECTED || (state == UIState.FREE && !seen.active))) {
             // A transport clicked again once selected, or after its turn is over (units can still
-            // be put down then): what is aboard.
+            // be put down then): what is aboard. Its move over, its supply shows as if selected.
+            if (GameController.gc.activeUnit != seen) SupplyOverlay.Inspected = seen;
             TransportMenu.Open(seen);
         } else if (state == UIState.LOAD_CONFIRM) {
             // Board: walk beside the transport if not already there, then get in.
@@ -685,12 +687,17 @@ public class HexTile : MonoBehaviour
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
             } else if (seen != null && (state == UIState.FREE || state == UIState.RANGE) && Player.Hostile(seen.owner, GameController.gc.activePlayer)) {
                 // An enemy we are not attacking: where it can go and what it can hit (any selection is dropped).
+                // On the opponent's turn, one of the screen's own units is "the enemy" of whoever plays: its supply shows
+                // too, as if selected (SupplyOverlay.Inspected), so it can be read and cut while they move.
                 GameController.gc.activeUnit = null;
+                if (SupplyOverlay.OpponentsTurn() && SupplyOverlay.OnScreenSide(seen)) SupplyOverlay.Inspected = seen;
                 SupplyOverlay.ShowEnemy(seen);
             } else {
-                // Anywhere else: clear the board and the selection.
+                // Anywhere else: clear the board and the selection. One of the screen's own units whose move is over (or,
+                // on the opponent's turn, any of them): its supply shows as if selected.
                 GameController.gc.activeUnit = null;
                 HexGenerator.forAllTiles(x => { x.Reset(); return 0; });
+                if (seen != null && SupplyOverlay.OnScreenSide(seen)) SupplyOverlay.Inspected = seen;
             }
         }
         // A selected transport with something aboard shows its panel, whatever the click did to
@@ -698,7 +705,7 @@ public class HexTile : MonoBehaviour
         Unit selected = GameController.gc.activeUnit;
         if (TransportMenu.open == null) {
             if (selected != null && Transporting.IsTransport(selected) && selected.transported.Count > 0 && selected.owner == GameController.gc.activePlayer) TransportMenu.Open(selected);
-            else if (justMoved != null && justMoved.tile != null) TransportMenu.Open(justMoved);
+            else if (justMoved != null && justMoved.tile != null) { TransportMenu.Open(justMoved); SupplyOverlay.Inspected = justMoved; }
         }
     }
 

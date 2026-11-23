@@ -17,11 +17,13 @@ using UnityEngine;
 /// Neither the cut line nor a marker shows unless that transport is selected, or all supply lines are on: the option
 /// (GameOptions.AllSupplyLines, kept between games), toggled by its key (FrontEndSettings.supplyLinesKey), shows every
 /// supply line of the screen's side at once: each supply unit's to what feeds it, every cut one, every marker.
+/// The same shows for a unit of yours clicked when it cannot be selected (Inspected): its move over, or on the opponent's
+/// turn (the AI's, or one played on another device), so supply can be read and cut at any time.
 /// Whether a picked tile is in supply is shown by the board's supply borders alone.
 /// Everything follows the picked tile, not the pointer, so it works the same with a finger.
 /// Clicking an enemy unit shows where it can move (its colour) and what it can hit from there, and for an enemy supply
 /// unit (or a transport carrying one) its supply line too, in its colour: the way its supply comes, as the network truly
-/// has it, so you can see how your units turn it and where to cut it. Under fog, only as far as you see along it.
+/// has it, so you can see how your units turn it and where to cut it. Under fog, on every tile of it you see.
 /// </summary>
 public class SupplyOverlay : MonoBehaviour {
 
@@ -75,6 +77,26 @@ public class SupplyOverlay : MonoBehaviour {
         return p != null && FogOfWar.IsHuman(p) ? p : null;
     }
 
+    /// <summary>
+    /// A unit of the screen's side clicked but not selected (HexTile.ClickBoard): its move is over, or it is not its side's
+    /// turn. Shown as a selected one is (its supply line, its cut line and marker), with no move to pick. Any click
+    /// clears it first.
+    /// </summary>
+    public static Unit Inspected;
+
+    /// <summary>Is <paramref name="u"/> the screen's: a person's here (not the AI's, not one played on another device), and under fog, the viewer's side?</summary>
+    public static bool OnScreenSide(Unit u) {
+        if (u == null || u.owner == null || !FogOfWar.IsHuman(u.owner) || GameController.IsPlayedElsewhere(u.owner)) return false;
+        return !FogOfWar.On || (FogOfWar.Viewer != null && Player.Friendly(FogOfWar.Viewer, u.owner));
+    }
+
+    /// <summary>Is it a turn the screen's side does not play here (the AI's, or one played on another device)?</summary>
+    public static bool OpponentsTurn() {
+        GameController gc = GameController.gc;
+        Player p = gc != null ? gc.activePlayer : null;
+        return p != null && (!FogOfWar.IsHuman(p) || GameController.IsPlayedElsewhere(p));
+    }
+
     void UpdateShown() {
         GameController gc = GameController.gc;
         Unit u = gc != null ? gc.activeUnit : null;
@@ -82,7 +104,9 @@ public class SupplyOverlay : MonoBehaviour {
         // business, and the AI may be thinking on another thread while this would publish supply.
         if (u != null && !FogOfWar.IsHuman(u.owner)) u = null;
         if (u != null && (u.tile == null || u.owner == null)) u = null;
-        HexTile dest = Destination(u);
+        bool inspecting = false;
+        if (u == null && Inspected != null && Inspected.tile != null && Inspected.Strength > 0 && OnScreenSide(Inspected)) { u = Inspected; inspecting = true; }
+        HexTile dest = inspecting ? null : Destination(u);
         bool all = GameOptions.AllSupplyLines;
         Player side = ScreenSide();
         bool moved = SupplyNetwork.Published != shownPublished && Time.unscaledTime - shownAt >= RedrawEvery;
@@ -539,29 +563,44 @@ public class SupplyOverlay : MonoBehaviour {
     /// <summary>
     /// The supply line of <paramref name="enemy"/>, if it is a supply unit or carries one: from where it stands back to the
     /// HQ (SourcePath, the network as it truly is: its carriers' routes are the network's own), in its side's colour. Under
-    /// fog, from it as far as the viewer sees each tile along it: the line stops where it goes into the fog (it does not
-    /// show where the enemy's supply comes from beyond what you see).
+    /// fog, on every tile of it the viewer sees, broken where it runs through the fog (EnemyLineRuns): the fog's tiles are
+    /// left out because the line's legs end on the enemy's supply units, and one the viewer does not see must not be
+    /// pointed at; a tile the viewer sees hides nothing.
     /// </summary>
     void ShowEnemyLine(Unit enemy) {
         foreach (LineRenderer l in enemyLines) if (l != null) l.gameObject.SetActive(false);
-        List<HexTile> path = EnemyLine(enemy);
-        if (path.Count < 2) return;
-        Show(Line(enemyLines, 0), path, enemy.owner.displayColor, 1f, 1f);
+        if (enemy == Inspected) return;   // the screen's own, clicked on the opponent's turn: drawn as inspected (UpdateShown)
+        List<List<HexTile>> runs = EnemyLineRuns(enemy);
+        for (int i = 0; i < runs.Count; i++) Show(Line(enemyLines, i), runs[i], enemy.owner.displayColor, 1f, 1f);
     }
 
-    /// <summary>The tiles ShowEnemyLine draws for <paramref name="enemy"/> (empty if it carries no supply).</summary>
+    /// <summary>The whole supply line of <paramref name="enemy"/>, as the network truly has it (empty if it carries no supply).</summary>
     public static List<HexTile> EnemyLine(Unit enemy) {
         List<HexTile> path = new List<HexTile>();
         if (enemy == null || enemy.tile == null || enemy.owner == null || CarriedSupplies(enemy).Count == 0) return path;
         Player p = enemy.owner;
         using (SupplyNetwork.AsPlayed()) path = SourcePath(p, enemy.tile, SupplyNetwork.Solve(p, false), null);
-        Player viewer = FogOfWar.On ? FogOfWar.Viewer : null;
-        if (viewer != null && !Player.Friendly(viewer, p)) {
-            int seen = 0;
-            while (seen < path.Count && FogOfWar.TileVisible(viewer, path[seen])) seen++;
-            if (seen < path.Count) path = path.GetRange(0, seen);
-        }
         return path;
+    }
+
+    /// <summary>
+    /// What ShowEnemyLine draws: EnemyLine, cut into the runs of two or more tiles in a row along it that the viewer sees
+    /// (fog off, or the viewer's own side: the whole line, one run).
+    /// </summary>
+    public static List<List<HexTile>> EnemyLineRuns(Unit enemy) {
+        List<List<HexTile>> runs = new List<List<HexTile>>();
+        List<HexTile> path = EnemyLine(enemy);
+        if (path.Count < 2) return runs;
+        Player viewer = FogOfWar.On ? FogOfWar.Viewer : null;
+        if (viewer == null || Player.Friendly(viewer, enemy.owner)) { runs.Add(path); return runs; }
+        List<HexTile> run = new List<HexTile>();
+        foreach (HexTile t in path) {
+            if (FogOfWar.TileVisible(viewer, t)) { run.Add(t); continue; }
+            if (run.Count >= 2) runs.Add(run);
+            run = new List<HexTile>();
+        }
+        if (run.Count >= 2) runs.Add(run);
+        return runs;
     }
 
     /// <summary>Is an enemy's move and threat on show (tiles in ENEMY_MOVE / ENEMY_THREAT)?</summary>

@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"rule-supply-reach-source","kind":"rules","opponent":"Human","rounds":"4","check":"supplyReachSource","question":"A carrier must reach a source of supply, not just ground one supplies (SupplyNetwork.RouteFor): Blue's HQ at (-6,0), a Blue supply unit on foot at (-3,0) in its supply (a source), a truck carrying supplies at (4,0) beyond it. With moves enough to drive onto the supply unit's ground but not beside the supply unit, it is cut off (it used to link); with as many as it takes to get beside it, it links. Its supply line then runs from the truck beside the supply unit, to it, and on to the HQ: what is drawn is what links it.","rules":"standard"},
+"test":{"name":"rule-supply-reach-source","kind":"rules","opponent":"Human","rounds":"4","check":"supplyReachSource","question":"A carrier must reach a source of supply, not just ground one supplies (SupplyNetwork.RouteFor): Blue's HQ at (-6,0), a Blue supply unit on foot at (-3,0) in its supply (a source), a truck carrying supplies at (4,0) beyond it. With moves enough to drive onto the supply unit's ground but not beside the supply unit, it is cut off (it used to link); with as many as it takes to get beside it, it links. Its supply line then runs from the truck beside the supply unit, to it (the next tile after the drive: Result.landings), and on to the HQ: what is drawn is what links it.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},
