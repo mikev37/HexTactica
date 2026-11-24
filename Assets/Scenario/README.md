@@ -80,6 +80,7 @@ units or buildings must match at least.
 | Building Owned (23) | now: at least *Count* matching buildings are held by *Side* | held by, kind, in area |
 | Unit Cut Off (24) | now: matching units stand outside their side's supply | side, kind, name, in area |
 | Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |
+| Move Proposed (34) | the player proposes a move for a matching unit: a first click on a tile it can reach, so the path shows and nothing has moved yet (*In area*: to a tile within the area): *Count* times. An attack is select, propose the move next to the enemy, click the enemy: a second click on the tile makes the move and ends the unit's turn, so a tutorial's attack step waits for this, not for Unit Enters | side, kind, name, in area |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
 | Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |

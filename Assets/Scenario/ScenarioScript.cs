@@ -82,6 +82,7 @@ public class ScenarioScript : MonoBehaviour {
         GameController.TurnStarted += OnTurnStarted;
         HexTile.UnitSelected += OnUnitSelected;
         HexTile.BuildingOpened += OnBuildingOpened;
+        HexTile.MoveProposed += OnMoveProposed;
         Transporting.Boarded += OnBoarded;
         Transporting.Unloaded += OnUnloaded;
         Strikes.Fired += OnStrikeFired;
@@ -98,6 +99,7 @@ public class ScenarioScript : MonoBehaviour {
             GameController.TurnStarted -= OnTurnStarted;
             HexTile.UnitSelected -= OnUnitSelected;
             HexTile.BuildingOpened -= OnBuildingOpened;
+            HexTile.MoveProposed -= OnMoveProposed;
             Transporting.Boarded -= OnBoarded;
             Transporting.Unloaded -= OnUnloaded;
             Strikes.Fired -= OnStrikeFired;
@@ -186,6 +188,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.BuildingDestroyed:
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
+            case TriggerCondition.MoveProposed:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.UnitSpotted:
             case TriggerCondition.UnitBoarded:
@@ -389,6 +392,11 @@ public class ScenarioScript : MonoBehaviour {
     void OnUnitSelected(Unit u) {
         if (!Counting || u == null) return;
         Count(TriggerCondition.UnitSelected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
+    }
+
+    void OnMoveProposed(Unit u, HexTile to) {
+        if (!Counting || u == null || to == null) return;
+        Count(TriggerCondition.MoveProposed, t => ScenarioGame.MatchesAt(u, to, UnitFilter.Of(t)));
     }
 
     void OnBoarded(Unit transport, Unit cargo, HexTile from) {

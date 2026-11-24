@@ -524,11 +524,15 @@ public class HexTile : MonoBehaviour
     public static event System.Action<Unit> UnitSelected;
     /// <summary>The player opened a building's build list (a click on it).</summary>
     public static event System.Action<Building> BuildingOpened;
+    /// <summary>The player proposed a move for the selected unit to a tile (a first click on a tile it can reach: the path shows, nothing has moved yet).</summary>
+    public static event System.Action<Unit, HexTile> MoveProposed;
 
     /// <summary>Tell UnitSelected's listeners (ClickBoard does, as the player selects a unit).</summary>
     public static void NotifyUnitSelected(Unit u) { if (UnitSelected != null) UnitSelected(u); }
     /// <summary>Tell BuildingOpened's listeners (ClickBoard does, as the player opens a building).</summary>
     public static void NotifyBuildingOpened(Building b) { if (BuildingOpened != null) BuildingOpened(b); }
+    /// <summary>Tell MoveProposed's listeners (ClickBoard does, as the player proposes a move).</summary>
+    public static void NotifyMoveProposed(Unit u, HexTile to) { if (MoveProposed != null) MoveProposed(u, to); }
 
 	public void OnMouseDown() {
         if (HexTactica.Harness.Replay.Active) return;   // a replay: the board is only watched
@@ -633,6 +637,7 @@ public class HexTile : MonoBehaviour
                 List<HexTile> movepath = buildpath();
                 movepath.ForEach(x => x.changeState(UIState.MOVE_ARROW));
                 changeState(UIState.MOVE_CONFIRM);
+                NotifyMoveProposed(mover, this);
                 HexGenerator.forAllTiles(x => { if (x.state == UIState.ATTACK_CONFIRM) x.changeState(UIState.FREE); return 0; });
 
                 if (mover.moveAndAttack) {
