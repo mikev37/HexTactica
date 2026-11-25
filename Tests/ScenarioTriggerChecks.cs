@@ -207,19 +207,33 @@ public static partial class Scenarios {
              },
              "Order Units' targets and Units Exposed: a Blue tank ordered at whoever holds the city (Target On Tile) attacks the Red grunt on it, not a nearer one; Units Exposed (grunts on cover below 2) counts the grunt on grass and the one on the city's ground (cover 2 is not below 2: not that one), not the one in the forest; Target Exposed picks the grunt on the grass, never the supply unit (it cannot use cover).");
         n++;
-        // The campaign's tutorial missions themselves (Assets/Resources/Campaign/Scenarios), each with a test block: played through below.
-        n += ExportMission("Tutorial", "tutorial-playthrough", "scriptTutorial", 8,
-            "The tutorial mission (Resources/Campaign/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.");
-        n += ExportMission("1.1 Field Exercises", "field-exercises-playthrough", "scriptFieldExercises", 14,
-            "Act 1, mission 1 (Resources/Campaign/Scenarios/1.1 Field Exercises.dat), played with the player's clicks: the introductions and a marker on Alpha; clicking Jori's squad: Anna says that is his reach; Alpha selected: the staging ground (the sand pit) marked; moved elsewhere: Anna's 'where are they', no Jori yet, and the move lesson again next turn; the move proposed: 'click again to confirm'; on the pit, Jori's squad appears in the fog, walks up (2 of 3 supplies) and hits Alpha for 3, taking 1, and Alpha falls back out of supply; on his next turn it takes the pit (no cover); Anna's retreat line, Alpha marked, then the city once selected; Jori's 'you better run'; healed on the city; Jori's squad never acts and starves on its own, with the highlight shown and gone within the lines; reinforcements two turns after Anna promised them; back to 5 strength, the attack in three marked steps; a move next to Jori confirmed without attacking: Alpha put 2 tiles away, ready, nobody lost (Place Units), the lesson replayed; the attack from the proposed move: 'Damn you!'; Jori's squad destroyed: the player wins.");
-        n += ExportMission("1.2 Combat Trials", "combat-trials-playthrough", "scriptCombatTrials", 30,
-            "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: Jori starts with one squad (his win condition off until his tank comes); the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for a fresh squad (in the trees), which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit, marked; clicking it: the supply lines, no tile marked; moved anywhere: Gena's line; the capture lesson; the city taken ('City secured!') and held through a turn: the player wins.");
-        n += ExportMission("1.3 Transit Trouble", "transit-trouble-playthrough", "scriptTransitTrouble", 30,
-            "Act 1, mission 3 (Resources/Campaign/Scenarios/1.3 Transit Trouble.dat), played with the player's clicks: the stolen village shown; a marker per click: the grunt, then the truck (he boards), the supply unit, then the truck; the truck marked, then the tile beside the city, reached in one drive; the grunt put down on the city; on Jori's turn the bandit walks from the fog onto the hills by the barrens, unseen, and the truck's supply is cut off; the cut-off lines, a recon and a squad on loan, the squad boards the recon; the bandit spotted: its lines; hurt, it flees on Jori's turn and is gone (or killed: its last line); the city taken with the road clear: the player wins.");
-        n += ExportMission("1.4 Live Fire", "live-fire-playthrough", "scriptLiveFire", 40,
-            "Act 1, mission 4 (Resources/Campaign/Scenarios/1.4 Live Fire.dat), played with the player's clicks: three sides, the range's guns a bystander (no turns, never fought: nobody can attack them, they attack nobody); fog off for the salute, the Blakian elder's protest, the second salute, Gena's artillery lines, then fog on; on Jori's first turn three bandits on the player's flank; the player's next turn: the range's gun A given, marked, the bandit in its range marked once it is selected, the attack previewed ('Enemy sighted!'), fired: the bandit suppressed, Gena's lines; the turn over: Anna's 'more cannons', Jori's squad sent for gun C, which joins him when it gets next to it; a unit of ours next to gun B: it joins us; the battle to the end: the player wins.");
-        n += ExportMission("Tutorial 2", "tutorial2-playthrough", "scriptTutorial2", 10,
-            "The second tutorial mission (Resources/Campaign/Scenarios/Tutorial 2.dat), played with the player's orders and recorded as a game is: the grunt boards the truck (told to load the supply unit), the supply unit boards (told to drive); the marked tile is outside the HQ's supply until the truck with supply aboard stands there; the grunt is put down in supply; the lookout (held, fed) is spotted; on turn 2 a recon car and a squad arrive, the squad boards the car; the lookout is destroyed, a grunt takes the village: the player wins. Then the campaign, on the mission assets as they are (Resources/Campaign/Missions): the result read from the game log earns its stars against Tutorial 2's pars; only Tutorial 1's flag is on the map at first, winning it unlocks Tutorial 2, stars once earned are kept, a mission blocked by an attempt is closed, and progress survives being saved and read back.");
+        make("script-terrain-moved-fresh", "scriptTerrainMovedFresh", (a, o) => {
+                 Put("Grunt", o, -3, 0); Put("Grunt", o, 2, -1); Put("Grunt", o, 3, -2); Put("Tank", a, 5, -2);
+                 Rig.At(-2, 0).terrain = T("Hills"); Rig.At(-3, 1).terrain = T("Road"); Rig.At(3, -2).terrain = T("Forest");
+                 Script(Trig("Onto hills", TriggerCondition.UnitMoved, t => { t.Side = Red; t.OnTerrain = "Hills"; }),
+                        Trig("Onto road or forest", TriggerCondition.UnitMoved, t => { t.Side = Red; t.OnTerrain = "Road, Forest"; t.Count = 2; }),
+                        Trig("Moved", TriggerCondition.UnitMoved, t => { t.Side = Red; t.Count = 2; }),
+                        Trig("Hit in the open", TriggerCondition.UnitDamaged, t => { t.Side = Red; t.Value = 6; t.CoverBelow = 2; }),
+                        Trig("Hit in cover", TriggerCondition.UnitDamaged, t => { t.Side = Red; t.Value = 6; t.OnTerrain = "Forest"; }),
+                        Trig("Fresh", TriggerCondition.UnitMoved, t => { t.Side = Red; t.InArea = true; t.TileX = -3; t.TileY = 1; t.Radius = 0; },
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitKind = "Tank"; x.TargetSide = Red; x.TargetFresh = true; x.Value = 2; })),
+                        Trig("Salute", TriggerCondition.LevelStart, null, Act(TriggerActionType.Salute, x => { x.UnitSide = Blue; x.Value = 3; })));
+             },
+             "Unit Moved, On Terrain, Cover Below, Order Units' Target Fresh, Salute: a Red grunt moved onto hills counts for On Terrain Hills, then onto a road for 'Road, Forest' (one of two); every move counts for Unit Moved; the Blue tank, ordered at the strongest Red unit it can reach, passes over the hurt grunt nearer it for the full-strength one (ties: the one in the forest), whose hit counts for On Terrain Forest and not Cover Below 2; a hurt grunt hit on grass counts for Cover Below 2; a salute (headless: nothing shown) hits nobody.");
+        n++;
+        make("rule-bystander", "scriptBystander", (a, o) => {
+                 Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0);
+                 Script(Trig("Red turns", TriggerCondition.TurnStarted, t => { t.Side = Red; t.Repeat = true; }),
+                        Trig("Humans", TriggerCondition.UnitsAtLeast, t => { t.Side = TriggerSide.Human; t.UnitKind = "Artillery"; t.Value = 1; }));
+             },
+             "A bystander side (Player.bystander: the range's guns at an exercise): nobody can attack its units and they attack nobody, it is nobody's enemy; its turn is skipped (Red's turn follows Blue's); it is not a Human (or AI) side for triggers; with its units still on the board, the side left standing wins as usual; given to a side (Give Units) its units fight again.");
+        n++;
+        make("mission-tally", "scriptMissionTally", (a, o) => { Put("Grunt", o, 0, 0); },
+             "The mission rating's tally (MissionRating.Tally, from the game log): turns are the days the player moved on, each once (a turn logged twice, at a load, is one day); an enemy unit killed by the player, starved out of supply or ditched out of fuel is the player's kill; an ally's is nobody's; the player's own losses whatever the cause.");
+        n++;
+        make("campaign-progress", "scriptCampaignProgress", (a, o) => { Put("Grunt", o, 0, 0); },
+             "The campaign (Campaign scene, campaign.dat): Act 1's flags linked 1.1 > 1.2 > 1.3 > 1.4, each scenario in the campaign folder; only 1.1 on the map at first; a loss unlocks nothing; a win unlocks the next and is kept on file (read back: still won, the next still there), on down the chain; stars by the pars, added on a better win and never taken away; a fork closes the other mission; no Act 1 mission opens Campaign 2; the map's pan and zoom.");
+        n++;
         return n;
     }
 
@@ -397,6 +411,11 @@ public static partial class Scenarios {
                       && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t1.ScenarioName + ".dat")) && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t2.ScenarioName + ".dat"));
             bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2.key && t2.unlocks.Count == 1 && t1.availableAtStart && !t2.availableAtStart
                        && t1.key == "Campaign/Tutorial 1" && t1.factionName != "" && t2.factionName != "" && t2.objectives.StartsWith("Take the middle city") && t2.scenario == "1.2 Combat Trials" && t1.parTurns == 8 && t2.parTurns == 10;
+            // Act 1 down the chain: 1.1 (Tutorial 1) > 1.2 (Tutorial 2) > 1.3 > 1.4, each with its scenario in the campaign folder.
+            MissionInfo m3 = missions.Find(m => m.Name == "1.3 Transit Trouble"), m4 = missions.Find(m => m.Name == "1.4 Live Fire");
+            bool chain = m3 != null && m4 != null && t2.unlocks.Count == 1 && t2.unlocks[0] == m3.key && m3.unlocks.Count == 1 && m3.unlocks[0] == m4.key
+                      && !m3.availableAtStart && !m4.availableAtStart && File.Exists(Path.Combine(scenarios, m3.ScenarioName + ".dat")) && File.Exists(Path.Combine(scenarios, m4.ScenarioName + ".dat"));
+            bool noCampaign2 = missions.TrueForAll(m => m.unlocksCampaigns.Count == 0);
             // Each flag pinned to its spot on the picture (its anchors), apart from the other.
             bool placed = anchors.ContainsKey(t1.key) && anchors.ContainsKey(t2.key) && !Near(anchors[t1.key], anchors[t2.key])
                        && anchors[t1.key].x > 0f && anchors[t1.key].x < 1f && anchors[t2.key].y > 0f && anchors[t2.key].y < 1f;
@@ -440,6 +459,15 @@ public static partial class Scenarios {
             bool open = CampaignProgress.Playable(left) && CampaignProgress.Playable(right);
             CampaignProgress.Attempt(left);
             bool fork = open && CampaignProgress.Blocked(right) && !CampaignProgress.Playable(right) && CampaignProgress.Visible(right) && !CampaignProgress.Blocked(done) && CampaignProgress.Playable(left);
+            // Down the chain, each win read back from the file before the next.
+            bool down = true;
+            foreach (MissionInfo[] step in new[] { new[] { t2, m3 }, new[] { m3, m4 } }) {
+                if (step[0] == null || step[1] == null) { down = false; break; }
+                CampaignProgress.Attempt(step[0]);
+                CampaignProgress.Finish(step[0], new MissionTally { recorded = true, won = true, turns = 1 });
+                CampaignProgress.Load();
+                down &= CampaignProgress.Get(step[0]).completed && CampaignProgress.Playable(step[1]);
+            }
             // Read back from its file.
             CampaignProgress.Load();
             bool savedCampaigns = CampaignProgress.CampaignUnlocked("Campaign 2");
@@ -488,7 +516,8 @@ public static partial class Scenarios {
                    + "; campaigns: Tutorial 2 opens Campaign 2, listed by the hub, its map closed at first, in the build " + scenesWired + ", closed until won " + closedFirst + ", opened by the win " + opened + ", once " + openedOnce + ", kept by a save " + campaignsKept
                    + ", the view reaches the second map " + reachSecond + ", stops at the outer edges " + stopsAtEdges + ", one map pinned " + oneMapPinned
                    + "; map pan and zoom: pinned unzoomed " + pinned + ", room at 2x " + panRoom + ", zooms about the cursor " + aboutCursor + ", centres a mission " + centres;
-            return files && linked && placed && stamped && campaignsOk && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView;
+            detail += "; Act 1 linked 1.1 > 1.2 > 1.3 > 1.4 " + chain + ", won down the chain, each read back from the file " + down + ", no Act 1 mission opens Campaign 2 " + noCampaign2;
+            return files && linked && placed && stamped && campaignsOk && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView && chain && down && noCampaign2;
         } finally {
             CampaignProgress.FilePath = fileWas;
             CampaignProgress.Pending = null;
@@ -762,610 +791,69 @@ public static partial class Scenarios {
                 detail = "the tank went for the grunt on the city " + city + " (city " + onCity.Strength + ", grass " + onGrass.Strength + "); Units Exposed as counted " + exposedMet + " (" + exposedCount + "); Target Exposed picks the grunt on the grass, not the supply unit " + exposed + " (" + (pick != null ? pick.name : "none") + ")";
                 return city && exposedMet && exposed;
             }
-            case "scriptTutorial": {
-                Player human = o, raiders = a;
-                bool keptIn = !raiders.eliminable && human.eliminable;
-                human.money = 9000;
-                FakeBox box = new FakeBox();
-                ScenarioDialogue.Presenter = box;
-                foreach (MonoBehaviour m in raiders.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
-                AIPlayer ai = raiders.GetComponent<AIPlayer>();
-                List<string> log = new List<string>();
-                List<string> transcript = new List<string>();
-                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
-                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
-                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
-                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == raiders && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == raiders) gc.EndTurn(); settle(); };
-                Unit recruit = ScenarioGame.Named("Recruit");
-                bool ok = recruit != null && human.units.Contains(recruit);
-
-                settle();
-                string welcome = said(); bool step1 = welcome.Contains("Click on him") && s.markers.Exists(m => m.Id == "recruit");
-                // (The board's click flow needs the tiles' overlays, which the headless board lacks: the clicks' effects are
-                // made as ClickBoard makes them: selection notified, the move walked as CompleteMove walks it.)
-                HexTile.NotifyUnitSelected(recruit); settle();
-                // Parked somewhere else first (a step off the path, by hand): the lesson waits for the marked tile.
-                ScenarioGame.Order(recruit, null, Rig.At(-3, 2)); settle();
-                bool waits = Fired(s, "Recruit spent") == 0 && s.markers.Exists(m => m.Id == "goal");
-                gc.EndTurn(); settle(); aiTurn();
-                bool noAmbush = ScenarioGame.Named("Raider") == null && !gc.gameOver && !raiders.eliminated;
-                string selected = said(); bool step2 = selected.Contains("propose a move") && s.markers.Exists(m => m.Id == "goal") && !s.markers.Exists(m => m.Id == "recruit");
-                ScenarioGame.Order(recruit, null, Rig.At(0, 0)); settle();
-                string moved = said(); bool step3 = recruit.tile == Rig.At(0, 0) && moved.StartsWith("Good job!") && moved.Contains("End your turn") && !s.markers.Exists(m => m.Id == "goal");
-                FogOfWar.Changed();
-                bool fogged = gc.fogOfWar && !FogOfWar.TileVisible(human, Rig.At(4, -1));   // where the raider will appear: out of sight
-                gc.EndTurn(); settle();   // the raiders' turn: the ambush
-                Unit raider = ScenarioGame.Named("Raider");
-                bool spawned = raider != null && raider.owner == raiders && fogged;
-                int hitTo = recruit.Strength;
-                bool hit = recruit.Strength < 6 && raider != null && raider.tile != null && raider.tile.Distance(recruit.tile) == 1;
-                string hurt = said(); bool step4 = spawned && hit && hurt.Contains("Enemy spotted") && hurt.Contains("We took damage") && hurt.IndexOf("Enemy spotted") < hurt.IndexOf("We took damage");
-                aiTurn();
-                // Turn 2: back into supply beside the HQ.
-                HexTile.NotifyUnitSelected(recruit); ScenarioGame.Order(recruit, null, Rig.At(-3, 1)); settle(); said();
-                bool back = recruit.tile == Rig.At(-3, 1) && everSaid("Good, now end your turn") && !s.markers.Exists(m => m.Id == "supply");
-                HexTile raiderAt = raider != null ? raider.tile : null;
-                int before = recruit.Strength;
-                gc.EndTurn(); settle(); aiTurn();
-                // Turn 3: healed in supply, and the HQ hint (it was never opened).
-                string third = said();
-                raider = ScenarioGame.Named("Raider");
-                bool holds = raider != null && raider.tile == raiderAt && raider.supplies > 0;   // the raiders' turn 2: it stayed, fed
-                bool healed = recruit.Strength > before || recruit.Strength == 6;
-                bool step5 = back && everSaid("click the HQ") && Fired(s, "HQ hint") == 1 && s.markers.Exists(m => m.Id == "hq");
-                Building hq = Rig.At(-4, 2).building;
-                HexTile.NotifyBuildingOpened(hq); settle();
-                string opened = said(); bool step6 = opened.Contains("build list") && !s.markers.Exists(m => m.Id == "hq");
-                Func<string, Unit> buy = kind => { Unit pick = hq.buildable.Find(x => x != null && GameController.UnitName(x) == kind); return pick != null ? Rig.bc.Produce(hq, pick) : null; };
-                string offered = string.Join(",", hq.buildable.ConvertAll(x => x != null ? GameController.UnitName(x) : "?").ToArray());
-                Unit grunt = buy("Grunt"); settle();
-                string g1 = said(); bool step7 = grunt != null && g1.Contains("A new grunt") && g1.Contains("capture") && s.markers.Exists(m => m.Id == "city");
-                gc.EndTurn(); settle(); aiTurn();
-                // Turn 4: the new grunt steps off the HQ, a supply truck is bought; the attack hint (turn 4, and the truck).
-                if (grunt != null && grunt.Strength > 0) ScenarioGame.Order(grunt, null, Rig.At(-5, 2));
-                settle();
-                Unit truck = buy("Supplies"); settle();
-                string fourth = said();
-                bool step8 = truck != null && everSaid("supply truck") && everSaid("To attack") && Fired(s, "Fight back") == 1;
-                // The raider dies (the player's attacks, as many as it takes: ordered here as the clicks would).
-                raider = ScenarioGame.Named("Raider");
-                int rounds = 0;
-                while (raider != null && raider.Strength > 0 && !gc.gameOver && rounds++ < 10) {
-                    foreach (Unit u in new List<Unit>(human.units)) if (u != null && u.Strength > 0 && u.active && raider != null && raider.Strength > 0 && u.CanAttack(raider)) ScenarioGame.Order(u, raider, null);
-                    settle();
-                    raider = ScenarioGame.Named("Raider");
-                    if (raider == null || gc.gameOver) break;
-                    gc.EndTurn(); settle(); aiTurn();
-                }
-                string end = said();
-                bool won = gc.gameOver && gc.winner == human && end.Contains("Raider down");
-                bool words = s.description.StartsWith("Tutorial") && ScenarioScript.EndText(true).StartsWith("Tutorial complete") && ScenarioScript.EndText(false).Length > 0;
-                detail = "start " + ok + ", raiders kept in, player eliminable " + keptIn + "; welcome and marker " + step1 + "; selected: move hint, marker moved " + step2
-                       + "; parked elsewhere: no end-turn hint, marker stays " + waits + ", no ambush, raiders still in " + noAmbush + "; moved to the mark: Good job, end-turn hint " + step3
-                       + "; ambush: raider spawned in the fog " + spawned + ", next to the grunt and hit it (to " + hitTo + ") " + hit + ", lines " + step4
-                       + "; back into supply, told to end the turn " + back + ", raider held its ground, fed " + holds + ", healed " + healed + ", HQ hint on turn 3 " + step5 + "; HQ opened " + step6 + "; grunt bought " + step7 + (step7 ? "" : " (HQ offers " + offered + "; gold " + human.money + ")") + "; truck bought and attack hint " + step8
-                       + "; raider killed in " + rounds + " round(s), player wins " + won + "; description, win and loss text " + words + (won ? "" : " [last lines: " + end + "]");
-                ScenarioDialogue.Presenter = null;
-                return ok && words && holds && keptIn && waits && noAmbush && step1 && step2 && step3 && step4 && back && healed && step5 && step6 && step7 && step8 && won;
+            case "scriptTerrainMovedFresh": {
+                Unit walker = Rig.At(-3, 0).occupier, hurt = Rig.At(2, -1).occupier, fresh = Rig.At(3, -2).occupier, tank = Rig.At(5, -2).occupier;
+                hurt.Strength = 3;
+                s.Tick(0.1f);
+                bool salute = Fired(s, "Salute") == 1 && hurt.Strength == 3 && fresh.Strength == 6 && walker.Strength == 6;
+                ScenarioGame.Order(walker, null, Rig.At(-2, 0)); walker.active = true; s.Tick(0.1f);
+                bool hills = Fired(s, "Onto hills") == 1 && Fired(s, "Moved") == 0 && s.Find("Moved").Events == 1 && s.Find("Onto road or forest").Events == 0;
+                ScenarioGame.Order(walker, null, Rig.At(-3, 1)); s.Tick(0.1f); s.Tick(0.1f);
+                bool road = s.Find("Onto road or forest").Events == 1 && Fired(s, "Moved") == 1 && Fired(s, "Fresh") == 1;
+                bool freshHit = fresh.Strength < 6 && hurt.Strength == 3 && Fired(s, "Hit in cover") == 1 && Fired(s, "Hit in the open") == 0;
+                hurt.Strength = 2; s.Tick(0.1f);
+                bool openHit = Fired(s, "Hit in the open") == 1;
+                detail = "salute hits nobody " + salute + "; onto hills: On Terrain Hills, one move counted " + hills + "; onto the road: 'Road, Forest' one of two, two moves, the fresh order " + road
+                       + "; the tank went for the full-strength grunt in the forest, not the hurt one nearer " + freshHit + " (fresh " + fresh.Strength + ", hurt " + hurt.Strength + "); hit on grass: Cover Below 2 " + openHit;
+                return salute && hills && road && freshHit && openHit;
             }
-            case "scriptFieldExercises": {
-                Player human = o, jori = a;
-                bool keptIn = !jori.eliminable && human.eliminable && jori.units.Count == 0;
-                FakeBox box = new FakeBox();
-                ScenarioDialogue.Presenter = box;
-                foreach (MonoBehaviour m in jori.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
-                AIPlayer ai = jori.GetComponent<AIPlayer>();
-                List<string> transcript = new List<string>();
-                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
-                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
-                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
-                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == jori && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == jori) gc.EndTurn(); settle(); };
-                Action endTurn = () => { gc.EndTurn(); settle(); aiTurn(); };
-                Func<string, bool> marked = id => s.markers.Exists(m => m.Id == id);
-                Func<Unit> alpha = () => ScenarioGame.Named("Alpha");
-                Func<Unit> pride = () => ScenarioGame.Named("Jori's Pride");
-                HexTile pit = Rig.At(1, 1), city = Rig.At(-2, 3), from = Rig.At(0, 2);
-                bool sandPit = pit.terrain != null && pit.terrain.name == "Barrens" && gc.fogOfWar;
-
-                settle();
-                bool intro = everSaid("Anna Mikhailovna") && everSaid("rutting goat") && everSaid("that sand pit") && marked("alpha");
-                HexTile.NotifyUnitSelected(alpha()); settle();
-                bool selected = everSaid("staging ground to propose") && marked("goal") && !marked("alpha");
-                // Wandered: one step aside, not the pit.
-                ScenarioGame.Order(alpha(), null, Rig.At(-1, 1)); settle();
-                bool wandered = everSaid("where are they") && !marked("goal");
-                endTurn();
-                bool noJori = pride() == null && !gc.gameOver;
-                bool again = marked("alpha");
-                HexTile.NotifyUnitSelected(alpha()); settle();
-                bool againSelected = marked("goal");
-                HexTile.NotifyMoveProposed(alpha(), pit); settle();
-                bool confirmTold = everSaid("Then click again to confirm.");
-                ScenarioGame.Order(alpha(), null, pit); settle();
-                bool onPit = alpha().tile == pit && everSaid("Good job!") && !marked("goal");
-                gc.EndTurn(); settle();   // Jori's turn: the cheap shot
-                Unit p = pride();
-                bool appeared = p != null && p.owner == jori && p.supplies == 2;
-                int alphaHit = alpha().Strength, prideHit = p != null ? p.Strength : -1;
-                bool outOfSupply = ScenarioGame.CutOff(alpha());
-                bool cheapShot = alphaHit == 3 && prideHit == 5 && alpha().tile != pit && outOfSupply && everSaid("hit yours for 3 damage") && everSaid("A unit's damage depends on its strength");
-                HexTile.NotifyEnemyInspected(p); settle();
-                bool hisReach = everSaid("where HE can move and hit");
-                aiTurn();
-                bool fellBackLine = everSaid("he fell back a tile") && marked("alpha");
-                HexTile.NotifyUnitSelected(alpha()); settle();
-                bool cityMarked = marked("city") && everSaid("marked city in supply");
-                ScenarioGame.Order(alpha(), null, city); settle();
-                bool ran = alpha().tile == city && everSaid("you better run") && !marked("city");
-                endTurn();
-                bool cityHeal = everSaid("gone back up 2 strength");
-                int turns = 0;
-                // Until full strength (the counterattack's cue), ending turns on the city.
-                while (Fired(s, "1.14 Counterattack") == 0 && !gc.gameOver && turns++ < 4) endTurn();
-                bool held = pride() != null && pride().tile == pit;
-                bool counter = Fired(s, "1.14 Counterattack") == 1 && alpha().Strength >= 5 && marked("alpha");
-                // Step 1, then the mistake: the move made, no attack.
-                HexTile.NotifyUnitSelected(alpha()); settle();
-                bool step1 = marked("attack") && everSaid("adjacent to the enemy");
-                Unit before = alpha(); int strengthBefore = before.Strength, unitsBefore = human.units.Count;
-                ScenarioGame.Order(alpha(), null, from); settle();
-                Unit replaced = alpha();
-                bool redo = everSaid("You confirmed the move next to the enemy") && replaced == before && replaced.tile == Rig.At(-1, 2) && replaced.active && replaced.Strength == strengthBefore
-                            && human.units.Count == unitsBefore && marked("alpha") && !marked("attack");
-                // The lesson again: select, propose the move next to Jori, then the attack from it.
-                int linesBefore = transcript.Count;
-                HexTile.NotifyUnitSelected(alpha()); settle();
-                bool step1Again = marked("attack") && everSaid("adjacent to the enemy") && transcript.Count > linesBefore;
-                HexTile.NotifyMoveProposed(alpha(), from); settle();
-                bool step2 = marked("target") && !marked("attack") && everSaid("propose an attack");
-                int prideBefore = pride().Strength;
-                ScenarioGame.Order(alpha(), pride(), from); settle();
-                bool step3 = pride() == null || pride().Strength < prideBefore;
-                step3 &= everSaid("Damn you!") && !marked("target") && !marked("alpha");
-                // Finish him.
-                int rounds = 0;
-                while (pride() != null && !gc.gameOver && rounds++ < 8) {
-                    endTurn();
-                    foreach (Unit u in new List<Unit>(human.units)) if (u != null && u.Strength > 0 && u.active && pride() != null && u.CanAttack(pride())) ScenarioGame.Order(u, pride(), null);
-                    settle();
-                }
-                bool won = gc.gameOver && gc.winner == human;
-                // A unit starved (or ditched) is the enemy's kill; ours starved is our loss; an ally's is nobody's.
+            case "scriptBystander": {
+                Player range = Rig.AddPlayer("Range", 200);
+                range.bystander = true;
+                Unit gun = Put("Artillery", range, -3, 0), red = Rig.At(0, 0).occupier, blue = Rig.At(2, 0).occupier;
+                gun.active = true;
+                bool fights = !red.CanAttack(gun) && !gun.CanAttack(red) && !blue.CanAttack(gun) && red.CanAttack(blue)
+                              && !Player.Hostile(range, o) && !Player.Hostile(a, range) && Player.Hostile(a, o) && !FogOfWar.IsHuman(range)
+                              && !ScenarioGame.SideIs(range, TriggerSide.Human) && !ScenarioGame.SideIs(range, TriggerSide.AI);
+                s.Tick(0.1f);
+                bool notHuman = !s.IsMet(s.Find("Humans"), 0);
+                // Turn order: whoever comes after Blue, the range is skipped.
+                List<string> order = new List<string>();
+                for (int i = 0; i < 5; i++) { gc.EndTurn(); s.Tick(0.1f); order.Add(gc.activePlayer.personal_name); }
+                bool skipped = !order.Contains("Range");
+                // Blue knocked out with the range's guns still standing: Red wins as usual.
+                a.eliminated = true;   // (Blue out, however: the range's guns are still on the board)
+                gc.CheckVictory();
+                bool won = gc.gameOver && gc.winner == o;
+                detail = "";
+                // Given to Red, the gun fights again.
+                ScenarioGame.GiveUnits(new List<Unit> { gun }, o);
+                bool given = gun.owner == o && !gun.owner.bystander;
+                detail += "nobody fights its units, they fight nobody, nobody's enemy, not Human or AI " + fights + "; a Human filter leaves it out " + notHuman + "; turns: " + string.Join(", ", order.ToArray()) + ", never the range " + skipped
+                       + "; Red wins with the range's guns on the board " + won + "; given to Red: Red's " + given;
+                return fights && notHuman && skipped && won && given;
+            }
+            case "scriptMissionTally": {
                 GameRecord rec = new GameRecord();
-                rec.sides.Add(new GameRecord.Side { id = human.id }); rec.sides.Add(new GameRecord.Side { id = jori.id });
-                rec.losses.Add(new GameRecord.Loss { side = jori.id, cause = HexTactica.Harness.GameLog.Lines.Supply });
-                rec.losses.Add(new GameRecord.Loss { side = jori.id, cause = HexTactica.Harness.GameLog.Lines.Fuel });
-                rec.losses.Add(new GameRecord.Loss { side = jori.id, cause = HexTactica.Harness.GameLog.Lines.Combat, killerSide = human.id });
-                rec.losses.Add(new GameRecord.Loss { side = human.id, cause = HexTactica.Harness.GameLog.Lines.Supply });
-                MissionTally tl = MissionRating.Tally(rec, human.id, true);
-                bool ourKill = won && tl.kills == 3 && tl.losses == 1;
-                bool starved = everSaid("we're starving") && !marked("highlight");
-                bool reinforced = everSaid("Reinforcements are here") && Fired(s, "1.18 Reinforcements") == 1;
-                said();
-                detail = "start: sand pit, fog on " + sandPit + ", Jori kept in with nothing " + keptIn + "; introductions, Alpha marked " + intro + "; selected: pit marked " + selected
-                       + "; wandered: line, marker gone " + wandered + ", no Jori yet " + noJori + ", lesson again " + again + "/" + againSelected + "; told to confirm " + confirmTold + "; on the pit " + onPit
-                       + "; Jori's squad appeared with 2 supplies " + appeared + ", walked out of the fog and hit Alpha to " + alphaHit + " taking it to " + prideHit + ", Alpha fell back out of supply " + outOfSupply + ", line " + cheapShot
-                       + "; his reach explained " + hisReach + "; retreat line, Alpha marked " + fellBackLine + "; city marked once selected " + cityMarked + "; ran to the city " + ran + "; healed on the city " + cityHeal
-                       + "; Jori's squad took the pit and held it " + held + ", starved, highlight gone " + starved + "; back to 5: counterattack cue " + counter
-                       + "; step 1 " + step1 + "; moved without attacking: the same Alpha put 2 tiles off, ready, nobody lost, lesson replayed " + redo + " (again " + step1Again + "); step 2 " + step2 + "; step 3 " + step3
-                       + "; reinforcements " + reinforced + "; won in " + rounds + " more round(s) " + won + ", starved and ditched enemies count as our kills " + ourKill + " (" + tl.kills + "/" + tl.losses + ")";
-                ScenarioDialogue.Presenter = null;
-                return sandPit && keptIn && intro && selected && wandered && noJori && again && againSelected && confirmTold && onPit && appeared && cheapShot && hisReach && fellBackLine && cityMarked && ran
-                       && cityHeal && held && starved && counter && step1 && redo && step1Again && step2 && step3 && reinforced && won && ourKill;
+                rec.sides.Add(new GameRecord.Side { id = o.id }); rec.sides.Add(new GameRecord.Side { id = a.id }); rec.sides.Add(new GameRecord.Side { id = 7, team = 1 });
+                foreach (int[] t in new[] { new[] { 0, (int)o.id }, new[] { 1, (int)a.id }, new[] { 1, (int)o.id }, new[] { 1, (int)o.id }, new[] { 2, (int)a.id }, new[] { 2, (int)o.id } })
+                    rec.snaps.Add(new GameRecord.Snap { round = t[0], mover = t[1] });
+                rec.losses.Add(new GameRecord.Loss { side = a.id, cause = HexTactica.Harness.GameLog.Lines.Combat, killerSide = o.id });
+                rec.losses.Add(new GameRecord.Loss { side = a.id, cause = HexTactica.Harness.GameLog.Lines.Supply });
+                rec.losses.Add(new GameRecord.Loss { side = a.id, cause = HexTactica.Harness.GameLog.Lines.Fuel });
+                rec.losses.Add(new GameRecord.Loss { side = a.id, cause = HexTactica.Harness.GameLog.Lines.Combat, killerSide = 7 });
+                rec.losses.Add(new GameRecord.Loss { side = o.id, cause = HexTactica.Harness.GameLog.Lines.Supply });
+                rec.losses.Add(new GameRecord.Loss { side = o.id, cause = HexTactica.Harness.GameLog.Lines.Combat, killerSide = a.id });
+                MissionTally tl = MissionRating.Tally(rec, o.id, true);
+                detail = "turns " + tl.turns + " (3 days, one logged twice), kills " + tl.kills + " (ours, starved, ditched; not one an ally's side made), losses " + tl.losses;
+                return tl.recorded && tl.won && tl.turns == 3 && tl.kills == 3 && tl.losses == 2;
             }
-            case "scriptCombatTrials": {
-                Player human = o, jori = a;
-                FakeBox box = new FakeBox();
-                ScenarioDialogue.Presenter = box;
-                foreach (MonoBehaviour m in jori.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
-                AIPlayer ai = jori.GetComponent<AIPlayer>();
-                List<string> transcript = new List<string>();
-                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
-                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
-                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
-                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == jori && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == jori) gc.EndTurn(); settle(); };
-                Action endTurn = () => { gc.EndTurn(); settle(); aiTurn(); };
-                Func<string, bool> marked = id => s.markers.Exists(m => m.Id == id);
-                Func<Unit> tank = () => ScenarioGame.Named("Jori's Tank");
-                Func<string, Unit> ours = name => ScenarioGame.Named(name);
-                HexTile cityTile = Rig.At(0, 0);
-                Building city = cityTile.building;
-                List<string> log = new List<string>();
-                string logRoot = Path.Combine(Path.GetTempPath(), "hextactica-m2-" + Guid.NewGuid().ToString("N"));
-                HexTactica.Harness.GameLog.Start(l.path, "Human", logRoot);
-                Func<HexTile, string> P = t => t == null ? "-" : "(" + t.x + "," + t.y + ")";
-                bool start = gc.fogOfWar && !gc.purchasesAllowed && city != null && city.owner == null && human.units.Count == 4 && jori.units.Count == 1 && tank() == null && Fired(s, "S1 Jori has no units") == 0 && !s.Find("S1 Jori has no units").Enabled
-                             && human.faction != null && human.faction.name == "Federation" && jori.faction != null && jori.faction.name == "Federation";
-
-                settle();
-                bool intro = everSaid("That's the city you want to seize") && !marked("city") && Fired(s, "2.1 The city") == 1;
-                // Turn 1: Alpha walks into the ring round the city.
-                Unit alpha = ours("Alpha");
-                ScenarioGame.Order(alpha, null, Rig.At(-3, 1)); settle();
-                log.Add("Alpha " + P(alpha.tile) + " near-events " + s.Find("Grunt near the city").Events + " start: fog " + gc.fogOfWar + " buy " + gc.purchasesAllowed + " city " + (city != null ? "" + city.owner : "none") + " units " + human.units.Count + "/" + jori.units.Count + " factions " + (human.faction != null ? human.faction.name : "-") + "/" + (jori.faction != null ? jori.faction.name : "-"));
-                FogOfWar.Changed();
-                gc.EndTurn(); settle();   // Jori's turn: the tank
-                Unit t1 = tank();
-                log.Add("Jori's turn: active " + gc.activePlayer.id + " jori's-turn met " + s.IsMet(s.Find("Jori's turn"), 0) + " near " + s.Find("Grunt near the city").Events + " 2.2 fired " + Fired(s, "2.2 The tank rides in") + " tanks " + jori.units.FindAll(u => GameController.UnitName(u) == "Tank").Count);
-                bool tankCame = t1 != null && t1.owner == jori && Fired(s, "2.2 The tank rides in") == 1;
-                int alphaAfter = alpha.Strength, tankAfter = t1 != null ? t1.Strength : -1;
-                bool firstHit = alphaAfter == 3 && tankAfter == 5 && everSaid("Tanks are your worst nightmare") && everSaid("main battle tank");
-                log.Add("tank at " + (t1 != null ? P(t1.tile) : "none") + ", Alpha " + alphaAfter + " " + P(alpha.tile) + ", tank " + tankAfter);
-                aiTurn();
-                if (tank() != null) { HexTile.NotifyEnemyInspected(tank()); settle(); }
-                bool armour = everSaid("Its armour is 4 and your rifles' piercing is 0");
-                // Turn 2: the cover lesson; a grunt selected: the forests and hills it can reach are ringed.
-                bool coverLines = everSaid("Forests and hills are cover.") && everSaid("counts 2 points of cover");
-                Unit bravo = ours("Bravo");
-                HexTile.NotifyUnitSelected(alpha); settle();
-                List<ShownMarker> rings = s.markers.FindAll(m => m.Id.StartsWith("cover:"));
-                bool ringsOk = rings.Count > 0 && rings.TrueForAll(m => Rig.At(m.TileX, m.TileY).terrain.cover >= 2 && Rig.At(m.TileX, m.TileY).terrain.name != "Urban");
-                ShownMarker pick = rings.Count > 0 ? rings[0] : null;
-                foreach (ShownMarker m in rings) if (pick == null || Rig.At(m.TileX, m.TileY).Distance(alpha.tile) < Rig.At(pick.TileX, pick.TileY).Distance(alpha.tile)) pick = m;
-                if (pick != null) { HexTile.NotifyMoveProposed(alpha, Rig.At(pick.TileX, pick.TileY)); settle(); }
-                bool ringsGone = !s.markers.Exists(m => m.Id.StartsWith("cover:"));
-                if (pick != null) { ScenarioGame.Order(alpha, null, Rig.At(pick.TileX, pick.TileY)); settle(); }
-                log.Add("Alpha to the trees " + P(alpha.tile) + " (" + alpha.tile.terrain.name + "), " + rings.Count + " rings");
-                // Bravo into the trees too, toward the city.
-                HexTile.NotifyUnitSelected(bravo); settle();
-                List<ShownMarker> rb = s.markers.FindAll(m => m.Id.StartsWith("cover:"));
-                ShownMarker pb = null;
-                foreach (ShownMarker m in rb) if (pb == null || Rig.At(m.TileX, m.TileY).Distance(cityTile) < Rig.At(pb.TileX, pb.TileY).Distance(cityTile)) pb = m;
-                if (pb != null) { ScenarioGame.Order(bravo, null, Rig.At(pb.TileX, pb.TileY)); settle(); }
-                log.Add("Bravo " + P(bravo.tile) + " (" + bravo.tile.terrain.name + ")");
-                // Charlie into the trees too (left in the open, Jori's tank would go for him instead: the owner's other case).
-                Unit charlie = ours("Charlie");
-                ScenarioGame.Order(charlie, null, Rig.At(-5, 4)); settle();
-                gc.EndTurn(); settle();   // Jori's turn: the tank hunts our squads in the trees
-                bool noRingsLeft = !s.markers.Exists(m => m.Id.StartsWith("cover:"));
-                bool hunted = Fired(s, "2.5 Tank hunts") == 1 && bravo.Strength < 6;   // the fresh squad, not the nearest (Alpha, hurt)
-                bool ambushed = Fired(s, "2.5 Ambushed") == 1 && everSaid("What the hell just happened?");
-                log.Add("tank " + (tank() != null ? tank().Strength + " " + P(tank().tile) : "gone") + "; Alpha " + alpha.Strength + ", Bravo " + bravo.Strength);
-                aiTurn();
-                // Turn 3: the six numbers; the counterattack, every squad that can reach the tank.
-                bool numbers = everSaid("six numbers") && everSaid("My armor is tough enough");
-                foreach (Unit u in new List<Unit>(human.units)) if (u != null && u.Strength > 0 && u.active && tank() != null && u.CanAttack(tank())) { ScenarioGame.Order(u, tank(), null); settle(); }
-                bool countered = Fired(s, "Counterattack made") == 1;
-                log.Add("counterattack: tank " + (tank() != null ? tank().Strength.ToString() : "gone"));
-                endTurn();
-                // Turn 4: Anna's tank and supply unit; the supply unit marked, then the tile to send it to.
-                Unit sup2 = ours("Supplies 2");
-                bool gift = Fired(s, "2.10 Anna's gift") == 1 && sup2 != null && human.units.Exists(u => u != null && u.Strength > 0 && GameController.DisplayName(u, u.owner) == "Tank") && everSaid("even out the odds") && marked("sup");
-                // From here (the supply lesson, the capture lesson and the hold) uncontested (the fight itself is the player's): Jori keeps one squad at
-                // home, held still from here on (his side would be out with none: the hold must win, not the wipe-out).
-                List<Unit> joriLeft = new List<Unit>(jori.units);
-                Unit keeper = null;
-                foreach (Unit u in joriLeft) if (u != null && u.Strength > 0 && GameController.DisplayName(u, u.owner) == "Grunt" && (keeper == null || u.tile.Distance(Rig.At(6, -3)) < keeper.tile.Distance(Rig.At(6, -3)))) keeper = u;
-                foreach (Unit u in joriLeft) if (u != null && u != keeper && u.Strength > 0) u.Perish();
-                if (keeper != null) ScenarioGame.Place(new List<Unit> { keeper }, 6, -3, false);
-                settle();
-                aiTurn = () => { if (gc.activePlayer == jori) gc.EndTurn(); settle(); };
-                bool supMark = false, lit = false, gena = false;
-                if (sup2 != null) {
-                    HexTile.NotifyUnitSelected(sup2); settle();
-                    supMark = !marked("sup") && everSaid("A supply unit spreads supply") && !s.markers.Exists(m => m.Id == "supmark");
-                    bool darkBefore = !SupplyNetwork.Solve(human, false).IsSupplied(Rig.At(-3, -2));
-                    log.Add("Supplies 2 spawned at " + P(sup2.tile) + " active " + sup2.active + ", (-3,0) " + (Rig.At(-3, 0).occupier != null ? Rig.At(-3, 0).occupier.name + " of " + Rig.At(-3, 0).occupier.owner.personal_name : "free"));
-                    ScenarioGame.Order(sup2, null, Rig.At(-3, 0)); settle();
-                    lit = darkBefore && sup2.tile == Rig.At(-3, 0) && SupplyNetwork.Solve(human, false).IsSupplied(Rig.At(-3, -2));
-                    log.Add("Supplies 2 " + P(sup2.tile) + ", dark before " + darkBefore + ", (-3,0) held by " + (Rig.At(-3, 0).occupier != null && Rig.At(-3, 0).occupier != sup2 ? Rig.At(-3, 0).occupier.name : "-"));
-                    gena = everSaid("The lit ground reaches 2 tiles further now");
-                }
-                // The city: a squad onto it, the others fighting whatever is in reach; until it is won.
-                int rounds = 0;
-                bool captureLesson = false;
-                while (!gc.gameOver && rounds++ < 14) {
-                    captureLesson |= Fired(s, "2.12 Capture") == 1;
-                    Unit capper = null;
-                    foreach (Unit u in human.units) if (u != null && u.Strength > 0 && GameController.DisplayName(u, u.owner) == "Grunt" && (capper == null || u.tile.Distance(cityTile) < capper.tile.Distance(cityTile) || (u.tile == cityTile))) capper = u;
-                    if (capper != null && capper.active && capper.tile != cityTile && (cityTile.occupier == null || cityTile.occupier == capper)) { ScenarioGame.Order(capper, null, cityTile); settle(); }
-                    foreach (Unit u in new List<Unit>(human.units)) {
-                        if (u == null || u.Strength <= 0 || !u.active || u == capper || gc.gameOver) continue;
-                        Unit foe = null;
-                        foreach (Unit e in jori.units) if (e != null && e.Strength > 0 && e.tile != null && u.CanAttack(e) && (foe == null || e.tile.Distance(u.tile) < foe.tile.Distance(u.tile))) foe = e;
-                        if (foe != null && foe.tile.Distance(u.tile) <= u.moveRange + 1) { ScenarioGame.Order(u, foe, null); settle(); }
-                    }
-                    if (gc.gameOver) break;
-                    log.Add("round " + rounds + ": city " + (city.owner == human ? "ours" : city.owner == jori ? "Jori's" : "nobody's") + " " + city.capturePoints + ", on it " + (cityTile.occupier != null ? cityTile.occupier.name : "-") + "; us " + human.units.Count + ", Jori " + jori.units.Count);
-                    endTurn();
-                }
-                HexTactica.Harness.GameLog.EndIfOver();
-                string folder = HexTactica.Harness.GameLog.Folder;
-                HexTactica.Harness.GameLog.Stop();
-                MissionTally tally = MissionRating.Tally(GameRecord.Read(folder), human.id, true);
-                try { Directory.Delete(logRoot, true); } catch (Exception) { }
-                bool turnsRight = tally.recorded && tally.turns == s.TurnsOf(human.id);
-                log.Add("tally: " + tally.turns + " turns (ours " + s.TurnsOf(human.id) + ", days " + gc.days + "), " + tally.kills + " kills, " + tally.losses + " losses");
-                bool secured = everSaid("City secured!") && Fired(s, "2.13 City secured") == 1;
-                bool heldWin = gc.gameOver && gc.winner == human && (Fired(s, "2.13 Held") == 1 || Fired(s, "S1 Jori has no units") == 1);
-                // Our tank previewing an attack on a squad in cover: Anna's "!" line (the click's notice, as the board sends it).
-                said();
-                detail = "start " + start + "; the city shown " + intro + "; the tank came for the grunt by the city " + tankCame + ", hit it to " + alphaAfter + ", taking " + (6 - tankAfter) + " " + firstHit + "; armour line " + armour
-                       + "; cover lines " + coverLines + "; rings on forests and hills only " + ringsOk + ", gone with the move proposed " + ringsGone + ", none left after the turn " + noRingsLeft
-                       + "; the tank hunted " + hunted + ", ambushed " + ambushed + "; six numbers " + numbers + "; counterattack " + countered + "; Anna's tank and supply unit " + gift + "; supply mark " + supMark + ", lit further (not asked) " + lit + ", Gena " + gena
-                       + "; capture lesson " + captureLesson + "; city secured " + secured + "; won " + heldWin + " (held " + Fired(s, "2.13 Held") + ", wiped out " + Fired(s, "S1 Jori has no units") + ") in " + rounds + " round(s)"
-                       + " | " + string.Join("; ", log.ToArray());
-                ScenarioDialogue.Presenter = null;
-                return start && intro && tankCame && firstHit && armour && coverLines && ringsOk && ringsGone && noRingsLeft && hunted && ambushed && numbers && countered && gift && supMark && gena && captureLesson && secured && heldWin;
-            }
-            case "scriptTransitTrouble": {
-                Player human = o, jori = a;
-                FakeBox box = new FakeBox();
-                ScenarioDialogue.Presenter = box;
-                foreach (MonoBehaviour m in jori.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
-                AIPlayer ai = jori.GetComponent<AIPlayer>();
-                List<string> transcript = new List<string>();
-                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
-                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
-                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
-                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == jori && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == jori) gc.EndTurn(); settle(); };
-                Action endTurn = () => { gc.EndTurn(); settle(); aiTurn(); };
-                Func<string, bool> marked = id => s.markers.Exists(m => m.Id == id);
-                Func<string, Unit> U = ScenarioGame.Named;
-                Func<HexTile, string> P = t => t == null ? "-" : "(" + t.x + "," + t.y + ")";
-                Func<Unit, Unit, bool> board = (cargo, transport) => {
-                    if (cargo == null || transport == null) return false;
-                    List<HexTile> steps = HexTile.BoardingPath(cargo, transport);
-                    if (steps == null || !cargo.WalkAndBoard(steps, transport, true)) return false;
-                    cargo.FinishActive();
-                    return true;
-                };
-                List<string> log = new List<string>();
-                HexTile city = Rig.At(3, 0), front = Rig.At(2, 1), cut = Rig.At(-1, 0);
-                Unit rifles = U("Rifles"), truck = U("Truck"), supply = U("Supply"), bandit = U("Bandit");
-                bool start = rifles != null && truck != null && supply != null && bandit != null && U("Blue Squad") != null && gc.fogOfWar && !gc.purchasesAllowed
-                             && city.building != null && city.building.owner == null && GameAssets.CampaignOnly(GameAssets.Unit("Bandit"));
-                settle();
-                bool intro = everSaid("where's the objective") && everSaid("plank by plank") && everSaid("bring the fight to him") && marked("rifles");
-                HexTile.NotifyUnitSelected(rifles); settle();
-                bool m1 = marked("truck") && !marked("rifles");
-                bool b1 = board(rifles, truck); settle();
-                bool m2 = b1 && everSaid("He's aboard") && marked("supply") && !marked("truck");
-                HexTile.NotifyUnitSelected(supply); settle();
-                bool m3 = marked("truck") && !marked("supply");
-                bool b2 = board(supply, truck); settle();
-                bool m4 = b2 && everSaid("Supply aboard") && marked("truck");
-                HexTile.NotifyUnitSelected(truck); settle();
-                bool m5 = marked("front") && !marked("truck") && everSaid("Wheels fly on roads");
-                ScenarioGame.Order(truck, null, front); settle();
-                bool drove = truck.tile == front && everSaid("Here we are") && marked("city") && !marked("front");
-                log.Add("truck " + P(truck.tile));
-                bool down = Transporting.Unload(truck, rifles, city); settle();
-                bool onCity = down && rifles.tile == city && everSaid("Keep him there") && !marked("city");
-                FogOfWar.Changed();
-                gc.EndTurn(); settle();   // Jori's turn: the bandit
-                FogOfWar.Changed(); FogOfWar.Refresh();
-                bool atCut = bandit.tile == cut, unseen = !FogOfWar.TileVisible(human, bandit.tile);
-                log.Add("bandit " + P(bandit.tile) + (unseen ? " unseen" : " SEEN") + ", city " + city.building.capturePoints);
-                aiTurn();
-                FogOfWar.Changed(); FogOfWar.Refresh();
-                bool cutOff = ScenarioGame.CutOff(truck);
-                bool cutLines = Fired(s, "3.9 Cut off") == 1 && everSaid("Our supply is cut off") && everSaid("shows dashed") && everSaid("These are on loan");
-                Unit recon = U("Recon"), scouts = U("Scouts");
-                bool loan = recon != null && scouts != null && marked("scouts");
-                bool b3 = false;
-                if (loan) { HexTile.NotifyUnitSelected(scouts); settle(); b3 = marked("recon") && board(scouts, recon); settle(); }
-                bool aboard = b3 && everSaid("Find whoever is cutting the road") && !marked("recon");
-                log.Add("rifles " + rifles.Strength + ", truck " + truck.Strength + ", Blue squad " + (U("Blue Squad") != null ? U("Blue Squad").Strength + " " + P(U("Blue Squad").tile) : "gone"));
-                // The recon goes for the bandit; everyone else hits what is in reach; the grunt stays on the city.
-                int rounds = 0;
-                while (!gc.gameOver && rounds++ < 10) {
-                    Unit band = U("Bandit");
-                    if (recon != null && recon.Strength > 0 && recon.active && band != null) {
-                        if (recon.CanAttack(band)) ScenarioGame.Order(recon, band, null); else ScenarioGame.Order(recon, null, band.tile);
-                        settle();
-                        if (scouts != null && scouts.trasnporter == recon && band != null) {
-                            foreach (HexTile n in recon.tile.neighbors) if (n != null && n.occupier == null && Transporting.Unload(recon, scouts, n)) break;
-                            settle();
-                        }
-                    }
-                    foreach (Unit u in new List<Unit>(human.units)) {
-                        if (u == null || u.Strength <= 0 || !u.active || u == rifles || u.trasnporter != null || gc.gameOver) continue;
-                        Unit foe = null;
-                        foreach (Unit e in jori.units) if (e != null && e.Strength > 0 && e.tile != null && u.CanAttack(e) && (foe == null || e.tile.Distance(u.tile) < foe.tile.Distance(u.tile))) foe = e;
-                        if (foe != null && foe.tile.Distance(u.tile) <= u.moveRange + 1) { ScenarioGame.Order(u, foe, null); settle(); }
-                    }
-                    if (gc.gameOver) break;
-                    log.Add("round " + rounds + ": bandit " + (U("Bandit") != null ? U("Bandit").Strength + " " + P(U("Bandit").tile) : "gone") + ", city " + (city.building.owner == human ? "ours" : city.building.owner == jori ? "Jori's" : "nobody's " + city.building.capturePoints) + ", rifles " + rifles.Strength + " " + P(rifles.tile));
-                    endTurn();
-                }
-                bool spotted = everSaid("Federation scum") && everSaid("How did they get here");
-                bool banditGone = U("Bandit") == null && (everSaid("To Blakia! Aargh!") || (everSaid("Pull back! To Blakia!") && Fired(s, "3.13 Bandit retreats") == 1));
-                bool won = gc.gameOver && gc.winner == human && (Fired(s, "3.17 Village taken") == 1 || Fired(s, "S1 Jori has no units") == 1);
-                said();
-                detail = "start " + start + "; the stolen village shown, the grunt marked " + intro + "; markers: truck " + m1 + ", aboard, supply marked " + m2 + ", truck " + m3 + ", supply aboard, truck marked " + m4 + ", the tile by the city " + m5
-                       + "; drove there in one move " + drove + "; put down on the city " + onCity + "; the bandit at the cut " + atCut + ", unseen " + unseen + ", the truck cut off " + cutOff + ", lines " + cutLines
-                       + "; recon and squad on loan " + loan + ", squad aboard " + aboard + "; bandit spotted " + spotted + ", gone " + banditGone + "; won " + won + " (village " + Fired(s, "3.17 Village taken") + ", wiped out " + Fired(s, "S1 Jori has no units") + ") in " + rounds + " round(s)"
-                       + " | " + string.Join("; ", log.ToArray());
-                ScenarioDialogue.Presenter = null;
-                return start && intro && m1 && m2 && m3 && m4 && m5 && drove && onCity && atCut && unseen && cutOff && cutLines && loan && aboard && spotted && banditGone && won;
-            }
-            case "scriptLiveFire": {
-                Player human = o, jori = a;
-                Player range = null;
-                foreach (Player p in gc.players) if (p != null && p.id == 200) range = p;
-                FakeBox box = new FakeBox();
-                ScenarioDialogue.Presenter = box;
-                foreach (MonoBehaviour m in jori.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
-                AIPlayer ai = jori.GetComponent<AIPlayer>();
-                List<string> transcript = new List<string>();
-                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
-                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
-                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
-                bool rangeEverActive = false;
-                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == jori && guard++ < 150) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == jori) gc.EndTurn(); settle(); rangeEverActive |= gc.activePlayer == range; };
-                Action endTurn = () => { gc.EndTurn(); settle(); rangeEverActive |= gc.activePlayer == range; aiTurn(); };
-                Func<string, bool> marked = id => s.markers.Exists(m => m.Id == id);
-                Func<string, Unit> U = ScenarioGame.Named;
-                List<string> log = new List<string>();
-                Unit gunA = U("Cannon A"), gunB = U("Cannon B"), gunC = U("Cannon C"), ours = U("Alpha");
-                bool start = range != null && range.bystander && gunA != null && gunA.owner == range && gc.players.Count == 3
-                             && !Player.Hostile(human, range) && Player.Hostile(human, jori) && !ours.CanAttack(gunA) && !gunA.CanAttack(ours) && !FogOfWar.IsHuman(range);
-                settle();
-                // Turn 1: Alpha onto the hill north of him (Blakian soil): the hills line and the elder's.
-                ScenarioGame.Order(ours, null, Rig.At(-4, 4)); settle();
-                bool hillLines = ours.tile == Rig.At(-4, 4) && everSaid("Hills provide moderate cover") && everSaid("sovereign Blakian soil");
-                bool salute = everSaid("Cease this monstrous noise") && everSaid("Fire again.") && everSaid("reply in kind") && everSaid("Please, enough!") && everSaid("up to four tiles away") && everSaid("Salutes are for old men") && gc.fogOfWar;
-                endTurn();
-                bool bandits = U("Alpha Bandit") != null && U("Bravo Bandit") != null && U("Gamma Bandit") != null && U("Alpha Bandit").owner == jori && everSaid("hired guns") && everSaid("knife at your throat");
-                bool notRange = gc.activePlayer == human && !rangeEverActive;
-                bool given = gunA.owner == human && marked("cannon") && everSaid("Use the salute cannons");
-                HexTile.NotifyUnitSelected(gunA); settle();
-                Unit b1 = U("Alpha Bandit");
-                bool targetMarked = marked("target") && !marked("cannon") && everSaid("Click the enemy to target them!");
-                bool inRange = b1 != null && gunA.CanAttackFrom(gunA.tile, b1);
-                if (b1 != null) { HexTile.NotifyAttackProposed(gunA, b1, false); settle(); }
-                bool previewed = everSaid("Enemy sighted!") && everSaid("click again to blast") && !marked("target");
-                int b1Before = b1 != null ? b1.Strength : -1;
-                if (b1 != null) { ScenarioGame.Order(gunA, b1, null); settle(); }
-                bool suppressed = b1 != null && b1.Strength < b1Before && b1.suppressed > 0 && everSaid("they are gray") && everSaid("reduced by half");
-                log.Add("bandit 1 " + b1Before + " -> " + (b1 != null ? b1.Strength + " suppressed " + b1.suppressed : "dead") + (inRange ? "" : " (NOT IN RANGE)"));
-                endTurn();
-                bool moreGuns = everSaid("more cannons from the poligon") && everSaid("Great idea!");
-                // From here Jori's side only does what the script orders (the battle itself is the player's to win).
-                aiTurn = () => { if (gc.activePlayer == jori) gc.EndTurn(); settle(); rangeEverActive |= gc.activePlayer == range; };
-                // A squad of ours sent beside gun B (if it is still the range's); Jori's squad walks to gun C (two turns).
-                int rounds = 0; bool securedB = gunB.owner == human;
-                for (; rounds < 3 && !gc.gameOver; rounds++) {
-                    if (gunB.owner == range) foreach (Unit u in new List<Unit>(human.units)) {
-                        if (u == null || !u.active || u.Strength <= 0 || u.trasnporter != null || u == gunA) continue;
-                        ScenarioGame.Order(u, null, gunB.tile); settle();
-                        if (gunB.owner != range) break;
-                    }
-                    securedB |= gunB.owner == human;
-                    log.Add("round " + (rounds + 1) + ": us " + human.units.Count + ", Jori " + jori.units.Count + ", B " + gunB.owner.personal_name + ", C " + (gunC != null && gunC.Strength > 0 ? gunC.owner.personal_name : "gone"));
-                    endTurn();
-                }
-                securedB |= gunB.owner == human || Fired(s, "Secure B (us)") == 1;
-                bool bTaken = Fired(s, "Secure B (us)") == 1 && gunB.owner == human && !marked("gunB");
-                // The rest of the battle is the player's; its lines are checked as Jori's force goes (removed here, as kills).
-                log.Add("before the end: over " + gc.gameOver + ", active " + gc.activePlayer.personal_name + ", running " + s.running.Count + (s.running.Count > 0 ? " (" + s.triggers[s.running[0].Trigger].Name + " at " + s.running[0].Next + ")" : "") + ", dialogue " + ScenarioDialogue.Showing);
-                Func<Func<Unit, bool>, int> killJori = which => { int k = 0; foreach (Unit u in new List<Unit>(jori.units)) if (u != null && u.Strength > 0 && which(u)) { u.Perish(); k++; settle(); } return k; };
-                Func<Unit, string> kind = u => GameController.DisplayName(u, u.owner);
-                killJori(u => kind(u) == "Tank"); killJori(u => kind(u) == "Artillery");
-                bool tankLine = everSaid("Gah! You got lucky!"), gunLine = everSaid("tips from the commander");
-                // Down to the last bandit (one may have fallen already in the fight): each one's own line; the last hurt:
-                // "the last straw", and on Jori's next turn the bandits leave (no last bandit's death line).
-                List<string> living = new List<string>();
-                foreach (string b in new[] { "Alpha Bandit", "Bravo Bandit", "Gamma Bandit" }) if (U(b) != null && U(b).Strength > 0) living.Add(b);
-                log.Add("bandits left before the end: " + string.Join(", ", living.ToArray()));
-                string lastName = living.Count > 0 ? living[living.Count - 1] : null;
-                Dictionary<string, string> dying = new Dictionary<string, string> { { "Alpha Bandit", "Stop this provocation at once!" }, { "Bravo Bandit", "We are betrayed!" }, { "Gamma Bandit", "Blue Sun dogs" } };
-                bool deathLines = true;
-                foreach (string b in living) if (b != lastName) { U(b).Perish(); settle(); deathLines &= everSaid(dying[b]); }
-                Unit last = lastName != null ? U(lastName) : null;
-                if (last != null) { last.Strength = Math.Max(1, Math.Min(2, last.Strength - 1)); settle(); }
-                bool lastStraw = everSaid("That's the last straw!");
-                aiTurn = () => { if (gc.activePlayer == jori) gc.EndTurn(); settle(); };
-                endTurn();
-                bool banditsGone = last != null && U(lastName) == null && Fired(s, "4.10b Bandits retreat") == 1 && !everSaid(dying[lastName]) && deathLines;
-                killJori(u => jori.units.Count > 1);
-                bool whatever = everSaid("Minister is here to see it");
-                bool kristoff = everSaid("Kristoff isn't coming");
-                killJori(u => true);
-                bool grabbed = Fired(s, "Secure C (Jori)") == 1 || Fired(s, "Secure C (us)") == 1;
-                bool won = gc.gameOver && gc.winner == human && everSaid("stole his thunder");
-                said();
-                bool lines = tankLine && gunLine && lastStraw && banditsGone && kristoff && whatever;
-                log.Add("by the way: roads " + everSaid("Roads grant extra movement") + ", hills " + everSaid("Hills provide moderate cover") + ", hit in the open " + everSaid("use the forests and hills for cover") + ", Blakian soil " + everSaid("sovereign Blakian soil") + ", tank pull back " + everSaid("pull back the tank"));
-                log.Add("lines: his tank " + tankLine + ", his gun " + gunLine + ", each bandit's death line, last straw " + lastStraw + ", bandits left (no line) " + banditsGone + ", Kristoff " + kristoff + ", whatever " + whatever);
-                detail = "start: three sides, the range a bystander nobody fights " + start + "; the salute, the elder, Gena's and Jori's lines, fog on after " + salute + "; Alpha onto the north hill: the hills line, the elder's " + hillLines + "; bandits on Jori's first turn " + bandits + ", the range never had a turn " + notRange
-                       + "; gun A given and marked " + given + ", the bandit marked once it is selected " + targetMarked + " (in range " + inRange + "), previewed " + previewed + ", fired: suppressed, Gena's lines " + suppressed
-                       + "; more guns " + moreGuns + "; gun B ours by a squad beside it, marker gone " + bTaken + ", gun C taken " + grabbed + "; the battle's lines " + lines + "; won " + won + " in " + rounds + " round(s), the range never had a turn " + !rangeEverActive
-                       + " | " + string.Join("; ", log.ToArray());
-                ScenarioDialogue.Presenter = null;
-                return start && salute && hillLines && bandits && notRange && given && targetMarked && inRange && previewed && suppressed && moreGuns && bTaken && grabbed && lines && won && !rangeEverActive;
-            }
-            case "scriptTutorial2": {
-                Player human = o, raiders = a;
-                FakeBox box = new FakeBox();
-                ScenarioDialogue.Presenter = box;
-                foreach (MonoBehaviour m in raiders.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
-                AIPlayer ai = raiders.GetComponent<AIPlayer>();
-                List<string> transcript = new List<string>();
-                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
-                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
-                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
-                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == raiders && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == raiders) gc.EndTurn(); settle(); };
-                // Boarding as the board's click does it (HexTile.ClickBoard): the walk in, then aboard, the unit's turn over.
-                Func<Unit, Unit, bool> board = (cargo, transport) => {
-                    if (cargo == null || transport == null) return false;
-                    List<HexTile> steps = HexTile.BoardingPath(cargo, transport);
-                    if (steps == null || !cargo.WalkAndBoard(steps, transport, true)) return false;
-                    cargo.FinishActive();
-                    return true;
-                };
-                Func<Unit, bool> supplied = u => { SupplyNetwork.Solve(human, false); return u != null && !ScenarioGame.CutOff(u); };
-                // Recorded as a game is (the game log): the mission's result is read from it at the end.
-                string logRoot = Path.Combine(Path.GetTempPath(), "hextactica-tutorial2-" + Guid.NewGuid().ToString("N"));
-                HexTactica.Harness.GameLog.Start(l.path, "Human", logRoot);
-
-                Unit truck = ScenarioGame.Named("Truck"), rifles = ScenarioGame.Named("Rifles"), supply = ScenarioGame.Named("Supply"), lookout = ScenarioGame.Named("Lookout");
-                HexTile front = Rig.At(2, 2), village = Rig.At(4, 2);
-                bool ok = truck != null && rifles != null && supply != null && lookout != null && human.units.Contains(truck) && lookout.owner == raiders
-                       && village.building != null && village.building.owner == raiders && !raiders.eliminable && !gc.purchasesAllowed;
-                settle();
-                string welcome = said(); bool step1 = welcome.Contains("climbs aboard") && s.markers.Exists(m => m.Id == "rifles");
-                // Turn 1: the grunt boards, then the supply unit; only then the drive is asked for.
-                bool aboard1 = board(rifles, truck); settle();
-                string first = said(); bool step2 = aboard1 && rifles.trasnporter == truck && first.Contains("Boarding used his turn") && s.markers.Exists(m => m.Id == "supply") && Fired(s, "Loaded") == 0;
-                bool aboard2 = board(supply, truck); settle();
-                string second = said(); bool step3 = aboard2 && supply.trasnporter == truck && second.Contains("Supply aboard") && second.Contains("Both aboard") && s.markers.Exists(m => m.Id == "front");
-                // The marked tile is beyond the HQ's own supply: what supplies it is the supply unit aboard the truck.
-                bool beyond = !SupplyNetwork.Solve(human, false).IsSupplied(front);
-                bool drove = ScenarioGame.Order(truck, null, front); settle();
-                string arrived = said();
-                bool carried = SupplyNetwork.Solve(human, false).IsSupplied(front) && SupplyNetwork.Solve(human, false).IsSupplied(Rig.At(3, 2));
-                bool step4 = drove && truck.tile == front && arrived.Contains("put the grunt down") && !s.markers.Exists(m => m.Id == "front");
-                bool put = Transporting.Unload(truck, rifles, Rig.At(3, 2)); settle();
-                string down = said(); bool step5 = put && rifles.tile == Rig.At(3, 2) && down.Contains("On foot again") && supplied(rifles) && !rifles.active;
-                gc.EndTurn(); settle(); aiTurn();
-                // Turn 2: the lookout has held (fed, its turn used), reinforcements at the HQ.
-                bool held = lookout.Strength > 0 && lookout.tile == village && lookout.supplies > 0;
-                bool spotted = everSaid("Enemy spotted");
-                Unit recon = ScenarioGame.Named("Recon"), scouts = ScenarioGame.Named("Scouts");
-                bool step6 = recon != null && scouts != null && recon.owner == human && everSaid("Reinforcements") && s.markers.Exists(m => m.Id == "recon") && Fired(s, "Reinforcements") == 1;
-                bool aboard3 = board(scouts, recon); settle();
-                bool step7 = aboard3 && scouts != null && scouts.trasnporter == recon && everSaid("Deal with that lookout") && s.markers.Exists(m => m.Id == "lookout");
-                // The lookout is destroyed (the recon car and the grunt, as many attacks as it takes), nobody cut off meanwhile.
-                int rounds = 0;
-                while (lookout != null && lookout.Strength > 0 && !gc.gameOver && rounds++ < 6) {
-                    foreach (Unit u in new List<Unit> { recon, rifles }) if (u != null && u.Strength > 0 && u.active && u.trasnporter == null && lookout.Strength > 0 && u.CanAttack(lookout)) { ScenarioGame.Order(u, lookout, null); settle(); }
-                    if (lookout.Strength <= 0 || gc.gameOver) break;
-                    gc.EndTurn(); settle(); aiTurn();
-                }
-                bool down2 = lookout.Strength <= 0 && everSaid("Lookout down") && s.markers.Exists(m => m.Id == "village") && !s.markers.Exists(m => m.Id == "lookout");
-                // A grunt takes the village and holds it.
-                int holdTurns = 0;
-                while (!gc.gameOver && holdTurns++ < 8) {
-                    if (rifles.Strength > 0 && rifles.active && rifles.tile != village) { ScenarioGame.Order(rifles, null, village); settle(); }
-                    if (gc.gameOver) break;
-                    gc.EndTurn(); settle(); aiTurn();
-                }
-                bool won = gc.gameOver && gc.winner == human && everSaid("The village is ours") && village.building.owner == human;
-                bool neverCutOff = Fired(s, "Out of supply") == 0;
-                bool words = s.description.StartsWith("Tutorial 2") && ScenarioScript.EndText(true).Length > 0 && ScenarioScript.EndText(false).Length > 0;
-                int humanTurns = s.TurnsOf(human.id);
-
-                // The result, as the mission's result screen reads it: from the game log.
-                HexTactica.Harness.GameLog.EndIfOver();
-                string folder = HexTactica.Harness.GameLog.Folder;
-                HexTactica.Harness.GameLog.Stop();
-                GameRecord record = GameRecord.Read(folder);
-                MissionTally tally = MissionRating.Tally(record, human.id, won);
-                try { Directory.Delete(logRoot, true); } catch (Exception) { }
-                bool tallied = tally.recorded && tally.turns == humanTurns && tally.kills == 1 && tally.losses == 0;
-
-                string campaign;
-                bool campaignOk = CampaignCheck(tally, out campaign);
-                detail = "start " + ok + "; welcome and marker " + step1 + "; grunt aboard, told to load supply, no drive yet " + step2 + "; supply aboard, told to drive " + step3
-                       + "; the mark is beyond the HQ's supply " + beyond + "; drove there, told to unload " + step4 + ", supply reaches round the truck " + carried + "; grunt put down in supply, its turn used " + step5
-                       + "; lookout held, fed " + held + ", spotted " + spotted + "; reinforcements on turn 2 " + step6 + "; squad aboard the recon car, attack hint " + step7
-                       + "; lookout destroyed in " + rounds + " round(s) " + down2 + "; village taken, player wins " + won + " (player turns " + humanTurns + "), nobody ever out of supply " + neverCutOff + "; words " + words
-                       + "; from the game log: " + tally.turns + " turns, " + tally.kills + " killed, " + tally.losses + " lost " + tallied + "; campaign: " + campaign
-                       + (won ? "" : " [last lines: " + string.Join(" | ", transcript.GetRange(Math.Max(0, transcript.Count - 4), Math.Min(4, transcript.Count)).ToArray()) + "]");
-                ScenarioDialogue.Presenter = null;
-                return ok && words && step1 && step2 && step3 && beyond && step4 && carried && step5 && held && spotted && step6 && step7 && down2 && won && neverCutOff && tallied && campaignOk;
+            case "scriptCampaignProgress": {
+                Dictionary<string, Vector2> anchors;
+                List<MissionInfo> missions = SceneMissions("Campaign", out anchors);
+                MissionInfo t2 = missions.Find(m => m.Name == "Tutorial 2");
+                MissionTally tally = new MissionTally { recorded = true, won = true, turns = t2 != null ? t2.parTurns : 1, kills = t2 != null ? t2.parKills : 0, losses = 0 };
+                return CampaignCheck(tally, out detail);
             }
             case "scriptSave": {
                 bool fromFile = s.triggers.Count == 4 && s.Find("Two kills") != null && s.Find("Two kills").Count == 2 && !s.Find("In area").Enabled;
