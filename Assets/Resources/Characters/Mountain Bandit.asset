@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cba62ac924d47ceb92491950c94ac84, type: 3}
   m_Name: Mountain Bandit
   m_EditorClassIdentifier: 
-  displayName: Jori Orlov
-  portrait: {fileID: 8873407784414428736, guid: 5cfada921e393ec41924cee75ee2f4dc, type: 3}
-  nameColour: {r: 0.32941175, g: 0.5374635, b: 0.92156863, a: 1}
+  displayName: Bandit
+  portrait: {fileID: -2011081452543692480, guid: a5ae252eea0ef4045860f59bfead3da5, type: 3}
+  nameColour: {r: 0.8018868, g: 0.44355342, b: 0, a: 1}
   drawnFacing: 0
