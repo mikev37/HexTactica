@@ -84,6 +84,8 @@ public class ScenarioScript : MonoBehaviour {
         HexTile.BuildingOpened += OnBuildingOpened;
         HexTile.MoveProposed += OnMoveProposed;
         HexTile.EnemyInspected += OnEnemyInspected;
+        HexTile.AttackProposed += OnAttackProposed;
+        Unit.Attacked += OnAttacked;
         Transporting.Boarded += OnBoarded;
         Transporting.Unloaded += OnUnloaded;
         Strikes.Fired += OnStrikeFired;
@@ -102,6 +104,8 @@ public class ScenarioScript : MonoBehaviour {
             HexTile.BuildingOpened -= OnBuildingOpened;
             HexTile.MoveProposed -= OnMoveProposed;
             HexTile.EnemyInspected -= OnEnemyInspected;
+            HexTile.AttackProposed -= OnAttackProposed;
+            Unit.Attacked -= OnAttacked;
             Transporting.Boarded -= OnBoarded;
             Transporting.Unloaded -= OnUnloaded;
             Strikes.Fired -= OnStrikeFired;
@@ -192,6 +196,8 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitSelected:
             case TriggerCondition.MoveProposed:
             case TriggerCondition.EnemyInspected:
+            case TriggerCondition.AttackProposed:
+            case TriggerCondition.Ambush:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.UnitSpotted:
             case TriggerCondition.UnitBoarded:
@@ -278,12 +284,37 @@ public class ScenarioScript : MonoBehaviour {
     /// <summary>Facts are counted only in play (not while loading, previewing or editing).</summary>
     bool Counting { get { return started && Playing; } }
 
-    void Count(TriggerCondition kind, Func<ScenarioTrigger, bool> matches) {
+    void Count(TriggerCondition kind, Func<ScenarioTrigger, bool> matches) { Count(kind, matches, null); }
+
+    /// <summary>One more event of <paramref name="kind"/> for every trigger it matches, about <paramref name="subject"/> (what "{unit}" names in their actions; null: no unit).</summary>
+    void Count(TriggerCondition kind, Func<ScenarioTrigger, bool> matches, Unit subject) {
         for (int i = 0; i < triggers.Count; i++) {
             ScenarioTrigger t = triggers[i];
-            if (t != null && t.Condition == kind && matches(t)) t.Events++;
+            if (t != null && t.Condition == kind && matches(t)) { t.Events++; if (subject != null) t.Subject = subject; }
         }
     }
+
+    /// <summary>
+    /// The unit <paramref name="t"/> is about: the subject of its last counted event, or (All Of / Any Of) of the first
+    /// of its parts that is met and has one. Null: none, or it has died.
+    /// </summary>
+    Unit SubjectOf(ScenarioTrigger t, int depth) {
+        if (t == null || depth > MaxDepth) return null;
+        if (t.Subject != null && t.Subject.RealStrength > 0) return t.Subject;
+        if ((t.Condition == TriggerCondition.AllOf || t.Condition == TriggerCondition.AnyOf) && t.Parts != null)
+            foreach (string name in t.Parts) {
+                ScenarioTrigger part = Find(name);
+                if (part == null || part == t || !IsMet(part, depth + 1)) continue;
+                Unit u = SubjectOf(part, depth + 1);
+                if (u != null) return u;
+            }
+        return null;
+    }
+
+    /// <summary>What a unit name in an action means: "{unit}" is the unit the trigger fired about (null if none); any other name, that unit.</summary>
+    public const string SubjectName = "{unit}";
+    static bool IsSubject(string name) { return name != null && name.Trim() == SubjectName; }
+    static Unit NamedFor(string name, RunningActions r) { return IsSubject(name) ? (r != null && r.Subject != null && r.Subject.RealStrength > 0 ? r.Subject : null) : ScenarioGame.Named(name); }
 
     /// <summary>Every unit as it stands, without counting anything: the start of play, or just after a load.</summary>
     void Snapshot() {
@@ -346,23 +377,23 @@ public class ScenarioScript : MonoBehaviour {
         for (int i = 0; i < gc.players.Count && i < 63; i++) {
             if ((newly & (1L << i)) == 0) continue;
             Player p = gc.players[i];
-            Count(TriggerCondition.UnitSpotted, t => ScenarioGame.SideIs(p, t.SeenBy) && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)));
+            Count(TriggerCondition.UnitSpotted, t => ScenarioGame.SideIs(p, t.SeenBy) && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
         }
     }
 
     void Damaged(Unit u, int strength, HexTile at) {
-        Count(TriggerCondition.UnitDamaged, t => strength <= t.Value && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)));
+        Count(TriggerCondition.UnitDamaged, t => strength <= t.Value && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
     }
 
     void Healed(Unit u, int strength, HexTile at) {
-        Count(TriggerCondition.UnitHealed, t => strength >= t.Value && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)));
+        Count(TriggerCondition.UnitHealed, t => strength >= t.Value && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
     }
 
     void Entered(Unit u, HexTile from, HexTile to) {
         Count(TriggerCondition.UnitEnters, t => {
             UnitFilter f = UnitFilter.Of(t);
             return ScenarioGame.MatchesAt(u, to, f) && (from == null || !ScenarioGame.MatchesAt(u, from, f));
-        });
+        }, u);
     }
 
     void OnDied(Unit u) {
@@ -370,7 +401,7 @@ public class ScenarioScript : MonoBehaviour {
         // Expended by its own attack (a missile launched): gone from the board, not killed.
         if (Unit.Expending) { seen.Remove(u); return; }
         HexTile at = u.RealTile;
-        Count(TriggerCondition.UnitKilled, t => ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)));
+        Count(TriggerCondition.UnitKilled, t => ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
         // Dying is being damaged down to nothing (unless the frame already saw it at 0).
         Seen was;
         if (!seen.TryGetValue(u, out was) || was.strength > 0) Damaged(u, 0, at);
@@ -389,32 +420,42 @@ public class ScenarioScript : MonoBehaviour {
 
     void OnProduced(Building b, Unit u) {
         if (!Counting || u == null) return;
-        Count(TriggerCondition.UnitBuilt, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
+        Count(TriggerCondition.UnitBuilt, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)), u);
     }
 
     void OnUnitSelected(Unit u) {
         if (!Counting || u == null) return;
-        Count(TriggerCondition.UnitSelected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
+        Count(TriggerCondition.UnitSelected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)), u);
     }
 
     void OnMoveProposed(Unit u, HexTile to) {
         if (!Counting || u == null || to == null) return;
-        Count(TriggerCondition.MoveProposed, t => ScenarioGame.MatchesAt(u, to, UnitFilter.Of(t)));
+        Count(TriggerCondition.MoveProposed, t => ScenarioGame.MatchesAt(u, to, UnitFilter.Of(t)), u);
     }
 
     void OnEnemyInspected(Unit u) {
         if (!Counting || u == null) return;
-        Count(TriggerCondition.EnemyInspected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
+        Count(TriggerCondition.EnemyInspected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)), u);
+    }
+
+    void OnAttackProposed(Unit attacker, Unit defender, bool defenderFirst) {
+        if (!Counting || attacker == null) return;
+        Count(TriggerCondition.AttackProposed, t => (t.Value != 1 || defenderFirst) && ScenarioGame.MatchesAt(attacker, attacker.RealTile, UnitFilter.Of(t)), attacker);
+    }
+
+    void OnAttacked(Unit attacker, Unit defender, HexTile from, HexTile fought, CombatOutcome o) {
+        if (!Counting || defender == null || !o.defenderFiresFirst || BoardView.current != null) return;
+        Count(TriggerCondition.Ambush, t => ScenarioGame.MatchesAt(defender, fought, UnitFilter.Of(t)), defender);
     }
 
     void OnBoarded(Unit transport, Unit cargo, HexTile from) {
         if (!Counting || cargo == null || transport == null) return;
-        Count(TriggerCondition.UnitBoarded, t => ScenarioGame.MatchesAt(cargo, transport.RealTile, UnitFilter.Of(t)));
+        Count(TriggerCondition.UnitBoarded, t => ScenarioGame.MatchesAt(cargo, transport.RealTile, UnitFilter.Of(t)), cargo);
     }
 
     void OnUnloaded(Unit transport, Unit cargo, HexTile onto) {
         if (!Counting || cargo == null) return;
-        Count(TriggerCondition.UnitUnloaded, t => ScenarioGame.MatchesAt(cargo, onto, UnitFilter.Of(t)));
+        Count(TriggerCondition.UnitUnloaded, t => ScenarioGame.MatchesAt(cargo, onto, UnitFilter.Of(t)), cargo);
     }
 
     void OnStrikeFired(Unit u, Strike s, bool delayed) {
@@ -496,7 +537,7 @@ public class ScenarioScript : MonoBehaviour {
         if (t.Repeat) t.Events = 0;
         t.ConditionMetTurn = -1;
         if (t.Actions == null || t.Actions.Count == 0) { Warn(t, "it fired, but it has no actions."); return; }
-        RunningActions r = new RunningActions { Trigger = index, Next = 0 };
+        RunningActions r = new RunningActions { Trigger = index, Next = 0, Subject = SubjectOf(t, 0) };
         if (!Run(r)) running.Add(r);
     }
 
@@ -538,7 +579,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.CameraFocus: {
                 int x = a.TileX, y = a.TileY;
                 if (!string.IsNullOrEmpty(a.AtUnit)) {
-                    Unit u = ScenarioGame.Named(a.AtUnit);
+                    Unit u = NamedFor(a.AtUnit, r);
                     if (u == null || u.RealTile == null) { Warn(t, "Camera Focus: no unit named '" + a.AtUnit + "' on the board."); return; }
                     x = u.RealTile.x; y = u.RealTile.y;
                 }
@@ -546,13 +587,16 @@ public class ScenarioScript : MonoBehaviour {
                 return;
             }
             case TriggerActionType.OrderUnits: {
-                List<Unit> movers = UnitsFor(t, a);
+                List<Unit> movers = UnitsFor(t, a, r);
                 foreach (Unit u in movers) {
                     Unit target = null;
-                    if (!string.IsNullOrEmpty(a.Target)) {
-                        target = ScenarioGame.Named(a.Target);
-                        if (target == null) { Warn(t, "Order Units: no unit named '" + a.Target + "' to attack."); continue; }
-                    } else if (a.TargetSide != TriggerSide.Any) target = ScenarioGame.NearestOf(u, a.TargetSide);
+                    if (!string.IsNullOrEmpty(a.Target)) target = NamedFor(a.Target, r);
+                    if (target == null && a.TargetSide != TriggerSide.Any) {
+                        // The nearest of Target Side (in Value cover or more, if any is: the squad in the trees).
+                        if (a.Value > 0) target = ScenarioGame.NearestOf(u, a.TargetSide, a.Value);
+                        if (target == null) target = ScenarioGame.NearestOf(u, a.TargetSide);
+                    }
+                    if (target == null && !string.IsNullOrEmpty(a.Target)) { Warn(t, "Order Units: no unit named '" + a.Target + "' to attack."); continue; }
                     if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY)))
                         Warn(t, "Order Units: " + u.name + " could not move or attack (it has used its turn, or nothing is in reach).");
                 }
@@ -586,9 +630,29 @@ public class ScenarioScript : MonoBehaviour {
                 return;
             }
             case TriggerActionType.HideMarker:
+                if (!string.IsNullOrEmpty(a.MarkerId) && a.MarkerId.EndsWith("*")) {
+                    // Every marker whose name starts so (Mark Reach's marks).
+                    string prefix = a.MarkerId.Substring(0, a.MarkerId.Length - 1);
+                    for (int i = 0; i < markers.Count; i++)
+                        if (markers[i].Id.StartsWith(prefix, StringComparison.Ordinal)) { ScenarioGame.HideMarker(markers[i].Id); markers.RemoveAt(i--); }
+                    return;
+                }
                 if (string.IsNullOrEmpty(a.MarkerId)) markers.Clear(); else markers.RemoveAll(m => m.Id == a.MarkerId);
                 ScenarioGame.HideMarker(a.MarkerId);
                 return;
+            case TriggerActionType.MarkReach: {
+                if (string.IsNullOrEmpty(a.Marker)) { Warn(t, "a Mark Reach action names no marker prefab."); return; }
+                string id = string.IsNullOrEmpty(a.MarkerId) ? "reach" : a.MarkerId;
+                foreach (Unit u in UnitsFor(t, a, r))
+                    foreach (HexTile tile in ScenarioGame.Reach(u, a.Value)) {
+                        string mid = id + ":" + tile.x + "," + tile.y;
+                        markers.RemoveAll(m => m.Id == mid);
+                        ShownMarker shown = new ShownMarker { Id = mid, Marker = a.Marker, Text = "", TileX = tile.x, TileY = tile.y };
+                        markers.Add(shown);
+                        ScenarioGame.ShowMarker(shown);
+                    }
+                return;
+            }
             case TriggerActionType.PlayMusic:
                 if (!ScenarioGame.PlayMusic(a.Track, a.Loop)) Warn(t, "Play Music: no track " + (string.IsNullOrEmpty(a.Track) ? "at all" : "'" + a.Track + "'") + " in Resources/Music/Special.");
                 return;
@@ -611,14 +675,14 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.SpawnUnit: {
                 Player p = ScenarioGame.Resolve(a.Side);
                 if (p == null) { Warn(t, "Spawn Unit: no side is " + ScenarioGame.SideName(a.Side) + ": nothing made."); return; }
-                ScenarioGame.Spawn(p, a.UnitKind, a.TileX, a.TileY, a.Count, a.Value, a.Veterancy, a.UnitTag, a.ReadyToAct);
+                ScenarioGame.Spawn(p, a.UnitKind, a.TileX, a.TileY, a.Count, a.Value, a.Veterancy, a.UnitTag, a.ReadyToAct, a.OutOfSight);
                 BoardChanged();
                 return;
             }
             case TriggerActionType.GiveUnits: {
                 Player p = ScenarioGame.Resolve(a.Side);
                 if (p == null) { Warn(t, "Give Units: no side is " + ScenarioGame.SideName(a.Side) + ": nothing given."); return; }
-                ScenarioGame.GiveUnits(UnitsFor(t, a), p);
+                ScenarioGame.GiveUnits(UnitsFor(t, a, r), p);
                 BoardChanged();
                 return;
             }
@@ -636,10 +700,10 @@ public class ScenarioScript : MonoBehaviour {
                 BoardChanged();
                 return;
             case TriggerActionType.RepairTile: ScenarioGame.RepairTiles(a.TileX, a.TileY, a.Radius); BoardChanged(); return;
-            case TriggerActionType.SetVeterancy: ScenarioGame.SetVeterancy(UnitsFor(t, a), a.Value, a.Mode); return;
-            case TriggerActionType.SetStat: ScenarioGame.SetStat(UnitsFor(t, a), a.Stat, a.Value, a.Mode); BoardChanged(); return;
-            case TriggerActionType.DestroyUnits: ScenarioGame.DestroyUnits(UnitsFor(t, a)); BoardChanged(); return;
-            case TriggerActionType.ReadyUnits: ScenarioGame.ReadyUnits(UnitsFor(t, a), a.Value != 0); return;
+            case TriggerActionType.SetVeterancy: ScenarioGame.SetVeterancy(UnitsFor(t, a, r), a.Value, a.Mode); return;
+            case TriggerActionType.SetStat: ScenarioGame.SetStat(UnitsFor(t, a, r), a.Stat, a.Value, a.Mode); BoardChanged(); return;
+            case TriggerActionType.DestroyUnits: ScenarioGame.DestroyUnits(UnitsFor(t, a, r)); BoardChanged(); return;
+            case TriggerActionType.ReadyUnits: ScenarioGame.ReadyUnits(UnitsFor(t, a, r), a.Value != 0); return;
             case TriggerActionType.PlaceUnits: {
                 // (The tile is where they go, not an area they must be in.)
                 UnitFilter who = UnitFilter.Of(a); who.inArea = false;
@@ -672,7 +736,18 @@ public class ScenarioScript : MonoBehaviour {
         }
     }
 
-    List<Unit> UnitsFor(ScenarioTrigger t, TriggerAction a) {
+    List<Unit> UnitsFor(ScenarioTrigger t, TriggerAction a) { return UnitsFor(t, a, null); }
+
+    /// <summary>The units an action's filter means; Unit Name "{unit}": the unit the trigger fired about (if it is alive, and of the side and kind asked).</summary>
+    List<Unit> UnitsFor(ScenarioTrigger t, TriggerAction a, RunningActions run) {
+        if (IsSubject(a.UnitTag)) {
+            UnitFilter f = UnitFilter.Of(a); f.tag = "";
+            Unit s = NamedFor(a.UnitTag, run);
+            List<Unit> one = new List<Unit>();
+            if (s != null && ScenarioGame.MatchesAt(s, s.RealTile, f)) one.Add(s);
+            else Warn(t, a.Type + ": the unit it fired about is gone (or not of the side and kind asked).");
+            return one;
+        }
         List<Unit> r = ScenarioGame.Units(UnitFilter.Of(a));
         if (r.Count == 0) Warn(t, a.Type + ": no unit matches (" + ScenarioGame.SideName(a.UnitSide) + (string.IsNullOrEmpty(a.UnitKind) ? "" : ", " + a.UnitKind)
             + (string.IsNullOrEmpty(a.UnitTag) ? "" : ", named " + a.UnitTag) + (a.InArea ? ", within " + a.Radius + " of (" + a.TileX + "," + a.TileY + ")" : "") + ").");

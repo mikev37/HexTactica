@@ -45,12 +45,52 @@ namespace HexTactica.Testing {
                     string n = Path.GetFileNameWithoutExtension(f);
                     try { Building b = LoadBuilding(n); b.name = n; b.gameObject.name = n; r.Add(b.gameObject); } catch (Exception) { }
                 }
+            } else if (type == typeof(Faction) && path == "Factions") {
+                // A faction's versions of units, read from its .asset (replacements, removed, extras: prefabs by GUID).
+                Dictionary<string, string> byGuid = new Dictionary<string, string>();
+                foreach (string f in Directory.GetFiles(Root("Units"), "*.prefab.meta", SearchOption.AllDirectories)) {
+                    foreach (string line in File.ReadAllLines(f))
+                        if (line.StartsWith("guid: ")) { byGuid[line.Substring(6).Trim()] = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(f)); break; }
+                }
+                string dir = Root("Factions");
+                if (Directory.Exists(dir)) foreach (string f in Directory.GetFiles(dir, "*.asset")) {
+                    try { r.Add(LoadFaction(f, byGuid)); } catch (Exception) { }
+                }
             } else if (type == typeof(TerrainData) && path == "Tiles") {
                 foreach (string f in Directory.GetFiles(Root("Tiles"), "*.asset", SearchOption.AllDirectories)) {
                     try { TerrainData t = ScenarioFile.Terrain(Path.GetFileNameWithoutExtension(f)); if (t != null) r.Add(t); } catch (Exception) { }
                 }
             }
             return r.ToArray();
+        }
+
+        static readonly System.Text.RegularExpressions.Regex GuidRef = new System.Text.RegularExpressions.Regex(@"guid: ([0-9a-f]+)");
+
+        /// <summary>A Faction from its .asset: its name, and its replacements, removed units and extras as unit archetypes (by prefab GUID).</summary>
+        static Faction LoadFaction(string file, Dictionary<string, string> byGuid) {
+            Faction fa = ScriptableObject.CreateInstance<Faction>();
+            fa.name = Path.GetFileNameWithoutExtension(file);
+            fa.replacements = new List<Faction.Replacement>(); fa.removed = new List<Unit>(); fa.extras = new List<Faction.Extra>(); fa.unitlist = new List<Unit>();
+            Func<string, Unit> unitOf = line => {
+                System.Text.RegularExpressions.Match m = GuidRef.Match(line);
+                string n;
+                if (!m.Success || !byGuid.TryGetValue(m.Groups[1].Value, out n)) return null;
+                try { Unit u = Archetype(n); u.name = n; return u; } catch (Exception) { return null; }
+            };
+            string section = "";
+            Faction.Replacement pending = null;
+            foreach (string raw in File.ReadAllLines(file)) {
+                string line = raw.TrimEnd();
+                if (!line.StartsWith(" ")) continue;
+                string t = line.Trim();
+                if (line.StartsWith("  ") && !line.StartsWith("   ") && !t.StartsWith("-")) { section = t.Split(':')[0]; continue; }
+                if (section == "replacements") {
+                    if (t.StartsWith("- original:")) pending = new Faction.Replacement { original = unitOf(t) };
+                    else if (t.StartsWith("replacement:") && pending != null) { pending.replacement = unitOf(t); if (pending.original != null && pending.replacement != null) fa.replacements.Add(pending); pending = null; }
+                } else if (section == "removed" && t.StartsWith("- ")) { Unit u = unitOf(t); if (u != null) fa.removed.Add(u); }
+                else if (section == "extras" && t.StartsWith("- unit:")) { Unit u = unitOf(t); if (u != null) fa.extras.Add(new Faction.Extra { unit = u }); }
+            }
+            return fa;
         }
 
         /// <summary>A folder of the project's assets: under Resources (where the game loads them by name), else at the top.</summary>

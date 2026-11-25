@@ -528,6 +528,8 @@ public class HexTile : MonoBehaviour
     public static event System.Action<Unit, HexTile> MoveProposed;
     /// <summary>The player clicked an enemy unit to see where it can go and what it can hit (not an attack on it).</summary>
     public static event System.Action<Unit> EnemyInspected;
+    /// <summary>The player clicked an enemy to see what an attack on it would do (attacker, defender, whether the defender would fire first); not yet fired.</summary>
+    public static event System.Action<Unit, Unit, bool> AttackProposed;
 
     /// <summary>Tell UnitSelected's listeners (ClickBoard does, as the player selects a unit).</summary>
     public static void NotifyUnitSelected(Unit u) { if (UnitSelected != null) UnitSelected(u); }
@@ -537,6 +539,8 @@ public class HexTile : MonoBehaviour
     public static void NotifyMoveProposed(Unit u, HexTile to) { if (MoveProposed != null) MoveProposed(u, to); }
     /// <summary>Tell EnemyInspected's listeners (ClickBoard does, as the player clicks an enemy unit).</summary>
     public static void NotifyEnemyInspected(Unit u) { if (EnemyInspected != null) EnemyInspected(u); }
+    /// <summary>Tell AttackProposed's listeners (the player clicks an enemy in reach: the attack's numbers show).</summary>
+    public static void NotifyAttackProposed(Unit attacker, Unit defender, bool defenderFiresFirst) { if (AttackProposed != null) AttackProposed(attacker, defender, defenderFiresFirst); }
 
 	public void OnMouseDown() {
         if (HexTactica.Harness.Replay.Active) return;   // a replay: the board is only watched
@@ -680,6 +684,7 @@ public class HexTile : MonoBehaviour
                 // The exact resolution OrderAttack will run, firing from the tile the attacker will
                 // stand on (parent when moving and firing): ambush order, retaliation, pinned retreat.
                 CombatOutcome shown = defender.PreviewAttack(attacker, move_confirm != null ? move_confirm : attacker.tile);
+                if (!GameController.IsPlayedElsewhere(GameController.gc.activePlayer)) NotifyAttackProposed(attacker, defender, shown.defenderFiresFirst);
                 // Area of effect: the tiles around the target its shot also hits, and what the units on them would lose.
                 if (attacker.blastRadius > 0) ShowSplashHint(attacker, move_confirm != null ? move_confirm : attacker.tile, defender, shown, knower);
             } else if (state == UIState.ATTACK_CONFIRM) {

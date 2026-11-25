@@ -180,6 +180,37 @@ public static class ScenarioGame {
         return null;
     }
 
+    /// <summary>Can any enemy of <paramref name="owner"/> see <paramref name="t"/> (fog of war; with no fog, every tile is seen)?</summary>
+    public static bool SeenByEnemy(Player owner, HexTile t) {
+        if (t == null) return false;
+        if (!FogOfWar.On) return true;
+        foreach (Player p in Players) if (p != null && p != owner && !p.eliminated && Player.Hostile(p, owner) && FogOfWar.TileVisible(p, t)) return true;
+        return false;
+    }
+
+    /// <summary>The living unit of <paramref name="side"/> nearest <paramref name="from"/> standing in at least <paramref name="minCover"/> terrain cover, or null.</summary>
+    public static Unit NearestOf(Unit from, long side, int minCover) {
+        if (from == null || from.RealTile == null) return null;
+        Unit best = null; int bestD = int.MaxValue;
+        foreach (Unit u in Units(new UnitFilter { side = side })) {
+            if (u == from || u.RealTile == null || u.owner == from.owner || u.RealTile.terrain == null || u.RealTile.terrain.cover < minCover) continue;
+            int d = Distance(u.RealTile.x, u.RealTile.y, from.RealTile.x, from.RealTile.y);
+            if (d < bestD) { bestD = d; best = u; }
+        }
+        return best;
+    }
+
+    /// <summary>The tiles <paramref name="u"/> can move to and stop on this turn (not its own) with terrain cover of <paramref name="minCover"/> or more, buildings left out (Mark Reach: "the forests in reach"). The board's tiles are left as they are.</summary>
+    public static List<HexTile> Reach(Unit u, int minCover) {
+        List<HexTile> r = new List<HexTile>();
+        if (u == null || u.tile == null || u.RealStrength <= 0) return r;
+        HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurn(u);
+        foreach (HexTile t in f.Tiles)
+            if (t != u.tile && f.ReachableThisTurn(t) && t.terrain != null && t.terrain.cover >= minCover && t.building == null && t.occupier == null && t.CanEndTurnHere(u)) r.Add(t);
+        r.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+        return r;
+    }
+
     /// <summary>The living unit of <paramref name="side"/> nearest <paramref name="from"/> (not itself), or null.</summary>
     public static Unit NearestOf(Unit from, long side) {
         if (from == null || from.RealTile == null) return null;
@@ -306,6 +337,11 @@ public static class ScenarioGame {
     /// on the tile, else each on the nearest free tile it can stand on (within 4 steps). The units made.
     /// </summary>
     public static List<Unit> Spawn(Player owner, string kind, int x, int y, int count, int strength, int veterancy, string tag, bool ready) {
+        return Spawn(owner, kind, x, y, count, strength, veterancy, tag, ready, false);
+    }
+
+    /// <summary>As above; <paramref name="outOfSight"/>: each on the nearest free tile no enemy of <paramref name="owner"/> can see (within 8 steps), else as above.</summary>
+    public static List<Unit> Spawn(Player owner, string kind, int x, int y, int count, int strength, int veterancy, string tag, bool ready, bool outOfSight) {
         List<Unit> made = new List<Unit>();
         Unit prefab = owner != null ? LevelEditor.UnitFor(owner, kind) : null;
         HexTile at = Tile(x, y);
@@ -315,7 +351,8 @@ public static class ScenarioGame {
             return made;
         }
         for (int i = 0; i < Mathf.Max(1, count); i++) {
-            HexTile free = FreeTileNear(at, prefab, 4);
+            HexTile free = outOfSight ? FreeTileNear(at, prefab, 8, t => !SeenByEnemy(owner, t)) : null;
+            if (free == null) free = FreeTileNear(at, prefab, 4);
             if (free == null) { Debug.LogWarning("Scenario: no room to spawn '" + kind + "' near (" + x + "," + y + ")"); break; }
             Unit u = BuildingController.Spawner != null ? BuildingController.Spawner(owner, prefab, free) : UnitController.uc.CreateUnit(owner, prefab, free);
             if (u == null) break;
@@ -330,11 +367,14 @@ public static class ScenarioGame {
     }
 
     /// <summary>The nearest tile to <paramref name="at"/> (itself first) with nothing on it that <paramref name="prefab"/> can stand on, within <paramref name="steps"/>.</summary>
-    static HexTile FreeTileNear(HexTile at, Unit prefab, int steps) {
+    static HexTile FreeTileNear(HexTile at, Unit prefab, int steps) { return FreeTileNear(at, prefab, steps, null); }
+
+    /// <summary>As above, only a tile <paramref name="ok"/> says yes to (null: any).</summary>
+    static HexTile FreeTileNear(HexTile at, Unit prefab, int steps, Func<HexTile, bool> ok) {
         List<HexTile> ring = new List<HexTile> { at };
         HashSet<HexTile> seen = new HashSet<HexTile> { at };
         for (int d = 0; d <= steps && ring.Count > 0; d++) {
-            foreach (HexTile t in ring) if (t.occupier == null && prefab.CanEnter(t)) return t;
+            foreach (HexTile t in ring) if (t.occupier == null && prefab.CanEnter(t) && (ok == null || ok(t))) return t;
             List<HexTile> next = new List<HexTile>();
             foreach (HexTile t in ring) if (t.neighbors != null) foreach (HexTile n in t.neighbors) if (n != null && seen.Add(n)) next.Add(n);
             ring = next;

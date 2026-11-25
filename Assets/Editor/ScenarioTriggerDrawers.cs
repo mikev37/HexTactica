@@ -29,6 +29,8 @@ static class TriggerFields {
             case TriggerCondition.UnitOutOfAmmo:
             case TriggerCondition.UnitOutOfFuel:
             case TriggerCondition.UnitCutOff: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
+            case TriggerCondition.Ambush: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
+            case TriggerCondition.AttackProposed:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
             case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value", "Count" };
@@ -73,6 +75,7 @@ static class TriggerFields {
                     case TriggerCondition.UnitLowOnFuel: return "Fuel % At Most";
                     case TriggerCondition.UnitsAtMost: return "Units At Most";
                     case TriggerCondition.UnitsAtLeast: return "Units At Least";
+                    case TriggerCondition.AttackProposed: return "Only Ambushes (1)";
                 }
                 return null;
             case "Count":
@@ -93,7 +96,7 @@ static class TriggerFields {
         switch (a) {
             case TriggerActionType.Dialogue: return new[] { "Lines" };
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
-            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TileX", "TileY");
+            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "Value", "TileX", "TileY");
             case TriggerActionType.StrikeTile: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY" };
             case TriggerActionType.CameraFrameBoard: return new string[0];
             case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
@@ -104,7 +107,8 @@ static class TriggerFields {
             case TriggerActionType.StopMusic: return new string[0];
             case TriggerActionType.Win:
             case TriggerActionType.Lose: return new[] { "Side" };
-            case TriggerActionType.SpawnUnit: return new[] { "Side", "UnitKind", "TileX", "TileY", "Count", "Value", "Veterancy", "UnitTag", "ReadyToAct" };
+            case TriggerActionType.SpawnUnit: return new[] { "Side", "UnitKind", "TileX", "TileY", "Count", "Value", "Veterancy", "UnitTag", "ReadyToAct", "OutOfSight" };
+            case TriggerActionType.MarkReach: return Join(units, "Value", "Marker", "MarkerId");
             case TriggerActionType.GiveUnits: return Join(units, "Side");
             case TriggerActionType.GiveBuilding: return Join(buildings, "Side");
             case TriggerActionType.DestroyTile:
@@ -143,9 +147,11 @@ static class TriggerFields {
                 if (a == TriggerActionType.SpawnUnit) return "Strength";
                 if (a == TriggerActionType.ReadyUnits) return "Ready (1) / Spent (0)";
                 if (a == TriggerActionType.GiveMoney) return "Gold";
+                if (a == TriggerActionType.MarkReach) return "Cover At Least";
+                if (a == TriggerActionType.OrderUnits) return "Target In Cover At Least";
                 return null;
             case "UnitTag": return a == TriggerActionType.SpawnUnit ? "Name Them" : "Unit Name";
-            case "MarkerId": return a == TriggerActionType.ShowMarker ? "Name (To Hide It Later)" : "Marker To Hide";
+            case "MarkerId": return a == TriggerActionType.ShowMarker ? "Name (To Hide It Later)" : a == TriggerActionType.MarkReach ? "Names Start (Hide With Name*)" : "Marker To Hide (Name* For All So Named)";
             case "Marker": return "Looks Like";
             case "Seconds": return a == TriggerActionType.Wait ? "Wait Seconds" : "Glide Seconds";
         }
@@ -192,6 +198,8 @@ static class TriggerFields {
             case TriggerCondition.UnitsAtLeast: return t.Value + " or more " + units;
             case TriggerCondition.UnitSelected: return "the player selects " + units + times;
             case TriggerCondition.EnemyInspected: return "the player clicks " + units + " to see its reach" + times;
+            case TriggerCondition.AttackProposed: return "the player shows an attack by " + units + (t.Value == 1 ? " that the defender would answer first" : "") + times;
+            case TriggerCondition.Ambush: return units + " fires first when attacked (an ambush)" + times;
             case TriggerCondition.MoveProposed: return "the player proposes a move for " + Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, false, 0, 0, 0) + (t.InArea ? " to " + area : "") + times;
             case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
             case TriggerCondition.UnitBoarded: return units + " gets into a transport" + times;
@@ -235,7 +243,7 @@ static class TriggerFields {
             case TriggerActionType.SetFog: return "Fog of war " + (a.On ? "on" : "off");
             case TriggerActionType.Win: return Side(a.Side) + " wins";
             case TriggerActionType.Lose: return Side(a.Side) + " loses";
-            case TriggerActionType.SpawnUnit: return "Spawn " + Mathf.Max(1, a.Count) + " " + a.UnitKind + " for " + Side(a.Side) + " at " + at;
+            case TriggerActionType.SpawnUnit: return "Spawn " + Mathf.Max(1, a.Count) + " " + a.UnitKind + " for " + Side(a.Side) + (a.OutOfSight ? " out of sight near " : " at ") + at;
             case TriggerActionType.GiveUnits: return units + " go to " + Side(a.Side);
             case TriggerActionType.GiveBuilding: return buildings + " go to " + Side(a.Side);
             case TriggerActionType.DestroyTile: return "Destroy ground within " + a.Radius + " of " + at;
@@ -246,6 +254,7 @@ static class TriggerFields {
             case TriggerActionType.SetStat: return units + ": " + a.Stat + " " + (a.Mode == ValueMode.Add ? (a.Value >= 0 ? "+" : "") : "= ") + a.Value;
             case TriggerActionType.DestroyUnits: return "Destroy " + units;
             case TriggerActionType.ReadyUnits: return units + (a.Value != 0 ? " may act again" : " have used their turn");
+            case TriggerActionType.MarkReach: return "Mark where " + units + " can go this turn in cover " + a.Value + " or more";
             case TriggerActionType.PlaceUnits: return "Put " + units + " on (" + a.TileX + "," + a.TileY + ")" + (a.ReadyToAct ? ", ready to act" : "");
             case TriggerActionType.GiveMoney: return Side(a.Side) + (a.Mode == ValueMode.Set ? " has " + a.Value : " gets " + a.Value) + " gold";
             case TriggerActionType.EnableTrigger: return "Switch on '" + (string.IsNullOrEmpty(a.Trigger) ? "this trigger" : a.Trigger) + "'";

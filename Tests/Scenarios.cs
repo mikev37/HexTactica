@@ -6505,6 +6505,18 @@ public static partial class Scenarios {
                 Console.WriteLine("  SHIPS " + p.personal_name + ": " + string.Join("; ", ships.ToArray()));
                 continue;
             }
+            if (Environment.GetEnvironmentVariable("LIT") == "1") {
+                // The side's lit ground, row by row (y down the page): '#' supplied, '.' not, ' ' no tile.
+                Console.WriteLine("  LIT " + p.personal_name);
+                int x0 = int.MaxValue, x1 = int.MinValue, y0 = int.MaxValue, y1 = int.MinValue;
+                foreach (HexTile t in HexGenerator.hg.tiles) { if (t == null) continue; x0 = Math.Min(x0, t.x); x1 = Math.Max(x1, t.x); y0 = Math.Min(y0, t.y); y1 = Math.Max(y1, t.y); }
+                for (int y = y1; y >= y0; y--) {
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder("  " + y.ToString().PadLeft(3) + " ");
+                    for (int x = x0; x <= x1; x++) { HexTile t = ScenarioGame.Tile(x, y); sb.Append(t == null ? "  " : (r.DepthAt(t) > 0 ? t.terrain.name.Substring(0, 1).ToUpper() : t.terrain.name.Substring(0, 1).ToLower()) + " "); }
+                    Console.WriteLine(sb.ToString());
+                }
+                continue;
+            }
             if (Environment.GetEnvironmentVariable("CACHE") == "1") {
                 // Clicking every carrier of this side in turn, the supply unchanged (SupplyLines): what each click costs.
                 p.Resupply();
