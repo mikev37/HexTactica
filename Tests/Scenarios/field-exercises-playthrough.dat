@@ -1,0 +1,2640 @@
+{
+    "width": 13,
+    "tiles": [
+        {
+            "x": -6,
+            "y": 0,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 1,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 2,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 3,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 4,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 5,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 6,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": -1,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 0,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 1,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 2,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 3,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 4,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 5,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 6,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": -2,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": -1,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 0,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 1,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 2,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 3,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 4,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 5,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 6,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": -3,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": -2,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": -1,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 0,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 1,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 2,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 3,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 4,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 5,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 6,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -4,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -3,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -2,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -1,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 0,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 1,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 2,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 3,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 4,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 5,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 6,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -5,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -4,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -3,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -2,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -1,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 0,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 1,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Barrens",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 2,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 3,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 4,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 5,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 6,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -6,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -5,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -4,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -3,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -2,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -1,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 1,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 2,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 3,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 4,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 5,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 6,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -6,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -5,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -4,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -3,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -2,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -1,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 0,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 1,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 2,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 3,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 4,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 5,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -6,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -5,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -4,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -3,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -2,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -1,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 0,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 1,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 2,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 3,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 4,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -6,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -5,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -4,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -3,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -2,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -1,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 0,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 1,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 2,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 3,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -6,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -5,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -4,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -3,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -2,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -1,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": 0,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": 1,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": 2,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -6,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -5,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -4,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -3,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -2,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -1,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": 0,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": 1,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -6,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -5,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -4,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -3,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Forest",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -2,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -1,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": 0,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        }
+    ],
+    "players": [
+        {
+            "personal_name": "OPFOR",
+            "id": 0,
+            "displayColor": {
+                "r": 0.85,
+                "g": 0.2,
+                "b": 0.15,
+                "a": 1.0
+            },
+            "factionName": "",
+            "AI": false,
+            "aiProfile": "",
+            "factionLocked": false,
+            "money": 0,
+            "eliminated": false,
+            "eliminable": true
+        },
+        {
+            "personal_name": "BLUE (Jori)",
+            "id": 112,
+            "displayColor": {
+                "r": 0.2,
+                "g": 0.45,
+                "b": 1.0,
+                "a": 1.0
+            },
+            "factionName": "",
+            "AI": true,
+            "aiProfile": "",
+            "factionLocked": false,
+            "money": 0,
+            "eliminated": false,
+            "eliminable": false
+        }
+    ],
+    "active": 0,
+    "day": 0,
+    "purchases": "off",
+    "allowedUnits": "",
+    "fog": "off",
+    "factionSpecialUnits": "off",
+    "fixedRules": "fog,purchases,factionSpecialUnits",
+    "rules": "standard",
+    "description": "Act 1, mission 1: Field Exercises. Anna walks you through moving, Jori's cheap shot, falling back, healing, and hitting back first.",
+    "winText": "Jori's squad is beaten. The exercise goes on.",
+    "lossText": "OPFOR is out of squads. Heal before you go in, and hit first.",
+    "buildings": [
+        {
+            "x": -4,
+            "y": 2,
+            "z": 2,
+            "gameobject_name": "HQ(Clone)",
+            "personal_name": "Headquarters",
+            "type": 0,
+            "owner_id": 0,
+            "income": 1000,
+            "producesSupply": true,
+            "supplyRange": 3,
+            "supplies": 0,
+            "suppliesMax": 0,
+            "damageLevel": 0,
+            "capturePoints": 0,
+            "capturingPlayerId": -1,
+            "hasHome": true,
+            "home_id": 0
+        },
+        {
+            "x": -2,
+            "y": 3,
+            "z": -1,
+            "gameobject_name": "City(Clone)",
+            "personal_name": "City",
+            "type": 2,
+            "owner_id": -1,
+            "income": 1000,
+            "producesSupply": false,
+            "supplyRange": 0,
+            "supplies": 0,
+            "suppliesMax": 0,
+            "damageLevel": 0,
+            "capturePoints": 0,
+            "capturingPlayerId": -1
+        }
+    ],
+    "units": [
+        {
+            "x": -3,
+            "y": 1,
+            "z": 2,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Alpha",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Grunt(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        }
+    ],
+    "script": {
+        "Version": 1,
+        "Triggers": [
+            {
+                "Name": "Alpha spent",
+                "Enabled": false,
+                "Condition": 28,
+                "Actions": [],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "Alpha on the pit",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [],
+                "TileX": -1,
+                "TileY": 1,
+                "Radius": 0,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "Alpha on the city",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [],
+                "TileX": -2,
+                "TileY": 3,
+                "Radius": 0,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "Alpha off the city",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Alpha on the city"
+                ]
+            },
+            {
+                "Name": "Alpha cut off",
+                "Enabled": false,
+                "Condition": 24,
+                "Actions": [],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "Alpha in supply",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Alpha cut off"
+                ]
+            },
+            {
+                "Name": "Alpha beside Jori",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [],
+                "TileX": 0,
+                "TileY": 1,
+                "Radius": 1,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "Player's turn",
+                "Enabled": false,
+                "Condition": 5,
+                "Actions": [],
+                "Value": 0,
+                "Side": -2
+            },
+            {
+                "Name": "Turn after the pullback",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [],
+                "Side": -2,
+                "Count": 1
+            },
+            {
+                "Name": "Player turn over",
+                "Enabled": false,
+                "Condition": 11,
+                "Actions": [],
+                "Side": -2,
+                "Count": 1
+            },
+            {
+                "Name": "Jori hit",
+                "Enabled": false,
+                "Condition": 10,
+                "Actions": [],
+                "Value": 6,
+                "Side": 112,
+                "UnitTag": "Jori's Pride"
+            },
+            {
+                "Name": "Not wandered off",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Alpha on the pit"
+                ]
+            },
+            {
+                "Name": "S1 Jori has no units",
+                "Enabled": false,
+                "Condition": 22,
+                "Actions": [
+                    {
+                        "Type": 6,
+                        "Side": -2
+                    }
+                ],
+                "Side": 112,
+                "Value": 0
+            },
+            {
+                "Name": "S3 No units left",
+                "Enabled": true,
+                "Condition": 22,
+                "Actions": [
+                    {
+                        "Type": 7,
+                        "Side": -2
+                    }
+                ],
+                "Side": -2,
+                "Value": 0
+            },
+            {
+                "Name": "1.1 Introductions",
+                "Enabled": true,
+                "Condition": 0,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "Alpha",
+                        "Zoom": 0,
+                        "Seconds": 1.0
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Greetings, Commander. My name is Anna Mikhailovna from Federal Central Intelligence. Due to the proximity to the border with Blakia, this exercise is being closely monitored. You will be leading the Opposing Force, OPFOR. Your objective is to prove a worthy opponent for Commander Jori Orlov. Do not disappoint.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "And don't bore me, either. I'm Jori Orlov. My father is the Minister of Defense. So, you know, don't feel bad when you lose. Try to make this last a bit. I like my opponents to have a little spirit before I break them.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Commander, a word. Focus on the objective.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "What's a prize like you doing in a mud pit like this, Anna? Ditch this zero and come join a real man! I've got a bottle of real brandy and a bunk with your name on it. We can discuss strategy... after you've properly thanked me for saving you from this boredom.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "You have the tactical acumen of a rutting goat, Jori. In your dreams.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "Whatever. See you on the battlefield.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "Name": "1.2 Click Alpha",
+                "Enabled": true,
+                "Condition": 0,
+                "Actions": [
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Ignore what he said. Let's focus on the mission. Click on the marked squad, and move it to the staging ground, that sand pit over there.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "Name": "1.3 Alpha selected",
+                "Enabled": true,
+                "Condition": 26,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "alpha"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "goal",
+                        "Text": "Move here",
+                        "TileX": -1,
+                        "TileY": 1
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "The lit tiles are where he can reach this turn. Click on the staging ground to propose a move there, then click again to confirm.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.4 On the staging ground",
+                "Enabled": true,
+                "Condition": 1,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "goal"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.3 Alpha selected"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.4b Moved elsewhere"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.4b Try again"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Federation Soldier",
+                                "Text": "We're reached the target tile.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Good Job! You can end the turn by pressing Space or clicking the end turn button.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.5 Jori arrives"
+                    }
+                ],
+                "TileX": -1,
+                "TileY": 1,
+                "Radius": 0,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.4b Moved elsewhere",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "goal"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Federation Soldier",
+                                "Text": "We're reached the target tile.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Uhh... where are they? Not what I asked for, but Good try? You can end the turn by pressing Space or clicking the end turn button. Then you can try to reach the objective.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.4b Try again"
+                    }
+                ],
+                "Parts": [
+                    "Alpha spent",
+                    "Not wandered off"
+                ]
+            },
+            {
+                "Name": "1.4b Try again",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "1.3 Alpha selected"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "1.4b Moved elsewhere"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "1.4b Try again"
+                    }
+                ],
+                "Side": -2,
+                "Count": 1
+            },
+            {
+                "Name": "1.5 Jori arrives",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 8,
+                        "Side": 112,
+                        "UnitKind": "Grunt",
+                        "TileX": 0,
+                        "TileY": 1,
+                        "Count": 1,
+                        "Value": 6,
+                        "Veterancy": 0,
+                        "UnitTag": "Jori's Pride",
+                        "ReadyToAct": true
+                    },
+                    {
+                        "Type": 16,
+                        "UnitSide": 112,
+                        "UnitTag": "Jori's Pride",
+                        "Stat": 3,
+                        "Mode": 0,
+                        "Value": 2
+                    },
+                    {
+                        "Type": 1,
+                        "AtUnit": "Jori's Pride",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "UnitTag": "Jori's Pride",
+                        "Target": "Alpha"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.5 Hit"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "Jori holds"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "S1 Jori has no units"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.7 Fell back"
+                    }
+                ],
+                "Side": 112,
+                "Count": 1
+            },
+            {
+                "Name": "1.5 Hit",
+                "Enabled": false,
+                "Condition": 10,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "Alpha",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "What? Our unit is injured!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "Hah! The units damage depends on their strength, so attacking first deals more damage! My unit hit yours for 3 damage, so yours could only retaliate for 1! The first mover advantage!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Value": 6,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "Jori holds",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 23,
+                        "UnitSide": 112,
+                        "UnitTag": "Jori's Pride",
+                        "Value": 0
+                    }
+                ],
+                "Repeat": true,
+                "Side": 112,
+                "Count": 1
+            },
+            {
+                "Name": "1.7 Fell back",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "Alpha",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "This is bad. Our squad lost more than he dealt, so he fell back a tile: the side that loses more always falls back, if they can. But Jori's squad is far from his supply.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Click our squad.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "Turn after the pullback"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.8 Pull back"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.9 You better run"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.10 Healed on the city"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.11 Healed in supply"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.12 Not healed"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.14 Counterattack"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.13 Jori starving"
+                    }
+                ],
+                "Side": -2,
+                "Count": 1
+            },
+            {
+                "Name": "1.8 Pull back",
+                "Enabled": false,
+                "Condition": 26,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "alpha"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "city",
+                        "Text": "Move here",
+                        "TileX": -2,
+                        "TileY": 3
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Pull our squad back to the marked city in supply. I'll work on getting you some reinforcements.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.18 Reinforcements"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "City reached"
+                    }
+                ],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.9 You better run",
+                "Enabled": false,
+                "Condition": 28,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "alpha"
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "city"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Yeah you better run!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "City reached",
+                "Enabled": false,
+                "Condition": 1,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "city"
+                    }
+                ],
+                "Repeat": true,
+                "TileX": -2,
+                "TileY": 3,
+                "Radius": 0,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.10 Healed on the city",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 18,
+                        "Trigger": "1.11 Healed in supply"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.12 Not healed"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Alright, look: Our troop has gone back up 2 strength. One for the city and one for being in supply. Now we can counterattack",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Turn after the pullback",
+                    "Alpha on the city"
+                ]
+            },
+            {
+                "Name": "1.11 Healed in supply",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 18,
+                        "Trigger": "1.10 Healed on the city"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.12 Not healed"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Okay. Our unit has healed 1 point of strength because it was in supply. It would have been 2 points if it was also in the city like I told you to.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Turn after the pullback",
+                    "Alpha in supply",
+                    "Alpha off the city"
+                ]
+            },
+            {
+                "Name": "1.12 Not healed",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 18,
+                        "Trigger": "1.10 Healed on the city"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.11 Healed in supply"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Do you not listen to me at all?! Look, now our unit hasn't healed at all. Please pull back to our lines.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "Back to the city"
+                    }
+                ],
+                "Parts": [
+                    "Turn after the pullback",
+                    "Alpha cut off"
+                ]
+            },
+            {
+                "Name": "Back to the city",
+                "Enabled": false,
+                "Condition": 26,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "alpha"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "city",
+                        "Text": "Move here",
+                        "TileX": -2,
+                        "TileY": 3
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "City reached"
+                    }
+                ],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.13 Jori starving",
+                "Enabled": false,
+                "Condition": 13,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "Jori's Pride",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Highlight",
+                        "MarkerId": "highlight",
+                        "Text": "",
+                        "AtUnit": "Jori's Pride"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Look! He's kept his troops outside of supply too long!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Federation Soldier",
+                                "Text": "Sir, we can't go on for long like this, we need orders, we're starving...",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "what do you mean you're starving!? Attack!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Gena",
+                                "Text": "when a Unit has run out of supplies in the field, they begin losing strength instead of gaining strength.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "highlight"
+                    }
+                ],
+                "Side": 112,
+                "UnitTag": "Jori's Pride"
+            },
+            {
+                "Name": "Clear Jori hit",
+                "Enabled": true,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 22,
+                        "Trigger": "Jori hit"
+                    }
+                ],
+                "Repeat": true,
+                "Side": -2,
+                "Count": 1
+            },
+            {
+                "Name": "1.14 Counterattack",
+                "Enabled": false,
+                "Condition": 12,
+                "Actions": [
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "It's time to counterattack! Select your grunt.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "Jori hit"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "Player turn over"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.15 Step 1: select"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.17 Step 3: hit"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.19 Moved, no attack"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.20 Turn ended idle"
+                    }
+                ],
+                "Value": 6,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.15 Step 1: select",
+                "Enabled": false,
+                "Condition": 26,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "alpha"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "attack",
+                        "Text": "Move here",
+                        "TileX": -1,
+                        "TileY": 2
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "to Attack, you must first move into range of the enemy unit. With a range of 1, a grunt must be in a tile adjacent to the enemy.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.15 Step 1 again"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.16 Step 2: propose"
+                    }
+                ],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.15 Step 1 again",
+                "Enabled": false,
+                "Condition": 26,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "alpha"
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "target"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "attack",
+                        "Text": "Move here",
+                        "TileX": -1,
+                        "TileY": 2
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "1.16 Step 2: propose"
+                    }
+                ],
+                "Repeat": true,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.16 Step 2: propose",
+                "Enabled": false,
+                "Condition": 34,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "attack"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "target",
+                        "Text": "Attack",
+                        "AtUnit": "Jori's Pride"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Now, you can click on a target to propose an attack. This will show you the odds of the attack. Combat is deterministic, so you will always get the amount of damage listed. Click on the enemy to teach him a lesson!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "InArea": true,
+                "TileX": -1,
+                "TileY": 2,
+                "Radius": 0,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.17 Step 3: hit",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "alpha"
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "attack"
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "target"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.15 Step 1: select"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.15 Step 1 again"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.16 Step 2: propose"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.19 Moved, no attack"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.20 Turn ended idle"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Damn you!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.21 Hurt again"
+                    }
+                ],
+                "Parts": [
+                    "Jori hit",
+                    "Player's turn"
+                ]
+            },
+            {
+                "Name": "1.18 Reinforcements",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 8,
+                        "Side": -2,
+                        "UnitKind": "Grunt",
+                        "TileX": -4,
+                        "TileY": 1,
+                        "Count": 1,
+                        "Value": 6,
+                        "Veterancy": 0,
+                        "UnitTag": "Bravo",
+                        "ReadyToAct": true
+                    },
+                    {
+                        "Type": 1,
+                        "AtUnit": "Bravo",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Reinforcements are here! Take care of this guy.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "Count": 2
+            },
+            {
+                "Name": "1.19 Moved, no attack",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 20,
+                        "UnitSide": -2,
+                        "UnitTag": "Alpha"
+                    },
+                    {
+                        "Type": 8,
+                        "Side": -2,
+                        "UnitKind": "Grunt",
+                        "TileX": -2,
+                        "TileY": 1,
+                        "Count": 1,
+                        "Value": 6,
+                        "Veterancy": 0,
+                        "UnitTag": "Alpha",
+                        "ReadyToAct": true
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "attack"
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "target"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "1.15 Step 1: select"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "1.16 Step 2: propose"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "1.19 Moved, no attack"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.15 Step 1 again"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.16 Step 2: propose"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Oops! You click confirmed to move adjacent to the enemy instead of attacking. How about you try listening to what I tell you",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Alpha spent",
+                    "Alpha beside Jori",
+                    "Jori not hit",
+                    "Player's turn"
+                ]
+            },
+            {
+                "Name": "Jori not hit",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Jori hit"
+                ]
+            },
+            {
+                "Name": "1.20 Turn ended idle",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 22,
+                        "Trigger": "Player turn over"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Hey, what are you looking at? You ended your turn without moving your unit",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Repeat": true,
+                "Parts": [
+                    "Player turn over",
+                    "Alpha idle"
+                ]
+            },
+            {
+                "Name": "Alpha idle",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Alpha spent"
+                ]
+            },
+            {
+                "Name": "1.21 Hurt again",
+                "Enabled": false,
+                "Condition": 10,
+                "Actions": [
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "alpha",
+                        "Text": "Click me",
+                        "AtUnit": "Alpha"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "You're injured! Pull back and heal, then go again.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "Back to the city"
+                    }
+                ],
+                "Value": 3,
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.22 Alpha starving",
+                "Enabled": true,
+                "Condition": 13,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "Alpha",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "How did you screw this up? Your soldiers are starving! They will lose 1 strength per turn until you get them into supply again!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            }
+        ]
+    },
+"test": {"name": "field-exercises-playthrough", "kind": "rules", "opponent": "Human", "rounds": "14", "rules": "standard", "check": "scriptFieldExercises", "question": "Act 1, mission 1 (Resources/Campaign/Scenarios/Field Exercises.dat), played with the player's clicks: the introductions and a marker on Alpha; Alpha selected: the staging ground (the sand pit) marked; moved elsewhere: Anna's 'where are they', no Jori yet, and the move lesson again next turn; on the pit, Jori's squad appears beside it (2 of 3 supplies) and hits Alpha for 3, taking 1, and Alpha falls back; Anna's retreat line, Alpha marked, then the city once selected; Jori's 'you better run'; healed on the city; Jori's squad never acts and starves on its own, with the highlight shown and gone within the lines; reinforcements two turns after Anna promised them; at full strength the attack in three marked steps; a move next to Jori confirmed without attacking: Alpha replaced 2 tiles away and the lesson replayed; the attack from the proposed move: 'Damn you!'; Jori's squad destroyed: the player wins."}
+}
