@@ -166,7 +166,7 @@ public class ScenarioScript : MonoBehaviour {
             string r = u.AnimatingReason;
             if (r == null) continue;
             int sp = r.IndexOf(' ');
-            h = h * 31 + u.GetInstanceID() * 7 + (sp < 0 ? r : r.Substring(0, sp)).GetHashCode();
+            h = h * 31 + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(u) * 7 + (sp < 0 ? r : r.Substring(0, sp)).GetHashCode();
         }
         return h;
     }
