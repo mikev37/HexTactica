@@ -136,6 +136,7 @@ Scenario/ScenarioJson.cs
 Scenario/ScenarioGame.cs
 Scenario/ScenarioDialogue.cs
 Scenario/ScenarioScript.cs
+Scenario/ScenarioAIGoal.cs
 Scenario/ScenarioAssets.cs
 Scenario/DialogueCharacter.cs
 FrontEnd/Campaign/Mission.cs

@@ -28,6 +28,10 @@ namespace HexTactica.AI {
             return a < 0.5f ? Mathf.Lerp(atZero, 1f, a / 0.5f) : Mathf.Lerp(1f, atOne, (a - 0.5f) / 0.5f);
         }
 
+        [Tooltip("The edge it waits for before it attacks: every force ratio it needs (a front going aggressive, an objective taken on, an assault launched) times this. 1 = as tuned; 0.4 = it goes in with well under even odds. Unlike aggression, it leaves risk, rotating the wounded out and breaking off alone.")]
+        [Range(0.1f, 2f)]
+        public float attackThreshold = 1f;
+
         [Tooltip("Multiplier on expected gold lost by ending a turn somewhere. 1 = take expected losses at face value; above 1 is cautious, below 1 reckless.")]
         public float riskWeight = 1f;
         [Tooltip("A unit destroyed costs this many more of its strength points' worth than the points themselves: alive, it would heal back, hold ground and fire again.")]

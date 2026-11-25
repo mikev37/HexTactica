@@ -13,18 +13,19 @@ MonoBehaviour:
   m_Name: JoriProfile
   m_EditorClassIdentifier: Assembly-CSharp::HexTactica.AI.AIProfile
   profileName: Jori
-  aggression: 1
-  riskWeight: 0.6
-  deathPremium: 0.4
-  killBonus: 1.8
+  aggression: 0.5
+  attackThreshold: 0.4
+  riskWeight: 0.9
+  deathPremium: 1
+  killBonus: 1.5
   replyDiscount: 0.5
   loadedTransportRisk: 2.5
-  withdrawStrength: 0
+  withdrawStrength: 2
   fogAggression: 1
   objectiveSpread: 0.5
-  objectiveForceRatio: 0.8
+  objectiveForceRatio: 0.6
   campaignMaxTurns: 3
-  campaignReserveShare: 0.1
+  campaignReserveShare: 0.15
   hqDefenseWeight: 0.2
   capturePull: 0.3
   scoutTileValue: 15

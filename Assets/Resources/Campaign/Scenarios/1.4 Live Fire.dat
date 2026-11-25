@@ -2705,7 +2705,7 @@
 			"AfterTrigger":"",
 			"Side":112,
 			"UnitKind":"",
-			"SeenBy":-2,
+			"SeenBy":0,
 			"OnlySeen":true,
 			"ArmedOnly":true,
 			"KilledBy":-1,
@@ -13195,6 +13195,7 @@
 	"Bonuses":[],
 	"Reveals":[],
 	"Objective":"",
-	"Protected":[]
+	"Protected":[],
+	"AIGoals":[]
 }
 }

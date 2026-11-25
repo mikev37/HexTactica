@@ -146,6 +146,7 @@ public class ScenarioScript : MonoBehaviour {
         }
         else clock += Mathf.Max(0f, dt);
         ReapplyReveals();
+        if (aiGoals.Count > 0) ApplyAIGoals();   // (an AI given to a side after it was set, a load: it gets it too)
         if (!snapshotTaken) Snapshot(); else Observe();
         FollowMarkers();
         RunActions();
@@ -707,6 +708,22 @@ public class ScenarioScript : MonoBehaviour {
     /// <summary>The objective on screen (Set Objective), and the ground made safe from damage or not (Protect Ground, in order): kept in a save.</summary>
     string objective = "";
     List<ShownReveal> protectedGround = new List<ShownReveal>();
+    List<AIGoalData> aiGoals = new List<AIGoalData>();
+
+    /// <summary>Each side's AI objective as set (Set AI Objective): on its AI as its mission objective, or off it again.</summary>
+    void ApplyAIGoals() {
+        foreach (AIGoalData g in aiGoals)
+            foreach (Player p in ScenarioGame.Players) {
+                if (p == null || !ScenarioGame.SideIs(p, g.Side)) continue;
+                AIPlayer ai = p.GetComponent<AIPlayer>();
+                ScenarioAIGoal goal = p.GetComponent<ScenarioAIGoal>();
+                if (!g.On) { if (ai != null && ai.objective == goal && goal != null) ai.objective = null; continue; }
+                if (goal == null) goal = p.gameObject.AddComponent<ScenarioAIGoal>();
+                goal.target = ScenarioGame.Tile(g.TileX, g.TileY);
+                goal.weight = Mathf.Max(0, g.Value) / 6f;
+                if (ai != null && ai.objective != goal) ai.objective = goal;
+            }
+    }
 
     /// <summary>The objective on screen ("" none).</summary>
     public string Objective { get { return objective; } }
@@ -1012,6 +1029,11 @@ public class ScenarioScript : MonoBehaviour {
                 BoardChanged();
                 return;
             }
+            case TriggerActionType.SetAIObjective:
+                aiGoals.RemoveAll(g => g.Side == a.Side);
+                aiGoals.Add(new AIGoalData { Side = a.Side, TileX = a.TileX, TileY = a.TileY, Value = a.Value, On = a.On });
+                ApplyAIGoals();
+                return;
             case TriggerActionType.SetObjective:
                 objective = a.Text ?? "";
                 ScenarioGame.ShowObjective(objective);
@@ -1114,6 +1136,7 @@ public class ScenarioScript : MonoBehaviour {
             d.Bonuses = bonuses;
             d.Reveals = reveals;
             d.Objective = objective;
+            d.AIGoals = aiGoals;
             d.Protected = protectedGround;
         }
         return ScenarioJson.Write(d, withState);
@@ -1157,6 +1180,7 @@ public class ScenarioScript : MonoBehaviour {
         reveals = d.Reveals ?? new List<ShownReveal>();
         revealsApplied = -1;
         objective = d.Objective ?? "";
+        aiGoals = d.AIGoals ?? new List<AIGoalData>();
         ScenarioGame.ShowObjective(objective);
         protectedGround = d.Protected ?? new List<ShownReveal>();
         HexGenerator.forAllTiles(x => { x.indestructible = false; return 0; });

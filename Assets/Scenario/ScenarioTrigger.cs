@@ -185,6 +185,8 @@ public enum TriggerActionType {
     ProtectGround = 38,
     /// <summary>A building of Building Kind is put on the tile for Side (Neutral: nobody's). Under a mission's briefing too (Briefing): the briefing's board is thrown away at Start, so it shows only there ("where the city should be").</summary>
     PlaceBuilding = 39,
+    /// <summary>Side's AI goes for the tile (On; off: its own plans again): a building there is to be taken, whoever holds it is to be fought. The AI decides who goes where and who pulls back (ScenarioAIGoal). Value: how strongly, 6 normal.</summary>
+    SetAIObjective = 40,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>
@@ -495,7 +497,12 @@ public class ScenarioScriptData {
     [ScenarioState] public List<ShownReveal> Reveals = new List<ShownReveal>();
     [ScenarioState] public string Objective = "";
     [ScenarioState] public List<ShownReveal> Protected = new List<ShownReveal>();
+    [ScenarioState] public List<AIGoalData> AIGoals = new List<AIGoalData>();
 }
+
+/// <summary>A side's AI objective from Set AI Objective (kept in a save).</summary>
+[Serializable]
+public class AIGoalData { public long Side; public int TileX, TileY; public int Value = 6; public bool On = true; }
 
 /// <summary>Stars a Bonus Stars action gave or took (kept in a save).</summary>
 [Serializable]

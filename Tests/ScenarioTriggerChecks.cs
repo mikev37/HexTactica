@@ -276,6 +276,13 @@ public static partial class Scenarios {
              },
              "More scenario functions (Act 1, mission 5): Unit Killed By (a Red grunt killed by Blue's tank counts for By Blue, not By Red); Set Objective (the objective on screen, kept in the script); Protect Ground (a protected tile takes no damage); Order Units boarding a transport named as its target; Order Units attacking from a set tile (From Tile); Set Team (with alliances on, two sides put on one team are allies, no longer hostile); Order Units Force (the whole way, however far); two units ordered at one target take different tiles; Place Building; Destroy Units Withdraw (gone, nobody's kill); Units At Most Armed Only; Fired From Fog (artillery the target's side did not see).");
         n++;
+        make("script-ai-objective", "scriptAIObjective", (a, o) => {
+                 Rig.PlaceBuilding("City", o, -3, 0); Put("Grunt", o, -3, 0);
+                 Put("Grunt", a, 3, 0); Put("Grunt", a, 3, 1); Put("Grunt", a, 4, -1);
+                 Script(Trig("Go for the city", TriggerCondition.LevelStart, null, Act(TriggerActionType.SetAIObjective, x => { x.Side = Blue; x.TileX = -3; x.TileY = 0; })));
+             },
+             "Set AI Objective: Blue's AI (this AI), told to go for the city Red holds, has it as its mission objective (ScenarioAIGoal) and its three grunts close on it over two turns, each on a tile of its own (the AI decides who stands where).");
+        n++;
         make("rule-bystander", "scriptBystander", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0);
                  Script(Trig("Red turns", TriggerCondition.TurnStarted, t => { t.Side = Red; t.Repeat = true; }),
@@ -998,6 +1005,24 @@ public static partial class Scenarios {
                 ScenarioGame.ObjectiveHook = null;
                 detail = string.Join("; ", r.ToArray());
                 return objective && protectedOk && boarded && fromTile && by && allied && forced && apart && placed && gone && notKilled && armed && fog;
+            }
+            case "scriptAIObjective": {
+                foreach (MonoBehaviour m in a.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
+                AIPlayer ai = a.GetComponent<AIPlayer>();
+                s.Tick(0.1f); s.Tick(0.1f);
+                bool set = ai.objective is ScenarioAIGoal && ((ScenarioAIGoal)ai.objective).target == Rig.At(-3, 0);
+                HexTile city = Rig.At(-3, 0);
+                for (int turn = 0; turn < 2; turn++) {
+                    gc.activePlayer = a;
+                    int guard = 0; bool more = true;
+                    while (more && gc.activePlayer == a && guard++ < 200) more = ai.StepOnce(true);
+                    foreach (Unit u in a.units) if (u != null) u.active = true;
+                    s.Tick(0.1f);
+                }
+                List<string> at = new List<string>(); HashSet<HexTile> tiles = new HashSet<HexTile>(); int near = 0;
+                foreach (Unit u in a.units) if (u != null && u.tile != null) { at.Add(u.tile.x + "," + u.tile.y); tiles.Add(u.tile); if (u.tile.Distance(city) <= 2) near++; }
+                detail = "objective set on the AI " + set + "; Blue's grunts at " + string.Join(" ", at.ToArray()) + ", within 2 of the city " + near + " of " + at.Count;
+                return set && near >= 2 && tiles.Count == at.Count;
             }
             case "scriptBystander": {
                 Player range = Rig.AddPlayer("Range", 200);

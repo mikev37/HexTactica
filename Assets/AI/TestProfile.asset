@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexTactica.AI.AIProfile
   profileName: Test
   aggression: 0
+  attackThreshold: 1
   riskWeight: 1
   deathPremium: 1
   killBonus: 1.35
