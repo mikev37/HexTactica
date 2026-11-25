@@ -329,6 +329,9 @@ public class HexTile : MonoBehaviour
         return FogOfWar.ApparentOccupier(this, unit != null ? unit.owner : null) == null;
     }
 
+    /// <summary>A scenario's Protect Ground: this ground (and a building on it) takes no damage and is never destroyed ("the bridge holds").</summary>
+    [System.NonSerialized] public bool indestructible;
+
     [Tooltip("Fights resolved on this tile (every attack on a unit standing on it).")]
     public int combatCount;
     [Tooltip("Health this tile's terrain has lost (TerrainData.health): every attack on a unit standing on it takes one.")]
@@ -356,7 +359,7 @@ public class HexTile : MonoBehaviour
     /// health (water, mountains) takes none.
     /// </summary>
     public void Damage(int amount) {
-        if (amount <= 0) return;
+        if (amount <= 0 || indestructible) return;
         if (building != null) { building.Damage(amount); return; }   // its runways and docks too
         if (terrain == null || terrain.health <= 0) return;
         damage = Mathf.Min(terrain.health, damage + amount);
@@ -372,7 +375,7 @@ public class HexTile : MonoBehaviour
     /// What it was is kept (<see cref="destroyedFrom"/>) so it can be put back (UndoDestruction).
     /// </summary>
     public void DestroyTerrain() {
-        if (terrain == null || terrain.destroyedInto == null) return;
+        if (terrain == null || terrain.destroyedInto == null || indestructible) return;
         TerrainData was = terrain;
         destroyedFrom.Add(was);
         SetTerrain(terrain.destroyedInto);
@@ -388,7 +391,7 @@ public class HexTile : MonoBehaviour
     /// ground is the building's. False if nothing changed.
     /// </summary>
     public bool Crater(TerrainData into) {
-        if (terrain == null || building != null) return false;
+        if (terrain == null || building != null || indestructible) return false;
         if (terrain.elevation < 0) return false;
         if (terrain.elevation == 0) {
             if (into == null || terrain.destroyedInto == null) return false;
