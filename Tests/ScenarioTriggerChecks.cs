@@ -256,6 +256,7 @@ public static partial class Scenarios {
         n++;
         make("script-new-functions-2", "scriptNewFunctions2", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Tank", a, 2, 0); Put("Grunt", a, -3, 3); Put("Truck", a, -4, 3); Put("Grunt", o, 4, -2); Put("Tank", a, 6, -2);
+                 Put("Grunt", a, 6, 1); Put("Grunt", a, 7, 0); Put("Grunt", o, 4, 3); Put("Grunt", a, -6, 0); Put("Supplies", o, -2, 5); Put("Artillery", a, 0, -4);
                  Script(Trig("Killed by Blue", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KilledBy = Blue; }),
                         Trig("Killed by Red", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KilledBy = Red; }),
                         Trig("Start", TriggerCondition.LevelStart, null,
@@ -263,9 +264,17 @@ public static partial class Scenarios {
                             Act(TriggerActionType.ProtectGround, x => { x.TileX = -2; x.TileY = 0; x.Radius = 0; }),
                             Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Rider"; x.Target = "Lorry"; }),
                             Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Ambusher"; x.TargetSide = Red; x.FromTile = true; x.TileX = 5; x.TileY = -3; })),
+                        Trig("From the fog", TriggerCondition.FiredFromFog, t => { t.Side = Blue; t.UnitKind = "Artillery"; }),
+                        Trig("Two armed", TriggerCondition.UnitsAtMost, t => { t.Side = Red; t.Value = 2; t.ArmedOnly = true; }),
+                        Trig("Forced", TriggerCondition.AfterTrigger, t => { t.Enabled = false; t.AfterTrigger = "Start"; },
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Hiker"; x.TileX = 6; x.TileY = -6; x.Force = true; }),
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Pair"; x.TargetSide = Red; x.TargetOnTile = true; x.TileX = 4; x.TileY = 3; }),
+                            Act(TriggerActionType.PlaceBuilding, x => { x.BuildingKind = "City"; x.Side = TriggerSide.Neutral; x.TileX = 0; x.TileY = 4; }),
+                            Act(TriggerActionType.DestroyUnits, x => { x.UnitSide = Red; x.UnitKind = "Supplies"; x.Withdraw = true; })),
+                        Trig("Supply gone", TriggerCondition.UnitKilled, t => { t.Side = Red; t.UnitKind = "Supplies"; }),
                         Trig("Allies", TriggerCondition.TurnStarted, t => { t.Side = Red; }, Act(TriggerActionType.SetTeam, x => { x.Side = Red; x.Value = 4; }), Act(TriggerActionType.SetTeam, x => { x.Side = Blue; x.Value = 4; })));
              },
-             "More scenario functions (Act 1, mission 5): Unit Killed By (a Red grunt killed by Blue's tank counts for By Blue, not By Red); Set Objective (the objective on screen, kept in the script); Protect Ground (a protected tile takes no damage); Order Units boarding a transport named as its target; Order Units attacking from a set tile (From Tile); Set Team (with alliances on, two sides put on one team are allies, no longer hostile).");
+             "More scenario functions (Act 1, mission 5): Unit Killed By (a Red grunt killed by Blue's tank counts for By Blue, not By Red); Set Objective (the objective on screen, kept in the script); Protect Ground (a protected tile takes no damage); Order Units boarding a transport named as its target; Order Units attacking from a set tile (From Tile); Set Team (with alliances on, two sides put on one team are allies, no longer hostile); Order Units Force (the whole way, however far); two units ordered at one target take different tiles; Place Building; Destroy Units Withdraw (gone, nobody's kill); Units At Most Armed Only; Fired From Fog (artillery the target's side did not see).");
         n++;
         make("rule-bystander", "scriptBystander", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0);
@@ -948,6 +957,8 @@ public static partial class Scenarios {
                 Unit victim = Rig.At(0, 0).occupier, tank = Rig.At(2, 0).occupier, rider = Rig.At(-3, 3).occupier, lorry = Rig.At(-4, 3).occupier;
                 Unit other = Rig.At(4, -2).occupier, ambusher = Rig.At(6, -2).occupier;
                 rider.personal_name = "Rider"; lorry.personal_name = "Lorry"; ambusher.personal_name = "Ambusher";
+                Unit hiker = Rig.At(-6, 0).occupier, p1 = Rig.At(6, 1).occupier, p2 = Rig.At(7, 0).occupier, sup = Rig.At(-2, 5).occupier;
+                hiker.personal_name = "Hiker"; p1.personal_name = "Pair"; p2.personal_name = "Pair";
                 HexTile safe = Rig.At(-2, 0); safe.terrain = T("Forest");
                 string shownObjective = null;
                 ScenarioGame.ObjectiveHook = x => shownObjective = x;
@@ -959,7 +970,22 @@ public static partial class Scenarios {
                 bool protectedOk = safe.terrain == T("Forest") && safe.damage == 0;
                 bool boarded = rider.trasnporter == lorry;
                 bool fromTile = ambusher.tile == Rig.At(5, -3) && other.Strength < 6;
+                s.Find("Forced").Enabled = true; settle();
+                bool forced = hiker.tile == Rig.At(6, -6);
+                bool apart = p1.tile != p2.tile && p1.tile != null && p2.tile != null;
+                bool placed = Rig.At(0, 4).building != null;
+                bool gone = sup == null || sup.RealStrength <= 0;
+                bool notKilled = Fired(s, "Supply gone") == 0;
+                bool armed = Fired(s, "Two armed") == 0;   // (Red: three armed grunts, one supply unit)
+                r.Add("forced the whole way (12 tiles) " + forced + "; two ordered at one target on different tiles " + apart + " (" + (p1.tile != null ? p1.tile.x + "," + p1.tile.y : "-") + " / " + (p2.tile != null ? p2.tile.x + "," + p2.tile.y : "-") + "); building placed " + placed + "; withdrawn, not killed " + (gone && notKilled) + "; armed only " + armed);
                 r.Add("objective shown " + objective + "; protected ground undamaged " + protectedOk + "; boarded the named truck " + boarded + "; attacked from the set tile " + fromTile + " (at " + (ambusher.tile != null ? ambusher.tile.x + "," + ambusher.tile.y : "-") + ", target " + other.Strength + ")");
+                Unit gun = Rig.At(0, -4).occupier;
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); settle();
+                bool unseenFirst = !FogOfWar.Sees(o, gun);
+                gun.active = true; ScenarioGame.Order(gun, victim, null); settle();
+                bool fog = unseenFirst && Fired(s, "From the fog") == 1;
+                r.Add("artillery firing from the fog counted " + fog);
+                gc.fogOfWar = false; FogOfWar.Changed(); FogOfWar.Refresh();
                 int guard = 0;
                 while (victim.RealStrength > 0 && guard++ < 10) { tank.active = true; ScenarioGame.Order(tank, victim, null); settle(); }
                 bool by = Fired(s, "Killed by Blue") == 1 && Fired(s, "Killed by Red") == 0;
@@ -971,7 +997,7 @@ public static partial class Scenarios {
                 r.Add("set team: hostile before " + hostileBefore + ", allies after " + allied);
                 ScenarioGame.ObjectiveHook = null;
                 detail = string.Join("; ", r.ToArray());
-                return objective && protectedOk && boarded && fromTile && by && allied;
+                return objective && protectedOk && boarded && fromTile && by && allied && forced && apart && placed && gone && notKilled && armed && fog;
             }
             case "scriptBystander": {
                 Player range = Rig.AddPlayer("Range", 200);

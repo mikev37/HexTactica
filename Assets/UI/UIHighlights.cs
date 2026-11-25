@@ -7,7 +7,8 @@ using UnityEngine.UI;
 /// player's eye ("the truck's panel: click the grunt in it"). The highlight is a copy of Resources/UIHighlight.prefab
 /// (made the first time the project opens without one: HexTactica ▸ Scenario Triggers ▸ Recreate UI Highlight Prefab;
 /// edit it as you like), laid over the element and stretched to it. It takes no clicks and changes no layout.
-/// The element is found by its object's name, or by the name of a component on it (TransportPanel): if it is not on
+/// The element is found by its object's name, or by the name of a component on it (TransportPanel), or a path inside one
+/// (TransportPanel/Panel), or a component's field (Hud.detailsButton: the More button): if it is not on
 /// screen yet (a panel that opens when a unit is selected), the highlight waits and appears with it.
 /// Installed in every game scene.
 /// </summary>
@@ -65,6 +66,27 @@ public class UIHighlights : MonoBehaviour {
     /// <summary>The element on screen named <paramref name="what"/>: an active object of that name, or one with a component of that type name.</summary>
     static RectTransform Find(string what) {
         if (string.IsNullOrEmpty(what)) return null;
+        // "Hud.detailsButton": the element a component's field points at (the More button, whatever it is named).
+        int dot = what.IndexOf('.');
+        if (dot > 0) {
+            string type = what.Substring(0, dot), field = what.Substring(dot + 1);
+            foreach (MonoBehaviour m in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)) {
+                if (m == null || m.GetType().Name != type || !m.enabled || !m.gameObject.activeInHierarchy) continue;
+                System.Reflection.FieldInfo f = m.GetType().GetField(field, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                object v = f != null ? f.GetValue(m) : null;
+                Component c = v as Component;
+                GameObject g = c != null ? c.gameObject : v as GameObject;
+                if (g != null && g.activeInHierarchy) return g.transform as RectTransform;
+            }
+            return null;
+        }
+        // "TransportPanel/Panel": the element named after the slash inside the one named before it.
+        int slash = what.IndexOf('/');
+        if (slash > 0) {
+            RectTransform root = Find(what.Substring(0, slash));
+            Transform inner = root != null ? root.Find(what.Substring(slash + 1)) : null;
+            return inner != null && inner.gameObject.activeInHierarchy ? inner as RectTransform : null;
+        }
         foreach (RectTransform r in FindObjectsByType<RectTransform>(FindObjectsSortMode.None)) {
             if (r == null || !r.gameObject.activeInHierarchy) continue;
             if (r.name == what || r.name == what + "(Clone)") return r;

@@ -38,7 +38,8 @@ static class TriggerFields {
             case TriggerCondition.UnitsExposed:
             case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "Count" };
             case TriggerCondition.UnitsAtMost:
-            case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "OnlySeen", "SeenBy" };
+            case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "OnlySeen", "SeenBy", "ArmedOnly" };
+            case TriggerCondition.FiredFromFog: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
             case TriggerCondition.SupplyContact: return new[] { "Side" };
             case TriggerCondition.BuildingDamaged: return new[] { "BuildingKind", "InArea", "Value", "Count" };
             case TriggerCondition.Briefing: return new string[0];
@@ -106,7 +107,7 @@ static class TriggerFields {
         switch (a) {
             case TriggerActionType.Dialogue: return new[] { "Lines" };
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
-            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TargetFresh", "TargetExposed", "TargetOnTile", "FromTile", "Value", "TileX", "TileY");
+            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TargetFresh", "TargetExposed", "TargetOnTile", "FromTile", "Force", "Value", "TileX", "TileY");
             case TriggerActionType.StrikeTile: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY" };
             case TriggerActionType.CameraFrameBoard: return new string[0];
             case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
@@ -128,7 +129,7 @@ static class TriggerFields {
             case TriggerActionType.RepairBuilding: return buildings;
             case TriggerActionType.SetVeterancy: return Join(units, "Mode", "Value");
             case TriggerActionType.SetStat: return Join(units, "Stat", "Mode", "Value");
-            case TriggerActionType.DestroyUnits: return units;
+            case TriggerActionType.DestroyUnits: return Join(units, "Withdraw");
             case TriggerActionType.ReadyUnits: return Join(units, "Value");
             case TriggerActionType.PlaceUnits: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY", "ReadyToAct" };
             case TriggerActionType.GiveMoney: return new[] { "Side", "Mode", "Value" };
@@ -136,7 +137,8 @@ static class TriggerFields {
             case TriggerActionType.DisableTrigger:
             case TriggerActionType.ResetTrigger: return new[] { "Trigger" };
             case TriggerActionType.PlaySound: return new[] { "Sound" };
-            case TriggerActionType.Wait: return new[] { "Seconds" };
+            case TriggerActionType.Wait: return new[] { "Seconds", "UntilStill" };
+            case TriggerActionType.PlaceBuilding: return new[] { "BuildingKind", "Side", "TileX", "TileY" };
             case TriggerActionType.BonusStars: return new[] { "Value", "Text" };
             case TriggerActionType.RevealArea: return new[] { "Side", "On", "TileX", "TileY", "Radius", "MarkerId" };
             case TriggerActionType.HighlightUI: return new[] { "Text", "On", "MarkerId" };
@@ -212,6 +214,7 @@ static class TriggerFields {
             case TriggerCondition.SupplyContact: return Side(t.Side) + "'s supply line shows an unseen enemy (?)";
             case TriggerCondition.BuildingDamaged: return building + " " + t.Value + "%+ wrecked";
             case TriggerCondition.Briefing: return "the mission's briefing shows the board";
+            case TriggerCondition.FiredFromFog: return units + " fires from the fog (gives itself away)" + times;
             case TriggerCondition.BuildingCaptured: return building + " taken by " + Side(t.Side) + times;
             case TriggerCondition.BuildingDestroyed: return building + " destroyed" + times;
             case TriggerCondition.DayReached: return "day " + t.Value + (t.Side == TriggerSide.Any ? "" : ", on " + Side(t.Side) + "'s turn");
@@ -275,6 +278,7 @@ static class TriggerFields {
             case TriggerActionType.RevealArea: return a.On ? "Reveal within " + a.Radius + " of " + at + " to " + Side(a.Side) : (string.IsNullOrEmpty(a.MarkerId) ? "Hide every revealed area" : "Hide revealed '" + a.MarkerId + "'");
             case TriggerActionType.HighlightUI: return (a.On ? "Highlight " : "Stop highlighting ") + (string.IsNullOrEmpty(a.Text) ? "'" + a.MarkerId + "'" : a.Text);
             case TriggerActionType.SetTeam: return Side(a.Side) + " joins team " + a.Value;
+            case TriggerActionType.PlaceBuilding: return "Put a " + a.BuildingKind + " on " + at + " for " + Side(a.Side);
             case TriggerActionType.SetObjective: return string.IsNullOrEmpty(a.Text) ? "No objective on screen" : "Objective: " + Short(a.Text);
             case TriggerActionType.ProtectGround: return (a.On ? "Protect" : "Unprotect") + " ground within " + a.Radius + " of " + at;
             case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));

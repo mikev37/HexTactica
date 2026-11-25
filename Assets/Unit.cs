@@ -1644,6 +1644,16 @@ public class Unit : MonoBehaviour
     /// </summary>
     public static bool Wiping;
 
+    /// <summary>Off the board without dying (a scenario's withdrawal: fled, gone home): no Died event, no loss or kill, no death played; its cargo goes with it.</summary>
+    public void Withdraw() {
+        if (dead) return;
+        dead = true;
+        foreach (Unit c in transported.ToArray()) if (c != null) c.Withdraw();
+        transported.Clear();
+        Wipe();
+        Destroy(gameObject);
+    }
+
     private void DieActual() {
         if (dead) return;
         dead = true;
