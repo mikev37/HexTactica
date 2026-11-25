@@ -509,7 +509,9 @@ public class ScenarioScript : MonoBehaviour {
         HexTile at = u.RealTile;
         // Value 1: killed in action (by a shot); 2: lost without one (starved, ditched); 0: either.
         int how = Unit.Perishing ? 2 : 1;
-        Count(TriggerCondition.UnitKilled, t => (t.Value == 0 || t.Value == how) && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
+        Player by = Unit.KilledBy;
+        Count(TriggerCondition.UnitKilled, t => (t.Value == 0 || t.Value == how) && (t.KilledBy == TriggerSide.Any || (by != null && ScenarioGame.SideIs(by, t.KilledBy)))
+                                               && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
         // Dying is being damaged down to nothing (unless the frame already saw it at 0).
         Seen was;
         if (!seen.TryGetValue(u, out was) || was.strength > 0) Damaged(u, 0, at);
@@ -684,6 +686,18 @@ public class ScenarioScript : MonoBehaviour {
     List<StarBonus> bonuses = new List<StarBonus>();
     List<ShownReveal> reveals = new List<ShownReveal>();
     int revealsApplied = -1;
+    /// <summary>The objective on screen (Set Objective), and the ground made safe from damage or not (Protect Ground, in order): kept in a save.</summary>
+    string objective = "";
+    List<ShownReveal> protectedGround = new List<ShownReveal>();
+
+    /// <summary>The objective on screen ("" none).</summary>
+    public string Objective { get { return objective; } }
+
+    static void Protect(ShownReveal g) {
+        HexTile c = ScenarioGame.Tile(g.TileX, g.TileY);
+        if (c == null) return;
+        HexGenerator.forAllTiles(x => { if (x.Distance(c) <= g.Radius) x.indestructible = g.Id == "on"; return 0; });
+    }
 
     /// <summary>The mission's bonus stars (negative: a penalty), all Bonus Stars actions fired added up.</summary>
     public int BonusStars { get { int n = 0; foreach (StarBonus b in bonuses) n += b.Value; return n; } }
@@ -787,7 +801,15 @@ public class ScenarioScript : MonoBehaviour {
                 foreach (Unit u in movers) {
                     Unit target = null;
                     if (!string.IsNullOrEmpty(a.Target)) target = NamedFor(a.Target, r);
-                    if (target == null && a.TargetSide != TriggerSide.Any) {
+                    HexTile from = a.FromTile ? ScenarioGame.Tile(a.TileX, a.TileY) : null;
+                    // From a set tile: whoever of Target Side it could fire on from there (the nearest to it).
+                    if (target == null && from != null && a.TargetSide != TriggerSide.Any) {
+                        int best = int.MaxValue;
+                        foreach (Unit x in UnitController.uc.units)
+                            if (x != null && x.RealStrength > 0 && x.tile != null && ScenarioGame.SideIs(x.owner, a.TargetSide) && Player.Hostile(x.owner, u.owner)
+                                && u.CanAttack(x) && u.CanAttackFrom(from, x) && from.Distance(x.tile) < best) { best = from.Distance(x.tile); target = x; }
+                    }
+                    if (target == null && a.TargetSide != TriggerSide.Any && !a.FromTile) {
                         // The strongest it can reach (a fresh squad), or the nearest of Target Side (in Value cover or more, if any is: the squad in the trees).
                         if (a.TargetOnTile) {
                             HexTile on = ScenarioGame.Tile(a.TileX, a.TileY);
@@ -800,7 +822,7 @@ public class ScenarioScript : MonoBehaviour {
                         if (target == null && !a.TargetOnTile) target = ScenarioGame.NearestOf(u, a.TargetSide);
                     }
                     if (target == null && !string.IsNullOrEmpty(a.Target)) { Warn(t, "Order Units: no unit named '" + a.Target + "' to attack."); continue; }
-                    if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY)))
+                    if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY), from))
                         Warn(t, "Order Units: " + u.name + " could not move or attack (it has used its turn, or nothing is in reach).");
                 }
                 BoardChanged();
@@ -955,6 +977,22 @@ public class ScenarioScript : MonoBehaviour {
                 ScenarioGame.HighlightUI(a.Text ?? "", id, a.On);
                 return;
             }
+            case TriggerActionType.SetTeam: {
+                foreach (Player p in ScenarioGame.Players) if (p != null && ScenarioGame.SideIs(p, a.Side)) p.team = Mathf.Max(0, a.Value);
+                FogOfWar.Changed();
+                BoardChanged();
+                return;
+            }
+            case TriggerActionType.SetObjective:
+                objective = a.Text ?? "";
+                ScenarioGame.ShowObjective(objective);
+                return;
+            case TriggerActionType.ProtectGround: {
+                ShownReveal g = new ShownReveal { Id = a.On ? "on" : "off", TileX = a.TileX, TileY = a.TileY, Radius = Mathf.Max(0, a.Radius) };
+                protectedGround.Add(g);
+                Protect(g);
+                return;
+            }
             case TriggerActionType.EnableTrigger:
             case TriggerActionType.DisableTrigger:
             case TriggerActionType.ResetTrigger: {
@@ -1046,6 +1084,8 @@ public class ScenarioScript : MonoBehaviour {
             d.PendingLines = ScenarioDialogue.Pending();
             d.Bonuses = bonuses;
             d.Reveals = reveals;
+            d.Objective = objective;
+            d.Protected = protectedGround;
         }
         return ScenarioJson.Write(d, withState);
     }
@@ -1087,6 +1127,11 @@ public class ScenarioScript : MonoBehaviour {
         bonuses = d.Bonuses ?? new List<StarBonus>();
         reveals = d.Reveals ?? new List<ShownReveal>();
         revealsApplied = -1;
+        objective = d.Objective ?? "";
+        ScenarioGame.ShowObjective(objective);
+        protectedGround = d.Protected ?? new List<ShownReveal>();
+        HexGenerator.forAllTiles(x => { x.indestructible = false; return 0; });
+        foreach (ShownReveal g in protectedGround) Protect(g);
         ScenarioGame.HighlightUI("", "", false);
         warned.Clear();
         seen.Clear();

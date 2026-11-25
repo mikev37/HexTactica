@@ -17,7 +17,7 @@ static class TriggerFields {
             case TriggerCondition.LevelStart: return new string[0];
             case TriggerCondition.UnitEnters:
             case TriggerCondition.UnitsInArea: return new[] { "Side", "UnitKind", "UnitTag", "Area", "OnTerrain", "CoverBelow", "Count" };
-            case TriggerCondition.UnitKilled: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "Count" };
+            case TriggerCondition.UnitKilled: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "KilledBy", "Count" };
             case TriggerCondition.UnloadProposed:
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
@@ -106,7 +106,7 @@ static class TriggerFields {
         switch (a) {
             case TriggerActionType.Dialogue: return new[] { "Lines" };
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
-            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TargetFresh", "TargetExposed", "TargetOnTile", "Value", "TileX", "TileY");
+            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TargetFresh", "TargetExposed", "TargetOnTile", "FromTile", "Value", "TileX", "TileY");
             case TriggerActionType.StrikeTile: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY" };
             case TriggerActionType.CameraFrameBoard: return new string[0];
             case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
@@ -140,6 +140,9 @@ static class TriggerFields {
             case TriggerActionType.BonusStars: return new[] { "Value", "Text" };
             case TriggerActionType.RevealArea: return new[] { "Side", "On", "TileX", "TileY", "Radius", "MarkerId" };
             case TriggerActionType.HighlightUI: return new[] { "Text", "On", "MarkerId" };
+            case TriggerActionType.SetTeam: return new[] { "Side", "Value" };
+            case TriggerActionType.SetObjective: return new[] { "Text" };
+            case TriggerActionType.ProtectGround: return new[] { "On", "TileX", "TileY", "Radius" };
         }
         return new string[0];
     }
@@ -152,6 +155,7 @@ static class TriggerFields {
                 if (a == TriggerActionType.SpawnUnit) return "For";
                 if (a == TriggerActionType.GiveMoney) return "To";
                 if (a == TriggerActionType.RevealArea) return "Shown To";
+                if (a == TriggerActionType.SetTeam) return "Whose";
                 return "New Owner";
             case "UnitSide": return a == TriggerActionType.OrderUnits ? "Whose Units Move" : a == TriggerActionType.StrikeTile ? "Whose Units Strike" : "Whose Units";
             case "AtUnit": return a == TriggerActionType.ShowMarker ? "On Unit (Follows It)" : "On Unit";
@@ -166,10 +170,11 @@ static class TriggerFields {
                 if (a == TriggerActionType.Salute) return "Tiles Above";
                 if (a == TriggerActionType.OrderUnits) return "Target In Cover At Least";
                 if (a == TriggerActionType.BonusStars) return "Stars (+/-)";
+                if (a == TriggerActionType.SetTeam) return "Team (0: None)";
                 return null;
             case "UnitTag": return a == TriggerActionType.SpawnUnit ? "Name Them" : "Unit Name";
-            case "Text": return a == TriggerActionType.BonusStars ? "Why (Post-Game Screen)" : a == TriggerActionType.HighlightUI ? "Panel (Object Or Component Name)" : null;
-            case "On": return a == TriggerActionType.RevealArea ? "Reveal (Off: Hide)" : a == TriggerActionType.HighlightUI ? "Highlight (Off: Stop)" : null;
+            case "Text": return a == TriggerActionType.BonusStars ? "Why (Post-Game Screen)" : a == TriggerActionType.HighlightUI ? "Panel (Object Or Component Name)" : a == TriggerActionType.SetObjective ? "Objective (Empty: None)" : null;
+            case "On": return a == TriggerActionType.RevealArea ? "Reveal (Off: Hide)" : a == TriggerActionType.HighlightUI ? "Highlight (Off: Stop)" : a == TriggerActionType.ProtectGround ? "Protected (Off: Not)" : null;
             case "MarkerId": if (a == TriggerActionType.RevealArea || a == TriggerActionType.HighlightUI) return "Name (To Stop It Later)";
                 return a == TriggerActionType.ShowMarker ? "Name (To Hide It Later)" : a == TriggerActionType.MarkReach ? "Names Start (Hide With Name*)" : "Marker To Hide (Name* For All So Named)";
             case "Marker": return "Looks Like";
@@ -269,6 +274,9 @@ static class TriggerFields {
             case TriggerActionType.BonusStars: return (a.Value >= 0 ? "+" : "") + a.Value + " star" + (a.Value == 1 || a.Value == -1 ? "" : "s") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
             case TriggerActionType.RevealArea: return a.On ? "Reveal within " + a.Radius + " of " + at + " to " + Side(a.Side) : (string.IsNullOrEmpty(a.MarkerId) ? "Hide every revealed area" : "Hide revealed '" + a.MarkerId + "'");
             case TriggerActionType.HighlightUI: return (a.On ? "Highlight " : "Stop highlighting ") + (string.IsNullOrEmpty(a.Text) ? "'" + a.MarkerId + "'" : a.Text);
+            case TriggerActionType.SetTeam: return Side(a.Side) + " joins team " + a.Value;
+            case TriggerActionType.SetObjective: return string.IsNullOrEmpty(a.Text) ? "No objective on screen" : "Objective: " + Short(a.Text);
+            case TriggerActionType.ProtectGround: return (a.On ? "Protect" : "Unprotect") + " ground within " + a.Radius + " of " + at;
             case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";
             case TriggerActionType.PlayMusic: return "Music: " + (string.IsNullOrEmpty(a.Track) ? "a special track" : a.Track) + (a.Loop ? " (loop)" : "");

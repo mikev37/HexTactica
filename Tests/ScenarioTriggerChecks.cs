@@ -254,6 +254,19 @@ public static partial class Scenarios {
              },
              "The scenario functions added for Act 1's playtest: Unit Killed's How (in action, starved); Unit Moved outside an area; Units At Most counting only units in sight; Building Damaged (half its health gone); Unload Proposed (a unit picked in its transport's panel); Unit Moved not counting boarding or riding; Bonus Stars (-1 and +2: one more star in the rating, a star taken from a perfect result); Reveal Area (the ground shown through the fog past the end of the turn, then hidden by name); Highlight UI (the hook told the panel's name); a trigger switched on after its click was made counts the click (the unit already selected); the dialogue box's Next while a later Dialogue of the same trigger is to come, Close at the last; the script holds an AI while its actions run; the camera on a unit that has died goes where it fell; Briefing: its marker shown under the briefing, its line not said, never fired in play; Unit Cut Off keeps its real reading while a move's preview is on the board.");
         n++;
+        make("script-new-functions-2", "scriptNewFunctions2", (a, o) => {
+                 Put("Grunt", o, 0, 0); Put("Tank", a, 2, 0); Put("Grunt", a, -3, 3); Put("Truck", a, -4, 3); Put("Grunt", o, 4, -2); Put("Tank", a, 6, -2);
+                 Script(Trig("Killed by Blue", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KilledBy = Blue; }),
+                        Trig("Killed by Red", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KilledBy = Red; }),
+                        Trig("Start", TriggerCondition.LevelStart, null,
+                            Act(TriggerActionType.SetObjective, x => { x.Text = "Capture the bridge before Jori!"; }),
+                            Act(TriggerActionType.ProtectGround, x => { x.TileX = -2; x.TileY = 0; x.Radius = 0; }),
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Rider"; x.Target = "Lorry"; }),
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Ambusher"; x.TargetSide = Red; x.FromTile = true; x.TileX = 5; x.TileY = -3; })),
+                        Trig("Allies", TriggerCondition.TurnStarted, t => { t.Side = Red; }, Act(TriggerActionType.SetTeam, x => { x.Side = Red; x.Value = 4; }), Act(TriggerActionType.SetTeam, x => { x.Side = Blue; x.Value = 4; })));
+             },
+             "More scenario functions (Act 1, mission 5): Unit Killed By (a Red grunt killed by Blue's tank counts for By Blue, not By Red); Set Objective (the objective on screen, kept in the script); Protect Ground (a protected tile takes no damage); Order Units boarding a transport named as its target; Order Units attacking from a set tile (From Tile); Set Team (with alliances on, two sides put on one team are allies, no longer hostile).");
+        n++;
         make("rule-bystander", "scriptBystander", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0);
                  Script(Trig("Red turns", TriggerCondition.TurnStarted, t => { t.Side = Red; t.Repeat = true; }),
@@ -265,7 +278,7 @@ public static partial class Scenarios {
              "The mission rating's tally (MissionRating.Tally, from the game log): turns are the days the player moved on, each once (a turn logged twice, at a load, is one day); an enemy unit killed by the player, starved out of supply or ditched out of fuel is the player's kill; an ally's is nobody's; the player's own losses whatever the cause.");
         n++;
         make("campaign-progress", "scriptCampaignProgress", (a, o) => { Put("Grunt", o, 0, 0); },
-             "The campaign (Campaign scene, campaign.dat): Act 1's flags linked 1.1 > 1.2 > 1.3 > 1.4, each scenario in the campaign folder; only 1.1 on the map at first; a loss unlocks nothing; a win unlocks the next and is kept on file (read back: still won, the next still there), on down the chain; stars by the pars, added on a better win and never taken away; a fork closes the other mission; no Act 1 mission opens Campaign 2; the map's pan and zoom.");
+             "The campaign (Campaign scene, campaign.dat): Act 1's flags linked 1.1 > 1.2 > 1.3 > 1.4 > 1.5, each scenario in the campaign folder; only 1.1 on the map at first; a loss unlocks nothing; a win unlocks the next and is kept on file (read back: still won, the next still there), on down the chain; stars by the pars, added on a better win and never taken away; a fork closes the other mission; no Act 1 mission opens Campaign 2; the map's pan and zoom.");
         n++;
         return n;
     }
@@ -445,9 +458,10 @@ public static partial class Scenarios {
             bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2.key && t2.unlocks.Count == 1 && t1.availableAtStart && !t2.availableAtStart
                        && t1.key == "Campaign/Tutorial 1" && t1.factionName != "" && t2.factionName != "" && t2.objectives.StartsWith("Take the middle city") && t2.scenario == "1.2 Combat Trials" && t1.parTurns == 8 && t2.parTurns == 10;
             // Act 1 down the chain: 1.1 (Tutorial 1) > 1.2 (Tutorial 2) > 1.3 > 1.4, each with its scenario in the campaign folder.
-            MissionInfo m3 = missions.Find(m => m.Name == "1.3 Transit Trouble"), m4 = missions.Find(m => m.Name == "1.4 Live Fire");
+            MissionInfo m3 = missions.Find(m => m.Name == "1.3 Transit Trouble"), m4 = missions.Find(m => m.Name == "1.4 Live Fire"), m5 = missions.Find(m => m.Name == "1.5 Border Brawl");
             bool chain = m3 != null && m4 != null && t2.unlocks.Count == 1 && t2.unlocks[0] == m3.key && m3.unlocks.Count == 1 && m3.unlocks[0] == m4.key
-                      && !m3.availableAtStart && !m4.availableAtStart && File.Exists(Path.Combine(scenarios, m3.ScenarioName + ".dat")) && File.Exists(Path.Combine(scenarios, m4.ScenarioName + ".dat"));
+                      && !m3.availableAtStart && !m4.availableAtStart && File.Exists(Path.Combine(scenarios, m3.ScenarioName + ".dat")) && File.Exists(Path.Combine(scenarios, m4.ScenarioName + ".dat"))
+                      && m5 != null && m4.unlocks.Count == 1 && m4.unlocks[0] == m5.key && !m5.availableAtStart && File.Exists(Path.Combine(scenarios, m5.ScenarioName + ".dat"));
             bool noCampaign2 = missions.TrueForAll(m => m.unlocksCampaigns.Count == 0);
             // Each flag pinned to its spot on the picture (its anchors), apart from the other.
             bool placed = anchors.ContainsKey(t1.key) && anchors.ContainsKey(t2.key) && !Near(anchors[t1.key], anchors[t2.key])
@@ -494,7 +508,7 @@ public static partial class Scenarios {
             bool fork = open && CampaignProgress.Blocked(right) && !CampaignProgress.Playable(right) && CampaignProgress.Visible(right) && !CampaignProgress.Blocked(done) && CampaignProgress.Playable(left);
             // Down the chain, each win read back from the file before the next.
             bool down = true;
-            foreach (MissionInfo[] step in new[] { new[] { t2, m3 }, new[] { m3, m4 } }) {
+            foreach (MissionInfo[] step in new[] { new[] { t2, m3 }, new[] { m3, m4 }, new[] { m4, m5 } }) {
                 if (step[0] == null || step[1] == null) { down = false; break; }
                 CampaignProgress.Attempt(step[0]);
                 CampaignProgress.Finish(step[0], new MissionTally { recorded = true, won = true, turns = 1 });
@@ -549,7 +563,7 @@ public static partial class Scenarios {
                    + "; campaigns: Tutorial 2 opens Campaign 2, listed by the hub, its map closed at first, in the build " + scenesWired + ", closed until won " + closedFirst + ", opened by the win " + opened + ", once " + openedOnce + ", kept by a save " + campaignsKept
                    + ", the view reaches the second map " + reachSecond + ", stops at the outer edges " + stopsAtEdges + ", one map pinned " + oneMapPinned
                    + "; map pan and zoom: pinned unzoomed " + pinned + ", room at 2x " + panRoom + ", zooms about the cursor " + aboutCursor + ", centres a mission " + centres;
-            detail += "; Act 1 linked 1.1 > 1.2 > 1.3 > 1.4 " + chain + ", won down the chain, each read back from the file " + down + ", no Act 1 mission opens Campaign 2 " + noCampaign2;
+            detail += "; Act 1 linked 1.1 > 1.2 > 1.3 > 1.4 > 1.5 " + chain + ", won down the chain, each read back from the file " + down + ", no Act 1 mission opens Campaign 2 " + noCampaign2;
             return files && linked && placed && stamped && campaignsOk && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView && chain && down && noCampaign2;
         } finally {
             CampaignProgress.FilePath = fileWas;
@@ -929,6 +943,35 @@ public static partial class Scenarios {
                 ScenarioGame.CameraFocusHook = null; ScenarioGame.HighlightUIHook = null;
                 detail = string.Join("; ", r.ToArray());
                 return brief && first && last && waiting && released && caught && stars && rating && lit == "TransportPanel" && shown && kept && how && cam && hidden && seen && off && wrecked && picked && rode && keptReading && never;
+            }
+            case "scriptNewFunctions2": {
+                Unit victim = Rig.At(0, 0).occupier, tank = Rig.At(2, 0).occupier, rider = Rig.At(-3, 3).occupier, lorry = Rig.At(-4, 3).occupier;
+                Unit other = Rig.At(4, -2).occupier, ambusher = Rig.At(6, -2).occupier;
+                rider.personal_name = "Rider"; lorry.personal_name = "Lorry"; ambusher.personal_name = "Ambusher";
+                HexTile safe = Rig.At(-2, 0); safe.terrain = T("Forest");
+                string shownObjective = null;
+                ScenarioGame.ObjectiveHook = x => shownObjective = x;
+                Action settle = () => { for (int i = 0; i < 6; i++) s.Tick(0.2f); };
+                settle();
+                List<string> r = new List<string>();
+                bool objective = s.Objective == "Capture the bridge before Jori!" && shownObjective == s.Objective;
+                safe.Damage(99);
+                bool protectedOk = safe.terrain == T("Forest") && safe.damage == 0;
+                bool boarded = rider.trasnporter == lorry;
+                bool fromTile = ambusher.tile == Rig.At(5, -3) && other.Strength < 6;
+                r.Add("objective shown " + objective + "; protected ground undamaged " + protectedOk + "; boarded the named truck " + boarded + "; attacked from the set tile " + fromTile + " (at " + (ambusher.tile != null ? ambusher.tile.x + "," + ambusher.tile.y : "-") + ", target " + other.Strength + ")");
+                int guard = 0;
+                while (victim.RealStrength > 0 && guard++ < 10) { tank.active = true; ScenarioGame.Order(tank, victim, null); settle(); }
+                bool by = Fired(s, "Killed by Blue") == 1 && Fired(s, "Killed by Red") == 0;
+                r.Add("killed by Blue told " + by + " (" + guard + " attacks)");
+                gc.alliances = true;
+                bool hostileBefore = Player.Hostile(a, o);
+                gc.EndTurn(); settle(); gc.EndTurn(); settle();
+                bool allied = hostileBefore && !Player.Hostile(a, o) && a.team == 4 && o.team == 4;
+                r.Add("set team: hostile before " + hostileBefore + ", allies after " + allied);
+                ScenarioGame.ObjectiveHook = null;
+                detail = string.Join("; ", r.ToArray());
+                return objective && protectedOk && boarded && fromTile && by && allied;
             }
             case "scriptBystander": {
                 Player range = Rig.AddPlayer("Range", 200);

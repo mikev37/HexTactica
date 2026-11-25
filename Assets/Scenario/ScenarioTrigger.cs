@@ -175,6 +175,12 @@ public enum TriggerActionType {
     RevealArea = 34,
     /// <summary>A part of the screen is outlined and flashes to draw the eye (On), or stops (off): Text names it (a panel's object name, or its component, e.g. TransportPanel), Marker Id names the highlight (empty: Text). The look is Resources/UIHighlight.prefab.</summary>
     HighlightUI = 35,
+    /// <summary>Side joins team Value (0: no team): with alliances on, sides on one team are allies (they share sight, do not fight, win together). "Jori is on our side now."</summary>
+    SetTeam = 36,
+    /// <summary>The objective shown on screen becomes Text (empty: none shown), flashed as it changes. A save keeps it.</summary>
+    SetObjective = 37,
+    /// <summary>The ground within Radius of the tile takes no damage and cannot be destroyed (On), or can again (off): "the bridge holds". A save keeps it.</summary>
+    ProtectGround = 38,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>
@@ -286,6 +292,8 @@ public class TriggerAction {
     public bool TargetExposed;
     [Tooltip("Order Units, with no Target unit: go for the unit of Target Side standing on the tile (\"attack whoever holds the city\"); none there: head for the tile.")]
     public bool TargetOnTile;
+    /// <summary>Order Units with a target: attack it from the tile (TileX, TileY) if it can get there and fire from it (a scripted ambush from that exact spot); else as usual.</summary>
+    public bool FromTile;
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
     public int Count = 1;
     [Tooltip("Spawn Unit: their strength (1 to 6). Mark Reach: the least terrain cover marked. Order Units: the least cover the target stands in (0: any). Set Veterancy, Set Stat, Give Money: the value (or what is added, Mode Add). Ready Units: 1 may act, 0 has used its turn.")]
@@ -367,6 +375,8 @@ public class ScenarioTrigger {
     [SideChoice(false)] public long SeenBy = TriggerSide.Human;
     /// <summary>Units At Most / At Least: only units the Seen By side sees now ("none of them in sight").</summary>
     public bool OnlySeen;
+    /// <summary>Unit Killed: only units killed in a fight by a unit of this side (Any: by anyone, or anything).</summary>
+    [SideChoice(false)] public long KilledBy = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
     [UnitName] public string UnitTag = "";
     [Tooltip("Building conditions: only buildings of this kind (the building prefab's name: City, HQ, ...). Empty: any. With In Area and Radius 0: the building on the tile.")]
@@ -469,6 +479,8 @@ public class ScenarioScriptData {
     [ScenarioState] public List<DialogueLine> PendingLines = new List<DialogueLine>();
     [ScenarioState] public List<StarBonus> Bonuses = new List<StarBonus>();
     [ScenarioState] public List<ShownReveal> Reveals = new List<ShownReveal>();
+    [ScenarioState] public string Objective = "";
+    [ScenarioState] public List<ShownReveal> Protected = new List<ShownReveal>();
 }
 
 /// <summary>Stars a Bonus Stars action gave or took (kept in a save).</summary>

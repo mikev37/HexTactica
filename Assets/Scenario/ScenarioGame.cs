@@ -282,8 +282,18 @@ public static class ScenarioGame {
     /// cannot reach one, it moves as near the target (or, with none, <paramref name="goal"/>) as it can. It has then
     /// used its turn. False if it did nothing (it has used its turn already, or cannot get closer).
     /// </summary>
-    public static bool Order(Unit u, Unit target, HexTile goal) {
+    public static bool Order(Unit u, Unit target, HexTile goal) { return Order(u, target, goal, null); }
+
+    /// <summary>
+    /// As above; <paramref name="from"/>: with a target, the tile to attack it from if it can get there and fire from it.
+    /// A target of its own side (or an ally's) that can carry it: it gets in (walks to it and boards).
+    /// </summary>
+    public static bool Order(Unit u, Unit target, HexTile goal, HexTile from) {
         if (u == null || u.tile == null || u.RealStrength <= 0 || !u.active) return false;
+        if (target != null && target != u && target.tile != null && target.owner != null && Player.Friendly(target.owner, u.owner)) {
+            List<HexTile> steps = HexTile.BoardingPath(u, target);
+            if (steps != null && u.WalkAndBoard(steps, target, true)) { u.FinishActive(); return true; }
+        }
         HexTile start = u.tile;
         // (The tiles' search state only: a scripted order shows nothing on the board.)
         Func<HexTile, int> clear = x => { x.G = 0; x.parent = null; return 0; };
@@ -294,7 +304,8 @@ public static class ScenarioGame {
         HexTile to = null;
         bool fire = false;
         if (target != null && target.tile != null && u.CanAttack(target)) {
-            foreach (HexTile s in stops) {
+            if (from != null && stops.Contains(from) && (from == start || u.moveAndAttack) && u.CanAttackFrom(from, target)) to = from;
+            else foreach (HexTile s in stops) {
                 if (s != start && !u.moveAndAttack) continue;
                 if (u.CanAttackFrom(s, target) && (to == null || s.G < to.G)) to = s;
             }
@@ -366,6 +377,11 @@ public static class ScenarioGame {
     public static System.Action<string, string, bool> HighlightUIHook;
 
     public static void HighlightUI(string what, string id, bool on) { if (HighlightUIHook != null) HighlightUIHook(what ?? "", id ?? "", on); }
+
+    /// <summary>Set by ObjectivePanel (the UI side): the objective on screen (empty: none).</summary>
+    public static System.Action<string> ObjectiveHook;
+
+    public static void ShowObjective(string text) { if (ObjectiveHook != null) ObjectiveHook(text ?? ""); }
 
     public static bool PlayMusic(string track, bool loop) { return PlayMusicHook == null || PlayMusicHook(track, loop); }
 
