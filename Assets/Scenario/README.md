@@ -82,6 +82,8 @@ units or buildings must match at least.
 | Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |
 | Enemy Inspected (35) | the player clicks a matching enemy unit to see where it can go and what it can hit (not an attack on it): *Count* times | side, kind, name, in area |
 | Move Proposed (34) | the player proposes a move for a matching unit: a first click on a tile it can reach, so the path shows and nothing has moved yet (*In area*: to a tile within the area): *Count* times. An attack is select, propose the move next to the enemy, click the enemy: a second click on the tile makes the move and ends the unit's turn, so a tutorial's attack step waits for this, not for Unit Enters | side, kind, name, in area |
+| Attack Proposed (36) | the player clicks an enemy to see what an attack by a matching unit would do (the numbers show; nothing fired yet). *Value* 1: only when the defender would fire first (the "!") | side, kind, name, in area, value |
+| Ambush (37) | a matching unit, attacked, fired first (its cover and veterancy beat the attacker's concealment and veterancy): *Count* times | side, kind, name, in area |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
 | Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
@@ -134,11 +136,12 @@ Timing is counted in **turns**:
 |---|---|
 | Dialogue (0) | shows its lines one after another. The game is held until the last line is closed, and the trigger's next action waits until then. |
 | Camera Focus (1) / Camera Frame Board (25) | glides the camera to the tile, or to *On Unit* (*Zoom* sets the orthographic size; 0 keeps the zoom) / shows the whole board |
-| Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, in the fog too unless *Hide In Fog* is on / removes it (or every marker) |
+| Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, in the fog too unless *Hide In Fog* is on / removes it (or every marker; a name ending in `*`: every marker whose name starts so) |
+| Mark Reach (31) | puts the marker prefab (no text) on every tile the matching units can move to this turn with terrain cover *Value* or more, buildings left out ("the forests in reach"), named *Marker Id*`:x,y`; Hide Marker *Marker Id*`*` removes them all |
 | Set Purchases (27) / Set Fog (28) | switches buying units, or fog of war, on or off for the rest of the game (a save keeps it) |
 | Play Music (4) / Stop Music (5) | plays a track from `Resources/Music/Special` (empty: one at random), optionally looping / returns to the game's own music |
 | Win (6) / Lose (7) | ends the game now: *Side* wins / loses (the side left wins) |
-| Spawn Unit (8) | makes *Count* units of a kind for *Side* on the tile, each on the nearest free tile it can stand on if the tile is taken. Sets their strength, veterancy and name, and whether they can act this turn. |
+| Spawn Unit (8) | makes *Count* units of a kind for *Side* on the tile, each on the nearest free tile it can stand on if the tile is taken. Sets their strength, veterancy and name, and whether they can act this turn. *Out of sight*: on the nearest free tile no enemy can see (within 8 steps), so they come out of the fog. |
 | Give Units (9) / Give Building (10) | the matching units / buildings change hands to *Side* (units with their cargo; an HQ given away counts as taken) |
 | Destroy Tile (11) / Repair Tile (12) | destroys the terrain within *Radius* (a bridge falls, a forest burns) / puts it back as it was, undamaged |
 | Destroy Building (13) / Repair Building (14) | the matching buildings |
@@ -150,9 +153,13 @@ Timing is counted in **turns**:
 | Play Sound (21) | plays a sound from `Resources/Dialogue` once |
 | Ready Units (23) | the matching units can act again this turn (Value 1), or have used their turn (Value 0) |
 | Place Units (30) | the matching units are lifted onto the tile, or the nearest free tile, at once: nothing walked, nobody dies (unlike Destroy Units then Spawn Unit, which counts a loss against the mission's par); *Ready to act*: they may act again this turn |
-| Order Units (26) | the matching units move and attack as if ordered: toward the unit in *Attack Unit*, or the nearest unit of *Or Nearest Of*, attacking it if they reach it this turn; with no target, toward the tile. They have then used their turn. (For scripted ambushes: "the raider goes for our grunt".) |
+| Order Units (26) | the matching units move and attack as if ordered: toward the unit in *Attack Unit*, or the nearest unit of *Or Nearest Of* (with *Value* above 0: the nearest standing in that much cover or more, if any is), attacking it if they reach it this turn; with no target, toward the tile. They have then used their turn. (For scripted ambushes: "the raider goes for our grunt".) |
 | Strike Tile (29) | the matching units that strike ground or from afar (a Missile; see *Strikes* in the main README) strike the tile, if it is in their range and they have their turn: at once, or launched to land when their side's next turn starts. They have then used their turn. ("The enemy launches at the bridge.") |
 | Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |
+
+**{unit}**: a unit name of `{unit}` in an action (Unit Name, Attack Unit, Camera Focus's On Unit) means the unit the
+trigger fired about: who entered the area, was selected, was hit, fired first. For All Of / Any Of, the first part that
+is met and has one. ("When a grunt comes near the city, the tank attacks *that* grunt.")
 
 If an action matches nothing, it says so once in the console: no unit to give, no side by that name, no such marker
 prefab. It never fails silently.

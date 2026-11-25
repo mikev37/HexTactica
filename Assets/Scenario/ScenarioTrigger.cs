@@ -83,6 +83,10 @@ public enum TriggerCondition {
     MoveProposed = 34,
     /// <summary>The player clicks a matching enemy unit, to see where it can go and what it can hit (not an attack on it): Count times. A tutorial's "that is HIS reach, not yours".</summary>
     EnemyInspected = 35,
+    /// <summary>The player clicks an enemy to see what an attack on it would do (the numbers over both units; not yet fired), with a unit matching the unit filter; Value 1: only when the defender would fire first (the "!": it is in more cover than the attacker can use): Count times.</summary>
+    AttackProposed = 36,
+    /// <summary>A unit matching the unit filter, attacked, fired first (an ambush: its cover and veterancy beat the attacker's concealment and veterancy): Count times.</summary>
+    Ambush = 37,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -149,6 +153,8 @@ public enum TriggerActionType {
     StrikeTile = 29,
     /// <summary>The units matching the unit filter (Unit Side, Unit Kind, Unit Name) are lifted onto the tile, or the nearest free tile they can stand on, at once: no path walked, no fuel, nothing entered on the way, and no one dies (a scenario's "try that again from here"). Ready To Act: they may act again this turn.</summary>
     PlaceUnits = 30,
+    /// <summary>Show the marker prefab Marker (no text) on every tile the units matching the unit filter can move to this turn with terrain cover of Value or more, buildings left out: "the forests in reach". The marks are named Marker Id + ":x,y"; Hide Marker with Marker Id + "*" removes them all.</summary>
+    MarkReach = 31,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>
@@ -198,7 +204,7 @@ public class TriggerAction {
     [Tooltip("Dialogue: the lines, shown one after the other; the next action of the trigger waits until the last is closed.")]
     public List<DialogueLine> Lines = new List<DialogueLine>();
 
-    [Tooltip("Camera Focus, Show Marker: on this unit instead of a tile (a marker follows it as it moves). Empty: the tile.")]
+    [Tooltip("Camera Focus, Show Marker: on this unit instead of a tile (a marker follows it as it moves). Empty: the tile. {unit}: the unit the trigger fired about (Camera Focus only).")]
     [UnitName] public string AtUnit = "";
     [Tooltip("Show Marker on a unit: hidden while the player cannot see the unit (off: shown in the fog too, giving its place away, as a marker on an enemy to hunt down means to).")]
     public bool HideInFog;
@@ -237,7 +243,7 @@ public class TriggerAction {
     [SideChoice(false)] public long UnitSide = TriggerSide.Any;
     [Tooltip("Spawn Unit: the unit prefab to make (by name: Grunt, Tank ...; a side with a faction gets its version). Unit filter: only units of this kind (empty: any kind; a faction's version counts as its base unit).")]
     [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
-    [Tooltip("Spawn Unit: the name the new units go by (their personal name), so later triggers can pick them out. Unit filter: only units of this name (empty: any).")]
+    [Tooltip("Spawn Unit: the name the new units go by (their personal name), so later triggers can pick them out. Unit filter: only units of this name (empty: any; {unit}: the unit the trigger fired about: who entered, was selected, was hit ...).")]
     [UnitName] public string UnitTag = "";
     [Tooltip("Unit and building filters: only those within Radius of the tile (off: anywhere on the board).")]
     public bool InArea;
@@ -249,17 +255,19 @@ public class TriggerAction {
     [ResourceName("Buildings", typeof(Building), ResourceKind.Building)] public string BuildingKind = "";
 
     [Header("Order Units: what to attack")]
-    [Tooltip("Order Units: the unit to go for and attack. Empty: the nearest unit of Target Side.")]
+    [Tooltip("Order Units: the unit to go for and attack ({unit}: the unit the trigger fired about). Empty: the nearest unit of Target Side.")]
     [UnitName] public string Target = "";
-    [Tooltip("Order Units: with no Target unit, the nearest unit of this side is attacked (Any side: no target; they head for the tile).")]
+    [Tooltip("Order Units: with no Target unit (or the one named gone), the nearest unit of this side is attacked (Any side: no target; they head for the tile). Value above 0: the nearest of them standing in at least Value terrain cover, if there is one.")]
     [SideChoice(false)] public long TargetSide = TriggerSide.Any;
 
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
     public int Count = 1;
-    [Tooltip("Spawn Unit: their strength (1 to 6). Set Veterancy, Set Stat, Give Money: the value (or what is added, Mode Add). Ready Units: 1 may act, 0 has used its turn.")]
+    [Tooltip("Spawn Unit: their strength (1 to 6). Mark Reach: the least terrain cover marked. Order Units: the least cover the target stands in (0: any). Set Veterancy, Set Stat, Give Money: the value (or what is added, Mode Add). Ready Units: 1 may act, 0 has used its turn.")]
     public int Value = 6;
     [Tooltip("Spawn Unit: their veterancy (0 to 3).")]
     public int Veterancy;
+    [Tooltip("Spawn Unit: on the nearest free tile to the tile that no enemy of theirs can see (within 8 steps; in sight if there is none): they arrive out of the fog.")]
+    public bool OutOfSight;
     [Tooltip("Spawn Unit: they may act at once (off: they have used this turn, as a unit just bought).")]
     public bool ReadyToAct = true;
     [Tooltip("Set Veterancy, Set Stat, Give Money: set to Value, or add Value.")]
@@ -372,6 +380,8 @@ public class ScenarioTrigger {
     [HideInInspector, ScenarioState] public int ConditionMetTurn = -1;
     /// <summary>The turn count (TurnsOf's) when it last fired.</summary>
     [HideInInspector, ScenarioState] public int LastFiredTurn;
+    /// <summary>The unit the last event counted for this trigger was about (who entered, was selected, was hit ...): what "{unit}" names in its actions. Not saved.</summary>
+    [NonSerialized] public Unit Subject;
 }
 
 /// <summary>A marker shown on the board by a Show Marker action (kept in a save).</summary>
@@ -398,6 +408,8 @@ public class RunningActions {
     public int WaitLine;
     /// <summary>The level clock at which a Wait ends; 0: none.</summary>
     public float WaitUntil;
+    /// <summary>The unit the trigger fired about ("{unit}" in its actions: ScenarioTrigger.Subject when it fired). Not saved.</summary>
+    [NonSerialized] public Unit Subject;
 }
 
 /// <summary>How many turns a side has begun in this game (Delay and Repeat Every count them; kept in a save).</summary>

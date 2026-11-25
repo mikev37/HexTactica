@@ -266,6 +266,8 @@ public static class ScenarioFile {
             // A board saved in play (a game log's snapshot) has each side's money and whether it is out, as the game's loader reads them.
             int money; if (pd.ContainsKey("money") && int.TryParse(pd["money"], out money)) side.money = money;
             if (pd.ContainsKey("eliminated") && pd["eliminated"] == "true") side.eliminated = true;
+            // A side's faction (its versions of units: what a spawn makes, what a filter's kind names), as the game's loader sets it.
+            if (pd.ContainsKey("factionName") && !string.IsNullOrEmpty(pd["factionName"])) side.faction = GameAssets.Faction(pd["factionName"]);
         }
         Func<long, Player> sideOf = id => { Player s; return byId.TryGetValue(id, out s) ? s : null; };
         foreach (Dictionary<string, string> b in Array(json, "buildings")) {
