@@ -2915,7 +2915,7 @@ PrefabInstance:
       objectReference: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: briefing
-      value: 'The Federation is holding exercises on the Blakian border. You command OPFOR, the side playing the enemy; Jori Orlov commands BLUE, the Federation side. Anna, an FCI agent, will walk you through the field.'
+      value: 'Your First Command. The Federation is holding exercises on the Blakian border. You command OPFOR, the side playing the enemy; Jori Orlov commands BLUE, the Federation side. Anna, an FCI agent, will walk you through moving a grunt, ending your turn, staying in supply and attacking.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parKills

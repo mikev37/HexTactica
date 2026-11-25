@@ -1312,7 +1312,7 @@
     "day": 0,
     "purchases": "off",
     "allowedUnits": "",
-    "fog": "off",
+    "fog": "on",
     "factionSpecialUnits": "off",
     "fixedRules": "fog,purchases,factionSpecialUnits",
     "rules": "standard",

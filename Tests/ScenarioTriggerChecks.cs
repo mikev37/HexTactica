@@ -775,7 +775,7 @@ public static partial class Scenarios {
                 Func<Unit> alpha = () => ScenarioGame.Named("Alpha");
                 Func<Unit> pride = () => ScenarioGame.Named("Jori's Pride");
                 HexTile pit = Rig.At(-1, 1), city = Rig.At(-2, 3), from = Rig.At(-1, 2);
-                bool sandPit = pit.terrain != null && pit.terrain.name == "Barrens" && !gc.fogOfWar;
+                bool sandPit = pit.terrain != null && pit.terrain.name == "Barrens" && gc.fogOfWar;
 
                 settle();
                 bool intro = everSaid("Anna Mikhailovna") && everSaid("rutting goat") && everSaid("that sand pit") && marked("alpha");
@@ -841,7 +841,7 @@ public static partial class Scenarios {
                 bool starved = everSaid("we're starving") && !marked("highlight");
                 bool reinforced = everSaid("Reinforcements are here") && Fired(s, "1.18 Reinforcements") == 1;
                 said();
-                detail = "start: sand pit, no fog " + sandPit + ", Jori kept in with nothing " + keptIn + "; introductions, Alpha marked " + intro + "; selected: pit marked " + selected
+                detail = "start: sand pit, fog on " + sandPit + ", Jori kept in with nothing " + keptIn + "; introductions, Alpha marked " + intro + "; selected: pit marked " + selected
                        + "; wandered: line, marker gone " + wandered + ", no Jori yet " + noJori + ", lesson again " + again + "/" + againSelected + "; on the pit " + onPit
                        + "; Jori's squad appeared with 2 supplies " + appeared + ", hit Alpha to " + alphaHit + " taking it to " + prideHit + ", Alpha fell back, line " + cheapShot
                        + "; his reach explained " + hisReach + "; retreat line, Alpha marked " + fellBackLine + "; city marked once selected " + cityMarked + "; ran to the city " + ran + "; healed on the city " + cityHeal
