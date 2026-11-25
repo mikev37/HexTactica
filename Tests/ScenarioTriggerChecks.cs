@@ -216,6 +216,8 @@ public static partial class Scenarios {
             "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: Jori starts with one squad (his win condition off until his tank comes); the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for a fresh squad (in the trees), which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit, marked; clicking it: the supply lines, no tile marked; moved anywhere: Gena's line; the capture lesson; the city taken ('City secured!') and held through a turn: the player wins.");
         n += ExportMission("1.3 Transit Trouble", "transit-trouble-playthrough", "scriptTransitTrouble", 30,
             "Act 1, mission 3 (Resources/Campaign/Scenarios/1.3 Transit Trouble.dat), played with the player's clicks: the stolen village shown; a marker per click: the grunt, then the truck (he boards), the supply unit, then the truck; the truck marked, then the tile beside the city, reached in one drive; the grunt put down on the city; on Jori's turn the bandit walks from the fog onto the hills by the barrens, unseen, and the truck's supply is cut off; the cut-off lines, a recon and a squad on loan, the squad boards the recon; the bandit spotted: its lines; hurt, it flees on Jori's turn and is gone (or killed: its last line); the city taken with the road clear: the player wins.");
+        n += ExportMission("1.4 Live Fire", "live-fire-playthrough", "scriptLiveFire", 40,
+            "Act 1, mission 4 (Resources/Campaign/Scenarios/1.4 Live Fire.dat), played with the player's clicks: three sides, the range's guns a bystander (no turns, never fought: nobody can attack them, they attack nobody); the salute and Gena's artillery lines; on Jori's first turn three bandits on the player's flank; the player's next turn: the range's gun A given, marked, the bandit in its range marked once it is selected, the attack previewed ('Enemy sighted!'), fired: the bandit suppressed, Gena's lines; the turn over: Anna's 'more cannons', Jori's squad sent for gun C, which joins him when it gets next to it; a unit of ours next to gun B: it joins us; the battle to the end: the player wins.");
         n += ExportMission("Tutorial 2", "tutorial2-playthrough", "scriptTutorial2", 10,
             "The second tutorial mission (Resources/Campaign/Scenarios/Tutorial 2.dat), played with the player's orders and recorded as a game is: the grunt boards the truck (told to load the supply unit), the supply unit boards (told to drive); the marked tile is outside the HQ's supply until the truck with supply aboard stands there; the grunt is put down in supply; the lookout (held, fed) is spotted; on turn 2 a recon car and a squad arrive, the squad boards the car; the lookout is destroyed, a grunt takes the village: the player wins. Then the campaign, on the mission assets as they are (Resources/Campaign/Missions): the result read from the game log earns its stars against Tutorial 2's pars; only Tutorial 1's flag is on the map at first, winning it unlocks Tutorial 2, stars once earned are kept, a mission blocked by an attempt is closed, and progress survives being saved and read back.");
         return n;
@@ -1177,6 +1179,87 @@ public static partial class Scenarios {
                        + " | " + string.Join("; ", log.ToArray());
                 ScenarioDialogue.Presenter = null;
                 return start && intro && m1 && m2 && m3 && m4 && m5 && drove && onCity && atCut && unseen && cutOff && cutLines && loan && aboard && spotted && banditGone && won;
+            }
+            case "scriptLiveFire": {
+                Player human = o, jori = a;
+                Player range = null;
+                foreach (Player p in gc.players) if (p != null && p.id == 200) range = p;
+                FakeBox box = new FakeBox();
+                ScenarioDialogue.Presenter = box;
+                foreach (MonoBehaviour m in jori.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
+                AIPlayer ai = jori.GetComponent<AIPlayer>();
+                List<string> transcript = new List<string>();
+                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
+                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
+                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
+                bool rangeEverActive = false;
+                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == jori && guard++ < 150) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == jori) gc.EndTurn(); settle(); rangeEverActive |= gc.activePlayer == range; };
+                Action endTurn = () => { gc.EndTurn(); settle(); rangeEverActive |= gc.activePlayer == range; aiTurn(); };
+                Func<string, bool> marked = id => s.markers.Exists(m => m.Id == id);
+                Func<string, Unit> U = ScenarioGame.Named;
+                List<string> log = new List<string>();
+                Unit gunA = U("Cannon A"), gunB = U("Cannon B"), gunC = U("Cannon C"), ours = U("Alpha");
+                bool start = range != null && range.bystander && gunA != null && gunA.owner == range && gc.players.Count == 3 && !gc.fogOfWar
+                             && !Player.Hostile(human, range) && Player.Hostile(human, jori) && !ours.CanAttack(gunA) && !gunA.CanAttack(ours) && !FogOfWar.IsHuman(range);
+                settle();
+                bool salute = everSaid("up to four tiles away") && everSaid("Salutes are for old men");
+                endTurn();
+                bool bandits = U("Bandit 1") != null && U("Bandit 2") != null && U("Bandit 3") != null && U("Bandit 1").owner == jori && everSaid("hired guns") && everSaid("knife at your throat");
+                bool notRange = gc.activePlayer == human && !rangeEverActive;
+                bool given = gunA.owner == human && marked("cannon") && everSaid("Use the salute cannons");
+                HexTile.NotifyUnitSelected(gunA); settle();
+                Unit b1 = U("Bandit 1");
+                bool targetMarked = marked("target") && !marked("cannon") && everSaid("Click the enemy to target them!");
+                bool inRange = b1 != null && gunA.CanAttackFrom(gunA.tile, b1);
+                if (b1 != null) { HexTile.NotifyAttackProposed(gunA, b1, false); settle(); }
+                bool previewed = everSaid("Enemy sighted!") && everSaid("click again to blast") && !marked("target");
+                int b1Before = b1 != null ? b1.Strength : -1;
+                if (b1 != null) { ScenarioGame.Order(gunA, b1, null); settle(); }
+                bool suppressed = b1 != null && b1.Strength < b1Before && b1.suppressed > 0 && everSaid("they are gray") && everSaid("reduced by half");
+                log.Add("bandit 1 " + b1Before + " -> " + (b1 != null ? b1.Strength + " suppressed " + b1.suppressed : "dead") + (inRange ? "" : " (NOT IN RANGE)"));
+                endTurn();
+                bool moreGuns = everSaid("more cannons from the poligon") && everSaid("Great idea!");
+                // A squad of ours sent beside gun B (if it is still the range's); Jori's squad walks to gun C (two turns).
+                int rounds = 0; bool securedB = gunB.owner == human;
+                for (; rounds < 3 && !gc.gameOver; rounds++) {
+                    if (gunB.owner == range) foreach (Unit u in new List<Unit>(human.units)) {
+                        if (u == null || !u.active || u.Strength <= 0 || u.trasnporter != null || u == gunA) continue;
+                        ScenarioGame.Order(u, null, gunB.tile); settle();
+                        if (gunB.owner != range) break;
+                    }
+                    securedB |= gunB.owner == human;
+                    log.Add("round " + (rounds + 1) + ": us " + human.units.Count + ", Jori " + jori.units.Count + ", B " + gunB.owner.personal_name + ", C " + (gunC != null && gunC.Strength > 0 ? gunC.owner.personal_name : "gone"));
+                    endTurn();
+                }
+                securedB |= gunB.owner == human || Fired(s, "Secure B (us)") == 1;
+                bool bTaken = Fired(s, "Secure B (us)") == 1 && gunB.owner == human && !marked("gunB");
+                // The rest of the battle is the player's; its lines are checked as Jori's force goes (removed here, as kills).
+                Func<Func<Unit, bool>, int> killJori = which => { int k = 0; foreach (Unit u in new List<Unit>(jori.units)) if (u != null && u.Strength > 0 && which(u)) { u.Perish(); k++; settle(); } return k; };
+                Func<Unit, string> kind = u => GameController.DisplayName(u, u.owner);
+                killJori(u => kind(u) == "Tank"); killJori(u => kind(u) == "Artillery");
+                bool tankLine = everSaid("Gah! You got lucky!"), gunLine = everSaid("tips from the commander");
+                // Down to the last bandit (one may have fallen already in the fight).
+                killJori(u => kind(u) == "Bandit" && jori.units.FindAll(x => x != null && x.Strength > 0 && kind(x) == "Bandit").Count > 1);
+                foreach (Unit u in jori.units) if (u != null && kind(u) == "Bandit") { u.Strength = 2; }
+                settle();
+                bool lastStraw = everSaid("That's the last straw!");
+                killJori(u => kind(u) == "Bandit");
+                bool banditsGone = everSaid("He betrayed us!");
+                killJori(u => jori.units.Count > 1);
+                bool whatever = everSaid("Minister is here to see it");
+                bool kristoff = everSaid("Kristoff isn't coming");
+                killJori(u => true);
+                bool grabbed = Fired(s, "Secure C (Jori)") == 1 || Fired(s, "Secure C (us)") == 1;
+                bool won = gc.gameOver && gc.winner == human && everSaid("stole his thunder");
+                said();
+                bool lines = tankLine && gunLine && lastStraw && banditsGone && kristoff && whatever;
+                log.Add("lines: his tank " + tankLine + ", his gun " + gunLine + ", last straw " + lastStraw + ", bandits gone " + banditsGone + ", Kristoff " + kristoff + ", whatever " + whatever);
+                detail = "start: three sides, the range a bystander nobody fights " + start + "; the salute, Gena's and Jori's lines " + salute + "; bandits on Jori's first turn " + bandits + ", the range never had a turn " + notRange
+                       + "; gun A given and marked " + given + ", the bandit marked once it is selected " + targetMarked + " (in range " + inRange + "), previewed " + previewed + ", fired: suppressed, Gena's lines " + suppressed
+                       + "; more guns " + moreGuns + "; gun B ours by a squad beside it, marker gone " + bTaken + ", gun C taken " + grabbed + "; the battle's lines " + lines + "; won " + won + " in " + rounds + " round(s), the range never had a turn " + !rangeEverActive
+                       + " | " + string.Join("; ", log.ToArray());
+                ScenarioDialogue.Presenter = null;
+                return start && salute && bandits && notRange && given && targetMarked && inRange && previewed && suppressed && moreGuns && bTaken && grabbed && lines && won && !rangeEverActive;
             }
             case "scriptTutorial2": {
                 Player human = o, raiders = a;

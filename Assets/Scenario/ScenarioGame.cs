@@ -76,7 +76,7 @@ public static class ScenarioGame {
             case TriggerSide.Any: return true;
             case TriggerSide.Neutral: return p == null;
             case TriggerSide.Human: return p != null && FogOfWar.IsHuman(p);
-            case TriggerSide.AI: return p != null && !FogOfWar.IsHuman(p);
+            case TriggerSide.AI: return p != null && !FogOfWar.IsHuman(p) && !p.bystander;
             default: return p != null && p.id == side;
         }
     }

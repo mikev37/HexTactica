@@ -671,6 +671,13 @@ public class ScenarioScript : MonoBehaviour {
                 if (string.IsNullOrEmpty(a.MarkerId)) markers.Clear(); else markers.RemoveAll(m => m.Id == a.MarkerId);
                 ScenarioGame.HideMarker(a.MarkerId);
                 return;
+            case TriggerActionType.Salute: {
+                foreach (Unit u in UnitsFor(t, a, r)) {
+                    HexTile from = u.RealTile;
+                    if (from != null) u.Salute(ScenarioGame.Tile(from.x, from.y + a.Value));
+                }
+                return;
+            }
             case TriggerActionType.MarkReach: {
                 if (string.IsNullOrEmpty(a.Marker)) { Warn(t, "a Mark Reach action names no marker prefab."); return; }
                 string id = string.IsNullOrEmpty(a.MarkerId) ? "reach" : a.MarkerId;

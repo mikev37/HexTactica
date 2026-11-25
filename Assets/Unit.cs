@@ -1133,6 +1133,8 @@ public class Unit : MonoBehaviour
         if (opposition == null || opposition.tile == null) return false;
         // Aboard a transport: out of reach (the transport is what stands on the tile).
         if (opposition.trasnporter != null && opposition.trasnporter != opposition) return false;
+        // A bystander's units (Player.bystander) are fought by nobody, and fight nobody.
+        if ((opposition.owner != null && opposition.owner.bystander) || (owner != null && owner.bystander)) return false;
         if (!CanAttack(opposition.tile)) return false;
         if (!CanTarget(opposition)) return false;
         return calculateDamage(this, opposition, opposition.tile, 0) > 0;
@@ -1709,6 +1711,20 @@ public class Unit : MonoBehaviour
         textArea.text = "";
     }
 
+
+    /// <summary>
+    /// A salute (a scenario's Salute action): the fire animation and sound toward <paramref name="at"/>, and its weapon's
+    /// impact there; no shot is resolved, nothing is hit, and nothing waits on it. On screen only.
+    /// </summary>
+    public void Salute(HexTile at) {
+        if (GameController.gc != null && GameController.gc.headless) return;
+        if (animator != null) animator.SetTrigger("Fire!");
+        PlaySound(fireSound);
+        if (at != null) {
+            transform.rotation = at.transform.position.x < transform.position.x ? Quaternion.Euler(0, 180, 0) : Quaternion.identity;
+            if (weaponImpact != null) GameObject.Instantiate(weaponImpact, at.transform.position, Quaternion.identity);
+        }
+    }
 
     //This starts the shooting process, but the animation controller determines when it is resolved.
     internal void Fire(Unit defender, bool retaliate) {

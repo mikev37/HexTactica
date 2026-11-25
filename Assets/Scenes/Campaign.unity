@@ -1262,6 +1262,7 @@ RectTransform:
   - {fileID: 1712040002}
   - {fileID: 1712040102}
   - {fileID: 1712040202}
+  - {fileID: 1712040302}
   m_Father: {fileID: 1267999780}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -3389,6 +3390,253 @@ RectTransform:
   m_PrefabInstance: {fileID: 1712040101}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &1712040103 stripped
+--- !u!1001 &1712040301
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 733062130}
+    m_Modifications:
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 200
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 190
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: faction
+      value: 
+      objectReference: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
+    - target: {fileID: 3718294514905684263, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_Name
+      value: 1.4 Live Fire
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: availableAtStart
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.85
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.85
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.45
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: title
+      value: 'Live Fire'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: briefing
+      value: 'The exercise proper begins: a full battle, both sides even, opened with a cannon salute. Kristoff Orlov, Jori''s father, is expected to watch.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: objectives
+      value: 'Defeat Jori''s force or take his HQ.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: scenario
+      value: 1.4 Live Fire
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: parTurns
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: parKills
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: parLosses
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[0].Character
+      value: Anna
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[0].Text
+      value: 'This is the main event. Minister Orlov himself will be observing. Jori will do anything to impress him. Be ready for anything.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[0].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[1].Character
+      value: Jori
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[1].Text
+      value: 'Father!'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[1].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[0].Character
+      value: Anna
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[0].Text
+      value: 'Blakians should know better than to cross our border. Even if they are just bandits, it''s a provocation. I''m going to look into this.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[0].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[1].Character
+      value: Gena
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[1].Text
+      value: 'And to think that we were once one nation with one dream... How the mighty have fallen. He fought well, but he relied too much on tricks. A good commander relies on fundamentals.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[1].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[2].Character
+      value: Jori
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[2].Text
+      value: 'You may have won this little game, but I swear, I''ll see you court-martialed for your disrespect!'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[2].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[0].Character
+      value: Anna
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[0].Text
+      value: 'This is a disaster. Federal troops lose to bandits? What an embarrassment.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[0].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+--- !u!224 &1712040302 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+  m_PrefabInstance: {fileID: 1712040301}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1712040303 stripped
 --- !u!1001 &1712040201
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3649,6 +3897,14 @@ PrefabInstance:
       propertyPath: outroLost.Array.data[1].Portrait
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: unlocks.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: 'unlocks.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1712040303}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

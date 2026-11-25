@@ -159,6 +159,8 @@ public enum TriggerActionType {
     PlaceUnits = 30,
     /// <summary>Show the marker prefab Marker (no text) on every tile the units matching the unit filter can move to this turn with terrain cover of Value or more, buildings left out: "the forests in reach". The marks are named Marker Id + ":x,y"; Hide Marker with Marker Id + "*" removes them all.</summary>
     MarkReach = 31,
+    /// <summary>The units matching the unit filter fire a salute: each plays its fire animation and sound toward the tile Value tiles above it (straight up the screen), and its weapon's impact shows there. Nothing is hit, no turn is used. Pace several with Wait.</summary>
+    Salute = 32,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>

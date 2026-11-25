@@ -669,7 +669,7 @@ public static class FogOfWar {
     }
 
     public static bool IsHuman(Player p) {
-        if (p == null) return false;
+        if (p == null || p.bystander) return false;   // a bystander is played by nobody
         if (GameController.IsPlayedElsewhere(p)) return false;   // a networked game: played on another device
         if (AIControl.Of(p) != null) return false;
         foreach (MonoBehaviour m in p.GetComponents<MonoBehaviour>())

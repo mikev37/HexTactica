@@ -1,0 +1,2948 @@
+{
+    "width": 15,
+    "tiles": [
+        {
+            "x": -7,
+            "y": 0,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -7,
+            "y": 1,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -7,
+            "y": 2,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -7,
+            "y": 3,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -7,
+            "y": 4,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -7,
+            "y": 5,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -7,
+            "y": 6,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -7,
+            "y": 7,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": -1,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 0,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 1,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 2,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Urban",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 3,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 4,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 5,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 6,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -6,
+            "y": 7,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": -2,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": -1,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 0,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 1,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 2,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 3,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 4,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 5,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 6,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -5,
+            "y": 7,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": -3,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": -2,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": -1,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 0,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 1,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 2,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 3,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 4,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 5,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 6,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -4,
+            "y": 7,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": -4,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": -3,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": -2,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": -1,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 0,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 1,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 2,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 3,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 4,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 5,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 6,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -3,
+            "y": 7,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -5,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -4,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -3,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -2,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": -1,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 0,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 1,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 2,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 3,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 4,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 5,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 6,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -2,
+            "y": 7,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -6,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -5,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -4,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -3,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -2,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": -1,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 0,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 1,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 2,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 3,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 4,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 5,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 6,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": -1,
+            "y": 7,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -7,
+            "z": 7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -6,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -5,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -4,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -3,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Urban",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -2,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": -1,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 1,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 2,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 3,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Urban",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 4,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 5,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 6,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 0,
+            "y": 7,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -7,
+            "z": 6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -6,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -5,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -4,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -3,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -2,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": -1,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 0,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 1,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 2,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 3,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 4,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 5,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 1,
+            "y": 6,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -7,
+            "z": 5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -6,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -5,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -4,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -3,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -2,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": -1,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 0,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 1,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 2,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 3,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 4,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 2,
+            "y": 5,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -7,
+            "z": 4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -6,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -5,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -4,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -3,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -2,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": -1,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 0,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 1,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 2,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 3,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 3,
+            "y": 4,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -7,
+            "z": 3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -6,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -5,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -4,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Hills",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -3,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -2,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": -1,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": 0,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": 1,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": 2,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 4,
+            "y": 3,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -7,
+            "z": 2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -6,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -5,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -4,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -3,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -2,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Road",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": -1,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": 0,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": 1,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 5,
+            "y": 2,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -7,
+            "z": 1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -6,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Pine",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -5,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -4,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -3,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -2,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Urban",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": -1,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": 0,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 6,
+            "y": 1,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": -7,
+            "z": 0,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": -6,
+            "z": -1,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": -5,
+            "z": -2,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": -4,
+            "z": -3,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": -3,
+            "z": -4,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": -2,
+            "z": -5,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": -1,
+            "z": -6,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        },
+        {
+            "x": 7,
+            "y": 0,
+            "z": -7,
+            "damage": 0,
+            "combatCount": 0,
+            "terrain": "Grassland",
+            "destroyedFrom": "",
+            "under": ""
+        }
+    ],
+    "players": [
+        {
+            "personal_name": "OPFOR",
+            "id": 0,
+            "displayColor": {
+                "r": 1.0,
+                "g": 0.0,
+                "b": 0.0,
+                "a": 1.0
+            },
+            "factionName": "Federation",
+            "AI": false,
+            "aiProfile": "",
+            "factionLocked": true,
+            "money": 0,
+            "eliminated": false,
+            "eliminable": true,
+            "team": 0,
+            "bystander": false
+        },
+        {
+            "personal_name": "BLUE (Jori)",
+            "id": 112,
+            "displayColor": {
+                "r": 0.0,
+                "g": 0.5294118,
+                "b": 1.0,
+                "a": 1.0
+            },
+            "factionName": "Federation",
+            "AI": true,
+            "aiProfile": "",
+            "factionLocked": true,
+            "money": 0,
+            "eliminated": false,
+            "eliminable": false,
+            "team": 0,
+            "bystander": false
+        },
+        {
+            "personal_name": "Federal Range",
+            "id": 200,
+            "displayColor": {
+                "r": 0.55,
+                "g": 0.55,
+                "b": 0.55,
+                "a": 1.0
+            },
+            "factionName": "Federation",
+            "AI": false,
+            "aiProfile": "",
+            "factionLocked": true,
+            "money": 0,
+            "eliminated": false,
+            "eliminable": false,
+            "team": 0,
+            "bystander": true
+        }
+    ],
+    "active": 0,
+    "day": 0,
+    "purchases": "off",
+    "allowedUnits": "",
+    "fog": "off",
+    "factionSpecialUnits": "off",
+    "allies": "off",
+    "fixedRules": "fog,purchases,factionSpecialUnits,allies",
+    "rules": "standard",
+    "buildings": [
+        {
+            "x": -6,
+            "y": 2,
+            "z": 4,
+            "gameobject_name": "HQ(Clone)",
+            "personal_name": "Headquarters",
+            "type": 0,
+            "owner_id": 0,
+            "income": 2000,
+            "producesSupply": true,
+            "supplyRange": 8,
+            "supplies": 0,
+            "suppliesMax": 0,
+            "damageLevel": 0,
+            "capturePoints": 0,
+            "capturingPlayerId": -1,
+            "hasHome": true,
+            "home_id": 0
+        },
+        {
+            "x": 6,
+            "y": -2,
+            "z": -4,
+            "gameobject_name": "HQ(Clone)",
+            "personal_name": "Headquarters",
+            "type": 0,
+            "owner_id": 112,
+            "income": 2000,
+            "producesSupply": true,
+            "supplyRange": 8,
+            "supplies": 0,
+            "suppliesMax": 0,
+            "damageLevel": 0,
+            "capturePoints": 0,
+            "capturingPlayerId": -1,
+            "hasHome": true,
+            "home_id": 112
+        },
+        {
+            "x": 0,
+            "y": 3,
+            "z": -3,
+            "gameobject_name": "City(Clone)",
+            "personal_name": "City",
+            "type": 2,
+            "owner_id": -1,
+            "income": 1000,
+            "producesSupply": false,
+            "supplyRange": 0,
+            "supplies": 0,
+            "suppliesMax": 0,
+            "damageLevel": 0,
+            "capturePoints": 0,
+            "capturingPlayerId": -1,
+            "hasHome": true,
+            "home_id": -1
+        },
+        {
+            "x": 0,
+            "y": -3,
+            "z": 3,
+            "gameobject_name": "City(Clone)",
+            "personal_name": "City",
+            "type": 2,
+            "owner_id": -1,
+            "income": 1000,
+            "producesSupply": false,
+            "supplyRange": 0,
+            "supplies": 0,
+            "suppliesMax": 0,
+            "damageLevel": 0,
+            "capturePoints": 0,
+            "capturingPlayerId": -1,
+            "hasHome": true,
+            "home_id": -1
+        }
+    ],
+    "units": [
+        {
+            "x": -4,
+            "y": 3,
+            "z": 1,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Alpha",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Grunt Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -3,
+            "y": 2,
+            "z": 1,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Bravo",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Grunt Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -4,
+            "y": 0,
+            "z": 4,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Charlie",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Grunt Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -5,
+            "y": 1,
+            "z": 4,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "OPFOR Tank",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Tank Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -6,
+            "y": 3,
+            "z": 3,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "OPFOR Battery",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Artillery(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -5,
+            "y": 3,
+            "z": 2,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "OPFOR Supplies",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Supplies(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -6,
+            "y": 1,
+            "z": 5,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "OPFOR Truck",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Truck(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -5,
+            "y": 0,
+            "z": 5,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "OPFOR Recon",
+            "active": true,
+            "owner_id": 0,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Recon Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 4,
+            "y": -3,
+            "z": -1,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Blue 1",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Grunt Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 3,
+            "y": -2,
+            "z": -1,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Blue 2",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Grunt Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 4,
+            "y": 0,
+            "z": -4,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Blue 3",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Grunt Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 5,
+            "y": -1,
+            "z": -4,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "BLUE Tank",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Tank Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 6,
+            "y": -3,
+            "z": -3,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "BLUE Battery",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Artillery(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 5,
+            "y": -3,
+            "z": -2,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "BLUE Supplies",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Supplies(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 6,
+            "y": -1,
+            "z": -5,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "BLUE Truck",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Truck(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 5,
+            "y": 0,
+            "z": -5,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "BLUE Recon",
+            "active": true,
+            "owner_id": 112,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Recon Federation Variant(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": -2,
+            "y": -4,
+            "z": 6,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Cannon A",
+            "active": true,
+            "owner_id": 200,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Artillery(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 0,
+            "y": -5,
+            "z": 5,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Cannon B",
+            "active": true,
+            "owner_id": 200,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Artillery(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        },
+        {
+            "x": 2,
+            "y": -6,
+            "z": 4,
+            "Strength": 6,
+            "Veterancy": 0,
+            "personalName": "Cannon C",
+            "active": true,
+            "owner_id": 200,
+            "supplies": 3,
+            "fuel": 30,
+            "ammo": 6,
+            "gameobject_name": "Artillery(Clone)",
+            "transporterIndexPlusOne": 0,
+            "suppressed": 0
+        }
+    ],
+    "description": "Act 1, mission 4: Live Fire. Artillery, and units pinned down (suppressed) by its fire; a fair fight until the bandits join Jori.",
+    "winText": "Jori's force is beaten, bandits and all.",
+    "lossText": "Federal troops lost to bandits.",
+    "script": {
+        "Version": 1,
+        "Triggers": [
+            {
+                "Name": "Bandits in",
+                "Enabled": false,
+                "Condition": 17,
+                "Actions": [],
+                "AfterTrigger": "4.2 Hired guns"
+            },
+            {
+                "Name": "Half of Jori's gone",
+                "Enabled": false,
+                "Condition": 22,
+                "Actions": [],
+                "Side": 112,
+                "Value": 5
+            },
+            {
+                "Name": "Two bandits down",
+                "Enabled": false,
+                "Condition": 2,
+                "Actions": [],
+                "Side": 112,
+                "UnitKind": "Bandit",
+                "Count": 2
+            },
+            {
+                "Name": "A bandit at 2 or less",
+                "Enabled": false,
+                "Condition": 10,
+                "Actions": [],
+                "Side": 112,
+                "UnitKind": "Bandit",
+                "Value": 2
+            },
+            {
+                "Name": "No bandits",
+                "Enabled": false,
+                "Condition": 22,
+                "Actions": [],
+                "Side": 112,
+                "UnitKind": "Bandit",
+                "Value": 0
+            },
+            {
+                "Name": "Jori down to one",
+                "Enabled": false,
+                "Condition": 22,
+                "Actions": [],
+                "Side": 112,
+                "Value": 1
+            },
+            {
+                "Name": "On Jori's HQ",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [],
+                "Side": -2,
+                "TileX": 6,
+                "TileY": -2,
+                "Radius": 0
+            },
+            {
+                "Name": "S1 Jori has no units",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Impressive, Commander. You defeated him, the bandits, and stole his thunder.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 6,
+                        "Side": -2
+                    }
+                ],
+                "Parts": [
+                    "Jori out of units",
+                    "Bandits in"
+                ]
+            },
+            {
+                "Name": "Jori out of units",
+                "Enabled": false,
+                "Condition": 22,
+                "Actions": [],
+                "Side": 112,
+                "Value": 0
+            },
+            {
+                "Name": "S2 Jori's HQ taken",
+                "Enabled": true,
+                "Condition": 3,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Impressive, Commander. You defeated him, the bandits, and stole his thunder.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 6,
+                        "Side": -2
+                    }
+                ],
+                "Side": -2,
+                "BuildingKind": "HQ"
+            },
+            {
+                "Name": "S3 No units left",
+                "Enabled": true,
+                "Condition": 22,
+                "Actions": [
+                    {
+                        "Type": 7,
+                        "Side": -2
+                    }
+                ],
+                "Side": -2,
+                "Value": 0
+            },
+            {
+                "Name": "4.1 The salute",
+                "Enabled": true,
+                "Condition": 0,
+                "Actions": [
+                    {
+                        "Type": 28,
+                        "On": false
+                    },
+                    {
+                        "Type": 1,
+                        "AtUnit": "OPFOR Battery",
+                        "Zoom": 0,
+                        "Seconds": 1.0
+                    },
+                    {
+                        "Type": 32,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon A",
+                        "Value": 3
+                    },
+                    {
+                        "Type": 24,
+                        "Seconds": 0.3
+                    },
+                    {
+                        "Type": 32,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon B",
+                        "Value": 3
+                    },
+                    {
+                        "Type": 24,
+                        "Seconds": 0.3
+                    },
+                    {
+                        "Type": 32,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon C",
+                        "Value": 3
+                    },
+                    {
+                        "Type": 24,
+                        "Seconds": 0.6
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Gena",
+                                "Text": "Ah, just like old times. Now this I can understand. Artillery shoots far, up to four tiles away, but it cannot move and shoot in the same turn. It is powerful against most targets that get close enough for it to shoot.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Gena",
+                                "Text": "But it is weak to anyone who manages to get into its minimum range of one tile, so protect it.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "Salutes are for old men. Time for the real battle to begin!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "Name": "4.2 Hired guns",
+                "Enabled": true,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 8,
+                        "Side": 112,
+                        "UnitKind": "Bandit",
+                        "TileX": -4,
+                        "TileY": -3,
+                        "Count": 1,
+                        "Value": 6,
+                        "Veterancy": 0,
+                        "UnitTag": "Bandit 1",
+                        "ReadyToAct": true
+                    },
+                    {
+                        "Type": 8,
+                        "Side": 112,
+                        "UnitKind": "Bandit",
+                        "TileX": -5,
+                        "TileY": -2,
+                        "Count": 1,
+                        "Value": 6,
+                        "Veterancy": 0,
+                        "UnitTag": "Bandit 2",
+                        "ReadyToAct": true
+                    },
+                    {
+                        "Type": 8,
+                        "Side": 112,
+                        "UnitKind": "Bandit",
+                        "TileX": -6,
+                        "TileY": -1,
+                        "Count": 1,
+                        "Value": 6,
+                        "Veterancy": 0,
+                        "UnitTag": "Bandit 3",
+                        "ReadyToAct": true
+                    },
+                    {
+                        "Type": 1,
+                        "AtUnit": "Bandit 1",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Mountain Bandit",
+                                "Text": "We better be paid big this time. These guys look tough.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Bandits?! Jori, you're using hired guns?! This is a Federation training ground!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "What a base accusation. Maybe instead of pointing fingers, you should worry about the knife at your throat?",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "4.3 The guns"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "Bandit killed"
+                    }
+                ],
+                "Side": 112,
+                "Count": 1
+            },
+            {
+                "Name": "4.3 The guns",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 9,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon A",
+                        "Side": -2
+                    },
+                    {
+                        "Type": 23,
+                        "UnitSide": -2,
+                        "UnitTag": "Cannon A",
+                        "Value": 1
+                    },
+                    {
+                        "Type": 1,
+                        "AtUnit": "Cannon A",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "cannon",
+                        "Text": "Click me",
+                        "AtUnit": "Cannon A"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "The guns! Use the salute cannons against these bandits!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "4.4 Cannon selected"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "4.7 More guns"
+                    }
+                ],
+                "Side": -2,
+                "Count": 1
+            },
+            {
+                "Name": "4.4 Cannon selected",
+                "Enabled": false,
+                "Condition": 26,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "cannon"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "target",
+                        "Text": "Target",
+                        "AtUnit": "Bandit 1"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Click the enemy to target them!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "4.5 Targeted"
+                    }
+                ],
+                "WaitForAnimations": false,
+                "Side": -2,
+                "UnitTag": "Cannon A"
+            },
+            {
+                "Name": "4.5 Targeted",
+                "Enabled": false,
+                "Condition": 36,
+                "Actions": [
+                    {
+                        "Type": 3,
+                        "MarkerId": "target"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Federation Soldier",
+                                "Text": "Enemy sighted!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "And click again to blast them!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "4.6 Suppressed"
+                    }
+                ],
+                "WaitForAnimations": false,
+                "Side": -2,
+                "UnitTag": "Cannon A"
+            },
+            {
+                "Name": "4.6 Suppressed",
+                "Enabled": false,
+                "Condition": 10,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "{unit}",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Gena",
+                                "Text": "Ahh, I love the sound of the guns in the morning. Look at their pips and see that they are gray instead of colored. This means the unit is suppressed: If you attack them again before the end of your turn, they will not fight back at full strength.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Gena",
+                                "Text": "The unit's effective strength is reduced by half until its next turn. This makes artillery useful on even harder targets, like tanks.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": 112,
+                "UnitKind": "Bandit",
+                "Value": 6
+            },
+            {
+                "Name": "4.7 More guns",
+                "Enabled": false,
+                "Condition": 11,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "Cannon B",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "gunB",
+                        "Text": "Secure: move next to it",
+                        "AtUnit": "Cannon B"
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "gunC",
+                        "Text": "Secure: move next to it",
+                        "AtUnit": "Cannon C"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "We can get more cannons from the poligon! Move a unit next to them to secure them!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "Great idea!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "4.7b Jori grabs one"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "Secure B (us)"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "Secure C (us)"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "Secure C (Jori)"
+                    }
+                ],
+                "Side": -2,
+                "Count": 1
+            },
+            {
+                "Name": "4.7b Jori grabs one",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "UnitTag": "Blue 3",
+                        "TileX": 2,
+                        "TileY": -6
+                    }
+                ],
+                "Repeat": true,
+                "Side": 112,
+                "Count": 1
+            },
+            {
+                "Name": "Secure B (us)",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [
+                    {
+                        "Type": 9,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon B",
+                        "Side": -2
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "gunB"
+                    }
+                ],
+                "Side": -2,
+                "TileX": 0,
+                "TileY": -5,
+                "Radius": 1
+            },
+            {
+                "Name": "Secure C (us)",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [
+                    {
+                        "Type": 9,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon C",
+                        "Side": -2
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "gunC"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "Secure C (Jori)"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "4.7b Jori grabs one"
+                    }
+                ],
+                "Side": -2,
+                "TileX": 2,
+                "TileY": -6,
+                "Radius": 1
+            },
+            {
+                "Name": "Secure C (Jori)",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [
+                    {
+                        "Type": 9,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon C",
+                        "Side": 112
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "gunC"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "Secure C (us)"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "4.7b Jori grabs one"
+                    }
+                ],
+                "Side": 112,
+                "TileX": 2,
+                "TileY": -6,
+                "Radius": 1
+            },
+            {
+                "Name": "4.9 Kristoff isn't coming",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Gena",
+                                "Text": "Oh by the way, Kristoff isn't coming. Something more important came up.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Jori",
+                                "Text": "What?! He said he'd be here!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Half of Jori's gone",
+                    "Bandits in"
+                ]
+            },
+            {
+                "Name": "Bandit killed",
+                "Enabled": false,
+                "Condition": 2,
+                "Actions": [
+                    {
+                        "Type": 22,
+                        "Trigger": "A bandit at 2 or less"
+                    }
+                ],
+                "Repeat": true,
+                "Side": 112,
+                "UnitKind": "Bandit"
+            },
+            {
+                "Name": "4.10 Last straw",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Mountain Bandit",
+                                "Text": "That's the last straw! We're not getting paid to take potshots for some spoiled brat!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Two bandits down",
+                    "A bandit at 2 or less",
+                    "Bandits in"
+                ]
+            },
+            {
+                "Name": "4.11 Bandits gone",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Mountain Bandit",
+                                "Text": "Blue Sun scum! He betrayed us!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "No bandits",
+                    "Bandits in"
+                ]
+            },
+            {
+                "Name": "4.12 Our tank lost",
+                "Enabled": true,
+                "Condition": 2,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "That's how it's done. Smooth. Fast. Decisive. You could learn a lot from me.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "UnitKind": "Tank"
+            },
+            {
+                "Name": "4.13 Our gun lost",
+                "Enabled": true,
+                "Condition": 2,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Hah! I hope you enjoyed that salute, because it's the last one you'll hear!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "UnitKind": "Artillery"
+            },
+            {
+                "Name": "4.14 His tank lost",
+                "Enabled": true,
+                "Condition": 2,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Gah! You got lucky!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": 112,
+                "UnitKind": "Tank"
+            },
+            {
+                "Name": "4.15 His gun lost",
+                "Enabled": true,
+                "Condition": 2,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "What?! How could you?!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Maybe you could use some tips from the commander...",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": 112,
+                "UnitKind": "Artillery"
+            },
+            {
+                "Name": "4.16 Whatever",
+                "Enabled": true,
+                "Condition": 19,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Whatever. It's not like the Minister is here to see it.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Jori down to one",
+                    "On Jori's HQ"
+                ]
+            }
+        ]
+    }
+}

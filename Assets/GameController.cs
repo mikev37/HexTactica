@@ -446,7 +446,7 @@ public class GameController : MonoBehaviour
                 index--;
             }
             activePlayer = players[index];
-        } while (activePlayer.eliminated && rules != RuleSet.Sandbox && guard++ < players.Count);   // Sandbox: nobody is ever out
+        } while ((activePlayer.eliminated && rules != RuleSet.Sandbox || activePlayer.bystander) && guard++ < players.Count);   // Sandbox: nobody is ever out; a bystander takes no turns
 
         activePlayer.StartTurn();
         FogOfWar.Changed();
@@ -537,7 +537,7 @@ public class GameController : MonoBehaviour
 
         for (int i = 0; i < players.Count; i++) {
             Player p = players[i];
-            if (p == null || p.eliminated) continue;
+            if (p == null || p.eliminated || p.bystander) continue;   // (a bystander is never in or out)
             bool hasHQ = p.HasHQ;
             if (hasHQ) p.hadHQ = true;
             // "Capturing HQ ends the game for that player" — and destroying an HQ unit
@@ -556,7 +556,7 @@ public class GameController : MonoBehaviour
         Player survivor = null;
         int alive = 0;
         for (int i = 0; i < players.Count; i++) {
-            if (players[i] == null || players[i].eliminated) continue;
+            if (players[i] == null || players[i].eliminated || players[i].bystander) continue;
             if (survivor == null) { alive++; survivor = players[i]; }
             else if (Player.Hostile(survivor, players[i])) alive++;
         }

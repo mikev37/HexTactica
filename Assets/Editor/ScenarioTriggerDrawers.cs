@@ -112,6 +112,7 @@ static class TriggerFields {
             case TriggerActionType.Lose: return new[] { "Side" };
             case TriggerActionType.SpawnUnit: return new[] { "Side", "UnitKind", "TileX", "TileY", "Count", "Value", "Veterancy", "UnitTag", "ReadyToAct", "OutOfSight" };
             case TriggerActionType.MarkReach: return Join(units, "Value", "Marker", "MarkerId");
+            case TriggerActionType.Salute: return Join(units, "Value");
             case TriggerActionType.GiveUnits: return Join(units, "Side");
             case TriggerActionType.GiveBuilding: return Join(buildings, "Side");
             case TriggerActionType.DestroyTile:
@@ -151,6 +152,7 @@ static class TriggerFields {
                 if (a == TriggerActionType.ReadyUnits) return "Ready (1) / Spent (0)";
                 if (a == TriggerActionType.GiveMoney) return "Gold";
                 if (a == TriggerActionType.MarkReach) return "Cover At Least";
+                if (a == TriggerActionType.Salute) return "Tiles Above";
                 if (a == TriggerActionType.OrderUnits) return "Target In Cover At Least";
                 return null;
             case "UnitTag": return a == TriggerActionType.SpawnUnit ? "Name Them" : "Unit Name";
@@ -259,6 +261,7 @@ static class TriggerFields {
             case TriggerActionType.SetStat: return units + ": " + a.Stat + " " + (a.Mode == ValueMode.Add ? (a.Value >= 0 ? "+" : "") : "= ") + a.Value;
             case TriggerActionType.DestroyUnits: return "Destroy " + units;
             case TriggerActionType.ReadyUnits: return units + (a.Value != 0 ? " may act again" : " have used their turn");
+            case TriggerActionType.Salute: return units + " fire a salute " + a.Value + " tiles up";
             case TriggerActionType.MarkReach: return "Mark where " + units + " can go this turn in cover " + a.Value + " or more";
             case TriggerActionType.PlaceUnits: return "Put " + units + " on (" + a.TileX + "," + a.TileY + ")" + (a.ReadyToAct ? ", ready to act" : "");
             case TriggerActionType.GiveMoney: return Side(a.Side) + (a.Mode == ValueMode.Set ? " has " + a.Value : " gets " + a.Value) + " gold";
