@@ -31,5 +31,3 @@ saves/
 # Unity Performance Testing package: written into Resources for player builds and test runs, not project content.
 /Assets/Resources/PerformanceTestRun*.json
 /Assets/Resources/PerformanceTestRun*.json.meta
-
-scenarios/
