@@ -24,6 +24,10 @@ public struct MissionTally {
     public int kills;
     /// <summary>The player's units lost, to anything.</summary>
     public int losses;
+    /// <summary>Stars the scenario's script gave or took (its Bonus Stars actions: a city destroyed, -1): added to, or taken from, those the pars earn.</summary>
+    public int bonus;
+    /// <summary>Why (the actions' texts, one per line).</summary>
+    public string bonusNotes;
 }
 
 /// <summary>
@@ -41,6 +45,9 @@ public static class MissionRating {
         if (m.parTurns > 0 && t.turns <= m.parTurns) s |= MissionStars.Speed;
         if (t.kills >= m.parKills) s |= MissionStars.Aggression;
         if (t.losses <= m.parLosses) s |= MissionStars.Defense;
+        // The script's bonus: a star more fills the first missing one (speed, aggression, defense); a star less takes the last earned.
+        for (int i = 0; i < t.bonus; i++) foreach (MissionStars one in Each) if (!Has(s, one)) { s |= one; break; }
+        for (int i = 0; i < -t.bonus; i++) for (int k = Each.Length - 1; k >= 0; k--) if (Has(s, Each[k])) { s &= ~Each[k]; break; }
         return s;
     }
 

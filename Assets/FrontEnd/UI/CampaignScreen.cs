@@ -105,8 +105,11 @@ public class CampaignScreen : MonoBehaviour {
     /// <summary>Every mission flag of every campaign, shown or not.</summary>
     readonly List<MissionFlag> made = new List<MissionFlag>();
     readonly Dictionary<Mission, MissionInfo> infos = new Dictionary<Mission, MissionInfo>();
-    /// <summary>Missions whose intro lines have been heard since the game was started (they are not said again on every click).</summary>
-    static readonly HashSet<string> heard = new HashSet<string>();
+    /// <summary>
+    /// The mission whose intro lines were said last on this screen: clicking its flag again says them no more. Clicking another
+    /// mission, or leaving the screen (a mission, the main menu: the screen is made again on return), says them again.
+    /// </summary>
+    string heardLast;
     Mission picked;
     bool busy;
     bool ready;
@@ -345,7 +348,7 @@ public class CampaignScreen : MonoBehaviour {
 
     // ------------------------------------------------------------------ picking a mission
 
-    /// <summary>A flag was clicked: the mission's intro lines (the first time), then its briefing.</summary>
+    /// <summary>A flag was clicked: the mission's intro lines (unless they were the last said on this screen), then its briefing.</summary>
     public void Pick(Mission m) {
         if (busy || m == null || !CampaignProgress.Playable(Info(m))) return;
         picked = m;
@@ -355,7 +358,9 @@ public class CampaignScreen : MonoBehaviour {
     }
 
     IEnumerator Introduce(Mission m) {
-        if (m.intro != null && m.intro.Count > 0 && heard.Add(m.Key)) {
+        bool again = heardLast == m.Key;
+        heardLast = m.Key;
+        if (m.intro != null && m.intro.Count > 0 && !again) {
             Busy(true);
             yield return Say(m.intro);
             Busy(false);

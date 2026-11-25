@@ -84,6 +84,13 @@ public static class Tests {
         }
         string probe = Environment.GetEnvironmentVariable("PROBE");
         if (probe == "export") { Scenarios.Export(); return 0; }
+        // PROBE=canon IN=a.dat OUT=b.txt: the scenario script of a.dat as the game's Save Scenario writes it (LevelEditor.BoardJson), for the campaign builders.
+        if (probe == "canon") {
+            Defective.JSON.JSONObject board = new Defective.JSON.JSONObject(System.IO.File.ReadAllText(Environment.GetEnvironmentVariable("IN")));
+            ScenarioScriptData d = ScenarioJson.Read<ScenarioScriptData>(board.GetField(ScenarioScript.FileKey));
+            System.IO.File.WriteAllText(Environment.GetEnvironmentVariable("OUT"), ScenarioJson.Write(d, true).Print(true));
+            return 0;
+        }
         if (probe == "game") {
             Scenarios.Narrate(Environment.GetEnvironmentVariable("FILE"),
                 int.Parse(Environment.GetEnvironmentVariable("ROUNDS") ?? "30"), tweak);

@@ -18,7 +18,7 @@ namespace UnityEngine.EventSystems {
 
 namespace UnityEngine.UI {
     public class HorizontalLayoutGroup : UnityEngine.Behaviour { public float spacing; public UnityEngine.TextAnchor childAlignment; public bool childControlWidth, childControlHeight, childForceExpandWidth, childForceExpandHeight; public UnityEngine.RectOffset padding; }
-    public class LayoutElement : UnityEngine.Behaviour { public float preferredWidth, preferredHeight, minWidth, minHeight, flexibleWidth, flexibleHeight; }
+    public class LayoutElement : UnityEngine.Behaviour { public float preferredWidth, preferredHeight, minWidth, minHeight, flexibleWidth, flexibleHeight; public bool ignoreLayout; }
 }
 namespace TMPro {
     public enum TextAlignmentOptions { Left, Center, Right, MidlineLeft, Midline, MidlineRight, TopLeft, Top, TopRight }

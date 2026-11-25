@@ -56,8 +56,11 @@ public class GameSession : MonoBehaviour {
                 MatchSetup.ReadFromBoard();   // the pre-game screen's starting choices, as the file has them
                 // Who plays which side is not chosen yet: the board is shown whole, with no fog at all (Start loads the
                 // scenario again, with the fog the pre-game screen chose).
-                if (GameController.gc != null) { GameController.gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); }
+                // A campaign mission's sides are its own: its board is shown as its player will see it, fog and all, with
+                // what its Briefing triggers mark and reveal.
+                if (GameController.gc != null && MatchSetup.Mission == null) { GameController.gc.fogOfWar = false; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); }
                 Frame();
+                if (MatchSetup.Mission != null && ScenarioScript.Instance != null) ScenarioScript.Instance.Brief();
                 // A campaign mission is briefed, not set up: no choices to make.
                 SceneManager.LoadScene(MatchSetup.Mission != null ? s.missionBriefScene : s.preGameScene, LoadSceneMode.Additive);
                 break;
@@ -164,11 +167,14 @@ public class GameSession : MonoBehaviour {
     }
 
     /// <summary>
-    /// The post-game screen closed (View Board): the board stays to look at (the menu key opens the in-game menu), with a
+    /// The post-game screen closed (View Board): the board stays to look at, all of it (no fog), (the menu key opens the in-game menu), with a
     /// Results button that opens the screen again, to go on from it (a campaign mission: its Return to the campaign).
     /// </summary>
     public void ClosePostGame() {
         Unload(FrontEndSettings.Get.postGameScene); Unload(FrontEndSettings.Get.missionResultScene);
+        // The game is over: the whole board is shown, fog or not (only the screen: nobody plays on).
+        GameController gc = GameController.gc;
+        if (gc != null && gc.gameOver && gc.fogShownOnScreen) { gc.fogShownOnScreen = false; fogLifted = true; FogShown(); }
         ResultsButton.Show(ReopenPostGame);
     }
 
@@ -182,7 +188,17 @@ public class GameSession : MonoBehaviour {
     }
 
     /// <summary>A game was loaded or started again: the post-game screen may show again when it ends.</summary>
-    public void NewGame() { postShown = false; mode = SessionMode.Play; ResultsButton.Hide(); }
+    public void NewGame() {
+        postShown = false; mode = SessionMode.Play; ResultsButton.Hide();
+        GameController gc = GameController.gc;
+        if (fogLifted && gc != null) { gc.fogShownOnScreen = true; FogShown(); }
+        fogLifted = false;
+    }
+
+    /// <summary>View Board lifted the fog from the screen (put back for the next game).</summary>
+    bool fogLifted;
+
+    static void FogShown() { FogOfWar.Changed(); FogOfWar.Refresh(); FogView.BoardLoaded(); }
 
     /// <summary>The pre-game screen started the game: it goes, and the game plays.</summary>
     public void SetupDone() {

@@ -60,7 +60,7 @@ units or buildings must match at least.
 |---|---|---|
 | Level Start (0) | the first moment of play, after the pre-game screen | |
 | Unit Enters (1) | a matching unit moves, rides, or appears (bought, spawned) into the area: *Count* times | side, kind, name, area |
-| Unit Killed (2) | matching units die, in any way (combat, starving, ditched, destroyed by a trigger): *Count* of them | side, kind, name, in area |
+| Unit Killed (2) | matching units die: *Count* of them. *How*: 0 any way; 1 killed in action (shot, or aboard a transport shot down); 2 lost without a shot (starved, ditched) | side, kind, name, in area, how |
 | Building Captured (3) | a matching building is taken by *Side*, by capture or by a Give Building action: *Count* times | taken by, kind, in area |
 | Building Destroyed (4) | a matching building's health runs out (any owner) | kind, in area |
 | Day Reached (5) | the day on screen is *Value* or later (day 1 is the first), on *Side*'s turn (any side: whoever's turn it is) | day, on whose turn |
@@ -76,16 +76,20 @@ units or buildings must match at least.
 | After Trigger (17) | the named trigger has fired at least once (sequencing) | trigger |
 | All Of (18) / Any Of (19) / None Of (20) | the named triggers' conditions hold now: all of them / at least one / none | parts |
 | Turn Started (21) | *Side*'s turn number *Count* begins (3: its third turn), after its upkeep | on whose turn, turn number |
-| Units At Most (22) | now: at most *Value* matching units are alive (0: all gone, as in "destroy every enemy tank") | side, kind, name, in area |
+| Units At Most (22) | now: at most *Value* matching units are alive (0: all gone, as in "destroy every enemy tank"); *Only Seen*: counting only those *Seen By* has in sight ("none of them in sight"). Units At Least (25) likewise | side, kind, name, in area, only seen |
 | Building Owned (23) | now: at least *Count* matching buildings are held by *Side* | held by, kind, in area |
-| Unit Cut Off (24) | now: matching units stand outside their side's supply | side, kind, name, in area |
+| Unit Cut Off (24) | now: matching units stand outside their side's supply (a move being previewed does not count: its what-if supply shows on the board, the condition keeps its real reading) | side, kind, name, in area |
 | Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |
 | Enemy Inspected (35) | the player clicks a matching enemy unit to see where it can go and what it can hit (not an attack on it): *Count* times | side, kind, name, in area |
 | Move Proposed (34) | the player proposes a move for a matching unit: a first click on a tile it can reach, so the path shows and nothing has moved yet (*In area*: to a tile within the area): *Count* times. An attack is select, propose the move next to the enemy, click the enemy: a second click on the tile makes the move and ends the unit's turn, so a tutorial's attack step waits for this, not for Unit Enters | side, kind, name, in area |
 | Attack Proposed (36) | the player clicks an enemy to see what an attack by a matching unit would do (the numbers show; nothing fired yet). *Value* 1: only when the defender would fire first (the "!") | side, kind, name, in area, value |
 | Ambush (37) | a matching unit, attacked, fired first (its cover and veterancy beat the attacker's concealment and veterancy): *Count* times | side, kind, name, in area |
-| Unit Moved (38) | a matching unit moves, however far and from wherever (*In area*: onto a tile within the area): *Count* times | side, kind, name, in area |
+| Unit Moved (38) | a matching unit moves itself, however far and from wherever (*In area*: onto a tile within the area): *Count* times. Getting in or out of a transport, and riding in one, are not moves (Unit Boarded, Unit Unloaded) | side, kind, name, in area |
 | Units Exposed (39) | now: at least *Count* matching units stand on ground with less than *Value* cover (a squad left in the open) | side, kind, name, in area, value |
+| Unload Proposed (40) | the player clicks a matching unit in its transport's panel, to put it down (the tiles it can get out onto show; it is not out yet): *Count* times | side, kind, name, in area |
+| Supply Contact (41) | now: *Side*'s supply line shows a "?": an enemy it cannot see is cutting, or turning aside, its supply in transit | whose supply |
+| Building Damaged (42) | now: at least *Count* matching buildings have lost *Value* % of their health or more (a destroyed one too): "the city is half wrecked" | kind, in area, % |
+| Briefing (43) | the board is shown under a campaign mission's briefing, before Start: the trigger's markers, camera and revealed ground show there (its other actions are not done, and it never fires in play) | |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
 | Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
@@ -140,6 +144,9 @@ Timing is counted in **turns**:
 | Camera Focus (1) / Camera Frame Board (25) | glides the camera to the tile, or to *On Unit* (*Zoom* sets the orthographic size; 0 keeps the zoom) / shows the whole board |
 | Show Marker (2) / Hide Marker (3) | puts a marker on the tile, or on *On Unit*: then it follows the unit, in the fog too unless *Hide In Fog* is on / removes it (or every marker; a name ending in `*`: every marker whose name starts so) |
 | Salute (32) | the matching units fire a salute: the fire animation and sound toward the tile *Value* tiles above each, and the weapon's impact there; nothing is hit, no turn used (pace several with Wait) |
+| Bonus Stars (33) | the mission's stars: *Value* more (negative: fewer), for the reason in *Text*, which the post-game screen shows ("-1: the city was destroyed"). A star more fills the first missing one (speed, aggression, defense); a star less takes the last earned |
+| Reveal Area (34) | *Side* sees every tile within *Radius* of the tile through the fog until it is hidden again (*On* off, the same *Marker Id*; empty: every one): a point of interest. A save keeps it |
+| Highlight UI (35) | a part of the screen is outlined and flashes (*On*), or stops (off): *Text* names it, by its object's name or a component on it (`TransportPanel`); it appears when that element does, if it is not on screen yet. The look is `Resources/UIHighlight.prefab` (made the first time; edit it freely; its offsets are its margin) |
 | Mark Reach (31) | puts the marker prefab (no text) on every tile the matching units can move to this turn with terrain cover *Value* or more, buildings left out ("the forests in reach"), named *Marker Id*`:x,y`; Hide Marker *Marker Id*`*` removes them all |
 | Set Purchases (27) / Set Fog (28) | switches buying units, or fog of war, on or off for the rest of the game (a save keeps it) |
 | Play Music (4) / Stop Music (5) | plays a track from `Resources/Music/Special` (empty: one at random), optionally looping / returns to the game's own music |
@@ -292,3 +299,19 @@ that can't be knocked out never loses on its own, so end such a game with a Win 
 7. Add a row to the tables above, and a check in `Tests/ScenarioTriggerChecks.cs`
    (`PROBE=export-rules bash Tests/run.sh Assets` writes its file; `ONLY=rules NAME=script- bash Tests/run.sh Assets`
    runs the checks).
+
+
+## Timing notes
+
+- An AI starts nothing new while a trigger is about to fire or its actions are running (a camera move, a wait, a line): a
+  scene set off by its last action (a unit dying) plays before its next one.
+- A trigger switched on after the click it waits for (the unit is already selected, its move already proposed, its cargo
+  already picked) counts that click: a quick player is not ignored.
+- *Turn Started* counts only turns that begin after a trigger is switched on. A trigger switched on by one that fires
+  at a turn's end (Turn Over) misses the turn that end hands to: use *Day Reached* with *On Whose Turn* (it's that
+  side's turn now) for "in his next turn".
+- *Camera Focus* on `{unit}` that has died goes where it fell.
+- The dialogue box's button says Next while the trigger under way (or one it sets off) has more lines to come, and
+  Close at the last.
+- *Outside Area* (a trigger's, with *In Area* on): only units or events outside the area, not within it ("the truck
+  drove anywhere but the marked tile").

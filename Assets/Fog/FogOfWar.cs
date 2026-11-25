@@ -368,7 +368,7 @@ public static class FogOfWar {
     // ------------------------------------------------------------------ ground lit up for a turn
 
     /// <summary>Ground a side sees until the end of its turn, with no unit of its own there (a strike that landed: Unit.strikeRevealRadius).</summary>
-    public struct Lit { public Player to; public HexTile at; public int radius; }
+    public struct Lit { public Player to; public HexTile at; public int radius; /** A scenario's revealed ground (RevealLasting): kept past the turn's end, under this name. */ public string id; public bool lasting; }
 
     // Replaced whole, never changed in place (a thought on another thread may be working sight out).
     static Lit[] flares = new Lit[0];
@@ -385,6 +385,27 @@ public static class FogOfWar {
         flares = next;
         Changed();
     }
+
+    /// <summary>A scenario's Reveal Area: <paramref name="to"/> sees within <paramref name="radius"/> of <paramref name="at"/> until <see cref="Unreveal"/> (or a new game).</summary>
+    public static void RevealLasting(Player to, HexTile at, int radius, string id) {
+        if (to == null || at == null || radius < 0) return;
+        foreach (Lit l in flares) if (l.lasting && l.to == to && l.at == at && l.radius == radius && l.id == (id ?? "")) return;
+        Lit[] next = new Lit[flares.Length + 1];
+        Array.Copy(flares, next, flares.Length);
+        next[flares.Length] = new Lit { to = to, at = at, radius = radius, id = id ?? "", lasting = true };
+        flares = next;
+        Changed();
+    }
+
+    /// <summary>The ground a scenario revealed under that name is not shown any more (empty: all of it).</summary>
+    public static void Unreveal(string id) {
+        id = id ?? "";
+        flares = Array.FindAll(flares, x => !x.lasting || (id.Length > 0 && x.id != id));
+        Changed();
+    }
+
+    /// <summary>How many times the fog has been reset (a board loaded): what a scenario revealed is put back after one.</summary>
+    public static int Resets;
 
     // ------------------------------------------------------------------ revealed by firing
 
@@ -411,7 +432,7 @@ public static class FogOfWar {
             if (kv.Value.Count == 0 || kv.Key == null) gone.Add(kv.Key);
         }
         foreach (Unit u in gone) revealed.Remove(u);
-        if (flares.Length > 0) flares = Array.FindAll(flares, x => x.to != p);
+        if (flares.Length > 0) flares = Array.FindAll(flares, x => x.to != p || x.lasting);
         Turn++;
         Changed();
     }
@@ -602,7 +623,7 @@ public static class FogOfWar {
     /// <summary>A new game: forget everything (memory, reveals, the turn count).</summary>
     public static void Reset() {
         sights = new Dictionary<Player, Sight>(); revealed.Clear(); flares = new Lit[0]; units.Clear(); tilesSeen.Clear(); buildings.Clear(); kindsSeen.Clear();
-        Turn = 0; lastHuman = null; viewerChanges++;
+        Turn = 0; lastHuman = null; viewerChanges++; Resets++;
         Changed();
     }
 

@@ -15,7 +15,7 @@ public enum TriggerCondition {
     LevelStart = 0,
     /// <summary>Units matching the unit filter have moved (or appeared) into the area: Count times.</summary>
     UnitEnters = 1,
-    /// <summary>Units matching the unit filter have died (any way): Count of them.</summary>
+    /// <summary>Units matching the unit filter have died: Count of them. Value 0: any way; 1: killed in action (shot, or aboard a transport shot down); 2: lost without a shot (starved out of supply, ditched out of fuel).</summary>
     UnitKilled = 2,
     /// <summary>A building matching the building filter has been taken by Side (captured, or given by a trigger): Count times.</summary>
     BuildingCaptured = 3,
@@ -87,10 +87,18 @@ public enum TriggerCondition {
     AttackProposed = 36,
     /// <summary>A unit matching the unit filter, attacked, fired first (an ambush: its cover and veterancy beat the attacker's concealment and veterancy): Count times.</summary>
     Ambush = 37,
-    /// <summary>A unit matching the unit filter has moved (In Area: onto a tile within the area), however far, wherever from: Count times.</summary>
+    /// <summary>A unit matching the unit filter has moved itself (In Area: onto a tile within the area), however far, wherever from: Count times. Getting into or out of a transport, and riding in one, are not moves (Unit Boarded, Unit Unloaded).</summary>
     UnitMoved = 38,
     /// <summary>At least Count units matching the unit filter stand on ground with less than Value cover (now): "a squad left out in the open" (Value 2: on grass, a road, sand).</summary>
     UnitsExposed = 39,
+    /// <summary>The player has clicked a unit matching the unit filter in its transport's panel, to put it down (the tiles it can get out onto show; not yet out): Count times.</summary>
+    UnloadProposed = 40,
+    /// <summary>Side's supply line shows a contact ("?"): an enemy it cannot see is cutting, or turning aside, its supply in transit (now).</summary>
+    SupplyContact = 41,
+    /// <summary>At least Count buildings matching the building filter have lost Value % of their health or more (now; a destroyed one too): "the city is half wrecked" (Value 50).</summary>
+    BuildingDamaged = 42,
+    /// <summary>The board is shown under a campaign mission's briefing, before it starts: the trigger's markers, camera and revealed ground are shown there (nothing else is done; it never fires in play).</summary>
+    Briefing = 43,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -161,6 +169,12 @@ public enum TriggerActionType {
     MarkReach = 31,
     /// <summary>The units matching the unit filter fire a salute: each plays its fire animation and sound toward the tile Value tiles above it (straight up the screen), and its weapon's impact shows there. Nothing is hit, no turn is used. Pace several with Wait.</summary>
     Salute = 32,
+    /// <summary>The mission's stars: Value more (a negative value: fewer), for the reason in Text, shown on its post-game screen. Each fires once; they add up.</summary>
+    BonusStars = 33,
+    /// <summary>Side sees every tile within Radius of the tile (On) until it is hidden again (On off, the same Marker Id; empty: every one): a point of interest shown through the fog.</summary>
+    RevealArea = 34,
+    /// <summary>A part of the screen is outlined and flashes to draw the eye (On), or stops (off): Text names it (a panel's object name, or its component, e.g. TransportPanel), Marker Id names the highlight (empty: Text). The look is Resources/UIHighlight.prefab.</summary>
+    HighlightUI = 35,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>
@@ -351,6 +365,8 @@ public class ScenarioTrigger {
     [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string UnitKind = "";
     [Tooltip("Unit Spotted: who spots the unit (the player, by default).")]
     [SideChoice(false)] public long SeenBy = TriggerSide.Human;
+    /// <summary>Units At Most / At Least: only units the Seen By side sees now ("none of them in sight").</summary>
+    public bool OnlySeen;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
     [UnitName] public string UnitTag = "";
     [Tooltip("Building conditions: only buildings of this kind (the building prefab's name: City, HQ, ...). Empty: any. With In Area and Radius 0: the building on the tile.")]
@@ -358,6 +374,8 @@ public class ScenarioTrigger {
 
     [Tooltip("Unit and building conditions: only within Radius of the tile (off: anywhere). Unit Enters and Units In Area always use the area.")]
     public bool InArea;
+    /// <summary>With In Area: only units (or events) outside the area, not within it ("the truck drove anywhere but the marked tile").</summary>
+    public bool OutsideArea;
     [Tooltip("Unit conditions: only units on these terrains (names, comma-separated: \"Hills\", \"Pine, Forest, Hills\"), where the event happened (Unit Moved: where it moved to). Empty: any.")]
     public string OnTerrain = "";
     [Tooltip("Unit conditions: only units on ground with less cover than this, where the event happened (2: out in the open: grass, road, sand). 0: any.")]
@@ -398,6 +416,10 @@ public class ScenarioTrigger {
     [HideInInspector, ScenarioState] public int LastFiredTurn;
     /// <summary>The unit the last event counted for this trigger was about (who entered, was selected, was hit ...): what "{unit}" names in its actions. Not saved.</summary>
     [NonSerialized] public Unit Subject;
+    /// <summary>Where the subject stood when its last event was counted (the camera on a unit that has died since).</summary>
+    [NonSerialized] public HexTile SubjectAt;
+    /// <summary>Unit Cut Off: the last reading on the real board (kept while a move's preview shows a what-if).</summary>
+    [NonSerialized] public bool CutOffMet;
 }
 
 /// <summary>A marker shown on the board by a Show Marker action (kept in a save).</summary>
@@ -426,6 +448,8 @@ public class RunningActions {
     public float WaitUntil;
     /// <summary>The unit the trigger fired about ("{unit}" in its actions: ScenarioTrigger.Subject when it fired). Not saved.</summary>
     [NonSerialized] public Unit Subject;
+    /// <summary>Where it stood (the camera on "{unit}" once it has died). Not saved.</summary>
+    [NonSerialized] public HexTile SubjectAt;
 }
 
 /// <summary>How many turns a side has begun in this game (Delay and Repeat Every count them; kept in a save).</summary>
@@ -443,4 +467,14 @@ public class ScenarioScriptData {
     [ScenarioState] public List<ShownMarker> Markers = new List<ShownMarker>();
     [ScenarioState] public List<RunningActions> Running = new List<RunningActions>();
     [ScenarioState] public List<DialogueLine> PendingLines = new List<DialogueLine>();
+    [ScenarioState] public List<StarBonus> Bonuses = new List<StarBonus>();
+    [ScenarioState] public List<ShownReveal> Reveals = new List<ShownReveal>();
 }
+
+/// <summary>Stars a Bonus Stars action gave or took (kept in a save).</summary>
+[Serializable]
+public class StarBonus { public int Value; public string Text = ""; }
+
+/// <summary>Ground a Reveal Area action shows a side until it is hidden (kept in a save).</summary>
+[Serializable]
+public class ShownReveal { public string Id = ""; public long Side; public int TileX, TileY, Radius; }

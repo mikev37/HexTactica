@@ -3289,42 +3289,18 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.size
-      value: 3
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[0].Character
-      value: Jori
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[0].Text
-      value: 'Grrr! This was a fluke! You hear me? A fluke! Wait until my father hears about this!'
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[0].Portrait
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[1].Character
-      value: Gena
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[1].Text
-      value: 'He followed the rules. You, on the other hand, have a loose tongue, Orlov. Discipline your unit.'
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[1].Portrait
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[2].Character
       value: Anna
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[2].Text
+      propertyPath: outro.Array.data[0].Text
       value: 'A solid performance, Commander. Improvising against armor with only infantry is a skill many commanders never master.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: outro.Array.data[2].Portrait
+      propertyPath: outro.Array.data[0].Portrait
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
@@ -3546,7 +3522,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parKills
-      value: 10
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parLosses

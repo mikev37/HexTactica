@@ -11,10 +11,12 @@ public struct UnitFilter {
     /// <summary>Only units on these terrains (comma-separated names; empty: any), and on less cover than coverBelow (0: any).</summary>
     public string terrain;
     public int coverBelow;
+    /// <summary>With inArea: outside the area instead of within it.</summary>
+    public bool outside;
 
     public static UnitFilter Of(ScenarioTrigger t) {
         bool area = t.InArea || t.Condition == TriggerCondition.UnitEnters || t.Condition == TriggerCondition.UnitsInArea;
-        return new UnitFilter { side = t.Side, kind = t.UnitKind, tag = t.UnitTag, inArea = area, x = t.TileX, y = t.TileY, radius = t.Radius, terrain = t.OnTerrain, coverBelow = t.CoverBelow };
+        return new UnitFilter { side = t.Side, kind = t.UnitKind, tag = t.UnitTag, inArea = area, x = t.TileX, y = t.TileY, radius = t.Radius, terrain = t.OnTerrain, coverBelow = t.CoverBelow, outside = t.OutsideArea && area };
     }
 
     public static UnitFilter Of(TriggerAction a) {
@@ -28,10 +30,11 @@ public struct BuildingFilter {
     public string kind;
     public bool inArea;
     public int x, y, radius;
+    public bool outside;
 
     /// <summary>A trigger's building filter. Its Side is not the owner here (Building Captured: who took it; Building Owned: checked apart).</summary>
     public static BuildingFilter Of(ScenarioTrigger t) {
-        return new BuildingFilter { side = TriggerSide.Any, kind = t.BuildingKind, inArea = t.InArea, x = t.TileX, y = t.TileY, radius = t.Radius };
+        return new BuildingFilter { side = TriggerSide.Any, kind = t.BuildingKind, inArea = t.InArea, x = t.TileX, y = t.TileY, radius = t.Radius, outside = t.OutsideArea && t.InArea };
     }
 
     public static BuildingFilter Of(TriggerAction a) {
@@ -142,7 +145,10 @@ public static class ScenarioGame {
         if (u == null || !SideIs(u.owner, f.side)) return false;
         if (!KindIs(GameController.UnitName(u), GameController.DisplayName(u, u.owner), f.kind)) return false;
         if (!string.IsNullOrEmpty(f.tag) && !string.Equals((u.personal_name ?? "").Trim(), f.tag.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
-        if (f.inArea && (at == null || Distance(at.x, at.y, f.x, f.y) > Mathf.Max(0, f.radius))) return false;
+        if (f.inArea) {
+            bool within = at != null && Distance(at.x, at.y, f.x, f.y) <= Mathf.Max(0, f.radius);
+            if (within == f.outside) return false;
+        }
         if (f.coverBelow > 0 && (at == null || at.terrain == null || at.terrain.cover >= f.coverBelow)) return false;
         if (!string.IsNullOrEmpty(f.terrain) && f.terrain.Trim().Length > 0) {
             if (at == null || at.terrain == null) return false;
@@ -172,7 +178,7 @@ public static class ScenarioGame {
         if (b == null || b.tile == null) return false;
         if (checkSide && !SideIs(b.RealOwner, f.side)) return false;
         if (!KindIs(b.name.Replace("(Clone)", "").Trim(), b.type.ToString(), f.kind)) return false;
-        if (f.inArea && Distance(b.tile.x, b.tile.y, f.x, f.y) > Mathf.Max(0, f.radius)) return false;
+        if (f.inArea && (Distance(b.tile.x, b.tile.y, f.x, f.y) <= Mathf.Max(0, f.radius)) == f.outside) return false;
         return true;
     }
 
@@ -355,6 +361,11 @@ public static class ScenarioGame {
     public static void ShowMarker(ShownMarker m) { if (ShowMarkerHook != null) ShowMarkerHook(m, TilePosition(m.TileX, m.TileY)); }
 
     public static void HideMarker(string id) { if (HideMarkerHook != null) HideMarkerHook(id ?? ""); }
+
+    /// <summary>Set by UIHighlights (the UI side): outline and flash the screen element named (On), or stop the highlight of that id (off; empty id: all).</summary>
+    public static System.Action<string, string, bool> HighlightUIHook;
+
+    public static void HighlightUI(string what, string id, bool on) { if (HighlightUIHook != null) HighlightUIHook(what ?? "", id ?? "", on); }
 
     public static bool PlayMusic(string track, bool loop) { return PlayMusicHook == null || PlayMusicHook(track, loop); }
 

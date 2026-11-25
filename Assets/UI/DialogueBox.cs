@@ -98,7 +98,7 @@ public class DialogueBox : MonoBehaviour, IDialoguePresenter {
             letters = Mathf.FloorToInt((Time.unscaledTime - shownSince) * lettersPerSecond);
             text.maxVisibleCharacters = letters;
         }
-        if (nextLabel != null) nextLabel.text = ScenarioDialogue.Waiting > 0 ? nextText : closeText;
+        if (nextLabel != null) nextLabel.text = ScenarioDialogue.More ? nextText : closeText;
     }
 
     public void ShowLine(DialogueLine line) {

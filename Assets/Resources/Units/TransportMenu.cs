@@ -55,7 +55,14 @@ public class TransportMenu : MonoBehaviour {
         pendingCargo = cargo;
         pendingTransport = transport;
         pendingAnchor = anchor;
+        NotifyCargoPicked(cargo);
     }
+
+    /// <summary>Tell CargoPicked's listeners (PickCargo does, as the player picks a unit in the panel).</summary>
+    public static void NotifyCargoPicked(Unit cargo) { if (CargoPicked != null) CargoPicked(cargo); }
+
+    /// <summary>The player picked a unit in the panel to put down (its tiles shown, not yet out): a scenario's Unload Proposed.</summary>
+    public static event System.Action<Unit> CargoPicked;
 
     /// <summary>
     /// An unload tile was clicked: put the picked unit down on <paramref name="onto"/>, moving the
