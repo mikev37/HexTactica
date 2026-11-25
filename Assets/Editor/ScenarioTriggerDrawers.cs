@@ -16,7 +16,7 @@ static class TriggerFields {
         switch (c) {
             case TriggerCondition.LevelStart: return new string[0];
             case TriggerCondition.UnitEnters:
-            case TriggerCondition.UnitsInArea: return new[] { "Side", "UnitKind", "UnitTag", "Area", "Count" };
+            case TriggerCondition.UnitsInArea: return new[] { "Side", "UnitKind", "UnitTag", "Area", "OnTerrain", "CoverBelow", "Count" };
             case TriggerCondition.UnitKilled:
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
@@ -28,17 +28,17 @@ static class TriggerFields {
             case TriggerCondition.UnitStarving:
             case TriggerCondition.UnitOutOfAmmo:
             case TriggerCondition.UnitOutOfFuel:
-            case TriggerCondition.UnitCutOff: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
+            case TriggerCondition.UnitCutOff: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Count" };
             case TriggerCondition.Ambush:
-            case TriggerCondition.UnitMoved: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
+            case TriggerCondition.UnitMoved: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Count" };
             case TriggerCondition.AttackProposed:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
             case TriggerCondition.UnitsExposed:
-            case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value", "Count" };
+            case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "Count" };
             case TriggerCondition.UnitsAtMost:
-            case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value" };
-            case TriggerCondition.UnitSpotted: return new[] { "SeenBy", "Side", "UnitKind", "UnitTag", "InArea", "Count" };
+            case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value" };
+            case TriggerCondition.UnitSpotted: return new[] { "SeenBy", "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Count" };
             case TriggerCondition.StrikeLaunched:
             case TriggerCondition.StrikeLanded: return new[] { "Side", "UnitKind", "InArea", "Count" };
             case TriggerCondition.BuildingCaptured:

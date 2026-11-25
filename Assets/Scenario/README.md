@@ -160,6 +160,10 @@ Timing is counted in **turns**:
 | Strike Tile (29) | the matching units that strike ground or from afar (a Missile; see *Strikes* in the main README) strike the tile, if it is in their range and they have their turn: at once, or launched to land when their side's next turn starts. They have then used their turn. ("The enemy launches at the bridge.") |
 | Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |
 
+**On terrain / Cover below** (unit conditions): only units on those terrains (comma-separated names), or on less cover
+than the number, where the event happened (Unit Moved: where it went; Unit Damaged: where it was hit). "A squad hit out
+in the open": Unit Damaged, Cover Below 2. "Someone walks onto a hill": Unit Moved, On Terrain Hills.
+
 **{unit}**: a unit name of `{unit}` in an action (Unit Name, Attack Unit, Camera Focus's On Unit) means the unit the
 trigger fired about: who entered the area, was selected, was hit, fired first. For All Of / Any Of, the first part that
 is met and has one. ("When a grunt comes near the city, the tank attacks *that* grunt.")

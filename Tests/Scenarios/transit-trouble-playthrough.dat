@@ -2513,7 +2513,7 @@
                         "Type": 0,
                         "Lines": [
                             {
-                                "Character": "Federation Soldier",
+                                "Character": "Opfor Soldier",
                                 "Text": "Our supply is cut off! We're surrounded!",
                                 "Sound": "",
                                 "Portrait": 0
@@ -2684,7 +2684,7 @@
                                 "Portrait": 0
                             },
                             {
-                                "Character": "Federation Soldier",
+                                "Character": "Opfor Soldier",
                                 "Text": "Mountain Bandits! These are the ones stealing our supplies!",
                                 "Sound": "",
                                 "Portrait": 0

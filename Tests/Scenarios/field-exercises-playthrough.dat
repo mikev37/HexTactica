@@ -1677,7 +1677,7 @@
                         "Type": 0,
                         "Lines": [
                             {
-                                "Character": "Federation Soldier",
+                                "Character": "Opfor Soldier",
                                 "Text": "We've reached the target tile.",
                                 "Sound": "",
                                 "Portrait": 0
@@ -1714,7 +1714,7 @@
                         "Type": 0,
                         "Lines": [
                             {
-                                "Character": "Federation Soldier",
+                                "Character": "Opfor Soldier",
                                 "Text": "We've reached the target tile.",
                                 "Sound": "",
                                 "Portrait": 0

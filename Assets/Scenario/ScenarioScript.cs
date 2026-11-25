@@ -366,7 +366,8 @@ public class ScenarioScript : MonoBehaviour {
             long sight = spotting ? SeenBy(u, at) : 0;
             Seen was;
             if (seen.TryGetValue(u, out was)) {
-                if (s < was.strength) Damaged(u, s, at);
+                // Where it was hit: a defender driven back is counted where it stood (an attacker, where it attacked from).
+                if (s < was.strength) Damaged(u, s, at != was.tile && was.tile != null && GameController.gc != null && u.owner != GameController.gc.activePlayer ? was.tile : at);
                 else if (s > was.strength) Healed(u, s, at);
                 if (at != was.tile && at != null) Entered(u, was.tile, at);
                 if (spotting) Spotted(u, at, sight & ~was.seenBy);
