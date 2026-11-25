@@ -1458,38 +1458,6 @@
             "gameobject_name": "Grunt Federation Variant(Clone)",
             "transporterIndexPlusOne": 0,
             "suppressed": 0
-        },
-        {
-            "x": 5,
-            "y": -1,
-            "z": -4,
-            "Strength": 6,
-            "Veterancy": 0,
-            "personalName": "",
-            "active": true,
-            "owner_id": 112,
-            "supplies": 3,
-            "fuel": 30,
-            "ammo": 6,
-            "gameobject_name": "Grunt Federation Variant(Clone)",
-            "transporterIndexPlusOne": 0,
-            "suppressed": 0
-        },
-        {
-            "x": 6,
-            "y": -5,
-            "z": -1,
-            "Strength": 6,
-            "Veterancy": 0,
-            "personalName": "",
-            "active": true,
-            "owner_id": 112,
-            "supplies": 3,
-            "fuel": 30,
-            "ammo": 6,
-            "gameobject_name": "Grunt Federation Variant(Clone)",
-            "transporterIndexPlusOne": 0,
-            "suppressed": 0
         }
     ],
     "description": "Act 1, mission 2: Combat Trials. Tanks, cover and firing first from it, the numbers behind a fight, supply units, and capturing.",
@@ -1662,32 +1630,27 @@
                 "Count": 2
             },
             {
-                "Name": "Supplies 2 on the mark",
+                "Name": "Gift given",
                 "Enabled": false,
-                "Condition": 6,
+                "Condition": 17,
                 "Actions": [],
-                "Side": -2,
-                "UnitTag": "Supplies 2",
-                "TileX": -3,
-                "TileY": 0,
-                "Radius": 0
+                "AfterTrigger": "2.10 Anna's gift"
             },
             {
-                "Name": "Supplies 2 elsewhere",
+                "Name": "Supply lesson given",
+                "Enabled": false,
+                "Condition": 17,
+                "Actions": [],
+                "AfterTrigger": "2.11 Supplies"
+            },
+            {
+                "Name": "Supply lesson not given",
                 "Enabled": false,
                 "Condition": 20,
                 "Actions": [],
                 "Parts": [
-                    "Supplies 2 on the mark"
+                    "Supply lesson given"
                 ]
-            },
-            {
-                "Name": "Supplies 2 spent",
-                "Enabled": false,
-                "Condition": 28,
-                "Actions": [],
-                "Side": -2,
-                "UnitTag": "Supplies 2"
             },
             {
                 "Name": "Held turns",
@@ -1732,7 +1695,7 @@
             },
             {
                 "Name": "S1 Jori has no units",
-                "Enabled": true,
+                "Enabled": false,
                 "Condition": 22,
                 "Actions": [
                     {
@@ -1866,6 +1829,10 @@
                     {
                         "Type": 17,
                         "Trigger": "2.8 Heavy fire"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "S1 Jori has no units"
                     }
                 ],
                 "Parts": [
@@ -1883,7 +1850,13 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "That's a tank. When a unit's armour is higher than the attacker's piercing, the attacker's firepower is divided by the difference. Its armour is 4 and your rifles' piercing is 0, so your firepower of 3 is divided by 4: less than 1. Every attack does at least 1, so 1 is all your squads will take off it. Its gun has piercing 3 against your armour 0, so nothing is divided: in the open it takes 3 off a full squad.",
+                                "Text": "That's a tank. When a unit's armour is higher than the attacker's piercing, the attacker's firepower is divided by the difference.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Its armour is 4 and your rifles' piercing is 0, so your firepower of 3 is divided by 4: less than 1. Every attack does at least 1, so 1 is all your squads will take off it. Its gun has piercing 3 against your armour 0, so nothing is divided: in the open it takes 3 off a full squad.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -1964,6 +1937,7 @@
                     }
                 ],
                 "Repeat": true,
+                "WaitForAnimations": false,
                 "Side": -2,
                 "UnitKind": "Grunt"
             },
@@ -1978,6 +1952,7 @@
                     }
                 ],
                 "Repeat": true,
+                "WaitForAnimations": false,
                 "Side": -2
             },
             {
@@ -2011,6 +1986,7 @@
                         "UnitSide": 112,
                         "UnitTag": "Jori's Tank",
                         "TargetSide": -2,
+                        "TargetFresh": true,
                         "Value": 2
                     },
                     {
@@ -2077,7 +2053,13 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "Every unit has six numbers that decide a fight: click it and open More on its card to see them. Firepower is how hard it hits; veterancy adds to it. Armour divides incoming fire by however much it exceeds the attacker's piercing. Evasion divides it again by however much it exceeds the attacker's targeting. Concealment is how much of a tile's cover the unit can use: 3 for a grunt, 1 for a tank. Then the cover is subtracted, the result is scaled by the attacker's strength out of 6 and rounded down, never below 1. The number over each unit before you fire is exactly what will happen.",
+                                "Text": "Every unit has six numbers that decide a fight: click it and open More on its card to see them. Firepower is how hard it hits; veterancy adds to it. Armour divides incoming fire by however much it exceeds the attacker's piercing. Evasion divides it again by however much it exceeds the attacker's targeting.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Concealment is how much of a tile's cover the unit can use: 3 for a grunt, 1 for a tank. Then the cover is subtracted, the result is scaled by the attacker's strength out of 6 and rounded down, never below 1. The number over each unit before you fire is exactly what will happen.",
                                 "Sound": "",
                                 "Portrait": 0
                             },
@@ -2242,13 +2224,6 @@
                         "Seconds": 0.8
                     },
                     {
-                        "Type": 2,
-                        "Marker": "Marker",
-                        "MarkerId": "sup",
-                        "Text": "Click me",
-                        "AtUnit": "Supplies 2"
-                    },
-                    {
                         "Type": 0,
                         "Lines": [
                             {
@@ -2258,10 +2233,6 @@
                                 "Portrait": 0
                             }
                         ]
-                    },
-                    {
-                        "Type": 17,
-                        "Trigger": "2.11 Supplies"
                     }
                 ],
                 "Parts": [
@@ -2270,8 +2241,27 @@
                 ]
             },
             {
+                "Name": "Supplies marked",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 2,
+                        "Marker": "Marker",
+                        "MarkerId": "sup",
+                        "Text": "Click me",
+                        "AtUnit": "Supplies 2"
+                    }
+                ],
+                "WaitForAnimations": false,
+                "Parts": [
+                    "Gift given",
+                    "Supply lesson not given"
+                ]
+            },
+            {
                 "Name": "2.11 Supplies",
-                "Enabled": false,
+                "Enabled": true,
                 "Condition": 26,
                 "Actions": [
                     {
@@ -2279,19 +2269,11 @@
                         "MarkerId": "sup"
                     },
                     {
-                        "Type": 2,
-                        "Marker": "Marker",
-                        "MarkerId": "supmark",
-                        "Text": "Move here",
-                        "TileX": -3,
-                        "TileY": 0
-                    },
-                    {
                         "Type": 0,
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "You know how supplies near your HQ heal your units? A supply unit spreads supply as far as it could move in one turn, 2 tiles across open ground, but only while it stands on lit ground: off it, it supplies nothing. Try moving it to this marked tile.",
+                                "Text": "You know how supplies near your HQ heal your units? A supply unit spreads supply as far as it could move in one turn, 2 tiles across open ground, but only while it stands on lit ground: off it, it supplies nothing.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -2299,29 +2281,18 @@
                     },
                     {
                         "Type": 17,
-                        "Trigger": "2.11b Supplies placed"
-                    },
-                    {
-                        "Type": 17,
-                        "Trigger": "2.11c Supplies elsewhere"
+                        "Trigger": "2.11b Supplies moved"
                     }
                 ],
+                "WaitForAnimations": false,
                 "Side": -2,
-                "UnitTag": "Supplies 2"
+                "UnitKind": "Supplies"
             },
             {
-                "Name": "2.11b Supplies placed",
+                "Name": "2.11b Supplies moved",
                 "Enabled": false,
-                "Condition": 1,
+                "Condition": 38,
                 "Actions": [
-                    {
-                        "Type": 3,
-                        "MarkerId": "supmark"
-                    },
-                    {
-                        "Type": 18,
-                        "Trigger": "2.11c Supplies elsewhere"
-                    },
                     {
                         "Type": 0,
                         "Lines": [
@@ -2335,29 +2306,7 @@
                     }
                 ],
                 "Side": -2,
-                "UnitTag": "Supplies 2",
-                "TileX": -3,
-                "TileY": 0,
-                "Radius": 0
-            },
-            {
-                "Name": "2.11c Supplies elsewhere",
-                "Enabled": false,
-                "Condition": 18,
-                "Actions": [
-                    {
-                        "Type": 3,
-                        "MarkerId": "supmark"
-                    },
-                    {
-                        "Type": 18,
-                        "Trigger": "2.11b Supplies placed"
-                    }
-                ],
-                "Parts": [
-                    "Supplies 2 spent",
-                    "Supplies 2 elsewhere"
-                ]
+                "UnitKind": "Supplies"
             },
             {
                 "Name": "2.12 Capture",
@@ -2376,7 +2325,13 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "Infantry can capture buildings like cities. Move and end your turn there. Only foot squads capture. Each turn a squad ends on the city, it adds its strength to the flag, and 10 takes it: a full squad needs 2 turns, a hurt one longer. A squad that attacked that turn adds nothing. Watch the flag climb.",
+                                "Text": "Infantry can capture buildings like cities. Move and end your turn there. Only foot squads capture.",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Anna",
+                                "Text": "Each turn a squad ends on the city, it adds its strength to the flag, and 10 takes it: a full squad needs 2 turns, a hurt one longer. A squad that attacked that turn adds nothing. Watch the flag climb.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -2724,5 +2679,5 @@
             }
         ]
     },
-"test": {"name": "combat-trials-playthrough", "kind": "rules", "opponent": "Human", "rounds": "30", "rules": "standard", "check": "scriptCombatTrials", "question": "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for our squad in the trees, which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit; the supply unit sent to the marked tile lights the ground 2 rows further; the capture lesson; the city taken ('City secured!') and held two turns: the player wins."}
+"test": {"name": "combat-trials-playthrough", "kind": "rules", "opponent": "Human", "rounds": "30", "rules": "standard", "check": "scriptCombatTrials", "question": "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: Jori starts with one squad (his win condition off until his tank comes); the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for a fresh squad (in the trees), which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit, marked; clicking it: the supply lines, no tile marked; moved anywhere: Gena's line; the capture lesson; the city taken ('City secured!') and held through a turn: the player wins."}
 }

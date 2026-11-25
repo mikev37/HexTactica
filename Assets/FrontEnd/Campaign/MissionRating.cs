@@ -20,7 +20,7 @@ public struct MissionTally {
     public bool won;
     /// <summary>The player's turns, the one the game ended on included.</summary>
     public int turns;
-    /// <summary>Enemy units the player destroyed.</summary>
+    /// <summary>Enemy units the player destroyed (starved and ditched ones too).</summary>
     public int kills;
     /// <summary>The player's units lost, to anything.</summary>
     public int losses;
@@ -54,7 +54,7 @@ public static class MissionRating {
 
     /// <summary>
     /// The result as the game log tells it, for the side <paramref name="viewer"/> (the player's): its turns begun, the
-    /// enemy units it destroyed (in combat, and those that went down with a transport), its own units lost.
+    /// enemy units it destroyed (in combat, those that went down with a transport, and those that starved or ditched), its own units lost.
     /// </summary>
     public static MissionTally Tally(GameRecord s, long viewer, bool won) {
         MissionTally t = new MissionTally { won = won };
@@ -63,8 +63,10 @@ public static class MissionRating {
         foreach (GameRecord.Snap snap in s.snaps) if (snap.mover == viewer) t.turns++;
         foreach (GameRecord.Loss l in s.losses) {
             if (l.side == viewer) t.losses++;
-            // An enemy's unit (never an ally's): killed by us, or gone down aboard a transport.
-            else if (s.Hostile(l.side, viewer) && (l.killerSide == viewer || l.cause == HexTactica.Harness.GameLog.Lines.Aboard)) t.kills++;
+            // An enemy's unit (never an ally's): killed by us, gone down aboard a transport, or starved out of supply
+            // (or ditched out of fuel): the enemy it was cut off from gets the kill.
+            else if (s.Hostile(l.side, viewer) && (l.killerSide == viewer || l.cause == HexTactica.Harness.GameLog.Lines.Aboard
+                     || l.cause == HexTactica.Harness.GameLog.Lines.Supply || l.cause == HexTactica.Harness.GameLog.Lines.Fuel)) t.kills++;
         }
         return t;
     }

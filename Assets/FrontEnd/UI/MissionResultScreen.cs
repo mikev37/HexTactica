@@ -50,6 +50,9 @@ public class MissionResultScreen : MonoBehaviour {
     [Tooltip("Off until the stars have been shown.")]
     public Button returnButton;
 
+    static string finishedGame;
+    static CampaignProgress.Outcome finishedOutcome;
+
     void Awake() { TransportPanel.EnsureEventSystem(); }
 
     void Start() {
@@ -60,7 +63,12 @@ public class MissionResultScreen : MonoBehaviour {
         if (me == null && gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) { me = p; break; }
         bool won = gc != null && gc.Won(me);   // the winner, or one of its allies
         MissionTally tally = MissionRating.Tally(record, me != null ? me.id : GameInsights.ViewerId(record), won);
-        CampaignProgress.Outcome o = CampaignProgress.Finish(m, tally);
+        // Opened again over the same game (View Board, then Results): its result was kept the first time; finishing it
+        // again would read as a repeat win (no first win, nothing newly unlocked) and lose the campaign screen's news.
+        string game = HexTactica.Harness.GameLog.Folder ?? "";
+        CampaignProgress.Outcome o;
+        if (finishedOutcome != null && game.Length > 0 && finishedGame == game) { o = finishedOutcome; CampaignProgress.Pending = o; }
+        else { o = CampaignProgress.Finish(m, tally); finishedGame = game; finishedOutcome = o; }
 
         if (title != null) title.text = m != null ? m.Title : "";
         if (headline != null) headline.text = won ? wonHeadline : lostHeadline;
@@ -97,6 +105,6 @@ public class MissionResultScreen : MonoBehaviour {
     /// <summary>Back to the campaign screen, where the result is played out on the map.</summary>
     public void ReturnToCampaign() { MatchSetup.ToCampaign(); }
 
-    /// <summary>Close the screen and leave the board to look at (the menu key opens the in-game menu; its Exit leads out).</summary>
+    /// <summary>Close the screen and leave the board to look at, with a Results button to come back here (GameSession.ClosePostGame).</summary>
     public void ViewBoard() { if (GameSession.Instance != null) GameSession.Instance.ClosePostGame(); }
 }

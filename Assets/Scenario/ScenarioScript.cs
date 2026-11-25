@@ -155,12 +155,33 @@ public class ScenarioScript : MonoBehaviour {
     // The board has been animating since (level clock); -1: it is still.
     float busySince = -1f;
     bool busy;
+    int busySignature;
+
+    /// <summary>Which units are animating, and what each is doing (its reason's first word): changes as an exchange goes on.</summary>
+    static int AnimatingSignature() {
+        int h = Strikes.Showing ? 17 : 0;
+        if (UnitController.uc == null) return h;
+        foreach (Unit u in UnitController.uc.units) {
+            if (u == null) continue;
+            string r = u.AnimatingReason;
+            if (r == null) continue;
+            int sp = r.IndexOf(' ');
+            h = h * 31 + u.GetInstanceID() * 7 + (sp < 0 ? r : r.Substring(0, sp)).GetHashCode();
+        }
+        return h;
+    }
 
     void Evaluate() {
         GameController gc = GameController.gc;
         // Still animating? (Never for more than a few seconds: an animation that never ends must not hold the script.)
         // (Headless, nothing plays: a unit's animation flags are never cleared, so they are not waited for.)
-        if (!gc.headless && Unit.AnyAnimating()) { if (busySince < 0f) busySince = clock; busy = clock - busySince < 6f; }
+        // The cap counts from the last change in what is playing (a walk, then the shots, then a retreat is one long
+        // exchange, not a stuck animation): only the same thing playing for 6 s is given up on.
+        if (!gc.headless && Unit.AnyAnimating()) {
+            int now = AnimatingSignature();
+            if (busySince < 0f || now != busySignature) { busySince = clock; busySignature = now; }
+            busy = clock - busySince < 6f;
+        }
         else { busySince = -1f; busy = false; }
         for (int i = 0; i < triggers.Count; i++) {
             ScenarioTrigger t = triggers[i];
@@ -198,6 +219,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.EnemyInspected:
             case TriggerCondition.AttackProposed:
             case TriggerCondition.Ambush:
+            case TriggerCondition.UnitMoved:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.UnitSpotted:
             case TriggerCondition.UnitBoarded:
@@ -394,6 +416,7 @@ public class ScenarioScript : MonoBehaviour {
             UnitFilter f = UnitFilter.Of(t);
             return ScenarioGame.MatchesAt(u, to, f) && (from == null || !ScenarioGame.MatchesAt(u, from, f));
         }, u);
+        if (from != null) Count(TriggerCondition.UnitMoved, t => ScenarioGame.MatchesAt(u, to, UnitFilter.Of(t)), u);
     }
 
     void OnDied(Unit u) {
@@ -592,8 +615,9 @@ public class ScenarioScript : MonoBehaviour {
                     Unit target = null;
                     if (!string.IsNullOrEmpty(a.Target)) target = NamedFor(a.Target, r);
                     if (target == null && a.TargetSide != TriggerSide.Any) {
-                        // The nearest of Target Side (in Value cover or more, if any is: the squad in the trees).
-                        if (a.Value > 0) target = ScenarioGame.NearestOf(u, a.TargetSide, a.Value);
+                        // The strongest it can reach (a fresh squad), or the nearest of Target Side (in Value cover or more, if any is: the squad in the trees).
+                        if (a.TargetFresh) target = ScenarioGame.StrongestInReach(u, a.TargetSide, a.Value);
+                        if (target == null && a.Value > 0) target = ScenarioGame.NearestOf(u, a.TargetSide, a.Value);
                         if (target == null) target = ScenarioGame.NearestOf(u, a.TargetSide);
                     }
                     if (target == null && !string.IsNullOrEmpty(a.Target)) { Warn(t, "Order Units: no unit named '" + a.Target + "' to attack."); continue; }

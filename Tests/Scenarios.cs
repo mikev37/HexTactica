@@ -2024,8 +2024,7 @@ public static partial class Scenarios {
                 bool saved;
                 try {
                     LevelEditor ed = Rig.New<LevelEditor>();
-                    ed.allUnit = new List<Unit>();
-                    ed.allFaction = new List<Faction> { f };
+                    GameAssets.Register(f); GameAssets.Register(version);   // (made in code: known by name as the Resources folder's are)
                     LevelEditor.singleton = ed;
                     PlayerData pd = new PlayerData(l.ai);
                     string json = JsonUtility.ToJson(pd);
@@ -2045,14 +2044,18 @@ public static partial class Scenarios {
                 LevelEditor was = LevelEditor.singleton;
                 bool lookups, placed, other, shown, threaded;
                 try {
-                    // Nothing listed on the scene's LevelEditor: everything comes from the Resources folder.
+                    // Everything comes from the Resources folder.
                     LevelEditor ed = Rig.New<LevelEditor>();
-                    ed.allUnit = new List<Unit>(); ed.allBuilding = new List<Building>(); ed.allTerrain = new List<TerrainData>(); ed.allFaction = new List<Faction>();
                     LevelEditor.singleton = ed;
                     Unit gruntR = LevelEditor.loadUnit("Grunt"), variantR = LevelEditor.loadUnit("Grunt Federation Variant(Clone)");
                     Building cityR = LevelEditor.loadBuilding("City");
                     TerrainData grassR = LevelEditor.loadTerrain("Grassland");
-                    lookups = gruntR != null && variantR != null && variantR.name == "Grunt Federation Variant" && cityR != null && grassR != null;
+                    // Campaign-only units (Resources/CampaignUnits): loaded by name, never offered (AllUnits: the map editor's palette).
+                    Unit bandit = LevelEditor.loadUnit("Bandit(Clone)");
+                    bool campaignOnly = bandit != null && GameAssets.CampaignOnly(bandit) && !new List<Unit>(GameAssets.AllUnits).Exists(x => x != null && x.name == "Bandit")
+                                        && new List<Unit>(GameAssets.AllUnits).Exists(x => x != null && x.name == "Grunt");
+                    r.Add("campaign-only Bandit: loads " + (bandit != null) + ", not in the palette " + campaignOnly);
+                    lookups = gruntR != null && variantR != null && variantR.name == "Grunt Federation Variant" && cityR != null && grassR != null && campaignOnly;
                     r.Add("from Resources with empty lists: Grunt " + (gruntR != null) + ", 'Grunt Federation Variant' " + (variantR != null ? variantR.name : "MISSING") + ", City " + (cityR != null) + ", Grassland " + (grassR != null));
 
                     // Fresh prefab copies (no name read yet), as a faction asset holds them.
@@ -2062,7 +2065,7 @@ public static partial class Scenarios {
                     Unit otherVersion = PrefabLoader.Load("Grunt"); otherVersion.name = "Grunt Testland Variant";
                     Faction test = ScriptableObject.CreateInstance<Faction>(); test.name = "Testland";
                     test.replacements.Add(new Faction.Replacement { original = PrefabLoader.Load("Grunt"), replacement = otherVersion });
-                    ed.allFaction = new List<Faction> { fed, test };
+                    GameAssets.Register(test); GameAssets.Register(otherVersion);   // (made in code: known by name as the Resources folder's are)
                     // (As Unity loads an asset: no name read yet. The harness loader names its copies, which reads it.)
                     System.Reflection.FieldInfo cache = typeof(Unit).GetField("nameCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     cache.SetValue(original, null); cache.SetValue(version, null);
@@ -2111,8 +2114,7 @@ public static partial class Scenarios {
                 LevelEditor was = LevelEditor.singleton;
                 string path = Path.Combine(Path.GetTempPath(), "hextactica-save-control.dat");
                 try {
-                    LevelEditor ed = Rig.New<LevelEditor>(); ed.allUnit = new List<Unit>(); ed.allFaction = new List<Faction>();
-                    foreach (string n in new[] { "Grunt" }) { Unit u = PrefabLoader.Load(n); u.name = n; ed.allUnit.Add(u); }
+                    LevelEditor ed = Rig.New<LevelEditor>();
                     LevelEditor.singleton = ed;
                     HexTactica.Harness.ScenarioLoader.SetControl(a, true); HexTactica.Harness.ScenarioLoader.SetControl(o, false);
                     bool chosen = AIControl.Of(a) != null && AIControl.Of(o) == null;
@@ -2191,9 +2193,6 @@ public static partial class Scenarios {
                 bool ok;
                 try {
                     LevelEditor ed = Rig.New<LevelEditor>();
-                    ed.allUnit = new List<Unit>();
-                    foreach (string n in new[] { "Grunt", "Conscript", "Marine", "Tank", "APC", "Artillery", "Recon", "Supplies", "Fighter", "Bomber", "Stealth Fighter", "Gunner Anti Air" }) { Unit u = PrefabLoader.Load(n); u.name = n; ed.allUnit.Add(u); }
-                    ed.allFaction = new List<Faction>();
                     LevelEditor.singleton = ed;
                     string path = Path.Combine(PrefabLoader.Root("Scenarios"), "Korea.dat");
                     Dictionary<string, int> want = new Dictionary<string, int>(), carried = new Dictionary<string, int>();
@@ -3518,26 +3517,11 @@ public static partial class Scenarios {
                 } finally { hg.makeTile = null; }
             }
             case "editorLoad": {
-                // The terrains the scene's LevelEditor lists (Assets/Scenes/SampleScene.unity), and every building prefab.
+                // Terrains and buildings come from the Resources folder (the scene lists nothing).
                 string root = PrefabLoader.AssetsRoot;
                 List<string> sceneTerrain = new List<string>();
-                bool inList = false;
-                foreach (string line in File.ReadAllLines(Path.Combine(root, "Scenes", "SampleScene.unity"))) {
-                    if (line.StartsWith("  allTerrain:")) { inList = true; continue; }
-                    if (!inList) continue;
-                    System.Text.RegularExpressions.Match g = System.Text.RegularExpressions.Regex.Match(line, "^  - .*guid: ([0-9a-f]+)");
-                    if (!g.Success) break;
-                    foreach (string meta in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Tiles")), "*.asset.meta", SearchOption.AllDirectories))
-                        if (File.ReadAllText(meta).Contains("guid: " + g.Groups[1].Value)) sceneTerrain.Add(Path.GetFileName(meta).Replace(".asset.meta", ""));
-                }
                 LevelEditor was = LevelEditor.singleton;
                 LevelEditor ed = Rig.New<LevelEditor>();
-                ed.allTerrain = new List<TerrainData>();
-                foreach (string t in sceneTerrain) ed.allTerrain.Add(ScenarioFile.Terrain(t));
-                ed.allBuilding = new List<Building>();
-                foreach (string f in Directory.GetFiles(Path.Combine(PrefabLoader.Root("Buildings"), "Prefabs"), "*.prefab"))
-                    try { ed.allBuilding.Add(PrefabLoader.LoadBuilding(Path.GetFileNameWithoutExtension(f))); } catch (Exception) { }
-                ed.allUnit = new List<Unit>();
                 LevelEditor.singleton = ed;
                 try {
                     // What a tile needs to be loaded into headless: its pictures, overlay and roads.

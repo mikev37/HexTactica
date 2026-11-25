@@ -203,7 +203,7 @@ public static partial class Scenarios {
         n += ExportMission("1.1 Field Exercises", "field-exercises-playthrough", "scriptFieldExercises", 14,
             "Act 1, mission 1 (Resources/Campaign/Scenarios/1.1 Field Exercises.dat), played with the player's clicks: the introductions and a marker on Alpha; clicking Jori's squad: Anna says that is his reach; Alpha selected: the staging ground (the sand pit) marked; moved elsewhere: Anna's 'where are they', no Jori yet, and the move lesson again next turn; the move proposed: 'click again to confirm'; on the pit, Jori's squad appears in the fog, walks up (2 of 3 supplies) and hits Alpha for 3, taking 1, and Alpha falls back out of supply; on his next turn it takes the pit (no cover); Anna's retreat line, Alpha marked, then the city once selected; Jori's 'you better run'; healed on the city; Jori's squad never acts and starves on its own, with the highlight shown and gone within the lines; reinforcements two turns after Anna promised them; back to 5 strength, the attack in three marked steps; a move next to Jori confirmed without attacking: Alpha put 2 tiles away, ready, nobody lost (Place Units), the lesson replayed; the attack from the proposed move: 'Damn you!'; Jori's squad destroyed: the player wins.");
         n += ExportMission("1.2 Combat Trials", "combat-trials-playthrough", "scriptCombatTrials", 30,
-            "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for our squad in the trees, which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit; the supply unit sent to the marked tile lights the ground 2 rows further; the capture lesson; the city taken ('City secured!') and held two turns: the player wins.");
+            "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: Jori starts with one squad (his win condition off until his tank comes); the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for a fresh squad (in the trees), which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit, marked; clicking it: the supply lines, no tile marked; moved anywhere: Gena's line; the capture lesson; the city taken ('City secured!') and held through a turn: the player wins.");
         n += ExportMission("Tutorial 2", "tutorial2-playthrough", "scriptTutorial2", 10,
             "The second tutorial mission (Resources/Campaign/Scenarios/Tutorial 2.dat), played with the player's orders and recorded as a game is: the grunt boards the truck (told to load the supply unit), the supply unit boards (told to drive); the marked tile is outside the HQ's supply until the truck with supply aboard stands there; the grunt is put down in supply; the lookout (held, fed) is spotted; on turn 2 a recon car and a squad arrive, the squad boards the car; the lookout is destroyed, a grunt takes the village: the player wins. Then the campaign, on the mission assets as they are (Resources/Campaign/Missions): the result read from the game log earns its stars against Tutorial 2's pars; only Tutorial 1's flag is on the map at first, winning it unlocks Tutorial 2, stars once earned are kept, a mission blocked by an attempt is closed, and progress survives being saved and read back.");
         return n;
@@ -902,7 +902,15 @@ public static partial class Scenarios {
                     settle();
                 }
                 bool won = gc.gameOver && gc.winner == human;
-                bool ourKill = won && gc.activePlayer == human && Fired(s, "Jori fed") >= 1;   // died to our fire, never starved to death
+                // A unit starved (or ditched) is the enemy's kill; ours starved is our loss; an ally's is nobody's.
+                GameRecord rec = new GameRecord();
+                rec.sides.Add(new GameRecord.Side { id = human.id }); rec.sides.Add(new GameRecord.Side { id = jori.id });
+                rec.losses.Add(new GameRecord.Loss { side = jori.id, cause = HexTactica.Harness.GameLog.Lines.Supply });
+                rec.losses.Add(new GameRecord.Loss { side = jori.id, cause = HexTactica.Harness.GameLog.Lines.Fuel });
+                rec.losses.Add(new GameRecord.Loss { side = jori.id, cause = HexTactica.Harness.GameLog.Lines.Combat, killerSide = human.id });
+                rec.losses.Add(new GameRecord.Loss { side = human.id, cause = HexTactica.Harness.GameLog.Lines.Supply });
+                MissionTally tl = MissionRating.Tally(rec, human.id, true);
+                bool ourKill = won && tl.kills == 3 && tl.losses == 1;
                 bool starved = everSaid("we're starving") && !marked("highlight");
                 bool reinforced = everSaid("Reinforcements are here") && Fired(s, "1.18 Reinforcements") == 1;
                 said();
@@ -912,7 +920,7 @@ public static partial class Scenarios {
                        + "; his reach explained " + hisReach + "; retreat line, Alpha marked " + fellBackLine + "; city marked once selected " + cityMarked + "; ran to the city " + ran + "; healed on the city " + cityHeal
                        + "; Jori's squad took the pit and held it " + held + ", starved, highlight gone " + starved + "; back to 5: counterattack cue " + counter
                        + "; step 1 " + step1 + "; moved without attacking: the same Alpha put 2 tiles off, ready, nobody lost, lesson replayed " + redo + " (again " + step1Again + "); step 2 " + step2 + "; step 3 " + step3
-                       + "; reinforcements " + reinforced + "; won in " + rounds + " more round(s) " + won + ", Jori kept fed after the lesson and killed by us " + ourKill;
+                       + "; reinforcements " + reinforced + "; won in " + rounds + " more round(s) " + won + ", starved and ditched enemies count as our kills " + ourKill + " (" + tl.kills + "/" + tl.losses + ")";
                 ScenarioDialogue.Presenter = null;
                 return sandPit && keptIn && intro && selected && wandered && noJori && again && againSelected && confirmTold && onPit && appeared && cheapShot && hisReach && fellBackLine && cityMarked && ran
                        && cityHeal && held && starved && counter && step1 && redo && step1Again && step2 && step3 && reinforced && won && ourKill;
@@ -936,7 +944,7 @@ public static partial class Scenarios {
                 Building city = cityTile.building;
                 List<string> log = new List<string>();
                 Func<HexTile, string> P = t => t == null ? "-" : "(" + t.x + "," + t.y + ")";
-                bool start = gc.fogOfWar && !gc.purchasesAllowed && city != null && city.owner == null && human.units.Count == 4 && jori.units.Count == 3 && tank() == null
+                bool start = gc.fogOfWar && !gc.purchasesAllowed && city != null && city.owner == null && human.units.Count == 4 && jori.units.Count == 1 && tank() == null && Fired(s, "S1 Jori has no units") == 0 && !s.Find("S1 Jori has no units").Enabled
                              && human.faction != null && human.faction.name == "Federation" && jori.faction != null && jori.faction.name == "Federation";
 
                 settle();
@@ -977,7 +985,7 @@ public static partial class Scenarios {
                 log.Add("Bravo " + P(bravo.tile) + " (" + bravo.tile.terrain.name + ")");
                 gc.EndTurn(); settle();   // Jori's turn: the tank hunts our squads in the trees
                 bool noRingsLeft = !s.markers.Exists(m => m.Id.StartsWith("cover:"));
-                bool hunted = Fired(s, "2.5 Tank hunts") == 1;
+                bool hunted = Fired(s, "2.5 Tank hunts") == 1 && bravo.Strength < 6;   // the fresh squad, not the nearest (Alpha, hurt)
                 bool ambushed = Fired(s, "2.5 Ambushed") == 1 && everSaid("What the hell just happened?");
                 log.Add("tank " + (tank() != null ? tank().Strength + " " + P(tank().tile) : "gone") + "; Alpha " + alpha.Strength + ", Bravo " + bravo.Strength);
                 aiTurn();
@@ -1002,13 +1010,13 @@ public static partial class Scenarios {
                 bool supMark = false, lit = false, gena = false;
                 if (sup2 != null) {
                     HexTile.NotifyUnitSelected(sup2); settle();
-                    supMark = marked("supmark") && !marked("sup") && everSaid("A supply unit spreads supply");
+                    supMark = !marked("sup") && everSaid("A supply unit spreads supply") && !s.markers.Exists(m => m.Id == "supmark");
                     bool darkBefore = !SupplyNetwork.Solve(human, false).IsSupplied(Rig.At(-3, -2));
                     log.Add("Supplies 2 spawned at " + P(sup2.tile) + " active " + sup2.active + ", (-3,0) " + (Rig.At(-3, 0).occupier != null ? Rig.At(-3, 0).occupier.name + " of " + Rig.At(-3, 0).occupier.owner.personal_name : "free"));
                     ScenarioGame.Order(sup2, null, Rig.At(-3, 0)); settle();
                     lit = darkBefore && sup2.tile == Rig.At(-3, 0) && SupplyNetwork.Solve(human, false).IsSupplied(Rig.At(-3, -2));
                     log.Add("Supplies 2 " + P(sup2.tile) + ", dark before " + darkBefore + ", (-3,0) held by " + (Rig.At(-3, 0).occupier != null && Rig.At(-3, 0).occupier != sup2 ? Rig.At(-3, 0).occupier.name : "-"));
-                    gena = everSaid("The lit ground reaches 2 tiles further now") && !marked("supmark");
+                    gena = everSaid("The lit ground reaches 2 tiles further now");
                 }
                 // The city: a squad onto it, the others fighting whatever is in reach; until it is won.
                 int rounds = 0;
@@ -1034,11 +1042,11 @@ public static partial class Scenarios {
                 said();
                 detail = "start " + start + "; the city shown " + intro + "; the tank came for the grunt by the city " + tankCame + ", hit it to " + alphaAfter + ", taking " + (6 - tankAfter) + " " + firstHit + "; armour line " + armour
                        + "; cover lines " + coverLines + "; rings on forests and hills only " + ringsOk + ", gone with the move proposed " + ringsGone + ", none left after the turn " + noRingsLeft
-                       + "; the tank hunted " + hunted + ", ambushed " + ambushed + "; six numbers " + numbers + "; counterattack " + countered + "; Anna's tank and supply unit " + gift + "; supply mark " + supMark + ", lit 2 further " + lit + ", Gena " + gena
+                       + "; the tank hunted " + hunted + ", ambushed " + ambushed + "; six numbers " + numbers + "; counterattack " + countered + "; Anna's tank and supply unit " + gift + "; supply mark " + supMark + ", lit further (not asked) " + lit + ", Gena " + gena
                        + "; capture lesson " + captureLesson + "; city secured " + secured + "; won " + heldWin + " (held " + Fired(s, "2.13 Held") + ", wiped out " + Fired(s, "S1 Jori has no units") + ") in " + rounds + " round(s)"
                        + " | " + string.Join("; ", log.ToArray());
                 ScenarioDialogue.Presenter = null;
-                return start && intro && tankCame && firstHit && armour && coverLines && ringsOk && ringsGone && noRingsLeft && hunted && ambushed && numbers && countered && gift && supMark && lit && gena && captureLesson && secured && heldWin;
+                return start && intro && tankCame && firstHit && armour && coverLines && ringsOk && ringsGone && noRingsLeft && hunted && ambushed && numbers && countered && gift && supMark && gena && captureLesson && secured && heldWin;
             }
             case "scriptTutorial2": {
                 Player human = o, raiders = a;

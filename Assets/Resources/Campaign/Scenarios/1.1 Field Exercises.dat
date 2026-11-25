@@ -2242,40 +2242,10 @@
                     {
                         "Type": 3,
                         "MarkerId": "highlight"
-                    },
-                    {
-                        "Type": 16,
-                        "UnitSide": 112,
-                        "UnitTag": "Jori's Pride",
-                        "Stat": 3,
-                        "Mode": 0,
-                        "Value": 2
-                    },
-                    {
-                        "Type": 17,
-                        "Trigger": "Jori fed"
                     }
                 ],
                 "Side": 112,
                 "UnitTag": "Jori's Pride"
-            },
-            {
-                "Name": "Jori fed",
-                "Enabled": false,
-                "Condition": 21,
-                "Actions": [
-                    {
-                        "Type": 16,
-                        "UnitSide": 112,
-                        "UnitTag": "Jori's Pride",
-                        "Stat": 3,
-                        "Mode": 0,
-                        "Value": 2
-                    }
-                ],
-                "Repeat": true,
-                "Side": 112,
-                "Count": 1
             },
             {
                 "Name": "Clear Jori hit",

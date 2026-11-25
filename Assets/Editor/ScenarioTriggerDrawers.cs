@@ -29,7 +29,8 @@ static class TriggerFields {
             case TriggerCondition.UnitOutOfAmmo:
             case TriggerCondition.UnitOutOfFuel:
             case TriggerCondition.UnitCutOff: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
-            case TriggerCondition.Ambush: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
+            case TriggerCondition.Ambush:
+            case TriggerCondition.UnitMoved: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Count" };
             case TriggerCondition.AttackProposed:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
@@ -96,7 +97,7 @@ static class TriggerFields {
         switch (a) {
             case TriggerActionType.Dialogue: return new[] { "Lines" };
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
-            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "Value", "TileX", "TileY");
+            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TargetFresh", "Value", "TileX", "TileY");
             case TriggerActionType.StrikeTile: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY" };
             case TriggerActionType.CameraFrameBoard: return new string[0];
             case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
@@ -200,6 +201,7 @@ static class TriggerFields {
             case TriggerCondition.EnemyInspected: return "the player clicks " + units + " to see its reach" + times;
             case TriggerCondition.AttackProposed: return "the player shows an attack by " + units + (t.Value == 1 ? " that the defender would answer first" : "") + times;
             case TriggerCondition.Ambush: return units + " fires first when attacked (an ambush)" + times;
+            case TriggerCondition.UnitMoved: return units + " moves" + times;
             case TriggerCondition.MoveProposed: return "the player proposes a move for " + Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, false, 0, 0, 0) + (t.InArea ? " to " + area : "") + times;
             case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
             case TriggerCondition.UnitBoarded: return units + " gets into a transport" + times;
