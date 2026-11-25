@@ -416,6 +416,9 @@ public class CampaignScreen : MonoBehaviour {
             // Its first win: the complete mark was shown with the flag; the stars come one by one.
             yield return flag.GainStars(o.gained, starInterval);
         }
+        // Then what is said about it, before anything new opens.
+        List<DialogueLine> lines = o.tally.won ? played.outro : played.outroLost;
+        if (lines != null && lines.Count > 0) yield return Say(lines);
         Vector3 viewScale = world.localScale;
         Vector2 viewAt = world.anchoredPosition;
         bool moved = false;
@@ -439,8 +442,6 @@ public class CampaignScreen : MonoBehaviour {
             if (unlockHold > 0f) yield return new WaitForSecondsRealtime(unlockHold * 2f);
         }
         if (moved) yield return Glide(viewScale, viewAt);   // back to where the player was looking
-        List<DialogueLine> lines = o.tally.won ? played.outro : played.outroLost;
-        if (lines != null && lines.Count > 0) yield return Say(lines);
         Busy(false);
     }
 

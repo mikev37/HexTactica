@@ -1755,7 +1755,7 @@
     "day": 0,
     "purchases": "off",
     "allowedUnits": "",
-    "fog": "off",
+    "fog": "on",
     "factionSpecialUnits": "off",
     "allies": "off",
     "fixedRules": "fog,purchases,factionSpecialUnits,allies",
@@ -2184,15 +2184,6 @@
                 "Value": 2
             },
             {
-                "Name": "No bandits",
-                "Enabled": false,
-                "Condition": 22,
-                "Actions": [],
-                "Side": 112,
-                "UnitKind": "Bandit",
-                "Value": 0
-            },
-            {
                 "Name": "Jori down to one",
                 "Enabled": false,
                 "Condition": 22,
@@ -2330,6 +2321,65 @@
                         "Type": 0,
                         "Lines": [
                             {
+                                "Character": "Blakian Elder",
+                                "Text": "Cease this monstrous noise at once! You shake the very foundations of our homes! Have you no respect?",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Gena",
+                                "Text": "Fire again.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 32,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon A",
+                        "Value": 3
+                    },
+                    {
+                        "Type": 24,
+                        "Seconds": 0.3
+                    },
+                    {
+                        "Type": 32,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon B",
+                        "Value": 3
+                    },
+                    {
+                        "Type": 24,
+                        "Seconds": 0.3
+                    },
+                    {
+                        "Type": 32,
+                        "UnitSide": 200,
+                        "UnitTag": "Cannon C",
+                        "Value": 3
+                    },
+                    {
+                        "Type": 24,
+                        "Seconds": 0.6
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Blakian Elder",
+                                "Text": "Very well! If this is the language you speak, we will reply in kind!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Blakian Elder",
+                                "Text": "Enough! Please, enough!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
                                 "Character": "Gena",
                                 "Text": "Ah, just like old times. Now this I can understand. Artillery shoots far, up to four tiles away, but it cannot move and shoot in the same turn. It is powerful against most targets that get close enough for it to shoot.",
                                 "Sound": "",
@@ -2348,6 +2398,10 @@
                                 "Portrait": 0
                             }
                         ]
+                    },
+                    {
+                        "Type": 28,
+                        "On": true
                     }
                 ]
             },
@@ -2365,7 +2419,7 @@
                         "Count": 1,
                         "Value": 6,
                         "Veterancy": 0,
-                        "UnitTag": "Bandit 1",
+                        "UnitTag": "Alpha Bandit",
                         "ReadyToAct": true
                     },
                     {
@@ -2377,7 +2431,7 @@
                         "Count": 1,
                         "Value": 6,
                         "Veterancy": 0,
-                        "UnitTag": "Bandit 2",
+                        "UnitTag": "Bravo Bandit",
                         "ReadyToAct": true
                     },
                     {
@@ -2389,12 +2443,12 @@
                         "Count": 1,
                         "Value": 6,
                         "Veterancy": 0,
-                        "UnitTag": "Bandit 3",
+                        "UnitTag": "Gamma Bandit",
                         "ReadyToAct": true
                     },
                     {
                         "Type": 1,
-                        "AtUnit": "Bandit 1",
+                        "AtUnit": "Alpha Bandit",
                         "Zoom": 0,
                         "Seconds": 0.8
                     },
@@ -2500,7 +2554,7 @@
                         "Marker": "Marker",
                         "MarkerId": "target",
                         "Text": "Target",
-                        "AtUnit": "Bandit 1"
+                        "AtUnit": "Alpha Bandit"
                     },
                     {
                         "Type": 0,
@@ -2535,7 +2589,7 @@
                         "Type": 0,
                         "Lines": [
                             {
-                                "Character": "Federation Soldier",
+                                "Character": "Opfor Soldier",
                                 "Text": "Enemy sighted!",
                                 "Sound": "",
                                 "Portrait": 0
@@ -2805,6 +2859,10 @@
                                 "Portrait": 0
                             }
                         ]
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "4.10b Bandits retreat"
                     }
                 ],
                 "Parts": [
@@ -2814,7 +2872,92 @@
                 ]
             },
             {
-                "Name": "4.11 Bandits gone",
+                "Name": "4.10b Bandits retreat",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "Gamma Bandit",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "UnitKind": "Bandit",
+                        "TileX": -7,
+                        "TileY": 0
+                    },
+                    {
+                        "Type": 24,
+                        "Seconds": 1.5
+                    },
+                    {
+                        "Type": 20,
+                        "UnitSide": 112,
+                        "UnitKind": "Bandit"
+                    }
+                ],
+                "Side": 112,
+                "Count": 1
+            },
+            {
+                "Name": "Bandits retreated",
+                "Enabled": false,
+                "Condition": 17,
+                "Actions": [],
+                "AfterTrigger": "4.10b Bandits retreat"
+            },
+            {
+                "Name": "Bandits fought on",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Bandits retreated"
+                ]
+            },
+            {
+                "Name": "Alpha Bandit down",
+                "Enabled": false,
+                "Condition": 2,
+                "Actions": [],
+                "Side": 112,
+                "UnitTag": "Alpha Bandit"
+            },
+            {
+                "Name": "4.11 Alpha Bandit eliminated",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Blakian Elder",
+                                "Text": "Stop this provocation at once!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Alpha Bandit down",
+                    "Bandits fought on"
+                ]
+            },
+            {
+                "Name": "Bravo Bandit down",
+                "Enabled": false,
+                "Condition": 2,
+                "Actions": [],
+                "Side": 112,
+                "UnitTag": "Bravo Bandit"
+            },
+            {
+                "Name": "4.11 Bravo Bandit eliminated",
                 "Enabled": true,
                 "Condition": 18,
                 "Actions": [
@@ -2823,7 +2966,7 @@
                         "Lines": [
                             {
                                 "Character": "Mountain Bandit",
-                                "Text": "Blue Sun scum! He betrayed us!",
+                                "Text": "We are betrayed! He promised us victory! Retreat! To Blakia!",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -2831,8 +2974,38 @@
                     }
                 ],
                 "Parts": [
-                    "No bandits",
-                    "Bandits in"
+                    "Bravo Bandit down",
+                    "Bandits fought on"
+                ]
+            },
+            {
+                "Name": "Gamma Bandit down",
+                "Enabled": false,
+                "Condition": 2,
+                "Actions": [],
+                "Side": 112,
+                "UnitTag": "Gamma Bandit"
+            },
+            {
+                "Name": "4.11 Gamma Bandit eliminated",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Mountain Bandit",
+                                "Text": "Blue Sun dogs! He betrayed us!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Gamma Bandit down",
+                    "Bandits fought on"
                 ]
             },
             {
@@ -2920,6 +3093,190 @@
                 ],
                 "Side": 112,
                 "UnitKind": "Artillery"
+            },
+            {
+                "Name": "4.17 Tank, pull back",
+                "Enabled": true,
+                "Condition": 10,
+                "Actions": [
+                    {
+                        "Type": 1,
+                        "AtUnit": "OPFOR Tank",
+                        "Zoom": 0,
+                        "Seconds": 0.8
+                    },
+                    {
+                        "Type": 2,
+                        "Marker": "Highlight",
+                        "MarkerId": "tank",
+                        "Text": "",
+                        "AtUnit": "OPFOR Tank"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Commander, we might want to pull back the tank to friendly supplies.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 3,
+                        "MarkerId": "tank"
+                    }
+                ],
+                "Side": -2,
+                "UnitTag": "OPFOR Tank",
+                "Value": 2
+            },
+            {
+                "Name": "4.18 Use cover",
+                "Enabled": true,
+                "Condition": 10,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Commander, we're taking too many losses! We need to use the forests and hills for cover!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "UnitKind": "Grunt",
+                "Value": 6,
+                "CoverBelow": 2
+            },
+            {
+                "Name": "4.19 City ours",
+                "Enabled": true,
+                "Condition": 3,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Opfor Soldier",
+                                "Text": "We've taken the city! Now we can begin healing in it immediately. It's a great foothold.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "BuildingKind": "City"
+            },
+            {
+                "Name": "4.20 Jori's city",
+                "Enabled": true,
+                "Condition": 3,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Hah! This city is mine! My men will be healing up while yours starve in the dirt.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": 112,
+                "BuildingKind": "City"
+            },
+            {
+                "Name": "4.21 Hills",
+                "Enabled": true,
+                "Condition": 38,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Hills provide moderate cover, but they are hard for vehicles to traverse.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "OnTerrain": "Hills"
+            },
+            {
+                "Name": "4.22 Roads",
+                "Enabled": true,
+                "Condition": 38,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Roads grant extra movement, but offer no cover. Use them to reinforce the line quickly, but be wary of ambushes.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": -2,
+                "OnTerrain": "Road"
+            },
+            {
+                "Name": "Onto Blakian soil 1",
+                "Enabled": false,
+                "Condition": 1,
+                "Actions": [],
+                "Side": -2,
+                "TileX": -5,
+                "TileY": 6,
+                "Radius": 1,
+                "OnTerrain": "Pine, Hills"
+            },
+            {
+                "Name": "Onto Blakian soil 2",
+                "Enabled": false,
+                "Condition": 1,
+                "Actions": [],
+                "Side": -2,
+                "TileX": -2,
+                "TileY": 4,
+                "Radius": 2,
+                "OnTerrain": "Pine, Hills"
+            },
+            {
+                "Name": "4.23 Sovereign soil",
+                "Enabled": true,
+                "Condition": 19,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Blakian Elder",
+                                "Text": "This is sovereign Blakian soil! Leave now, before we are forced to defend our homes!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Parts": [
+                    "Onto Blakian soil 1",
+                    "Onto Blakian soil 2"
+                ]
             },
             {
                 "Name": "4.16 Whatever",

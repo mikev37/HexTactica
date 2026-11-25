@@ -358,6 +358,10 @@ public class ScenarioTrigger {
 
     [Tooltip("Unit and building conditions: only within Radius of the tile (off: anywhere). Unit Enters and Units In Area always use the area.")]
     public bool InArea;
+    [Tooltip("Unit conditions: only units on these terrains (names, comma-separated: \"Hills\", \"Pine, Forest, Hills\"), where the event happened (Unit Moved: where it moved to). Empty: any.")]
+    public string OnTerrain = "";
+    [Tooltip("Unit conditions: only units on ground with less cover than this, where the event happened (2: out in the open: grass, road, sand). 0: any.")]
+    public int CoverBelow;
     [Tooltip("Unit Enters, Units In Area, and any condition with In Area: the centre tile, x (cube coordinates, as the HUD and the scenario file give them).")]
     [TileField] public int TileX;
     [Tooltip("Unit Enters, Units In Area, and any condition with In Area: the centre tile, y (z is -x-y).")]

@@ -8,10 +8,13 @@ public struct UnitFilter {
     public string kind, tag;
     public bool inArea;
     public int x, y, radius;
+    /// <summary>Only units on these terrains (comma-separated names; empty: any), and on less cover than coverBelow (0: any).</summary>
+    public string terrain;
+    public int coverBelow;
 
     public static UnitFilter Of(ScenarioTrigger t) {
         bool area = t.InArea || t.Condition == TriggerCondition.UnitEnters || t.Condition == TriggerCondition.UnitsInArea;
-        return new UnitFilter { side = t.Side, kind = t.UnitKind, tag = t.UnitTag, inArea = area, x = t.TileX, y = t.TileY, radius = t.Radius };
+        return new UnitFilter { side = t.Side, kind = t.UnitKind, tag = t.UnitTag, inArea = area, x = t.TileX, y = t.TileY, radius = t.Radius, terrain = t.OnTerrain, coverBelow = t.CoverBelow };
     }
 
     public static UnitFilter Of(TriggerAction a) {
@@ -140,6 +143,13 @@ public static class ScenarioGame {
         if (!KindIs(GameController.UnitName(u), GameController.DisplayName(u, u.owner), f.kind)) return false;
         if (!string.IsNullOrEmpty(f.tag) && !string.Equals((u.personal_name ?? "").Trim(), f.tag.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
         if (f.inArea && (at == null || Distance(at.x, at.y, f.x, f.y) > Mathf.Max(0, f.radius))) return false;
+        if (f.coverBelow > 0 && (at == null || at.terrain == null || at.terrain.cover >= f.coverBelow)) return false;
+        if (!string.IsNullOrEmpty(f.terrain) && f.terrain.Trim().Length > 0) {
+            if (at == null || at.terrain == null) return false;
+            bool any = false;
+            foreach (string n in f.terrain.Split(',')) if (string.Equals(n.Trim(), at.terrain.name, StringComparison.OrdinalIgnoreCase)) { any = true; break; }
+            if (!any) return false;
+        }
         return true;
     }
 
