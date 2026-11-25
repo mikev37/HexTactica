@@ -517,7 +517,7 @@
             "z": 0,
             "damage": 0,
             "combatCount": 0,
-            "terrain": "Barrens",
+            "terrain": "Grassland",
             "destroyedFrom": "",
             "under": ""
         },
@@ -777,7 +777,7 @@
             "z": -2,
             "damage": 0,
             "combatCount": 0,
-            "terrain": "Grassland",
+            "terrain": "Barrens",
             "destroyedFrom": "",
             "under": ""
         },
@@ -1346,7 +1346,7 @@
             "gameobject_name": "City(Clone)",
             "personal_name": "City",
             "type": 2,
-            "owner_id": -1,
+            "owner_id": 0,
             "income": 1000,
             "producesSupply": false,
             "supplyRange": 0,
@@ -1359,9 +1359,9 @@
     ],
     "units": [
         {
-            "x": -3,
+            "x": -2,
             "y": 1,
-            "z": 2,
+            "z": 1,
             "Strength": 6,
             "Veterancy": 0,
             "personalName": "Alpha",
@@ -1391,7 +1391,7 @@
                 "Enabled": false,
                 "Condition": 6,
                 "Actions": [],
-                "TileX": -1,
+                "TileX": 1,
                 "TileY": 1,
                 "Radius": 0,
                 "Side": -2,
@@ -1439,7 +1439,7 @@
                 "Enabled": false,
                 "Condition": 6,
                 "Actions": [],
-                "TileX": 0,
+                "TileX": 1,
                 "TileY": 1,
                 "Radius": 1,
                 "Side": -2,
@@ -1606,7 +1606,7 @@
                         "Marker": "Marker",
                         "MarkerId": "goal",
                         "Text": "Move here",
-                        "TileX": -1,
+                        "TileX": 1,
                         "TileY": 1
                     },
                     {
@@ -1614,13 +1614,37 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "The lit tiles are where he can reach this turn. Click on the staging ground to propose a move there, then click again to confirm.",
+                                "Text": "The lit tiles are where he can reach this turn. Click on the staging ground to propose a move there.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
                         ]
                     }
                 ],
+                "Side": -2,
+                "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.3b Confirm",
+                "Enabled": true,
+                "Condition": 34,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Then click again to confirm.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "InArea": true,
+                "TileX": 1,
+                "TileY": 1,
+                "Radius": 0,
                 "Side": -2,
                 "UnitTag": "Alpha"
             },
@@ -1636,6 +1660,10 @@
                     {
                         "Type": 18,
                         "Trigger": "1.3 Alpha selected"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "1.3b Confirm"
                     },
                     {
                         "Type": 18,
@@ -1667,7 +1695,7 @@
                         "Trigger": "1.5 Jori arrives"
                     }
                 ],
-                "TileX": -1,
+                "TileX": 1,
                 "TileY": 1,
                 "Radius": 0,
                 "Side": -2,
@@ -1727,6 +1755,10 @@
                     },
                     {
                         "Type": 22,
+                        "Trigger": "1.3b Confirm"
+                    },
+                    {
+                        "Type": 22,
                         "Trigger": "1.4b Moved elsewhere"
                     },
                     {
@@ -1746,8 +1778,8 @@
                         "Type": 8,
                         "Side": 112,
                         "UnitKind": "Grunt",
-                        "TileX": 0,
-                        "TileY": 1,
+                        "TileX": 5,
+                        "TileY": 0,
                         "Count": 1,
                         "Value": 6,
                         "Veterancy": 0,
@@ -1763,12 +1795,6 @@
                         "Value": 2
                     },
                     {
-                        "Type": 1,
-                        "AtUnit": "Jori's Pride",
-                        "Zoom": 0,
-                        "Seconds": 0.8
-                    },
-                    {
                         "Type": 26,
                         "UnitSide": 112,
                         "UnitTag": "Jori's Pride",
@@ -1777,6 +1803,10 @@
                     {
                         "Type": 17,
                         "Trigger": "1.5 Hit"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "1.5b Jori takes the pit"
                     },
                     {
                         "Type": 17,
@@ -1846,6 +1876,22 @@
                 ],
                 "Side": 112,
                 "UnitTag": "Jori's Pride"
+            },
+            {
+                "Name": "1.5b Jori takes the pit",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "UnitTag": "Jori's Pride",
+                        "TileX": 1,
+                        "TileY": 1
+                    }
+                ],
+                "Side": 112,
+                "Count": 1
             },
             {
                 "Name": "Jori holds",
@@ -2281,7 +2327,7 @@
                         "Marker": "Marker",
                         "MarkerId": "attack",
                         "Text": "Move here",
-                        "TileX": -1,
+                        "TileX": 0,
                         "TileY": 2
                     },
                     {
@@ -2325,7 +2371,7 @@
                         "Marker": "Marker",
                         "MarkerId": "attack",
                         "Text": "Move here",
-                        "TileX": -1,
+                        "TileX": 0,
                         "TileY": 2
                     },
                     {
@@ -2366,7 +2412,7 @@
                     }
                 ],
                 "InArea": true,
-                "TileX": -1,
+                "TileX": 0,
                 "TileY": 2,
                 "Radius": 0,
                 "Side": -2,
@@ -2477,8 +2523,8 @@
                         "Type": 30,
                         "UnitSide": -2,
                         "UnitTag": "Alpha",
-                        "TileX": -2,
-                        "TileY": 1,
+                        "TileX": -1,
+                        "TileY": 2,
                         "ReadyToAct": true
                     },
                     {
