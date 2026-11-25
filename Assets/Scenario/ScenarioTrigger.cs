@@ -79,6 +79,8 @@ public enum TriggerCondition {
     StrikeLaunched = 32,
     /// <summary>A strike by a unit of Side (of Unit Kind) has landed (a missile arriving, a barrage); In Area: on a tile within the area: Count times.</summary>
     StrikeLanded = 33,
+    /// <summary>The player has proposed a move for a unit matching the unit filter (clicked a tile it can reach once: the path shows, the move not yet made); In Area: to a tile within the area: Count times. A tutorial's attack step: the move to the tile next to an enemy is proposed, so the enemy can be clicked from there.</summary>
+    MoveProposed = 34,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>

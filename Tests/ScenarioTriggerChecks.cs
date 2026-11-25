@@ -158,6 +158,15 @@ public static partial class Scenarios {
         make("script-not-eliminable", "scriptEliminable", (a, o) => { Put("Grunt", o, 0, 0); },
              "A side that is not eliminable (Player.eliminable off, as a scenario's enemy that starts with nothing) is not knocked out by losing its HQ and every unit, and the game goes on; the same side eliminable is knocked out, and the game ends.");
         n++;
+        make("script-move-proposed", "scriptMoveProposed", (a, o) => {
+                 Put("Grunt", a, 0, 0); Put("Grunt", o, 3, 0);
+                 Script(Trig("Next to Red", TriggerCondition.MoveProposed, t => { t.Side = Blue; t.InArea = true; t.TileX = 2; t.TileY = 0; t.Radius = 0; }),
+                        Trig("Any two", TriggerCondition.MoveProposed, t => { t.Side = Blue; t.Count = 2; }),
+                        Trig("Red proposes", TriggerCondition.MoveProposed, t => { t.Side = Red; }),
+                        Trig("Arrived", TriggerCondition.UnitEnters, t => { t.Side = Blue; t.TileX = 2; t.TileY = 0; t.Radius = 0; }));
+             },
+             "Move Proposed (a tutorial's attack step 2): the player proposing a move for a Blue grunt (the first click on a reachable tile: nothing moves) counts toward Move Proposed; In Area counts only a move proposed to a tile within the area (here the tile next to the Red grunt), Count 2 needs two proposals, a side filter ignores the other side's units, and none of it is Unit Enters, which waits for the move itself.");
+        n++;
         // The campaign's tutorial missions themselves (Assets/Resources/Campaign/Scenarios), each with a test block: played through below.
         n += ExportMission("Tutorial", "tutorial-playthrough", "scriptTutorial", 8,
             "The tutorial mission (Resources/Campaign/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.");
@@ -617,6 +626,25 @@ public static partial class Scenarios {
                 bool out_ = a.eliminated && gc.gameOver && gc.winner == o;
                 detail = "not eliminable, without HQ or units: still in, game on " + kept + "; eliminable: knocked out, Red wins " + out_;
                 return kept && out_;
+            }
+            case "scriptMoveProposed": {
+                Unit blue = Rig.At(0, 0).occupier, red = Rig.At(3, 0).occupier;
+                s.Tick(0.1f);
+                bool quiet = Fired(s, "Next to Red") == 0 && Fired(s, "Any two") == 0;
+                // (The board's click flow needs the tiles' overlays, which the headless board lacks: the proposal is
+                // notified as ClickBoard notifies it, on the first click on a tile the selected unit can reach.)
+                HexTile.NotifyMoveProposed(blue, Rig.At(0, 1)); s.Tick(0.1f);
+                bool elsewhere = Fired(s, "Next to Red") == 0 && Fired(s, "Any two") == 0;
+                HexTile.NotifyMoveProposed(blue, Rig.At(2, 0)); s.Tick(0.1f);
+                bool nextTo = Fired(s, "Next to Red") == 1 && Fired(s, "Any two") == 1;
+                bool notMoved = blue.tile == Rig.At(0, 0) && Fired(s, "Arrived") == 0;
+                HexTile.NotifyMoveProposed(red, Rig.At(2, 0)); s.Tick(0.1f);
+                bool sideKept = Fired(s, "Red proposes") == 1 && Fired(s, "Next to Red") == 1;
+                MoveTo(blue, 2, 0); s.Tick(0.1f);
+                bool arrived = Fired(s, "Arrived") == 1 && Fired(s, "Next to Red") == 1;
+                detail = "nothing at start " + quiet + "; a proposal elsewhere: not the area, 1 of 2 " + elsewhere + "; proposed next to Red: area and second proposal " + nextTo
+                       + "; nothing moved, not entered " + notMoved + "; Red's proposal counts only for Red " + sideKept + "; the move made: entered, area not again " + arrived;
+                return quiet && elsewhere && nextTo && notMoved && sideKept && arrived;
             }
             case "scriptTutorial": {
                 Player human = o, raiders = a;
