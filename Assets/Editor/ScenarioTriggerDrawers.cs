@@ -21,6 +21,7 @@ static class TriggerFields {
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
             case TriggerCondition.MoveProposed:
+            case TriggerCondition.EnemyInspected:
             case TriggerCondition.UnitBoarded:
             case TriggerCondition.UnitUnloaded:
             case TriggerCondition.UnitSpent:
@@ -114,6 +115,7 @@ static class TriggerFields {
             case TriggerActionType.SetStat: return Join(units, "Stat", "Mode", "Value");
             case TriggerActionType.DestroyUnits: return units;
             case TriggerActionType.ReadyUnits: return Join(units, "Value");
+            case TriggerActionType.PlaceUnits: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY", "ReadyToAct" };
             case TriggerActionType.GiveMoney: return new[] { "Side", "Mode", "Value" };
             case TriggerActionType.EnableTrigger:
             case TriggerActionType.DisableTrigger:
@@ -189,6 +191,7 @@ static class TriggerFields {
             case TriggerCondition.UnitsAtMost: return t.Value + " or fewer " + units + " left";
             case TriggerCondition.UnitsAtLeast: return t.Value + " or more " + units;
             case TriggerCondition.UnitSelected: return "the player selects " + units + times;
+            case TriggerCondition.EnemyInspected: return "the player clicks " + units + " to see its reach" + times;
             case TriggerCondition.MoveProposed: return "the player proposes a move for " + Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, false, 0, 0, 0) + (t.InArea ? " to " + area : "") + times;
             case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
             case TriggerCondition.UnitBoarded: return units + " gets into a transport" + times;
@@ -243,6 +246,7 @@ static class TriggerFields {
             case TriggerActionType.SetStat: return units + ": " + a.Stat + " " + (a.Mode == ValueMode.Add ? (a.Value >= 0 ? "+" : "") : "= ") + a.Value;
             case TriggerActionType.DestroyUnits: return "Destroy " + units;
             case TriggerActionType.ReadyUnits: return units + (a.Value != 0 ? " may act again" : " have used their turn");
+            case TriggerActionType.PlaceUnits: return "Put " + units + " on (" + a.TileX + "," + a.TileY + ")" + (a.ReadyToAct ? ", ready to act" : "");
             case TriggerActionType.GiveMoney: return Side(a.Side) + (a.Mode == ValueMode.Set ? " has " + a.Value : " gets " + a.Value) + " gold";
             case TriggerActionType.EnableTrigger: return "Switch on '" + (string.IsNullOrEmpty(a.Trigger) ? "this trigger" : a.Trigger) + "'";
             case TriggerActionType.DisableTrigger: return "Switch off '" + (string.IsNullOrEmpty(a.Trigger) ? "this trigger" : a.Trigger) + "'";

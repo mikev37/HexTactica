@@ -2907,7 +2907,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: title
-      value: 'Tutorial 1: First Command'
+      value: 'Field Exercises'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: faction
@@ -2915,7 +2915,7 @@ PrefabInstance:
       objectReference: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: briefing
-      value: Your first command. The scout and the commander walk you through moving a grunt, ending your turn, staying in supply, buying units at the HQ, capturing a city and attacking.
+      value: 'Your First Command. The Federation is holding exercises on the Blakian border. You command OPFOR, the side playing the enemy; Jori Orlov commands BLUE, the Federation side. Anna, an FCI agent, will walk you through moving a grunt, ending your turn, staying in supply and attacking.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parKills
@@ -2927,7 +2927,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: scenario
-      value: Tutorial
+      value: Field Exercises
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parLosses
@@ -2935,9 +2935,9 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: objectives
-      value: 'Follow the scout''s lead.
+      value: 'Follow Anna''s lead.
 
-        Destroy the raider.'
+        Defeat Jori''s squad.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: availableAtStart
@@ -2945,7 +2945,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.size
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.size
@@ -2965,27 +2965,19 @@ PrefabInstance:
       objectReference: {fileID: 1712040103}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.data[0].Text
-      value: 'New recruits report here. We start with the basics: one squad and one HQ.'
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: intro.Array.data[1].Text
-      value: I'll walk you through it. Press Start when you're ready.
+      value: 'Good day, Commander. Hmpf. Barely out of officer school, and you''ll be leading the opposition? Guess we all have to start somewhere.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[0].Text
-      value: Well done, recruit. You can move, buy and fight.
+      value: 'Well done, Commander. Despite that little hiccup.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[1].Text
-      value: Next we stop walking everywhere. A new mission is on the map.
+      value: 'Whatever. Just wait until the real exercise starts.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.data[0].Portrait
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: intro.Array.data[1].Portrait
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[0].Portrait
@@ -2993,27 +2985,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[1].Portrait
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outroLost.Array.data[0].Text
-      value: It happens to everyone once. Have another go.
+      value: 'Try again, Commander. A good commander knows when to pull back and heal.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.data[0].Character
-      value: Placeholder Commander
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: intro.Array.data[1].Character
-      value: Placeholder Scout
+      value: Gena
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[0].Character
-      value: Placeholder Commander
+      value: Anna
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[1].Character
-      value: Placeholder Scout
+      value: Jori
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outroLost.Array.data[0].Portrait
@@ -3021,7 +3009,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outroLost.Array.data[0].Character
-      value: Placeholder Commander
+      value: Anna
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
