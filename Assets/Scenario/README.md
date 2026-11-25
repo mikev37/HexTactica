@@ -80,6 +80,7 @@ units or buildings must match at least.
 | Building Owned (23) | now: at least *Count* matching buildings are held by *Side* | held by, kind, in area |
 | Unit Cut Off (24) | now: matching units stand outside their side's supply | side, kind, name, in area |
 | Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |
+| Enemy Inspected (35) | the player clicks a matching enemy unit to see where it can go and what it can hit (not an attack on it): *Count* times | side, kind, name, in area |
 | Move Proposed (34) | the player proposes a move for a matching unit: a first click on a tile it can reach, so the path shows and nothing has moved yet (*In area*: to a tile within the area): *Count* times. An attack is select, propose the move next to the enemy, click the enemy: a second click on the tile makes the move and ends the unit's turn, so a tutorial's attack step waits for this, not for Unit Enters | side, kind, name, in area |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
 | Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
@@ -148,6 +149,7 @@ Timing is counted in **turns**:
 | Destroy Units (20) | the matching units die |
 | Play Sound (21) | plays a sound from `Resources/Dialogue` once |
 | Ready Units (23) | the matching units can act again this turn (Value 1), or have used their turn (Value 0) |
+| Place Units (30) | the matching units are lifted onto the tile, or the nearest free tile, at once: nothing walked, nobody dies (unlike Destroy Units then Spawn Unit, which counts a loss against the mission's par); *Ready to act*: they may act again this turn |
 | Order Units (26) | the matching units move and attack as if ordered: toward the unit in *Attack Unit*, or the nearest unit of *Or Nearest Of*, attacking it if they reach it this turn; with no target, toward the tile. They have then used their turn. (For scripted ambushes: "the raider goes for our grunt".) |
 | Strike Tile (29) | the matching units that strike ground or from afar (a Missile; see *Strikes* in the main README) strike the tile, if it is in their range and they have their turn: at once, or launched to land when their side's next turn starts. They have then used their turn. ("The enemy launches at the bridge.") |
 | Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |

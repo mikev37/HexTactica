@@ -167,11 +167,21 @@ public static partial class Scenarios {
              },
              "Move Proposed (a tutorial's attack step 2): the player proposing a move for a Blue grunt (the first click on a reachable tile: nothing moves) counts toward Move Proposed; In Area counts only a move proposed to a tile within the area (here the tile next to the Red grunt), Count 2 needs two proposals, a side filter ignores the other side's units, and none of it is Unit Enters, which waits for the move itself.");
         n++;
+        make("script-place-inspect", "scriptPlaceInspect", (a, o) => {
+                 Put("Grunt", a, 0, 0); Put("Grunt", o, 3, 0);
+                 Script(Trig("Red inspected", TriggerCondition.EnemyInspected, t => { t.Side = Red; },
+                            Act(TriggerActionType.PlaceUnits, x => { x.UnitSide = Blue; x.UnitKind = "Grunt"; x.TileX = -2; x.TileY = 0; x.ReadyToAct = true; })),
+                        Trig("Blue inspected", TriggerCondition.EnemyInspected, t => { t.Side = Blue; }),
+                        Trig("Crowd", TriggerCondition.EnemyInspected, t => { t.Side = Red; t.Count = 2; },
+                            Act(TriggerActionType.PlaceUnits, x => { x.UnitSide = Blue; x.UnitKind = "Grunt"; x.TileX = 3; x.TileY = 0; x.ReadyToAct = false; })));
+             },
+             "Enemy Inspected and Place Units: the player clicking a Red unit to see its reach counts for a Red filter, not a Blue one; Place Units lifts the Blue grunt onto (-2,0) at once, ready to act, its old tile left empty, nobody killed; placed onto a tile taken (the Red grunt's), it stands on the nearest free tile instead, spent as asked.");
+        n++;
         // The campaign's tutorial missions themselves (Assets/Resources/Campaign/Scenarios), each with a test block: played through below.
         n += ExportMission("Tutorial", "tutorial-playthrough", "scriptTutorial", 8,
             "The tutorial mission (Resources/Campaign/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.");
         n += ExportMission("Field Exercises", "field-exercises-playthrough", "scriptFieldExercises", 14,
-            "Act 1, mission 1 (Resources/Campaign/Scenarios/Field Exercises.dat), played with the player's clicks: the introductions and a marker on Alpha; Alpha selected: the staging ground (the sand pit) marked; moved elsewhere: Anna's 'where are they', no Jori yet, and the move lesson again next turn; on the pit, Jori's squad appears beside it (2 of 3 supplies) and hits Alpha for 3, taking 1, and Alpha falls back; Anna's retreat line, Alpha marked, then the city once selected; Jori's 'you better run'; healed on the city; Jori's squad never acts and starves on its own, with the highlight shown and gone within the lines; reinforcements two turns after Anna promised them; at full strength the attack in three marked steps; a move next to Jori confirmed without attacking: Alpha replaced 2 tiles away and the lesson replayed; the attack from the proposed move: 'Damn you!'; Jori's squad destroyed: the player wins.");
+            "Act 1, mission 1 (Resources/Campaign/Scenarios/Field Exercises.dat), played with the player's clicks: the introductions and a marker on Alpha; clicking Jori's squad: Anna says that is his reach; Alpha selected: the staging ground (the sand pit) marked; moved elsewhere: Anna's 'where are they', no Jori yet, and the move lesson again next turn; on the pit, Jori's squad appears beside it (2 of 3 supplies) and hits Alpha for 3, taking 1, and Alpha falls back; Anna's retreat line, Alpha marked, then the city once selected; Jori's 'you better run'; healed on the city; Jori's squad never acts and starves on its own, with the highlight shown and gone within the lines; reinforcements two turns after Anna promised them; back to 5 strength, the attack in three marked steps; a move next to Jori confirmed without attacking: Alpha put 2 tiles away, ready, nobody lost (Place Units), the lesson replayed; the attack from the proposed move: 'Damn you!'; Jori's squad destroyed: the player wins.");
         n += ExportMission("Tutorial 2", "tutorial2-playthrough", "scriptTutorial2", 10,
             "The second tutorial mission (Resources/Campaign/Scenarios/Tutorial 2.dat), played with the player's orders and recorded as a game is: the grunt boards the truck (told to load the supply unit), the supply unit boards (told to drive); the marked tile is outside the HQ's supply until the truck with supply aboard stands there; the grunt is put down in supply; the lookout (held, fed) is spotted; on turn 2 a recon car and a squad arrive, the squad boards the car; the lookout is destroyed, a grunt takes the village: the player wins. Then the campaign, on the mission assets as they are (Resources/Campaign/Missions): the result read from the game log earns its stars against Tutorial 2's pars; only Tutorial 1's flag is on the map at first, winning it unlocks Tutorial 2, stars once earned are kept, a mission blocked by an attempt is closed, and progress survives being saved and read back.");
         return n;
@@ -648,6 +658,20 @@ public static partial class Scenarios {
                        + "; nothing moved, not entered " + notMoved + "; Red's proposal counts only for Red " + sideKept + "; the move made: entered, area not again " + arrived;
                 return quiet && elsewhere && nextTo && notMoved && sideKept && arrived;
             }
+            case "scriptPlaceInspect": {
+                Unit blue = Rig.At(0, 0).occupier, red = Rig.At(3, 0).occupier;
+                int blueCount = a.units.Count;
+                blue.active = false;
+                s.Tick(0.1f);
+                bool quiet = Fired(s, "Red inspected") == 0 && Fired(s, "Blue inspected") == 0;
+                HexTile.NotifyEnemyInspected(red); s.Tick(0.1f);
+                bool inspected = Fired(s, "Red inspected") == 1 && Fired(s, "Blue inspected") == 0;
+                bool placed = blue.tile == Rig.At(-2, 0) && Rig.At(-2, 0).occupier == blue && Rig.At(0, 0).occupier == null && blue.active && a.units.Count == blueCount && blue.Strength > 0;
+                HexTile.NotifyEnemyInspected(red); s.Tick(0.1f);
+                bool crowded = Fired(s, "Crowd") == 1 && blue.tile != Rig.At(3, 0) && red.tile == Rig.At(3, 0) && blue.tile.Distance(Rig.At(3, 0)) == 1 && blue.tile.occupier == blue && !blue.active;
+                detail = "nothing at start " + quiet + "; Red inspected, not Blue " + inspected + "; placed on (-2,0), ready, old tile empty, nobody lost " + placed + "; placed onto a taken tile: the nearest free one, spent " + crowded;
+                return quiet && inspected && placed && crowded;
+            }
             case "scriptTutorial": {
                 Player human = o, raiders = a;
                 bool keptIn = !raiders.eliminable && human.eliminable;
@@ -766,12 +790,14 @@ public static partial class Scenarios {
                 HexTile.NotifyUnitSelected(alpha()); settle();
                 bool againSelected = marked("goal");
                 ScenarioGame.Order(alpha(), null, pit); settle();
-                bool onPit = alpha().tile == pit && everSaid("Good Job!") && !marked("goal");
+                bool onPit = alpha().tile == pit && everSaid("Good job!") && !marked("goal");
                 gc.EndTurn(); settle();   // Jori's turn: the cheap shot
                 Unit p = pride();
                 bool appeared = p != null && p.owner == jori && p.supplies == 2;
                 int alphaHit = alpha().Strength, prideHit = p != null ? p.Strength : -1;
-                bool cheapShot = alphaHit == 3 && prideHit == 5 && alpha().tile != pit && everSaid("hit yours for 3 damage");
+                bool cheapShot = alphaHit == 3 && prideHit == 5 && alpha().tile != pit && everSaid("hit yours for 3 damage") && everSaid("A unit's damage depends on its strength");
+                HexTile.NotifyEnemyInspected(p); settle();
+                bool hisReach = everSaid("where HE can move and hit");
                 aiTurn();
                 bool fellBackLine = everSaid("he fell back a tile") && marked("alpha");
                 HexTile.NotifyUnitSelected(alpha()); settle();
@@ -785,14 +811,15 @@ public static partial class Scenarios {
                 // Until full strength (the counterattack's cue), ending turns on the city.
                 while (Fired(s, "1.14 Counterattack") == 0 && !gc.gameOver && turns++ < 4) endTurn();
                 bool held = pride() != null && pride().tile == prideAt;
-                bool starved = everSaid("we're starving") && !marked("highlight");
-                bool counter = Fired(s, "1.14 Counterattack") == 1 && alpha().Strength == 6 && marked("alpha");
+                bool counter = Fired(s, "1.14 Counterattack") == 1 && alpha().Strength >= 5 && marked("alpha");
                 // Step 1, then the mistake: the move made, no attack.
                 HexTile.NotifyUnitSelected(alpha()); settle();
                 bool step1 = marked("attack") && everSaid("adjacent to the enemy");
+                Unit before = alpha(); int strengthBefore = before.Strength, unitsBefore = human.units.Count;
                 ScenarioGame.Order(alpha(), null, from); settle();
                 Unit replaced = alpha();
-                bool redo = everSaid("click confirmed to move adjacent") && replaced != null && replaced.tile == Rig.At(-2, 1) && replaced.active && replaced.Strength == 6 && marked("alpha") && !marked("attack");
+                bool redo = everSaid("You confirmed the move next to the enemy") && replaced == before && replaced.tile == Rig.At(-2, 1) && replaced.active && replaced.Strength == strengthBefore
+                            && human.units.Count == unitsBefore && marked("alpha") && !marked("attack");
                 // The lesson again: select, propose the move next to Jori, then the attack from it.
                 int linesBefore = transcript.Count;
                 HexTile.NotifyUnitSelected(alpha()); settle();
@@ -803,7 +830,6 @@ public static partial class Scenarios {
                 ScenarioGame.Order(alpha(), pride(), from); settle();
                 bool step3 = pride() == null || pride().Strength < prideBefore;
                 step3 &= everSaid("Damn you!") && !marked("target") && !marked("alpha");
-                bool reinforced = everSaid("Reinforcements are here") && ScenarioGame.Named("Bravo") != null;
                 // Finish him.
                 int rounds = 0;
                 while (pride() != null && !gc.gameOver && rounds++ < 8) {
@@ -812,16 +838,18 @@ public static partial class Scenarios {
                     settle();
                 }
                 bool won = gc.gameOver && gc.winner == human;
+                bool starved = everSaid("we're starving") && !marked("highlight");
+                bool reinforced = everSaid("Reinforcements are here") && Fired(s, "1.18 Reinforcements") == 1;
                 said();
                 detail = "start: sand pit, no fog " + sandPit + ", Jori kept in with nothing " + keptIn + "; introductions, Alpha marked " + intro + "; selected: pit marked " + selected
                        + "; wandered: line, marker gone " + wandered + ", no Jori yet " + noJori + ", lesson again " + again + "/" + againSelected + "; on the pit " + onPit
                        + "; Jori's squad appeared with 2 supplies " + appeared + ", hit Alpha to " + alphaHit + " taking it to " + prideHit + ", Alpha fell back, line " + cheapShot
-                       + "; retreat line, Alpha marked " + fellBackLine + "; city marked once selected " + cityMarked + "; ran to the city " + ran + "; healed on the city " + cityHeal
-                       + "; Jori's squad held its tile " + held + ", starved, highlight gone " + starved + "; full strength: counterattack cue " + counter
-                       + "; step 1 " + step1 + "; moved without attacking: replaced 2 tiles off, lesson replayed " + redo + " (again " + step1Again + "); step 2 " + step2 + "; step 3 " + step3
+                       + "; his reach explained " + hisReach + "; retreat line, Alpha marked " + fellBackLine + "; city marked once selected " + cityMarked + "; ran to the city " + ran + "; healed on the city " + cityHeal
+                       + "; Jori's squad held its tile " + held + ", starved, highlight gone " + starved + "; back to 5: counterattack cue " + counter
+                       + "; step 1 " + step1 + "; moved without attacking: the same Alpha put 2 tiles off, ready, nobody lost, lesson replayed " + redo + " (again " + step1Again + "); step 2 " + step2 + "; step 3 " + step3
                        + "; reinforcements " + reinforced + "; won in " + rounds + " more round(s) " + won;
                 ScenarioDialogue.Presenter = null;
-                return sandPit && keptIn && intro && selected && wandered && noJori && again && againSelected && onPit && appeared && cheapShot && fellBackLine && cityMarked && ran
+                return sandPit && keptIn && intro && selected && wandered && noJori && again && againSelected && onPit && appeared && cheapShot && hisReach && fellBackLine && cityMarked && ran
                        && cityHeal && held && starved && counter && step1 && redo && step1Again && step2 && step3 && reinforced && won;
             }
             case "scriptTutorial2": {

@@ -1650,13 +1650,13 @@
                         "Lines": [
                             {
                                 "Character": "Federation Soldier",
-                                "Text": "We're reached the target tile.",
+                                "Text": "We've reached the target tile.",
                                 "Sound": "",
                                 "Portrait": 0
                             },
                             {
                                 "Character": "Anna",
-                                "Text": "Good Job! You can end the turn by pressing Space or clicking the end turn button.",
+                                "Text": "Good job! You can end the turn by pressing Space or clicking the end turn button.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -1687,13 +1687,13 @@
                         "Lines": [
                             {
                                 "Character": "Federation Soldier",
-                                "Text": "We're reached the target tile.",
+                                "Text": "We've reached the target tile.",
                                 "Sound": "",
                                 "Portrait": 0
                             },
                             {
                                 "Character": "Anna",
-                                "Text": "Uhh... where are they? Not what I asked for, but Good try? You can end the turn by pressing Space or clicking the end turn button. Then you can try to reach the objective.",
+                                "Text": "Uhh... where are they? Not what I asked for, but good try? You can end the turn by pressing Space or clicking the end turn button. Then you can try to reach the objective.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -1816,7 +1816,7 @@
                             },
                             {
                                 "Character": "Jori",
-                                "Text": "Hah! The units damage depends on their strength, so attacking first deals more damage! My unit hit yours for 3 damage, so yours could only retaliate for 1! The first mover advantage!",
+                                "Text": "Hah! A unit's damage depends on its strength, so attacking first deals more damage! My unit hit yours for 3 damage, so yours could only retaliate for 1! The first mover advantage!",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -1826,6 +1826,26 @@
                 "Value": 6,
                 "Side": -2,
                 "UnitTag": "Alpha"
+            },
+            {
+                "Name": "1.6 That's his reach",
+                "Enabled": true,
+                "Condition": 35,
+                "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Anna",
+                                "Text": "Those lit tiles show where HE can move and hit, not you. Your squad can only hit the tile right next to it.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    }
+                ],
+                "Side": 112,
+                "UnitTag": "Jori's Pride"
             },
             {
                 "Name": "Jori holds",
@@ -2017,7 +2037,7 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "Alright, look: Our troop has gone back up 2 strength. One for the city and one for being in supply. Now we can counterattack",
+                                "Text": "Alright, look: our troop has gone back up 2 strength. One for the city and one for being in supply. Now we can counterattack.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -2161,13 +2181,13 @@
                             },
                             {
                                 "Character": "Jori",
-                                "Text": "what do you mean you're starving!? Attack!",
+                                "Text": "What do you mean you're starving!? Attack!",
                                 "Sound": "",
                                 "Portrait": 0
                             },
                             {
                                 "Character": "Gena",
-                                "Text": "when a Unit has run out of supplies in the field, they begin losing strength instead of gaining strength.",
+                                "Text": "When a unit has run out of supplies in the field, they begin losing strength instead of gaining strength.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -2243,7 +2263,7 @@
                         "Trigger": "1.20 Turn ended idle"
                     }
                 ],
-                "Value": 6,
+                "Value": 5,
                 "Side": -2,
                 "UnitTag": "Alpha"
             },
@@ -2269,7 +2289,7 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "to Attack, you must first move into range of the enemy unit. With a range of 1, a grunt must be in a tile adjacent to the enemy.",
+                                "Text": "To attack, you must first move into range of the enemy unit. With a range of 1, a grunt must be in a tile adjacent to the enemy.",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -2454,20 +2474,11 @@
                 "Condition": 18,
                 "Actions": [
                     {
-                        "Type": 20,
+                        "Type": 30,
                         "UnitSide": -2,
-                        "UnitTag": "Alpha"
-                    },
-                    {
-                        "Type": 8,
-                        "Side": -2,
-                        "UnitKind": "Grunt",
+                        "UnitTag": "Alpha",
                         "TileX": -2,
                         "TileY": 1,
-                        "Count": 1,
-                        "Value": 6,
-                        "Veterancy": 0,
-                        "UnitTag": "Alpha",
                         "ReadyToAct": true
                     },
                     {
@@ -2510,7 +2521,7 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "Oops! You click confirmed to move adjacent to the enemy instead of attacking. How about you try listening to what I tell you",
+                                "Text": "Oops! You confirmed the move next to the enemy instead of attacking. How about you try listening to what I tell you?",
                                 "Sound": "",
                                 "Portrait": 0
                             }
@@ -2554,7 +2565,7 @@
                         "Lines": [
                             {
                                 "Character": "Anna",
-                                "Text": "Hey, what are you looking at? You ended your turn without moving your unit",
+                                "Text": "Hey, what are you looking at? You ended your turn without moving your unit.",
                                 "Sound": "",
                                 "Portrait": 0
                             }

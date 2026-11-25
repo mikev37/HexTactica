@@ -81,6 +81,8 @@ public enum TriggerCondition {
     StrikeLanded = 33,
     /// <summary>The player has proposed a move for a unit matching the unit filter (clicked a tile it can reach once: the path shows, the move not yet made); In Area: to a tile within the area: Count times. A tutorial's attack step: the move to the tile next to an enemy is proposed, so the enemy can be clicked from there.</summary>
     MoveProposed = 34,
+    /// <summary>The player clicks a matching enemy unit, to see where it can go and what it can hit (not an attack on it): Count times. A tutorial's "that is HIS reach, not yours".</summary>
+    EnemyInspected = 35,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -145,6 +147,8 @@ public enum TriggerActionType {
     SetFog = 28,
     /// <summary>The units matching the unit filter that strike (they target ground, or their attack lands later: Strikes) strike the tile, if it is in their range: at once, or launched to land when their side's next turn starts. Each then has used its turn.</summary>
     StrikeTile = 29,
+    /// <summary>The units matching the unit filter (Unit Side, Unit Kind, Unit Name) are lifted onto the tile, or the nearest free tile they can stand on, at once: no path walked, no fuel, nothing entered on the way, and no one dies (a scenario's "try that again from here"). Ready To Act: they may act again this turn.</summary>
+    PlaceUnits = 30,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>

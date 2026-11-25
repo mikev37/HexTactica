@@ -870,6 +870,19 @@ public class Unit : MonoBehaviour
     /// it — the mover answering as usual (OrderAttack with surprise: the hidden unit always fires
     /// first). Returns true if the unit reached the end of the path.
     /// </summary>
+    /// <summary>Put the unit on <paramref name="to"/> at once (a scenario's Place Units): no path, no fuel, nothing entered on the way.</summary>
+    public void PlaceAt(HexTile to) {
+        if (to == null || tile == null || trasnporter != null) return;
+        if (to != tile) {
+            if (tile.occupier == this) tile.occupier = null;
+            tile = to;
+            to.occupier = this;
+            SetCargoTile(to);
+        }
+        FogOfWar.Changed();
+        SnapSprite();
+    }
+
     /// <summary>Put the sprite on its tile now (nothing left to walk or slide): a move that is not animated.</summary>
     void SnapSprite() {
         if (tile == null || tile.unitPlacement == null || trasnporter != null) return;

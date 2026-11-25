@@ -526,6 +526,8 @@ public class HexTile : MonoBehaviour
     public static event System.Action<Building> BuildingOpened;
     /// <summary>The player proposed a move for the selected unit to a tile (a first click on a tile it can reach: the path shows, nothing has moved yet).</summary>
     public static event System.Action<Unit, HexTile> MoveProposed;
+    /// <summary>The player clicked an enemy unit to see where it can go and what it can hit (not an attack on it).</summary>
+    public static event System.Action<Unit> EnemyInspected;
 
     /// <summary>Tell UnitSelected's listeners (ClickBoard does, as the player selects a unit).</summary>
     public static void NotifyUnitSelected(Unit u) { if (UnitSelected != null) UnitSelected(u); }
@@ -533,6 +535,8 @@ public class HexTile : MonoBehaviour
     public static void NotifyBuildingOpened(Building b) { if (BuildingOpened != null) BuildingOpened(b); }
     /// <summary>Tell MoveProposed's listeners (ClickBoard does, as the player proposes a move).</summary>
     public static void NotifyMoveProposed(Unit u, HexTile to) { if (MoveProposed != null) MoveProposed(u, to); }
+    /// <summary>Tell EnemyInspected's listeners (ClickBoard does, as the player clicks an enemy unit).</summary>
+    public static void NotifyEnemyInspected(Unit u) { if (EnemyInspected != null) EnemyInspected(u); }
 
 	public void OnMouseDown() {
         if (HexTactica.Harness.Replay.Active) return;   // a replay: the board is only watched
@@ -697,6 +701,7 @@ public class HexTile : MonoBehaviour
                 GameController.gc.activeUnit = null;
                 if (SupplyOverlay.OpponentsTurn() && SupplyOverlay.OnScreenSide(seen)) SupplyOverlay.Inspected = seen;
                 SupplyOverlay.ShowEnemy(seen);
+                if (!GameController.IsPlayedElsewhere(GameController.gc.activePlayer)) NotifyEnemyInspected(seen);
             } else {
                 // Anywhere else: clear the board and the selection. One of the screen's own units whose move is over (or,
                 // on the opponent's turn, any of them): its supply shows as if selected.

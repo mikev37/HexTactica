@@ -2945,7 +2945,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.size
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.size
@@ -2965,26 +2965,18 @@ PrefabInstance:
       objectReference: {fileID: 1712040103}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.data[0].Text
-      value: 'Commander. Today is a field exercise on the Blakian border.'
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: intro.Array.data[1].Text
-      value: 'You will play the enemy. Play it well.'
+      value: 'Good day, Commander. Hmpf. Barely out of officer school, and you''ll be leading the opposition? Guess we all have to start somewhere.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[0].Text
-      value: 'Well done, Commander. Jori took that badly.'
+      value: 'Well done, Commander. Despite that little hiccup.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[1].Text
-      value: 'Beginner''s luck. Next time I won''t go easy on you.'
+      value: 'Whatever. Just wait until the real exercise starts.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.data[0].Portrait
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: intro.Array.data[1].Portrait
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
@@ -2997,15 +2989,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outroLost.Array.data[0].Text
-      value: 'Try again. Heal before you go in, and hit first.'
+      value: 'Try again, Commander. A good commander knows when to pull back and heal.'
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.data[0].Character
-      value: Anna
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: intro.Array.data[1].Character
-      value: Anna
+      value: Gena
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: outro.Array.data[0].Character

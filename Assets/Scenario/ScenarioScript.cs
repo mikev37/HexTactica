@@ -83,6 +83,7 @@ public class ScenarioScript : MonoBehaviour {
         HexTile.UnitSelected += OnUnitSelected;
         HexTile.BuildingOpened += OnBuildingOpened;
         HexTile.MoveProposed += OnMoveProposed;
+        HexTile.EnemyInspected += OnEnemyInspected;
         Transporting.Boarded += OnBoarded;
         Transporting.Unloaded += OnUnloaded;
         Strikes.Fired += OnStrikeFired;
@@ -100,6 +101,7 @@ public class ScenarioScript : MonoBehaviour {
             HexTile.UnitSelected -= OnUnitSelected;
             HexTile.BuildingOpened -= OnBuildingOpened;
             HexTile.MoveProposed -= OnMoveProposed;
+            HexTile.EnemyInspected -= OnEnemyInspected;
             Transporting.Boarded -= OnBoarded;
             Transporting.Unloaded -= OnUnloaded;
             Strikes.Fired -= OnStrikeFired;
@@ -189,6 +191,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
             case TriggerCondition.MoveProposed:
+            case TriggerCondition.EnemyInspected:
             case TriggerCondition.BuildingSelected:
             case TriggerCondition.UnitSpotted:
             case TriggerCondition.UnitBoarded:
@@ -397,6 +400,11 @@ public class ScenarioScript : MonoBehaviour {
     void OnMoveProposed(Unit u, HexTile to) {
         if (!Counting || u == null || to == null) return;
         Count(TriggerCondition.MoveProposed, t => ScenarioGame.MatchesAt(u, to, UnitFilter.Of(t)));
+    }
+
+    void OnEnemyInspected(Unit u) {
+        if (!Counting || u == null) return;
+        Count(TriggerCondition.EnemyInspected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)));
     }
 
     void OnBoarded(Unit transport, Unit cargo, HexTile from) {
@@ -632,6 +640,17 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.SetStat: ScenarioGame.SetStat(UnitsFor(t, a), a.Stat, a.Value, a.Mode); BoardChanged(); return;
             case TriggerActionType.DestroyUnits: ScenarioGame.DestroyUnits(UnitsFor(t, a)); BoardChanged(); return;
             case TriggerActionType.ReadyUnits: ScenarioGame.ReadyUnits(UnitsFor(t, a), a.Value != 0); return;
+            case TriggerActionType.PlaceUnits: {
+                // (The tile is where they go, not an area they must be in.)
+                UnitFilter who = UnitFilter.Of(a); who.inArea = false;
+                List<Unit> placed = ScenarioGame.Units(who);
+                if (placed.Count == 0) { Warn(t, "Place Units: no unit matches."); return; }
+                if (ScenarioGame.Tile(a.TileX, a.TileY) == null) { Warn(t, "Place Units: no tile (" + a.TileX + "," + a.TileY + ")."); return; }
+                int n = ScenarioGame.Place(placed, a.TileX, a.TileY, a.ReadyToAct);
+                if (n < placed.Count) Warn(t, "Place Units: no room near (" + a.TileX + "," + a.TileY + ") for " + (placed.Count - n) + " of them.");
+                BoardChanged();
+                return;
+            }
             case TriggerActionType.GiveMoney: {
                 Player p = ScenarioGame.Resolve(a.Side);
                 if (p == null) { Warn(t, "Give Money: no side is " + ScenarioGame.SideName(a.Side) + "."); return; }

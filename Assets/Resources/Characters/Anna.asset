@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cba62ac924d47ceb92491950c94ac84, type: 3}
   m_Name: Anna
   m_EditorClassIdentifier: 
-  displayName: Anna
-  portrait: {fileID: 7744452656831779846, guid: 145a533d9b4453545b76838787b85c74, type: 3}
+  displayName: Placeholder Commander
+  portrait: {fileID: 21300000, guid: 6cd34e89e5044f0d9458d8ef4b17a2d2, type: 3}
   nameColour: {r: 0.92, g: 0.36, b: 0.33, a: 1}
   drawnFacing: 0
