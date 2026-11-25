@@ -21,6 +21,9 @@ public class Player : MonoBehaviour
     [Tooltip("Off: this side is never knocked out (losing its HQ or its last unit does not end it), as a scenario's enemy that starts with nothing and is sent in by triggers. Saved with the scenario.")]
     public bool eliminable = true;
 
+    [Tooltip("A bystander: a side on the board that takes no turns, fights nobody and is fought by nobody (a range's guns at an exercise). Its units can be given to a side by a trigger. It never wins or loses. Saved with the scenario.")]
+    public bool bystander;
+
     [Header("Allies")]
     [Tooltip("The side this player fights on: players with the same number (not 0) are allies while the game's Allies rule is on (GameController.alliances). 0: on nobody's side but its own. Saved with the scenario.")]
     public int team;
@@ -36,8 +39,8 @@ public class Player : MonoBehaviour
     /// <summary>The same player, or allies. (Nobody and nobody: true, as == is.)</summary>
     public static bool Friendly(Player a, Player b) { return a == b || Allied(a, b); }
 
-    /// <summary>Not the same player and not allies: who may be fought and taken from. (A player and nobody: true, as != is.)</summary>
-    public static bool Hostile(Player a, Player b) { return a != b && !Allied(a, b); }
+    /// <summary>Not the same player and not allies, and neither a bystander: who may be fought and taken from. (A player and nobody: true, as != is.)</summary>
+    public static bool Hostile(Player a, Player b) { return a != b && !Allied(a, b) && !(a != null && a.bystander) && !(b != null && b.bystander); }
 
     /// <summary>What players on one side share (the same for allies, different for everyone else): the team, or the player itself with none.</summary>
     public object Side { get { return team != 0 && GameController.AlliancesOn ? (object)team : this; } }
@@ -380,6 +383,8 @@ public struct PlayerData {
     public bool eliminable;
     /// <summary>The side it fights on (Player.team): players with the same number, not 0, are allies. A file without it: 0.</summary>
     public int team;
+    /// <summary>A bystander (Player.bystander): no turns, never fought. A file without it: false.</summary>
+    public bool bystander;
     public PlayerData(Player t) {
         personal_name = t.personal_name;
         id = t.id;
@@ -393,6 +398,7 @@ public struct PlayerData {
         eliminated = t.eliminated;
         eliminable = t.eliminable;
         team = t.team;
+        bystander = t.bystander;
     }
 
     public Player load() {
@@ -420,6 +426,7 @@ public struct PlayerData {
         output.eliminated = that.eliminated;
         output.eliminable = that.eliminable;
         output.team = that.team;
+        output.bystander = that.bystander;
         if (AI && AIControl.Of(output) == null) {
             output.gameObject.AddComponent<AIPlayer>();
         }

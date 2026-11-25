@@ -76,7 +76,7 @@ public static class ScenarioGame {
             case TriggerSide.Any: return true;
             case TriggerSide.Neutral: return p == null;
             case TriggerSide.Human: return p != null && FogOfWar.IsHuman(p);
-            case TriggerSide.AI: return p != null && !FogOfWar.IsHuman(p);
+            case TriggerSide.AI: return p != null && !FogOfWar.IsHuman(p) && !p.bystander;
             default: return p != null && p.id == side;
         }
     }
@@ -194,6 +194,18 @@ public static class ScenarioGame {
         Unit best = null; int bestD = int.MaxValue;
         foreach (Unit u in Units(new UnitFilter { side = side })) {
             if (u == from || u.RealTile == null || u.owner == from.owner || u.RealTile.terrain == null || u.RealTile.terrain.cover < minCover) continue;
+            int d = Distance(u.RealTile.x, u.RealTile.y, from.RealTile.x, from.RealTile.y);
+            if (d < bestD) { bestD = d; best = u; }
+        }
+        return best;
+    }
+
+    /// <summary>The living unit of <paramref name="side"/> nearest <paramref name="from"/> left out in the open: it could use <paramref name="cover"/> cover (its concealment is that much or more: infantry) but stands on less. Null if none.</summary>
+    public static Unit NearestExposed(Unit from, long side, int cover) {
+        if (from == null || from.RealTile == null) return null;
+        Unit best = null; int bestD = int.MaxValue;
+        foreach (Unit u in Units(new UnitFilter { side = side })) {
+            if (u == from || u.RealTile == null || u.owner == from.owner || u.RealTile.terrain == null || u.RealTile.terrain.cover >= cover || u.Concealment < cover) continue;
             int d = Distance(u.RealTile.x, u.RealTile.y, from.RealTile.x, from.RealTile.y);
             if (d < bestD) { bestD = d; best = u; }
         }

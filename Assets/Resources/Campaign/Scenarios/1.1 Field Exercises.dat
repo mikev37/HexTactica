@@ -1277,9 +1277,9 @@
             "personal_name": "OPFOR",
             "id": 0,
             "displayColor": {
-                "r": 0.85,
-                "g": 0.2,
-                "b": 0.15,
+                "r": 1.0,
+                "g": 0.0,
+                "b": 0.0,
                 "a": 1.0
             },
             "factionName": "Federation",
@@ -1294,8 +1294,8 @@
             "personal_name": "BLUE (Jori)",
             "id": 112,
             "displayColor": {
-                "r": 0.2,
-                "g": 0.45,
+                "r": 0.0,
+                "g": 0.5294118,
                 "b": 1.0,
                 "a": 1.0
             },

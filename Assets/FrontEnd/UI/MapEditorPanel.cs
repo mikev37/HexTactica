@@ -46,18 +46,18 @@ public class MapEditorPanel : MonoBehaviour {
     public string anyFaction = "Any (chosen before the game)";
     [Tooltip("The pop-up a side's colour is chosen from (clicking its swatch): one swatch per colour of the list below. None: the swatch steps to the next colour instead.")]
     public ColourMenu colourMenu;
-    [Tooltip("The colours a side can have (the colour menu shows them all), and the colours a new side is given (the first not near any side's).")]
+    [Tooltip("The colours a side can have (the colour menu shows them all), and the colours a new side is given (the first not near any side's). Fully saturated: the unit prefabs tone a side's colour down themselves.")]
     public List<Color> extraSideColors = new List<Color> {
         new Color(0f, 0.5294118f, 1f, 1f),   // blue
-        new Color(1f, 0f, 0f, 1f),           // red
-        new Color(0.2f, 0.75f, 0.25f, 1f),   // green
-        new Color(0.95f, 0.85f, 0.15f, 1f),  // yellow
-        new Color(0.6f, 0.3f, 0.85f, 1f),    // purple
-        new Color(1f, 0.55f, 0.1f, 1f),      // orange
-        new Color(0f, 0.85f, 0.75f, 1f),     // teal
-        new Color(1f, 0.45f, 0.75f, 1f),     // pink
-        new Color(0.55f, 0.35f, 0.15f, 1f),  // brown
-        new Color(0.85f, 0.85f, 0.85f, 1f),  // white
+        new Color(1f, 0f, 0f, 1f),   // red
+        new Color(0f, 0.75f, 0.0682f, 1f),   // green
+        new Color(0.95f, 0.8312f, 0f, 1f),   // yellow
+        new Color(0.4636f, 0f, 0.85f, 1f),   // purple
+        new Color(1f, 0.5f, 0f, 1f),   // orange
+        new Color(0f, 0.85f, 0.75f, 1f),   // teal
+        new Color(1f, 0f, 0.5455f, 1f),   // pink
+        new Color(0.55f, 0.275f, 0f, 1f),   // brown
+        new Color(0.85f, 0.85f, 0.85f, 1f),   // white
     };
     [Tooltip("How far apart two colours must be (red, green and blue differences added) to count as different.")]
     public float colourDistance = 0.6f;

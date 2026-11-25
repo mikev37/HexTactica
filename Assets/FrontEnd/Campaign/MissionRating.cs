@@ -60,7 +60,10 @@ public static class MissionRating {
         MissionTally t = new MissionTally { won = won };
         if (s == null) return t;
         t.recorded = true;
-        foreach (GameRecord.Snap snap in s.snaps) if (snap.mover == viewer) t.turns++;
+        // Days the player moved on (each counted once: a turn logged again, at a load or a script's restart, is the same day).
+        HashSet<int> days = new HashSet<int>();
+        foreach (GameRecord.Snap snap in s.snaps) if (snap.mover == viewer) days.Add(snap.round);
+        t.turns = days.Count;
         foreach (GameRecord.Loss l in s.losses) {
             if (l.side == viewer) t.losses++;
             // An enemy's unit (never an ally's): killed by us, gone down aboard a transport, or starved out of supply
