@@ -43,6 +43,10 @@ public class MissionResultScreen : MonoBehaviour {
     public TMP_Text summary;
     public string summaryWon = "{0} of 3 stars this time; {1} of 3 earned in all.";
     public string summaryLost = "No stars for a mission lost. Its stars so far: {1} of 3.";
+    [Tooltip("Before the summary when the mission's script gave stars: {0} how many, {1} \"s\" for more than one, {2} why.")]
+    public string bonusFormat = "Mission bonus: +{0} star{1}. {2}";
+    [Tooltip("Before the summary when the mission's script took stars away: {0} how many, {1} \"s\" for more than one, {2} why.")]
+    public string penaltyFormat = "Mission penalty: -{0} star{1}. {2}";
     [Tooltip("Shown in place of the summary when the game has no game log (recording was turned off): the win counts, without stars.")]
     public string notRecorded = "This game was not recorded (no game log), so its stars could not be judged.";
     [Tooltip("Seconds before the first star, and between one star and the next.")]
@@ -63,6 +67,8 @@ public class MissionResultScreen : MonoBehaviour {
         if (me == null && gc != null && gc.players != null) foreach (Player p in gc.players) if (p != null && FogOfWar.IsHuman(p)) { me = p; break; }
         bool won = gc != null && gc.Won(me);   // the winner, or one of its allies
         MissionTally tally = MissionRating.Tally(record, me != null ? me.id : GameInsights.ViewerId(record), won);
+        ScenarioScript script = ScenarioScript.Instance;
+        if (script != null) { tally.bonus = script.BonusStars; tally.bonusNotes = script.BonusNotes; }
         // Opened again over the same game (View Board, then Results): its result was kept the first time; finishing it
         // again would read as a repeat win (no first win, nothing newly unlocked) and lose the campaign screen's news.
         string game = HexTactica.Harness.GameLog.Folder ?? "";
@@ -77,9 +83,12 @@ public class MissionResultScreen : MonoBehaviour {
         Fill(speed, tally.recorded && parTurns > 0, string.Format(speedFormat, tally.turns, parTurns));
         Fill(aggression, tally.recorded, string.Format(aggressionFormat, tally.kills, parKills));
         Fill(defense, tally.recorded, string.Format(defenseFormat, tally.losses, parLosses));
-        if (summary != null)
+        if (summary != null) {
             summary.text = !tally.recorded ? notRecorded
                 : string.Format(won ? summaryWon : summaryLost, MissionRating.Count(o.earned), MissionRating.Count(CampaignProgress.Get(m).stars));
+            if (won && tally.recorded && tally.bonus != 0)
+                summary.text = string.Format(tally.bonus > 0 ? bonusFormat : penaltyFormat, Mathf.Abs(tally.bonus), tally.bonus == 1 || tally.bonus == -1 ? "" : "s", tally.bonusNotes ?? "") + "\n" + summary.text;
+        }
         if (returnButton != null) returnButton.interactable = false;
         StartCoroutine(ShowStars(o.earned));
     }

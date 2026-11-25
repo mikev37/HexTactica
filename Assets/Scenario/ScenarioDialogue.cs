@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -49,6 +50,12 @@ public static class ScenarioDialogue {
 
     /// <summary>Lines waiting after the one on screen.</summary>
     public static int Waiting { get { return queue.Count; } }
+
+    /// <summary>Does the script still have lines to say after the ones queued (a later Dialogue in a trigger under way, or in the trigger it sets off)? Set by ScenarioScript.</summary>
+    public static Func<bool> MoreComing;
+
+    /// <summary>Another line follows the one on screen (the box's button says Next, not Close).</summary>
+    public static bool More { get { return queue.Count > 0 || (MoreComing != null && MoreComing()); } }
 
     /// <summary>
     /// Queue <paramref name="lines"/>; shown at once if nothing is. Returns the serial of the last one (0 if none): the

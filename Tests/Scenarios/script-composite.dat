@@ -193,9 +193,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -247,7 +249,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Red in middle",
@@ -258,9 +261,11 @@
 			"Side":0,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -312,7 +317,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Both",
@@ -326,9 +332,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -380,7 +388,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Either",
@@ -394,9 +403,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -448,7 +459,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Neither",
@@ -462,9 +474,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -516,7 +530,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"After either",
@@ -527,9 +542,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -581,7 +598,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Loop A",
@@ -594,9 +612,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -648,7 +668,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Loop B",
@@ -661,9 +682,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -715,7 +738,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Arm",
@@ -726,9 +750,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -780,7 +806,8 @@
 					"Trigger":"Late",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Late",
@@ -791,9 +818,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -845,7 +874,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		}
 	]
 }

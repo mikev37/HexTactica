@@ -198,9 +198,11 @@
 			"Side":0,
 			"UnitKind":"Grunt",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -252,7 +254,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"On the city",
@@ -263,9 +266,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -317,7 +322,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		}
 	]
 }

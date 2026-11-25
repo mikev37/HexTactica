@@ -221,6 +221,39 @@ public static partial class Scenarios {
              },
              "Unit Moved, On Terrain, Cover Below, Order Units' Target Fresh, Salute: a Red grunt moved onto hills counts for On Terrain Hills, then onto a road for 'Road, Forest' (one of two); every move counts for Unit Moved; the Blue tank, ordered at the strongest Red unit it can reach, passes over the hurt grunt nearer it for the full-strength one (ties: the one in the forest), whose hit counts for On Terrain Forest and not Cover Below 2; a hurt grunt hit on grass counts for Cover Below 2; a salute (headless: nothing shown) hits nobody.");
         n++;
+        make("script-new-functions", "scriptNewFunctions", (a, o) => {
+                 Put("Grunt", o, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, -6, 6); Put("Tank", a, 1, 0); Put("Grunt", a, 4, 2); Put("Truck", a, -2, 2); Put("Grunt", a, -2, 3);
+                 Rig.PlaceBuilding("City", null, -3, 0);
+                 Script(Trig("Shot", TriggerCondition.UnitKilled, t => { t.Side = Red; t.Value = 1; }, Act(TriggerActionType.CameraFocus, x => { x.AtUnit = "{unit}"; x.Zoom = 17; })),
+                        Trig("Starved", TriggerCondition.UnitKilled, t => { t.Side = Red; t.Value = 2; }),
+                        Trig("Either", TriggerCondition.UnitKilled, t => { t.Side = Red; t.Count = 2; }),
+                        Trig("Off the mark", TriggerCondition.UnitMoved, t => { t.Side = Blue; t.UnitTag = "Walker"; t.InArea = true; t.OutsideArea = true; t.TileX = -5; t.TileY = 5; t.Radius = 0; }),
+                        Trig("On the mark", TriggerCondition.UnitMoved, t => { t.Side = Blue; t.UnitTag = "Walker"; t.InArea = true; t.TileX = -5; t.TileY = 5; t.Radius = 0; }),
+                        Trig("None in sight", TriggerCondition.UnitsAtMost, t => { t.Side = Red; t.Value = 0; t.OnlySeen = true; t.SeenBy = Blue; }),
+                        Trig("None left", TriggerCondition.UnitsAtMost, t => { t.Side = Red; t.Value = 0; }),
+                        Trig("Half wrecked", TriggerCondition.BuildingDamaged, t => { t.InArea = true; t.TileX = -3; t.TileY = 0; t.Radius = 0; t.Value = 50; }),
+                        Trig("Picked", TriggerCondition.UnloadProposed, t => { t.Side = Blue; t.UnitKind = "Grunt"; }),
+                        Trig("Stars", TriggerCondition.LevelStart, null,
+                            Act(TriggerActionType.BonusStars, x => { x.Value = -1; x.Text = "The city was destroyed."; }),
+                            Act(TriggerActionType.BonusStars, x => { x.Value = 2; x.Text = "Nobody left behind."; }),
+                            Act(TriggerActionType.RevealArea, x => { x.Side = Blue; x.TileX = -6; x.TileY = 6; x.Radius = 1; x.MarkerId = "poi"; }),
+                            Act(TriggerActionType.HighlightUI, x => { x.Text = "TransportPanel"; })),
+                        Trig("Hide", TriggerCondition.TurnOver, t => { t.Side = Blue; t.Count = 2; }, Act(TriggerActionType.RevealArea, x => { x.On = false; x.MarkerId = "poi"; })),
+                        Trig("Caught up", TriggerCondition.UnitSelected, t => { t.Enabled = false; t.Side = Blue; t.UnitTag = "Walker"; }),
+                        Trig("Missed", TriggerCondition.UnitSelected, t => { t.Side = Blue; t.UnitTag = "Walker"; }),
+                        Trig("Enable it", TriggerCondition.LevelStart, null, Act(TriggerActionType.EnableTrigger, x => { x.Trigger = "Caught up"; })),
+                        Trig("Scene", TriggerCondition.LevelStart, null,
+                            Act(TriggerActionType.Dialogue, x => { x.Lines.Add(new DialogueLine { Character = "Anna", Text = "First." }); }),
+                            Act(TriggerActionType.Wait, x => { x.Seconds = 0.5f; }),
+                            Act(TriggerActionType.Dialogue, x => { x.Lines.Add(new DialogueLine { Character = "Anna", Text = "Last." }); })),
+                        Trig("Brief", TriggerCondition.Briefing, null,
+                            Act(TriggerActionType.ShowMarker, x => { x.MarkerId = "brief"; x.TileX = 2; x.TileY = 2; }),
+                            Act(TriggerActionType.Dialogue, x => { x.Lines.Add(new DialogueLine { Character = "Anna", Text = "Never under the briefing." }); })),
+                        Trig("Walker cut", TriggerCondition.UnitCutOff, t => { t.Enabled = false; t.Side = Blue; t.UnitTag = "Walker"; }),
+                        Trig("Rider moved", TriggerCondition.UnitMoved, t => { t.Side = Blue; t.UnitTag = "Rider"; }));
+             },
+             "The scenario functions added for Act 1's playtest: Unit Killed's How (in action, starved); Unit Moved outside an area; Units At Most counting only units in sight; Building Damaged (half its health gone); Unload Proposed (a unit picked in its transport's panel); Unit Moved not counting boarding or riding; Bonus Stars (-1 and +2: one more star in the rating, a star taken from a perfect result); Reveal Area (the ground shown through the fog past the end of the turn, then hidden by name); Highlight UI (the hook told the panel's name); a trigger switched on after its click was made counts the click (the unit already selected); the dialogue box's Next while a later Dialogue of the same trigger is to come, Close at the last; the script holds an AI while its actions run; the camera on a unit that has died goes where it fell; Briefing: its marker shown under the briefing, its line not said, never fired in play; Unit Cut Off keeps its real reading while a move's preview is on the board.");
+        n++;
         make("rule-bystander", "scriptBystander", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0);
                  Script(Trig("Red turns", TriggerCondition.TurnStarted, t => { t.Side = Red; t.Repeat = true; }),
@@ -806,6 +839,96 @@ public static partial class Scenarios {
                 detail = "salute hits nobody " + salute + "; onto hills: On Terrain Hills, one move counted " + hills + "; onto the road: 'Road, Forest' one of two, two moves, the fresh order " + road
                        + "; the tank went for the full-strength grunt in the forest, not the hurt one nearer " + freshHit + " (fresh " + fresh.Strength + ", hurt " + hurt.Strength + "); hit on grass: Cover Below 2 " + openHit;
                 return salute && hills && road && freshHit && openHit;
+            }
+            case "scriptNewFunctions": {
+                FakeBox box = new FakeBox();
+                ScenarioDialogue.Presenter = box;
+                Unit victim = Rig.At(0, 0).occupier, starver = Rig.At(3, 0).occupier, far = Rig.At(-6, 6).occupier, tank = Rig.At(1, 0).occupier;
+                Unit walker = Rig.At(4, 2).occupier, truck = Rig.At(-2, 2).occupier, rider = Rig.At(-2, 3).occupier;
+                walker.personal_name = "Walker"; rider.personal_name = "Rider";
+                Action settle = () => { for (int i = 0; i < 10; i++) s.Tick(0.2f); };
+                List<string> r = new List<string>();
+                gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                // Briefing: the marker, not the line; never in play.
+                s.Brief();
+                bool brief = s.markers.Exists(m => m.Id == "brief") && box.shown.Count == 0;
+                s.markers.Clear();
+                gc.activeUnit = walker;   // selected before the trigger waiting for it is switched on
+                Vector3 camAt = new Vector3(-999f, 0f, 0f); float camZoom = 0f;
+                ScenarioGame.CameraFocusHook = (at, zoom, sec) => { camAt = at; camZoom = zoom; };
+                string lit = "";
+                ScenarioGame.HighlightUIHook = (what, id, on) => { if (on) lit = what; };
+                s.Tick(0.1f);
+                bool first = box.shown.Count == 1 && box.shown[0] == "First." && ScenarioDialogue.More && ScenarioScript.HoldsPlay;
+                ScenarioDialogue.Next(); s.Tick(0.1f);
+                bool waiting = ScenarioScript.HoldsPlay;
+                s.Tick(0.6f); s.Tick(0.1f);
+                bool last = box.shown.Count == 2 && box.shown[1] == "Last." && !ScenarioDialogue.More;
+                ScenarioDialogue.Next(); settle();
+                bool released = !ScenarioScript.HoldsPlay;
+                r.Add("Next then Close " + first + "/" + last + "; the AI held while the scene runs " + waiting + ", let go after " + released);
+                bool caught = Fired(s, "Caught up") == 1 && Fired(s, "Missed") == 0;
+                r.Add("a click made before the trigger was on counted " + caught);
+                bool stars = s.BonusStars == 1 && s.BonusNotes.Contains("destroyed") && s.BonusNotes.Contains("behind");
+                MissionInfo mi = new MissionInfo { parTurns = 5, parKills = 1, parLosses = 0 };
+                MissionStars all = MissionRating.Stars(mi, new MissionTally { recorded = true, won = true, turns = 3, kills = 2, losses = 0, bonus = -1 });
+                MissionStars two = MissionRating.Stars(mi, new MissionTally { recorded = true, won = true, turns = 9, kills = 0, losses = 0, bonus = 1 });
+                bool rating = MissionRating.Count(all) == 2 && !MissionRating.Has(all, MissionStars.Defense) && MissionRating.Count(two) == 2 && MissionRating.Has(two, MissionStars.Speed);
+                r.Add("bonus stars " + s.BonusStars + " (" + s.BonusNotes + ") " + stars + "; -1 from 3 leaves 2, +1 fills the first missing " + rating);
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                HexTile poi = Rig.At(-6, 6), beside = Rig.At(-5, 6);
+                bool shown = FogOfWar.TileVisible(a, poi) && FogOfWar.TileVisible(a, beside) && FogOfWar.Sees(a, far);
+                gc.EndTurn(); settle(); FogOfWar.Changed(); FogOfWar.Refresh();
+                bool kept = FogOfWar.TileVisible(a, poi);
+                r.Add("the highlight asked for '" + lit + "'; revealed through the fog " + shown + ", still after the turn " + kept);
+                // Only units in sight: the far grunt is no longer revealed once hidden (Blue's second turn over).
+                Unit.Perishing = false;
+                while (victim.Strength > 0) tank.AttackActual(victim, false);
+                settle();
+                bool cam = Fired(s, "Shot") == 1 && Mathf.Abs(camAt.x - ScenarioGame.TilePosition(0, 0).x) < 0.01f && Mathf.Abs(camAt.y - ScenarioGame.TilePosition(0, 0).y) < 0.01f && camZoom == 17f;
+                starver.Perish(); settle();
+                bool how = Fired(s, "Shot") == 1 && Fired(s, "Starved") == 1 && Fired(s, "Either") == 1;
+                r.Add("killed in action / starved told apart " + how + "; the camera on the dead unit's tile " + cam);
+                gc.EndTurn(); settle(); gc.EndTurn(); settle(); FogOfWar.Changed(); FogOfWar.Refresh(); settle();
+                bool hidden = !FogOfWar.TileVisible(a, poi) && Fired(s, "Hide") == 1;
+                bool seen = Fired(s, "None in sight") == 1 && Fired(s, "None left") == 0 && !FogOfWar.Sees(a, far);
+                r.Add("revealed ground hidden by name " + hidden + "; none in sight (one left, unseen) " + seen);
+                // Moves: anywhere but the mark, then onto it.
+                ScenarioGame.Order(walker, null, Rig.At(4, 1)); settle();
+                bool off = Fired(s, "Off the mark") == 1 && Fired(s, "On the mark") == 0;
+                r.Add("moved off the mark counted, not on it " + off);
+                // Building Damaged at half.
+                Building city = Rig.At(-3, 0).building;
+                city.Damage(city.health / 2 - 1); settle();
+                bool notYet = Fired(s, "Half wrecked") == 0;
+                city.Damage(1); settle();
+                bool wrecked = notYet && Fired(s, "Half wrecked") == 1;
+                r.Add("half wrecked at " + city.damage + "/" + city.health + " " + wrecked);
+                // Unload Proposed: the rider boards, is picked in the panel.
+                List<HexTile> steps = HexTile.BoardingPath(rider, truck);
+                bool aboard = steps != null && rider.WalkAndBoard(steps, truck, true);
+                rider.FinishActive(); settle();
+                TransportMenu.Open(truck); TransportMenu.NotifyCargoPicked(rider); settle();   // (PickCargo marks tiles: not in the rig)
+                bool picked = aboard && Fired(s, "Picked") == 1;
+                // Riding is not moving: the truck drives with it aboard.
+                truck.active = true; ScenarioGame.Order(truck, null, Rig.At(-4, 2)); settle();
+                bool rode = truck.tile == Rig.At(-4, 2) && Fired(s, "Rider moved") == 0;
+                r.Add("boarding and riding are not Unit Moved " + rode);
+                TransportMenu.Close();
+                r.Add("picked in the panel " + picked);
+                // Unit Cut Off under a move's preview: the real reading kept.
+                ScenarioTrigger cut = s.Find("Walker cut"); cut.Enabled = true;
+                bool real = s.IsMet(cut, 0);
+                SupplyNetwork.Previewing = true;
+                MoveTo(walker, 6, -6);
+                bool keptReading = s.IsMet(cut, 0) == real;
+                SupplyNetwork.Previewing = false;
+                r.Add("cut off read as it really is under a preview " + keptReading);
+                bool never = Fired(s, "Brief") == 0;
+                r.Add("briefing: marker shown, line not said " + brief + ", never fired in play " + never);
+                ScenarioGame.CameraFocusHook = null; ScenarioGame.HighlightUIHook = null;
+                detail = string.Join("; ", r.ToArray());
+                return brief && first && last && waiting && released && caught && stars && rating && lit == "TransportPanel" && shown && kept && how && cam && hidden && seen && off && wrecked && picked && rode && keptReading && never;
             }
             case "scriptBystander": {
                 Player range = Rig.AddPlayer("Range", 200);

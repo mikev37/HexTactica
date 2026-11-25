@@ -196,9 +196,11 @@
 			"Side":0,
 			"UnitKind":"Grunt",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -250,7 +252,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Hurt",
@@ -261,9 +264,11 @@
 			"Side":0,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -315,7 +320,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Healed",
@@ -326,9 +332,11 @@
 			"Side":112,
 			"UnitKind":"Tank",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -380,7 +388,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Captured",
@@ -391,9 +400,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"City",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -445,7 +456,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Entered",
@@ -456,9 +468,11 @@
 			"Side":112,
 			"UnitKind":"Tank",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":3,
@@ -510,7 +524,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Day 2",
@@ -521,9 +536,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -575,7 +592,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Day 2 on Blue's turn",
@@ -586,9 +604,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -640,7 +660,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Red turn starts",
@@ -651,9 +672,11 @@
 			"Side":0,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -705,7 +728,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Built",
@@ -716,9 +740,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -770,7 +796,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Destroyed",
@@ -781,9 +808,11 @@
 			"Side":-1,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"City",
 			"InArea":true,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":3,
@@ -835,7 +864,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Starving",
@@ -846,9 +876,11 @@
 			"Side":112,
 			"UnitKind":"Grunt",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -900,7 +932,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"No ammo",
@@ -911,9 +944,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -965,7 +1000,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Low fuel",
@@ -976,9 +1012,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1030,7 +1068,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"No fuel",
@@ -1041,9 +1080,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1095,7 +1136,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Rich",
@@ -1106,9 +1148,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1160,7 +1204,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Broke",
@@ -1171,9 +1216,11 @@
 			"Side":0,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1225,7 +1272,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"No Red grunts",
@@ -1236,9 +1284,11 @@
 			"Side":0,
 			"UnitKind":"Grunt",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1290,7 +1340,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"City held",
@@ -1301,9 +1352,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"City",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1355,7 +1408,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Human turn over",
@@ -1366,9 +1420,11 @@
 			"Side":-2,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1420,7 +1476,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Three Blue units",
@@ -1431,9 +1488,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -1485,7 +1544,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		}
 	]
 }

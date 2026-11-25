@@ -115,6 +115,7 @@ public static class SupplyNetwork {
     /// if the hub stood there" without spending anyone's health.
     /// </summary>
     public static Result Solve(Player player, bool applyDrain) {
+        Previewing = false;
         return Solve(player, applyDrain, null, null);
     }
 
@@ -449,10 +450,17 @@ public static class SupplyNetwork {
     }
 
     /// <summary>
+    /// The board shows a move being previewed (SolvePreview), not the supply as it is: what is supplied on the tiles is the
+    /// what-if until the next real solve. A scenario's supply conditions keep their last real reading meanwhile.
+    /// </summary>
+    public static bool Previewing;
+
+    /// <summary>
     /// The network with some hubs standing on other tiles, published on the board: a move being
     /// previewed (a transport carrying several supply units, say) shows the supply it would give.
     /// </summary>
     public static Result SolvePreview(Player player, Dictionary<SupplyPoint, HexTile> moved) {
+        Previewing = true;
         Result r = Solve(player, false, null, null, null, false, moved);
         Publish(player, r, () => Solve(player, false, null, null, null, false, moved));
         return r;

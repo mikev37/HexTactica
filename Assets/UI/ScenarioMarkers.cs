@@ -43,9 +43,26 @@ public class ScenarioMarkers : MonoBehaviour {
         if (prefab == null) { Debug.LogWarning("Scenario: no marker prefab '" + m.Marker + "' in Resources/" + ScenarioMarker.Folder + " (it needs a ScenarioMarker on its root)."); return; }
         mk = Instantiate(prefab, at, Quaternion.identity, transform);
         mk.name = m.Marker + " (" + m.Id + ")";
+        AboveFog(mk.gameObject);
         mk.Show(m.Text);
         shown[m.Id] = mk;
         kinds[m.Id] = m.Marker;
+    }
+
+    /// <summary>A marker is drawn over the fog (a point of interest the side cannot see yet still shows): its renderers' order raised above the fog's, keeping their order among themselves.</summary>
+    static void AboveFog(GameObject go) {
+        FogSettings set = FogSettings.Instance;
+        int fog = set != null ? set.sortingOrder : 1000;
+        string layer = set != null && !string.IsNullOrEmpty(set.sortingLayer) ? set.sortingLayer : "Default";
+        int fogLayer = SortingLayer.GetLayerValueFromName(layer);
+        foreach (Renderer r in go.GetComponentsInChildren<Renderer>(true)) {
+            int mine = SortingLayer.GetLayerValueFromName(r.sortingLayerName);
+            if (mine > fogLayer) continue;                               // a layer drawn over the fog's already
+            if (mine < fogLayer) r.sortingLayerName = layer;
+            if (r.sortingOrder <= fog) r.sortingOrder += fog + 1;
+        }
+        foreach (Canvas c in go.GetComponentsInChildren<Canvas>(true))
+            if (c.renderMode == RenderMode.WorldSpace && c.sortingOrder <= fog) c.sortingOrder += fog + 1;
     }
 
     void Hide(string id) {

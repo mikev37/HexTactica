@@ -193,9 +193,11 @@
 			"Side":0,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -247,7 +249,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Blue inspected",
@@ -258,9 +261,11 @@
 			"Side":112,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -312,7 +317,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		},
 		{
 			"Name":"Crowd",
@@ -323,9 +329,11 @@
 			"Side":0,
 			"UnitKind":"",
 			"SeenBy":-2,
+			"OnlySeen":false,
 			"UnitTag":"",
 			"BuildingKind":"",
 			"InArea":false,
+			"OutsideArea":false,
 			"OnTerrain":"",
 			"CoverBelow":0,
 			"TileX":0,
@@ -377,7 +385,8 @@
 					"Trigger":"",
 					"Sound":""
 				}
-			]
+			],
+			"CutOffMet":false
 		}
 	]
 }

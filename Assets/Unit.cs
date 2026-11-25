@@ -229,12 +229,17 @@ public class Unit : MonoBehaviour
     /// it plays its death as if shot (the explosion and the "Die" animation, whose end removes it).
     /// </summary>
     internal void Perish() {
-        DieActual();
+        bool was = Perishing;
+        Perishing = true;
+        try { DieActual(); } finally { Perishing = was; }
         if (GameController.gc != null && GameController.gc.headless) { Destroy(gameObject); return; }
         // Lost to a strike's crater (or a bridge it brought down): its death plays when the strike is seen to land.
         if (Strikes.DeferDeath(this)) return;
         Die();
     }
+
+    /// <summary>A unit is being lost without a shot (Perish: starved, ditched) while Died is raised: a scenario's Unit Killed tells the two apart.</summary>
+    public static bool Perishing;
 
     public List<HexTile> path;//path for following when moving
 

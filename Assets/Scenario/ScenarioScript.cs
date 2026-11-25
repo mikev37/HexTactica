@@ -72,6 +72,7 @@ public class ScenarioScript : MonoBehaviour {
     void Register() {
         if (Instance != null && Instance != this) return;
         Instance = this;
+        ScenarioDialogue.MoreComing = () => Instance != null && Instance.MoreLinesComing();
         if (registered) return;
         registered = true;
         Unit.Died += OnDied;
@@ -88,6 +89,7 @@ public class ScenarioScript : MonoBehaviour {
         Unit.Attacked += OnAttacked;
         Transporting.Boarded += OnBoarded;
         Transporting.Unloaded += OnUnloaded;
+        TransportMenu.CargoPicked += OnCargoPicked;
         Strikes.Fired += OnStrikeFired;
         Strikes.Landed += OnStrikeLanded;
     }
@@ -108,6 +110,7 @@ public class ScenarioScript : MonoBehaviour {
             Unit.Attacked -= OnAttacked;
             Transporting.Boarded -= OnBoarded;
             Transporting.Unloaded -= OnUnloaded;
+            TransportMenu.CargoPicked -= OnCargoPicked;
             Strikes.Fired -= OnStrikeFired;
             Strikes.Landed -= OnStrikeLanded;
             registered = false;
@@ -142,11 +145,27 @@ public class ScenarioScript : MonoBehaviour {
             if (gc.activePlayer != null) OnTurnStarted(gc.activePlayer);
         }
         else clock += Mathf.Max(0f, dt);
+        ReapplyReveals();
         if (!snapshotTaken) Snapshot(); else Observe();
         FollowMarkers();
         RunActions();
         if (gc.gameOver) return;
         Evaluate();
+    }
+
+    // A trigger's condition is met and it waits for the board to be still before it fires (Wait For Animations).
+    bool waitingOnBoard;
+
+    /// <summary>
+    /// The script has the floor: a trigger is about to fire once what is playing ends, or a trigger's actions are under way
+    /// (a camera move, a wait, a line). An AI starts nothing new meanwhile, so a scene set off by its last action (a
+    /// unit dying: the camera on it, its line) plays before its next one, not after the whole turn.
+    /// </summary>
+    public static bool HoldsPlay {
+        get {
+            ScenarioScript s = Instance;
+            return s != null && Playing && (s.waitingOnBoard || s.running.Count > 0);
+        }
     }
 
     /// <summary>The level clock: seconds of play since the scenario started (not while a menu is open).</summary>
@@ -183,6 +202,7 @@ public class ScenarioScript : MonoBehaviour {
             busy = clock - busySince < 6f;
         }
         else { busySince = -1f; busy = false; }
+        waitingOnBoard = false;
         for (int i = 0; i < triggers.Count; i++) {
             ScenarioTrigger t = triggers[i];
             if (t == null || !t.Enabled) continue;
@@ -192,13 +212,45 @@ public class ScenarioScript : MonoBehaviour {
             if (!IsMet(t, 0)) { t.ConditionMetTurn = -1; continue; }                               // Delay counts unbroken holding
             if (t.ConditionMetTurn < 0) t.ConditionMetTurn = turns;
             if (turns - t.ConditionMetTurn < t.Delay) continue;
-            if (t.WaitForAnimations && busy) continue;                                            // after the shot lands, the retreat ends ...
+            if (t.WaitForAnimations && busy) { waitingOnBoard = true; continue; }                  // after the shot lands, the retreat ends ...
             Fire(i);
             if (gc.gameOver) return;                                                              // a Win / Lose ends evaluation
         }
     }
 
     // ------------------------------------------------------------------ conditions
+
+    /// <summary>Only Seen: units the Seen By side has in sight now; else every unit (null).</summary>
+    static Func<Unit, bool> SeenFilter(ScenarioTrigger t) {
+        if (!t.OnlySeen) return null;
+        long by = t.SeenBy;
+        return u => {
+            foreach (Player p in ScenarioGame.Players)
+                if (p != null && !p.eliminated && ScenarioGame.SideIs(p, by) && (Player.Friendly(p, u.owner) || FogOfWar.Sees(p, u))) return true;
+            return false;
+        };
+    }
+
+    // Supply Contact: worked out once per change of sight and turn (it solves the network), per side asked.
+    readonly Dictionary<long, int> contacts = new Dictionary<long, int>();
+    int contactsVersion = -1, contactsDay = -1;
+    Player contactsTurn;
+
+    int SupplyContacts(long side) {
+        GameController gc = GameController.gc;
+        if (gc == null) return 0;
+        if (contactsVersion != FogOfWar.Version || contactsDay != gc.days || contactsTurn != gc.activePlayer || SupplyNetwork.Previewing) {
+            if (SupplyNetwork.Previewing) { int kept; return contacts.TryGetValue(side, out kept) ? kept : 0; }
+            contacts.Clear(); contactsVersion = FogOfWar.Version; contactsDay = gc.days; contactsTurn = gc.activePlayer;
+        }
+        int n;
+        if (contacts.TryGetValue(side, out n)) return n;
+        n = 0;
+        foreach (Player p in ScenarioGame.Players)
+            if (p != null && !p.eliminated && ScenarioGame.SideIs(p, side)) n += SupplyNetwork.UnseenContacts(p).Count;
+        contacts[side] = n;
+        return n;
+    }
 
     const int MaxDepth = 8;
 
@@ -216,6 +268,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
             case TriggerCondition.MoveProposed:
+            case TriggerCondition.UnloadProposed:
             case TriggerCondition.EnemyInspected:
             case TriggerCondition.AttackProposed:
             case TriggerCondition.Ambush:
@@ -244,10 +297,23 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitOutOfAmmo: return ScenarioGame.CountUnits(uf, u => u.OutOfAmmo) >= count;
             case TriggerCondition.UnitOutOfFuel: return ScenarioGame.CountUnits(uf, u => u.OutOfFuel) >= count;
             case TriggerCondition.UnitLowOnFuel: { int pc = t.Value; return ScenarioGame.CountUnits(uf, u => ScenarioGame.LowOnFuel(u, pc)) >= count; }
-            case TriggerCondition.UnitCutOff: return ScenarioGame.CountUnits(uf, ScenarioGame.CutOff) >= count;
+            case TriggerCondition.UnitCutOff: {
+                // A move previewed on the board publishes its what-if supply: the real reading is kept until it is gone.
+                if (SupplyNetwork.Previewing) return t.CutOffMet;
+                return t.CutOffMet = ScenarioGame.CountUnits(uf, ScenarioGame.CutOff) >= count;
+            }
             case TriggerCondition.UnitsExposed: { int c = t.Value; return ScenarioGame.CountUnits(uf, u => u.RealTile != null && u.RealTile.terrain != null && u.RealTile.terrain.cover < c) >= count; }
-            case TriggerCondition.UnitsAtMost: return ScenarioGame.CountUnits(uf) <= t.Value;
-            case TriggerCondition.UnitsAtLeast: return ScenarioGame.CountUnits(uf) >= t.Value;
+            case TriggerCondition.UnitsAtMost: return ScenarioGame.CountUnits(uf, SeenFilter(t)) <= t.Value;
+            case TriggerCondition.UnitsAtLeast: return ScenarioGame.CountUnits(uf, SeenFilter(t)) >= t.Value;
+            case TriggerCondition.SupplyContact: return SupplyContacts(t.Side) > 0;
+            case TriggerCondition.BuildingDamaged: {
+                BuildingFilter bf = BuildingFilter.Of(t);
+                int n = 0;
+                foreach (Building b in Building.all)
+                    if (ScenarioGame.Matches(b, bf, false) && b.health > 0 && b.damage * 100 >= t.Value * b.health) n++;
+                return n >= count;
+            }
+            case TriggerCondition.Briefing: return false;   // shown under the briefing (Brief), never in play
             case TriggerCondition.UnitSpent: return ScenarioGame.CountUnits(uf, u => !u.active) >= count;
             case TriggerCondition.BuildingOwned: {
                 BuildingFilter bf = BuildingFilter.Of(t);
@@ -298,7 +364,7 @@ public class ScenarioScript : MonoBehaviour {
     // ------------------------------------------------------------------ facts as they happen (latched on each trigger)
 
     /// <summary>A unit as the last frame saw it; <c>seenBy</c>: which players (by their place in GameController.players) had it in sight.</summary>
-    struct Seen { public int strength; public HexTile tile; public int pass; public long seenBy; }
+    struct Seen { public int strength; public HexTile tile; public int pass; public long seenBy; public bool aboard; }
     readonly Dictionary<Unit, Seen> seen = new Dictionary<Unit, Seen>();
     readonly List<Unit> gone = new List<Unit>();
     bool snapshotTaken;
@@ -313,7 +379,7 @@ public class ScenarioScript : MonoBehaviour {
     void Count(TriggerCondition kind, Func<ScenarioTrigger, bool> matches, Unit subject) {
         for (int i = 0; i < triggers.Count; i++) {
             ScenarioTrigger t = triggers[i];
-            if (t != null && t.Condition == kind && matches(t)) { t.Events++; if (subject != null) t.Subject = subject; }
+            if (t != null && t.Condition == kind && matches(t)) { t.Events++; if (subject != null) { t.Subject = subject; t.SubjectAt = subject.RealTile; } }
         }
     }
 
@@ -334,6 +400,20 @@ public class ScenarioScript : MonoBehaviour {
         return null;
     }
 
+    /// <summary>Where the unit <paramref name="t"/> is about stood at its last event (as SubjectOf; a unit that has died since too).</summary>
+    HexTile SubjectTileOf(ScenarioTrigger t, int depth) {
+        if (t == null || depth > MaxDepth) return null;
+        if (t.Subject != null) return t.Subject.RealStrength > 0 && t.Subject.RealTile != null ? t.Subject.RealTile : t.SubjectAt;
+        if ((t.Condition == TriggerCondition.AllOf || t.Condition == TriggerCondition.AnyOf) && t.Parts != null)
+            foreach (string name in t.Parts) {
+                ScenarioTrigger part = Find(name);
+                if (part == null || part == t || !IsMet(part, depth + 1)) continue;
+                HexTile at = SubjectTileOf(part, depth + 1);
+                if (at != null) return at;
+            }
+        return null;
+    }
+
     /// <summary>What a unit name in an action means: "{unit}" is the unit the trigger fired about (null if none); any other name, that unit.</summary>
     public const string SubjectName = "{unit}";
     static bool IsSubject(string name) { return name != null && name.Trim() == SubjectName; }
@@ -344,7 +424,7 @@ public class ScenarioScript : MonoBehaviour {
         seen.Clear();
         pass++;
         if (UnitController.uc != null && UnitController.uc.units != null)
-            foreach (Unit u in UnitController.uc.units) if (u != null) seen[u] = new Seen { strength = u.RealStrength, tile = u.RealTile, pass = pass, seenBy = SeenBy(u, u.RealTile) };
+            foreach (Unit u in UnitController.uc.units) if (u != null) seen[u] = new Seen { strength = u.RealStrength, tile = u.RealTile, pass = pass, seenBy = SeenBy(u, u.RealTile), aboard = u.trasnporter != null };
         snapshotTaken = true;
     }
 
@@ -369,10 +449,10 @@ public class ScenarioScript : MonoBehaviour {
                 // Where it was hit: a defender driven back is counted where it stood (an attacker, where it attacked from).
                 if (s < was.strength) Damaged(u, s, at != was.tile && was.tile != null && GameController.gc != null && u.owner != GameController.gc.activePlayer ? was.tile : at);
                 else if (s > was.strength) Healed(u, s, at);
-                if (at != was.tile && at != null) Entered(u, was.tile, at);
+                if (at != was.tile && at != null) Entered(u, was.tile, at, !was.aboard && u.trasnporter == null);
                 if (spotting) Spotted(u, at, sight & ~was.seenBy);
-            } else if (at != null) { Entered(u, null, at); if (spotting) Spotted(u, at, sight); }
-            seen[u] = new Seen { strength = s, tile = at, pass = pass, seenBy = sight };
+            } else if (at != null) { Entered(u, null, at, false); if (spotting) Spotted(u, at, sight); }
+            seen[u] = new Seen { strength = s, tile = at, pass = pass, seenBy = sight, aboard = u.trasnporter != null };
         }
         gone.Clear();
         foreach (KeyValuePair<Unit, Seen> kv in seen) if (kv.Value.pass != pass) gone.Add(kv.Key);
@@ -413,12 +493,13 @@ public class ScenarioScript : MonoBehaviour {
         Count(TriggerCondition.UnitHealed, t => strength >= t.Value && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
     }
 
-    void Entered(Unit u, HexTile from, HexTile to) {
+    /// <summary><paramref name="self"/>: it moved itself (not getting in or out of a transport, not carried in one: Unit Boarded and Unit Unloaded count those).</summary>
+    void Entered(Unit u, HexTile from, HexTile to, bool self) {
         Count(TriggerCondition.UnitEnters, t => {
             UnitFilter f = UnitFilter.Of(t);
             return ScenarioGame.MatchesAt(u, to, f) && (from == null || !ScenarioGame.MatchesAt(u, from, f));
         }, u);
-        if (from != null) Count(TriggerCondition.UnitMoved, t => ScenarioGame.MatchesAt(u, to, UnitFilter.Of(t)), u);
+        if (from != null && self) Count(TriggerCondition.UnitMoved, t => ScenarioGame.MatchesAt(u, to, UnitFilter.Of(t)), u);
     }
 
     void OnDied(Unit u) {
@@ -426,7 +507,9 @@ public class ScenarioScript : MonoBehaviour {
         // Expended by its own attack (a missile launched): gone from the board, not killed.
         if (Unit.Expending) { seen.Remove(u); return; }
         HexTile at = u.RealTile;
-        Count(TriggerCondition.UnitKilled, t => ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
+        // Value 1: killed in action (by a shot); 2: lost without one (starved, ditched); 0: either.
+        int how = Unit.Perishing ? 2 : 1;
+        Count(TriggerCondition.UnitKilled, t => (t.Value == 0 || t.Value == how) && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
         // Dying is being damaged down to nothing (unless the frame already saw it at 0).
         Seen was;
         if (!seen.TryGetValue(u, out was) || was.strength > 0) Damaged(u, 0, at);
@@ -451,6 +534,11 @@ public class ScenarioScript : MonoBehaviour {
     void OnUnitSelected(Unit u) {
         if (!Counting || u == null) return;
         Count(TriggerCondition.UnitSelected, t => ScenarioGame.MatchesAt(u, u.RealTile, UnitFilter.Of(t)), u);
+    }
+
+    void OnCargoPicked(Unit u) {
+        if (!Counting || u == null) return;
+        Count(TriggerCondition.UnloadProposed, t => ScenarioGame.MatchesAt(u, u.trasnporter != null ? u.trasnporter.RealTile : u.RealTile, UnitFilter.Of(t)), u);
     }
 
     void OnMoveProposed(Unit u, HexTile to) {
@@ -562,7 +650,7 @@ public class ScenarioScript : MonoBehaviour {
         if (t.Repeat) t.Events = 0;
         t.ConditionMetTurn = -1;
         if (t.Actions == null || t.Actions.Count == 0) { Warn(t, "it fired, but it has no actions."); return; }
-        RunningActions r = new RunningActions { Trigger = index, Next = 0, Subject = SubjectOf(t, 0) };
+        RunningActions r = new RunningActions { Trigger = index, Next = 0, Subject = SubjectOf(t, 0), SubjectAt = SubjectTileOf(t, 0) };
         if (!Run(r)) running.Add(r);
     }
 
@@ -592,6 +680,86 @@ public class ScenarioScript : MonoBehaviour {
 
     int markerSerial;
 
+    /// <summary>Stars the script gave (Bonus Stars), and the ground it shows a side (Reveal Area): kept in a save.</summary>
+    List<StarBonus> bonuses = new List<StarBonus>();
+    List<ShownReveal> reveals = new List<ShownReveal>();
+    int revealsApplied = -1;
+
+    /// <summary>The mission's bonus stars (negative: a penalty), all Bonus Stars actions fired added up.</summary>
+    public int BonusStars { get { int n = 0; foreach (StarBonus b in bonuses) n += b.Value; return n; } }
+
+    /// <summary>Why: their texts, one after the other.</summary>
+    public string BonusNotes {
+        get {
+            List<string> r = new List<string>();
+            foreach (StarBonus b in bonuses) if (!string.IsNullOrEmpty(b.Text)) r.Add(b.Text.Trim());
+            return string.Join(" ", r.ToArray());
+        }
+    }
+
+    static void Reveal(ShownReveal rv) {
+        HexTile at = ScenarioGame.Tile(rv.TileX, rv.TileY);
+        if (at == null) return;
+        foreach (Player p in ScenarioGame.Players) if (p != null && ScenarioGame.SideIs(p, rv.Side)) FogOfWar.RevealLasting(p, at, rv.Radius, rv.Id);
+    }
+
+    /// <summary>The revealed ground, put back on the board after the fog was reset (a board loaded: the fog starts afresh).</summary>
+    void ReapplyReveals() {
+        if (revealsApplied == FogOfWar.Resets) return;
+        revealsApplied = FogOfWar.Resets;
+        if (reveals.Count == 0) return;
+        foreach (ShownReveal rv in reveals) Reveal(rv);
+        FogOfWar.Changed();
+    }
+
+    /// <summary>
+    /// The board shown under a campaign mission's briefing (GameSession, before Start): the Briefing triggers' markers,
+    /// camera and revealed ground (their other actions are not done: nothing plays under a briefing).
+    /// </summary>
+    public void Brief() {
+        for (int i = 0; i < triggers.Count; i++) {
+            ScenarioTrigger t = triggers[i];
+            if (t == null || !t.Enabled || t.Condition != TriggerCondition.Briefing || t.Actions == null) continue;
+            RunningActions r = new RunningActions { Trigger = i };
+            foreach (TriggerAction a in t.Actions) {
+                if (a == null) continue;
+                switch (a.Type) {
+                    case TriggerActionType.ShowMarker: case TriggerActionType.HideMarker: case TriggerActionType.RevealArea:
+                    case TriggerActionType.CameraFocus: case TriggerActionType.CameraFrameBoard: case TriggerActionType.MarkReach:
+                        Do(t, a, r); break;
+                }
+            }
+        }
+        FogOfWar.Changed(); FogOfWar.Refresh();
+    }
+
+    /// <summary>
+    /// A line still to come from the script once the ones queued are closed: a Dialogue later in a trigger under way, in a
+    /// trigger one of them enables, or in a trigger set off by one of them (After Trigger). The dialogue box's Next or Close.
+    /// </summary>
+    public bool MoreLinesComing() {
+        foreach (RunningActions r in running) {
+            if (r.Trigger < 0 || r.Trigger >= triggers.Count || triggers[r.Trigger] == null) continue;
+            ScenarioTrigger t = triggers[r.Trigger];
+            if (t.Actions == null) continue;
+            for (int i = r.Next; i < t.Actions.Count; i++) {
+                TriggerAction a = t.Actions[i];
+                if (a == null) continue;
+                if (a.Type == TriggerActionType.Dialogue && a.Lines != null && a.Lines.Count > 0) return true;
+                if (a.Type == TriggerActionType.EnableTrigger && Speaks(Find(a.Trigger))) return true;
+            }
+            foreach (ScenarioTrigger o in triggers)
+                if (o != null && o.Enabled && o.TimesFired == 0 && o.Condition == TriggerCondition.AfterTrigger && o.AfterTrigger == t.Name && Speaks(o)) return true;
+        }
+        return false;
+    }
+
+    static bool Speaks(ScenarioTrigger t) {
+        if (t == null || t.Actions == null) return false;
+        foreach (TriggerAction a in t.Actions) if (a != null && a.Type == TriggerActionType.Dialogue && a.Lines != null && a.Lines.Count > 0) return true;
+        return false;
+    }
+
     void Do(ScenarioTrigger t, TriggerAction a, RunningActions r) {
         switch (a.Type) {
             case TriggerActionType.Dialogue:
@@ -605,8 +773,11 @@ public class ScenarioScript : MonoBehaviour {
                 int x = a.TileX, y = a.TileY;
                 if (!string.IsNullOrEmpty(a.AtUnit)) {
                     Unit u = NamedFor(a.AtUnit, r);
-                    if (u == null || u.RealTile == null) { Warn(t, "Camera Focus: no unit named '" + a.AtUnit + "' on the board."); return; }
-                    x = u.RealTile.x; y = u.RealTile.y;
+                    HexTile at = u != null && u.RealTile != null ? u.RealTile : u != null && u.trasnporter != null ? u.trasnporter.RealTile : null;
+                    // "{unit}" that has died: where it fell.
+                    if (at == null && IsSubject(a.AtUnit)) at = r.SubjectAt;
+                    if (at == null) { Warn(t, "Camera Focus: no unit named '" + a.AtUnit + "' on the board."); return; }
+                    x = at.x; y = at.y;
                 }
                 ScenarioGame.FocusCamera(x, y, a.Zoom, a.Seconds);
                 return;
@@ -675,7 +846,8 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.Salute: {
                 foreach (Unit u in UnitsFor(t, a, r)) {
                     HexTile from = u.RealTile;
-                    if (from != null) u.Salute(ScenarioGame.Tile(from.x, from.y + a.Value));
+                    // Straight up the screen: y down, z up (ScenarioGame.TilePosition).
+                    if (from != null) u.Salute(ScenarioGame.Tile(from.x, from.y - a.Value));
                 }
                 return;
             }
@@ -760,6 +932,29 @@ public class ScenarioScript : MonoBehaviour {
                 ScenarioGame.GiveMoney(p, a.Value, a.Mode);
                 return;
             }
+            case TriggerActionType.BonusStars:
+                bonuses.Add(new StarBonus { Value = a.Value, Text = a.Text ?? "" });
+                return;
+            case TriggerActionType.RevealArea: {
+                if (a.On) {
+                    string id = string.IsNullOrEmpty(a.MarkerId) ? "reveal:" + a.TileX + "," + a.TileY : a.MarkerId;
+                    ShownReveal rv = new ShownReveal { Id = id, Side = a.Side, TileX = a.TileX, TileY = a.TileY, Radius = Mathf.Max(0, a.Radius) };
+                    reveals.Add(rv);
+                    Reveal(rv);
+                } else {
+                    string id = a.MarkerId ?? "";
+                    reveals.RemoveAll(x => id.Length == 0 || x.Id == id);
+                    FogOfWar.Unreveal(id);
+                }
+                BoardChanged();
+                return;
+            }
+            case TriggerActionType.HighlightUI: {
+                string id = string.IsNullOrEmpty(a.MarkerId) ? a.Text ?? "" : a.MarkerId;
+                if (a.On && string.IsNullOrEmpty(a.Text)) { Warn(t, "a Highlight UI action names nothing to highlight (Text)."); return; }
+                ScenarioGame.HighlightUI(a.Text ?? "", id, a.On);
+                return;
+            }
             case TriggerActionType.EnableTrigger:
             case TriggerActionType.DisableTrigger:
             case TriggerActionType.ResetTrigger: {
@@ -768,8 +963,36 @@ public class ScenarioScript : MonoBehaviour {
                 other.ConditionMetTurn = -1;
                 if (a.Type == TriggerActionType.DisableTrigger) { other.Enabled = false; return; }
                 other.Events = 0;   // counts start from now
-                if (a.Type == TriggerActionType.EnableTrigger) other.Enabled = true;
+                if (a.Type == TriggerActionType.EnableTrigger) { other.Enabled = true; CatchUp(other); }
                 else other.TimesFired = 0;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// A trigger just switched on whose click the player has already made (the unit it waits for is selected, its move
+    /// already proposed, its cargo already picked): counted now, as if made after. A quick player is not ignored
+    /// because the scene before was still playing when they clicked.
+    /// </summary>
+    void CatchUp(ScenarioTrigger o) {
+        GameController gc = GameController.gc;
+        Unit sel = gc != null ? gc.activeUnit : null;
+        UnitFilter f = UnitFilter.Of(o);
+        switch (o.Condition) {
+            case TriggerCondition.UnitSelected:
+                if (sel != null && sel.RealStrength > 0 && ScenarioGame.MatchesAt(sel, sel.RealTile, f)) { o.Events++; o.Subject = sel; o.SubjectAt = sel.RealTile; }
+                return;
+            case TriggerCondition.MoveProposed: {
+                if (sel == null || sel.RealStrength <= 0) return;
+                HexTile to = null;
+                HexGenerator.forAllTiles(x => { if (x.state == UIState.MOVE_CONFIRM) to = x; return 0; });
+                if (to != null && ScenarioGame.MatchesAt(sel, to, f)) { o.Events++; o.Subject = sel; o.SubjectAt = to; }
+                return;
+            }
+            case TriggerCondition.UnloadProposed: {
+                Unit c = TransportMenu.pendingCargo;
+                if (c != null && c.trasnporter != null && ScenarioGame.MatchesAt(c, c.trasnporter.RealTile, f)) { o.Events++; o.Subject = c; o.SubjectAt = c.trasnporter.RealTile; }
                 return;
             }
         }
@@ -821,6 +1044,8 @@ public class ScenarioScript : MonoBehaviour {
             d.Running = running;
             d.TurnStarts = turnStarts;
             d.PendingLines = ScenarioDialogue.Pending();
+            d.Bonuses = bonuses;
+            d.Reveals = reveals;
         }
         return ScenarioJson.Write(d, withState);
     }
@@ -859,6 +1084,10 @@ public class ScenarioScript : MonoBehaviour {
         clock = d.Clock;
         running = d.Running ?? new List<RunningActions>();
         turnStarts = d.TurnStarts ?? new List<SideTurns>();
+        bonuses = d.Bonuses ?? new List<StarBonus>();
+        reveals = d.Reveals ?? new List<ShownReveal>();
+        revealsApplied = -1;
+        ScenarioGame.HighlightUI("", "", false);
         warned.Clear();
         seen.Clear();
         snapshotTaken = false;

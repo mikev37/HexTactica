@@ -11,6 +11,7 @@ using UnityEngine.UI;
 ///   with the speaker's name and the line, a Next button, and a full-body portrait standing at each end.</item>
 /// <item>Assets/Resources/ScenarioMarkers/Marker.prefab: the default marker (ScenarioMarker): a ring round the tile,
 ///   an arrow bobbing over it and a label.</item>
+/// <item>Assets/Resources/UIHighlight.prefab: what a Highlight UI action lays over a panel (UIHighlights).</item>
 /// </list>
 /// After that they are yours to edit in Unity: nothing here touches a prefab that exists, except the menu item, which
 /// asks first. Nothing builds or styles them at run time.
@@ -28,7 +29,28 @@ static class DialoguePrefab {
     static readonly Color Accent = new Color(0.36f, 0.62f, 0.95f, 1f);
     static readonly Color MarkerColour = new Color(1f, 0.85f, 0.25f, 1f);
 
-    static DialoguePrefab() { EditorApplication.delayCall += () => { CreateDialogue(false); CreateMarker(false); }; }
+    static DialoguePrefab() { EditorApplication.delayCall += () => { CreateDialogue(false); CreateMarker(false); CreateHighlight(false); }; }
+
+    const string HighlightPath = "Assets/Resources/" + UIHighlights.PrefabName + ".prefab";
+
+    [MenuItem("HexTactica/Scenario Triggers/Recreate UI Highlight Prefab")]
+    static void RecreateHighlight() {
+        if (File.Exists(HighlightPath) && !EditorUtility.DisplayDialog("Recreate UI Highlight Prefab",
+                "Replace " + HighlightPath + " with the default highlight? Your edits to it will be lost.", "Replace", "Cancel")) return;
+        CreateHighlight(true);
+    }
+
+    /// <summary>Assets/Resources/UIHighlight.prefab: what a Highlight UI action lays over a panel (a flashing yellow frame; takes no clicks).</summary>
+    static void CreateHighlight(bool replace) {
+        if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+        if (!replace && File.Exists(HighlightPath)) return;
+        GameObject g = UIHighlights.BuildDefault();
+        Directory.CreateDirectory(Path.GetDirectoryName(HighlightPath));
+        PrefabUtility.SaveAsPrefabAsset(g, HighlightPath);
+        Object.DestroyImmediate(g);
+        AssetDatabase.Refresh();
+        Debug.Log("Created " + HighlightPath + " (what a scenario's Highlight UI action lays over a panel): edit it as you like. Its offsets are its margin round the panel.");
+    }
 
     [MenuItem("HexTactica/Scenario Triggers/Recreate Dialogue Prefab")]
     static void RecreateDialogue() {

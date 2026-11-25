@@ -17,7 +17,8 @@ static class TriggerFields {
             case TriggerCondition.LevelStart: return new string[0];
             case TriggerCondition.UnitEnters:
             case TriggerCondition.UnitsInArea: return new[] { "Side", "UnitKind", "UnitTag", "Area", "OnTerrain", "CoverBelow", "Count" };
-            case TriggerCondition.UnitKilled:
+            case TriggerCondition.UnitKilled: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "Count" };
+            case TriggerCondition.UnloadProposed:
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
             case TriggerCondition.MoveProposed:
@@ -37,7 +38,10 @@ static class TriggerFields {
             case TriggerCondition.UnitsExposed:
             case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "Count" };
             case TriggerCondition.UnitsAtMost:
-            case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value" };
+            case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "OnlySeen", "SeenBy" };
+            case TriggerCondition.SupplyContact: return new[] { "Side" };
+            case TriggerCondition.BuildingDamaged: return new[] { "BuildingKind", "InArea", "Value", "Count" };
+            case TriggerCondition.Briefing: return new string[0];
             case TriggerCondition.UnitSpotted: return new[] { "SeenBy", "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Count" };
             case TriggerCondition.StrikeLaunched:
             case TriggerCondition.StrikeLanded: return new[] { "Side", "UnitKind", "InArea", "Count" };
@@ -66,6 +70,7 @@ static class TriggerFields {
                 if (c == TriggerCondition.BuildingOwned || c == TriggerCondition.BuildingSelected) return "Held By";
                 if (c == TriggerCondition.MoneyAtLeast || c == TriggerCondition.MoneyAtMost) return "Whose";
                 if (c == TriggerCondition.TurnOver || c == TriggerCondition.TurnStarted || c == TriggerCondition.DayReached) return "On Whose Turn";
+                if (c == TriggerCondition.SupplyContact) return "Whose Supply";
                 return "Whose Units";
             case "Value":
                 switch (c) {
@@ -79,13 +84,15 @@ static class TriggerFields {
                     case TriggerCondition.UnitsAtLeast: return "Units At Least";
                     case TriggerCondition.AttackProposed: return "Only Ambushes (1)";
                     case TriggerCondition.UnitsExposed: return "Cover Below";
+                    case TriggerCondition.UnitKilled: return "How (0 Any, 1 In Action, 2 Starved)";
+                    case TriggerCondition.BuildingDamaged: return "Health Lost % At Least";
                 }
                 return null;
             case "Count":
                 switch (c) {
                     case TriggerCondition.UnitsInArea: case TriggerCondition.UnitStarving: case TriggerCondition.UnitOutOfAmmo:
                     case TriggerCondition.UnitOutOfFuel: case TriggerCondition.UnitLowOnFuel: case TriggerCondition.UnitCutOff:
-                    case TriggerCondition.BuildingOwned: case TriggerCondition.UnitSpent: case TriggerCondition.UnitsExposed: return "At Least";
+                    case TriggerCondition.BuildingOwned: case TriggerCondition.UnitSpent: case TriggerCondition.UnitsExposed: case TriggerCondition.BuildingDamaged: return "At Least";
                     case TriggerCondition.TurnStarted: case TriggerCondition.TurnOver: return "Their Turn Number";
                 }
                 return "Times";
@@ -130,6 +137,9 @@ static class TriggerFields {
             case TriggerActionType.ResetTrigger: return new[] { "Trigger" };
             case TriggerActionType.PlaySound: return new[] { "Sound" };
             case TriggerActionType.Wait: return new[] { "Seconds" };
+            case TriggerActionType.BonusStars: return new[] { "Value", "Text" };
+            case TriggerActionType.RevealArea: return new[] { "Side", "On", "TileX", "TileY", "Radius", "MarkerId" };
+            case TriggerActionType.HighlightUI: return new[] { "Text", "On", "MarkerId" };
         }
         return new string[0];
     }
@@ -141,6 +151,7 @@ static class TriggerFields {
                 if (a == TriggerActionType.Lose) return "Loser";
                 if (a == TriggerActionType.SpawnUnit) return "For";
                 if (a == TriggerActionType.GiveMoney) return "To";
+                if (a == TriggerActionType.RevealArea) return "Shown To";
                 return "New Owner";
             case "UnitSide": return a == TriggerActionType.OrderUnits ? "Whose Units Move" : a == TriggerActionType.StrikeTile ? "Whose Units Strike" : "Whose Units";
             case "AtUnit": return a == TriggerActionType.ShowMarker ? "On Unit (Follows It)" : "On Unit";
@@ -154,9 +165,13 @@ static class TriggerFields {
                 if (a == TriggerActionType.MarkReach) return "Cover At Least";
                 if (a == TriggerActionType.Salute) return "Tiles Above";
                 if (a == TriggerActionType.OrderUnits) return "Target In Cover At Least";
+                if (a == TriggerActionType.BonusStars) return "Stars (+/-)";
                 return null;
             case "UnitTag": return a == TriggerActionType.SpawnUnit ? "Name Them" : "Unit Name";
-            case "MarkerId": return a == TriggerActionType.ShowMarker ? "Name (To Hide It Later)" : a == TriggerActionType.MarkReach ? "Names Start (Hide With Name*)" : "Marker To Hide (Name* For All So Named)";
+            case "Text": return a == TriggerActionType.BonusStars ? "Why (Post-Game Screen)" : a == TriggerActionType.HighlightUI ? "Panel (Object Or Component Name)" : null;
+            case "On": return a == TriggerActionType.RevealArea ? "Reveal (Off: Hide)" : a == TriggerActionType.HighlightUI ? "Highlight (Off: Stop)" : null;
+            case "MarkerId": if (a == TriggerActionType.RevealArea || a == TriggerActionType.HighlightUI) return "Name (To Stop It Later)";
+                return a == TriggerActionType.ShowMarker ? "Name (To Hide It Later)" : a == TriggerActionType.MarkReach ? "Names Start (Hide With Name*)" : "Marker To Hide (Name* For All So Named)";
             case "Marker": return "Looks Like";
             case "Seconds": return a == TriggerActionType.Wait ? "Wait Seconds" : "Glide Seconds";
         }
@@ -169,20 +184,29 @@ static class TriggerFields {
 
     public static string Side(long s) { return ScenarioEditing.SideName(s); }
 
+    static string Units(string side, string kind, string tag, bool inArea, int x, int y, int r, bool outside) {
+        string s = Units(side, kind, tag, inArea, x, y, r);
+        return inArea && outside ? s.Replace(" within ", " farther than ") : s;
+    }
+
     static string Units(string side, string kind, string tag, bool inArea, int x, int y, int r) {
         string what = (string.IsNullOrEmpty(kind) ? "unit" : kind) + (string.IsNullOrEmpty(tag) ? "" : " '" + tag + "'");
         return side + " " + what + (inArea ? " within " + r + " of (" + x + "," + y + ")" : "");
     }
 
     public static string Describe(ScenarioTrigger t) {
-        string units = Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, t.InArea, t.TileX, t.TileY, t.Radius);
+        string units = Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, t.InArea, t.TileX, t.TileY, t.Radius, t.OutsideArea);
         string area = "(" + t.TileX + "," + t.TileY + ")" + (t.Radius > 0 ? " r" + t.Radius : "");
         string times = t.Count > 1 ? " " + t.Count + " times" : "";
         string building = (string.IsNullOrEmpty(t.BuildingKind) ? "a building" : "a " + t.BuildingKind) + (t.InArea ? " within " + t.Radius + " of (" + t.TileX + "," + t.TileY + ")" : "");
         switch (t.Condition) {
             case TriggerCondition.LevelStart: return "the level starts";
             case TriggerCondition.UnitEnters: return Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, false, 0, 0, 0) + " enters " + area + times;
-            case TriggerCondition.UnitKilled: return (t.Count > 1 ? t.Count + " of " : "") + units + " killed";
+            case TriggerCondition.UnitKilled: return (t.Count > 1 ? t.Count + " of " : "") + units + (t.Value == 1 ? " killed in action" : t.Value == 2 ? " starved or ditched" : " killed");
+            case TriggerCondition.UnloadProposed: return "the player picks " + units + " in its transport's panel to put it down" + times;
+            case TriggerCondition.SupplyContact: return Side(t.Side) + "'s supply line shows an unseen enemy (?)";
+            case TriggerCondition.BuildingDamaged: return building + " " + t.Value + "%+ wrecked";
+            case TriggerCondition.Briefing: return "the mission's briefing shows the board";
             case TriggerCondition.BuildingCaptured: return building + " taken by " + Side(t.Side) + times;
             case TriggerCondition.BuildingDestroyed: return building + " destroyed" + times;
             case TriggerCondition.DayReached: return "day " + t.Value + (t.Side == TriggerSide.Any ? "" : ", on " + Side(t.Side) + "'s turn");
@@ -199,8 +223,8 @@ static class TriggerFields {
             case TriggerCondition.UnitOutOfFuel: return units + " out of fuel";
             case TriggerCondition.UnitLowOnFuel: return units + " at " + t.Value + "% fuel or less";
             case TriggerCondition.UnitCutOff: return units + " cut off from supply";
-            case TriggerCondition.UnitsAtMost: return t.Value + " or fewer " + units + " left";
-            case TriggerCondition.UnitsAtLeast: return t.Value + " or more " + units;
+            case TriggerCondition.UnitsAtMost: return t.Value + " or fewer " + units + (t.OnlySeen ? " in " + Side(t.SeenBy) + "'s sight" : " left");
+            case TriggerCondition.UnitsAtLeast: return t.Value + " or more " + units + (t.OnlySeen ? " in " + Side(t.SeenBy) + "'s sight" : "");
             case TriggerCondition.UnitSelected: return "the player selects " + units + times;
             case TriggerCondition.EnemyInspected: return "the player clicks " + units + " to see its reach" + times;
             case TriggerCondition.AttackProposed: return "the player shows an attack by " + units + (t.Value == 1 ? " that the defender would answer first" : "") + times;
@@ -242,6 +266,9 @@ static class TriggerFields {
             case TriggerActionType.OrderUnits: return units + (string.IsNullOrEmpty(a.Target) ? (a.TargetSide != TriggerSide.Any ? " attack the nearest of " + Side(a.TargetSide) + "'s units" : " move toward " + at) : " attack '" + a.Target + "'");
             case TriggerActionType.StrikeTile: return Units(Side(a.UnitSide) + "'s", a.UnitKind, a.UnitTag, false, 0, 0, 0) + " strike " + at;
             case TriggerActionType.CameraFrameBoard: return "Camera on the whole board";
+            case TriggerActionType.BonusStars: return (a.Value >= 0 ? "+" : "") + a.Value + " star" + (a.Value == 1 || a.Value == -1 ? "" : "s") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
+            case TriggerActionType.RevealArea: return a.On ? "Reveal within " + a.Radius + " of " + at + " to " + Side(a.Side) : (string.IsNullOrEmpty(a.MarkerId) ? "Hide every revealed area" : "Hide revealed '" + a.MarkerId + "'");
+            case TriggerActionType.HighlightUI: return (a.On ? "Highlight " : "Stop highlighting ") + (string.IsNullOrEmpty(a.Text) ? "'" + a.MarkerId + "'" : a.Text);
             case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";
             case TriggerActionType.PlayMusic: return "Music: " + (string.IsNullOrEmpty(a.Track) ? "a special track" : a.Track) + (a.Loop ? " (loop)" : "");
@@ -325,7 +352,10 @@ static class FieldList {
             if (f == "InArea") {
                 yield return "InArea";
                 SerializedProperty on = p.FindPropertyRelative("InArea");
-                if (on != null && on.boolValue) { yield return "TileX"; yield return "TileY"; yield return "Radius"; }
+                if (on != null && on.boolValue) {
+                    yield return "TileX"; yield return "TileY"; yield return "Radius";
+                    if (p.FindPropertyRelative("OutsideArea") != null) yield return "OutsideArea";   // a trigger's: outside it instead
+                }
                 continue;
             }
             yield return f;

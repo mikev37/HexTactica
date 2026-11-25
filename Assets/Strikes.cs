@@ -267,7 +267,9 @@ public static class Strikes {
             }
             sb.Append("\n]");
         }
-        IList<FogOfWar.Lit> lit = FogOfWar.Flares;
+        // (A scenario's revealed ground is the script's to keep: ScenarioScript's Reveals.)
+        List<FogOfWar.Lit> lit = new List<FogOfWar.Lit>();
+        foreach (FogOfWar.Lit l in FogOfWar.Flares) if (!l.lasting) lit.Add(l);
         if (lit.Count > 0) {
             sb.Append(",\n\"").Append(LitKey).Append("\":[");
             for (int i = 0; i < lit.Count; i++)

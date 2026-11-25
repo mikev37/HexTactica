@@ -369,7 +369,7 @@ namespace UnityEngine {
         public void Apply() { }
     }
     public class Renderer : Component { public Bounds bounds; public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
-    public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } public static int GetLayerValueFromID(int id) { return 0; } public static string IDToName(int id) { return "Default"; } }
+    public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } public static int GetLayerValueFromID(int id) { return 0; } public static string IDToName(int id) { return "Default"; } public static int GetLayerValueFromName(string n) { return 0; } }
     public class SpriteRenderer : Renderer {
         public Sprite sprite; public Color color;
         public int rendererPriority;
