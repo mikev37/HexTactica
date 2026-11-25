@@ -87,6 +87,8 @@ public enum TriggerCondition {
     AttackProposed = 36,
     /// <summary>A unit matching the unit filter, attacked, fired first (an ambush: its cover and veterancy beat the attacker's concealment and veterancy): Count times.</summary>
     Ambush = 37,
+    /// <summary>A unit matching the unit filter has moved (In Area: onto a tile within the area), however far, wherever from: Count times.</summary>
+    UnitMoved = 38,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -260,6 +262,8 @@ public class TriggerAction {
     [Tooltip("Order Units: with no Target unit (or the one named gone), the nearest unit of this side is attacked (Any side: no target; they head for the tile). Value above 0: the nearest of them standing in at least Value terrain cover, if there is one.")]
     [SideChoice(false)] public long TargetSide = TriggerSide.Any;
 
+    [Tooltip("Order Units, with no Target unit: go for the strongest unit of Target Side it can reach and attack this turn (a fresh squad, not the nearest; ties: one in Value cover or more, then the nearest). None in reach: as without.")]
+    public bool TargetFresh;
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
     public int Count = 1;
     [Tooltip("Spawn Unit: their strength (1 to 6). Mark Reach: the least terrain cover marked. Order Units: the least cover the target stands in (0: any). Set Veterancy, Set Stat, Give Money: the value (or what is added, Mode Add). Ready Units: 1 may act, 0 has used its turn.")]

@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// The in-game menu (the InGameMenu scene, over the game on the menu key; the game is held while it is open):
 /// Resume, Save (a name, into the saves folder — apart from the scenarios; the save notes where the game log stands,
-/// so loading it goes on with the same log), Load (a saved game), Exit to the main menu.
+/// so loading it goes on with the same log), Load (a saved game), Exit to the main menu (a finished campaign mission: to the campaign).
 /// </summary>
 public class InGameMenu : MonoBehaviour {
     [Tooltip("The menu's own window: hidden while the options are open.")]
@@ -108,7 +108,12 @@ public class InGameMenu : MonoBehaviour {
         if (GameSession.Instance != null) { GameSession.Instance.NewGame(); GameSession.Instance.CloseMenu(); }
     }
 
-    public void ExitToMainMenu() { MatchSetup.ToMainMenu(); }
+    /// <summary>Out of the game: a campaign mission that is over goes on to the campaign screen (its result is kept, its closing lines and the map's news play, as the result screen's Return does); anything else to the main menu.</summary>
+    public void ExitToMainMenu() {
+        GameController gc = GameController.gc;
+        if (MatchSetup.Mission != null && gc != null && gc.gameOver) { MatchSetup.ToCampaign(); return; }
+        MatchSetup.ToMainMenu();
+    }
 
     void Say(string s) { if (status != null) status.text = s; }
 }

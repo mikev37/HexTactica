@@ -200,6 +200,31 @@ public static class ScenarioGame {
         return best;
     }
 
+    /// <summary>
+    /// The strongest unit of <paramref name="side"/> that <paramref name="u"/> can reach and attack this turn (Order Units,
+    /// Target Fresh: "the tank goes for a fresh squad"); ties: one in <paramref name="minCover"/> terrain cover or more,
+    /// then the nearest. Null if none is in reach.
+    /// </summary>
+    public static Unit StrongestInReach(Unit u, long side, int minCover) {
+        if (u == null || u.tile == null) return null;
+        List<HexTile> from = new List<HexTile> { u.tile };
+        if (u.moveAndAttack) {
+            HexTactica.AI.MoveField f = HexTactica.AI.AIPath.ThisTurn(u);
+            foreach (HexTile t in f.Tiles) if (t != u.tile && f.ReachableThisTurn(t) && t.occupier == null && t.CanEndTurnHere(u)) from.Add(t);
+        }
+        Unit best = null; int bestS = -1, bestC = -1, bestD = int.MaxValue;
+        foreach (Unit e in Units(new UnitFilter { side = side })) {
+            if (e.owner == u.owner || e.RealTile == null || !u.CanAttack(e)) continue;
+            bool reach = false;
+            foreach (HexTile t in from) if (u.CanAttackFrom(t, e)) { reach = true; break; }
+            if (!reach) continue;
+            int st = e.RealStrength, c = e.RealTile.terrain != null && e.RealTile.terrain.cover >= minCover && minCover > 0 ? 1 : 0;
+            int d = Distance(e.RealTile.x, e.RealTile.y, u.tile.x, u.tile.y);
+            if (st > bestS || (st == bestS && (c > bestC || (c == bestC && d < bestD)))) { best = e; bestS = st; bestC = c; bestD = d; }
+        }
+        return best;
+    }
+
     /// <summary>The tiles <paramref name="u"/> can move to and stop on this turn (not its own) with terrain cover of <paramref name="minCover"/> or more, buildings left out (Mark Reach: "the forests in reach"). The board's tiles are left as they are.</summary>
     public static List<HexTile> Reach(Unit u, int minCover) {
         List<HexTile> r = new List<HexTile>();
