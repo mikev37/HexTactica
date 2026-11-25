@@ -840,6 +840,7 @@ public static partial class Scenarios {
                     settle();
                 }
                 bool won = gc.gameOver && gc.winner == human;
+                bool ourKill = won && gc.activePlayer == human && Fired(s, "Jori fed") >= 1;   // died to our fire, never starved to death
                 bool starved = everSaid("we're starving") && !marked("highlight");
                 bool reinforced = everSaid("Reinforcements are here") && Fired(s, "1.18 Reinforcements") == 1;
                 said();
@@ -849,10 +850,10 @@ public static partial class Scenarios {
                        + "; his reach explained " + hisReach + "; retreat line, Alpha marked " + fellBackLine + "; city marked once selected " + cityMarked + "; ran to the city " + ran + "; healed on the city " + cityHeal
                        + "; Jori's squad took the pit and held it " + held + ", starved, highlight gone " + starved + "; back to 5: counterattack cue " + counter
                        + "; step 1 " + step1 + "; moved without attacking: the same Alpha put 2 tiles off, ready, nobody lost, lesson replayed " + redo + " (again " + step1Again + "); step 2 " + step2 + "; step 3 " + step3
-                       + "; reinforcements " + reinforced + "; won in " + rounds + " more round(s) " + won;
+                       + "; reinforcements " + reinforced + "; won in " + rounds + " more round(s) " + won + ", Jori kept fed after the lesson and killed by us " + ourKill;
                 ScenarioDialogue.Presenter = null;
                 return sandPit && keptIn && intro && selected && wandered && noJori && again && againSelected && confirmTold && onPit && appeared && cheapShot && hisReach && fellBackLine && cityMarked && ran
-                       && cityHeal && held && starved && counter && step1 && redo && step1Again && step2 && step3 && reinforced && won;
+                       && cityHeal && held && starved && counter && step1 && redo && step1Again && step2 && step3 && reinforced && won && ourKill;
             }
             case "scriptTutorial2": {
                 Player human = o, raiders = a;
