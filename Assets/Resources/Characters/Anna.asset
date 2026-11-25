@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Anna
   m_EditorClassIdentifier: 
   displayName: Anna
-  portrait: {fileID: 7744452656831779846, guid: 145a533d9b4453545b76838787b85c74, type: 3}
+  portrait: {fileID: 21300000, guid: 145a533d9b4453545b76838787b85c74, type: 3}
   nameColour: {r: 0.32941175, g: 0.7133667, b: 0.92156863, a: 1}
   drawnFacing: 0

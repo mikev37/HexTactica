@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Federation Soldier
   m_EditorClassIdentifier: 
   displayName: Soldier
-  portrait: {fileID: 7546695881141993363, guid: 3bdb6b6261360cd458647e0fe6f25217, type: 3}
+  portrait: {fileID: 21300000, guid: 3bdb6b6261360cd458647e0fe6f25217, type: 3}
   nameColour: {r: 0.32941175, g: 0.6192417, b: 0.92156863, a: 1}
   drawnFacing: 0
