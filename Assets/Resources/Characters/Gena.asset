@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Gena
   m_EditorClassIdentifier: 
   displayName: Genadi
-  portrait: {fileID: -4098976012829054838, guid: 34ee41ec91bcaf04ea2a2175b12ee39a, type: 3}
+  portrait: {fileID: 21300000, guid: 34ee41ec91bcaf04ea2a2175b12ee39a, type: 3}
   nameColour: {r: 0.32941175, g: 0.62945145, b: 0.92156863, a: 1}
   drawnFacing: 0

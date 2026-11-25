@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Jori
   m_EditorClassIdentifier: 
   displayName: Jori Orlov
-  portrait: {fileID: 8873407784414428736, guid: 5cfada921e393ec41924cee75ee2f4dc, type: 3}
+  portrait: {fileID: 21300000, guid: 5cfada921e393ec41924cee75ee2f4dc, type: 3}
   nameColour: {r: 0.32941175, g: 0.5374635, b: 0.92156863, a: 1}
   drawnFacing: 0

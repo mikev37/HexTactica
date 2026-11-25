@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: Opfor Soldier
   m_EditorClassIdentifier: 
   displayName: Soldier
-  portrait: {fileID: 21300000, guid: 3bdb6b6261360cd458647e0fe6f25217, type: 3}
+  portrait: {fileID: 21300000, guid: ceb8b907ed2ffef4a9ebbae90d7c4d89, type: 3}
   nameColour: {r: 0.32941175, g: 0.6192417, b: 0.92156863, a: 1}
   drawnFacing: 0
