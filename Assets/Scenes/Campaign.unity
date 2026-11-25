@@ -1261,6 +1261,7 @@ RectTransform:
   m_Children:
   - {fileID: 1712040002}
   - {fileID: 1712040102}
+  - {fileID: 1712040202}
   m_Father: {fileID: 1267999780}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -3218,14 +3219,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: unlocksCampaigns.Array.size
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
-      propertyPath: 'unlocksCampaigns.Array.data[0]'
-      value: Campaign 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: title
       value: 'Combat Trials'
       objectReference: {fileID: 0}
@@ -3373,6 +3366,18 @@ PrefabInstance:
       propertyPath: outroLost.Array.data[2].Portrait
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: unlocks.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: 'unlocks.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1712040203}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: unlocksCampaigns.Array.size
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -3384,6 +3389,277 @@ RectTransform:
   m_PrefabInstance: {fileID: 1712040101}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &1712040103 stripped
+--- !u!1001 &1712040201
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 733062130}
+    m_Modifications:
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 200
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 190
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2067448098360219830, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2415435388776269682, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3555306049439154935, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: faction
+      value: 
+      objectReference: {fileID: 11400000, guid: 957a6ea74ab705140a10f5415891bc1e, type: 2}
+    - target: {fileID: 3718294514905684263, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_Name
+      value: 1.3 Transit Trouble
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: availableAtStart
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: title
+      value: 'Transit Trouble'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: briefing
+      value: 'Learn to use transports, roads, carrying supply in a vehicle, why unloading it far out cuts it off, and enemies cutting a supply line.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: objectives
+      value: 'Take the village. Keep your squad supplied on the way.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: scenario
+      value: 1.3 Transit Trouble
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: parTurns
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: parKills
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: parLosses
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[0].Character
+      value: Gena
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[0].Text
+      value: 'The last exercise is a wash. Both sides were cheating, so I won''t count it against anyone. We''ll try again, the objective is the same: seize the central city. This time, no more tanks.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[0].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[1].Character
+      value: Jori
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[1].Text
+      value: 'He''s got one more chance to be embarrassed in front of everyone.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[1].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[2].Character
+      value: Anna
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[2].Text
+      value: 'Yeah right. I''m on to you.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: intro.Array.data[2].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.size
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[0].Character
+      value: Gena
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[0].Text
+      value: 'You know what? I''m calling it. Round one goes to the Commander. Jori, I''m sorry, but this exercise was a disaster. Go to the mess hall and think about what you did wrong.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[0].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[1].Character
+      value: Jori
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[1].Text
+      value: 'Whatever. We''ll see how you fare in the live fire clash tomorrow, when father is watching.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[1].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[2].Character
+      value: Anna
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[2].Text
+      value: 'I''m more interested in those bandits. Why would they attack us in the middle of a Federation exercise? Let''s do some digging.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outro.Array.data[2].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[0].Character
+      value: Anna
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[0].Text
+      value: 'We''re cut off! We can''t advance or retreat! We need to get out of here!'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[0].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[1].Character
+      value: Jori
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[1].Text
+      value: 'Hah! That''s what you get for trying to be clever. You''re stuck! I win.'
+      objectReference: {fileID: 0}
+    - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+      propertyPath: outroLost.Array.data[1].Portrait
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+--- !u!224 &1712040202 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 440116831460846396, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
+  m_PrefabInstance: {fileID: 1712040201}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1712040203 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
   m_PrefabInstance: {fileID: 1712040101}

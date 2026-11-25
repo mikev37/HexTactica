@@ -6489,6 +6489,14 @@ public static partial class Scenarios {
                 Console.WriteLine("  SHIPS " + p.personal_name + ": " + string.Join("; ", ships.ToArray()));
                 continue;
             }
+            if (Environment.GetEnvironmentVariable("SEEN") == "1") {
+                // Which of the other sides' units this side sees (fog of war on).
+                GameController.gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh();
+                List<string> seen = new List<string>();
+                foreach (Player q in GameController.gc.players) if (q != null && q != p) foreach (Unit u in q.units) if (u != null && u.tile != null)
+                    seen.Add(u.name.Split(' ')[0] + Pos(u.tile) + (FogOfWar.TileVisible(p, u.tile) ? " seen" : " hidden"));
+                Console.WriteLine("  SEEN by " + p.personal_name + ": " + string.Join(", ", seen.ToArray()));
+            }
             if (Environment.GetEnvironmentVariable("LIT") == "1") {
                 // The side's lit ground, row by row (y down the page): '#' supplied, '.' not, ' ' no tile.
                 Console.WriteLine("  LIT " + p.personal_name);

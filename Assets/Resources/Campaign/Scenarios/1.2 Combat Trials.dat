@@ -1277,9 +1277,9 @@
             "personal_name": "OPFOR",
             "id": 0,
             "displayColor": {
-                "r": 0.85,
-                "g": 0.2,
-                "b": 0.15,
+                "r": 1.0,
+                "g": 0.0,
+                "b": 0.0,
                 "a": 1.0
             },
             "factionName": "Federation",
@@ -1295,8 +1295,8 @@
             "personal_name": "BLUE (Jori)",
             "id": 112,
             "displayColor": {
-                "r": 0.2,
-                "g": 0.45,
+                "r": 0.0,
+                "g": 0.5294118,
                 "b": 1.0,
                 "a": 1.0
             },
@@ -1567,9 +1567,87 @@
             {
                 "Name": "Tank hunted",
                 "Enabled": false,
+                "Condition": 19,
+                "Actions": [],
+                "Parts": [
+                    "Hunted: fresh",
+                    "Hunted: city",
+                    "Hunted: exposed"
+                ]
+            },
+            {
+                "Name": "Hunted: fresh",
+                "Enabled": false,
                 "Condition": 17,
                 "Actions": [],
                 "AfterTrigger": "2.5 Tank hunts"
+            },
+            {
+                "Name": "Hunted: city",
+                "Enabled": false,
+                "Condition": 17,
+                "Actions": [],
+                "AfterTrigger": "2.5 Tank for the city"
+            },
+            {
+                "Name": "Hunted: exposed",
+                "Enabled": false,
+                "Condition": 17,
+                "Actions": [],
+                "AfterTrigger": "2.5 Tank for the exposed"
+            },
+            {
+                "Name": "Hunt turn",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [],
+                "Side": 112,
+                "Count": 1
+            },
+            {
+                "Name": "Ours on the city",
+                "Enabled": false,
+                "Condition": 6,
+                "Actions": [],
+                "Side": -2,
+                "Radius": 0,
+                "TileX": 0,
+                "TileY": 0
+            },
+            {
+                "Name": "None of ours on the city",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Ours on the city"
+                ]
+            },
+            {
+                "Name": "Grunt exposed",
+                "Enabled": false,
+                "Condition": 39,
+                "Actions": [],
+                "Side": -2,
+                "UnitKind": "Grunt",
+                "Value": 2
+            },
+            {
+                "Name": "No grunt exposed",
+                "Enabled": false,
+                "Condition": 20,
+                "Actions": [],
+                "Parts": [
+                    "Grunt exposed"
+                ]
+            },
+            {
+                "Name": "Jori turn began",
+                "Enabled": false,
+                "Condition": 21,
+                "Actions": [],
+                "Side": 112,
+                "Count": 1
             },
             {
                 "Name": "Our turn began",
@@ -1698,6 +1776,23 @@
                 "Enabled": false,
                 "Condition": 22,
                 "Actions": [
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Grrr! This was a fluke! You hear me? A fluke! Wait until my father hears about this!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Gena",
+                                "Text": "He followed the rules. You, on the other hand, have a loose tongue, Orlov. Discipline your unit.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
                     {
                         "Type": 6,
                         "Side": -2
@@ -1895,6 +1990,10 @@
                         ]
                     },
                     {
+                        "Type": 22,
+                        "Trigger": "Hunt turn"
+                    },
+                    {
                         "Type": 17,
                         "Trigger": "Cover marks"
                     },
@@ -1905,6 +2004,14 @@
                     {
                         "Type": 17,
                         "Trigger": "Cover marks off"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "2.5 Tank for the city"
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "2.5 Tank for the exposed"
                     },
                     {
                         "Type": 17,
@@ -1977,10 +2084,93 @@
                 "Count": 1
             },
             {
+                "Name": "2.5 Tank for the city",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 18,
+                        "Trigger": "2.5 Tank for the exposed"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "2.5 Tank hunts"
+                    },
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "UnitTag": "Jori's Tank",
+                        "TargetSide": -2,
+                        "TargetOnTile": true,
+                        "TileX": 0,
+                        "TileY": 0
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "2.7 Six numbers"
+                    }
+                ],
+                "Parts": [
+                    "Hunt turn",
+                    "Ours on the city"
+                ]
+            },
+            {
+                "Name": "2.5 Tank for the exposed",
+                "Enabled": false,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 18,
+                        "Trigger": "2.5 Tank for the city"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "2.5 Tank hunts"
+                    },
+                    {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Out in the open? You're making this too easy!",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "UnitTag": "Jori's Tank",
+                        "TargetSide": -2,
+                        "TargetExposed": true,
+                        "Value": 2
+                    },
+                    {
+                        "Type": 17,
+                        "Trigger": "2.7 Six numbers"
+                    }
+                ],
+                "Parts": [
+                    "Hunt turn",
+                    "None of ours on the city",
+                    "Grunt exposed"
+                ]
+            },
+            {
                 "Name": "2.5 Tank hunts",
                 "Enabled": false,
-                "Condition": 21,
+                "Condition": 18,
                 "Actions": [
+                    {
+                        "Type": 18,
+                        "Trigger": "2.5 Tank for the city"
+                    },
+                    {
+                        "Type": 18,
+                        "Trigger": "2.5 Tank for the exposed"
+                    },
                     {
                         "Type": 26,
                         "UnitSide": 112,
@@ -1994,8 +2184,11 @@
                         "Trigger": "2.7 Six numbers"
                     }
                 ],
-                "Side": 112,
-                "Count": 1
+                "Parts": [
+                    "Hunt turn",
+                    "None of ours on the city",
+                    "No grunt exposed"
+                ]
             },
             {
                 "Name": "2.5 Ambushed",
@@ -2141,7 +2334,7 @@
                         "Trigger": "Tank pulls out"
                     }
                 ],
-                "Value": 1,
+                "Value": 3,
                 "Side": 112,
                 "UnitTag": "Jori's Tank"
             },
@@ -2418,6 +2611,23 @@
                 "Condition": 18,
                 "Actions": [
                     {
+                        "Type": 0,
+                        "Lines": [
+                            {
+                                "Character": "Jori",
+                                "Text": "Grrr! This was a fluke! You hear me? A fluke! Wait until my father hears about this!",
+                                "Sound": "",
+                                "Portrait": 0
+                            },
+                            {
+                                "Character": "Gena",
+                                "Text": "He followed the rules. You, on the other hand, have a loose tongue, Orlov. Discipline your unit.",
+                                "Sound": "",
+                                "Portrait": 0
+                            }
+                        ]
+                    },
+                    {
                         "Type": 6,
                         "Side": -2
                     }
@@ -2427,6 +2637,60 @@
                     "Held turns",
                     "City ours"
                 ]
+            },
+            {
+                "Name": "Jori attacks the city",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "TargetSide": -2,
+                        "TargetOnTile": true,
+                        "TileX": 0,
+                        "TileY": 0
+                    }
+                ],
+                "Repeat": true,
+                "Parts": [
+                    "Jori turn began",
+                    "Ours on the city"
+                ]
+            },
+            {
+                "Name": "Jori retakes the city",
+                "Enabled": true,
+                "Condition": 18,
+                "Actions": [
+                    {
+                        "Type": 26,
+                        "UnitSide": 112,
+                        "UnitKind": "Grunt",
+                        "TileX": 0,
+                        "TileY": 0
+                    }
+                ],
+                "Repeat": true,
+                "Parts": [
+                    "Jori turn began",
+                    "City ours",
+                    "None of ours on the city"
+                ]
+            },
+            {
+                "Name": "Close Jori's start",
+                "Enabled": true,
+                "Condition": 21,
+                "Actions": [
+                    {
+                        "Type": 22,
+                        "Trigger": "Jori turn began"
+                    }
+                ],
+                "Repeat": true,
+                "Side": 112,
+                "Count": 1
             },
             {
                 "Name": "2.14 Tank down, we have one",

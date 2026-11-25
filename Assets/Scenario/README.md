@@ -85,6 +85,7 @@ units or buildings must match at least.
 | Attack Proposed (36) | the player clicks an enemy to see what an attack by a matching unit would do (the numbers show; nothing fired yet). *Value* 1: only when the defender would fire first (the "!") | side, kind, name, in area, value |
 | Ambush (37) | a matching unit, attacked, fired first (its cover and veterancy beat the attacker's concealment and veterancy): *Count* times | side, kind, name, in area |
 | Unit Moved (38) | a matching unit moves, however far and from wherever (*In area*: onto a tile within the area): *Count* times | side, kind, name, in area |
+| Units Exposed (39) | now: at least *Count* matching units stand on ground with less than *Value* cover (a squad left in the open) | side, kind, name, in area, value |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
 | Unit Spotted (29) | a matching unit comes into *Seen By*'s sight: it was hidden in the fog, or has just appeared where they can see it (*Count* times; with no fog, units are in sight as they appear) | seen by, side, kind, name, in area |
 | Unit Spent (28) | now: matching units have used their turn (moved, fired or waited) | side, kind, name, in area |
@@ -154,7 +155,7 @@ Timing is counted in **turns**:
 | Play Sound (21) | plays a sound from `Resources/Dialogue` once |
 | Ready Units (23) | the matching units can act again this turn (Value 1), or have used their turn (Value 0) |
 | Place Units (30) | the matching units are lifted onto the tile, or the nearest free tile, at once: nothing walked, nobody dies (unlike Destroy Units then Spawn Unit, which counts a loss against the mission's par); *Ready to act*: they may act again this turn |
-| Order Units (26) | the matching units move and attack as if ordered: toward the unit in *Attack Unit*, or the nearest unit of *Or Nearest Of* (with *Value* above 0: the nearest standing in that much cover or more, if any is; *Target Fresh*: the strongest it can reach and attack this turn, ties going to one in that cover, then the nearest), attacking it if they reach it this turn; with no target, toward the tile. They have then used their turn. (For scripted ambushes: "the raider goes for our grunt".) |
+| Order Units (26) | the matching units move and attack as if ordered: toward the unit in *Attack Unit*, or the nearest unit of *Or Nearest Of* (with *Value* above 0: the nearest standing in that much cover or more, if any is; *Target Fresh*: the strongest it can reach and attack this turn, ties going to one in that cover, then the nearest; *Target Exposed*: the nearest on less than *Value* cover; *Target On Tile*: whoever of *Or Nearest Of* stands on the tile, else head for the tile), attacking it if they reach it this turn; with no target, toward the tile. They have then used their turn. (For scripted ambushes: "the raider goes for our grunt".) |
 | Strike Tile (29) | the matching units that strike ground or from afar (a Missile; see *Strikes* in the main README) strike the tile, if it is in their range and they have their turn: at once, or launched to land when their side's next turn starts. They have then used their turn. ("The enemy launches at the bridge.") |
 | Wait (24) | the trigger's next action waits *Seconds* (for pacing a scene; to wait turns, use a trigger's Delay) |
 

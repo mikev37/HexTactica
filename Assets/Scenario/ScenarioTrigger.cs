@@ -89,6 +89,8 @@ public enum TriggerCondition {
     Ambush = 37,
     /// <summary>A unit matching the unit filter has moved (In Area: onto a tile within the area), however far, wherever from: Count times.</summary>
     UnitMoved = 38,
+    /// <summary>At least Count units matching the unit filter stand on ground with less than Value cover (now): "a squad left out in the open" (Value 2: on grass, a road, sand).</summary>
+    UnitsExposed = 39,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -264,6 +266,10 @@ public class TriggerAction {
 
     [Tooltip("Order Units, with no Target unit: go for the strongest unit of Target Side it can reach and attack this turn (a fresh squad, not the nearest; ties: one in Value cover or more, then the nearest). None in reach: as without.")]
     public bool TargetFresh;
+    [Tooltip("Order Units, with no Target unit: go for the nearest unit of Target Side standing on less than Value cover (a squad left in the open). None: as without.")]
+    public bool TargetExposed;
+    [Tooltip("Order Units, with no Target unit: go for the unit of Target Side standing on the tile (\"attack whoever holds the city\"); none there: head for the tile.")]
+    public bool TargetOnTile;
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
     public int Count = 1;
     [Tooltip("Spawn Unit: their strength (1 to 6). Mark Reach: the least terrain cover marked. Order Units: the least cover the target stands in (0: any). Set Veterancy, Set Stat, Give Money: the value (or what is added, Mode Add). Ready Units: 1 may act, 0 has used its turn.")]

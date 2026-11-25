@@ -197,6 +197,16 @@ public static partial class Scenarios {
              },
              "{unit}, Order Units in cover, Ambush, Mark Reach, Attack Proposed, Spawn out of sight: a Red grunt steps within 1 of (0,0), and the Blue tank ordered at {unit} goes for that grunt, not the nearer one; ordered at the nearest Red unit in cover 2 or more, it goes for the grunt in the forest, which fires first (Ambush for Red, its subject that grunt; none for Blue); selecting a Red grunt marks the forests it can reach this turn (and not one beyond), and selecting it again marks them afresh, 'reach*' hiding them all; Attack Proposed with Value 1 counts only a preview where the defender would fire first; with fog on, a grunt spawned out of sight stands on a tile Red cannot see, not on the tile asked for, which Red sees.");
         n++;
+        make("script-order-targets", "scriptOrderTargets", (a, o) => {
+                 Rig.PlaceBuilding("City", null, 0, 0);
+                 Put("Grunt", o, 0, 0); Put("Grunt", o, -2, 2); Put("Grunt", o, 2, -2); Put("Supplies", o, 3, -3); Put("Tank", a, 3, 0); Put("Tank", a, 4, -1);
+                 Rig.At(-2, 2).terrain = T("Forest"); Rig.At(2, -2).terrain = T("Grassland"); Rig.At(3, -3).terrain = T("Grassland");
+                 Script(Trig("Exposed", TriggerCondition.UnitsExposed, t => { t.Side = Red; t.UnitKind = "Grunt"; t.Value = 2; t.Count = 2; }),
+                        Trig("On the city", TriggerCondition.LevelStart, null,
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitKind = "Tank"; x.TargetSide = Red; x.TargetOnTile = true; x.TileX = 0; x.TileY = 0; })));
+             },
+             "Order Units' targets and Units Exposed: a Blue tank ordered at whoever holds the city (Target On Tile) attacks the Red grunt on it, not a nearer one; Units Exposed (grunts on cover below 2) counts the grunt on grass and the one on the city's ground (cover 2 is not below 2: not that one), not the one in the forest; Target Exposed picks the grunt on the grass, never the supply unit (it cannot use cover).");
+        n++;
         // The campaign's tutorial missions themselves (Assets/Resources/Campaign/Scenarios), each with a test block: played through below.
         n += ExportMission("Tutorial", "tutorial-playthrough", "scriptTutorial", 8,
             "The tutorial mission (Resources/Campaign/Scenarios/Tutorial.dat), played with the player's clicks: select the grunt; a move elsewhere does not go on; move it to the mark, end the turn; the raiders' side (not eliminable) is still in; the raider spawned in the fog is ordered at it, is spotted, and hits it, then holds its ground (fed, so it never starves); back into supply (told to end the turn); the HQ hint on turn 3; a grunt and a supply truck bought; the attack hint; the raider killed: the player wins. Each step's lines are said once, in order.");
@@ -204,6 +214,8 @@ public static partial class Scenarios {
             "Act 1, mission 1 (Resources/Campaign/Scenarios/1.1 Field Exercises.dat), played with the player's clicks: the introductions and a marker on Alpha; clicking Jori's squad: Anna says that is his reach; Alpha selected: the staging ground (the sand pit) marked; moved elsewhere: Anna's 'where are they', no Jori yet, and the move lesson again next turn; the move proposed: 'click again to confirm'; on the pit, Jori's squad appears in the fog, walks up (2 of 3 supplies) and hits Alpha for 3, taking 1, and Alpha falls back out of supply; on his next turn it takes the pit (no cover); Anna's retreat line, Alpha marked, then the city once selected; Jori's 'you better run'; healed on the city; Jori's squad never acts and starves on its own, with the highlight shown and gone within the lines; reinforcements two turns after Anna promised them; back to 5 strength, the attack in three marked steps; a move next to Jori confirmed without attacking: Alpha put 2 tiles away, ready, nobody lost (Place Units), the lesson replayed; the attack from the proposed move: 'Damn you!'; Jori's squad destroyed: the player wins.");
         n += ExportMission("1.2 Combat Trials", "combat-trials-playthrough", "scriptCombatTrials", 30,
             "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: Jori starts with one squad (his win condition off until his tank comes); the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for a fresh squad (in the trees), which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit, marked; clicking it: the supply lines, no tile marked; moved anywhere: Gena's line; the capture lesson; the city taken ('City secured!') and held through a turn: the player wins.");
+        n += ExportMission("1.3 Transit Trouble", "transit-trouble-playthrough", "scriptTransitTrouble", 30,
+            "Act 1, mission 3 (Resources/Campaign/Scenarios/1.3 Transit Trouble.dat), played with the player's clicks: the stolen village shown; a marker per click: the grunt, then the truck (he boards), the supply unit, then the truck; the truck marked, then the tile beside the city, reached in one drive; the grunt put down on the city; on Jori's turn the bandit walks from the fog onto the hills by the barrens, unseen, and the truck's supply is cut off; the cut-off lines, a recon and a squad on loan, the squad boards the recon; the bandit spotted: its lines; hurt, it flees on Jori's turn and is gone (or killed: its last line); the city taken with the road clear: the player wins.");
         n += ExportMission("Tutorial 2", "tutorial2-playthrough", "scriptTutorial2", 10,
             "The second tutorial mission (Resources/Campaign/Scenarios/Tutorial 2.dat), played with the player's orders and recorded as a game is: the grunt boards the truck (told to load the supply unit), the supply unit boards (told to drive); the marked tile is outside the HQ's supply until the truck with supply aboard stands there; the grunt is put down in supply; the lookout (held, fed) is spotted; on turn 2 a recon car and a squad arrive, the squad boards the car; the lookout is destroyed, a grunt takes the village: the player wins. Then the campaign, on the mission assets as they are (Resources/Campaign/Missions): the result read from the game log earns its stars against Tutorial 2's pars; only Tutorial 1's flag is on the map at first, winning it unlocks Tutorial 2, stars once earned are kept, a mission blocked by an attempt is closed, and progress survives being saved and read back.");
         return n;
@@ -381,7 +393,7 @@ public static partial class Scenarios {
             string scenarios = PrefabLoader.Root("Campaign/Scenarios");
             bool files = File.Exists(Path.Combine(scenarios, t1.ScenarioName + ".dat")) && File.Exists(Path.Combine(scenarios, t2.ScenarioName + ".dat"))
                       && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t1.ScenarioName + ".dat")) && !File.Exists(Path.Combine(PrefabLoader.Root("Scenarios"), t2.ScenarioName + ".dat"));
-            bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2.key && t2.unlocks.Count == 0 && t1.availableAtStart && !t2.availableAtStart
+            bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2.key && t2.unlocks.Count == 1 && t1.availableAtStart && !t2.availableAtStart
                        && t1.key == "Campaign/Tutorial 1" && t1.factionName != "" && t2.factionName != "" && t2.objectives.StartsWith("Take the middle city") && t2.scenario == "1.2 Combat Trials" && t1.parTurns == 8 && t2.parTurns == 10;
             // Each flag pinned to its spot on the picture (its anchors), apart from the other.
             bool placed = anchors.ContainsKey(t1.key) && anchors.ContainsKey(t2.key) && !Near(anchors[t1.key], anchors[t2.key])
@@ -408,6 +420,9 @@ public static partial class Scenarios {
             bool notLost = MissionRating.Count(CampaignProgress.Get(t1).stars) == 3;
             // Tutorial 2, with the result of the game just played.
             bool closedFirst = !CampaignProgress.CampaignUnlocked("Campaign 2");
+            // No Act 1 mission opens Campaign 2 yet (owner: not mission 2): the opening is checked on a copy of Tutorial 2's flag that does.
+            bool noneInScene = t2.unlocksCampaigns.Count == 0 && t1.unlocksCampaigns.Count == 0;
+            t2.unlocksCampaigns.Add("Campaign 2");
             CampaignProgress.Attempt(t2);
             CampaignProgress.Outcome played = CampaignProgress.Finish(t2, tally);
             MissionStars expected = MissionStars.None;
@@ -435,7 +450,7 @@ public static partial class Scenarios {
             string build = File.ReadAllText(Path.Combine(Path.Combine(Path.Combine(PrefabLoader.Root(".."), ".."), "ProjectSettings"), "EditorBuildSettings.asset"));
             string mapGuid = Regex.Match(File.ReadAllText(Path.Combine(Path.Combine(Path.Combine(PrefabLoader.Root(".."), "FrontEnd"), "Campaign"), "CampaignMap.cs.meta")), @"^guid: (\w+)", RegexOptions.Multiline).Groups[1].Value;
             Func<string, string> mapOf = scene => { Match cm = Regex.Match(scene, @"  m_Script: \{fileID: 11500000, guid: " + mapGuid + @", type: 3\}\n(?:  .*\n)*?  availableAtStart: (\d)\n  flags: \{fileID: (\d+)\}"); return cm.Success ? cm.Groups[1].Value + "/" + cm.Groups[2].Value : ""; };
-            bool scenesWired = t2.unlocksCampaigns.Count == 1 && t2.unlocksCampaigns[0] == "Campaign 2" && t1.unlocksCampaigns.Count == 0
+            bool scenesWired = noneInScene
                             && Regex.IsMatch(hub, @"  campaigns:\n  - scene: Campaign 2\n    at: \{x: 1, y: 0\}") && mapOf(hub) == "1/733062130"
                             && mapOf(second).StartsWith("0/") && second.Contains("--- !u!224 &" + mapOf(second).Substring(2) + "\n")
                             && build.Contains("path: Assets/Scenes/Campaign 2.unity") && build.IndexOf("Scenes/Campaign.unity") < build.IndexOf("Scenes/Campaign 2.unity");
@@ -734,6 +749,17 @@ public static partial class Scenarios {
                        + "; previews: any " + plain + ", ambush only " + flagged + "; spawned out of sight " + outOfSight + (hid != null ? " at " + hid.tile.x + "," + hid.tile.y : "");
                 return quiet && subject && hunted && ambush && allForest && inReach && afresh && hidden && plain && flagged && outOfSight;
             }
+            case "scriptOrderTargets": {
+                Unit onCity = Rig.At(0, 0).occupier, inTrees = Rig.At(-2, 2).occupier, onGrass = Rig.At(2, -2).occupier, sup = Rig.At(3, -3).occupier, tank2 = Rig.At(4, -1).occupier;
+                s.Tick(0.1f); s.Tick(0.1f);
+                bool city = onCity.Strength < 6 && onGrass.Strength == 6;
+                bool exposedCount = ScenarioGame.CountUnits(new UnitFilter { side = Red, kind = "Grunt" }, u => u.RealTile.terrain.cover < 2) >= 1;
+                bool exposedMet = s.IsMet(s.Find("Exposed"), 0) == (ScenarioGame.CountUnits(new UnitFilter { side = Red, kind = "Grunt" }, u => u.RealTile.terrain.cover < 2) >= 2);
+                Unit pick = ScenarioGame.NearestExposed(tank2, Red, 2);
+                bool exposed = pick == onGrass && pick != sup;
+                detail = "the tank went for the grunt on the city " + city + " (city " + onCity.Strength + ", grass " + onGrass.Strength + "); Units Exposed as counted " + exposedMet + " (" + exposedCount + "); Target Exposed picks the grunt on the grass, not the supply unit " + exposed + " (" + (pick != null ? pick.name : "none") + ")";
+                return city && exposedMet && exposed;
+            }
             case "scriptTutorial": {
                 Player human = o, raiders = a;
                 bool keptIn = !raiders.eliminable && human.eliminable;
@@ -943,6 +969,8 @@ public static partial class Scenarios {
                 HexTile cityTile = Rig.At(0, 0);
                 Building city = cityTile.building;
                 List<string> log = new List<string>();
+                string logRoot = Path.Combine(Path.GetTempPath(), "hextactica-m2-" + Guid.NewGuid().ToString("N"));
+                HexTactica.Harness.GameLog.Start(l.path, "Human", logRoot);
                 Func<HexTile, string> P = t => t == null ? "-" : "(" + t.x + "," + t.y + ")";
                 bool start = gc.fogOfWar && !gc.purchasesAllowed && city != null && city.owner == null && human.units.Count == 4 && jori.units.Count == 1 && tank() == null && Fired(s, "S1 Jori has no units") == 0 && !s.Find("S1 Jori has no units").Enabled
                              && human.faction != null && human.faction.name == "Federation" && jori.faction != null && jori.faction.name == "Federation";
@@ -983,6 +1011,9 @@ public static partial class Scenarios {
                 foreach (ShownMarker m in rb) if (pb == null || Rig.At(m.TileX, m.TileY).Distance(cityTile) < Rig.At(pb.TileX, pb.TileY).Distance(cityTile)) pb = m;
                 if (pb != null) { ScenarioGame.Order(bravo, null, Rig.At(pb.TileX, pb.TileY)); settle(); }
                 log.Add("Bravo " + P(bravo.tile) + " (" + bravo.tile.terrain.name + ")");
+                // Charlie into the trees too (left in the open, Jori's tank would go for him instead: the owner's other case).
+                Unit charlie = ours("Charlie");
+                ScenarioGame.Order(charlie, null, Rig.At(-5, 4)); settle();
                 gc.EndTurn(); settle();   // Jori's turn: the tank hunts our squads in the trees
                 bool noRingsLeft = !s.markers.Exists(m => m.Id.StartsWith("cover:"));
                 bool hunted = Fired(s, "2.5 Tank hunts") == 1 && bravo.Strength < 6;   // the fresh squad, not the nearest (Alpha, hurt)
@@ -1036,6 +1067,13 @@ public static partial class Scenarios {
                     log.Add("round " + rounds + ": city " + (city.owner == human ? "ours" : city.owner == jori ? "Jori's" : "nobody's") + " " + city.capturePoints + ", on it " + (cityTile.occupier != null ? cityTile.occupier.name : "-") + "; us " + human.units.Count + ", Jori " + jori.units.Count);
                     endTurn();
                 }
+                HexTactica.Harness.GameLog.EndIfOver();
+                string folder = HexTactica.Harness.GameLog.Folder;
+                HexTactica.Harness.GameLog.Stop();
+                MissionTally tally = MissionRating.Tally(GameRecord.Read(folder), human.id, true);
+                try { Directory.Delete(logRoot, true); } catch (Exception) { }
+                bool turnsRight = tally.recorded && tally.turns == s.TurnsOf(human.id);
+                log.Add("tally: " + tally.turns + " turns (ours " + s.TurnsOf(human.id) + ", days " + gc.days + "), " + tally.kills + " kills, " + tally.losses + " losses");
                 bool secured = everSaid("City secured!") && Fired(s, "2.13 City secured") == 1;
                 bool heldWin = gc.gameOver && gc.winner == human && (Fired(s, "2.13 Held") == 1 || Fired(s, "S1 Jori has no units") == 1);
                 // Our tank previewing an attack on a squad in cover: Anna's "!" line (the click's notice, as the board sends it).
@@ -1047,6 +1085,98 @@ public static partial class Scenarios {
                        + " | " + string.Join("; ", log.ToArray());
                 ScenarioDialogue.Presenter = null;
                 return start && intro && tankCame && firstHit && armour && coverLines && ringsOk && ringsGone && noRingsLeft && hunted && ambushed && numbers && countered && gift && supMark && gena && captureLesson && secured && heldWin;
+            }
+            case "scriptTransitTrouble": {
+                Player human = o, jori = a;
+                FakeBox box = new FakeBox();
+                ScenarioDialogue.Presenter = box;
+                foreach (MonoBehaviour m in jori.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
+                AIPlayer ai = jori.GetComponent<AIPlayer>();
+                List<string> transcript = new List<string>();
+                Func<string> said = () => { string r = string.Join(" | ", box.shown.ToArray()); transcript.AddRange(box.shown); box.shown.Clear(); return r; };
+                Func<string, bool> everSaid = text => { said(); return transcript.Exists(x => x.Contains(text)); };
+                Action settle = () => { for (int i = 0; i < 20; i++) { s.Tick(0.2f); while (ScenarioDialogue.Showing) { ScenarioDialogue.Next(); s.Tick(0.2f); } } };
+                Action aiTurn = () => { int guard = 0; bool more = true; while (more && gc.activePlayer == jori && guard++ < 100) { more = ai.StepOnce(true); settle(); } if (gc.activePlayer == jori) gc.EndTurn(); settle(); };
+                Action endTurn = () => { gc.EndTurn(); settle(); aiTurn(); };
+                Func<string, bool> marked = id => s.markers.Exists(m => m.Id == id);
+                Func<string, Unit> U = ScenarioGame.Named;
+                Func<HexTile, string> P = t => t == null ? "-" : "(" + t.x + "," + t.y + ")";
+                Func<Unit, Unit, bool> board = (cargo, transport) => {
+                    if (cargo == null || transport == null) return false;
+                    List<HexTile> steps = HexTile.BoardingPath(cargo, transport);
+                    if (steps == null || !cargo.WalkAndBoard(steps, transport, true)) return false;
+                    cargo.FinishActive();
+                    return true;
+                };
+                List<string> log = new List<string>();
+                HexTile city = Rig.At(3, 0), front = Rig.At(2, 1), cut = Rig.At(-1, 0);
+                Unit rifles = U("Rifles"), truck = U("Truck"), supply = U("Supply"), bandit = U("Bandit");
+                bool start = rifles != null && truck != null && supply != null && bandit != null && U("Blue Squad") != null && gc.fogOfWar && !gc.purchasesAllowed
+                             && city.building != null && city.building.owner == null && GameAssets.CampaignOnly(GameAssets.Unit("Bandit"));
+                settle();
+                bool intro = everSaid("where's the objective") && everSaid("plank by plank") && everSaid("bring the fight to him") && marked("rifles");
+                HexTile.NotifyUnitSelected(rifles); settle();
+                bool m1 = marked("truck") && !marked("rifles");
+                bool b1 = board(rifles, truck); settle();
+                bool m2 = b1 && everSaid("He's aboard") && marked("supply") && !marked("truck");
+                HexTile.NotifyUnitSelected(supply); settle();
+                bool m3 = marked("truck") && !marked("supply");
+                bool b2 = board(supply, truck); settle();
+                bool m4 = b2 && everSaid("Supply aboard") && marked("truck");
+                HexTile.NotifyUnitSelected(truck); settle();
+                bool m5 = marked("front") && !marked("truck") && everSaid("Wheels fly on roads");
+                ScenarioGame.Order(truck, null, front); settle();
+                bool drove = truck.tile == front && everSaid("Here we are") && marked("city") && !marked("front");
+                log.Add("truck " + P(truck.tile));
+                bool down = Transporting.Unload(truck, rifles, city); settle();
+                bool onCity = down && rifles.tile == city && everSaid("Keep him there") && !marked("city");
+                FogOfWar.Changed();
+                gc.EndTurn(); settle();   // Jori's turn: the bandit
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                bool atCut = bandit.tile == cut, unseen = !FogOfWar.TileVisible(human, bandit.tile);
+                log.Add("bandit " + P(bandit.tile) + (unseen ? " unseen" : " SEEN") + ", city " + city.building.capturePoints);
+                aiTurn();
+                FogOfWar.Changed(); FogOfWar.Refresh();
+                bool cutOff = ScenarioGame.CutOff(truck);
+                bool cutLines = Fired(s, "3.9 Cut off") == 1 && everSaid("Our supply is cut off") && everSaid("shows dashed") && everSaid("These are on loan");
+                Unit recon = U("Recon"), scouts = U("Scouts");
+                bool loan = recon != null && scouts != null && marked("scouts");
+                bool b3 = false;
+                if (loan) { HexTile.NotifyUnitSelected(scouts); settle(); b3 = marked("recon") && board(scouts, recon); settle(); }
+                bool aboard = b3 && everSaid("Find whoever is cutting the road") && !marked("recon");
+                log.Add("rifles " + rifles.Strength + ", truck " + truck.Strength + ", Blue squad " + (U("Blue Squad") != null ? U("Blue Squad").Strength + " " + P(U("Blue Squad").tile) : "gone"));
+                // The recon goes for the bandit; everyone else hits what is in reach; the grunt stays on the city.
+                int rounds = 0;
+                while (!gc.gameOver && rounds++ < 10) {
+                    Unit band = U("Bandit");
+                    if (recon != null && recon.Strength > 0 && recon.active && band != null) {
+                        if (recon.CanAttack(band)) ScenarioGame.Order(recon, band, null); else ScenarioGame.Order(recon, null, band.tile);
+                        settle();
+                        if (scouts != null && scouts.trasnporter == recon && band != null) {
+                            foreach (HexTile n in recon.tile.neighbors) if (n != null && n.occupier == null && Transporting.Unload(recon, scouts, n)) break;
+                            settle();
+                        }
+                    }
+                    foreach (Unit u in new List<Unit>(human.units)) {
+                        if (u == null || u.Strength <= 0 || !u.active || u == rifles || u.trasnporter != null || gc.gameOver) continue;
+                        Unit foe = null;
+                        foreach (Unit e in jori.units) if (e != null && e.Strength > 0 && e.tile != null && u.CanAttack(e) && (foe == null || e.tile.Distance(u.tile) < foe.tile.Distance(u.tile))) foe = e;
+                        if (foe != null && foe.tile.Distance(u.tile) <= u.moveRange + 1) { ScenarioGame.Order(u, foe, null); settle(); }
+                    }
+                    if (gc.gameOver) break;
+                    log.Add("round " + rounds + ": bandit " + (U("Bandit") != null ? U("Bandit").Strength + " " + P(U("Bandit").tile) : "gone") + ", city " + (city.building.owner == human ? "ours" : city.building.owner == jori ? "Jori's" : "nobody's " + city.building.capturePoints) + ", rifles " + rifles.Strength + " " + P(rifles.tile));
+                    endTurn();
+                }
+                bool spotted = everSaid("Federation scum") && everSaid("How did they get here");
+                bool banditGone = U("Bandit") == null && (everSaid("To Blakia! Aargh!") || (everSaid("Pull back! To Blakia!") && Fired(s, "3.13 Bandit retreats") == 1));
+                bool won = gc.gameOver && gc.winner == human && (Fired(s, "3.17 Village taken") == 1 || Fired(s, "S1 Jori has no units") == 1);
+                said();
+                detail = "start " + start + "; the stolen village shown, the grunt marked " + intro + "; markers: truck " + m1 + ", aboard, supply marked " + m2 + ", truck " + m3 + ", supply aboard, truck marked " + m4 + ", the tile by the city " + m5
+                       + "; drove there in one move " + drove + "; put down on the city " + onCity + "; the bandit at the cut " + atCut + ", unseen " + unseen + ", the truck cut off " + cutOff + ", lines " + cutLines
+                       + "; recon and squad on loan " + loan + ", squad aboard " + aboard + "; bandit spotted " + spotted + ", gone " + banditGone + "; won " + won + " (village " + Fired(s, "3.17 Village taken") + ", wiped out " + Fired(s, "S1 Jori has no units") + ") in " + rounds + " round(s)"
+                       + " | " + string.Join("; ", log.ToArray());
+                ScenarioDialogue.Presenter = null;
+                return start && intro && m1 && m2 && m3 && m4 && m5 && drove && onCity && atCut && unseen && cutOff && cutLines && loan && aboard && spotted && banditGone && won;
             }
             case "scriptTutorial2": {
                 Player human = o, raiders = a;

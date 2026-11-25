@@ -245,6 +245,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitOutOfFuel: return ScenarioGame.CountUnits(uf, u => u.OutOfFuel) >= count;
             case TriggerCondition.UnitLowOnFuel: { int pc = t.Value; return ScenarioGame.CountUnits(uf, u => ScenarioGame.LowOnFuel(u, pc)) >= count; }
             case TriggerCondition.UnitCutOff: return ScenarioGame.CountUnits(uf, ScenarioGame.CutOff) >= count;
+            case TriggerCondition.UnitsExposed: { int c = t.Value; return ScenarioGame.CountUnits(uf, u => u.RealTile != null && u.RealTile.terrain != null && u.RealTile.terrain.cover < c) >= count; }
             case TriggerCondition.UnitsAtMost: return ScenarioGame.CountUnits(uf) <= t.Value;
             case TriggerCondition.UnitsAtLeast: return ScenarioGame.CountUnits(uf) >= t.Value;
             case TriggerCondition.UnitSpent: return ScenarioGame.CountUnits(uf, u => !u.active) >= count;
@@ -616,9 +617,15 @@ public class ScenarioScript : MonoBehaviour {
                     if (!string.IsNullOrEmpty(a.Target)) target = NamedFor(a.Target, r);
                     if (target == null && a.TargetSide != TriggerSide.Any) {
                         // The strongest it can reach (a fresh squad), or the nearest of Target Side (in Value cover or more, if any is: the squad in the trees).
-                        if (a.TargetFresh) target = ScenarioGame.StrongestInReach(u, a.TargetSide, a.Value);
-                        if (target == null && a.Value > 0) target = ScenarioGame.NearestOf(u, a.TargetSide, a.Value);
-                        if (target == null) target = ScenarioGame.NearestOf(u, a.TargetSide);
+                        if (a.TargetOnTile) {
+                            HexTile on = ScenarioGame.Tile(a.TileX, a.TileY);
+                            Unit there = on != null ? on.occupier : null;
+                            if (there != null && there.RealStrength > 0 && ScenarioGame.SideIs(there.owner, a.TargetSide) && there.owner != u.owner) target = there;
+                        }
+                        if (target == null && a.TargetExposed) target = ScenarioGame.NearestExposed(u, a.TargetSide, a.Value);
+                        if (target == null && a.TargetFresh) target = ScenarioGame.StrongestInReach(u, a.TargetSide, a.Value);
+                        if (target == null && !a.TargetOnTile && a.Value > 0 && !a.TargetExposed) target = ScenarioGame.NearestOf(u, a.TargetSide, a.Value);
+                        if (target == null && !a.TargetOnTile) target = ScenarioGame.NearestOf(u, a.TargetSide);
                     }
                     if (target == null && !string.IsNullOrEmpty(a.Target)) { Warn(t, "Order Units: no unit named '" + a.Target + "' to attack."); continue; }
                     if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY)))

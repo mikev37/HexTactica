@@ -34,6 +34,7 @@ static class TriggerFields {
             case TriggerCondition.AttackProposed:
             case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
+            case TriggerCondition.UnitsExposed:
             case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value", "Count" };
             case TriggerCondition.UnitsAtMost:
             case TriggerCondition.UnitsAtLeast: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "Value" };
@@ -77,13 +78,14 @@ static class TriggerFields {
                     case TriggerCondition.UnitsAtMost: return "Units At Most";
                     case TriggerCondition.UnitsAtLeast: return "Units At Least";
                     case TriggerCondition.AttackProposed: return "Only Ambushes (1)";
+                    case TriggerCondition.UnitsExposed: return "Cover Below";
                 }
                 return null;
             case "Count":
                 switch (c) {
                     case TriggerCondition.UnitsInArea: case TriggerCondition.UnitStarving: case TriggerCondition.UnitOutOfAmmo:
                     case TriggerCondition.UnitOutOfFuel: case TriggerCondition.UnitLowOnFuel: case TriggerCondition.UnitCutOff:
-                    case TriggerCondition.BuildingOwned: case TriggerCondition.UnitSpent: return "At Least";
+                    case TriggerCondition.BuildingOwned: case TriggerCondition.UnitSpent: case TriggerCondition.UnitsExposed: return "At Least";
                     case TriggerCondition.TurnStarted: case TriggerCondition.TurnOver: return "Their Turn Number";
                 }
                 return "Times";
@@ -97,7 +99,7 @@ static class TriggerFields {
         switch (a) {
             case TriggerActionType.Dialogue: return new[] { "Lines" };
             case TriggerActionType.CameraFocus: return new[] { "AtUnit", "TileX", "TileY", "Zoom", "Seconds" };
-            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TargetFresh", "Value", "TileX", "TileY");
+            case TriggerActionType.OrderUnits: return Join(units, "Target", "TargetSide", "TargetFresh", "TargetExposed", "TargetOnTile", "Value", "TileX", "TileY");
             case TriggerActionType.StrikeTile: return new[] { "UnitSide", "UnitKind", "UnitTag", "TileX", "TileY" };
             case TriggerActionType.CameraFrameBoard: return new string[0];
             case TriggerActionType.ShowMarker: return new[] { "Marker", "MarkerId", "Text", "AtUnit", "HideInFog", "TileX", "TileY" };
@@ -202,6 +204,7 @@ static class TriggerFields {
             case TriggerCondition.AttackProposed: return "the player shows an attack by " + units + (t.Value == 1 ? " that the defender would answer first" : "") + times;
             case TriggerCondition.Ambush: return units + " fires first when attacked (an ambush)" + times;
             case TriggerCondition.UnitMoved: return units + " moves" + times;
+            case TriggerCondition.UnitsExposed: return units + " on cover below " + t.Value;
             case TriggerCondition.MoveProposed: return "the player proposes a move for " + Units(Side(t.Side) + "'s", t.UnitKind, t.UnitTag, false, 0, 0, 0) + (t.InArea ? " to " + area : "") + times;
             case TriggerCondition.BuildingSelected: return "the player opens " + building + " held by " + Side(t.Side) + times;
             case TriggerCondition.UnitBoarded: return units + " gets into a transport" + times;
