@@ -458,11 +458,12 @@ public class ScenarioScript : MonoBehaviour {
                 // Where it was hit: a defender driven back is counted where it stood (an attacker, where it attacked from).
                 if (s < was.strength) Damaged(u, s, at != was.tile && was.tile != null && GameController.gc != null && u.owner != GameController.gc.activePlayer ? was.tile : at);
                 else if (s > was.strength) Healed(u, s, at);
-                if (at != was.tile && at != null) Entered(u, was.tile, at, !was.aboard && u.trasnporter == null);
+                if (at != was.tile && at != null) Entered(u, was.tile, at, !was.aboard && u.trasnporter == null && !ScenarioGame.Lifted.Contains(u));
                 if (spotting) Spotted(u, at, sight & ~was.seenBy);
             } else if (at != null) { Entered(u, null, at, false); if (spotting) Spotted(u, at, sight); }
             seen[u] = new Seen { strength = s, tile = at, pass = pass, seenBy = sight, aboard = u.trasnporter != null };
         }
+        ScenarioGame.Lifted.Clear();
         gone.Clear();
         foreach (KeyValuePair<Unit, Seen> kv in seen) if (kv.Value.pass != pass) gone.Add(kv.Key);
         for (int i = 0; i < gone.Count; i++) seen.Remove(gone[i]);

@@ -250,7 +250,8 @@ public static partial class Scenarios {
                             Act(TriggerActionType.ShowMarker, x => { x.MarkerId = "brief"; x.TileX = 2; x.TileY = 2; }),
                             Act(TriggerActionType.Dialogue, x => { x.Lines.Add(new DialogueLine { Character = "Anna", Text = "Never under the briefing." }); })),
                         Trig("Walker cut", TriggerCondition.UnitCutOff, t => { t.Enabled = false; t.Side = Blue; t.UnitTag = "Walker"; }),
-                        Trig("Rider moved", TriggerCondition.UnitMoved, t => { t.Side = Blue; t.UnitTag = "Rider"; }));
+                        Trig("Rider moved", TriggerCondition.UnitMoved, t => { t.Side = Blue; t.UnitTag = "Rider"; }),
+                        Trig("Walker moves", TriggerCondition.UnitMoved, t => { t.Side = Blue; t.UnitTag = "Walker"; t.Count = 5; }));
              },
              "The scenario functions added for Act 1's playtest: Unit Killed's How (in action, starved); Unit Moved outside an area; Units At Most counting only units in sight; Building Damaged (half its health gone); Unload Proposed (a unit picked in its transport's panel); Unit Moved not counting boarding or riding; Bonus Stars (-1 and +2: one more star in the rating, a star taken from a perfect result); Reveal Area (the ground shown through the fog past the end of the turn, then hidden by name); Highlight UI (the hook told the panel's name); a trigger switched on after its click was made counts the click (the unit already selected); the dialogue box's Next while a later Dialogue of the same trigger is to come, Close at the last; the script holds an AI while its actions run; the camera on a unit that has died goes where it fell; Briefing: its marker shown under the briefing, its line not said, never fired in play; Unit Cut Off keeps its real reading while a move's preview is on the board.");
         n++;
@@ -926,6 +927,10 @@ public static partial class Scenarios {
                 // Moves: anywhere but the mark, then onto it.
                 ScenarioGame.Order(walker, null, Rig.At(4, 1)); settle();
                 bool off = Fired(s, "Off the mark") == 1 && Fired(s, "On the mark") == 0;
+                int walked = s.Find("Walker moves").Events;
+                ScenarioGame.Place(new List<Unit> { walker }, 2, 3, true); settle();
+                bool lifted = walked == 1 && s.Find("Walker moves").Events == 1 && walker.tile == Rig.At(2, 3);
+                r.Add("lifted by Place Units is not a move " + lifted);
                 r.Add("moved off the mark counted, not on it " + off);
                 // Building Damaged at half.
                 Building city = Rig.At(-3, 0).building;
@@ -958,7 +963,7 @@ public static partial class Scenarios {
                 r.Add("briefing: marker shown, line not said " + brief + ", never fired in play " + never);
                 ScenarioGame.CameraFocusHook = null; ScenarioGame.HighlightUIHook = null;
                 detail = string.Join("; ", r.ToArray());
-                return brief && first && last && waiting && released && caught && stars && rating && lit == "TransportPanel" && shown && kept && how && cam && hidden && seen && off && wrecked && picked && rode && keptReading && never;
+                return brief && first && last && waiting && released && caught && stars && rating && lit == "TransportPanel" && shown && kept && how && cam && hidden && seen && off && wrecked && picked && rode && lifted && keptReading && never;
             }
             case "scriptNewFunctions2": {
                 Unit victim = Rig.At(0, 0).occupier, tank = Rig.At(2, 0).occupier, rider = Rig.At(-3, 3).occupier, lorry = Rig.At(-4, 3).occupier;

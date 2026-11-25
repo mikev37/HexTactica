@@ -87,7 +87,7 @@ public enum TriggerCondition {
     AttackProposed = 36,
     /// <summary>A unit matching the unit filter, attacked, fired first (an ambush: its cover and veterancy beat the attacker's concealment and veterancy): Count times.</summary>
     Ambush = 37,
-    /// <summary>A unit matching the unit filter has moved itself (In Area: onto a tile within the area), however far, wherever from: Count times. Getting into or out of a transport, and riding in one, are not moves (Unit Boarded, Unit Unloaded).</summary>
+    /// <summary>A unit matching the unit filter has moved itself (In Area: onto a tile within the area), however far, wherever from: Count times. Getting into or out of a transport, riding in one, and being lifted by Place Units are not moves.</summary>
     UnitMoved = 38,
     /// <summary>At least Count units matching the unit filter stand on ground with less than Value cover (now): "a squad left out in the open" (Value 2: on grass, a road, sand).</summary>
     UnitsExposed = 39,

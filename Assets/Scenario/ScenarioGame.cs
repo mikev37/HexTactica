@@ -477,12 +477,16 @@ public static class ScenarioGame {
     /// Lift each unit onto (x, y), or the nearest free tile it can stand on (within 4 steps), at once (Unit.PlaceAt):
     /// nothing walked, nobody dies. <paramref name="ready"/>: it may act again this turn. How many were placed.
     /// </summary>
+    /// <summary>Units Place Units has lifted since the script last looked: not a move of theirs (Unit Moved).</summary>
+    public static readonly HashSet<Unit> Lifted = new HashSet<Unit>();
+
     public static int Place(List<Unit> units, int x, int y, bool ready) {
         HexTile at = Tile(x, y);
         int n = 0;
         if (at == null) return 0;
         foreach (Unit u in units) {
             if (u == null || u.RealStrength <= 0 || u.tile == null || u.trasnporter != null) continue;
+            Lifted.Add(u);
             HexTile to = at.occupier == u ? at : FreeTileNear(at, u, 4);
             if (to == null) continue;
             u.PlaceAt(to);
