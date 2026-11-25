@@ -163,11 +163,26 @@ public class GameSession : MonoBehaviour {
         Unload(FrontEndSettings.Get.inGameMenuScene);
     }
 
-    /// <summary>The post-game screen closed: the board stays to look at (the menu key opens the in-game menu).</summary>
-    public void ClosePostGame() { Unload(FrontEndSettings.Get.postGameScene); Unload(FrontEndSettings.Get.missionResultScene); }
+    /// <summary>
+    /// The post-game screen closed (View Board): the board stays to look at (the menu key opens the in-game menu), with a
+    /// Results button that opens the screen again, to go on from it (a campaign mission: its Return to the campaign).
+    /// </summary>
+    public void ClosePostGame() {
+        Unload(FrontEndSettings.Get.postGameScene); Unload(FrontEndSettings.Get.missionResultScene);
+        ResultsButton.Show(ReopenPostGame);
+    }
+
+    /// <summary>The post-game screen again, over the board viewed after the game (the Results button).</summary>
+    public void ReopenPostGame() {
+        GameController gc = GameController.gc;
+        if (gc == null || !gc.gameOver) return;
+        ResultsButton.Hide();
+        FrontEndSettings s = FrontEndSettings.Get;
+        SceneManager.LoadScene(MatchSetup.Mission != null ? s.missionResultScene : s.postGameScene, LoadSceneMode.Additive);
+    }
 
     /// <summary>A game was loaded or started again: the post-game screen may show again when it ends.</summary>
-    public void NewGame() { postShown = false; mode = SessionMode.Play; }
+    public void NewGame() { postShown = false; mode = SessionMode.Play; ResultsButton.Hide(); }
 
     /// <summary>The pre-game screen started the game: it goes, and the game plays.</summary>
     public void SetupDone() {

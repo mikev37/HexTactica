@@ -1658,7 +1658,7 @@
                 "Condition": 21,
                 "Actions": [],
                 "Side": -2,
-                "Count": 1
+                "Count": 2
             },
             {
                 "Name": "City taken once",
@@ -2679,5 +2679,5 @@
             }
         ]
     },
-"test": {"name": "combat-trials-playthrough", "kind": "rules", "opponent": "Human", "rounds": "30", "rules": "standard", "check": "scriptCombatTrials", "question": "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: Jori starts with one squad (his win condition off until his tank comes); the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for a fresh squad (in the trees), which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit, marked; clicking it: the supply lines, no tile marked; moved anywhere: Gena's line; the capture lesson; the city taken ('City secured!') and still ours at our next turn: the player wins."}
+"test": {"name": "combat-trials-playthrough", "kind": "rules", "opponent": "Human", "rounds": "30", "rules": "standard", "check": "scriptCombatTrials", "question": "Act 1, mission 2 (Resources/Campaign/Scenarios/1.2 Combat Trials.dat), played with the player's clicks: Jori starts with one squad (his win condition off until his tank comes); the city shown with a highlight gone within the line; a grunt within 3 of the city: on Jori's turn his tank comes out of the fog and hits that grunt for 3, taking 1; clicking the tank: the armour line; next turn the cover lines, and clicking a grunt rings only forests and hills it can reach; on Jori's next turn the tank goes for a fresh squad (in the trees), which fires first (the ambush lines); the six numbers; the counterattack, then Anna's tank and supply unit, marked; clicking it: the supply lines, no tile marked; moved anywhere: Gena's line; the capture lesson; the city taken ('City secured!') and held through a turn: the player wins."}
 }

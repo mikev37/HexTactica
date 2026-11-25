@@ -33,8 +33,9 @@ namespace HexTactica.Testing {
         /// </summary>
         public static object[] ResourcesProvider(Type type, string path) {
             List<object> r = new List<object>();
-            if (type == typeof(GameObject) && path == "Units") {
-                foreach (string f in Directory.GetFiles(Root("Units"), "*.prefab", SearchOption.AllDirectories)) {
+            if (type == typeof(GameObject) && (path == "Units" || path == GameAssets.CampaignUnitsFolder)) {
+                if (!Directory.Exists(Root(path))) return r.ToArray();
+                foreach (string f in Directory.GetFiles(Root(path), "*.prefab", SearchOption.AllDirectories)) {
                     string n = Path.GetFileNameWithoutExtension(f);
                     // The archetype, as in Unity: Resources.LoadAll gives the same prefab every building's list points at, so a
                     // unit looked up by name (GameAssets.Unit: a replay's purchase) is the one a building offers.
@@ -104,9 +105,12 @@ namespace HexTactica.Testing {
         static string PathFor(string name) {
             if (unitFiles == null) {
                 unitFiles = new Dictionary<string, string>();
-                foreach (string f in Directory.GetFiles(Root("Units"), "*.prefab", SearchOption.AllDirectories)) {
-                    string n = Path.GetFileNameWithoutExtension(f);
-                    if (!unitFiles.ContainsKey(n)) unitFiles[n] = f;
+                foreach (string folder in new[] { Root("Units"), Root(GameAssets.CampaignUnitsFolder) }) {
+                    if (!Directory.Exists(folder)) continue;
+                    foreach (string f in Directory.GetFiles(folder, "*.prefab", SearchOption.AllDirectories)) {
+                        string n = Path.GetFileNameWithoutExtension(f);
+                        if (!unitFiles.ContainsKey(n)) unitFiles[n] = f;
+                    }
                 }
             }
             string p;

@@ -1658,7 +1658,7 @@
                 "Condition": 21,
                 "Actions": [],
                 "Side": -2,
-                "Count": 1
+                "Count": 2
             },
             {
                 "Name": "City taken once",
