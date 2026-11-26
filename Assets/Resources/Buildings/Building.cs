@@ -35,7 +35,7 @@ public enum BuildingType {
 ///   - The HQ: losing it ends the game under standard rules; under attrition it cannot be captured.
 ///
 /// Supply: a building that produces supply is a relay when it is connected to its owner's network
-/// (like a supply unit), and charges its store by chargePerTurn each turn it is. Cut off, it becomes
+/// (like a supply unit), and its store is restocked in full each turn it is. Cut off, it becomes
 /// its own source while the store lasts, spending one point per turn of supply given out. The HQ
 /// is the root of the network and never runs dry.
 ///
@@ -130,8 +130,6 @@ public class Building : MonoBehaviour {
     [Tooltip("Store: turns of supply it can give out while cut off. HQs never run dry.")]
     public int supplies = 0;
     public int suppliesMax = 6;
-    [Tooltip("Store gained per turn while connected to the owner's network")]
-    public int chargePerTurn = 1;
 
     [Header("Service")]
     [Tooltip("Locomotion types this building services while standing on it (what it gives: below)")]

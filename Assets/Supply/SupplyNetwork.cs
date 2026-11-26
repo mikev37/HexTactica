@@ -396,8 +396,8 @@ public static class SupplyNetwork {
             for (int i = 0; i < result.connectedHubs.Count; i++) {
                 result.connectedHubs[i].connected = true;
             }
-            // A connected supply building charges its store; a cut-off one spends a turn of it.
-            for (int i = 0; i < result.connectedBuildings.Count; i++) result.connectedBuildings[i].Replenish(result.connectedBuildings[i].chargePerTurn);
+            // A connected supply building is restocked in full; a cut-off one spends a turn of it.
+            for (int i = 0; i < result.connectedBuildings.Count; i++) result.connectedBuildings[i].Replenish(result.connectedBuildings[i].suppliesMax);
             for (int i = 0; i < spending.Count; i++) spending[i].SpendSupply(1);
         }
 
