@@ -358,7 +358,7 @@ namespace HexTactica.AI {
         static void DecidePosture(Front f, AIMap map, AIProfile profile, Dictionary<HexTile, Posture> memory) {
             float ratio = f.ForceRatio;
             // Temperament: a cautious AI needs a bigger edge to call a front aggressive.
-            float need = profile.Aggro(1.3f, 0.75f);
+            float need = profile.Aggro(1.3f, 0.75f) * profile.attackThreshold;
             // The war behind it (AIProfile.strategicReplaceWeight): with the gold and the buildings to replace
             // losses, a smaller edge is enough to press; with neither, a bigger one is needed.
             need *= StrategicNeed(map, profile);
@@ -557,7 +557,7 @@ namespace HexTactica.AI {
                 bool wasAssaulting = assaulting != null && assaulting.Contains(objective);
                 float readiness = wasAssaulting ? committedPower / full : gathered / full;
                 bool go = wasAssaulting ? readiness >= profile.assaultBreakoff * profile.Aggro(1.4f, 0.5f)
-                                         : readiness >= Mathf.Min(0.95f, profile.assaultReadiness * profile.Aggro(1.25f, 0.7f));
+                                         : readiness >= Mathf.Min(0.95f, profile.assaultReadiness * profile.Aggro(1.25f, 0.7f) * profile.attackThreshold);
                 foreach (Front f in group) {
                     f.stagingTile = staging;
                     f.readiness = readiness;

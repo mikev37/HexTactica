@@ -146,6 +146,7 @@ public class ScenarioScript : MonoBehaviour {
         }
         else clock += Mathf.Max(0f, dt);
         ReapplyReveals();
+        if (aiGoals.Count > 0) ApplyAIGoals();   // (an AI given to a side after it was set, a load: it gets it too)
         if (!snapshotTaken) Snapshot(); else Observe();
         FollowMarkers();
         RunActions();
@@ -220,6 +221,13 @@ public class ScenarioScript : MonoBehaviour {
 
     // ------------------------------------------------------------------ conditions
 
+    /// <summary>Only Seen and Armed Only together (null: every unit).</summary>
+    static Func<Unit, bool> CountFilter(ScenarioTrigger t) {
+        Func<Unit, bool> seen = SeenFilter(t);
+        if (!t.ArmedOnly) return seen;
+        return u => (seen == null || seen(u)) && u.AttackRange > 0 && u.Firepower > 0;
+    }
+
     /// <summary>Only Seen: units the Seen By side has in sight now; else every unit (null).</summary>
     static Func<Unit, bool> SeenFilter(ScenarioTrigger t) {
         if (!t.OnlySeen) return null;
@@ -269,6 +277,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnitSelected:
             case TriggerCondition.MoveProposed:
             case TriggerCondition.UnloadProposed:
+            case TriggerCondition.FiredFromFog:
             case TriggerCondition.EnemyInspected:
             case TriggerCondition.AttackProposed:
             case TriggerCondition.Ambush:
@@ -303,8 +312,8 @@ public class ScenarioScript : MonoBehaviour {
                 return t.CutOffMet = ScenarioGame.CountUnits(uf, ScenarioGame.CutOff) >= count;
             }
             case TriggerCondition.UnitsExposed: { int c = t.Value; return ScenarioGame.CountUnits(uf, u => u.RealTile != null && u.RealTile.terrain != null && u.RealTile.terrain.cover < c) >= count; }
-            case TriggerCondition.UnitsAtMost: return ScenarioGame.CountUnits(uf, SeenFilter(t)) <= t.Value;
-            case TriggerCondition.UnitsAtLeast: return ScenarioGame.CountUnits(uf, SeenFilter(t)) >= t.Value;
+            case TriggerCondition.UnitsAtMost: return ScenarioGame.CountUnits(uf, CountFilter(t)) <= t.Value;
+            case TriggerCondition.UnitsAtLeast: return ScenarioGame.CountUnits(uf, CountFilter(t)) >= t.Value;
             case TriggerCondition.SupplyContact: return SupplyContacts(t.Side) > 0;
             case TriggerCondition.BuildingDamaged: {
                 BuildingFilter bf = BuildingFilter.Of(t);
@@ -437,7 +446,7 @@ public class ScenarioScript : MonoBehaviour {
         if (UnitController.uc == null || UnitController.uc.units == null) return;
         pass++;
         List<Unit> all = UnitController.uc.units;
-        bool spotting = Uses(TriggerCondition.UnitSpotted);
+        bool spotting = Uses(TriggerCondition.UnitSpotted) || Uses(TriggerCondition.FiredFromFog);
         for (int i = 0; i < all.Count; i++) {
             Unit u = all[i];
             if (u == null) continue;
@@ -449,11 +458,12 @@ public class ScenarioScript : MonoBehaviour {
                 // Where it was hit: a defender driven back is counted where it stood (an attacker, where it attacked from).
                 if (s < was.strength) Damaged(u, s, at != was.tile && was.tile != null && GameController.gc != null && u.owner != GameController.gc.activePlayer ? was.tile : at);
                 else if (s > was.strength) Healed(u, s, at);
-                if (at != was.tile && at != null) Entered(u, was.tile, at, !was.aboard && u.trasnporter == null);
+                if (at != was.tile && at != null) Entered(u, was.tile, at, !was.aboard && u.trasnporter == null && !ScenarioGame.Lifted.Contains(u));
                 if (spotting) Spotted(u, at, sight & ~was.seenBy);
             } else if (at != null) { Entered(u, null, at, false); if (spotting) Spotted(u, at, sight); }
             seen[u] = new Seen { strength = s, tile = at, pass = pass, seenBy = sight, aboard = u.trasnporter != null };
         }
+        ScenarioGame.Lifted.Clear();
         gone.Clear();
         foreach (KeyValuePair<Unit, Seen> kv in seen) if (kv.Value.pass != pass) gone.Add(kv.Key);
         for (int i = 0; i < gone.Count; i++) seen.Remove(gone[i]);
@@ -559,7 +569,15 @@ public class ScenarioScript : MonoBehaviour {
     }
 
     void OnAttacked(Unit attacker, Unit defender, HexTile from, HexTile fought, CombatOutcome o) {
-        if (!Counting || defender == null || !o.defenderFiresFirst || BoardView.current != null) return;
+        if (!Counting || defender == null || BoardView.current != null) return;
+        // Fired from the fog: the defender's side did not have the attacker in sight as of the last frame.
+        if (attacker != null && defender.owner != null && GameController.gc != null) {
+            int i = GameController.gc.players.IndexOf(defender.owner);
+            Seen was;
+            if (i >= 0 && i < 63 && seen.TryGetValue(attacker, out was) && (was.seenBy & (1L << i)) == 0 && Player.Hostile(attacker.owner, defender.owner))
+                Count(TriggerCondition.FiredFromFog, t => ScenarioGame.MatchesAt(attacker, from ?? attacker.RealTile, UnitFilter.Of(t)), attacker);
+        }
+        if (!o.defenderFiresFirst) return;
         Count(TriggerCondition.Ambush, t => ScenarioGame.MatchesAt(defender, fought, UnitFilter.Of(t)), defender);
     }
 
@@ -672,6 +690,8 @@ public class ScenarioScript : MonoBehaviour {
             r.WaitLine = 0;
             if (r.WaitUntil > 0f && clock < r.WaitUntil) return false;
             r.WaitUntil = 0f;
+            if (r.WaitStill > 0f && clock < r.WaitStill && GameController.gc != null && !GameController.gc.headless && (Unit.AnyAnimating() || Strikes.Showing)) return false;
+            r.WaitStill = 0f;
             if (t.Actions == null || r.Next >= t.Actions.Count) return true;
             TriggerAction a = t.Actions[r.Next++];
             if (a == null) continue;
@@ -689,6 +709,22 @@ public class ScenarioScript : MonoBehaviour {
     /// <summary>The objective on screen (Set Objective), and the ground made safe from damage or not (Protect Ground, in order): kept in a save.</summary>
     string objective = "";
     List<ShownReveal> protectedGround = new List<ShownReveal>();
+    List<AIGoalData> aiGoals = new List<AIGoalData>();
+
+    /// <summary>Each side's AI objective as set (Set AI Objective): on its AI as its mission objective, or off it again.</summary>
+    void ApplyAIGoals() {
+        foreach (AIGoalData g in aiGoals)
+            foreach (Player p in ScenarioGame.Players) {
+                if (p == null || !ScenarioGame.SideIs(p, g.Side)) continue;
+                AIPlayer ai = p.GetComponent<AIPlayer>();
+                ScenarioAIGoal goal = p.GetComponent<ScenarioAIGoal>();
+                if (!g.On) { if (ai != null && ai.objective == goal && goal != null) ai.objective = null; continue; }
+                if (goal == null) goal = p.gameObject.AddComponent<ScenarioAIGoal>();
+                goal.target = ScenarioGame.Tile(g.TileX, g.TileY);
+                goal.weight = Mathf.Max(0, g.Value) / 6f;
+                if (ai != null && ai.objective != goal) ai.objective = goal;
+            }
+    }
 
     /// <summary>The objective on screen ("" none).</summary>
     public string Objective { get { return objective; } }
@@ -740,6 +776,7 @@ public class ScenarioScript : MonoBehaviour {
                 switch (a.Type) {
                     case TriggerActionType.ShowMarker: case TriggerActionType.HideMarker: case TriggerActionType.RevealArea:
                     case TriggerActionType.CameraFocus: case TriggerActionType.CameraFrameBoard: case TriggerActionType.MarkReach:
+                    case TriggerActionType.PlaceBuilding:
                         Do(t, a, r); break;
                 }
             }
@@ -782,6 +819,7 @@ public class ScenarioScript : MonoBehaviour {
                 return;
             case TriggerActionType.Wait:
                 if (a.Seconds > 0f) r.WaitUntil = clock + a.Seconds;
+                if (a.UntilStill) r.WaitStill = clock + Mathf.Max(a.Seconds, 0f) + 8f;
                 return;
             case TriggerActionType.CameraFocus: {
                 int x = a.TileX, y = a.TileY;
@@ -798,6 +836,7 @@ public class ScenarioScript : MonoBehaviour {
             }
             case TriggerActionType.OrderUnits: {
                 List<Unit> movers = UnitsFor(t, a, r);
+                ScenarioGame.Claimed.Clear();   // (each unit ordered goes to a tile of its own)
                 foreach (Unit u in movers) {
                     Unit target = null;
                     if (!string.IsNullOrEmpty(a.Target)) target = NamedFor(a.Target, r);
@@ -822,7 +861,7 @@ public class ScenarioScript : MonoBehaviour {
                         if (target == null && !a.TargetOnTile) target = ScenarioGame.NearestOf(u, a.TargetSide);
                     }
                     if (target == null && !string.IsNullOrEmpty(a.Target)) { Warn(t, "Order Units: no unit named '" + a.Target + "' to attack."); continue; }
-                    if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY), from))
+                    if (!ScenarioGame.Order(u, target, ScenarioGame.Tile(a.TileX, a.TileY), from, a.Force))
                         Warn(t, "Order Units: " + u.name + " could not move or attack (it has used its turn, or nothing is in reach).");
                 }
                 BoardChanged();
@@ -935,7 +974,15 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.RepairTile: ScenarioGame.RepairTiles(a.TileX, a.TileY, a.Radius); BoardChanged(); return;
             case TriggerActionType.SetVeterancy: ScenarioGame.SetVeterancy(UnitsFor(t, a, r), a.Value, a.Mode); return;
             case TriggerActionType.SetStat: ScenarioGame.SetStat(UnitsFor(t, a, r), a.Stat, a.Value, a.Mode); BoardChanged(); return;
-            case TriggerActionType.DestroyUnits: ScenarioGame.DestroyUnits(UnitsFor(t, a, r)); BoardChanged(); return;
+            case TriggerActionType.DestroyUnits:
+                if (a.Withdraw) ScenarioGame.WithdrawUnits(UnitsFor(t, a, r)); else ScenarioGame.DestroyUnits(UnitsFor(t, a, r));
+                BoardChanged(); return;
+            case TriggerActionType.PlaceBuilding: {
+                Player owner = a.Side == TriggerSide.Neutral ? null : ScenarioGame.Resolve(a.Side);
+                if (ScenarioGame.PlaceBuilding(a.BuildingKind, a.TileX, a.TileY, owner) == null) Warn(t, "Place Building: no " + a.BuildingKind + " put on (" + a.TileX + "," + a.TileY + ").");
+                FogOfWar.Changed();
+                return;
+            }
             case TriggerActionType.ReadyUnits: ScenarioGame.ReadyUnits(UnitsFor(t, a, r), a.Value != 0); return;
             case TriggerActionType.PlaceUnits: {
                 // (The tile is where they go, not an area they must be in.)
@@ -983,6 +1030,11 @@ public class ScenarioScript : MonoBehaviour {
                 BoardChanged();
                 return;
             }
+            case TriggerActionType.SetAIObjective:
+                aiGoals.RemoveAll(g => g.Side == a.Side);
+                aiGoals.Add(new AIGoalData { Side = a.Side, TileX = a.TileX, TileY = a.TileY, Value = a.Value, On = a.On });
+                ApplyAIGoals();
+                return;
             case TriggerActionType.SetObjective:
                 objective = a.Text ?? "";
                 ScenarioGame.ShowObjective(objective);
@@ -1085,6 +1137,7 @@ public class ScenarioScript : MonoBehaviour {
             d.Bonuses = bonuses;
             d.Reveals = reveals;
             d.Objective = objective;
+            d.AIGoals = aiGoals;
             d.Protected = protectedGround;
         }
         return ScenarioJson.Write(d, withState);
@@ -1128,6 +1181,7 @@ public class ScenarioScript : MonoBehaviour {
         reveals = d.Reveals ?? new List<ShownReveal>();
         revealsApplied = -1;
         objective = d.Objective ?? "";
+        aiGoals = d.AIGoals ?? new List<AIGoalData>();
         ScenarioGame.ShowObjective(objective);
         protectedGround = d.Protected ?? new List<ShownReveal>();
         HexGenerator.forAllTiles(x => { x.indestructible = false; return 0; });

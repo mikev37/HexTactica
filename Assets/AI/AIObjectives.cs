@@ -78,7 +78,7 @@ namespace HexTactica.AI {
 
         public static List<Objective> Build(AIMap map, AIProfile profile) {
             List<Objective> list = new List<Objective>();
-            float ratio = profile.objectiveRatio * profile.Aggro(1.3f, 0.75f);
+            float ratio = profile.objectiveRatio * profile.Aggro(1.3f, 0.75f) * profile.attackThreshold;
 
             // Our HQ under threat comes first, and is attempted whatever the odds.
             foreach (KeyValuePair<Unit, float> kv in map.hqDanger) {

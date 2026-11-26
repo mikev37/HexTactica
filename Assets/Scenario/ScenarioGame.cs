@@ -282,14 +282,30 @@ public static class ScenarioGame {
     /// cannot reach one, it moves as near the target (or, with none, <paramref name="goal"/>) as it can. It has then
     /// used its turn. False if it did nothing (it has used its turn already, or cannot get closer).
     /// </summary>
-    public static bool Order(Unit u, Unit target, HexTile goal) { return Order(u, target, goal, null); }
+    public static bool Order(Unit u, Unit target, HexTile goal) { return Order(u, target, goal, null, false); }
+
+    public static bool Order(Unit u, Unit target, HexTile goal, HexTile from) { return Order(u, target, goal, from, false); }
+
+    /// <summary>
+    /// Tiles units ordered by one Order Units action are going to (their moves play out after the order: the next unit
+    /// ordered must not pick the same tile). Cleared by the script before each action.
+    /// </summary>
+    public static readonly HashSet<HexTile> Claimed = new HashSet<HexTile>();
 
     /// <summary>
     /// As above; <paramref name="from"/>: with a target, the tile to attack it from if it can get there and fire from it.
     /// A target of its own side (or an ally's) that can carry it: it gets in (walks to it and boards).
     /// </summary>
-    public static bool Order(Unit u, Unit target, HexTile goal, HexTile from) {
+    /// <summary>As above; <paramref name="force"/>: the whole way this turn, however far (no movement or fuel limit; the fuel it had is kept).</summary>
+    public static bool Order(Unit u, Unit target, HexTile goal, HexTile from, bool force) {
         if (u == null || u.tile == null || u.RealStrength <= 0 || !u.active) return false;
+        int fuelWas = u.fuel;
+        if (force && u.fuelMax > 0) u.fuel = 99999;
+        try { return OrderNow(u, target, goal, from, force); }
+        finally { if (force && u.fuelMax > 0 && u != null) u.fuel = fuelWas; }
+    }
+
+    static bool OrderNow(Unit u, Unit target, HexTile goal, HexTile from, bool force) {
         if (target != null && target != u && target.tile != null && target.owner != null && Player.Friendly(target.owner, u.owner)) {
             List<HexTile> steps = HexTile.BoardingPath(u, target);
             if (steps != null && u.WalkAndBoard(steps, target, true)) { u.FinishActive(); return true; }
@@ -298,8 +314,8 @@ public static class ScenarioGame {
         // (The tiles' search state only: a scripted order shows nothing on the board.)
         Func<HexTile, int> clear = x => { x.G = 0; x.parent = null; return 0; };
         HexGenerator.forAllTiles(clear);
-        List<HexTile> stops = start.CheckMovementRange(u);   // (leaves the path on the tiles for CompleteMove)
-        stops.RemoveAll(x => x == start || !x.CanEndTurnHere(u) || (x.occupier != null && x.occupier != u));
+        List<HexTile> stops = force ? start.CheckMovementRange(u, 999) : start.CheckMovementRange(u);   // (leaves the path on the tiles for CompleteMove)
+        stops.RemoveAll(x => x == start || !x.CanEndTurnHere(u) || (x.occupier != null && x.occupier != u) || Claimed.Contains(x));
         stops.Insert(0, start);
         HexTile to = null;
         bool fire = false;
@@ -317,6 +333,7 @@ public static class ScenarioGame {
             foreach (HexTile s in stops) { int d = s.Distance(aim); if (d < best || (d == best && to != null && s.G < to.G)) { best = d; to = s; } }
         }
         if (to == null) { HexGenerator.forAllTiles(clear); return false; }
+        Claimed.Add(to);
         bool arrived = true;
         if (to != start) {
             start.parent = null;
@@ -460,12 +477,16 @@ public static class ScenarioGame {
     /// Lift each unit onto (x, y), or the nearest free tile it can stand on (within 4 steps), at once (Unit.PlaceAt):
     /// nothing walked, nobody dies. <paramref name="ready"/>: it may act again this turn. How many were placed.
     /// </summary>
+    /// <summary>Units Place Units has lifted since the script last looked: not a move of theirs (Unit Moved).</summary>
+    public static readonly HashSet<Unit> Lifted = new HashSet<Unit>();
+
     public static int Place(List<Unit> units, int x, int y, bool ready) {
         HexTile at = Tile(x, y);
         int n = 0;
         if (at == null) return 0;
         foreach (Unit u in units) {
             if (u == null || u.RealStrength <= 0 || u.tile == null || u.trasnporter != null) continue;
+            Lifted.Add(u);
             HexTile to = at.occupier == u ? at : FreeTileNear(at, u, 4);
             if (to == null) continue;
             u.PlaceAt(to);
@@ -480,6 +501,17 @@ public static class ScenarioGame {
     public static void GiveBuildings(List<Building> buildings, Player to) { foreach (Building b in buildings) if (b != null) b.ChangeOwner(to); }
 
     public static void DestroyUnits(List<Unit> units) { foreach (Unit u in units) if (u != null && u.RealStrength > 0) u.Perish(); }
+
+    /// <summary>The units leave the board without dying (Unit.Withdraw).</summary>
+    public static void WithdrawUnits(List<Unit> units) { foreach (Unit u in units) if (u != null && u.RealStrength > 0) u.Withdraw(); }
+
+    /// <summary>A building of <paramref name="kind"/> on (x, y) for <paramref name="owner"/> (null: nobody's). Null if there is no such building or the tile is taken by one.</summary>
+    public static Building PlaceBuilding(string kind, int x, int y, Player owner) {
+        HexTile t = Tile(x, y);
+        Building prefab = string.IsNullOrEmpty(kind) ? null : LevelEditor.loadBuilding(kind);
+        if (t == null || prefab == null || t.building != null || BuildingController.bc == null) return null;
+        return BuildingController.bc.Place(owner, prefab, t);
+    }
 
     /// <summary>Destroy the terrain on every tile within <paramref name="radius"/> of (x, y) that can be (one with a destroyedInto).</summary>
     public static int DestroyTiles(int x, int y, int radius) {

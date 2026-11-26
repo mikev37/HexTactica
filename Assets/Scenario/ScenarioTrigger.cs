@@ -87,7 +87,7 @@ public enum TriggerCondition {
     AttackProposed = 36,
     /// <summary>A unit matching the unit filter, attacked, fired first (an ambush: its cover and veterancy beat the attacker's concealment and veterancy): Count times.</summary>
     Ambush = 37,
-    /// <summary>A unit matching the unit filter has moved itself (In Area: onto a tile within the area), however far, wherever from: Count times. Getting into or out of a transport, and riding in one, are not moves (Unit Boarded, Unit Unloaded).</summary>
+    /// <summary>A unit matching the unit filter has moved itself (In Area: onto a tile within the area), however far, wherever from: Count times. Getting into or out of a transport, riding in one, and being lifted by Place Units are not moves.</summary>
     UnitMoved = 38,
     /// <summary>At least Count units matching the unit filter stand on ground with less than Value cover (now): "a squad left out in the open" (Value 2: on grass, a road, sand).</summary>
     UnitsExposed = 39,
@@ -99,6 +99,8 @@ public enum TriggerCondition {
     BuildingDamaged = 42,
     /// <summary>The board is shown under a campaign mission's briefing, before it starts: the trigger's markers, camera and revealed ground are shown there (nothing else is done; it never fires in play).</summary>
     Briefing = 43,
+    /// <summary>A unit matching the unit filter fired at a side that did not see it before the shot (it gave itself away: artillery firing from the fog): Count times.</summary>
+    FiredFromFog = 44,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -181,6 +183,10 @@ public enum TriggerActionType {
     SetObjective = 37,
     /// <summary>The ground within Radius of the tile takes no damage and cannot be destroyed (On), or can again (off): "the bridge holds". A save keeps it.</summary>
     ProtectGround = 38,
+    /// <summary>A building of Building Kind is put on the tile for Side (Neutral: nobody's). Under a mission's briefing too (Briefing): the briefing's board is thrown away at Start, so it shows only there ("where the city should be").</summary>
+    PlaceBuilding = 39,
+    /// <summary>Side's AI goes for the tile (On; off: its own plans again): a building there is to be taken, whoever holds it is to be fought. The AI decides who goes where and who pulls back (ScenarioAIGoal). Value: how strongly, 6 normal.</summary>
+    SetAIObjective = 40,
 }
 
 /// <summary>SetStat: which of a unit's values. Saved by number: append only.</summary>
@@ -294,6 +300,12 @@ public class TriggerAction {
     public bool TargetOnTile;
     /// <summary>Order Units with a target: attack it from the tile (TileX, TileY) if it can get there and fire from it (a scripted ambush from that exact spot); else as usual.</summary>
     public bool FromTile;
+    /// <summary>Order Units: the whole way, however far, this turn (no movement or fuel limit: the script says where it goes); not only as far as it could go.</summary>
+    public bool Force;
+    /// <summary>Destroy Units: they leave the board (fled, gone home): no death, nobody's kill, nobody's loss.</summary>
+    public bool Withdraw;
+    /// <summary>Wait: also until nothing on the board is moving or fighting (a scripted move or attack has played out), at most 8 seconds.</summary>
+    public bool UntilStill;
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
     public int Count = 1;
     [Tooltip("Spawn Unit: their strength (1 to 6). Mark Reach: the least terrain cover marked. Order Units: the least cover the target stands in (0: any). Set Veterancy, Set Stat, Give Money: the value (or what is added, Mode Add). Ready Units: 1 may act, 0 has used its turn.")]
@@ -375,6 +387,8 @@ public class ScenarioTrigger {
     [SideChoice(false)] public long SeenBy = TriggerSide.Human;
     /// <summary>Units At Most / At Least: only units the Seen By side sees now ("none of them in sight").</summary>
     public bool OnlySeen;
+    /// <summary>Units At Most / At Least: only units that can attack (no supply units, trucks, empty transports' kind).</summary>
+    public bool ArmedOnly;
     /// <summary>Unit Killed: only units killed in a fight by a unit of this side (Any: by anyone, or anything).</summary>
     [SideChoice(false)] public long KilledBy = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
@@ -456,6 +470,8 @@ public class RunningActions {
     public int WaitLine;
     /// <summary>The level clock at which a Wait ends; 0: none.</summary>
     public float WaitUntil;
+    /// <summary>A Wait Until Still: the level clock it gives up at (0: none).</summary>
+    public float WaitStill;
     /// <summary>The unit the trigger fired about ("{unit}" in its actions: ScenarioTrigger.Subject when it fired). Not saved.</summary>
     [NonSerialized] public Unit Subject;
     /// <summary>Where it stood (the camera on "{unit}" once it has died). Not saved.</summary>
@@ -481,7 +497,12 @@ public class ScenarioScriptData {
     [ScenarioState] public List<ShownReveal> Reveals = new List<ShownReveal>();
     [ScenarioState] public string Objective = "";
     [ScenarioState] public List<ShownReveal> Protected = new List<ShownReveal>();
+    [ScenarioState] public List<AIGoalData> AIGoals = new List<AIGoalData>();
 }
+
+/// <summary>A side's AI objective from Set AI Objective (kept in a save).</summary>
+[Serializable]
+public class AIGoalData { public long Side; public int TileX, TileY; public int Value = 6; public bool On = true; }
 
 /// <summary>Stars a Bonus Stars action gave or took (kept in a save).</summary>
 [Serializable]
