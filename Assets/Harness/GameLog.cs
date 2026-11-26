@@ -45,7 +45,7 @@ namespace HexTactica.Harness {
         static int axisTiles;
 
         public static string DefaultRoot {
-            get { return Path.Combine(Application.persistentDataPath, "game-logs"); }
+            get { return DataFolder.In("game-logs"); }
         }
 
         /// <summary>Start a new recording (closing any open one). <paramref name="root"/> null = DefaultRoot.</summary>

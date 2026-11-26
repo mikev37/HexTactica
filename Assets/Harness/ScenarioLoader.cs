@@ -26,7 +26,7 @@ namespace HexTactica.Harness {
         public int turnLimit = 40;
 
         public static string PathFor(string fileName) {
-            return Path.Combine(Application.persistentDataPath, fileName);
+            return DataFolder.In(fileName);
         }
 
         public static bool Exists(string fileName) {

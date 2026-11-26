@@ -22,7 +22,7 @@ public class LevelEditor : MonoBehaviour
 	void Start()
     {
         singleton = this;
-        Debug.Log(Application.persistentDataPath);
+        Debug.Log(DataFolder.Path_);
     }
 
     // Update is called once per frame
@@ -37,7 +37,7 @@ public class LevelEditor : MonoBehaviour
     }
 
     /// <summary>Where the S and L keys save and load: save.dat in the game's data folder.</summary>
-    public static string QuickSavePath { get { return Path.Combine(Application.persistentDataPath, "save.dat"); } }
+    public static string QuickSavePath { get { return DataFolder.In("save.dat"); } }
 
     /// <summary>Save the board as it stands to <paramref name="path"/> (the S key, and HexTactica ▸ Save Scenario File).</summary>
     public static void SaveBoard(string path) {

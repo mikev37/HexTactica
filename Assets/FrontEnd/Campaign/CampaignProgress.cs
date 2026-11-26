@@ -40,7 +40,7 @@ public static class CampaignProgress {
 
     /// <summary>The file progress is kept in. Set to "" to keep it in memory only (the headless checks).</summary>
     public static string FilePath = null;
-    static string Path_ { get { return FilePath ?? Path.Combine(Application.persistentDataPath, FileName); } }
+    static string Path_ { get { return FilePath ?? DataFolder.In(FileName); } }
 
     /// <summary>The campaign (scene name) last looked at or played, for this run: the hub opens looking at it.</summary>
     public static string Focus = "";

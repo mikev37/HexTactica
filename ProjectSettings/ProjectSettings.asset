@@ -12,7 +12,7 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: 'Mythic Visions '
+  companyName: Mythic Visions
   productName: Hex Tactica
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
