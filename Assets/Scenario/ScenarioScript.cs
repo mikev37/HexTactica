@@ -795,6 +795,7 @@ public class ScenarioScript : MonoBehaviour {
                 if (goal == null) goal = p.gameObject.AddComponent<ScenarioAIGoal>();
                 goal.target = ScenarioGame.Tile(g.TileX, g.TileY);
                 goal.weight = Mathf.Max(0, g.Value) / 6f;
+                goal.asHQ = g.AsHQ;
                 if (ai != null && ai.objective != goal) ai.objective = goal;
             }
     }
@@ -1025,6 +1026,13 @@ public class ScenarioScript : MonoBehaviour {
                     if (there == null) { Warn(t, "Spawn Unit: no unit named '" + a.AtUnit + "' to spawn by: nothing made."); return; }
                     sx = there.x; sy = there.y;
                 }
+                // Aboard a transport (Target): made inside it, wherever it is.
+                if (!string.IsNullOrEmpty(a.Target)) {
+                    Unit carrier = NamedFor(a.Target, r);
+                    if (carrier == null) { Warn(t, "Spawn Unit: no transport named '" + a.Target + "' to put them aboard: nothing made."); return; }
+                    ScenarioGame.SpawnAboard(p, a.UnitKind, carrier, a.Count, a.Value, a.Veterancy, a.UnitTag, a.ReadyToAct);
+                    return;
+                }
                 ScenarioGame.Spawn(p, a.UnitKind, sx, sy, a.Count, a.Value, a.Veterancy, a.UnitTag, a.ReadyToAct, a.OutOfSight);
                 BoardChanged();
                 return;
@@ -1113,7 +1121,7 @@ public class ScenarioScript : MonoBehaviour {
             }
             case TriggerActionType.SetAIObjective:
                 aiGoals.RemoveAll(g => g.Side == a.Side);
-                aiGoals.Add(new AIGoalData { Side = a.Side, TileX = a.TileX, TileY = a.TileY, Value = a.Value, On = a.On });
+                aiGoals.Add(new AIGoalData { Side = a.Side, TileX = a.TileX, TileY = a.TileY, Value = a.Value, On = a.On, AsHQ = a.AsHQ });
                 ApplyAIGoals();
                 return;
             case TriggerActionType.ProtectGround: {

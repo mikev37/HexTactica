@@ -238,7 +238,7 @@ namespace HexTactica.AI {
             f.objective = NearestEnemyBuildingTo(f.center, map);
             if (f.objective != null && f.objective.tile != null) {
                 f.objectiveTile = f.objective.tile;
-                f.objectiveIsHQ = f.objective.IsHQ;
+                f.objectiveIsHQ = map.WorthAnHQ(f.objective);
             }
 
             // The shipped HQ is a unit carrying a producer SupplyPoint. If it is closer than

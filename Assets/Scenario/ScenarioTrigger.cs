@@ -186,7 +186,7 @@ public enum TriggerActionType {
     ProtectGround = 38,
     /// <summary>A building of Building Kind is put on the tile for Side (Neutral: nobody's). Building Kind "None": the building on the tile is taken away, its own ground showing again. Under a mission's briefing too (Briefing): the briefing's board is thrown away at Start, so it shows only there ("where the city should be", "nothing where it is now").</summary>
     PlaceBuilding = 39,
-    /// <summary>Side's AI goes for the tile (On; off: its own plans again): a building there is to be taken, whoever holds it is to be fought. The AI decides who goes where and who pulls back (ScenarioAIGoal). Value: how strongly, 6 normal.</summary>
+    /// <summary>Side's AI goes for the tile (On; off: its own plans again): a building there is to be taken, whoever holds it is to be fought. The AI decides who goes where and who pulls back (ScenarioAIGoal). Value: how strongly, 6 normal. As HQ: the building there is worth as much to it as an HQ (a win condition): it plans for it as for an HQ.</summary>
     SetAIObjective = 40,
 }
 
@@ -305,6 +305,8 @@ public class TriggerAction {
     public bool Force;
     /// <summary>Destroy Units: they leave the board (fled, gone home): no death, nobody's kill, nobody's loss.</summary>
     public bool Withdraw;
+    /// <summary>Set AI Objective: the building on the tile is worth an HQ to that side's AI (a mission's win condition).</summary>
+    public bool AsHQ;
     /// <summary>Wait: also until nothing on the board is moving or fighting (a scripted move or attack has played out), at most 8 seconds.</summary>
     public bool UntilStill;
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
@@ -506,7 +508,7 @@ public class ScenarioScriptData {
 
 /// <summary>A side's AI objective from Set AI Objective (kept in a save).</summary>
 [Serializable]
-public class AIGoalData { public long Side; public int TileX, TileY; public int Value = 6; public bool On = true; }
+public class AIGoalData { public long Side; public int TileX, TileY; public int Value = 6; public bool On = true; public bool AsHQ; }
 
 /// <summary>Stars a Bonus Stars action gave or took (kept in a save).</summary>
 [Serializable]

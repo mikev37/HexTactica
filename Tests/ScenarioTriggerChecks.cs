@@ -283,9 +283,9 @@ public static partial class Scenarios {
         make("script-ai-objective", "scriptAIObjective", (a, o) => {
                  Rig.PlaceBuilding("City", o, -3, 0); Put("Grunt", o, -3, 0);
                  Put("Grunt", a, 3, 0); Put("Grunt", a, 3, 1); Put("Grunt", a, 4, -1);
-                 Script(Trig("Go for the city", TriggerCondition.LevelStart, null, Act(TriggerActionType.SetAIObjective, x => { x.Side = Blue; x.TileX = -3; x.TileY = 0; })));
+                 Script(Trig("Go for the city", TriggerCondition.LevelStart, null, Act(TriggerActionType.SetAIObjective, x => { x.Side = Blue; x.TileX = -3; x.TileY = 0; x.AsHQ = true; })));
              },
-             "Set AI Objective: Blue's AI (this AI), told to go for the city Red holds, has it as its mission objective (ScenarioAIGoal) and its three grunts close on it over two turns, each on a tile of its own (the AI decides who stands where).");
+             "Set AI Objective: Blue's AI (this AI), told to go for the city Red holds (As HQ: the city worth an HQ to it, as its AI map prices it; another city not), has it as its mission objective (ScenarioAIGoal) and its three grunts close on it over two turns, each on a tile of its own (the AI decides who stands where).");
         n++;
         make("rule-bystander", "scriptBystander", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0);
@@ -310,13 +310,18 @@ public static partial class Scenarios {
         make("script-new-functions-3", "scriptNewFunctions3", (a, o) => {
                  Rig.At(0, 0).terrain = T("Forest");
                  Put("Grunt", o, 0, 0); Put("Grunt", a, 1, 0); Put("Grunt", o, 4, 0); Put("Tank", a, 5, 0);
-                 Script(Trig("Held", TriggerCondition.AttackRepulsed, t => { t.Side = Red; t.OnTerrain = "Forest"; t.KilledBy = Blue; }),
+                 Rig.At(-4, 4).terrain = T("Water"); Rig.At(-4, 5).terrain = T("Water");
+                 Put("Transport Helo", a, -4, 4); Put("Transport Helo", a, -4, 5); Put("Grunt", a, -6, 2);
+                 Script(Trig("Load up", TriggerCondition.LevelStart, null,
+                            Act(TriggerActionType.SpawnUnit, x => { x.Side = Blue; x.UnitKind = "Grunt"; x.Target = "Helo A"; x.UnitTag = "Flown"; x.Count = 1; x.Value = 6; }),
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Walker"; x.Target = "Helo B"; x.Force = true; })),
+                        Trig("Held", TriggerCondition.AttackRepulsed, t => { t.Side = Red; t.OnTerrain = "Forest"; t.KilledBy = Blue; }),
                         Trig("Held by Red", TriggerCondition.AttackRepulsed, t => { t.Side = Red; t.KilledBy = Red; }),
                         Trig("By a tank", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KillerKind = "Tank"; },
                             Act(TriggerActionType.SpawnUnit, x => { x.Side = Red; x.UnitKind = "Grunt"; x.AtUnit = "{unit}"; x.UnitTag = "Avenger"; x.Count = 1; x.Value = 6; })),
                         Trig("By artillery", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KillerKind = "Artillery"; }));
              },
-             "More scenario functions (Act 1, mission 6): Attack Repulsed (a weak Blue squad attacks a Red squad in the forest and comes off worse: counted for Killed By Blue, not Red); Unit Killed's Killer Kind (a Red squad killed by a Blue tank counts for Tank, not Artillery); Spawn Unit At Unit {unit} (made where the dead squad fell).");
+             "More scenario functions (Act 1, mission 6): Attack Repulsed (a weak Blue squad attacks a Red squad in the forest and comes off worse: counted for Killed By Blue, not Red); Unit Killed's Killer Kind (a Red squad killed by a Blue tank counts for Tank, not Artillery); Spawn Unit At Unit {unit} (made where the dead squad fell); Spawn Unit Target (a squad made aboard a helicopter over the water); a forced boarding order puts a squad aboard where the rules give no way in.");
         n++;
         make("mission-tally", "scriptMissionTally", (a, o) => { Put("Grunt", o, 0, 0); },
              "The mission rating's tally (MissionRating.Tally, from the game log): turns are the days the player moved on, each once (a turn logged twice, at a load, is one day); an enemy unit killed by the player, starved out of supply or ditched out of fuel is the player's kill; an ally's is nobody's; the player's own losses whatever the cause.");
@@ -1058,8 +1063,11 @@ public static partial class Scenarios {
                 }
                 List<string> at = new List<string>(); HashSet<HexTile> tiles = new HashSet<HexTile>(); int near = 0;
                 foreach (Unit u in a.units) if (u != null && u.tile != null) { at.Add(u.tile.x + "," + u.tile.y); tiles.Add(u.tile); if (u.tile.Distance(city) <= 2) near++; }
-                detail = "objective set on the AI " + set + "; Blue's grunts at " + string.Join(" ", at.ToArray()) + ", within 2 of the city " + near + " of " + at.Count;
-                return set && near >= 2 && tiles.Count == at.Count;
+                HexTactica.AI.AIMap priced = new HexTactica.AI.AIMap(a, ai.Profile) { objective = ai.objective };
+                Building other = Rig.PlaceBuilding("City", o, -5, 2);
+                bool asHQ = priced.WorthAnHQ(Rig.At(-3, 0).building) && !priced.WorthAnHQ(other);
+                detail = "objective set on the AI " + set + ", the city worth an HQ to it (not another) " + asHQ + "; Blue's grunts at " + string.Join(" ", at.ToArray()) + ", within 2 of the city " + near + " of " + at.Count;
+                return set && asHQ && near >= 2 && tiles.Count == at.Count;
             }
             case "scriptBystander": {
                 Player range = Rig.AddPlayer("Range", 200);
@@ -1111,16 +1119,21 @@ public static partial class Scenarios {
             case "scriptNewFunctions3": {
                 Action settle = () => { for (int i = 0; i < 6; i++) s.Tick(0.2f); };
                 Unit weak = Rig.At(1, 0).occupier, dug = Rig.At(0, 0).occupier, victim = Rig.At(4, 0).occupier, tank = Rig.At(5, 0).occupier;
+                Unit heloA = Rig.At(-4, 4).occupier, heloB = Rig.At(-4, 5).occupier, walker = Rig.At(-6, 2).occupier;
+                heloA.personal_name = "Helo A"; heloB.personal_name = "Helo B"; walker.personal_name = "Walker";
                 weak.Strength = 3; victim.Strength = 1;
                 settle();
                 weak.active = true; ScenarioGame.Order(weak, dug, null); settle();
                 bool held = Fired(s, "Held") == 1 && Fired(s, "Held by Red") == 0;
+                Unit flown = ScenarioGame.Named("Flown");
+                bool aboard = flown != null && flown.trasnporter == heloA && heloA.transported.Contains(flown);
+                bool forcedIn = walker.trasnporter == heloB && heloB.transported.Contains(walker) && walker.tile == heloB.tile;
                 tank.active = true; ScenarioGame.Order(tank, victim, null); settle();
                 Unit avenger = ScenarioGame.Named("Avenger");
                 bool byTank = Fired(s, "By a tank") == 1 && Fired(s, "By artillery") == 0;
                 bool spawned = avenger != null && avenger.tile != null && avenger.tile.Distance(Rig.At(4, 0)) <= 1;
-                detail = "attack held off counted (by Blue, not by Red) " + held + " (Red " + dug.Strength + ", Blue " + weak.RealStrength + "); killed by a tank, not artillery " + byTank + "; spawned where it fell " + spawned + (avenger != null && avenger.tile != null ? " (" + avenger.tile.x + "," + avenger.tile.y + ")" : "");
-                return held && byTank && spawned;
+                detail = "a squad made aboard a helicopter over the water (Spawn Unit Target) " + aboard + "; a squad 2 tiles off put aboard one over the water (forced boarding, no way in by the rules) " + forcedIn + "; attack held off counted (by Blue, not by Red) " + held + " (Red " + dug.Strength + ", Blue " + weak.RealStrength + "); killed by a tank, not artillery " + byTank + "; spawned where it fell " + spawned + (avenger != null && avenger.tile != null ? " (" + avenger.tile.x + "," + avenger.tile.y + ")" : "");
+                return held && byTank && spawned && aboard && forcedIn;
             }
             case "scriptMissionTally": {
                 GameRecord rec = new GameRecord();

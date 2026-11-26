@@ -320,7 +320,7 @@ namespace HexTactica.AI {
                 // Their HQ, and ours, it defends in full.
                 foreach (CampaignObjective o in candidates)
                     if (o.hiddenReach && o.kind != CampaignKind.Scout) {
-                        bool full = o.kind == CampaignKind.DefendHQ || o.respond || k <= 1 || (o.building != null && o.building.IsHQ);
+                        bool full = o.kind == CampaignKind.DefendHQ || o.respond || k <= 1 || map.WorthAnHQ(o.building);
                         o.hiddenPower = hidden * o.hiddenShare * (full ? 1f : 1f / k);
                     }
             }
@@ -343,7 +343,7 @@ namespace HexTactica.AI {
                 o.turnsAway = TurnsAway(o, forces, map, p);
                 o.priority = o.priority / Mathf.Max(1f, o.turnsAway + 1f);   // +1: taking it
                 // All out (AIKnowledge): the enemy HQ first.
-                if (map.AllOut && o.kind == CampaignKind.Secure && o.building != null && o.building.IsHQ) o.priority *= 10f;
+                if (map.AllOut && o.kind == CampaignKind.Secure && map.WorthAnHQ(o.building)) o.priority *= 10f;
             }
             List<CampaignObjective> beyond = new List<CampaignObjective>(candidates);
             // The band widens step by step: campaignMaxTurns, or the nearest objective's distance if that is
@@ -706,7 +706,7 @@ namespace HexTactica.AI {
                     break;
                 case CampaignKind.Secure: {
                     Building b = o.building;
-                    if (b.IsHQ) o.value = board;
+                    if (map.WorthAnHQ(b)) o.value = board;
                     else if (b.buildable != null && b.buildable.Count > 0) {
                         // A building that makes units: its own income, plus our income per production
                         // building we already have, over objectiveHorizonTurns — what one more place to spend it is worth.

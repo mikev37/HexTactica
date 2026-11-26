@@ -461,6 +461,9 @@ namespace HexTactica.AI {
         [Tooltip("Turns saved that justify the two-turn overhead of loading and unloading.")]
         internal int transportWorthwhileSaving = 0;
 
+        [Header("Fog of war")]
+        [Tooltip("Under fog of war, play by it: decide on the board as this side knows it (unseen enemies off the board, those seen lately where they were last seen). Off: the AI sees everything (a side on its home ground).")]
+        public bool fogFair = true;
         [Tooltip("Turns an enemy unit is remembered where it was last seen (fog of war, fogFair).")]
         internal int fogMemoryTurns = 2;
         [Tooltip("An ambush: ending where the enemy (as known) would not see this unit, within reach of an enemy that may run into it. Fraction of the unit's worth per enemy in reach (up to three).")]

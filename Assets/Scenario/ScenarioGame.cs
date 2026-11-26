@@ -311,6 +311,8 @@ public static class ScenarioGame {
     static bool OrderNow(Unit u, Unit target, HexTile goal, HexTile from, bool force) {
         if (target != null && target != u && target.tile != null && target.owner != null && Player.Friendly(target.owner, u.owner)) {
             List<HexTile> steps = HexTile.BoardingPath(u, target, force);
+            // Forced, with no way in by the rules (over water, no room to walk): it is put aboard all the same.
+            if ((steps == null || steps.Count == 0) && force) return LoadNow(u, target);
             if (steps != null && u.WalkAndBoard(steps, target, true)) { u.FinishActive(); return true; }
         }
         HexTile start = u.tile;
@@ -454,6 +456,44 @@ public static class ScenarioGame {
         }
         if (made.Count > 0 && Game != null && Game.players != null) foreach (Player p in Game.players) if (p != null) p.Resupply();
         return made;
+    }
+
+    /// <summary>
+    /// Units made already aboard <paramref name="transport"/> (a scripted spawn: the rules of boarding do not apply, so a
+    /// squad can be in a helicopter over the water), as many as it has room for. Its owner's units only.
+    /// </summary>
+    public static List<Unit> SpawnAboard(Player owner, string kind, Unit transport, int count, int strength, int veterancy, string tag, bool ready) {
+        List<Unit> made = new List<Unit>();
+        Unit prefab = owner != null ? LevelEditor.UnitFor(owner, kind) : null;
+        if (prefab == null || transport == null || transport.tile == null || UnitController.uc == null) {
+            Debug.LogWarning("Scenario: cannot spawn '" + kind + "' aboard " + (transport != null ? transport.name : "no transport") + (prefab == null ? ": no unit of that name" : ""));
+            return made;
+        }
+        for (int i = 0; i < Mathf.Max(1, count); i++) {
+            if (!Transporting.CarriesKind(transport, prefab) || Mathf.Max(1, prefab.weight) > Transporting.FreeWeight(transport)) { Debug.LogWarning("Scenario: no room aboard " + transport.name + " for '" + kind + "'"); break; }
+            Unit u = UnitController.uc.CreateAboard(owner, prefab, transport);
+            if (u == null) break;
+            u.Strength = Mathf.Clamp(strength, 1, 6);
+            u.Veterancy = Mathf.Clamp(veterancy, 0, 3);
+            if (!string.IsNullOrEmpty(tag)) u.personal_name = tag;
+            u.active = ready;
+            made.Add(u);
+        }
+        return made;
+    }
+
+    /// <summary>Put <paramref name="cargo"/> aboard <paramref name="transport"/> where it stands, whatever lies between them (a forced scripted boarding): false if there is no room.</summary>
+    static bool LoadNow(Unit cargo, Unit transport) {
+        if (transport == null || transport.tile == null || !Transporting.CanCarry(transport, cargo)) return false;   // (room and kind: the transport's own)
+        if (cargo.tile != null && cargo.tile.occupier == cargo) cargo.tile.occupier = null;
+        cargo.tile = transport.tile;
+        cargo.transform.position = transport.transform.position;
+        cargo.trasnporter = transport;
+        transport.transported.Add(cargo);
+        cargo.OnBoarded(transport);
+        cargo.active = false;
+        FogOfWar.Changed();
+        return true;
     }
 
     /// <summary>The nearest tile to <paramref name="at"/> (itself first) with nothing on it that <paramref name="prefab"/> can stand on, within <paramref name="steps"/>.</summary>

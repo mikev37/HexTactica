@@ -120,7 +120,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
 
     /// <summary>Seconds the thought under way has been running, or -1 when none is (the AI is acting, or it is not its turn). For the screen (TurnBanner).</summary>
     public bool IsPlaying { get { return enabled; } }
-    public bool FogFair { get { return Profile != null; } }
+    public bool FogFair { get { return Profile != null && Profile.fogFair; } }
     public float ThinkingFor { get { return thinking != null && !thinking.IsCompleted ? Time.unscaledTime - thinkingSince : -1f; } }
     int thinkingGeneration, generation;
     /// <summary>The last action changed the board: the next thought reads it again first (AIMap.RefreshAfterAction).</summary>

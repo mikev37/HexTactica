@@ -28,6 +28,8 @@ MonoBehaviour:
   aiProfiles:
   - {fileID: 11400000, guid: 52326c7ff6b5cdd488363944484cc01c, type: 2}
   - {fileID: 11400000, guid: 3ca81cf12b474536bb9ff143b218b498, type: 2}
+  - {fileID: 11400000, guid: 07d4a4edc17b40e992388d833b53cdbb, type: 2}
+  - {fileID: 11400000, guid: 11ec1d7c55a4400caea72fa9648bffbc, type: 2}
   menuKey: 27
   insights:
     stallRounds: 6
