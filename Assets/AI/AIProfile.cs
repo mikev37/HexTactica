@@ -400,7 +400,7 @@ namespace HexTactica.AI {
         [Tooltip("Sea lift: steps added to a trip by sea (AIMap.SeaTravel) for getting into the ship and out on the far shore. An estimate from the rules, not a rule: getting in ends the unit's turn, getting off is free.")]
         internal int seaLiftBoardSteps = 2;
         [Tooltip("Riding to the assault: a fighting unit more than this many turns from contact on foot gets in a transport.")]
-        internal int assaultBoardTurns = 2;
+        public int assaultBoardTurns = 2;
         [Tooltip("Riding to the assault: production buys transports (helicopters and planes too) while fighting units far from the fight wait without room in one — worth what it adds to the riders it would carry (the nearest of them): each one's value times the turns sooner it reaches the fight riding than walking, over productionLifeRef (at most its whole value) — times this (more than 1: it goes back for more, and carries the wounded, over its life). 0: not bought for riders.")]
         internal float assaultTransportWeight = 2f;
         [Tooltip("Riding to the assault: infantry bought at a base beside which an empty troop transport waits (or one is bought this turn) is worth this much more, until the transport's room is filled — it gets in next turn and rides.")]

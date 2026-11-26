@@ -4,6 +4,13 @@ A campaign map is a scenario file with a **script**: a list of triggers, *when t
 script is saved in the scenario file (its `"script"` block), so a level is still a scenario file and nothing else.
 Triggers are not in the map editor. You edit them in the Unity inspector.
 
+
+**When triggers are checked.** Not every frame: only when something has happened. A unit moved, was hit, healed,
+appeared, died, boarded, came into sight, or its supplies, fuel, ammo or spent state changed; an event was counted
+(a click, a capture, a strike); one of the script's actions ran; or the turn, the day, a side's money, a building's
+owner or damage, or a trigger's switch changed. Also while a trigger waits for the board to be still. Between those
+moments a turn-based board is idle, so nothing is looked at.
+
 ## Editing triggers
 
 **The easiest way is the map editor.** Open the scenario in the map editor and select **Scenario Script** in the
