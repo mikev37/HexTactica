@@ -118,6 +118,8 @@ namespace HexTactica.AI {
 
             // Driving a defender off a tile has worth of its own even without a kill.
             if (o.defenderRetreats) value += targetWorth * 0.2f;
+            // The side's mission objective may want this attack (a scenario's "go for the city": its holder).
+            if (map != null && map.objective != null) value += map.objective.AttackBonus(attacker, defender, o) * targetWorth;
             // Suppressing it has worth too: the pips it silences do not answer our blows still to
             // come this turn (the group plans count that exactly; this is the single shot's share).
             if (o.defenderSuppressed && o.suppressionAdded > 0)

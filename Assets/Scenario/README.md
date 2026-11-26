@@ -67,7 +67,7 @@ units or buildings must match at least.
 | Units In Area (6) | now: at least *Count* matching units within the area | side, kind, name, area |
 | Money At Least (7) / At Most (8) | now: *Side* has at least / at most *Value* gold | whose, gold |
 | Unit Built (9) | matching units are bought at a building: *Count* of them | side, kind, name, in area |
-| Unit Damaged (10) | a matching unit loses strength and is left at *Value* or less (0 is destroyed) | side, kind, name, in area, strength |
+| Unit Damaged (10) | a matching unit loses strength and is left at *Value* or less (0 is destroyed); *Lost At Least*: only a hit that took that much strength or more at once (0: any) | side, kind, name, in area, strength |
 | Turn Over (11) | *Side*'s turn number *Count* ends (2: the end of its second turn) | on whose turn, turn number |
 | Unit Healed (12) | a matching unit gains strength and reaches *Value* or more | side, kind, name, in area, strength |
 | Unit Starving (13) | now: matching units out of supplies (they lose a strength each turn) | side, kind, name, in area |
@@ -126,7 +126,10 @@ Timing is counted in **turns**:
   after the camera pans before the next line.
 - **Wait For Animations** (on by default): a trigger whose condition is met fires only once no unit is walking,
   shooting, retreating or boarding, so "we took damage" comes after the shot has landed. It waits at most a few
-  seconds.
+  seconds. Only conditions about what happens on the board wait (attacks, kills, captures, arrivals, sightings).
+  Conditions about clicks or the clock (Unit Selected, Move/Attack/Unload Proposed, Enemy Inspected, Turn Started,
+  Day Reached, After Trigger, Briefing) fire at once, even while another unit is still walking. All Of / Any Of
+  wait if any of their parts would.
 - Turn numbers count the first turn too: the side that plays first is on its turn 1 when the level starts.
 - A trigger that fires once keeps its count, so another trigger can still use it as a part (None Of ["Opened the HQ"]
   stays false once the HQ was opened). A repeating trigger starts counting from 0 each time it fires.
@@ -147,9 +150,8 @@ Timing is counted in **turns**:
 | Salute (32) | the matching units fire a salute: the fire animation and sound toward the tile *Value* tiles above each, and the weapon's impact there; nothing is hit, no turn used (pace several with Wait) |
 | Bonus Stars (33) | the mission's stars: *Value* more (negative: fewer), for the reason in *Text*, which the post-game screen shows ("-1: the city was destroyed"). A star more fills the first missing one (speed, aggression, defense); a star less takes the last earned |
 | Set AI Objective (40) | *Side*'s AI goes for the tile (*On*; off: back to its own plans): a building there is to be taken, whoever holds it fought. It is a pull on the AI's own scoring (every step closer counts, the ring round the tile most), so the AI still decides who goes where, who attacks whom and who pulls back to heal; several squads take different tiles of their own accord. *Value*: how strongly, 6 normal. A save keeps it |
-| Place Building (39) | a building of *Building Kind* on the tile for *Side* (Neutral: nobody's). Under a mission's briefing too: the briefing's board is thrown away at Start, so it shows only there ("where the city should be") |
+| Place Building (39) | a building of *Building Kind* on the tile for *Side* (Neutral: nobody's). *Building Kind* `None`: the building on the tile is taken away instead, and the ground under it shows again. Under a mission's briefing too: the briefing's board is thrown away at Start, so it shows only there ("where the city should be") |
 | Set Team (36) | *Side* joins team *Value* (0: none): with alliances on (the scenario's "allies"), sides on one team are allies: they share sight, do not fight, and win together ("Jori is on our side now"). A save keeps it |
-| Set Objective (37) | the objective shown at the top left of the screen becomes *Text* (empty: none), flashing as it changes. Its look: `Resources/ObjectivePanel.prefab` if there is one (a TMP text named Text), else a dark panel. A save keeps it |
 | Protect Ground (38) | the ground within *Radius* of the tile takes no damage and is never destroyed, nor the building on it (*On*), or can be again (off): "the bridge holds". A save keeps it |
 | Reveal Area (34) | *Side* sees every tile within *Radius* of the tile through the fog until it is hidden again (*On* off, the same *Marker Id*; empty: every one): a point of interest. A save keeps it |
 | Highlight UI (35) | a part of the screen is outlined and flashes (*On*), or stops (off): *Text* names it, by its object's name or a component on it (`TransportPanel`); it appears when that element does, if it is not on screen yet. The look is `Resources/UIHighlight.prefab` (made the first time; edit it freely; its offsets are its margin) |

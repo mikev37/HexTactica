@@ -244,7 +244,10 @@ public class CampaignScreen : MonoBehaviour {
         f.SetSize(flagsKeepSize ? 1f / ZoomNow : 1f);
     }
 
-    void OnDestroy() { CampaignMap.HubOpen = false; }
+    void OnDestroy() { CampaignMap.HubOpen = false; Viewing = ""; }
+
+    /// <summary>The campaign (scene name) the hub is looking at, while the hub is open (empty otherwise): its music plays (MusicManager).</summary>
+    public static string Viewing = "";
 
     MissionInfo Info(Mission m) {
         MissionInfo i;
@@ -326,6 +329,7 @@ public class CampaignScreen : MonoBehaviour {
         if (best == current) return;
         current = best;
         if (current != null) MatchSetup.CampaignScene = current.Id;   // the main menu's Campaign button comes back here
+        Viewing = current != null ? current.Id : "";
         RefreshTabs();
     }
 

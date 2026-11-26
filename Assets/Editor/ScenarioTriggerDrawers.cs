@@ -32,8 +32,8 @@ static class TriggerFields {
             case TriggerCondition.UnitCutOff: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Count" };
             case TriggerCondition.Ambush:
             case TriggerCondition.UnitMoved: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Count" };
+            case TriggerCondition.UnitDamaged: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "LostAtLeast", "Count" };
             case TriggerCondition.AttackProposed:
-            case TriggerCondition.UnitDamaged:
             case TriggerCondition.UnitHealed:
             case TriggerCondition.UnitsExposed:
             case TriggerCondition.UnitLowOnFuel: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "Count" };
@@ -144,7 +144,6 @@ static class TriggerFields {
             case TriggerActionType.RevealArea: return new[] { "Side", "On", "TileX", "TileY", "Radius", "MarkerId" };
             case TriggerActionType.HighlightUI: return new[] { "Text", "On", "MarkerId" };
             case TriggerActionType.SetTeam: return new[] { "Side", "Value" };
-            case TriggerActionType.SetObjective: return new[] { "Text" };
             case TriggerActionType.ProtectGround: return new[] { "On", "TileX", "TileY", "Radius" };
         }
         return new string[0];
@@ -176,7 +175,7 @@ static class TriggerFields {
                 if (a == TriggerActionType.SetTeam) return "Team (0: None)";
                 return null;
             case "UnitTag": return a == TriggerActionType.SpawnUnit ? "Name Them" : "Unit Name";
-            case "Text": return a == TriggerActionType.BonusStars ? "Why (Post-Game Screen)" : a == TriggerActionType.HighlightUI ? "Panel (Object Or Component Name)" : a == TriggerActionType.SetObjective ? "Objective (Empty: None)" : null;
+            case "Text": return a == TriggerActionType.BonusStars ? "Why (Post-Game Screen)" : a == TriggerActionType.HighlightUI ? "Panel (Object Or Component Name)" : null;
             case "On": return a == TriggerActionType.RevealArea ? "Reveal (Off: Hide)" : a == TriggerActionType.HighlightUI ? "Highlight (Off: Stop)" : a == TriggerActionType.ProtectGround ? "Protected (Off: Not)" : null;
             case "MarkerId": if (a == TriggerActionType.RevealArea || a == TriggerActionType.HighlightUI) return "Name (To Stop It Later)";
                 return a == TriggerActionType.ShowMarker ? "Name (To Hide It Later)" : a == TriggerActionType.MarkReach ? "Names Start (Hide With Name*)" : "Marker To Hide (Name* For All So Named)";
@@ -223,7 +222,7 @@ static class TriggerFields {
             case TriggerCondition.MoneyAtLeast: return Side(t.Side) + " has " + t.Value + "+ gold";
             case TriggerCondition.MoneyAtMost: return Side(t.Side) + " has " + t.Value + " gold or less";
             case TriggerCondition.UnitBuilt: return units + " built" + times;
-            case TriggerCondition.UnitDamaged: return units + " damaged to " + t.Value + " or less" + times;
+            case TriggerCondition.UnitDamaged: return units + " damaged to " + t.Value + " or less" + (t.LostAtLeast > 0 ? ", losing " + t.LostAtLeast + " or more in one hit" : "") + times;
             case TriggerCondition.UnitHealed: return units + " healed to " + t.Value + " or more" + times;
             case TriggerCondition.TurnOver: return Side(t.Side) + "'s " + Nth(t.Count) + "turn ends";
             case TriggerCondition.TurnStarted: return Side(t.Side) + "'s " + Nth(t.Count) + "turn starts";
@@ -279,9 +278,8 @@ static class TriggerFields {
             case TriggerActionType.RevealArea: return a.On ? "Reveal within " + a.Radius + " of " + at + " to " + Side(a.Side) : (string.IsNullOrEmpty(a.MarkerId) ? "Hide every revealed area" : "Hide revealed '" + a.MarkerId + "'");
             case TriggerActionType.HighlightUI: return (a.On ? "Highlight " : "Stop highlighting ") + (string.IsNullOrEmpty(a.Text) ? "'" + a.MarkerId + "'" : a.Text);
             case TriggerActionType.SetTeam: return Side(a.Side) + " joins team " + a.Value;
-            case TriggerActionType.PlaceBuilding: return "Put a " + a.BuildingKind + " on " + at + " for " + Side(a.Side);
+            case TriggerActionType.PlaceBuilding: return (a.BuildingKind ?? "").Trim() == ScenarioGame.RemoveKind ? "Take the building off " + at : "Put a " + a.BuildingKind + " on " + at + " for " + Side(a.Side);
             case TriggerActionType.SetAIObjective: return a.On ? Side(a.Side) + "'s AI goes for " + at : Side(a.Side) + "'s AI back to its own plans";
-            case TriggerActionType.SetObjective: return string.IsNullOrEmpty(a.Text) ? "No objective on screen" : "Objective: " + Short(a.Text);
             case TriggerActionType.ProtectGround: return (a.On ? "Protect" : "Unprotect") + " ground within " + a.Radius + " of " + at;
             case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";

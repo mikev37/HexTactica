@@ -179,11 +179,10 @@ public enum TriggerActionType {
     HighlightUI = 35,
     /// <summary>Side joins team Value (0: no team): with alliances on, sides on one team are allies (they share sight, do not fight, win together). "Jori is on our side now."</summary>
     SetTeam = 36,
-    /// <summary>The objective shown on screen becomes Text (empty: none shown), flashed as it changes. A save keeps it.</summary>
-    SetObjective = 37,
+    // 37: unused (was Set Objective).
     /// <summary>The ground within Radius of the tile takes no damage and cannot be destroyed (On), or can again (off): "the bridge holds". A save keeps it.</summary>
     ProtectGround = 38,
-    /// <summary>A building of Building Kind is put on the tile for Side (Neutral: nobody's). Under a mission's briefing too (Briefing): the briefing's board is thrown away at Start, so it shows only there ("where the city should be").</summary>
+    /// <summary>A building of Building Kind is put on the tile for Side (Neutral: nobody's). Building Kind "None": the building on the tile is taken away, its own ground showing again. Under a mission's briefing too (Briefing): the briefing's board is thrown away at Start, so it shows only there ("where the city should be", "nothing where it is now").</summary>
     PlaceBuilding = 39,
     /// <summary>Side's AI goes for the tile (On; off: its own plans again): a building there is to be taken, whoever holds it is to be fought. The AI decides who goes where and who pulls back (ScenarioAIGoal). Value: how strongly, 6 normal.</summary>
     SetAIObjective = 40,
@@ -389,6 +388,8 @@ public class ScenarioTrigger {
     public bool OnlySeen;
     /// <summary>Units At Most / At Least: only units that can attack (no supply units, trucks, empty transports' kind).</summary>
     public bool ArmedOnly;
+    /// <summary>Unit Damaged: only a hit that took at least this much strength at once (0: any loss). "We're taking too many losses" for a 2-pip hit, not a scratch.</summary>
+    public int LostAtLeast;
     /// <summary>Unit Killed: only units killed in a fight by a unit of this side (Any: by anyone, or anything).</summary>
     [SideChoice(false)] public long KilledBy = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
@@ -425,7 +426,7 @@ public class ScenarioTrigger {
     public bool Repeat;
     [Tooltip("Repeat: at most once in this many turns (of the side in Turns Of). 0: no limit.")]
     public int RepeatEvery;
-    [Tooltip("Fire only once the board is still: no unit walking, shooting, retreating or boarding (so 'we took damage' comes after the shot has landed). Off: at once, mid-animation.")]
+    [Tooltip("Fire only once the board is still: no unit walking, shooting, retreating or boarding (so 'we took damage' comes after the shot has landed). Only for conditions about what happens on the board (attacks, kills, captures, arrivals, sightings): one about clicks or the clock (selected, proposed, a turn, a day, another trigger) always fires at once. Off: at once, mid-animation.")]
     public bool WaitForAnimations = true;
 
     [Header("Actions (in order)")]
@@ -495,7 +496,6 @@ public class ScenarioScriptData {
     [ScenarioState] public List<DialogueLine> PendingLines = new List<DialogueLine>();
     [ScenarioState] public List<StarBonus> Bonuses = new List<StarBonus>();
     [ScenarioState] public List<ShownReveal> Reveals = new List<ShownReveal>();
-    [ScenarioState] public string Objective = "";
     [ScenarioState] public List<ShownReveal> Protected = new List<ShownReveal>();
     [ScenarioState] public List<AIGoalData> AIGoals = new List<AIGoalData>();
 }

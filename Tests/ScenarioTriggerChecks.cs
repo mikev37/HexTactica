@@ -46,11 +46,13 @@ public static partial class Scenarios {
         make("script-timing", "scriptTiming", (a, o) => {
                  Put("Grunt", a, -2, 0);
                  Script(Trig("Start", TriggerCondition.LevelStart, null, Money(Blue, 100)),
+                        Trig("Board", TriggerCondition.UnitsAtLeast, t => { t.Side = Blue; t.Value = 1; }, Money(Blue, 7)),
+                        Trig("Clicked", TriggerCondition.UnitSelected, t => { t.Side = Blue; }, Money(Red, 3)),
                         Trig("Hold", TriggerCondition.UnitsInArea, t => { t.Side = Blue; t.TileX = 0; t.TileY = 0; t.Radius = 0; t.Delay = 2; t.TurnsOf = Blue; }, Money(Blue, 1)),
                         Trig("Every Blue turn", TriggerCondition.TurnOver, t => { t.Side = Blue; t.Repeat = true; }, Money(Red, 10)),
                         Trig("Second Blue turn", TriggerCondition.TurnOver, t => { t.Side = Blue; t.Count = 2; }, Money(Red, 1000)));
              },
-             "Scenario trigger timing (ScenarioScript): triggers wait until no unit is animating (Wait For Animations); Level Start fires once however long the game runs; a trigger with Delay 2 (turns of Blue) fires only once its condition (a Blue unit on (0,0)) has held through two of Blue's turns starting, without a break, and the count starts again when it breaks; Turn Over with Repeat fires at the end of every Blue turn; with Count 2 (and no Repeat), once, at the end of the second.");
+             "Scenario trigger timing (ScenarioScript): a trigger about the board (Units At Least) waits until no unit is animating (Wait For Animations); one about the clock or a click (Level Start, Unit Selected) fires at once while a unit is still walking; Level Start fires once however long the game runs; a trigger with Delay 2 (turns of Blue) fires only once its condition (a Blue unit on (0,0)) has held through two of Blue's turns starting, without a break, and the count starts again when it breaks; Turn Over with Repeat fires at the end of every Blue turn; with Count 2 (and no Repeat), once, at the end of the second.");
         n++;
         make("script-events", "scriptEvents", (a, o) => {
                  Rig.PlaceBuilding("City", null, 0, 0); Put("Grunt", a, 0, 0);
@@ -133,7 +135,7 @@ public static partial class Scenarios {
                             Act(TriggerActionType.Dialogue, x => x.Lines = new List<DialogueLine> { new DialogueLine { Character = "Placeholder Commander", Text = "Three." } }),
                             Money(Red, 7)));
              },
-             "Dialogue: two triggers speak at once; their lines are queued and shown one at a time (never over each other), the game held (GameController.Paused) while one is shown; each trigger's next action waits until its own lines are closed. With no dialogue box (headless, or no prefab), lines pass at once and nothing waits.");
+             "Dialogue: two triggers speak at once; their lines are shown one at a time (never over each other), the second trigger's once the first's scene is over, the game held (GameController.Paused) while one is shown; each trigger's next action waits until its own lines are closed. With no dialogue box (headless, or no prefab), lines pass at once and nothing waits.");
         n++;
         make("script-save", "scriptSave", (a, o) => {
                  Put("Grunt", a, 0, 0); Put("Grunt", o, 3, 0); Put("Grunt", o, 4, 0);
@@ -257,11 +259,10 @@ public static partial class Scenarios {
         n++;
         make("script-new-functions-2", "scriptNewFunctions2", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Tank", a, 2, 0); Put("Grunt", a, -3, 3); Put("Truck", a, -4, 3); Put("Grunt", o, 4, -2); Put("Tank", a, 6, -2);
-                 Put("Grunt", a, 6, 1); Put("Grunt", a, 7, 0); Put("Grunt", o, 4, 3); Put("Grunt", a, -6, 0); Put("Supplies", o, -2, 5); Put("Artillery", a, 0, -4);
+                 Put("Grunt", a, 6, 1); Put("Grunt", a, 7, 0); Put("Grunt", o, 4, 3); Put("Grunt", a, -6, 0); Put("Supplies", o, -2, 5); Put("Artillery", a, 0, -4); Put("Supplies", a, -1, 6);
                  Script(Trig("Killed by Blue", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KilledBy = Blue; }),
                         Trig("Killed by Red", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KilledBy = Red; }),
                         Trig("Start", TriggerCondition.LevelStart, null,
-                            Act(TriggerActionType.SetObjective, x => { x.Text = "Capture the bridge before Jori!"; }),
                             Act(TriggerActionType.ProtectGround, x => { x.TileX = -2; x.TileY = 0; x.Radius = 0; }),
                             Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Rider"; x.Target = "Lorry"; }),
                             Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Ambusher"; x.TargetSide = Red; x.FromTile = true; x.TileX = 5; x.TileY = -3; })),
@@ -269,13 +270,15 @@ public static partial class Scenarios {
                         Trig("Two armed", TriggerCondition.UnitsAtMost, t => { t.Side = Red; t.Value = 2; t.ArmedOnly = true; }),
                         Trig("Forced", TriggerCondition.AfterTrigger, t => { t.Enabled = false; t.AfterTrigger = "Start"; },
                             Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Hiker"; x.TileX = 6; x.TileY = -6; x.Force = true; }),
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Far"; x.Target = "Lorry"; x.Force = true; }),
                             Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Pair"; x.TargetSide = Red; x.TargetOnTile = true; x.TileX = 4; x.TileY = 3; }),
                             Act(TriggerActionType.PlaceBuilding, x => { x.BuildingKind = "City"; x.Side = TriggerSide.Neutral; x.TileX = 0; x.TileY = 4; }),
                             Act(TriggerActionType.DestroyUnits, x => { x.UnitSide = Red; x.UnitKind = "Supplies"; x.Withdraw = true; })),
                         Trig("Supply gone", TriggerCondition.UnitKilled, t => { t.Side = Red; t.UnitKind = "Supplies"; }),
+                        Trig("Unplaced", TriggerCondition.LevelStart, t => { t.Enabled = false; }, Act(TriggerActionType.PlaceBuilding, x => { x.BuildingKind = "None"; x.TileX = 0; x.TileY = 4; })),
                         Trig("Allies", TriggerCondition.TurnStarted, t => { t.Side = Red; }, Act(TriggerActionType.SetTeam, x => { x.Side = Red; x.Value = 4; }), Act(TriggerActionType.SetTeam, x => { x.Side = Blue; x.Value = 4; })));
              },
-             "More scenario functions (Act 1, mission 5): Unit Killed By (a Red grunt killed by Blue's tank counts for By Blue, not By Red); Set Objective (the objective on screen, kept in the script); Protect Ground (a protected tile takes no damage); Order Units boarding a transport named as its target; Order Units attacking from a set tile (From Tile); Set Team (with alliances on, two sides put on one team are allies, no longer hostile); Order Units Force (the whole way, however far); two units ordered at one target take different tiles; Place Building; Destroy Units Withdraw (gone, nobody's kill); Units At Most Armed Only; Fired From Fog (artillery the target's side did not see).");
+             "More scenario functions (Act 1, mission 5): Unit Killed By (a Red grunt killed by Blue's tank counts for By Blue, not By Red); Protect Ground (a protected tile takes no damage); Order Units boarding a transport named as its target; Order Units attacking from a set tile (From Tile); Set Team (with alliances on, two sides put on one team are allies, no longer hostile); Order Units Force (the whole way, however far; boarding a transport too); two units ordered at one target take different tiles; Place Building, and Place Building None taking it away; Destroy Units Withdraw (gone, nobody's kill); Units At Most Armed Only; Fired From Fog (artillery the target's side did not see).");
         n++;
         make("script-ai-objective", "scriptAIObjective", (a, o) => {
                  Rig.PlaceBuilding("City", o, -3, 0); Put("Grunt", o, -3, 0);
@@ -290,6 +293,19 @@ public static partial class Scenarios {
                         Trig("Humans", TriggerCondition.UnitsAtLeast, t => { t.Side = TriggerSide.Human; t.UnitKind = "Artillery"; t.Value = 1; }));
              },
              "A bystander side (Player.bystander: the range's guns at an exercise): nobody can attack its units and they attack nobody, it is nobody's enemy; its turn is skipped (Red's turn follows Blue's); it is not a Human (or AI) side for triggers; with its units still on the board, the side left standing wins as usual; given to a side (Give Units) its units fight again.");
+        n++;
+        make("script-one-scene", "scriptOneScene", (a, o) => {
+                 Put("Grunt", a, 0, 0); Put("Grunt", o, 4, 0);
+                 Script(Trig("Big hit", TriggerCondition.UnitDamaged, t => { t.Side = Red; t.Value = 6; t.LostAtLeast = 2; }, Money(Red, 100)),
+                        Trig("First", TriggerCondition.LevelStart, null,
+                            Act(TriggerActionType.Dialogue, x => x.Lines = new List<DialogueLine> { new DialogueLine { Character = "Anna", Text = "A1." } }),
+                            Money(Blue, 1),
+                            Act(TriggerActionType.Dialogue, x => x.Lines = new List<DialogueLine> { new DialogueLine { Character = "Anna", Text = "A2." } })),
+                        Trig("Second", TriggerCondition.LevelStart, null,
+                            Money(Red, 5),
+                            Act(TriggerActionType.Dialogue, x => x.Lines = new List<DialogueLine> { new DialogueLine { Character = "Jori", Text = "B1." } })));
+             },
+             "One scene at a time (ScenarioScript): two triggers fire together, the first with two lines and an action between them, the second with one line: the second's line waits until the first's scene is over (A1, A2, then B1, never B1 between them); the second's action before its line goes ahead at once. Unit Damaged with Lost At Least 2: a 1-strength scratch does not count, a 2-strength hit does.");
         n++;
         make("mission-tally", "scriptMissionTally", (a, o) => { Put("Grunt", o, 0, 0); },
              "The mission rating's tally (MissionRating.Tally, from the game log): turns are the days the player moved on, each once (a turn logged twice, at a load, is one day); an enemy unit killed by the player, starved out of supply or ditched out of fuel is the player's kill; an ally's is nobody's; the player's own losses whatever the cause.");
@@ -608,12 +624,16 @@ public static partial class Scenarios {
                 // (Headless boards are not waited on, as nothing plays there: played as the game would be, for these two frames.)
                 g.path.Add(g.tile);
                 gc.headless = false;
-                s.Tick(0.1f); s.Tick(0.1f);
+                s.Tick(0.1f);
+                HexTile.NotifyUnitSelected(g);   // (clicked while it walks)
+                s.Tick(0.1f);
                 gc.headless = true;
-                bool waitsForAnimation = Fired(s, "Start") == 0;
+                int boardEarly = Fired(s, "Board"), startEarly = Fired(s, "Start"), clickedEarly = Fired(s, "Clicked");
+                bool waitsForAnimation = boardEarly == 0 && startEarly == 1 && clickedEarly == 1;
                 g.path.Clear();
                 for (int i = 0; i < 5; i++) s.Tick(0.1f);
-                bool once = a.money == 100 && Fired(s, "Start") == 1 && waitsForAnimation;
+                bool once = a.money == 107 && Fired(s, "Start") == 1 && Fired(s, "Board") == 1 && waitsForAnimation;
+                o.money = 0;
                 MoveTo(g, 0, 0); s.Tick(0.1f);                                    // held from Blue's turn 0
                 gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // Blue's turn 1 starts: held 1 turn
                 bool notYet = Fired(s, "Hold") == 0;
@@ -621,9 +641,9 @@ public static partial class Scenarios {
                 gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // turn 2: 1 turn since
                 bool restarted = Fired(s, "Hold") == 0;
                 gc.EndTurn(); s.Tick(0.1f); gc.EndTurn(); s.Tick(0.1f);           // turn 3: 2 turns since
-                bool held = Fired(s, "Hold") == 1 && a.money == 101;
+                bool held = Fired(s, "Hold") == 1 && a.money == 108;
                 bool repeat = Fired(s, "Every Blue turn") == 3 && Fired(s, "Second Blue turn") == 1 && o.money == 1030;
-                detail = "waits while a unit animates " + waitsForAnimation + "; Level Start once " + once + " (Blue " + a.money + "); Delay 2 turns: fired after 1 turn " + !notYet + ", count started over after a break " + restarted + ", fired once held 2 of Blue's turns " + held
+                detail = "waits while a unit animates " + waitsForAnimation + " (board " + boardEarly + ", start " + startEarly + ", clicked " + clickedEarly + "); Level Start once " + once + " (Blue " + a.money + "); Delay 2 turns: fired after 1 turn " + !notYet + ", count started over after a break " + restarted + ", fired once held 2 of Blue's turns " + held
                        + "; three Blue turn ends: every Blue turn " + Fired(s, "Every Blue turn") + "x, second Blue turn " + Fired(s, "Second Blue turn") + "x (Red " + o.money + ")";
                 return once && notYet && restarted && held && repeat;
             }
@@ -731,13 +751,13 @@ public static partial class Scenarios {
                 ScenarioDialogue.Next(); s.Tick(0.1f);
                 bool third = box.shown.Count == 3 && box.shown[2] == "Three." && o.money == 5 && GameController.Paused;
                 ScenarioDialogue.Next(); s.Tick(0.1f);
-                bool done = !GameController.Paused && !GameController.ScriptHold && o.money == 12 && box.closed == 1;
+                bool done = !GameController.Paused && !GameController.ScriptHold && o.money == 12 && box.closed == 2;
                 // No box: lines pass at once.
                 ScenarioDialogue.Presenter = null;
                 int last = ScenarioDialogue.Enqueue(new List<DialogueLine> { new DialogueLine { Text = "nobody sees this" } });
                 bool passes = ScenarioDialogue.Closed(last) && !GameController.Paused;
                 detail = "first line shown, game held, next action waiting " + held + "; second " + second + "; the other trigger's line after them, the first trigger's action run " + third
-                       + "; closed: game goes on, both actions run (Red " + o.money + "), box closed once " + done + "; with no box lines pass " + passes;
+                       + "; closed: game goes on, both actions run (Red " + o.money + "), box closed after each trigger's scene " + done + "; with no box lines pass " + passes;
                 return held && second && third && done && passes;
             }
             case "scriptAIGiven": {
@@ -970,27 +990,28 @@ public static partial class Scenarios {
                 Unit other = Rig.At(4, -2).occupier, ambusher = Rig.At(6, -2).occupier;
                 rider.personal_name = "Rider"; lorry.personal_name = "Lorry"; ambusher.personal_name = "Ambusher";
                 Unit hiker = Rig.At(-6, 0).occupier, p1 = Rig.At(6, 1).occupier, p2 = Rig.At(7, 0).occupier, sup = Rig.At(-2, 5).occupier;
+                Unit far = Rig.At(-1, 6).occupier; far.personal_name = "Far";
                 hiker.personal_name = "Hiker"; p1.personal_name = "Pair"; p2.personal_name = "Pair";
                 HexTile safe = Rig.At(-2, 0); safe.terrain = T("Forest");
-                string shownObjective = null;
-                ScenarioGame.ObjectiveHook = x => shownObjective = x;
                 Action settle = () => { for (int i = 0; i < 6; i++) s.Tick(0.2f); };
                 settle();
                 List<string> r = new List<string>();
-                bool objective = s.Objective == "Capture the bridge before Jori!" && shownObjective == s.Objective;
                 safe.Damage(99);
                 bool protectedOk = safe.terrain == T("Forest") && safe.damage == 0;
                 bool boarded = rider.trasnporter == lorry;
                 bool fromTile = ambusher.tile == Rig.At(5, -3) && other.Strength < 6;
                 s.Find("Forced").Enabled = true; settle();
                 bool forced = hiker.tile == Rig.At(6, -6);
+                bool farBoarded = far.trasnporter == lorry;
                 bool apart = p1.tile != p2.tile && p1.tile != null && p2.tile != null;
                 bool placed = Rig.At(0, 4).building != null;
+                s.Find("Unplaced").Enabled = true; settle();
+                bool unplaced = Rig.At(0, 4).building == null && !Building.all.Exists(b => b != null && b.tile == Rig.At(0, 4));
                 bool gone = sup == null || sup.RealStrength <= 0;
                 bool notKilled = Fired(s, "Supply gone") == 0;
                 bool armed = Fired(s, "Two armed") == 0;   // (Red: three armed grunts, one supply unit)
-                r.Add("forced the whole way (12 tiles) " + forced + "; two ordered at one target on different tiles " + apart + " (" + (p1.tile != null ? p1.tile.x + "," + p1.tile.y : "-") + " / " + (p2.tile != null ? p2.tile.x + "," + p2.tile.y : "-") + "); building placed " + placed + "; withdrawn, not killed " + (gone && notKilled) + "; armed only " + armed);
-                r.Add("objective shown " + objective + "; protected ground undamaged " + protectedOk + "; boarded the named truck " + boarded + "; attacked from the set tile " + fromTile + " (at " + (ambusher.tile != null ? ambusher.tile.x + "," + ambusher.tile.y : "-") + ", target " + other.Strength + ")");
+                r.Add("forced the whole way (12 tiles) " + forced + "; boarded a truck 6 tiles off (Force) " + farBoarded + "; two ordered at one target on different tiles " + apart + " (" + (p1.tile != null ? p1.tile.x + "," + p1.tile.y : "-") + " / " + (p2.tile != null ? p2.tile.x + "," + p2.tile.y : "-") + "); building placed " + placed + ", taken away again (Place Building None) " + unplaced + "; withdrawn, not killed " + (gone && notKilled) + "; armed only " + armed);
+                r.Add("protected ground undamaged " + protectedOk + "; boarded the named truck " + boarded + "; attacked from the set tile " + fromTile + " (at " + (ambusher.tile != null ? ambusher.tile.x + "," + ambusher.tile.y : "-") + ", target " + other.Strength + ")");
                 Unit gun = Rig.At(0, -4).occupier;
                 gc.fogOfWar = true; FogOfWar.Reset(); FogOfWar.Changed(); FogOfWar.Refresh(); settle();
                 bool unseenFirst = !FogOfWar.Sees(o, gun);
@@ -1007,9 +1028,8 @@ public static partial class Scenarios {
                 gc.EndTurn(); settle(); gc.EndTurn(); settle();
                 bool allied = hostileBefore && !Player.Hostile(a, o) && a.team == 4 && o.team == 4;
                 r.Add("set team: hostile before " + hostileBefore + ", allies after " + allied);
-                ScenarioGame.ObjectiveHook = null;
                 detail = string.Join("; ", r.ToArray());
-                return objective && protectedOk && boarded && fromTile && by && allied && forced && apart && placed && gone && notKilled && armed && fog;
+                return protectedOk && boarded && fromTile && by && allied && forced && farBoarded && apart && placed && unplaced && gone && notKilled && armed && fog;
             }
             case "scriptAIObjective": {
                 foreach (MonoBehaviour m in a.GetComponents<MonoBehaviour>()) if (m is IAIController) m.enabled = true;
@@ -1054,6 +1074,27 @@ public static partial class Scenarios {
                 detail += "nobody fights its units, they fight nobody, nobody's enemy, not Human or AI " + fights + "; a Human filter leaves it out " + notHuman + "; turns: " + string.Join(", ", order.ToArray()) + ", never the range " + skipped
                        + "; Red wins with the range's guns on the board " + won + "; given to Red: Red's " + given;
                 return fights && notHuman && skipped && won && given;
+            }
+            case "scriptOneScene": {
+                FakeBox box = new FakeBox();
+                ScenarioDialogue.Presenter = box;
+                a.money = 0; o.money = 0;
+                s.Tick(0.1f);
+                bool early = o.money == 5 && box.shown.Count == 1 && box.shown[0] == "A1.";
+                ScenarioDialogue.Next(); s.Tick(0.1f); s.Tick(0.1f);
+                bool second = box.shown.Count == 2 && box.shown[1] == "A2.";
+                ScenarioDialogue.Next(); s.Tick(0.1f); s.Tick(0.1f);
+                bool third = box.shown.Count == 3 && box.shown[2] == "B1.";
+                ScenarioDialogue.Next(); s.Tick(0.1f);
+                ScenarioDialogue.Presenter = null;
+                Unit red = Rig.At(4, 0).occupier;
+                o.money = 0;
+                red.Strength = 5; s.Tick(0.1f);
+                bool scratch = Fired(s, "Big hit") == 0;
+                red.Strength = 3; s.Tick(0.1f);
+                bool hit = Fired(s, "Big hit") == 1 && o.money == 100;
+                detail = "lines in order: " + string.Join(", ", box.shown.ToArray()) + "; the second's money before its line " + early + "; a scratch not counted " + scratch + ", a 2-strength hit counted " + hit;
+                return early && second && third && a.money == 1 && scratch && hit;
             }
             case "scriptMissionTally": {
                 GameRecord rec = new GameRecord();

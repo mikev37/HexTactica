@@ -5,6 +5,8 @@ using UnityEngine;
 /// The music, in every scene (one object that lives through scene changes). Tracks are AudioClips in Resources/Music:
 /// <list type="bullet">
 /// <item>Menu: the main menu, the pre-game screen, the map editor.</item>
+/// <item>Campaign/&lt;campaign scene name&gt; (Campaign/Campaign, ...): the campaign screen while it looks at that
+///   campaign's map; a new track when the view moves to another campaign. Menu if the folder is empty.</item>
 /// <item>General, and Faction/&lt;faction asset name&gt; (Faction/Federation, ...): in play, each track picked at random
 ///   from the general ones and those of the faction whose turn it is.</item>
 /// <item>Victory, Loss: once the game is over (Victory if a human player won, or nobody human played and somebody
@@ -17,7 +19,7 @@ using UnityEngine;
 /// </summary>
 public class MusicManager : MonoBehaviour {
 
-    public enum Kind { None, Menu, General, Victory, Loss, Special }
+    public enum Kind { None, Menu, Campaign, General, Victory, Loss, Special }
 
     public const string Root = "Music/";
     public static MusicManager Instance { get; private set; }
@@ -117,13 +119,19 @@ public class MusicManager : MonoBehaviour {
         // What the game is doing: a change is a trigger (game start, game over, back to the menu).
         // (Held a moment first: a scene just opened does not know yet what it is for, GameSession.Start.)
         Kind now = Context();
-        if (now != seen) { seen = now; seenSince = Time.unscaledTime; }
-        if (now != kind && Time.unscaledTime - seenSince >= 0.3f) {
+        string nowCampaign = now == Kind.Campaign ? CampaignScreen.Viewing : "";
+        if (now != seen || nowCampaign != seenCampaign) { seen = now; seenCampaign = nowCampaign; seenSince = Time.unscaledTime; }
+        if ((now != kind || nowCampaign != campaign) && Time.unscaledTime - seenSince >= 0.3f) {
+            // Between the menu and a campaign with no tracks of its own (or two such campaigns) the music carries on.
+            bool sameTracks = Effective(now, nowCampaign) != null && Effective(now, nowCampaign) == Effective(kind, campaign) && decks[current].source.clip != null && !special;
+            campaign = nowCampaign;
             // Play begun from a menu (or the scene opened): a match starts. Not on a replay being watched.
             if (now == Kind.General && kind != Kind.General && !HexTactica.Harness.Replay.Active) GameSounds.MatchStarted();
             kind = now;
-            special = false;
-            Switch(Next(kind), Settings.musicSwitchFade, false, Settings.musicSwitchFade);
+            if (!sameTracks) {
+                special = false;
+                Switch(Next(kind), Settings.musicSwitchFade, false, Settings.musicSwitchFade);
+            }
         }
 
         Deck cur = decks[current];
@@ -165,6 +173,16 @@ public class MusicManager : MonoBehaviour {
     void OnApplicationFocus(bool focused) { away = !focused; if (focused) awayUntil = Time.unscaledTime + 1f; }
     void OnApplicationPause(bool paused) { away = paused; if (!paused) awayUntil = Time.unscaledTime + 1f; }
     Kind seen = Kind.None;
+    string seenCampaign = "", campaign = "";
+
+    static string CampaignFolder(string scene) { return "Campaign/" + scene; }
+
+    /// <summary>The folder the menu or the campaign screen plays from (null for anything else).</summary>
+    string Effective(Kind k, string scene) {
+        if (k == Kind.Menu) return "Menu";
+        if (k == Kind.Campaign) return Folder(CampaignFolder(scene)).Length > 0 ? CampaignFolder(scene) : "Menu";
+        return null;
+    }
 
     /// <summary>The end fade for a clip: the setting, but never more than a third of a short track.</summary>
     static float EndFade(AudioClip clip) { return Mathf.Min(Mathf.Max(0f, Settings.musicEndFade), clip.length / 3f); }
@@ -172,7 +190,7 @@ public class MusicManager : MonoBehaviour {
     /// <summary>What the music should be for now, from the scene and the game.</summary>
     static Kind Context() {
         GameController gc = GameController.gc;
-        if (gc == null) return Kind.Menu;   // the main menu (or any scene without a game)
+        if (gc == null) return string.IsNullOrEmpty(CampaignScreen.Viewing) ? Kind.Menu : Kind.Campaign;   // the main menu (or any scene without a game), or the campaign screen
         GameSession session = GameSession.Instance;
         if (session != null && (session.Mode == SessionMode.Setup || session.Mode == SessionMode.Editor)) return Kind.Menu;
         if (gc.gameOver) return GameSounds.HumanWon(gc) ? Kind.Victory : Kind.Loss;
@@ -183,6 +201,10 @@ public class MusicManager : MonoBehaviour {
     AudioClip Next(Kind k) {
         switch (k) {
             case Kind.Menu: return Pick(Folder("Menu"));
+            case Kind.Campaign: {
+                AudioClip[] own = Folder(CampaignFolder(campaign));
+                return Pick(own.Length > 0 ? own : Folder("Menu"));
+            }
             case Kind.Victory: return Pick(Folder("Victory"));
             case Kind.Loss: return Pick(Folder("Loss"));
             case Kind.General: {

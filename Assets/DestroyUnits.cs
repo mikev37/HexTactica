@@ -31,6 +31,13 @@ public abstract class AIMissionObjective : MonoBehaviour {
     public virtual float TileBonus(Unit unit, HexTile tile, AIMap map) { return 0f; }
 
     /// <summary>
+    /// Additional value this objective places on an attack, as a fraction of the target's worth (as TileBonus is of the
+    /// unit's): "hit whoever holds the city". Added to the attack's own appraisal (AITargeting.Appraise), so an attack
+    /// the objective wants can outweigh a poor trade. 0 for attacks it does not care about.
+    /// </summary>
+    public virtual float AttackBonus(Unit attacker, Unit defender, CombatOutcome outcome) { return 0f; }
+
+    /// <summary>
     /// True if this objective wants to fully dictate this unit's action, bypassing the
     /// tactical layer. Should be rare — reserve it for scripted behaviour.
     /// </summary>
