@@ -17,6 +17,8 @@ namespace HexTactica.AI {
     public partial class AIMap {
 
         public readonly Player player;
+        /// <summary>The side's mission objective (AIPlayer.objective), read on the main thread as the map is made: an attack's appraisal asks it (AttackBonus).</summary>
+        public AIMissionObjective objective;
         public readonly AIProfile profile;
         public SupplyNetwork.Result supply;
 

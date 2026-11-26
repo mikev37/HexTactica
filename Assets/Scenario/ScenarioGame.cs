@@ -307,7 +307,7 @@ public static class ScenarioGame {
 
     static bool OrderNow(Unit u, Unit target, HexTile goal, HexTile from, bool force) {
         if (target != null && target != u && target.tile != null && target.owner != null && Player.Friendly(target.owner, u.owner)) {
-            List<HexTile> steps = HexTile.BoardingPath(u, target);
+            List<HexTile> steps = HexTile.BoardingPath(u, target, force);
             if (steps != null && u.WalkAndBoard(steps, target, true)) { u.FinishActive(); return true; }
         }
         HexTile start = u.tile;
@@ -395,10 +395,6 @@ public static class ScenarioGame {
 
     public static void HighlightUI(string what, string id, bool on) { if (HighlightUIHook != null) HighlightUIHook(what ?? "", id ?? "", on); }
 
-    /// <summary>Set by ObjectivePanel (the UI side): the objective on screen (empty: none).</summary>
-    public static System.Action<string> ObjectiveHook;
-
-    public static void ShowObjective(string text) { if (ObjectiveHook != null) ObjectiveHook(text ?? ""); }
 
     public static bool PlayMusic(string track, bool loop) { return PlayMusicHook == null || PlayMusicHook(track, loop); }
 
@@ -508,9 +504,25 @@ public static class ScenarioGame {
     /// <summary>A building of <paramref name="kind"/> on (x, y) for <paramref name="owner"/> (null: nobody's). Null if there is no such building or the tile is taken by one.</summary>
     public static Building PlaceBuilding(string kind, int x, int y, Player owner) {
         HexTile t = Tile(x, y);
+        if (kind != null && kind.Trim() == RemoveKind) { RemoveBuilding(t); return null; }
         Building prefab = string.IsNullOrEmpty(kind) ? null : LevelEditor.loadBuilding(kind);
         if (t == null || prefab == null || t.building != null || BuildingController.bc == null) return null;
         return BuildingController.bc.Place(owner, prefab, t);
+    }
+
+    /// <summary>Place Building's kind that takes the building off the tile instead (its own ground shows again).</summary>
+    public const string RemoveKind = "None";
+
+    /// <summary>Take the building on <paramref name="t"/> off the board, leaving the ground under it. False if there is none.</summary>
+    public static bool RemoveBuilding(HexTile t) {
+        if (t == null || t.building == null) return false;
+        Building b = t.building;
+        b.Release();
+        if (BuildingController.bc != null) BuildingController.bc.buildings.Remove(b);
+        Building.all.Remove(b);
+        if (b.gameObject != null) UnityEngine.Object.Destroy(b.gameObject);
+        FogOfWar.Changed();
+        return true;
     }
 
     /// <summary>Destroy the terrain on every tile within <paramref name="radius"/> of (x, y) that can be (one with a destroyedInto).</summary>

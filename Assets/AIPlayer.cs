@@ -852,6 +852,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
         Action work = () => {
             using (v.Enter()) {
                 AIMap m = new AIMap(player, Profile, carry, true);
+                m.objective = objective;
                 m.Warm();
                 lock (speculationLock) if (generation == speculationGeneration) { speculation = m; speculatedMark = mark; }
             }
@@ -892,6 +893,7 @@ public class AIPlayer : MonoBehaviour, IAIController {
     void PrepareTurnOnBoard() {
         { long __p = AIPerf.Begin();
         map = new AIMap(player, Profile, TakeSpeculation() ?? map);
+        map.objective = objective;
         AIPerf.End("prepare: board read (AIMap)", __p); }
         // What the fog may hide, as this turn prices it (AISigint): every enemy unit lost from sight, where it could be.
         if (Trace != null && map.sigint != null) foreach (string line in map.sigint.Describe()) Trace("   fog: " + line);

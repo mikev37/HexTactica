@@ -847,15 +847,18 @@ public class HexTile : MonoBehaviour
     /// tile order) to a tile beside the transport it can step in from — a friend's tile included, as it only passes
     /// through. Null if none. Leaves the tiles' search state cleared.
     /// </summary>
-    public static List<HexTile> BoardingPath(Unit cargo, Unit transport) {
+    public static List<HexTile> BoardingPath(Unit cargo, Unit transport) { return BoardingPath(cargo, transport, false); }
+
+    /// <summary>As above; <paramref name="anyDistance"/>: however far it is (a scripted order's Force: no limit on the walk this turn).</summary>
+    public static List<HexTile> BoardingPath(Unit cargo, Unit transport, bool anyDistance) {
         if (cargo == null || cargo.tile == null || transport == null || transport.tile == null || !Transporting.CanCarry(transport, cargo)) return null;
         if ((cargo.tile == transport.tile || transport.tile.neighbors.Contains(cargo.tile)) && Transporting.CanBoardFromTile(transport, cargo, cargo.tile) && Transporting.StepInFits(cargo, cargo.tile, 0, transport))
             return new List<HexTile> { cargo.tile };
         HexGenerator.forAllTiles(t => { t.G = 0; t.parent = null; return 0; });
-        List<HexTile> reach = cargo.tile.CheckMovementRange(cargo);
+        List<HexTile> reach = anyDistance ? cargo.tile.CheckMovementRange(cargo, 999) : cargo.tile.CheckMovementRange(cargo);
         HexTile beside = null;
         foreach (HexTile n in transport.tile.neighbors) {
-            if (n == null || n == cargo.tile || !reach.Contains(n) || !BoardableFrom(cargo, n, transport) || !Transporting.StepInFits(cargo, n, n.G, transport)) continue;
+            if (n == null || n == cargo.tile || !reach.Contains(n) || !BoardableFrom(cargo, n, transport) || (!anyDistance && !Transporting.StepInFits(cargo, n, n.G, transport))) continue;
             if (beside == null || n.G < beside.G || (n.G == beside.G && CombatMath.Precedes(n, beside))) beside = n;
         }
         List<HexTile> steps = beside != null ? beside.buildpath() : null;

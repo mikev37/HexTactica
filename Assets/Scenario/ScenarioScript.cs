@@ -213,9 +213,45 @@ public class ScenarioScript : MonoBehaviour {
             if (!IsMet(t, 0)) { t.ConditionMetTurn = -1; continue; }                               // Delay counts unbroken holding
             if (t.ConditionMetTurn < 0) t.ConditionMetTurn = turns;
             if (turns - t.ConditionMetTurn < t.Delay) continue;
-            if (t.WaitForAnimations && busy) { waitingOnBoard = true; continue; }                  // after the shot lands, the retreat ends ...
+            if (busy && WaitsForBoard(t, 0)) { waitingOnBoard = true; continue; }                  // after the shot lands, the retreat ends ...
             Fire(i);
             if (gc.gameOver) return;                                                              // a Win / Lose ends evaluation
+        }
+    }
+
+    /// <summary>
+    /// Does <paramref name="t"/> wait for the board to be still before it fires? Only when Wait For Animations is on and
+    /// its condition is about what play does on the board (a shot, a death, a capture, a unit arriving or seen): the
+    /// line should come once that has played out. A condition about the player's clicks or the clock (selected,
+    /// proposed, inspected, a turn, a day, another trigger) fires at once, whatever else is walking.
+    /// </summary>
+    public bool WaitsForBoard(ScenarioTrigger t, int depth = 0) {
+        if (t == null || !t.WaitForAnimations || depth > MaxDepth) return false;
+        switch (t.Condition) {
+            case TriggerCondition.LevelStart:
+            case TriggerCondition.DayReached:
+            case TriggerCondition.TurnStarted:
+            case TriggerCondition.TurnOver:
+            case TriggerCondition.MoneyAtLeast:
+            case TriggerCondition.MoneyAtMost:
+            case TriggerCondition.UnitBuilt:
+            case TriggerCondition.AfterTrigger:
+            case TriggerCondition.UnitSelected:
+            case TriggerCondition.BuildingSelected:
+            case TriggerCondition.MoveProposed:
+            case TriggerCondition.AttackProposed:
+            case TriggerCondition.UnloadProposed:
+            case TriggerCondition.EnemyInspected:
+            case TriggerCondition.StrikeLaunched:
+            case TriggerCondition.Briefing:
+                return false;
+            case TriggerCondition.AllOf:
+            case TriggerCondition.AnyOf:
+            case TriggerCondition.NoneOf:
+                if (t.Parts != null) foreach (string name in t.Parts) if (WaitsForBoard(Find(name), depth + 1)) return true;
+                return false;
+            default:
+                return true;
         }
     }
 
@@ -456,7 +492,7 @@ public class ScenarioScript : MonoBehaviour {
             Seen was;
             if (seen.TryGetValue(u, out was)) {
                 // Where it was hit: a defender driven back is counted where it stood (an attacker, where it attacked from).
-                if (s < was.strength) Damaged(u, s, at != was.tile && was.tile != null && GameController.gc != null && u.owner != GameController.gc.activePlayer ? was.tile : at);
+                if (s < was.strength) Damaged(u, s, was.strength - s, at != was.tile && was.tile != null && GameController.gc != null && u.owner != GameController.gc.activePlayer ? was.tile : at);
                 else if (s > was.strength) Healed(u, s, at);
                 if (at != was.tile && at != null) Entered(u, was.tile, at, !was.aboard && u.trasnporter == null && !ScenarioGame.Lifted.Contains(u));
                 if (spotting) Spotted(u, at, sight & ~was.seenBy);
@@ -495,8 +531,8 @@ public class ScenarioScript : MonoBehaviour {
         }
     }
 
-    void Damaged(Unit u, int strength, HexTile at) {
-        Count(TriggerCondition.UnitDamaged, t => strength <= t.Value && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
+    void Damaged(Unit u, int strength, int lost, HexTile at) {
+        Count(TriggerCondition.UnitDamaged, t => strength <= t.Value && lost >= t.LostAtLeast && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
     }
 
     void Healed(Unit u, int strength, HexTile at) {
@@ -524,7 +560,8 @@ public class ScenarioScript : MonoBehaviour {
                                                && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
         // Dying is being damaged down to nothing (unless the frame already saw it at 0).
         Seen was;
-        if (!seen.TryGetValue(u, out was) || was.strength > 0) Damaged(u, 0, at);
+        bool known = seen.TryGetValue(u, out was);
+        if (!known || was.strength > 0) Damaged(u, 0, known ? was.strength : 6, at);
         seen[u] = new Seen { strength = 0, tile = at, pass = pass };
     }
 
@@ -671,18 +708,48 @@ public class ScenarioScript : MonoBehaviour {
         t.ConditionMetTurn = -1;
         if (t.Actions == null || t.Actions.Count == 0) { Warn(t, "it fired, but it has no actions."); return; }
         RunningActions r = new RunningActions { Trigger = index, Next = 0, Subject = SubjectOf(t, 0), SubjectAt = SubjectTileOf(t, 0) };
-        if (!Run(r)) running.Add(r);
+        if (!Run(r, running.Count)) running.Add(r);
     }
 
     void RunActions() {
         for (int i = 0; i < running.Count; i++) {
-            if (Run(running[i])) { running.RemoveAt(i); i--; }
+            if (Run(running[i], i)) { running.RemoveAt(i); i--; }
             if (GameController.gc.gameOver) { running.Clear(); return; }
         }
     }
 
+    /// <summary>Is this a scene's action: a line or the camera? (Waits, markers, spawns, orders and the rest are not: a trigger of those alone never waits for the floor.)</summary>
+    static bool SceneAction(TriggerAction a) {
+        return a != null && (a.Type == TriggerActionType.Dialogue || a.Type == TriggerActionType.CameraFocus
+                             || a.Type == TriggerActionType.CameraFrameBoard);
+    }
+
+    /// <summary>Has the trigger a scene still to play (from its next action on)?</summary>
+    bool SceneAhead(RunningActions r) {
+        if (r.Trigger < 0 || r.Trigger >= triggers.Count || triggers[r.Trigger] == null) return false;
+        List<TriggerAction> acts = triggers[r.Trigger].Actions;
+        if (acts == null) return false;
+        if (r.WaitLine > 0) return true;   // a line of its own still open
+        for (int i = r.Next; i < acts.Count; i++) if (SceneAction(acts[i])) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// One scene at a time: a trigger about to play its first line or camera move waits until the triggers fired before
+    /// it (those before <paramref name="before"/> in the running list) have played theirs. So two scenes set off at
+    /// once play one after the other, never a line of one between two lines of the other. The actions before its
+    /// first line (enables, disables, markers, spawns) go ahead at once; once its scene has begun it keeps the floor.
+    /// </summary>
+    bool SceneQueued(RunningActions r, int before) {
+        List<TriggerAction> acts = triggers[r.Trigger].Actions;
+        if (r.Next >= acts.Count || !SceneAction(acts[r.Next])) return false;
+        for (int i = 0; i < r.Next; i++) if (SceneAction(acts[i])) return false;      // its scene has begun
+        for (int i = 0; i < before && i < running.Count; i++) if (running[i] != r && SceneAhead(running[i])) return true;
+        return false;
+    }
+
     /// <summary>Carry on with a trigger's actions until one must wait. True when they are all done.</summary>
-    bool Run(RunningActions r) {
+    bool Run(RunningActions r, int index) {
         if (r.Trigger < 0 || r.Trigger >= triggers.Count || triggers[r.Trigger] == null) return true;
         ScenarioTrigger t = triggers[r.Trigger];
         while (true) {
@@ -693,6 +760,7 @@ public class ScenarioScript : MonoBehaviour {
             if (r.WaitStill > 0f && clock < r.WaitStill && GameController.gc != null && !GameController.gc.headless && (Unit.AnyAnimating() || Strikes.Showing)) return false;
             r.WaitStill = 0f;
             if (t.Actions == null || r.Next >= t.Actions.Count) return true;
+            if (SceneQueued(r, index)) return false;
             TriggerAction a = t.Actions[r.Next++];
             if (a == null) continue;
             Do(t, a, r);
@@ -706,8 +774,7 @@ public class ScenarioScript : MonoBehaviour {
     List<StarBonus> bonuses = new List<StarBonus>();
     List<ShownReveal> reveals = new List<ShownReveal>();
     int revealsApplied = -1;
-    /// <summary>The objective on screen (Set Objective), and the ground made safe from damage or not (Protect Ground, in order): kept in a save.</summary>
-    string objective = "";
+    /// <summary>The ground made safe from damage or not (Protect Ground, in order): kept in a save.</summary>
     List<ShownReveal> protectedGround = new List<ShownReveal>();
     List<AIGoalData> aiGoals = new List<AIGoalData>();
 
@@ -725,9 +792,6 @@ public class ScenarioScript : MonoBehaviour {
                 if (ai != null && ai.objective != goal) ai.objective = goal;
             }
     }
-
-    /// <summary>The objective on screen ("" none).</summary>
-    public string Objective { get { return objective; } }
 
     static void Protect(ShownReveal g) {
         HexTile c = ScenarioGame.Tile(g.TileX, g.TileY);
@@ -979,7 +1043,10 @@ public class ScenarioScript : MonoBehaviour {
                 BoardChanged(); return;
             case TriggerActionType.PlaceBuilding: {
                 Player owner = a.Side == TriggerSide.Neutral ? null : ScenarioGame.Resolve(a.Side);
-                if (ScenarioGame.PlaceBuilding(a.BuildingKind, a.TileX, a.TileY, owner) == null) Warn(t, "Place Building: no " + a.BuildingKind + " put on (" + a.TileX + "," + a.TileY + ").");
+                bool removing = a.BuildingKind != null && a.BuildingKind.Trim() == ScenarioGame.RemoveKind;
+                HexTile on = ScenarioGame.Tile(a.TileX, a.TileY);
+                if (removing) { if (on == null || on.building == null) Warn(t, "Place Building None: no building on (" + a.TileX + "," + a.TileY + ") to take away."); ScenarioGame.PlaceBuilding(a.BuildingKind, a.TileX, a.TileY, null); }
+                else if (ScenarioGame.PlaceBuilding(a.BuildingKind, a.TileX, a.TileY, owner) == null) Warn(t, "Place Building: no " + a.BuildingKind + " put on (" + a.TileX + "," + a.TileY + ").");
                 FogOfWar.Changed();
                 return;
             }
@@ -1034,10 +1101,6 @@ public class ScenarioScript : MonoBehaviour {
                 aiGoals.RemoveAll(g => g.Side == a.Side);
                 aiGoals.Add(new AIGoalData { Side = a.Side, TileX = a.TileX, TileY = a.TileY, Value = a.Value, On = a.On });
                 ApplyAIGoals();
-                return;
-            case TriggerActionType.SetObjective:
-                objective = a.Text ?? "";
-                ScenarioGame.ShowObjective(objective);
                 return;
             case TriggerActionType.ProtectGround: {
                 ShownReveal g = new ShownReveal { Id = a.On ? "on" : "off", TileX = a.TileX, TileY = a.TileY, Radius = Mathf.Max(0, a.Radius) };
@@ -1136,7 +1199,6 @@ public class ScenarioScript : MonoBehaviour {
             d.PendingLines = ScenarioDialogue.Pending();
             d.Bonuses = bonuses;
             d.Reveals = reveals;
-            d.Objective = objective;
             d.AIGoals = aiGoals;
             d.Protected = protectedGround;
         }
@@ -1180,9 +1242,7 @@ public class ScenarioScript : MonoBehaviour {
         bonuses = d.Bonuses ?? new List<StarBonus>();
         reveals = d.Reveals ?? new List<ShownReveal>();
         revealsApplied = -1;
-        objective = d.Objective ?? "";
         aiGoals = d.AIGoals ?? new List<AIGoalData>();
-        ScenarioGame.ShowObjective(objective);
         protectedGround = d.Protected ?? new List<ShownReveal>();
         HexGenerator.forAllTiles(x => { x.indestructible = false; return 0; });
         foreach (ShownReveal g in protectedGround) Protect(g);

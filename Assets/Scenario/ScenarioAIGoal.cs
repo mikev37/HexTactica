@@ -26,6 +26,19 @@ public class ScenarioAIGoal : AIMissionObjective {
         return march + Near(unit, tile, d);
     }
 
+    /// <summary>
+    /// An attack on whoever holds the target or stands beside it: worth more than its trade alone, more for every
+    /// strength it takes, more again for driving the holder off or killing it. So a squad dug into the city is attacked,
+    /// not waited out (its cover makes the plain trade a poor one).
+    /// </summary>
+    public override float AttackBonus(Unit attacker, Unit defender, CombatOutcome o) {
+        if (target == null || defender == null || defender.tile == null) return 0f;
+        int d = defender.tile.Distance(target);
+        if (d > 1) return 0f;
+        float b = 1f + 0.5f * o.damageToDefender + (o.defenderRetreats ? 1.5f : 0f) + (o.defenderDies ? 2f : 0f);
+        return weight * b * (d == 0 ? 1f : 0.5f);
+    }
+
     float Near(Unit unit, HexTile tile, int d) {
         if (target.building != null && Building.CanCapture(unit)) {
             if (tile == target) return weight * 3f;
