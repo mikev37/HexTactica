@@ -11,6 +11,10 @@ using HexTactica.AI;
 public class ScenarioAIGoal : AIMissionObjective {
 
     public HexTile target;
+    /// <summary>The building on the target is worth an HQ (Set AI Objective's As HQ).</summary>
+    public bool asHQ;
+
+    public override bool WorthAnHQ(Building b) { return asHQ && b != null && target != null && b.tile == target; }
 
     public override bool MissionFinished() { return false; }
 

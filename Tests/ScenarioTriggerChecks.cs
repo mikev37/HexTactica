@@ -283,9 +283,9 @@ public static partial class Scenarios {
         make("script-ai-objective", "scriptAIObjective", (a, o) => {
                  Rig.PlaceBuilding("City", o, -3, 0); Put("Grunt", o, -3, 0);
                  Put("Grunt", a, 3, 0); Put("Grunt", a, 3, 1); Put("Grunt", a, 4, -1);
-                 Script(Trig("Go for the city", TriggerCondition.LevelStart, null, Act(TriggerActionType.SetAIObjective, x => { x.Side = Blue; x.TileX = -3; x.TileY = 0; })));
+                 Script(Trig("Go for the city", TriggerCondition.LevelStart, null, Act(TriggerActionType.SetAIObjective, x => { x.Side = Blue; x.TileX = -3; x.TileY = 0; x.AsHQ = true; })));
              },
-             "Set AI Objective: Blue's AI (this AI), told to go for the city Red holds, has it as its mission objective (ScenarioAIGoal) and its three grunts close on it over two turns, each on a tile of its own (the AI decides who stands where).");
+             "Set AI Objective: Blue's AI (this AI), told to go for the city Red holds (As HQ: the city worth an HQ to it, as its AI map prices it; another city not), has it as its mission objective (ScenarioAIGoal) and its three grunts close on it over two turns, each on a tile of its own (the AI decides who stands where).");
         n++;
         make("rule-bystander", "scriptBystander", (a, o) => {
                  Put("Grunt", o, 0, 0); Put("Grunt", a, 2, 0);
@@ -307,11 +307,27 @@ public static partial class Scenarios {
              },
              "One scene at a time (ScenarioScript): two triggers fire together, the first with two lines and an action between them, the second with one line: the second's line waits until the first's scene is over (A1, A2, then B1, never B1 between them); the second's action before its line goes ahead at once. Unit Damaged with Lost At Least 2: a 1-strength scratch does not count, a 2-strength hit does.");
         n++;
+        make("script-new-functions-3", "scriptNewFunctions3", (a, o) => {
+                 Rig.At(0, 0).terrain = T("Forest");
+                 Put("Grunt", o, 0, 0); Put("Grunt", a, 1, 0); Put("Grunt", o, 4, 0); Put("Tank", a, 5, 0);
+                 Rig.At(-4, 4).terrain = T("Water"); Rig.At(-4, 5).terrain = T("Water");
+                 Put("Transport Helo", a, -4, 4); Put("Transport Helo", a, -4, 5); Put("Grunt", a, -6, 2);
+                 Script(Trig("Load up", TriggerCondition.LevelStart, null,
+                            Act(TriggerActionType.SpawnUnit, x => { x.Side = Blue; x.UnitKind = "Grunt"; x.Target = "Helo A"; x.UnitTag = "Flown"; x.Count = 1; x.Value = 6; }),
+                            Act(TriggerActionType.OrderUnits, x => { x.UnitSide = Blue; x.UnitTag = "Walker"; x.Target = "Helo B"; x.Force = true; })),
+                        Trig("Held", TriggerCondition.AttackRepulsed, t => { t.Side = Red; t.OnTerrain = "Forest"; t.KilledBy = Blue; }),
+                        Trig("Held by Red", TriggerCondition.AttackRepulsed, t => { t.Side = Red; t.KilledBy = Red; }),
+                        Trig("By a tank", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KillerKind = "Tank"; },
+                            Act(TriggerActionType.SpawnUnit, x => { x.Side = Red; x.UnitKind = "Grunt"; x.AtUnit = "{unit}"; x.UnitTag = "Avenger"; x.Count = 1; x.Value = 6; })),
+                        Trig("By artillery", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KillerKind = "Artillery"; }));
+             },
+             "More scenario functions (Act 1, mission 6): Attack Repulsed (a weak Blue squad attacks a Red squad in the forest and comes off worse: counted for Killed By Blue, not Red); Unit Killed's Killer Kind (a Red squad killed by a Blue tank counts for Tank, not Artillery); Spawn Unit At Unit {unit} (made where the dead squad fell); Spawn Unit Target (a squad made aboard a helicopter over the water); a forced boarding order puts a squad aboard where the rules give no way in.");
+        n++;
         make("mission-tally", "scriptMissionTally", (a, o) => { Put("Grunt", o, 0, 0); },
              "The mission rating's tally (MissionRating.Tally, from the game log): turns are the days the player moved on, each once (a turn logged twice, at a load, is one day); an enemy unit killed by the player, starved out of supply or ditched out of fuel is the player's kill; an ally's is nobody's; the player's own losses whatever the cause.");
         n++;
         make("campaign-progress", "scriptCampaignProgress", (a, o) => { Put("Grunt", o, 0, 0); },
-             "The campaign (Campaign scene, campaign.dat): Act 1's flags linked 1.1 > 1.2 > 1.3 > 1.4 > 1.5, each scenario in the campaign folder; only 1.1 on the map at first; a loss unlocks nothing; a win unlocks the next and is kept on file (read back: still won, the next still there), on down the chain; stars by the pars, added on a better win and never taken away; a fork closes the other mission; no Act 1 mission opens Campaign 2; the map's pan and zoom.");
+             "The campaign (Campaign scene, campaign.dat): Act 1's flags linked 1.1 > 1.2 > 1.3 > 1.4 > 1.5 > 1.6, each scenario in the campaign folder; only 1.1 on the map at first; a loss unlocks nothing; a win unlocks the next and is kept on file (read back: still won, the next still there), on down the chain; stars by the pars, added on a better win and never taken away; a fork closes the other mission; no Act 1 mission opens Campaign 2; the map's pan and zoom.");
         n++;
         return n;
     }
@@ -491,10 +507,11 @@ public static partial class Scenarios {
             bool linked = t1.unlocks.Count == 1 && t1.unlocks[0] == t2.key && t2.unlocks.Count == 1 && t1.availableAtStart && !t2.availableAtStart
                        && t1.key == "Campaign/Tutorial 1" && t1.factionName != "" && t2.factionName != "" && t2.objectives.StartsWith("Take the middle city") && t2.scenario == "1.2 Combat Trials" && t1.parTurns == 8 && t2.parTurns == 10;
             // Act 1 down the chain: 1.1 (Tutorial 1) > 1.2 (Tutorial 2) > 1.3 > 1.4, each with its scenario in the campaign folder.
-            MissionInfo m3 = missions.Find(m => m.Name == "1.3 Transit Trouble"), m4 = missions.Find(m => m.Name == "1.4 Live Fire"), m5 = missions.Find(m => m.Name == "1.5 Border Brawl");
+            MissionInfo m3 = missions.Find(m => m.Name == "1.3 Transit Trouble"), m4 = missions.Find(m => m.Name == "1.4 Live Fire"), m5 = missions.Find(m => m.Name == "1.5 Border Brawl"), m6 = missions.Find(m => m.Name == "1.6 Into Blakia");
             bool chain = m3 != null && m4 != null && t2.unlocks.Count == 1 && t2.unlocks[0] == m3.key && m3.unlocks.Count == 1 && m3.unlocks[0] == m4.key
                       && !m3.availableAtStart && !m4.availableAtStart && File.Exists(Path.Combine(scenarios, m3.ScenarioName + ".dat")) && File.Exists(Path.Combine(scenarios, m4.ScenarioName + ".dat"))
-                      && m5 != null && m4.unlocks.Count == 1 && m4.unlocks[0] == m5.key && !m5.availableAtStart && File.Exists(Path.Combine(scenarios, m5.ScenarioName + ".dat"));
+                      && m5 != null && m4.unlocks.Count == 1 && m4.unlocks[0] == m5.key && !m5.availableAtStart && File.Exists(Path.Combine(scenarios, m5.ScenarioName + ".dat"))
+                      && m6 != null && m5.unlocks.Count == 1 && m5.unlocks[0] == m6.key && !m6.availableAtStart && File.Exists(Path.Combine(scenarios, m6.ScenarioName + ".dat"));
             bool noCampaign2 = missions.TrueForAll(m => m.unlocksCampaigns.Count == 0);
             // Each flag pinned to its spot on the picture (its anchors), apart from the other.
             bool placed = anchors.ContainsKey(t1.key) && anchors.ContainsKey(t2.key) && !Near(anchors[t1.key], anchors[t2.key])
@@ -541,7 +558,7 @@ public static partial class Scenarios {
             bool fork = open && CampaignProgress.Blocked(right) && !CampaignProgress.Playable(right) && CampaignProgress.Visible(right) && !CampaignProgress.Blocked(done) && CampaignProgress.Playable(left);
             // Down the chain, each win read back from the file before the next.
             bool down = true;
-            foreach (MissionInfo[] step in new[] { new[] { t2, m3 }, new[] { m3, m4 }, new[] { m4, m5 } }) {
+            foreach (MissionInfo[] step in new[] { new[] { t2, m3 }, new[] { m3, m4 }, new[] { m4, m5 }, new[] { m5, m6 } }) {
                 if (step[0] == null || step[1] == null) { down = false; break; }
                 CampaignProgress.Attempt(step[0]);
                 CampaignProgress.Finish(step[0], new MissionTally { recorded = true, won = true, turns = 1 });
@@ -596,7 +613,7 @@ public static partial class Scenarios {
                    + "; campaigns: Tutorial 2 opens Campaign 2, listed by the hub, its map closed at first, in the build " + scenesWired + ", closed until won " + closedFirst + ", opened by the win " + opened + ", once " + openedOnce + ", kept by a save " + campaignsKept
                    + ", the view reaches the second map " + reachSecond + ", stops at the outer edges " + stopsAtEdges + ", one map pinned " + oneMapPinned
                    + "; map pan and zoom: pinned unzoomed " + pinned + ", room at 2x " + panRoom + ", zooms about the cursor " + aboutCursor + ", centres a mission " + centres;
-            detail += "; Act 1 linked 1.1 > 1.2 > 1.3 > 1.4 > 1.5 " + chain + ", won down the chain, each read back from the file " + down + ", no Act 1 mission opens Campaign 2 " + noCampaign2;
+            detail += "; Act 1 linked 1.1 > 1.2 > 1.3 > 1.4 > 1.5 > 1.6 " + chain + ", won down the chain, each read back from the file " + down + ", no Act 1 mission opens Campaign 2 " + noCampaign2;
             return files && linked && placed && stamped && campaignsOk && atFirst && lostNothing && unlocked && kept && notLost && rated && fork && saved && reset && mapView && chain && down && noCampaign2;
         } finally {
             CampaignProgress.FilePath = fileWas;
@@ -1046,8 +1063,11 @@ public static partial class Scenarios {
                 }
                 List<string> at = new List<string>(); HashSet<HexTile> tiles = new HashSet<HexTile>(); int near = 0;
                 foreach (Unit u in a.units) if (u != null && u.tile != null) { at.Add(u.tile.x + "," + u.tile.y); tiles.Add(u.tile); if (u.tile.Distance(city) <= 2) near++; }
-                detail = "objective set on the AI " + set + "; Blue's grunts at " + string.Join(" ", at.ToArray()) + ", within 2 of the city " + near + " of " + at.Count;
-                return set && near >= 2 && tiles.Count == at.Count;
+                HexTactica.AI.AIMap priced = new HexTactica.AI.AIMap(a, ai.Profile) { objective = ai.objective };
+                Building other = Rig.PlaceBuilding("City", o, -5, 2);
+                bool asHQ = priced.WorthAnHQ(Rig.At(-3, 0).building) && !priced.WorthAnHQ(other);
+                detail = "objective set on the AI " + set + ", the city worth an HQ to it (not another) " + asHQ + "; Blue's grunts at " + string.Join(" ", at.ToArray()) + ", within 2 of the city " + near + " of " + at.Count;
+                return set && asHQ && near >= 2 && tiles.Count == at.Count;
             }
             case "scriptBystander": {
                 Player range = Rig.AddPlayer("Range", 200);
@@ -1095,6 +1115,25 @@ public static partial class Scenarios {
                 bool hit = Fired(s, "Big hit") == 1 && o.money == 100;
                 detail = "lines in order: " + string.Join(", ", box.shown.ToArray()) + "; the second's money before its line " + early + "; a scratch not counted " + scratch + ", a 2-strength hit counted " + hit;
                 return early && second && third && a.money == 1 && scratch && hit;
+            }
+            case "scriptNewFunctions3": {
+                Action settle = () => { for (int i = 0; i < 6; i++) s.Tick(0.2f); };
+                Unit weak = Rig.At(1, 0).occupier, dug = Rig.At(0, 0).occupier, victim = Rig.At(4, 0).occupier, tank = Rig.At(5, 0).occupier;
+                Unit heloA = Rig.At(-4, 4).occupier, heloB = Rig.At(-4, 5).occupier, walker = Rig.At(-6, 2).occupier;
+                heloA.personal_name = "Helo A"; heloB.personal_name = "Helo B"; walker.personal_name = "Walker";
+                weak.Strength = 3; victim.Strength = 1;
+                settle();
+                weak.active = true; ScenarioGame.Order(weak, dug, null); settle();
+                bool held = Fired(s, "Held") == 1 && Fired(s, "Held by Red") == 0;
+                Unit flown = ScenarioGame.Named("Flown");
+                bool aboard = flown != null && flown.trasnporter == heloA && heloA.transported.Contains(flown);
+                bool forcedIn = walker.trasnporter == heloB && heloB.transported.Contains(walker) && walker.tile == heloB.tile;
+                tank.active = true; ScenarioGame.Order(tank, victim, null); settle();
+                Unit avenger = ScenarioGame.Named("Avenger");
+                bool byTank = Fired(s, "By a tank") == 1 && Fired(s, "By artillery") == 0;
+                bool spawned = avenger != null && avenger.tile != null && avenger.tile.Distance(Rig.At(4, 0)) <= 1;
+                detail = "a squad made aboard a helicopter over the water (Spawn Unit Target) " + aboard + "; a squad 2 tiles off put aboard one over the water (forced boarding, no way in by the rules) " + forcedIn + "; attack held off counted (by Blue, not by Red) " + held + " (Red " + dug.Strength + ", Blue " + weak.RealStrength + "); killed by a tank, not artillery " + byTank + "; spawned where it fell " + spawned + (avenger != null && avenger.tile != null ? " (" + avenger.tile.x + "," + avenger.tile.y + ")" : "");
+                return held && byTank && spawned && aboard && forcedIn;
             }
             case "scriptMissionTally": {
                 GameRecord rec = new GameRecord();

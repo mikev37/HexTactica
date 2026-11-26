@@ -101,6 +101,8 @@ public enum TriggerCondition {
     Briefing = 43,
     /// <summary>A unit matching the unit filter fired at a side that did not see it before the shot (it gave itself away: artillery firing from the fog): Count times.</summary>
     FiredFromFog = 44,
+    /// <summary>A unit matching the unit filter was attacked and held: the attacker lost more strength than it dealt ("you can't beat a dug-in defense head-on"). Killed By: the attacker's side (Any: anyone). Count times.</summary>
+    AttackRepulsed = 45,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -184,7 +186,7 @@ public enum TriggerActionType {
     ProtectGround = 38,
     /// <summary>A building of Building Kind is put on the tile for Side (Neutral: nobody's). Building Kind "None": the building on the tile is taken away, its own ground showing again. Under a mission's briefing too (Briefing): the briefing's board is thrown away at Start, so it shows only there ("where the city should be", "nothing where it is now").</summary>
     PlaceBuilding = 39,
-    /// <summary>Side's AI goes for the tile (On; off: its own plans again): a building there is to be taken, whoever holds it is to be fought. The AI decides who goes where and who pulls back (ScenarioAIGoal). Value: how strongly, 6 normal.</summary>
+    /// <summary>Side's AI goes for the tile (On; off: its own plans again): a building there is to be taken, whoever holds it is to be fought. The AI decides who goes where and who pulls back (ScenarioAIGoal). Value: how strongly, 6 normal. As HQ: the building there is worth as much to it as an HQ (a win condition): it plans for it as for an HQ.</summary>
     SetAIObjective = 40,
 }
 
@@ -303,6 +305,8 @@ public class TriggerAction {
     public bool Force;
     /// <summary>Destroy Units: they leave the board (fled, gone home): no death, nobody's kill, nobody's loss.</summary>
     public bool Withdraw;
+    /// <summary>Set AI Objective: the building on the tile is worth an HQ to that side's AI (a mission's win condition).</summary>
+    public bool AsHQ;
     /// <summary>Wait: also until nothing on the board is moving or fighting (a scripted move or attack has played out), at most 8 seconds.</summary>
     public bool UntilStill;
     [Tooltip("Spawn Unit: how many to make (each on the nearest free tile it can stand on).")]
@@ -390,6 +394,8 @@ public class ScenarioTrigger {
     public bool ArmedOnly;
     /// <summary>Unit Damaged: only a hit that took at least this much strength at once (0: any loss). "We're taking too many losses" for a 2-pip hit, not a scratch.</summary>
     public int LostAtLeast;
+    /// <summary>Unit Killed: only units killed by a unit of this kind (empty: by any). "Their rockets killed one of ours."</summary>
+    [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string KillerKind = "";
     /// <summary>Unit Killed: only units killed in a fight by a unit of this side (Any: by anyone, or anything).</summary>
     [SideChoice(false)] public long KilledBy = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]
@@ -502,7 +508,7 @@ public class ScenarioScriptData {
 
 /// <summary>A side's AI objective from Set AI Objective (kept in a save).</summary>
 [Serializable]
-public class AIGoalData { public long Side; public int TileX, TileY; public int Value = 6; public bool On = true; }
+public class AIGoalData { public long Side; public int TileX, TileY; public int Value = 6; public bool On = true; public bool AsHQ; }
 
 /// <summary>Stars a Bonus Stars action gave or took (kept in a save).</summary>
 [Serializable]

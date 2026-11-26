@@ -37,6 +37,9 @@ public abstract class AIMissionObjective : MonoBehaviour {
     /// </summary>
     public virtual float AttackBonus(Unit attacker, Unit defender, CombatOutcome outcome) { return 0f; }
 
+    /// <summary>Does this objective make <paramref name="b"/> worth as much as an HQ (a scenario's win condition)? The campaign and the fronts then price it as one.</summary>
+    public virtual bool WorthAnHQ(Building b) { return false; }
+
     /// <summary>
     /// True if this objective wants to fully dictate this unit's action, bypassing the
     /// tactical layer. Should be rare — reserve it for scripted behaviour.

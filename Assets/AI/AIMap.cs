@@ -19,6 +19,9 @@ namespace HexTactica.AI {
         public readonly Player player;
         /// <summary>The side's mission objective (AIPlayer.objective), read on the main thread as the map is made: an attack's appraisal asks it (AttackBonus).</summary>
         public AIMissionObjective objective;
+
+        /// <summary>Priced as an HQ: an HQ, or a building the mission objective makes worth one (AIMissionObjective.WorthAnHQ).</summary>
+        public bool WorthAnHQ(Building b) { return b != null && (b.IsHQ || (objective != null && objective.WorthAnHQ(b))); }
         public readonly AIProfile profile;
         public SupplyNetwork.Result supply;
 

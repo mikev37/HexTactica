@@ -22,6 +22,7 @@ MonoBehaviour:
   loadedTransportRisk: 2.5
   withdrawStrength: 2
   fogAggression: 1
+  fogFair: 1
   objectiveSpread: 0.5
   objectiveForceRatio: 0.6
   campaignMaxTurns: 3

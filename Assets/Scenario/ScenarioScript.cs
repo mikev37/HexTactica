@@ -314,6 +314,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.MoveProposed:
             case TriggerCondition.UnloadProposed:
             case TriggerCondition.FiredFromFog:
+            case TriggerCondition.AttackRepulsed:
             case TriggerCondition.EnemyInspected:
             case TriggerCondition.AttackProposed:
             case TriggerCondition.Ambush:
@@ -556,7 +557,9 @@ public class ScenarioScript : MonoBehaviour {
         // Value 1: killed in action (by a shot); 2: lost without one (starved, ditched); 0: either.
         int how = Unit.Perishing ? 2 : 1;
         Player by = Unit.KilledBy;
+        Unit killer = Unit.KilledByUnit;
         Count(TriggerCondition.UnitKilled, t => (t.Value == 0 || t.Value == how) && (t.KilledBy == TriggerSide.Any || (by != null && ScenarioGame.SideIs(by, t.KilledBy)))
+                                               && (string.IsNullOrEmpty(t.KillerKind) || (killer != null && ScenarioGame.IsKind(killer, t.KillerKind)))
                                                && ScenarioGame.MatchesAt(u, at, UnitFilter.Of(t)), u);
         // Dying is being damaged down to nothing (unless the frame already saw it at 0).
         Seen was;
@@ -614,6 +617,9 @@ public class ScenarioScript : MonoBehaviour {
             if (i >= 0 && i < 63 && seen.TryGetValue(attacker, out was) && (was.seenBy & (1L << i)) == 0 && Player.Hostile(attacker.owner, defender.owner))
                 Count(TriggerCondition.FiredFromFog, t => ScenarioGame.MatchesAt(attacker, from ?? attacker.RealTile, UnitFilter.Of(t)), attacker);
         }
+        // Held: the attacker came off worse than the defender (counted where the defender stood).
+        if (attacker != null && o.damageToAttacker > o.damageToDefender)
+            Count(TriggerCondition.AttackRepulsed, t => (t.KilledBy == TriggerSide.Any || ScenarioGame.SideIs(attacker.owner, t.KilledBy)) && ScenarioGame.MatchesAt(defender, fought, UnitFilter.Of(t)), defender);
         if (!o.defenderFiresFirst) return;
         Count(TriggerCondition.Ambush, t => ScenarioGame.MatchesAt(defender, fought, UnitFilter.Of(t)), defender);
     }
@@ -789,6 +795,7 @@ public class ScenarioScript : MonoBehaviour {
                 if (goal == null) goal = p.gameObject.AddComponent<ScenarioAIGoal>();
                 goal.target = ScenarioGame.Tile(g.TileX, g.TileY);
                 goal.weight = Mathf.Max(0, g.Value) / 6f;
+                goal.asHQ = g.AsHQ;
                 if (ai != null && ai.objective != goal) ai.objective = goal;
             }
     }
@@ -1011,7 +1018,22 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerActionType.SpawnUnit: {
                 Player p = ScenarioGame.Resolve(a.Side);
                 if (p == null) { Warn(t, "Spawn Unit: no side is " + ScenarioGame.SideName(a.Side) + ": nothing made."); return; }
-                ScenarioGame.Spawn(p, a.UnitKind, a.TileX, a.TileY, a.Count, a.Value, a.Veterancy, a.UnitTag, a.ReadyToAct, a.OutOfSight);
+                int sx = a.TileX, sy = a.TileY;
+                // At a unit: where it stands (where it fell, for "{unit}" that has just died).
+                if (!string.IsNullOrEmpty(a.AtUnit)) {
+                    Unit near = NamedFor(a.AtUnit, r);
+                    HexTile there = near != null && near.RealTile != null ? near.RealTile : IsSubject(a.AtUnit) && r != null ? r.SubjectAt : null;
+                    if (there == null) { Warn(t, "Spawn Unit: no unit named '" + a.AtUnit + "' to spawn by: nothing made."); return; }
+                    sx = there.x; sy = there.y;
+                }
+                // Aboard a transport (Target): made inside it, wherever it is.
+                if (!string.IsNullOrEmpty(a.Target)) {
+                    Unit carrier = NamedFor(a.Target, r);
+                    if (carrier == null) { Warn(t, "Spawn Unit: no transport named '" + a.Target + "' to put them aboard: nothing made."); return; }
+                    ScenarioGame.SpawnAboard(p, a.UnitKind, carrier, a.Count, a.Value, a.Veterancy, a.UnitTag, a.ReadyToAct);
+                    return;
+                }
+                ScenarioGame.Spawn(p, a.UnitKind, sx, sy, a.Count, a.Value, a.Veterancy, a.UnitTag, a.ReadyToAct, a.OutOfSight);
                 BoardChanged();
                 return;
             }
@@ -1099,7 +1121,7 @@ public class ScenarioScript : MonoBehaviour {
             }
             case TriggerActionType.SetAIObjective:
                 aiGoals.RemoveAll(g => g.Side == a.Side);
-                aiGoals.Add(new AIGoalData { Side = a.Side, TileX = a.TileX, TileY = a.TileY, Value = a.Value, On = a.On });
+                aiGoals.Add(new AIGoalData { Side = a.Side, TileX = a.TileX, TileY = a.TileY, Value = a.Value, On = a.On, AsHQ = a.AsHQ });
                 ApplyAIGoals();
                 return;
             case TriggerActionType.ProtectGround: {

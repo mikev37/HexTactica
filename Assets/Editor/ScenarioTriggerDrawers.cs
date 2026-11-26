@@ -17,7 +17,8 @@ static class TriggerFields {
             case TriggerCondition.LevelStart: return new string[0];
             case TriggerCondition.UnitEnters:
             case TriggerCondition.UnitsInArea: return new[] { "Side", "UnitKind", "UnitTag", "Area", "OnTerrain", "CoverBelow", "Count" };
-            case TriggerCondition.UnitKilled: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "KilledBy", "Count" };
+            case TriggerCondition.UnitKilled: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "KilledBy", "KillerKind", "Count" };
+            case TriggerCondition.AttackRepulsed: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "KilledBy", "Count" };
             case TriggerCondition.UnloadProposed:
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
@@ -118,7 +119,7 @@ static class TriggerFields {
             case TriggerActionType.StopMusic: return new string[0];
             case TriggerActionType.Win:
             case TriggerActionType.Lose: return new[] { "Side" };
-            case TriggerActionType.SpawnUnit: return new[] { "Side", "UnitKind", "TileX", "TileY", "Count", "Value", "Veterancy", "UnitTag", "ReadyToAct", "OutOfSight" };
+            case TriggerActionType.SpawnUnit: return new[] { "Side", "UnitKind", "AtUnit", "Target", "TileX", "TileY", "Count", "Value", "Veterancy", "UnitTag", "ReadyToAct", "OutOfSight" };
             case TriggerActionType.MarkReach: return Join(units, "Value", "Marker", "MarkerId");
             case TriggerActionType.Salute: return Join(units, "Value");
             case TriggerActionType.GiveUnits: return Join(units, "Side");
@@ -139,7 +140,7 @@ static class TriggerFields {
             case TriggerActionType.PlaySound: return new[] { "Sound" };
             case TriggerActionType.Wait: return new[] { "Seconds", "UntilStill" };
             case TriggerActionType.PlaceBuilding: return new[] { "BuildingKind", "Side", "TileX", "TileY" };
-            case TriggerActionType.SetAIObjective: return new[] { "Side", "On", "TileX", "TileY", "Value" };
+            case TriggerActionType.SetAIObjective: return new[] { "Side", "On", "TileX", "TileY", "Value", "AsHQ" };
             case TriggerActionType.BonusStars: return new[] { "Value", "Text" };
             case TriggerActionType.RevealArea: return new[] { "Side", "On", "TileX", "TileY", "Radius", "MarkerId" };
             case TriggerActionType.HighlightUI: return new[] { "Text", "On", "MarkerId" };
@@ -215,6 +216,7 @@ static class TriggerFields {
             case TriggerCondition.BuildingDamaged: return building + " " + t.Value + "%+ wrecked";
             case TriggerCondition.Briefing: return "the mission's briefing shows the board";
             case TriggerCondition.FiredFromFog: return units + " fires from the fog (gives itself away)" + times;
+            case TriggerCondition.AttackRepulsed: return units + " holds off an attack (the attacker loses more than it deals)" + times;
             case TriggerCondition.BuildingCaptured: return building + " taken by " + Side(t.Side) + times;
             case TriggerCondition.BuildingDestroyed: return building + " destroyed" + times;
             case TriggerCondition.DayReached: return "day " + t.Value + (t.Side == TriggerSide.Any ? "" : ", on " + Side(t.Side) + "'s turn");
@@ -279,7 +281,7 @@ static class TriggerFields {
             case TriggerActionType.HighlightUI: return (a.On ? "Highlight " : "Stop highlighting ") + (string.IsNullOrEmpty(a.Text) ? "'" + a.MarkerId + "'" : a.Text);
             case TriggerActionType.SetTeam: return Side(a.Side) + " joins team " + a.Value;
             case TriggerActionType.PlaceBuilding: return (a.BuildingKind ?? "").Trim() == ScenarioGame.RemoveKind ? "Take the building off " + at : "Put a " + a.BuildingKind + " on " + at + " for " + Side(a.Side);
-            case TriggerActionType.SetAIObjective: return a.On ? Side(a.Side) + "'s AI goes for " + at : Side(a.Side) + "'s AI back to its own plans";
+            case TriggerActionType.SetAIObjective: return a.On ? Side(a.Side) + "'s AI goes for " + at + (a.AsHQ ? " (worth an HQ to it)" : "") : Side(a.Side) + "'s AI back to its own plans";
             case TriggerActionType.ProtectGround: return (a.On ? "Protect" : "Unprotect") + " ground within " + a.Radius + " of " + at;
             case TriggerActionType.ShowMarker: return "Marker " + a.Marker + (string.IsNullOrEmpty(a.MarkerId) ? "" : " '" + a.MarkerId + "'") + " at " + (string.IsNullOrEmpty(a.AtUnit) ? at : "'" + a.AtUnit + "'") + (string.IsNullOrEmpty(a.Text) ? "" : ": " + Short(a.Text));
             case TriggerActionType.HideMarker: return string.IsNullOrEmpty(a.MarkerId) ? "Hide every marker" : "Hide marker '" + a.MarkerId + "'";

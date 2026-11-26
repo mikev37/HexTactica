@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 653e2e3545f23d94daa55381dd6b2717, type: 3}
+  m_Name: BlakiaProfile
+  m_EditorClassIdentifier: Assembly-CSharp::HexTactica.AI.AIProfile
+  profileName: Blakia
+  aggression: 0
+  attackThreshold: 1
+  riskWeight: 1
+  deathPremium: 1
+  killBonus: 1.35
+  replyDiscount: 0.5
+  loadedTransportRisk: 2.5
+  withdrawStrength: 2
+  fogAggression: 1
+  fogFair: 0
+  objectiveSpread: 0.5
+  objectiveForceRatio: 1.1
+  campaignMaxTurns: 3
+  campaignReserveShare: 0.33
+  hqDefenseWeight: 0.5
+  capturePull: 0.3
+  scoutTileValue: 15
+  buyInfantry: 1
+  buyVehicles: 1
+  buyArtillery: 1
+  buyAir: 1
+  buyNaval: 1
+  productionSupplyWeight: 1
