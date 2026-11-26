@@ -240,6 +240,8 @@ public class Unit : MonoBehaviour
 
     /// <summary>While Died is raised for a unit killed in a fight: the side of the unit that killed it (null otherwise).</summary>
     public static Player KilledBy;
+    /// <summary>The unit whose shot is killing a unit, while Died is raised for it (null: no shot, or not known).</summary>
+    public static Unit KilledByUnit;
 
     /// <summary>A unit is being lost without a shot (Perish: starved, ditched) while Died is raised: a scenario's Unit Killed tells the two apart.</summary>
     public static bool Perishing;
@@ -1327,10 +1329,10 @@ public class Unit : MonoBehaviour
         }
 
         // Who fired the shot that kills (a scenario's Unit Killed By: the other side of the fight).
-        KilledBy = owner;
-        try { if (defender.Strength <= 0) defender.DieActual(); } finally { KilledBy = null; }
-        KilledBy = defender.owner;
-        try { if (Strength <= 0) DieActual(); } finally { KilledBy = null; }
+        KilledBy = owner; KilledByUnit = this;
+        try { if (defender.Strength <= 0) defender.DieActual(); } finally { KilledBy = null; KilledByUnit = null; }
+        KilledBy = defender.owner; KilledByUnit = defender;
+        try { if (Strength <= 0) DieActual(); } finally { KilledBy = null; KilledByUnit = null; }
 
         // Combat degrades the ground it is fought over.
         if (fought != null) fought.RegisterCombat();

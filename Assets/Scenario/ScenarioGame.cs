@@ -135,6 +135,9 @@ public static class ScenarioGame {
         return string.Equals(name, k, StringComparison.OrdinalIgnoreCase) || string.Equals(display, k, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Is <paramref name="u"/> of this kind (its prefab's name, or the name a player sees: "Grunt" for a faction's grunt)?</summary>
+    public static bool IsKind(Unit u, string kind) { return u != null && KindIs(GameController.UnitName(u), GameController.DisplayName(u, u.owner), kind); }
+
     public static bool Matches(Unit u, UnitFilter f) {
         if (u == null || u.RealStrength <= 0) return false;
         return MatchesAt(u, u.RealTile, f);

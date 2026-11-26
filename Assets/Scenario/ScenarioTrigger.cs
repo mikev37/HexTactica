@@ -101,6 +101,8 @@ public enum TriggerCondition {
     Briefing = 43,
     /// <summary>A unit matching the unit filter fired at a side that did not see it before the shot (it gave itself away: artillery firing from the fog): Count times.</summary>
     FiredFromFog = 44,
+    /// <summary>A unit matching the unit filter was attacked and held: the attacker lost more strength than it dealt ("you can't beat a dug-in defense head-on"). Killed By: the attacker's side (Any: anyone). Count times.</summary>
+    AttackRepulsed = 45,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>
@@ -390,6 +392,8 @@ public class ScenarioTrigger {
     public bool ArmedOnly;
     /// <summary>Unit Damaged: only a hit that took at least this much strength at once (0: any loss). "We're taking too many losses" for a 2-pip hit, not a scratch.</summary>
     public int LostAtLeast;
+    /// <summary>Unit Killed: only units killed by a unit of this kind (empty: by any). "Their rockets killed one of ours."</summary>
+    [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string KillerKind = "";
     /// <summary>Unit Killed: only units killed in a fight by a unit of this side (Any: by anyone, or anything).</summary>
     [SideChoice(false)] public long KilledBy = TriggerSide.Any;
     [Tooltip("Unit conditions: only units of this name (their personal name: a Spawn Unit action can give one). Empty: any.")]

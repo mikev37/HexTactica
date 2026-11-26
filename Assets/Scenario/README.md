@@ -60,7 +60,7 @@ units or buildings must match at least.
 |---|---|---|
 | Level Start (0) | the first moment of play, after the pre-game screen | |
 | Unit Enters (1) | a matching unit moves, rides, or appears (bought, spawned) into the area: *Count* times | side, kind, name, area |
-| Unit Killed (2) | matching units die: *Count* of them. *How*: 0 any way; 1 killed in action (shot, or aboard a transport shot down); 2 lost without a shot (starved, ditched). *Killed By*: only those a unit of that side killed in a fight | side, kind, name, in area, how, killed by |
+| Unit Killed (2) | matching units die: *Count* of them. *How*: 0 any way; 1 killed in action (shot, or aboard a transport shot down); 2 lost without a shot (starved, ditched). *Killed By*: only those a unit of that side killed in a fight. *Killer Kind*: only those a unit of that kind killed | side, kind, name, in area, how, killed by, killer kind |
 | Building Captured (3) | a matching building is taken by *Side*, by capture or by a Give Building action: *Count* times | taken by, kind, in area |
 | Building Destroyed (4) | a matching building's health runs out (any owner) | kind, in area |
 | Day Reached (5) | the day on screen is *Value* or later (day 1 is the first), on *Side*'s turn (any side: whoever's turn it is) | day, on whose turn |
@@ -89,6 +89,7 @@ units or buildings must match at least.
 | Unload Proposed (40) | the player clicks a matching unit in its transport's panel, to put it down (the tiles it can get out onto show; it is not out yet): *Count* times | side, kind, name, in area |
 | Supply Contact (41) | now: *Side*'s supply line shows a "?": an enemy it cannot see is cutting, or turning aside, its supply in transit | whose supply |
 | Building Damaged (42) | now: at least *Count* matching buildings have lost *Value* % of their health or more (a destroyed one too): "the city is half wrecked" | kind, in area, % |
+| Attack Repulsed (45) | a matching unit is attacked and holds: the attacker loses more strength than it deals. *Killed By*: the attacker's side (Any: anyone). *Count* times | side, kind, name, in area, terrain |
 | Fired From Fog (44) | a matching unit fired at a side that did not have it in sight before the shot (it gave itself away: artillery firing from the fog): *Count* times | side, kind, name, in area |
 | Briefing (43) | the board is shown under a campaign mission's briefing, before Start: the trigger's markers, camera and revealed ground show there (its other actions are not done, and it never fires in play) | |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
@@ -159,7 +160,7 @@ Timing is counted in **turns**:
 | Set Purchases (27) / Set Fog (28) | switches buying units, or fog of war, on or off for the rest of the game (a save keeps it) |
 | Play Music (4) / Stop Music (5) | plays a track from `Resources/Music/Special` (empty: one at random), optionally looping / returns to the game's own music |
 | Win (6) / Lose (7) | ends the game now: *Side* wins / loses (the side left wins) |
-| Spawn Unit (8) | makes *Count* units of a kind for *Side* on the tile, each on the nearest free tile it can stand on if the tile is taken. Sets their strength, veterancy and name, and whether they can act this turn. *Out of sight*: on the nearest free tile no enemy can see (within 8 steps), so they come out of the fog. |
+| Spawn Unit (8) | makes *Count* units of a kind for *Side* on the tile, each on the nearest free tile it can stand on if the tile is taken. Sets their strength, veterancy and name, and whether they can act this turn. *Out of sight*: on the nearest free tile no enemy can see (within 8 steps), so they come out of the fog. *At Unit*: by that unit instead of the tile (`{unit}`: the unit the trigger fired about, where it fell if it has died). |
 | Give Units (9) / Give Building (10) | the matching units / buildings change hands to *Side* (units with their cargo; an HQ given away counts as taken) |
 | Destroy Tile (11) / Repair Tile (12) | destroys the terrain within *Radius* (a bridge falls, a forest burns) / puts it back as it was, undamaged |
 | Destroy Building (13) / Repair Building (14) | the matching buildings |
