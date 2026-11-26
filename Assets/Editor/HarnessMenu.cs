@@ -48,7 +48,7 @@ public static class HarnessMenu {
             return;
         }
 
-        string path = Path.Combine(Application.persistentDataPath, "harness_results.csv");
+        string path = DataFolder.In("harness_results.csv");
         File.WriteAllText(path, runner.ToCsv());
         UnityEngine.Debug.Log("Harness: wrote " + runner.Results.Count + " results to " + path);
     }
@@ -65,7 +65,7 @@ public static class HarnessMenu {
             return;
         }
         string start = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Assets","Resources", "Scenarios");
-        string path = EditorUtility.OpenFilePanel("Load scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
+        string path = EditorUtility.OpenFilePanel("Load scenario", Directory.Exists(start) ? start : DataFolder.Path_, "dat");
         if (string.IsNullOrEmpty(path)) return;
         ScenarioLoader.RedOverride = RedChoice();
         ScenarioLoader.PurchasesOverride = string.IsNullOrEmpty(BuyChoice()) ? null : BuyChoice();
@@ -101,7 +101,7 @@ public static class HarnessMenu {
     [MenuItem("HexTactica/Swap Sides of Scenario File...")]
     public static void SwapSides() {
         string start = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Tests", "Scenarios");
-        string path = EditorUtility.OpenFilePanel("Swap sides of scenario", Directory.Exists(start) ? start : Application.persistentDataPath, "dat");
+        string path = EditorUtility.OpenFilePanel("Swap sides of scenario", Directory.Exists(start) ? start : DataFolder.Path_, "dat");
         if (string.IsNullOrEmpty(path)) return;
         string text = File.ReadAllText(path);
         string swapped = ScenarioMirror.SwapSides(text);
@@ -233,7 +233,7 @@ public static class HarnessMenu {
 
     [MenuItem("HexTactica/Open Results Folder")]
     public static void OpenResults() {
-        EditorUtility.RevealInFinder(Application.persistentDataPath);
+        EditorUtility.RevealInFinder(DataFolder.Path_);
     }
 }
 #endif

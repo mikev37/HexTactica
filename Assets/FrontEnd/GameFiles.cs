@@ -25,8 +25,8 @@ public static class GameFiles {
 
     static FrontEndSettings S { get { return FrontEndSettings.Get; } }
 
-    public static string UserScenarioFolder { get { return Path.Combine(Application.persistentDataPath, S.userScenarioFolder); } }
-    public static string SavesFolder { get { return Path.Combine(Application.persistentDataPath, S.savesFolder); } }
+    public static string UserScenarioFolder { get { return DataFolder.In(S.userScenarioFolder); } }
+    public static string SavesFolder { get { return DataFolder.In(S.savesFolder); } }
 
     /// <summary>Every scenario, by name (a player's own scenario of the same name as a shipped one comes after it).</summary>
     public static List<GameFile> Scenarios() {

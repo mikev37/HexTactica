@@ -16,6 +16,7 @@ AIPlayer.cs
 GoTo.cs
 DestroyUnits.cs
 LevelEditor.cs
+DataFolder.cs
 HexTilePlayerSupplyDisplay.cs
 SupplyBorderPump.cs
 setOpacity.cs
