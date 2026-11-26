@@ -136,7 +136,47 @@ public static class ScenarioGame {
     }
 
     /// <summary>Is <paramref name="u"/> of this kind (its prefab's name, or the name a player sees: "Grunt" for a faction's grunt)?</summary>
-    public static bool IsKind(Unit u, string kind) { return u != null && KindIs(GameController.UnitName(u), GameController.DisplayName(u, u.owner), kind); }
+    public static bool IsKind(Unit u, string kind) {
+        if (u == null) return false;
+        if (string.IsNullOrEmpty(kind)) return true;
+        string[] n = KindNames(u);
+        return KindIs(n[0], n[1], kind);
+    }
+
+    // A unit's two kind names (prefab, as a player sees it), worked out once: the triggers ask every frame, and a
+    // Unity object's name and a faction lookup cost an allocation each time. (A unit does not change kind.)
+    static readonly Dictionary<Unit, string[]> kindNames = new Dictionary<Unit, string[]>();
+    static string[] KindNames(Unit u) {
+        string[] n;
+        if (kindNames.TryGetValue(u, out n)) return n;
+        if (kindNames.Count > 4096) kindNames.Clear();   // (units long gone)
+        n = new[] { GameController.UnitName(u), GameController.DisplayName(u, u.owner) };
+        kindNames[u] = n;
+        return n;
+    }
+    static readonly Dictionary<Building, string> buildingNames = new Dictionary<Building, string>();
+    static string BuildingName(Building b) {
+        string n;
+        if (buildingNames.TryGetValue(b, out n)) return n;
+        if (buildingNames.Count > 4096) buildingNames.Clear();
+        n = b.name.Replace("(Clone)", "").Trim();
+        buildingNames[b] = n;
+        return n;
+    }
+
+    /// <summary>Is <paramref name="terrain"/> one of the comma-separated names in <paramref name="list"/>? (No allocation.)</summary>
+    static bool TerrainListed(string list, string terrain) {
+        int start = 0;
+        while (start <= list.Length) {
+            int end = list.IndexOf(',', start); if (end < 0) end = list.Length;
+            int a = start, b = end;
+            while (a < b && char.IsWhiteSpace(list[a])) a++;
+            while (b > a && char.IsWhiteSpace(list[b - 1])) b--;
+            if (b - a == terrain.Length && string.Compare(list, a, terrain, 0, terrain.Length, StringComparison.OrdinalIgnoreCase) == 0) return true;
+            start = end + 1;
+        }
+        return false;
+    }
 
     public static bool Matches(Unit u, UnitFilter f) {
         if (u == null || u.RealStrength <= 0) return false;
@@ -145,21 +185,26 @@ public static class ScenarioGame {
 
     /// <summary>Would <paramref name="u"/> match <paramref name="f"/> if it stood on <paramref name="at"/>?</summary>
     public static bool MatchesAt(Unit u, HexTile at, UnitFilter f) {
+        // (Cheapest tests first: this runs for every unit, for every trigger, every frame.)
         if (u == null || !SideIs(u.owner, f.side)) return false;
-        if (!KindIs(GameController.UnitName(u), GameController.DisplayName(u, u.owner), f.kind)) return false;
-        if (!string.IsNullOrEmpty(f.tag) && !string.Equals((u.personal_name ?? "").Trim(), f.tag.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
         if (f.inArea) {
             bool within = at != null && Distance(at.x, at.y, f.x, f.y) <= Mathf.Max(0, f.radius);
             if (within == f.outside) return false;
         }
+        if (!string.IsNullOrEmpty(f.tag) && !string.Equals((u.personal_name ?? "").Trim(), f.tag.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
         if (f.coverBelow > 0 && (at == null || at.terrain == null || at.terrain.cover >= f.coverBelow)) return false;
         if (!string.IsNullOrEmpty(f.terrain) && f.terrain.Trim().Length > 0) {
-            if (at == null || at.terrain == null) return false;
-            bool any = false;
-            foreach (string n in f.terrain.Split(',')) if (string.Equals(n.Trim(), at.terrain.name, StringComparison.OrdinalIgnoreCase)) { any = true; break; }
-            if (!any) return false;
+            if (at == null || at.terrain == null || !TerrainListed(f.terrain, TerrainName(at.terrain))) return false;
         }
+        if (!string.IsNullOrEmpty(f.kind) && !IsKind(u, f.kind)) return false;
         return true;
+    }
+
+    static readonly Dictionary<UnityEngine.Object, string> terrainNames = new Dictionary<UnityEngine.Object, string>();
+    static string TerrainName(UnityEngine.Object terrain) {
+        string n;
+        if (!terrainNames.TryGetValue(terrain, out n)) { n = terrain.name; terrainNames[terrain] = n; }
+        return n;
     }
 
     /// <summary>The living units that match (a copy: actions may change the roster).</summary>
@@ -180,8 +225,8 @@ public static class ScenarioGame {
     public static bool Matches(Building b, BuildingFilter f, bool checkSide = true) {
         if (b == null || b.tile == null) return false;
         if (checkSide && !SideIs(b.RealOwner, f.side)) return false;
-        if (!KindIs(b.name.Replace("(Clone)", "").Trim(), b.type.ToString(), f.kind)) return false;
         if (f.inArea && (Distance(b.tile.x, b.tile.y, f.x, f.y) <= Mathf.Max(0, f.radius)) == f.outside) return false;
+        if (!string.IsNullOrEmpty(f.kind) && !KindIs(BuildingName(b), b.type.ToString(), f.kind)) return false;
         return true;
     }
 
