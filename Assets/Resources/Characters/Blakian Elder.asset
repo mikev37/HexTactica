@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cba62ac924d47ceb92491950c94ac84, type: 3}
   m_Name: Blakian Elder
   m_EditorClassIdentifier: 
-  displayName: 'President Gulnar '
+  displayName: 'President Gurgen '
   portrait: {fileID: 21300000, guid: 675ea2ac46dd3844ea50f04bad428867, type: 3}
   nameColour: {r: 0.764151, g: 0.33735538, b: 0.10453011, a: 1}
   drawnFacing: 1
