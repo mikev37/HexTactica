@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: JoriAllInProfile
   m_EditorClassIdentifier: Assembly-CSharp::HexTactica.AI.AIProfile
   profileName: Jori All In
-  aggression: 0.5
+  aggression: 0.7
   attackThreshold: 0.4
   riskWeight: 0.9
   deathPremium: 1
