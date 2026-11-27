@@ -13,10 +13,12 @@ public struct UnitFilter {
     public int coverBelow;
     /// <summary>With inArea: outside the area instead of within it.</summary>
     public bool outside;
+    /// <summary>Only units still able to act this turn (not spent).</summary>
+    public bool ready;
 
     public static UnitFilter Of(ScenarioTrigger t) {
         bool area = t.InArea || t.Condition == TriggerCondition.UnitEnters || t.Condition == TriggerCondition.UnitsInArea;
-        return new UnitFilter { side = t.Side, kind = t.UnitKind, tag = t.UnitTag, inArea = area, x = t.TileX, y = t.TileY, radius = t.Radius, terrain = t.OnTerrain, coverBelow = t.CoverBelow, outside = t.OutsideArea && area };
+        return new UnitFilter { side = t.Side, kind = t.UnitKind, tag = t.UnitTag, inArea = area, x = t.TileX, y = t.TileY, radius = t.Radius, terrain = t.OnTerrain, coverBelow = t.CoverBelow, outside = t.OutsideArea && area, ready = t.ReadyOnly };
     }
 
     public static UnitFilter Of(TriggerAction a) {
@@ -187,6 +189,7 @@ public static class ScenarioGame {
     public static bool MatchesAt(Unit u, HexTile at, UnitFilter f) {
         // (Cheapest tests first: this runs for every unit, for every trigger, every frame.)
         if (u == null || !SideIs(u.owner, f.side)) return false;
+        if (f.ready && !u.active) return false;
         if (f.inArea) {
             bool within = at != null && Distance(at.x, at.y, f.x, f.y) <= Mathf.Max(0, f.radius);
             if (within == f.outside) return false;

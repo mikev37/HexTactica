@@ -1,7 +1,7 @@
 {
 "width":15,
 "active":112,
-"test":{"name":"rule-fob-battery","kind":"rules","opponent":"Human","rounds":"4","check":"battery","question":"A Blue FOB inside the HQ's supply charges 1 a turn; cut off (the HQ lost), it supplies its area for as many turns as it stored, then stops.","rules":"standard"},
+"test":{"name":"rule-fob-battery","kind":"rules","opponent":"Human","rounds":"4","check":"battery","question":"A Blue FOB inside the HQ's supply is restocked in full each turn; cut off (the HQ lost), it supplies its area for as many turns as it stored, then stops.","rules":"standard"},
 "tiles":[
 {"x":-7,"y":0,"z":7,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-7,"y":1,"z":6,"damage":0,"combatCount":0,"terrain":"Grassland"},

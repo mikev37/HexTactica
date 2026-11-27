@@ -1,7 +1,7 @@
 {
 "width":29,
 "active":112,
-"test":{"name":"rule-fob-prefers-hq","kind":"rules","opponent":"Human","rounds":"4","check":"fobPrefersHQ","question":"The HQ first (SupplyNetwork.StoreOnlyWhenNeeded): a forward base cut off from the HQ's supply spends a point of its store only on a turn it feeds a unit nothing else supplies. HQ at -13, FOB at -4 (cut off, store 4): with nobody near it, it keeps its store; a grunt that the HQ's supply also reaches costs it nothing; a grunt only it supplies costs a point; linked to the HQ by a supply unit, it refills a point. A second cut-off FOB with nobody near spends nothing (the old rule: a point every turn).","rules":"standard"},
+"test":{"name":"rule-fob-prefers-hq","kind":"rules","opponent":"Human","rounds":"4","check":"fobPrefersHQ","question":"The HQ first (SupplyNetwork.StoreOnlyWhenNeeded): a forward base cut off from the HQ's supply spends a point of its store only on a turn it feeds a unit nothing else supplies. HQ at -13, FOB at -4 (cut off, store 4): with nobody near it, it keeps its store; a grunt that the HQ's supply also reaches costs it nothing; a grunt only it supplies costs a point; linked to the HQ by a supply unit, it is restocked in full. A second cut-off FOB with nobody near spends nothing (the old rule: a point every turn).","rules":"standard"},
 "tiles":[
 {"x":-14,"y":0,"z":14,"damage":0,"combatCount":0,"terrain":"Grassland"},
 {"x":-14,"y":1,"z":13,"damage":0,"combatCount":0,"terrain":"Grassland"},

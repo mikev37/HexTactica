@@ -692,8 +692,8 @@ public static partial class Scenarios {
                  Put("Supplies", a, 3, 3); Put("Supplies", a, 4, 3); Put("APC", a, 2, -6); Put("APC", a, 0, -6);
                  Put("Grunt", o, -4, 4); Put("Grunt", o, -3, 4); Put("Grunt", o, -2, 4); },
              "Supply through a chain of two supply units (the HQ feeds A, A feeds B, B feeds a grunt): both are linked, and the line drawn from the grunt runs through B, then A, to the HQ, each once (it used to turn back from A to B: two hubs drawn feeding each other). Two supply units next to each other far from any supply are not linked, supply nothing (not even each other), and have no line. And for every placement of two supply units near the HQ, every one-tile move of one of them previewed, every placement with both aboard transports, and with both aboard one transport (and its moves previewed), the line from each linked one is drawn and ends at the HQ, passing each once, tile to tile, never over an enemy and never straight back where it came from (from a transport it follows the way the transport would drive to supplied ground, a transit never on or beside an enemy that could attack it; the one turn back allowed is where it climbs to the supply unit feeding it and that one's carrier drives off the way it came). Selecting A also shows what depends on it: B, with its line back to A; nothing depends on B.");
-        make("rule-supply-hq-occupied", "supplyHqOccupied", (a, o) => { Put("Grunt", o, 5, -3); Put("Grunt", a, -3, 3); },
-             "An enemy unit standing on an HQ stops its supply: a Red grunt on Blue's HQ leaves every tile within 2 of it out of Blue's supply (it used to flow as if nobody were there: the flood only looked at the tiles it stepped onto). Gone again, the HQ supplies as before. Blue's own grunt on its HQ does not stop it.");
+        make("rule-supply-hq-occupied", "supplyHqOccupied", (a, o) => { Put("Grunt", o, 5, -3); Put("Grunt", a, -3, 3); Put("Fighter", o, 5, -5); },
+             "An enemy unit standing on an HQ stops its supply: a Red grunt on Blue's HQ leaves every tile within 2 of it out of Blue's supply (it used to flow as if nobody were there: the flood only looked at the tiles it stepped onto). Gone again, the HQ supplies as before. Blue's own grunt on its HQ does not stop it, nor a Red fighter over it (an aircraft holds no ground: neither the HQ's tile nor any tile the supply spreads over).");
         make("rule-supply-fob-occupied", "supplyFobOccupied", (a, o) => { Rig.PlaceBuilding("FOB", a, 5, 2); Put("Grunt", o, 5, -3); },
              "The same for every supply building (SupplyNetwork.FloodFromBuilding): Blue's FOB, far from the HQ and cut off from it, gives out of its store; a Red grunt on it stops that; gone again, it supplies as before.");
         make("ui-enemy-supply-line", "enemySupplyLine", (a, o) => {
@@ -1249,9 +1249,12 @@ public static partial class Scenarios {
                 red.TeleportTo(hq.tile, 0); int on = near();
                 red.TeleportTo(park, 0); int back = near();
                 blue.TeleportTo(hq.tile, 0); int own = near();
-                blue.TeleportTo(bluePark, 0); SupplyNetwork.Solve(a, false);
-                detail = "tiles within 2 of Blue's HQ in supply: " + before + "; a Red grunt on it " + on + "; gone " + back + "; Blue's own grunt on it " + own;
-                return before > 0 && on == 0 && back == before && own == before;
+                blue.TeleportTo(bluePark, 0);
+                Unit plane = Rig.At(5, -5).occupier; HexTile planePark = plane.tile;
+                plane.TeleportTo(hq.tile, 0); int flown = near();
+                plane.TeleportTo(planePark, 0); SupplyNetwork.Solve(a, false);
+                detail = "tiles within 2 of Blue's HQ in supply: " + before + "; a Red grunt on it " + on + "; gone " + back + "; Blue's own grunt on it " + own + "; a Red fighter over it " + flown;
+                return before > 0 && on == 0 && back == before && own == before && flown == before;
             }
             case "supplyFobOccupied": {
                 Building fob = Rig.At(5, 2).building;

@@ -394,6 +394,8 @@ public class ScenarioTrigger {
     public bool ArmedOnly;
     /// <summary>Unit Damaged: only a hit that took at least this much strength at once (0: any loss). "We're taking too many losses" for a 2-pip hit, not a scratch.</summary>
     public int LostAtLeast;
+    /// <summary>Count only units still able to act this turn (not spent): "a unit of ours can still move".</summary>
+    public bool ReadyOnly;
     /// <summary>Unit Killed: only units killed by a unit of this kind (empty: by any). "Their rockets killed one of ours."</summary>
     [ResourceName("Units", typeof(Unit), ResourceKind.Unit)] public string KillerKind = "";
     /// <summary>Unit Killed: only units killed in a fight by a unit of this side (Any: by anyone, or anything).</summary>
