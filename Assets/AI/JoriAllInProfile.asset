@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexTactica.AI.AIProfile
   profileName: Jori All In
   aggression: 0.7
-  assaultBoardTurns: 0
-  attackThreshold: 0.4
+  attackThreshold: 0.222
   riskWeight: 0.9
   deathPremium: 1
   killBonus: 1.5
@@ -23,12 +22,11 @@ MonoBehaviour:
   loadedTransportRisk: 2.5
   withdrawStrength: 2
   fogAggression: 1
-  fogFair: 1
   objectiveSpread: 0
   objectiveForceRatio: 0.6
-  campaignMaxTurns: 3
+  campaignMaxTurns: 99
   campaignReserveShare: 0
-  hqDefenseWeight: 0.1
+  hqDefenseWeight: 0
   capturePull: 0.3
   scoutTileValue: 15
   buyInfantry: 1
@@ -37,3 +35,6 @@ MonoBehaviour:
   buyAir: 1
   buyNaval: 1
   productionSupplyWeight: 1
+  productionTierCosts: {x: 5000, y: 11000}
+  assaultBoardTurns: 0
+  fogFair: 1
