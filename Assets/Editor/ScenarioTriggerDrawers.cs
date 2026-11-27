@@ -812,7 +812,7 @@ class ScenarioScriptEditor : Editor {
         EditorGUILayout.HelpBox(Application.isPlaying
             ? "This scenario's triggers. Save the scenario as usual (the map editor's Save) to keep changes: they are lost when play stops otherwise. Drag players, units, buildings and tiles from the Hierarchy or Scene view into the fields."
             : "Triggers belong to a scenario file: open the scenario in the map editor (in play) to edit them, and save it there.", MessageType.Info);
-        foreach (string problem in s.Validate(false)) EditorGUILayout.HelpBox(problem, MessageType.Warning);
+        foreach (string problem in Problems(s)) EditorGUILayout.HelpBox(problem, MessageType.Warning);
         serializedObject.Update();
         EditorGUILayout.PropertyField(serializedObject.FindProperty("description"), true);
         EditorGUILayout.PropertyField(serializedObject.FindProperty("winText"), true);
@@ -821,13 +821,27 @@ class ScenarioScriptEditor : Editor {
         serializedObject.ApplyModifiedProperties();
     }
 
+    // The inspector repaints often while the game runs: what is wrong is worked out again at most once a second then.
+    List<string> problems;
+    double problemsAt = double.MinValue;
+
+    List<string> Problems(ScenarioScript s) {
+        double now = EditorApplication.timeSinceStartup;
+        if (problems == null || !ScenarioAreas.Running || now - problemsAt >= 1.0) { problems = s.Validate(false); problemsAt = now; }
+        return problems;
+    }
+
     void OnSceneGUI() {
+        // OnSceneGUI runs whatever the Gizmos toggle says: honour it here, as Unity does for DrawGizmo.
+        SceneView view = SceneView.currentDrawingSceneView;
+        if (view != null && !view.drawGizmos) return;
+        if (!ScenarioAreas.Shown) return;
         ScenarioScript s = (ScenarioScript)target;
         ScenarioAreas.Draw(s, true);
     }
 
     [DrawGizmo(GizmoType.NonSelected)]
-    static void DrawAreas(ScenarioScript s, GizmoType type) { ScenarioAreas.Draw(s, false); }
+    static void DrawAreas(ScenarioScript s, GizmoType type) { if (ScenarioAreas.Shown) ScenarioAreas.Draw(s, false); }
 }
 
 /// <summary>The areas and tiles of a script's triggers and actions on the board, in the Scene view.</summary>
@@ -835,6 +849,31 @@ static class ScenarioAreas {
     static readonly Color TriggerColour = new Color(1f, 0.85f, 0.25f, 1f);
     static readonly Color ActionColour = new Color(0.36f, 0.75f, 1f, 1f);
     const float HexX = 3.55f, HexY = 3.75f;   // a tile's corner, from its centre (HexGenerator's spacing)
+
+    /// <summary>The game is running (in play, not paused, not in the map editor).</summary>
+    public static bool Running {
+        get {
+            if (!Application.isPlaying || EditorApplication.isPaused) return false;
+            LevelEditor le = LevelEditor.singleton;
+            return le == null || !le.editing;
+        }
+    }
+
+    /// <summary>
+    /// Are the areas drawn? Not while the game runs: on a big scenario they cost the editor tens of milliseconds a
+    /// repaint. Drawn outside play, with the game paused, and in the map editor (where scenarios are edited in play).
+    /// </summary>
+    public static bool Shown { get { return !Running; } }
+
+    // A hex's outline, worked out once; drawn into one reused buffer.
+    static readonly Vector3[] HexCorners = MakeCorners();
+    static readonly Vector3[] HexBuf = new Vector3[7];
+
+    static Vector3[] MakeCorners() {
+        Vector3[] c = new Vector3[7];
+        for (int i = 0; i < 7; i++) { float a = Mathf.PI / 3f * i; c[i] = new Vector3(Mathf.Cos(a) * HexX, Mathf.Sin(a) * HexY, 0f); }
+        return c;
+    }
 
     public static void Draw(ScenarioScript s, bool editable) {
         if (s == null || s.triggers == null) return;
@@ -875,12 +914,8 @@ static class ScenarioAreas {
     }
 
     static void Hex(Vector3 c) {
-        Vector3[] pts = new Vector3[7];
-        for (int i = 0; i < 7; i++) {
-            float a = Mathf.PI / 3f * i;
-            pts[i] = c + new Vector3(Mathf.Cos(a) * HexX, Mathf.Sin(a) * HexY, 0f);
-        }
-        Handles.DrawPolyLine(pts);
+        for (int i = 0; i < 7; i++) HexBuf[i] = c + HexCorners[i];
+        Handles.DrawPolyLine(HexBuf);
     }
 
     /// <summary>The tile nearest a world point (the board's tiles in play; else by the board's layout).</summary>

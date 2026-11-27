@@ -15,6 +15,11 @@ using UnityEngine;
 /// each frame), lines (treads), its canvases (through a CanvasGroup: damage numbers, alarms), and
 /// anything else that renders (smoke): those are switched off while it is hidden. Units it carries
 /// fade with their own fader, as their transport does.
+///
+/// Cost: a unit fully shown, or fully hidden and staying so (an enemy in the fog), does no work a frame beyond working
+/// out its target opacity: a hidden one has every renderer forced off (Renderer.forceRenderingOff) once, and is scanned
+/// again only when a part is added under it. Only units fading, or held half-faded, set colours every frame, and
+/// without making garbage.
 /// </summary>
 public class FogFader : MonoBehaviour {
 
@@ -22,9 +27,15 @@ public class FogFader : MonoBehaviour {
     float alpha = 1f, target = 1f;
     bool started, idle = true;
     float rescanAt;
+    /// <summary>Settled out of sight (opacity 0, staying there): every part is switched off (Renderer.forceRenderingOff,
+    /// which no other script touches) and nothing is done each frame but notice the way back in or a new part.</summary>
+    bool hiddenIdle;
+    /// <summary>The unit's hierarchy size when last scanned while hidden: a new child (smoke, a chute, cargo) changes it.</summary>
+    int hierarchySeen;
 
     class Tint { public Color baseColor, applied; public bool ui; }
-    class Line { public Gradient baseGradient; }
+    /// <summary>A line's own colours, kept with a gradient and key buffer reused every frame (no garbage).</summary>
+    class Line { public GradientColorKey[] colors; public GradientAlphaKey[] alphas, work; public Gradient faded; }
 
     readonly Dictionary<SpriteRenderer, Tint> sprites = new Dictionary<SpriteRenderer, Tint>();
     readonly Dictionary<LineRenderer, Line> lines = new Dictionary<LineRenderer, Line>();
@@ -34,6 +45,14 @@ public class FogFader : MonoBehaviour {
     readonly List<Renderer> others = new List<Renderer>();
     /// <summary>Shadow sprites (SpriteShadow's copies, the ground shadow): switched off while the unit is faded at all — at part opacity their stacked copies only darken it.</summary>
     readonly List<SpriteRenderer> shadows = new List<SpriteRenderer>();
+    /// <summary>Renderers this fader forced off while the unit is hidden (hiddenIdle).</summary>
+    readonly List<Renderer> forced = new List<Renderer>();
+
+    // Scan's buffers, shared by every fader (all run on the main thread): no arrays made per scan.
+    static readonly List<SpriteRenderer> spriteBuf = new List<SpriteRenderer>();
+    static readonly List<LineRenderer> lineBuf = new List<LineRenderer>();
+    static readonly List<Canvas> canvasBuf = new List<Canvas>();
+    static readonly List<Renderer> rendererBuf = new List<Renderer>();
 
     /// <summary>Is the unit shown at all (or on its way in)? Explosions and the like are not played for one that is not.</summary>
     public bool Shown { get { return alpha > 0.01f || target > 0.01f; } }
@@ -83,23 +102,64 @@ public class FogFader : MonoBehaviour {
         alpha = Mathf.MoveTowards(alpha, target, Time.deltaTime / seconds);
 
         if (alpha >= 0.999f && target >= 0.999f) {
+            if (hiddenIdle) { Unhide(); hiddenIdle = false; }
             if (!idle) { Apply(1f); Forget(); idle = true; }
             return;
         }
-        if (idle || Time.time >= rescanAt) { Scan(); rescanAt = Time.time + 0.5f; idle = false; }
+        // Settled out of sight: switch everything off once, then idle until it is seen again
+        // (or a new part appears under it, which is switched off too).
+        if (alpha <= 0f && target <= 0f) {
+            if (!hiddenIdle || transform.hierarchyCount != hierarchySeen) {
+                Scan(); Apply(0f); Hide();
+                hierarchySeen = transform.hierarchyCount;
+                hiddenIdle = true; idle = false;
+            }
+            return;
+        }
+        if (hiddenIdle) { Unhide(); hiddenIdle = false; }
+        if (idle || Time.time >= rescanAt) {
+            Scan();
+            // Spread over the half second by the unit, so a whole army spawned together does not rescan in one frame.
+            rescanAt = Time.time + 0.5f + (GetInstanceID() & 15) / 32f;
+            idle = false;
+        }
         Apply(alpha);
     }
 
+    /// <summary>Switch off everything that draws the unit (hiddenIdle), whatever other scripts set its colours or enabled to.</summary>
+    void Hide() {
+        foreach (SpriteRenderer r in sprites.Keys) Force(r);
+        foreach (LineRenderer r in lines.Keys) Force(r);
+        foreach (SpriteRenderer r in shadows) Force(r);
+        foreach (Renderer r in others) Force(r);
+    }
+
+    void Force(Renderer r) {
+        if (r == null || r.forceRenderingOff) return;
+        r.forceRenderingOff = true;
+        forced.Add(r);
+    }
+
+    void Unhide() {
+        for (int i = 0; i < forced.Count; i++) if (forced[i] != null) forced[i].forceRenderingOff = false;
+        forced.Clear();
+    }
+
+    void OnDestroy() { Unhide(); }
+
     /// <summary>Collect what draws the unit (not what draws the units it carries).</summary>
     void Scan() {
-        foreach (SpriteRenderer r in GetComponentsInChildren<SpriteRenderer>(true)) {
+        GetComponentsInChildren(true, spriteBuf);
+        foreach (SpriteRenderer r in spriteBuf) {
             if (r == null || !Mine(r)) continue;
             if (IsShadow(r)) { if (!shadows.Contains(r)) shadows.Add(r); continue; }
             if (!sprites.ContainsKey(r)) sprites[r] = new Tint { baseColor = r.color, applied = r.color, ui = IsUI(r) };
         }
-        foreach (LineRenderer r in GetComponentsInChildren<LineRenderer>(true))
-            if (r != null && Mine(r) && !lines.ContainsKey(r)) lines[r] = new Line { baseGradient = Copy(r.colorGradient) };
-        foreach (Canvas c in GetComponentsInChildren<Canvas>(true)) {
+        GetComponentsInChildren(true, lineBuf);
+        foreach (LineRenderer r in lineBuf)
+            if (r != null && Mine(r) && !lines.ContainsKey(r)) lines[r] = Keep(r.colorGradient);
+        GetComponentsInChildren(true, canvasBuf);
+        foreach (Canvas c in canvasBuf) {
             if (c == null || !Mine(c)) continue;
             CanvasGroup g = c.GetComponent<CanvasGroup>();
             if (g == null) { g = c.gameObject.AddComponent<CanvasGroup>(); g.alpha = 1f; g.blocksRaycasts = false; g.interactable = false; }
@@ -107,8 +167,10 @@ public class FogFader : MonoBehaviour {
             if (IsUI(c)) uiGroups.Add(g);
         }
         others.Clear();
-        foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
+        GetComponentsInChildren(true, rendererBuf);
+        foreach (Renderer r in rendererBuf)
             if (r != null && Mine(r) && !(r is SpriteRenderer) && !(r is LineRenderer)) others.Add(r);
+        spriteBuf.Clear(); lineBuf.Clear(); canvasBuf.Clear(); rendererBuf.Clear();
     }
 
     bool Mine(Component c) { return c.GetComponentInParent<Unit>() == unit; }
@@ -133,8 +195,8 @@ public class FogFader : MonoBehaviour {
             t.applied = c;
         }
         foreach (KeyValuePair<LineRenderer, Line> kv in lines) {
-            if (kv.Key == null || kv.Value.baseGradient == null) continue;
-            kv.Key.colorGradient = Faded(kv.Value.baseGradient, a);
+            if (kv.Key == null || kv.Value == null) continue;
+            kv.Key.colorGradient = Faded(kv.Value, a);
         }
         foreach (KeyValuePair<CanvasGroup, float> kv in groups) if (kv.Key != null) kv.Key.alpha = kv.Value * (uiGroups.Contains(kv.Key) ? UIAlpha(a) : a);
         // Shadows go while it is faded at all; they come back with it.
@@ -164,18 +226,17 @@ public class FogFader : MonoBehaviour {
         shadows.Clear();
     }
 
-    static Gradient Copy(Gradient g) {
+    /// <summary>A line's own colours, read once (Gradient's key getters make new arrays each call).</summary>
+    static Line Keep(Gradient g) {
         if (g == null) return null;
-        Gradient c = new Gradient();
-        c.SetKeys(g.colorKeys, g.alphaKeys);
-        return c;
+        GradientAlphaKey[] alphas = g.alphaKeys;
+        return new Line { colors = g.colorKeys, alphas = alphas, work = new GradientAlphaKey[alphas.Length], faded = new Gradient() };
     }
 
-    static Gradient Faded(Gradient g, float a) {
-        GradientAlphaKey[] keys = g.alphaKeys;
-        for (int i = 0; i < keys.Length; i++) keys[i].alpha *= a;
-        Gradient c = new Gradient();
-        c.SetKeys(g.colorKeys, keys);
-        return c;
+    /// <summary>The line's colours at opacity <paramref name="a"/>, in its reused gradient (the renderer copies it when set).</summary>
+    static Gradient Faded(Line l, float a) {
+        for (int i = 0; i < l.alphas.Length; i++) { l.work[i] = l.alphas[i]; l.work[i].alpha *= a; }
+        l.faded.SetKeys(l.colors, l.work);
+        return l.faded;
     }
 }

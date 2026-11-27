@@ -16,8 +16,10 @@ namespace UnityEditor {
         public delegate void CallbackFunction();
         public static CallbackFunction delayCall;
         public static bool isPlayingOrWillChangePlaymode;
-        public static bool isPlaying;
+        public static bool isPlaying, isPaused;
+        public static double timeSinceStartup;
     }
+    public class SceneView { public static SceneView currentDrawingSceneView; public bool drawGizmos = true; }
     public enum TextureImporterType { Default, Sprite }
     public enum SpriteImportMode { None, Single, Multiple }
     public class AssetImporter { public static AssetImporter GetAtPath(string p) { return null; } public void SaveAndReimport() { } }

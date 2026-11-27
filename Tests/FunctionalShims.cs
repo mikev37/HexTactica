@@ -241,6 +241,8 @@ namespace UnityEngine {
         public T GetComponentInChildren<T>(bool includeInactive) where T : class { return gameObject.GetComponent<T>(); }
         public T[] GetComponentsInChildren<T>() where T : class { return new T[0]; }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : class { return new T[0]; }
+        // (The list form, as FogFader uses: this object's own components, which is all the flat rig has.)
+        public void GetComponentsInChildren<T>(bool includeInactive, System.Collections.Generic.List<T> into) where T : class { into.Clear(); into.AddRange(gameObject.GetComponents<T>()); }
         public T[] GetComponents<T>() where T : class { return gameObject.GetComponents<T>(); }
         public T AddComponent<T>() where T : class, new() { return gameObject.AddComponent<T>(); }
         public string tag { get { return gameObject.tag; } set { gameObject.tag = value; } }
@@ -264,6 +266,7 @@ namespace UnityEngine {
         public Transform Find(string n) { return null; }
         public void SetParent(Transform p) { parent = p; }
         public int childCount { get { return 0; } }
+        public int hierarchyCount { get { return 1 + gameObject.GetComponents<Component>().Length; } }
         public Transform GetChild(int i) { return null; }
         public void SetSiblingIndex(int i) { }
         public void SetAsLastSibling() { }
@@ -368,7 +371,7 @@ namespace UnityEngine {
         public void SetPixels(Color[] c) { }
         public void Apply() { }
     }
-    public class Renderer : Component { public Bounds bounds; public bool enabled = true; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
+    public class Renderer : Component { public Bounds bounds; public bool enabled = true, forceRenderingOff; public int sortingLayerID; public string sortingLayerName; public int sortingOrder; }
     public static class SortingLayer { public static int NameToID(string n) { return 0; } public static bool IsValid(int id) { return false; } public static int GetLayerValueFromID(int id) { return 0; } public static string IDToName(int id) { return "Default"; } public static int GetLayerValueFromName(string n) { return 0; } }
     public class SpriteRenderer : Renderer {
         public Sprite sprite; public Color color;
