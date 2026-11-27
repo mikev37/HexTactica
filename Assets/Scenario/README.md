@@ -83,7 +83,7 @@ units or buildings must match at least.
 | After Trigger (17) | the named trigger has fired at least once (sequencing) | trigger |
 | All Of (18) / Any Of (19) / None Of (20) | the named triggers' conditions hold now: all of them / at least one / none | parts |
 | Turn Started (21) | *Side*'s turn number *Count* begins (3: its third turn), after its upkeep | on whose turn, turn number |
-| Units At Most (22) | now: at most *Value* matching units are alive (0: all gone, as in "destroy every enemy tank"); *Only Seen*: counting only those *Seen By* has in sight ("none of them in sight"). Units At Least (25) likewise | side, kind, name, in area, only seen |
+| Units At Most (22) | now: at most *Value* matching units are alive (0: all gone, as in "destroy every enemy tank"); *Only Seen*: counting only those *Seen By* has in sight ("none of them in sight"). *Ready Only* (also Units At Least, Units In Area): counting only those still able to act this turn ("none of ours can move"). Units At Least (25) likewise | side, kind, name, in area, only seen |
 | Building Owned (23) | now: at least *Count* matching buildings are held by *Side* | held by, kind, in area |
 | Unit Cut Off (24) | now: matching units stand outside their side's supply (a move being previewed does not count: its what-if supply shows on the board, the condition keeps its real reading) | side, kind, name, in area |
 | Unit Selected (26) | the player selects (clicks) a matching unit: *Count* times | side, kind, name, in area |

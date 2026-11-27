@@ -530,9 +530,9 @@ public static class SupplyNetwork {
     static void FloodFromBuilding(Building b, Result result) {
         if (b.tile == null) return;
         // An enemy unit standing on it stops its supply (the flood only ever looked at the tiles it stepped onto, so one
-        // on the building's own tile let supply through). An ally's does not.
+        // on the building's own tile let supply through). An ally's does not, nor an aircraft's: it flies over.
         Unit on = SupplyOccupier(b.tile);
-        if (on != null && on.Strength > 0 && Player.Hostile(on.owner, b.owner) && !FloodsThrough(b.tile)) return;
+        if (on != null && on.Strength > 0 && Player.Hostile(on.owner, b.owner) && HoldsGround(on) && !FloodsThrough(b.tile)) return;
         Flood(b.tile, b.supplyRange, b.supplyScramble, b.owner, Locomotion.Wheels, result);
     }
 
@@ -930,6 +930,9 @@ public static class SupplyNetwork {
     /// </summary>
     [System.ThreadStatic] static HashSet<HexTile> floodThrough;
 
+    /// <summary>Does <paramref name="u"/> hold the ground it is over, stopping ground supply there? Not an aircraft: it flies over (an enemy plane above an HQ cuts nothing).</summary>
+    static bool HoldsGround(Unit u) { return u != null && !LocomotionRules.IsAirborne(u.locomotion); }
+
     static bool FloodsThrough(HexTile t) { HashSet<HexTile> f = floodThrough; return f != null && f.Contains(t); }
 
     /// <summary>Is an enemy unit the side in WithUnseen does not see standing on <paramref name="t"/> (false outside it)?</summary>
@@ -1263,7 +1266,7 @@ public static class SupplyNetwork {
 
                 // An enemy unit standing in the corridor severs it.
                 Unit no = SupplyOccupier(n, layer);
-                if (no != null && Player.Hostile(no.owner, owner) && !FloodsThrough(n)) continue;
+                if (no != null && Player.Hostile(no.owner, owner) && HoldsGround(no) && !FloodsThrough(n)) continue;
                 // On and off a bridge only by road, as units move (a harbor is open from every side: LocomotionRules.IsHarbor).
                 if (!LocomotionRules.BridgeStep(current, n, loco)) continue;
                 // Supply does not cross water over land (supply boats carry it; see FloodFromHub).

@@ -198,6 +198,7 @@
 			"OnlySeen":false,
 			"ArmedOnly":false,
 			"LostAtLeast":0,
+			"ReadyOnly":false,
 			"KillerKind":"",
 			"KilledBy":-1,
 			"UnitTag":"",

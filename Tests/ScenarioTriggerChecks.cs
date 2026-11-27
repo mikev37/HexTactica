@@ -319,9 +319,10 @@ public static partial class Scenarios {
                         Trig("Held by Red", TriggerCondition.AttackRepulsed, t => { t.Side = Red; t.KilledBy = Red; }),
                         Trig("By a tank", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KillerKind = "Tank"; },
                             Act(TriggerActionType.SpawnUnit, x => { x.Side = Red; x.UnitKind = "Grunt"; x.AtUnit = "{unit}"; x.UnitTag = "Avenger"; x.Count = 1; x.Value = 6; })),
-                        Trig("By artillery", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KillerKind = "Artillery"; }));
+                        Trig("By artillery", TriggerCondition.UnitKilled, t => { t.Side = Red; t.KillerKind = "Artillery"; }),
+                        Trig("All spent", TriggerCondition.UnitsAtMost, t => { t.Side = Blue; t.Value = 0; t.ReadyOnly = true; }));
              },
-             "More scenario functions (Act 1, mission 6): Attack Repulsed (a weak Blue squad attacks a Red squad in the forest and comes off worse: counted for Killed By Blue, not Red); Unit Killed's Killer Kind (a Red squad killed by a Blue tank counts for Tank, not Artillery); Spawn Unit At Unit {unit} (made where the dead squad fell); Spawn Unit Target (a squad made aboard a helicopter over the water); a forced boarding order puts a squad aboard where the rules give no way in.");
+             "More scenario functions (Act 1, mission 6): Attack Repulsed (a weak Blue squad attacks a Red squad in the forest and comes off worse: counted for Killed By Blue, not Red); Unit Killed's Killer Kind (a Red squad killed by a Blue tank counts for Tank, not Artillery); Spawn Unit At Unit {unit} (made where the dead squad fell); Spawn Unit Target (a squad made aboard a helicopter over the water); a forced boarding order puts a squad aboard where the rules give no way in; Units At Most 0 with Ready Only (none of Blue's units left able to act).");
         n++;
         make("mission-tally", "scriptMissionTally", (a, o) => { Put("Grunt", o, 0, 0); },
              "The mission rating's tally (MissionRating.Tally, from the game log): turns are the days the player moved on, each once (a turn logged twice, at a load, is one day); an enemy unit killed by the player, starved out of supply or ditched out of fuel is the player's kill; an ally's is nobody's; the player's own losses whatever the cause.");
@@ -1132,8 +1133,12 @@ public static partial class Scenarios {
                 Unit avenger = ScenarioGame.Named("Avenger");
                 bool byTank = Fired(s, "By a tank") == 1 && Fired(s, "By artillery") == 0;
                 bool spawned = avenger != null && avenger.tile != null && avenger.tile.Distance(Rig.At(4, 0)) <= 1;
-                detail = "a squad made aboard a helicopter over the water (Spawn Unit Target) " + aboard + "; a squad 2 tiles off put aboard one over the water (forced boarding, no way in by the rules) " + forcedIn + "; attack held off counted (by Blue, not by Red) " + held + " (Red " + dug.Strength + ", Blue " + weak.RealStrength + "); killed by a tank, not artillery " + byTank + "; spawned where it fell " + spawned + (avenger != null && avenger.tile != null ? " (" + avenger.tile.x + "," + avenger.tile.y + ")" : "");
-                return held && byTank && spawned && aboard && forcedIn;
+                bool notYet = Fired(s, "All spent") == 0;
+                foreach (Unit u in a.units) if (u != null) u.active = false;
+                settle();
+                bool spent = notYet && Fired(s, "All spent") == 1;
+                detail = "Units At Most 0 Ready Only: not while a Blue unit can act, then once all are spent " + spent + "; a squad made aboard a helicopter over the water (Spawn Unit Target) " + aboard + "; a squad 2 tiles off put aboard one over the water (forced boarding, no way in by the rules) " + forcedIn + "; attack held off counted (by Blue, not by Red) " + held + " (Red " + dug.Strength + ", Blue " + weak.RealStrength + "); killed by a tank, not artillery " + byTank + "; spawned where it fell " + spawned + (avenger != null && avenger.tile != null ? " (" + avenger.tile.x + "," + avenger.tile.y + ")" : "");
+                return held && byTank && spawned && aboard && forcedIn && spent;
             }
             case "scriptMissionTally": {
                 GameRecord rec = new GameRecord();
