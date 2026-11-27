@@ -126,7 +126,6 @@ MonoBehaviour:
   supplyScramble: 1
   supplies: 0
   suppliesMax: 3
-  chargePerTurn: 1
   services: 06000000i
   healPerTurn: 1
   rearm: 1

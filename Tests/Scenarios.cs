@@ -403,7 +403,7 @@ public static partial class Scenarios {
             Player ai = Rig.AddPlayer("Blue", ScenarioFile.AI_ID), other = Rig.AddPlayer("Red", ScenarioFile.OTHER_ID);
             Put("HQ", ai, -13, 0); Put("HQ", other, 13, 0);
             Rig.PlaceBuilding("FOB", ai, -4, 0); Rig.PlaceBuilding("FOB", ai, 5, -2);
-            Dictionary<string, string> test = Test("rule-fob-prefers-hq", "rules", "Human", 4, "fobPrefersHQ", "The HQ first (SupplyNetwork.StoreOnlyWhenNeeded): a forward base cut off from the HQ's supply spends a point of its store only on a turn it feeds a unit nothing else supplies. HQ at -13, FOB at -4 (cut off, store 4): with nobody near it, it keeps its store; a grunt that the HQ's supply also reaches costs it nothing; a grunt only it supplies costs a point; linked to the HQ by a supply unit, it refills a point. A second cut-off FOB with nobody near spends nothing (the old rule: a point every turn).");
+            Dictionary<string, string> test = Test("rule-fob-prefers-hq", "rules", "Human", 4, "fobPrefersHQ", "The HQ first (SupplyNetwork.StoreOnlyWhenNeeded): a forward base cut off from the HQ's supply spends a point of its store only on a turn it feeds a unit nothing else supplies. HQ at -13, FOB at -4 (cut off, store 4): with nobody near it, it keeps its store; a grunt that the HQ's supply also reaches costs it nothing; a grunt only it supplies costs a point; linked to the HQ by a supply unit, it is restocked in full. A second cut-off FOB with nobody near spends nothing (the old rule: a point every turn).");
             test["rules"] = "standard";
             ScenarioFile.Save(Path.Combine(Dir, "rule-fob-prefers-hq.dat"), test, ai, other, ai);
             n++;
@@ -505,7 +505,7 @@ public static partial class Scenarios {
         make("attrition-rule-hq", "attritionHQ", (a, o) => { Put("Grunt", o, -6, 0); Put("Grunt", a, -3, 2); },
              "Attrition rules: the HQ cannot be captured, a Red grunt standing on it changes nothing.");
         make("rule-fob-battery", "battery", (a, o) => { Building f = Rig.PlaceBuilding("FOB", a, -4, 0); f.supplies = 0; Put("Grunt", a, -3, 1); },
-             "A Blue FOB inside the HQ's supply charges 1 a turn; cut off (the HQ lost), it supplies its area for as many turns as it stored, then stops.");
+             "A Blue FOB inside the HQ's supply is restocked in full each turn; cut off (the HQ lost), it supplies its area for as many turns as it stored, then stops.");
         make("rule-production", "production", (a, o) => { },
              "Blue's HQ builds a Grunt from 3000: it appears on the HQ, spent for the turn, money 3000 less the Grunt's cost.");
         // Air and sea (attrition: these do not test capture).
@@ -1033,7 +1033,7 @@ public static partial class Scenarios {
             }
             case "battery": {
                 Building fob = Rig.At(-4, 0).building;
-                for (int i = 0; i < 6; i++) endTurn();   // three Blue turns connected
+                for (int i = 0; i < 2; i++) endTurn();   // one Blue turn connected: restocked in full
                 int charged = fob.supplies;
                 // Cut off: the forward base (and the grunt beside it) moved far from the HQ.
                 Unit g = Rig.At(-3, 1).occupier;
@@ -1048,8 +1048,8 @@ public static partial class Scenarios {
                     if (supplied) suppliedTurns++;
                     trace.Add(fob.supplies + (supplied ? "s" : "-"));
                 }
-                detail = "store after three connected turns " + charged + " (max " + fob.suppliesMax + ", charge " + fob.chargePerTurn + ", supplies area " + fob.producesSupply + ")" + "; cut off, each Blue turn (store, s = grunt supplied): " + string.Join(" ", trace.ToArray());
-                return charged == 3 && suppliedTurns == 3 && fob.supplies == 0;
+                detail = "store after one connected turn " + charged + " (max " + fob.suppliesMax + ", supplies area " + fob.producesSupply + ")" + "; cut off, each Blue turn (store, s = grunt supplied): " + string.Join(" ", trace.ToArray());
+                return charged == fob.suppliesMax && suppliedTurns == fob.suppliesMax && fob.supplies == 0;
             }
             case "production": {
                 a.money = 3000;
@@ -2357,7 +2357,7 @@ public static partial class Scenarios {
                 int newRule = 3 - f2.supplies;
                 r.Add("a second FOB at 5,-2 cut off with nobody near: spends " + newRule + " (old rule " + oldRule + ")");
                 detail = string.Join("; ", r.ToArray());
-                return empty == 0 && overlapSupplied && overlap == 0 && onlyStore && needed == 1 && linked && refill == -1 && newRule == 0 && oldRule == 1;
+                return empty == 0 && overlapSupplied && overlap == 0 && onlyStore && needed == 1 && linked && fob.supplies == fob.suppliesMax && newRule == 0 && oldRule == 1;
             }
             case "previewFob": {
                 // HQ at -13; FOB at -4, linked to the HQ by supply units at -10,0 and -7,0. A truck carrying supplies at 1,2

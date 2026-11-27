@@ -151,7 +151,32 @@ public class ScenarioScript : MonoBehaviour {
         FollowMarkers();
         RunActions();
         if (gc.gameOver) return;
-        Evaluate();
+        // The triggers are looked at again only when something has happened: a unit moved, was hit, appeared, died,
+        // came into sight; an event was counted (a click, a capture, a strike); an action ran; the turn or the day,
+        // money, a building's owner or a trigger's switch changed. Or while one waits for the board to be still.
+        // Otherwise nothing a condition reads can have changed: the game is turn based, the frames between are idle.
+        int sig = StateSignature();
+        if (changed || waitingOnBoard || sig != stateSignature) { changed = false; stateSignature = sig; Evaluate(); }
+    }
+
+    // Something a condition reads has changed since the triggers were last looked at (see Tick).
+    bool changed = true;
+    int stateSignature;
+
+    /// <summary>Whose turn, the day, each side's money, each building's owner, each trigger's switch and its count: changed by a move of play or a script's action alike (cheap, no allocation).</summary>
+    int StateSignature() {
+        GameController gc = GameController.gc;
+        unchecked {
+            int h = gc.activePlayer != null ? (int)gc.activePlayer.id * 31 + 7 : 0;
+            h = h * 31 + gc.days;
+            h = h * 31 + FogOfWar.Resets;
+            if (gc.players != null) for (int i = 0; i < gc.players.Count; i++) if (gc.players[i] != null) h = h * 31 + gc.players[i].money + gc.players[i].team * 7919;
+            List<Building> bs = Building.all;
+            if (bs != null) for (int i = 0; i < bs.Count; i++) if (bs[i] != null) h = h * 31 + (bs[i].RealOwner != null ? (int)bs[i].RealOwner.id + 1 : 0) + bs[i].damage * 1009;
+            h = h * 31 + (bs != null ? bs.Count : 0);
+            for (int i = 0; i < triggers.Count; i++) { ScenarioTrigger x = triggers[i]; if (x != null) h = h * 31 + (x.Enabled ? 1 : 2) + x.Events * 3 + x.TimesFired * 5; }
+            return h;
+        }
     }
 
     // A trigger's condition is met and it waits for the board to be still before it fires (Wait For Animations).
@@ -410,7 +435,10 @@ public class ScenarioScript : MonoBehaviour {
     // ------------------------------------------------------------------ facts as they happen (latched on each trigger)
 
     /// <summary>A unit as the last frame saw it; <c>seenBy</c>: which players (by their place in GameController.players) had it in sight.</summary>
-    struct Seen { public int strength; public HexTile tile; public int pass; public long seenBy; public bool aboard; }
+    struct Seen { public int strength; public HexTile tile; public int pass; public long seenBy; public bool aboard; public int stats; }
+
+    /// <summary>What else a condition reads of a unit (spent, supplies, fuel, ammo): a change in it is a change on the board.</summary>
+    static int Stats(Unit u) { unchecked { return (u.active ? 1 : 0) + u.supplies * 3 + u.fuel * 97 + u.ammo * 7919; } }
     readonly Dictionary<Unit, Seen> seen = new Dictionary<Unit, Seen>();
     readonly List<Unit> gone = new List<Unit>();
     bool snapshotTaken;
@@ -423,6 +451,7 @@ public class ScenarioScript : MonoBehaviour {
 
     /// <summary>One more event of <paramref name="kind"/> for every trigger it matches, about <paramref name="subject"/> (what "{unit}" names in their actions; null: no unit).</summary>
     void Count(TriggerCondition kind, Func<ScenarioTrigger, bool> matches, Unit subject) {
+        changed = true;
         for (int i = 0; i < triggers.Count; i++) {
             ScenarioTrigger t = triggers[i];
             if (t != null && t.Condition == kind && matches(t)) { t.Events++; if (subject != null) { t.Subject = subject; t.SubjectAt = subject.RealTile; } }
@@ -470,7 +499,7 @@ public class ScenarioScript : MonoBehaviour {
         seen.Clear();
         pass++;
         if (UnitController.uc != null && UnitController.uc.units != null)
-            foreach (Unit u in UnitController.uc.units) if (u != null) seen[u] = new Seen { strength = u.RealStrength, tile = u.RealTile, pass = pass, seenBy = SeenBy(u, u.RealTile), aboard = u.trasnporter != null };
+            foreach (Unit u in UnitController.uc.units) if (u != null) seen[u] = new Seen { strength = u.RealStrength, tile = u.RealTile, pass = pass, seenBy = SeenBy(u, u.RealTile), aboard = u.trasnporter != null, stats = Stats(u) };
         snapshotTaken = true;
     }
 
@@ -491,19 +520,22 @@ public class ScenarioScript : MonoBehaviour {
             HexTile at = u.RealTile;
             long sight = spotting ? SeenBy(u, at) : 0;
             Seen was;
+            int stats = Stats(u);
             if (seen.TryGetValue(u, out was)) {
+                if (s != was.strength || at != was.tile || sight != was.seenBy || (u.trasnporter != null) != was.aboard || stats != was.stats) changed = true;
                 // Where it was hit: a defender driven back is counted where it stood (an attacker, where it attacked from).
                 if (s < was.strength) Damaged(u, s, was.strength - s, at != was.tile && was.tile != null && GameController.gc != null && u.owner != GameController.gc.activePlayer ? was.tile : at);
                 else if (s > was.strength) Healed(u, s, at);
                 if (at != was.tile && at != null) Entered(u, was.tile, at, !was.aboard && u.trasnporter == null && !ScenarioGame.Lifted.Contains(u));
                 if (spotting) Spotted(u, at, sight & ~was.seenBy);
-            } else if (at != null) { Entered(u, null, at, false); if (spotting) Spotted(u, at, sight); }
-            seen[u] = new Seen { strength = s, tile = at, pass = pass, seenBy = sight, aboard = u.trasnporter != null };
+            } else { changed = true; if (at != null) { Entered(u, null, at, false); if (spotting) Spotted(u, at, sight); } }
+            seen[u] = new Seen { strength = s, tile = at, pass = pass, seenBy = sight, aboard = u.trasnporter != null, stats = stats };
         }
         ScenarioGame.Lifted.Clear();
         gone.Clear();
         foreach (KeyValuePair<Unit, Seen> kv in seen) if (kv.Value.pass != pass) gone.Add(kv.Key);
         for (int i = 0; i < gone.Count; i++) seen.Remove(gone[i]);
+        if (gone.Count > 0) changed = true;
     }
 
     bool Uses(TriggerCondition c) { for (int i = 0; i < triggers.Count; i++) if (triggers[i] != null && triggers[i].Condition == c) return true; return false; }
@@ -655,6 +687,7 @@ public class ScenarioScript : MonoBehaviour {
     }
 
     void OnTurnStarted(Player p) {
+        changed = true;
         if (!Counting || GameController.gc == null || GameController.gc.gameOver) return;
         if (p != null) {
             SideTurns st = turnStarts.Find(x => x.Id == p.id);
@@ -707,6 +740,7 @@ public class ScenarioScript : MonoBehaviour {
     /// it still reads as met where another trigger uses it as a part ("None Of: the HQ was opened").
     /// </summary>
     public void Fire(int index) {
+        changed = true;
         ScenarioTrigger t = triggers[index];
         t.TimesFired++;
         t.LastFiredTurn = TurnsOf(t.TurnsOf);
@@ -768,6 +802,7 @@ public class ScenarioScript : MonoBehaviour {
             if (t.Actions == null || r.Next >= t.Actions.Count) return true;
             if (SceneQueued(r, index)) return false;
             TriggerAction a = t.Actions[r.Next++];
+            changed = true;
             if (a == null) continue;
             Do(t, a, r);
             if (GameController.gc != null && GameController.gc.gameOver) return true;
@@ -1259,6 +1294,7 @@ public class ScenarioScript : MonoBehaviour {
         scenarioPath = path ?? "";
         started = d.Started;
         clock = d.Clock;
+        changed = true;
         running = d.Running ?? new List<RunningActions>();
         turnStarts = d.TurnStarts ?? new List<SideTurns>();
         bonuses = d.Bonuses ?? new List<StarBonus>();
