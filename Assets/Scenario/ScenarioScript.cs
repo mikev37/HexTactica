@@ -340,6 +340,7 @@ public class ScenarioScript : MonoBehaviour {
             case TriggerCondition.UnloadProposed:
             case TriggerCondition.FiredFromFog:
             case TriggerCondition.AttackRepulsed:
+            case TriggerCondition.UnitAttacked:
             case TriggerCondition.EnemyInspected:
             case TriggerCondition.AttackProposed:
             case TriggerCondition.Ambush:
@@ -649,6 +650,11 @@ public class ScenarioScript : MonoBehaviour {
             if (i >= 0 && i < 63 && seen.TryGetValue(attacker, out was) && (was.seenBy & (1L << i)) == 0 && Player.Hostile(attacker.owner, defender.owner))
                 Count(TriggerCondition.FiredFromFog, t => ScenarioGame.MatchesAt(attacker, from ?? attacker.RealTile, UnitFilter.Of(t)), attacker);
         }
+        // Fired on (counted where the defender stood, by the attacker's side and kind, and the strength the shot took).
+        if (attacker != null)
+            Count(TriggerCondition.UnitAttacked, t => (t.KilledBy == TriggerSide.Any || ScenarioGame.SideIs(attacker.owner, t.KilledBy))
+                                                     && (string.IsNullOrEmpty(t.KillerKind) || ScenarioGame.IsKind(attacker, t.KillerKind))
+                                                     && o.damageToDefender >= t.LostAtLeast && ScenarioGame.MatchesAt(defender, fought, UnitFilter.Of(t)), defender);
         // Held: the attacker came off worse than the defender (counted where the defender stood).
         if (attacker != null && o.damageToAttacker > o.damageToDefender)
             Count(TriggerCondition.AttackRepulsed, t => (t.KilledBy == TriggerSide.Any || ScenarioGame.SideIs(attacker.owner, t.KilledBy)) && ScenarioGame.MatchesAt(defender, fought, UnitFilter.Of(t)), defender);

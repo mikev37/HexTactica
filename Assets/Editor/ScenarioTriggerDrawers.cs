@@ -19,6 +19,7 @@ static class TriggerFields {
             case TriggerCondition.UnitsInArea: return new[] { "Side", "UnitKind", "UnitTag", "Area", "OnTerrain", "CoverBelow", "Count", "ReadyOnly" };
             case TriggerCondition.UnitKilled: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "Value", "KilledBy", "KillerKind", "Count" };
             case TriggerCondition.AttackRepulsed: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "KilledBy", "Count" };
+            case TriggerCondition.UnitAttacked: return new[] { "Side", "UnitKind", "UnitTag", "InArea", "OnTerrain", "CoverBelow", "KilledBy", "KillerKind", "LostAtLeast", "Count" };
             case TriggerCondition.UnloadProposed:
             case TriggerCondition.UnitBuilt:
             case TriggerCondition.UnitSelected:
@@ -217,6 +218,7 @@ static class TriggerFields {
             case TriggerCondition.Briefing: return "the mission's briefing shows the board";
             case TriggerCondition.FiredFromFog: return units + " fires from the fog (gives itself away)" + times;
             case TriggerCondition.AttackRepulsed: return units + " holds off an attack (the attacker loses more than it deals)" + times;
+            case TriggerCondition.UnitAttacked: return units + " is fired on" + (string.IsNullOrEmpty(t.KillerKind) ? "" : " by a " + t.KillerKind) + (t.LostAtLeast > 0 ? " (a shot taking " + t.LostAtLeast + " or more)" : "") + times;
             case TriggerCondition.BuildingCaptured: return building + " taken by " + Side(t.Side) + times;
             case TriggerCondition.BuildingDestroyed: return building + " destroyed" + times;
             case TriggerCondition.DayReached: return "day " + t.Value + (t.Side == TriggerSide.Any ? "" : ", on " + Side(t.Side) + "'s turn");

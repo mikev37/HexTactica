@@ -103,6 +103,8 @@ public enum TriggerCondition {
     FiredFromFog = 44,
     /// <summary>A unit matching the unit filter was attacked and held: the attacker lost more strength than it dealt ("you can't beat a dug-in defense head-on"). Killed By: the attacker's side (Any: anyone). Count times.</summary>
     AttackRepulsed = 45,
+    /// <summary>A unit matching the unit filter was fired on. Killed By: the attacker's side; Killer Kind: the attacker's kind; Lost At Least: only a shot that took that much strength or more (6 from full: killed in one shot). Count times.</summary>
+    UnitAttacked = 46,
 }
 
 /// <summary>What a trigger does. Saved by number: append only (see the top of this file).</summary>

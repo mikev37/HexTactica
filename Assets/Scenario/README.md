@@ -97,6 +97,7 @@ units or buildings must match at least.
 | Supply Contact (41) | now: *Side*'s supply line shows a "?": an enemy it cannot see is cutting, or turning aside, its supply in transit | whose supply |
 | Building Damaged (42) | now: at least *Count* matching buildings have lost *Value* % of their health or more (a destroyed one too): "the city is half wrecked" | kind, in area, % |
 | Attack Repulsed (45) | a matching unit is attacked and holds: the attacker loses more strength than it deals. *Killed By*: the attacker's side (Any: anyone). *Count* times | side, kind, name, in area, terrain |
+| Unit Attacked (46) | a matching unit is fired on. *Killed By*: the attacker's side; *Killer Kind*: the attacker's kind; *Lost At Least*: only a shot that took that much strength or more (6 from full strength: killed in one shot). *Count* times | side, kind, name, in area, terrain, attacker's side, attacker's kind, lost |
 | Fired From Fog (44) | a matching unit fired at a side that did not have it in sight before the shot (it gave itself away: artillery firing from the fog): *Count* times | side, kind, name, in area |
 | Briefing (43) | the board is shown under a campaign mission's briefing, before Start: the trigger's markers, camera and revealed ground show there (its other actions are not done, and it never fires in play) | |
 | Building Selected (27) | the player opens (clicks) a matching building's build list, held by *Side* | held by, kind, in area |
