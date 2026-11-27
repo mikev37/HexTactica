@@ -119,6 +119,8 @@ public class TurnBanner : MonoBehaviour {
         Color was = GUI.color;
         Player p = gc.gameOver ? gc.winner : gc.activePlayer;
         bool human = p != null && FogOfWar.IsHuman(p);
+        // An AI side with nothing on the board yet (a scenario's late arrivals): its turn passes unannounced, so the line gives nothing away.
+        if (!gc.gameOver && !human && p != null && p.units.Count == 0) return;
 
         // The line at the top, all the time: whose turn, or who won.
         string line;

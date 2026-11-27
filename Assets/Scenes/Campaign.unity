@@ -3524,11 +3524,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parKills
-      value: 20
+      value: 40
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: parLosses
-      value: 10
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 7364205516402891153, guid: 6ac3376308d45044d9fddc0c6d58ff97, type: 3}
       propertyPath: intro.Array.size
